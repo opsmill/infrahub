@@ -19,6 +19,10 @@ services:
       timeout: 10s
       retries: 20
       start_period: 3s
+    labels:
+      infrahub_role: "database"
+
+
 volumes:
   database_data:
   database_logs:

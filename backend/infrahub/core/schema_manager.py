@@ -410,6 +410,15 @@ class SchemaBranch:
             return [schema for schema in all_schemas.values() if schema.namespace in namespaces]
         return list(all_schemas.values())
 
+    def get_schemas_by_rel_identifier(self, identifier: str) -> List[Union[NodeSchema, GenericSchema]]:
+        nodes: List[RelationshipSchema] = []
+        for node_name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node = self.get(name=node_name, duplicate=False)
+            rel = node.get_relationship_by_identifier(id=identifier, raise_on_error=False)
+            if rel:
+                nodes.append(self.get(name=node_name, duplicate=True))
+        return nodes
+
     def load_schema(self, schema: SchemaRoot) -> None:
         """Load a SchemaRoot object and store all NodeSchema or GenericSchema.
 

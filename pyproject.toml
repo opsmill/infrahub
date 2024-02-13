@@ -18,6 +18,7 @@ infrahub-sdk = {path = "python_sdk", develop=true}
 pydantic = "^2.5"
 pydantic-settings = "^2.1"
 fastapi-storages = "~0.2"
+pytest = "*"
 
 [tool.poetry.group.server.dependencies]
 fastapi = "~0.108"
@@ -42,7 +43,6 @@ opentelemetry-exporter-otlp-proto-http = "~1.21"
 opentelemetry-exporter-otlp-proto-grpc = "~1.21"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "*"
 yamllint = "*"
 pylint = "*"
 mypy = "*"
@@ -73,7 +73,6 @@ docker = "^7.0.0"
 infrahub = "infrahub.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
-
 
 [tool.coverage.run]
 branch = true
@@ -125,6 +124,7 @@ disable = """,
     unsubscriptable-object,
     unsupported-assignment-operation,
     not-an-iterable,
+    too-many-return-statements,
     """
 
 [tool.pylint.miscellaneous]
