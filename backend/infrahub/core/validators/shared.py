@@ -8,6 +8,7 @@ from infrahub.core import registry
 from infrahub.core.path import DataPath, SchemaPath  # noqa: TCH001
 from infrahub.core.query import Query, QueryType
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema  # noqa: TCH001
+from infrahub.exceptions import ValidationError
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -48,21 +49,33 @@ class SchemaValidator(BaseModel):
             raw_paths.append(await query.get_paths())
 
         ids = [path.node_id for paths in raw_paths for path in paths]
+
+        # Try to query the nodes with their display label
+        # it's possible that it might not work if the obj is not valid with the schema
         fields = {"display_label": None, self.schema_path.field_name: None}
-        nodes = await registry.manager.get_many(db=db, ids=ids, branch=branch, fields=fields)
+        try:
+            nodes = await registry.manager.get_many(db=db, ids=ids, branch=branch, fields=fields)
+        except ValidationError:
+            nodes = {}
 
         violations = []
         for paths in raw_paths:
             for path in paths:
-                node_display_label = await nodes[path.node_id].render_display_label()
-                if self.node_schema.display_labels:
-                    display_label = f"Node {node_display_label} ({nodes[path.node_id].get_kind()}: {path.node_id})"
+                node = nodes.get(path.node_id, None)
+                node_display_label = None
+                if node:
+                    node_display_label = await node.render_display_label()
+                    if self.node_schema.display_labels:
+                        display_label = f"Node {node_display_label} ({node.get_kind()}: {path.node_id})"
+                    else:
+                        display_label = f"Node {node_display_label}"
                 else:
-                    display_label = f"Node {node_display_label}"
+                    display_label = f"Node ({path.kind}: {path.node_id})"
+
                 violation = SchemaViolation(
                     node_id=path.node_id,
-                    node_kind=nodes[path.node_id].get_kind(),
-                    display_label=node_display_label,
+                    node_kind=path.kind,
+                    display_label=node_display_label or display_label,
                     full_display_label=display_label,
                 )
                 # the error message is rendered in the SchemaValidator

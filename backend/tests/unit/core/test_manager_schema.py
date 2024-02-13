@@ -171,6 +171,54 @@ def schema_all_in_one():
     return FULL_SCHEMA
 
 
+@pytest.fixture
+def schema_criticality_tag():
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Builtin",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "tags",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Tags",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
+                    {
+                        "name": "primary_tag",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Primary Tag",
+                        "identifier": "primary_tag__criticality",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+            {
+                "name": "Tag",
+                "namespace": "Builtin",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ]
+    }
+    return FULL_SCHEMA
+
+
 def _get_schema_by_kind(full_schema, kind):
     for schema_dict in full_schema["nodes"] + full_schema["generics"]:
         schema_kind = schema_dict["namespace"] + schema_dict["name"]
@@ -1586,56 +1634,44 @@ async def test_schema_branch_validate_add_node_relationships(
     new_schema.load_schema(schema=SchemaRoot(**SCHEMA2))
 
     result = schema_branch.validate_update(other=new_schema)
-    assert result.model_dump(exclude=["diff"]) == {"checks": [], "errors": [], "migrations": []}
+    assert result.model_dump(exclude=["diff"]) == {"constraints": [], "errors": [], "migrations": []}
 
 
-async def test_get_constraints_per_model():
-    FULL_SCHEMA = {
-        "nodes": [
-            {
-                "name": "Criticality",
-                "namespace": "Builtin",
-                "default_filter": "name__value",
-                "label": "Criticality",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-                    {"name": "level", "kind": "Number", "label": "Level"},
-                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
-                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
-                ],
-                "relationships": [
-                    {
-                        "name": "tags",
-                        "peer": InfrahubKind.TAG,
-                        "label": "Tags",
-                        "optional": True,
-                        "cardinality": "many",
-                    },
-                    {
-                        "name": "primary_tag",
-                        "peer": InfrahubKind.TAG,
-                        "label": "Primary Tag",
-                        "identifier": "primary_tag__criticality",
-                        "optional": True,
-                        "cardinality": "one",
-                    },
-                ],
-            },
-            {
-                "name": "Tag",
-                "namespace": "Builtin",
-                "label": "Tag",
-                "default_filter": "name__value",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
-                ],
-            },
-        ]
-    }
-
+async def test_get_constraints_per_model_all(schema_criticality_tag):
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
+    schema_criticality_tag["nodes"][0]["uniqueness_constraints"] = [["name__value"]]
+    schema_branch.load_schema(schema=SchemaRoot(**schema_criticality_tag))
+    schema_branch.process()
+    constraints = await schema_branch.get_constraints_per_model(name="BuiltinCriticality", filter_invalid=False)
+
+    constraint_names = sorted([(constraint.path.get_path(), constraint.constraint_name) for constraint in constraints])
+
+    assert constraint_names == [
+        ("schema/BuiltinCriticality/color/optional", "attribute.optional.update"),
+        ("schema/BuiltinCriticality/color/unique", "attribute.unique.update"),
+        ("schema/BuiltinCriticality/description/optional", "attribute.optional.update"),
+        ("schema/BuiltinCriticality/description/unique", "attribute.unique.update"),
+        ("schema/BuiltinCriticality/level/optional", "attribute.optional.update"),
+        ("schema/BuiltinCriticality/level/unique", "attribute.unique.update"),
+        ("schema/BuiltinCriticality/name/optional", "attribute.optional.update"),
+        ("schema/BuiltinCriticality/name/unique", "attribute.unique.update"),
+        ("schema/BuiltinCriticality/primary_tag/cardinality", "relationship.cardinality.update"),
+        ("schema/BuiltinCriticality/primary_tag/max_count", "relationship.max_count.update"),
+        ("schema/BuiltinCriticality/primary_tag/min_count", "relationship.min_count.update"),
+        ("schema/BuiltinCriticality/primary_tag/optional", "relationship.optional.update"),
+        ("schema/BuiltinCriticality/primary_tag/peer", "relationship.peer.update"),
+        ("schema/BuiltinCriticality/tags/cardinality", "relationship.cardinality.update"),
+        ("schema/BuiltinCriticality/tags/max_count", "relationship.max_count.update"),
+        ("schema/BuiltinCriticality/tags/min_count", "relationship.min_count.update"),
+        ("schema/BuiltinCriticality/tags/optional", "relationship.optional.update"),
+        ("schema/BuiltinCriticality/tags/peer", "relationship.peer.update"),
+        ("schema/BuiltinCriticality/uniqueness_constraints", "node.uniqueness_constraints.update"),
+    ]
+
+
+async def test_get_constraints_per_model_valid(schema_criticality_tag):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**schema_criticality_tag))
     schema_branch.process()
     constraints = await schema_branch.get_constraints_per_model(name="BuiltinCriticality")
 

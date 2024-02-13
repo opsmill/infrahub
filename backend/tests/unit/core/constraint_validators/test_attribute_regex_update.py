@@ -1,4 +1,4 @@
-from infrahub_sdk import UUIDT, InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -7,7 +7,6 @@ from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.validators.attribute.regex import AttributeRegexUpdateValidator, AttributeRegexUpdateValidatorQuery
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus import Meta
 from infrahub.message_bus.messages import (
     SchemaValidatorPath,
     SchemaValidatorPathResponse,
@@ -46,9 +45,10 @@ async def test_validator(
     await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
     await person.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson", branch=default_branch)
     name_attr = person_schema.get_attribute(name="name")
     name_attr.regex = r"^[A-Z]+$"
+    registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
 
     validator = AttributeRegexUpdateValidator(
         node_schema=person_schema,
@@ -57,33 +57,28 @@ async def test_validator(
     results = await validator.run_validate(db=db, branch=default_branch)
 
     assert len(results) == 1
-    assert results[0].display_label == "John"
+    assert results[0].display_label == f"Node (TestPerson: {person_john_main.id})"
 
 
 async def test_rpc(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main, helper
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson", branch=default_branch)
     name_attr = person_schema.get_attribute(name="name")
     name_attr.regex = r"^[A-Z]+$"
+    registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
 
-    correlation_id = str(UUIDT())
     message = SchemaValidatorPath(
         constraint_name="attribute.regex.update",
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
         branch=default_branch,
-        meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),
     )
 
     bus_simulator = helper.get_message_bus_simulator()
     service = InfrahubServices(message_bus=bus_simulator, client=InfrahubClient(), database=db)
     bus_simulator.service = service
 
-    await service.send(message=message)
-    assert len(bus_simulator.replies) == 1
-    response: SchemaValidatorPathResponse = bus_simulator.replies[0]
-    assert response.passed
-    assert response.meta.correlation_id == correlation_id
+    response = await service.message_bus.rpc(message=message, response_class=SchemaValidatorPathResponse)
     assert len(response.data.violations) == 1
-    assert response.data.violations[0].display_label == "John"
+    assert response.data.violations[0].display_label == f"Node (TestPerson: {person_john_main.id})"

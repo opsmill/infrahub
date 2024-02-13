@@ -164,10 +164,10 @@ async def schema_integrity(
     dest_schema = registry.schema.get_schema_branch(name=message.destination_branch).duplicate()
 
     candidate_schema = dest_schema.duplicate()
-    candidate_schema.load_schema(schema=source_schema)
+    candidate_schema.update(schema=source_schema)
     validation_result = dest_schema.validate_update(other=candidate_schema)
 
-    constraints_from_data_diff = _get_proposed_change_schema_integrity_constraints(
+    constraints_from_data_diff = await _get_proposed_change_schema_integrity_constraints(
         message=message, schema=candidate_schema
     )
     constraints_from_schema_diff = validation_result.constraints
@@ -185,6 +185,7 @@ async def schema_integrity(
         branch=source_branch, schema=candidate_schema, constraints=constraints, service=service
     )
 
+    # TODO we need to report a failure if an error happened during the execution of a validator
     conflicts: List[SchemaConflict] = []
     for response in responses:
         for violation in response.data.violations:
@@ -201,7 +202,7 @@ async def schema_integrity(
             )
 
     # ------------------------------------------------------------------------
-    # Node Uniqueness Validation, need to re-integrate into the new framework
+    # Node Uniqueness Validation, need to re-integrated into the new framework
     # ------------------------------------------------------------------------
     altered_schema_kinds = set()
     for node_diff in message.branch_diff.diff_summary:
@@ -217,6 +218,9 @@ async def schema_integrity(
             source_branch=message.source_branch,
         )
     )
+
+    if not conflicts:
+        return
 
     async with service.database.start_transaction() as db:
         object_conflict_validator_recorder = ObjectConflictValidatorRecorder(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Union
+from typing import List, Optional, Union
 
 from pydantic import Field
 
@@ -22,8 +22,8 @@ class SchemaValidatorPath(InfrahubMessage):
 
 class SchemaValidatorPathResponseData(InfrahubResponseData):
     violations: List[SchemaViolation] = Field(default_factory=list)
-    constraint_name: str
-    schema_path: SchemaPath
+    constraint_name: Optional[str] = None
+    schema_path: Optional[SchemaPath] = None
 
 
 class SchemaValidatorPathResponse(InfrahubResponse):

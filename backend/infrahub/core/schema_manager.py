@@ -211,6 +211,30 @@ class SchemaBranch:
 
         return schema_diff
 
+    def update(self, schema: SchemaBranch) -> None:
+        """Update another SchemaBranch into this one."""
+
+        local_kinds = list(self.nodes.keys()) + list(self.generics.keys())
+        other_kinds = list(schema.nodes.keys()) + list(schema.generics.keys())
+
+        in_both, _, other_only = compare_lists(list1=local_kinds, list2=other_kinds)
+
+        for item_kind in in_both:
+            other_item = schema.get(name=item_kind)
+            new_item = self.get(name=item_kind)
+            new_item.update(other_item)
+            self.set(name=item_kind, schema=new_item)
+
+        for item_kind in other_only:
+            other_item = schema.get(name=item_kind)
+            self.set(name=item_kind, schema=other_item)
+
+        # for item_kind in local_only:
+        #     if item_kind in self.nodes:
+        #         del self.nodes[item_kind]
+        #     else:
+        #         del self.generics[item_kind]
+
     def validate_update(self, other: SchemaBranch) -> SchemaUpdateValidationResult:
         diff = self.diff(other=other)
 
@@ -1066,13 +1090,16 @@ class SchemaBranch:
 
         return filters
 
-    async def get_constraints_per_model(self, name: str) -> List[SchemaUpdateConstraintInfo]:  # pylint: disable=too-many-branches
+    async def get_constraints_per_model(  # pylint: disable=too-many-branches
+        self, name: str, filter_invalid: bool = True
+    ) -> List[SchemaUpdateConstraintInfo]:
         schema = self.get(name=name, duplicate=False)
         constraints: List[SchemaUpdateConstraintInfo] = []
 
         for prop_name, prop_field_info in schema.model_fields.items():
             if prop_name in ["attributes", "relationships"] or not prop_field_info.json_schema_extra:
                 continue
+
             prop_field_update = prop_field_info.json_schema_extra.get("update")
             if prop_field_update != UpdateSupport.VALIDATE_CONSTRAINT.value:
                 continue
@@ -1111,6 +1138,8 @@ class SchemaBranch:
                 path_type = SchemaPathType.ATTRIBUTE
                 constraint_name = f"attribute.{prop_name}.update"
                 if isinstance(field, RelationshipSchema):
+                    if field.kind == RelationshipKind.GROUP:
+                        continue
                     path_type = SchemaPathType.RELATIONSHIP
                     constraint_name = f"relationship.{prop_name}.update"
 
@@ -1122,6 +1151,9 @@ class SchemaBranch:
                 )
 
                 constraints.append(SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path))
+
+        if not filter_invalid:
+            return constraints
 
         validated_constraints: List[SchemaUpdateConstraintInfo] = []
         for constraint in constraints:

@@ -2,14 +2,18 @@ from fastapi.testclient import TestClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, SchemaPathType
 from infrahub.core.initialization import create_branch
-from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.core.utils import count_relationships
+from infrahub.core.validators.shared import SchemaViolation
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.messages.schema_migration_path import SchemaMigrationPathResponse
-from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPathResponse
+from infrahub.message_bus.messages.schema_validator_path import (
+    SchemaValidatorPathResponse,
+    SchemaValidatorPathResponseData,
+)
 
 
 async def test_schema_read_endpoint_default_branch(
@@ -441,7 +445,7 @@ async def test_schema_load_endpoint_not_valid_with_generics_02(
     assert response.status_code == 422
 
 
-async def test_schema_load_endpoint_not_valid_constraints(
+async def test_schema_load_endpoint_constraints_not_valid(
     db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
@@ -454,11 +458,27 @@ async def test_schema_load_endpoint_not_valid_constraints(
     person_john_main,
     helper,
 ):
-    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
-    await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
-    await person.save(db=db)
+    # person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    # await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
+    # await person.save(db=db)
 
-    rpc_bus.response.append(SchemaValidatorPathResponse(data={"violations": []}))
+    rpc_bus.response.append(
+        SchemaValidatorPathResponse(
+            data=SchemaValidatorPathResponseData(
+                violations=[
+                    SchemaViolation(
+                        node_id="cf85d101-c6d6-41aa-b1ab-41bc4c7d46f1",
+                        node_kind="TestPerson",
+                        display_label="ALFRED",
+                        full_display_label="Alfred TestPerson(cf85d101-c6d6-41aa-b1ab-41bc4c7d46f1)",
+                        message="clear error message",
+                    )
+                ],
+                constraint_name="attribute.regex.update",
+                schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
+            )
+        )
+    )
 
     person_schema = {
         "name": "Person",
@@ -482,5 +502,5 @@ async def test_schema_load_endpoint_not_valid_constraints(
             json={"schemas": [{"version": "1.0", "nodes": [person_schema]}]},
         )
 
-    assert response.json() == {}
-    assert response.status_code == 202
+    assert response.json() == {"error": "clear error message"}
+    assert response.status_code == 422
