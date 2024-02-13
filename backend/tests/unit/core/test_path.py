@@ -1,4 +1,6 @@
-from infrahub.core.constants import PathType
+import pytest
+
+from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.path import DataPath, SchemaPath
 
 
@@ -14,15 +16,20 @@ def test_data_path():
     assert str(path1) == "data/12345678-acbd-abcd-1234-1234567890ab/height/value"
 
 
-def test_schema_path():
-    path1 = SchemaPath(
-        path_type=PathType.ATTRIBUTE,
-        schema_kind="TestPerson",
-        field_name="height",
+@pytest.mark.parametrize(
+    "path_type,kind,field_name,prop_name,expected",
+    [
+        (SchemaPathType.ATTRIBUTE, "TestPerson", "height", None, "schema/TestPerson/height"),
+        (SchemaPathType.ATTRIBUTE, "TestPerson", "height", "description", "schema/TestPerson/height/description"),
+        (SchemaPathType.RELATIONSHIP, "TestPerson", "cars", None, "schema/TestPerson/cars"),
+        (SchemaPathType.NODE, "TestPerson", "height", "height", "schema/TestPerson/height"),
+    ],
+)
+def test_schema_path(path_type, kind, field_name, prop_name, expected):
+    path = SchemaPath(
+        path_type=path_type,
+        schema_kind=kind,
+        field_name=field_name,
+        property_name=prop_name,
     )
-    assert path1.get_path() == "schema/TestPerson/height"
-
-    path1 = SchemaPath(
-        path_type=PathType.ATTRIBUTE, schema_kind="TestPerson", field_name="height", property_name="description"
-    )
-    assert path1.get_path() == "schema/TestPerson/height/description"
+    assert path.get_path() == expected
