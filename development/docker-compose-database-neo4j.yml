@@ -2,7 +2,7 @@
 version: "3.4"
 services:
   database:
-    image: "${DATABASE_DOCKER_IMAGE:-neo4j:community}"
+    image: "${DATABASE_DOCKER_IMAGE:-neo4j:enterprise}"
     environment:
       - "NEO4J_AUTH=neo4j/admin"
       - "NEO4J_dbms_security_procedures_unrestricted=apoc.*"
