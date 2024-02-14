@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from fastapi.responses import PlainTextResponse
 from graphql import print_schema
 
 from infrahub.api.dependencies import get_branch_dep
@@ -18,8 +19,8 @@ router.add_websocket_route(path="/graphql/{branch_name:str}", endpoint=graphql_a
 
 
 @router.get("/schema.graphql")
-async def get_graphql_schema(branch: Branch = Depends(get_branch_dep)) -> str:
+async def get_graphql_schema(branch: Branch = Depends(get_branch_dep)) -> PlainTextResponse:
     schema = registry.schema.get_schema_branch(name=branch.name)
     gql_schema = schema.get_graphql_schema()
 
-    return print_schema(gql_schema)
+    return PlainTextResponse(content=print_schema(gql_schema))
