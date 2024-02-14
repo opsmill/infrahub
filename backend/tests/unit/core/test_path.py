@@ -6,6 +6,7 @@ from infrahub.core.path import DataPath, SchemaPath
 
 def test_data_path():
     path1 = DataPath(
+        branch="branch",
         path_type=PathType.ATTRIBUTE,
         node_id="12345678-acbd-abcd-1234-1234567890ab",
         kind="TestPerson",

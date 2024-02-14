@@ -2,9 +2,9 @@ from infrahub_sdk import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import SchemaPathType
+from infrahub.core.constants import PathResourceType, PathType, SchemaPathType
 from infrahub.core.node import Node
-from infrahub.core.path import SchemaPath
+from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.validators.attribute.regex import AttributeRegexUpdateValidator, AttributeRegexUpdateValidatorQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.messages import (
@@ -25,17 +25,28 @@ async def test_query(
     name_attr = person_schema.get_attribute(name="name")
     name_attr.regex = r"^[A-Z]+$"
 
-    validator = AttributeRegexUpdateValidator(
-        node_schema=person_schema,
-        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
+    node_schema = person_schema
+    schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
+
+    query = await AttributeRegexUpdateValidatorQuery.init(
+        db=db, branch=default_branch, node_schema=node_schema, schema_path=schema_path
     )
-    query = await AttributeRegexUpdateValidatorQuery.init(db=db, branch=default_branch, validator=validator)
 
     await query.execute(db=db)
 
-    paths = await query.get_paths()
-    assert len(paths) == 1
-    assert paths[0].value == "John"
+    grouped_paths = await query.get_paths()
+    all_data_paths = grouped_paths.get_data_paths()
+    assert all_data_paths == [
+        DataPath(
+            resource_type=PathResourceType.DATA,
+            branch=default_branch.name,
+            path_type=PathType.ATTRIBUTE,
+            node_id=person_john_main.id,
+            kind="TestPerson",
+            field_name="name",
+            value="John",
+        )
+    ]
 
 
 async def test_validator(
