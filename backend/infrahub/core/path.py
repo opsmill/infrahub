@@ -1,4 +1,6 @@
-from typing import Any, Optional, Union
+from collections import defaultdict
+from itertools import chain
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 from typing_extensions import Self
@@ -27,7 +29,7 @@ class InfrahubPath(BaseModel):
         return self.get_path()
 
     def get_path(self) -> str:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     # def from_string(self, value: str):
     #     raise NotImplementedError
@@ -43,6 +45,7 @@ class InfrahubPath(BaseModel):
 
 class DataPath(InfrahubPath):
     resource_type: PathResourceType = Field(PathResourceType.DATA, description="Indicate the type of the resource")
+    branch: str = Field(..., description="Name of the branch")
     path_type: PathType
     node_id: str = Field(..., description="Kind of the model in the schema")
     kind: str = Field(..., description="Kind of the main node")
@@ -68,6 +71,33 @@ class DataPath(InfrahubPath):
             identifier += f"/property/{self.property_name}"
 
         return identifier
+
+
+class DataPathsGrouper:
+    def __init__(self, grouping_attribute: Optional[str] = None, data_paths: Optional[List[DataPath]] = None) -> None:
+        self._grouped_data_paths: Dict[Any, List[DataPath]] = defaultdict(list)
+        self._grouping_attribute = grouping_attribute
+        if data_paths:
+            self.add_data_paths(data_paths)
+
+    def add_data_path(self, data_path: DataPath) -> None:
+        self.add_data_paths([data_path])
+
+    def add_data_paths(self, data_paths: List[DataPath]) -> None:
+        for dp in data_paths:
+            if self._grouping_attribute:
+                grouping_key = getattr(dp, self._grouping_attribute)
+            else:
+                grouping_key = None
+            self._grouped_data_paths[grouping_key].append(dp)
+
+    def get_data_paths(self, value: Optional[Any] = None) -> List[DataPath]:
+        if value:
+            return self._grouped_data_paths.get(value, [])
+        return list(chain(*self._grouped_data_paths.values()))
+
+    def get_grouping_keys(self) -> List[Any]:
+        return list(self._grouped_data_paths.keys())
 
 
 class SchemaPath(InfrahubPath):

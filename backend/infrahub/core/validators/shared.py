@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Sequence, Union
+from typing import TYPE_CHECKING, Any, List, Sequence, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.core import registry
-from infrahub.core.path import DataPath, SchemaPath  # noqa: TCH001
+from infrahub.core.path import DataPath, DataPathsGrouper, SchemaPath  # noqa: TCH001
 from infrahub.core.query import Query, QueryType
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema  # noqa: TCH001
 from infrahub.exceptions import ValidationError
@@ -26,8 +26,31 @@ class SchemaViolation(BaseModel):
 class SchemaValidatorQuery(Query):
     type: QueryType = QueryType.READ
 
-    async def get_paths(self) -> List[DataPath]:
-        raise NotImplementedError
+    def __init__(
+        self,
+        *args: Any,
+        node_schema: Union[NodeSchema, GenericSchema],
+        schema_path: SchemaPath,
+        **kwargs: Any,
+    ):
+        self.node_schema = node_schema
+        self.schema_path = schema_path
+        super().__init__(*args, **kwargs)
+
+    async def get_paths(self) -> DataPathsGrouper:
+        raise NotImplementedError()
+
+
+class AttributeSchemaValidatorQuery(SchemaValidatorQuery):
+    @property
+    def attribute_schema(self) -> AttributeSchema:
+        return self.node_schema.get_attribute(name=self.schema_path.field_name)
+
+
+class RelationshipSchemaValidatorQuery(SchemaValidatorQuery):
+    @property
+    def relationship_schema(self) -> RelationshipSchema:
+        return self.node_schema.get_relationship(name=self.schema_path.field_name)
 
 
 class SchemaValidator(BaseModel):
@@ -40,15 +63,17 @@ class SchemaValidator(BaseModel):
     schema_path: SchemaPath
 
     async def run_validate(self, db: InfrahubDatabase, branch: Branch) -> List[SchemaViolation]:
-        raw_paths: List[List[DataPath]] = []
+        grouped_paths_list: List[DataPathsGrouper] = []
 
         for migration_query in self.queries:
             # TODO add exception handling
-            query = await migration_query.init(db=db, branch=branch, validator=self)
+            query = await migration_query.init(
+                db=db, branch=branch, node_schema=self.node_schema, schema_path=self.schema_path
+            )
             await query.execute(db=db)
-            raw_paths.append(await query.get_paths())
+            grouped_paths_list.append(await query.get_paths())
 
-        ids = [path.node_id for paths in raw_paths for path in paths]
+        ids = [path.node_id for grouped_paths in grouped_paths_list for path in grouped_paths.get_data_paths()]
 
         # Try to query the nodes with their display label
         # it's possible that it might not work if the obj is not valid with the schema
@@ -59,8 +84,8 @@ class SchemaValidator(BaseModel):
             nodes = {}
 
         violations = []
-        for paths in raw_paths:
-            for path in paths:
+        for grouped_paths in grouped_paths_list:
+            for path in grouped_paths.get_data_paths():
                 node = nodes.get(path.node_id, None)
                 node_display_label = None
                 if node:

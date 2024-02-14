@@ -4,35 +4,30 @@ from typing import TYPE_CHECKING, Any, Dict, List, Sequence
 
 # from infrahub.core.branch import Branch
 from infrahub.core.constants import PathResourceType, PathType
-from infrahub.core.path import DataPath
+from infrahub.core.path import DataPath, DataPathsGrouper
 
 # from infrahub.database import InfrahubDatabase
-from ..shared import RelationshipSchemaValidator, SchemaValidatorQuery, SchemaViolation
+from ..shared import (
+    RelationshipSchemaValidator,
+    RelationshipSchemaValidatorQuery,
+    SchemaValidatorQuery,
+    SchemaViolation,
+)
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 
-class RelationshipOptionalUpdateValidatorQuery(SchemaValidatorQuery):
+class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
     name = "relationship_constraints_optional_validator"
 
-    def __init__(
-        self,
-        *args: Any,
-        validator: RelationshipOptionalUpdateValidator,
-        **kwargs: Any,
-    ):
-        self.validator = validator
-
-        super().__init__(*args, **kwargs)
-
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.validator.node_schema.kind
-        self.params["relationship_id"] = self.validator.relationship_schema.identifier
+        self.params["node_kind"] = self.node_schema.kind
+        self.params["relationship_id"] = self.relationship_schema.identifier
 
         query = """
         // Query all Active Nodes of type
@@ -65,7 +60,7 @@ class RelationshipOptionalUpdateValidatorQuery(SchemaValidatorQuery):
         WITH n1 as node_with_rel, r1 as r, uuids_active_node
         WHERE r.status = "active"
         WITH COLLECT(node_with_rel.uuid) AS uuids_with_rel, uuids_active_node
-        MATCH (n:Node)
+        MATCH (n:Node)-[r:IS_PART_OF]->(:Root)
         WHERE $node_kind IN LABELS(n)
           AND n.uuid IN uuids_active_node
           AND not n.uuid IN uuids_with_rel
@@ -73,21 +68,22 @@ class RelationshipOptionalUpdateValidatorQuery(SchemaValidatorQuery):
         """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
-        self.return_labels = ["n.uuid"]
+        self.return_labels = ["n.uuid", "r as root_relationship"]
 
-    async def get_paths(self) -> List[DataPath]:
-        paths = []
+    async def get_paths(self) -> DataPathsGrouper:
+        grouper = DataPathsGrouper()
         for result in self.results:
-            paths.append(
+            grouper.add_data_path(
                 DataPath(  # type: ignore[call-arg]
+                    branch=result.get("root_relationship").get("branch"),
                     resource_type=PathResourceType.DATA,
                     path_type=PathType.NODE,
                     node_id=str(result.get("n.uuid")),
-                    kind=self.validator.node_schema.kind,
+                    kind=self.node_schema.kind,
                 )
             )
 
-        return paths
+        return grouper
 
 
 class RelationshipOptionalUpdateValidator(RelationshipSchemaValidator):

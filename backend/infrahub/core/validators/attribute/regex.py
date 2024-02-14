@@ -1,36 +1,26 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Sequence
+from typing import TYPE_CHECKING, Any, Dict, Sequence
 
 from infrahub.core.constants import PathType
-from infrahub.core.path import DataPath
+from infrahub.core.path import DataPath, DataPathsGrouper
 
-from ..shared import AttributeSchemaValidator, SchemaValidatorQuery
+from ..shared import AttributeSchemaValidator, AttributeSchemaValidatorQuery, SchemaValidatorQuery
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class AttributeRegexUpdateValidatorQuery(SchemaValidatorQuery):
+class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_regex_validator"
-
-    def __init__(
-        self,
-        *args: Any,
-        validator: AttributeRegexUpdateValidator,
-        **kwargs: Any,
-    ):
-        self.validator = validator
-
-        super().__init__(*args, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.validator.node_schema.kind
-        self.params["attr_name"] = self.validator.attribute_schema.name
-        self.params["attr_value_regex"] = self.validator.attribute_schema.regex
+        self.params["node_kind"] = self.node_schema.kind
+        self.params["attr_name"] = self.attribute_schema.name
+        self.params["attr_value_regex"] = self.attribute_schema.regex
 
         query = """
         MATCH p = (n:Node)
@@ -50,22 +40,23 @@ class AttributeRegexUpdateValidatorQuery(SchemaValidatorQuery):
         """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
-        self.return_labels = ["n.uuid", "av.value"]
+        self.return_labels = ["n.uuid", "av.value", "relationships(path)[-1] as value_relationship"]
 
-    async def get_paths(self) -> List[DataPath]:
-        paths = []
+    async def get_paths(self) -> DataPathsGrouper:
+        grouper = DataPathsGrouper(grouping_attribute="value")
         for result in self.results:
-            paths.append(
+            grouper.add_data_path(
                 DataPath(  # type: ignore[call-arg]
+                    branch=str(result.get("value_relationship").get("branch")),
                     path_type=PathType.ATTRIBUTE,
                     node_id=str(result.get("n.uuid")),
-                    field_name=self.validator.attribute_schema.name,
-                    kind=self.validator.node_schema.kind,
+                    field_name=self.attribute_schema.name,
+                    kind=self.node_schema.kind,
                     value=result.get("av.value"),
                 )
             )
 
-        return paths
+        return grouper
 
 
 class AttributeRegexUpdateValidator(AttributeSchemaValidator):
