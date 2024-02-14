@@ -171,10 +171,6 @@ app.add_route(path="/metrics", route=handle_metrics)
 app.include_router(graphql_router)
 
 
-if os.path.exists(DOCS_BUILD_DIRECTORY) and os.path.isdir(DOCS_BUILD_DIRECTORY):
-    app.mount("/docs", StaticFiles(directory=DOCS_BUILD_DIRECTORY, html=True, check_dir=True), name="infrahub-docs")
-
-
 if os.path.exists(FRONTEND_ASSET_DIRECTORY) and os.path.isdir(FRONTEND_ASSET_DIRECTORY):
     app.mount("/assets", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "assets")
 
@@ -183,8 +179,15 @@ if os.path.exists(FRONTEND_FAVICONS_DIRECTORY) and os.path.isdir(FRONTEND_FAVICO
     app.mount("/favicons", StaticFiles(directory=FRONTEND_FAVICONS_DIRECTORY), "favicons")
 
 
+if os.path.exists(DOCS_BUILD_DIRECTORY) and os.path.isdir(DOCS_BUILD_DIRECTORY):
+    app.mount("/docs", StaticFiles(directory=DOCS_BUILD_DIRECTORY, html=True, check_dir=True), name="infrahub-docs")
+
+
+@app.get("/docs", include_in_schema=False)
+async def documentation() -> RedirectResponse:
+    return RedirectResponse("/docs/")
+
+
 @app.get("/{rest_of_path:path}", include_in_schema=False)
 async def react_app(req: Request, rest_of_path: str) -> Response:  # pylint: disable=unused-argument
-    if rest_of_path == "docs":
-        return RedirectResponse("/docs/")
     return templates.TemplateResponse("index.html", {"request": req})
