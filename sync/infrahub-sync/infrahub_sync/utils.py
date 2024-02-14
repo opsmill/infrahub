@@ -1,5 +1,6 @@
 import importlib
 import os
+import sys
 from pathlib import Path
 from typing import List, MutableMapping, Optional, Tuple
 
@@ -15,16 +16,21 @@ from potenda import Potenda
 
 def render_adapter(sync_instance: SyncInstance, schema: MutableMapping[str, NodeSchema | GenericSchema]) -> List[Tuple[str, str]]:
     files_to_render = (
-        ("diffsync_models.j2", "models.py"),
-        ("diffsync_adapter.j2", "adapter.py"),
+        ("diffsync_models.j2", "sync_models.py"),
+        ("diffsync_adapter.j2", "sync_adapter.py"),
     )
     rendered_files = []
     for adapter in [sync_instance.source, sync_instance.destination]:
         output_dir_absolute = str(os.path.join(sync_instance.directory, adapter.name))
 
 
-        if not Path(output_dir_absolute).is_dir():
-            Path(output_dir_absolute).mkdir(exist_ok=True)
+        output_dir_path = Path(output_dir_absolute)
+        if not output_dir_path.is_dir():
+            output_dir_path.mkdir(exist_ok=True)
+
+        init_file_path = output_dir_path / "__init__.py"
+        if not init_file_path.exists():
+            init_file_path.touch()
 
         for item in files_to_render:
             render_template(
@@ -40,11 +46,24 @@ def render_adapter(sync_instance: SyncInstance, schema: MutableMapping[str, Node
 
 
 def import_adapter(sync_instance: SyncInstance, adapter: SyncAdapter):
-    directory = sync_instance.directory
-    here = os.path.abspath(os.path.dirname(__file__))
-    relative_directory = directory.replace(here, "")[1:]
-    module = importlib.import_module(f"infrahub_sync.{relative_directory.replace('/', '.')}.{adapter.name}.adapter")
-    return getattr(module, f"{adapter.name.title()}Sync")
+    directory = Path(sync_instance.directory)
+    sys.path.insert(0, str(directory))
+    adapter_file_path = directory / f"{adapter.name}" / "sync_adapter.py"
+
+    try:
+        adapter_name = f"{adapter.name.title()}Sync"
+        spec = importlib.util.spec_from_file_location(f"{adapter.name}.adapter", str(adapter_file_path))
+        adapter_module = importlib.util.module_from_spec(spec)
+        sys.modules[f"{adapter.name}.adapter"] = adapter_module
+        spec.loader.exec_module(adapter_module)
+
+        AdapterClass = getattr(adapter_module, adapter_name, None)
+        if AdapterClass is None:
+            raise AttributeError(f"{adapter_name} not found in adapter.py")
+    except (FileNotFoundError, AttributeError) as exc:
+        raise ImportError(f"{adapter_name}: {str(exc)}")
+    return AdapterClass
+
 
 def get_all_sync(directory: Optional[str] = None) -> List[SyncInstance]:
     results = []

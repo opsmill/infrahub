@@ -374,7 +374,7 @@ schema_mapping:
       - name: vrf
         mapping: vrf
         reference: InfraVRF
-      - name: site
+      - name: location
         mapping: site
         reference: BuiltinLocation
       # - name: status

@@ -61,7 +61,7 @@ class NetboxAdapter(DiffSyncMixin, DiffSync):
             netbox_model = getattr(netbox_app, resource_name)
 
             objs = netbox_model.all()
-            print(f"-> Loading {len(objs)} {resource_name}")
+            print(f"{self.type}: Loading {len(objs)} {resource_name}")
             for obj in objs:
                 data = self.netbox_obj_to_diffsync(obj=obj, mapping=element, model=model)
                 item = model(**data)

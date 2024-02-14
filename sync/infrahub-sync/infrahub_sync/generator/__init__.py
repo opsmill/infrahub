@@ -128,7 +128,6 @@ def render_template(template_file: str, output_dir: str, output_file: str, conte
     templateLoader = jinja2.PackageLoader("infrahub_sync", "generator/templates")
     templateEnv = jinja2.Environment(
         loader=templateLoader,
-        autoescape=jinja2.select_autoescape(["html", "xml", "j2"])
     )
     templateEnv.filters["get_identifiers"] = get_identifiers
     templateEnv.filters["get_attributes"] = get_attributes

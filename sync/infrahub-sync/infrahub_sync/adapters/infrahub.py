@@ -61,16 +61,16 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
         self.client = InfrahubClientSync(address=adapter.settings["url"], config=sdk_config)
 
         # We need to identify with an account until we have some auth in place
-        remote_account = config.source.name
-        try:
-            self.account = self.client.get(kind="CoreAccount", name__value=remote_account)
-        except NodeNotFound:
-            self.account = self.client.create(kind="CoreAccount", name=remote_account, password="nopassword")
-            self.account.save()
+        # remote_account = config.source.name
+        # try:
+        #     self.account = self.client.get(kind="CoreAccount", name__value=remote_account)
+        # except NodeNotFound:
+        #     self.account = self.client.create(kind="CoreAccount", name=remote_account, password="nopassword")
+        #     self.account.save()
 
     def model_loader(self, model_name: str, model):
         nodes = self.client.all(kind=model.__name__, populate_store=True)
-        print(f"-> Loading {len(nodes)} {model_name}")
+        print(f"{self.type}: Loading {len(nodes)} {model_name}")
         for node in nodes:
             data = self.infrahub_node_to_diffsync(node)
             item = model(**data)

@@ -1,11 +1,10 @@
 from infrahub_sync.adapters.{{ adapter.name }} import {{ adapter.name.title() }}Adapter
 
-from .models import (
+from .sync_models import (
 {% for nodekind, node in schema.items()|sort() %}
-{%   if node | get_identifiers(config) %}
-    {{ nodekind }},
-{%   endif %}
-{% endfor %}
+{%-   if node | get_identifiers(config) %} {{ nodekind }},
+{%   endif -%}
+{% endfor -%}
 )
 
 
@@ -15,8 +14,7 @@ from .models import (
 #  All modifications will be lost the next time you reexecute this command
 # -------------------------------------------------------
 class {{ adapter.name.title() }}Sync({{ adapter.name.title() }}Adapter):
-{% for nodekind, node in schema.items() %}
-{%   if node | get_identifiers(config) %}
-    {{ node.kind }} = {{ nodekind }}
-{%   endif %}
+{% for nodekind, node in schema.items() -%}
+{%-   if node | get_identifiers(config) %} {{ node.kind }} = {{ nodekind }}
+{%   endif -%}
 {% endfor %}

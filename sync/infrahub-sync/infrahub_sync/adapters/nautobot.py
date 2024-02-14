@@ -66,7 +66,7 @@ class NautobotAdapter(DiffSyncMixin, DiffSync):
                 raise ValueError(
                     f"Nautobot didn't return the expected number of objects. Got {len(objs)} instead of {count}"
                 )
-            print(f"-> Loading {len(objs)} {resource_name}")
+            print(f"{self.type}: Loading {len(objs)} {resource_name}")
             for obj in objs:
                 data = self.nautobot_obj_to_diffsync(obj=obj, mapping=element, model=model)
                 item = model(**data)
