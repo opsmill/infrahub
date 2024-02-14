@@ -100,6 +100,8 @@ class InfrahubYamlFile(pytest.File):
 
                 item.add_marker(pytest.mark.infrahub)
                 item.add_marker(marker)
+                if "sanity" in test.spec.kind:
+                    item.add_marker(pytest.mark.infrahub_sanity)
                 if "unit" in test.spec.kind:
                     item.add_marker(pytest.mark.infrahub_unit)
                 if "integration" in test.spec.kind:

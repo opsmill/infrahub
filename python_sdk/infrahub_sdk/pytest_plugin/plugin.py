@@ -94,17 +94,17 @@ def pytest_collect_file(parent: Union[Collector, Item], file_path: Path) -> Opti
 
 def pytest_configure(config: Config) -> None:
     config.addinivalue_line("markers", "infrahub(name: str): Infrahub test")
-    config.addinivalue_line("markers", "infrahub_unit: Unit test for Infrahub, should work without any dependencies")
+    config.addinivalue_line("markers", "infrahub_sanity: Sanity test for an Infrahub resource")
+    config.addinivalue_line("markers", "infrahub_unit: Unit test for an Infrahub resource, works without dependencies")
     config.addinivalue_line(
-        "markers", "infrahub_integraton: Integation test with Infrahub, must be run against an instance"
+        "markers",
+        "infrahub_integraton: Integation test for an Infrahub resource, depends on an Infrahub running instance",
     )
-    config.addinivalue_line("markers", "infrahub_check(name: str): Test related to a Check for Infrahub")
+    config.addinivalue_line("markers", "infrahub_check(name: str): Test related to an Infrahub Check")
+    config.addinivalue_line("markers", "infrahub_graphql_query(name: str): Test related to an Infrahub GraphQL query")
     config.addinivalue_line(
-        "markers", "infrahub_graphql_query(name: str): Test related to a GraphQL query for Infrahub"
+        "markers", "infrahub_jinja2_transform(name: str): Test related to an Infrahub Jinja2 Transform"
     )
     config.addinivalue_line(
-        "markers", "infrahub_jinja2_transform(name: str): Test related to a Jinja2 Transform for Infrahub"
-    )
-    config.addinivalue_line(
-        "markers", "infrahub_python_transform(name: str): Test related to a Python Transform for Infrahub"
+        "markers", "infrahub_python_transform(name: str): Test related to an Infrahub Python Transform"
     )
