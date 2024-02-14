@@ -247,13 +247,13 @@ async def update_registry(kind: NodeSchema, branch: Branch, db: InfrahubDatabase
 
         if diff.all:
             log.info(f"Schema has diff, will need to be updated {diff.all}", branch=branch.name)
-            async with db.start_transaction() as db:
+            async with db.start_transaction() as dbt:
                 await registry.schema.update_schema_branch(
-                    schema=tmp_schema, db=db, branch=branch.name, limit=diff.all, update_db=True
+                    schema=tmp_schema, db=dbt, branch=branch.name, limit=diff.all, update_db=True
                 )
                 branch.update_schema_hash()
                 log.info("Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
-                await branch.save(db=db)
+                await branch.save(db=dbt)
 
             if config.SETTINGS.broker.enable:
                 message = messages.EventSchemaUpdate(

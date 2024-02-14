@@ -87,8 +87,8 @@ class AccountMixin:
             expiration=data.get("expiration"),
         )
 
-        async with db.start_transaction() as db:
-            await obj.save(db=db)
+        async with db.start_transaction() as dbt:
+            await obj.save(db=dbt)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
         return cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=True)  # type: ignore[call-arg]
@@ -101,8 +101,8 @@ class AccountMixin:
             if value := data.get(field):
                 getattr(account, field).value = value
 
-        async with db.start_transaction() as db:
-            await account.save(db=db)
+        async with db.start_transaction() as dbt:
+            await account.save(db=dbt)
 
         return cls(ok=True)  # type: ignore[call-arg]
 
