@@ -73,7 +73,7 @@ class DataPath(InfrahubPath):
         return identifier
 
 
-class DataPathsGrouper:
+class GroupedDataPaths:
     def __init__(self, grouping_attribute: Optional[str] = None, data_paths: Optional[List[DataPath]] = None) -> None:
         self._grouped_data_paths: Dict[Any, List[DataPath]] = defaultdict(list)
         self._grouping_attribute = grouping_attribute

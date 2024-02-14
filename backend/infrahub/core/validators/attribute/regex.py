@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, Sequence
 
 from infrahub.core.constants import PathType
-from infrahub.core.path import DataPath, DataPathsGrouper
+from infrahub.core.path import DataPath, GroupedDataPaths
 
 from ..shared import AttributeSchemaValidator, AttributeSchemaValidatorQuery, SchemaValidatorQuery
 
@@ -42,8 +42,8 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.add_to_query(query)
         self.return_labels = ["n.uuid", "av.value", "relationships(path)[-1] as value_relationship"]
 
-    async def get_paths(self) -> DataPathsGrouper:
-        grouper = DataPathsGrouper(grouping_attribute="value")
+    async def get_paths(self) -> GroupedDataPaths:
+        grouper = GroupedDataPaths(grouping_attribute="value")
         for result in self.results:
             grouper.add_data_path(
                 DataPath(  # type: ignore[call-arg]

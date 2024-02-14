@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Sequence
 
 # from infrahub.core.branch import Branch
 from infrahub.core.constants import PathResourceType, PathType
-from infrahub.core.path import DataPath, DataPathsGrouper
+from infrahub.core.path import DataPath, GroupedDataPaths
 
 # from infrahub.database import InfrahubDatabase
 from ..shared import (
@@ -70,8 +70,8 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
         self.add_to_query(query)
         self.return_labels = ["n.uuid", "r as root_relationship"]
 
-    async def get_paths(self) -> DataPathsGrouper:
-        grouper = DataPathsGrouper()
+    async def get_paths(self) -> GroupedDataPaths:
+        grouper = GroupedDataPaths()
         for result in self.results:
             grouper.add_data_path(
                 DataPath(  # type: ignore[call-arg]

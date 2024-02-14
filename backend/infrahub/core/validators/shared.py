@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, List, Sequence, Union
 from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.core import registry
-from infrahub.core.path import DataPath, DataPathsGrouper, SchemaPath  # noqa: TCH001
+from infrahub.core.path import DataPath, GroupedDataPaths, SchemaPath  # noqa: TCH001
 from infrahub.core.query import Query, QueryType
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema  # noqa: TCH001
 from infrahub.exceptions import ValidationError
@@ -37,7 +37,7 @@ class SchemaValidatorQuery(Query):
         self.schema_path = schema_path
         super().__init__(*args, **kwargs)
 
-    async def get_paths(self) -> DataPathsGrouper:
+    async def get_paths(self) -> GroupedDataPaths:
         raise NotImplementedError()
 
 
@@ -63,7 +63,7 @@ class SchemaValidator(BaseModel):
     schema_path: SchemaPath
 
     async def run_validate(self, db: InfrahubDatabase, branch: Branch) -> List[SchemaViolation]:
-        grouped_paths_list: List[DataPathsGrouper] = []
+        grouped_paths_list: List[GroupedDataPaths] = []
 
         for migration_query in self.queries:
             # TODO add exception handling
