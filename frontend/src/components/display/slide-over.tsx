@@ -40,7 +40,7 @@ export default function SlideOver(props: Props) {
 
         <div className="before:fixed inset-0 overflow-hidden">
           <div className="absolute inset-0 overflow-hidden">
-            <div className="pointer-events-none fixed inset-y-0 left-0 right-0 flex justify-end">
+            <div className="pointer-events-none fixed inset-y-0 right-0 flex">
               <Transition.Child
                 as={Fragment}
                 enter="transform transition ease-in-out duration-500"
