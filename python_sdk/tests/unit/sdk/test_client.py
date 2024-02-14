@@ -379,3 +379,56 @@ async def test_method_filters_empty(httpx_mock: HTTPXMock, clients, mock_query_r
             ],
         )
     assert len(repos) == 0
+
+
+EXPECTED_ECHO = """URL: http://mock/graphql
+QUERY:
+
+    query GetTags($name: String!) {
+    BuiltinTag(name__value: $name) {
+        edges {
+        node {
+            id
+            display_label
+        }
+        }
+    }
+    }
+    
+VARIABLES:
+{
+    "name": "red"
+}
+
+"""
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_query_echo(httpx_mock: HTTPXMock, echo_clients, client_type):  # pylint: disable=unused-argument
+    httpx_mock.add_response(
+        method="POST",
+        json={"data": {"BuiltinTag": {"edges": []}}},
+    )
+
+    query = """
+    query GetTags($name: String!) {
+    BuiltinTag(name__value: $name) {
+        edges {
+        node {
+            id
+            display_label
+        }
+        }
+    }
+    }
+    """
+
+    variables = {"name": "red"}
+
+    if client_type == "standard":
+        response = await echo_clients.standard.execute_graphql(query=query, variables=variables)
+    else:
+        response = echo_clients.sync.execute_graphql(query=query, variables=variables)
+
+    assert response == {"BuiltinTag": {"edges": []}}
+    assert echo_clients.stdout.getvalue().splitlines() == EXPECTED_ECHO.splitlines()

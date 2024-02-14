@@ -19,6 +19,9 @@ class Config(pydantic.BaseSettings):
     api_token: Optional[str] = pydantic.Field(
         default=None, description="API token for authentication against Infrahub."
     )
+    echo_graphql_queries: bool = pydantic.Field(
+        default=False, description="If set the GraphQL query and variables will be echoed to the screen"
+    )
     username: Optional[str] = pydantic.Field(default=None, description="Username for accessing Infrahub", min_length=1)
     password: Optional[str] = pydantic.Field(default=None, description="Password for accessing Infrahub", min_length=1)
     recorder: RecorderType = pydantic.Field(
