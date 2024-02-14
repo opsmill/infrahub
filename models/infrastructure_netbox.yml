@@ -289,7 +289,7 @@ nodes:
     inherit_from:
       - "InfraEndpoint"
     relationships:
-      - name: site
+      - name: location
         peer: BuiltinLocation
         optional: false
         cardinality: one
@@ -348,7 +348,7 @@ nodes:
         optional: true
         # unique: true
     relationships:
-      - name: site
+      - name: location
         peer: BuiltinLocation
         optional: false
         cardinality: one
@@ -638,7 +638,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: site
+      - name: location
         peer: BuiltinLocation
         optional: true
         cardinality: one
@@ -781,7 +781,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: site
+      - name: location
         peer: BuiltinLocation
         optional: true
         cardinality: one
