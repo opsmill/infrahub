@@ -1,7 +1,6 @@
 import asyncio
 from itertools import chain
 from typing import Dict, Iterable, List, Optional, Set, Tuple, Union
-from infrahub.core.path import GroupedDataPaths
 
 from pydantic import BaseModel, Field
 
@@ -217,7 +216,7 @@ class UniquenessChecker:
                 constraint_violations |= set(violations)
         return constraint_violations
 
-    def generate_object_conflicts(self, non_unique_node: NonUniqueNode) -> GroupedDataPaths:
+    def generate_object_conflicts(self, non_unique_node: NonUniqueNode) -> List[SchemaConflict]:
         constraint_violations = self.get_uniqueness_violations(non_unique_node)
         conflicts = []
         for violation in constraint_violations:
