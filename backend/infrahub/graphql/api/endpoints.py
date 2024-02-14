@@ -18,7 +18,7 @@ router.add_websocket_route(path="/graphql", endpoint=graphql_app)
 router.add_websocket_route(path="/graphql/{branch_name:str}", endpoint=graphql_app)
 
 
-@router.get("/schema.graphql")
+@router.get("/schema.graphql", include_in_schema=False)
 async def get_graphql_schema(branch: Branch = Depends(get_branch_dep)) -> PlainTextResponse:
     schema = registry.schema.get_schema_branch(name=branch.name)
     gql_schema = schema.get_graphql_schema()
