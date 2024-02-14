@@ -9,6 +9,7 @@ from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
 from fastapi import FastAPI, Request, Response
 from fastapi.logger import logger
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from infrahub_sdk.timestamp import TimestampFormatError
@@ -103,6 +104,8 @@ tracer = get_tracer()
 FRONTEND_DIRECTORY = os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", os.path.abspath("frontend"))
 FRONTEND_ASSET_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/assets"
 
+DOCS_DIRECTORY = os.environ.get("INFRAHUB_DOCS_DIRECTORY", os.path.abspath("docs"))
+DOCS_BUILD_DIRECTORY = f"{DOCS_DIRECTORY}/build"
 
 log = get_logger()
 gunicorn_logger = logging.getLogger("gunicorn.error")
@@ -166,6 +169,11 @@ app.add_exception_handler(ValidationError, partial(generic_api_exception_handler
 app.add_route(path="/metrics", route=handle_metrics)
 app.include_router(graphql_router)
 
+
+if os.path.exists(DOCS_BUILD_DIRECTORY) and os.path.isdir(DOCS_BUILD_DIRECTORY):
+    app.mount("/docs", StaticFiles(directory=DOCS_BUILD_DIRECTORY, html=True, check_dir=True), name="infrahub-docs")
+
+
 if os.path.exists(FRONTEND_ASSET_DIRECTORY) and os.path.isdir(FRONTEND_ASSET_DIRECTORY):
     app.mount("/assets", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "assets")
     app.mount("/favicons", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "favicons")
@@ -173,4 +181,6 @@ if os.path.exists(FRONTEND_ASSET_DIRECTORY) and os.path.isdir(FRONTEND_ASSET_DIR
 
 @app.get("/{rest_of_path:path}", include_in_schema=False)
 async def react_app(req: Request, rest_of_path: str) -> Response:  # pylint: disable=unused-argument
+    if rest_of_path == "docs":
+        return RedirectResponse("/docs/")
     return templates.TemplateResponse("index.html", {"request": req})
