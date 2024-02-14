@@ -202,3 +202,18 @@ async def test_read_profile(
 
     assert response.status_code
     assert response.json() == {"data": {"AccountProfile": {"name": {"value": "test-admin"}}}}
+
+
+async def test_download_schema(db: InfrahubDatabase, client, client_headers):
+    await create_branch(branch_name="branch2", db=db)
+
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        response = client.get("/schema.graphql", headers=client_headers)
+        assert response.status_code == 200
+
+        response = client.get("/schema.graphql?branch=branch2", headers=client_headers)
+        assert response.status_code == 200
+
+        response = client.get("/schema.graphql?branch=notvalid", headers=client_headers)
+        assert response.status_code == 400
