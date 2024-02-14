@@ -50,7 +50,6 @@ types-pyyaml = "*"
 typer-cli = "*"
 ruff = "^0.1.5"
 pytest-xdist = "^3.3.1"
-buildkite-test-collector = "^0.1.7"
 types-python-slugify = "^8.0.0.3"
 
 [tool.poetry.scripts]
