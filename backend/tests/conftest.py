@@ -129,6 +129,7 @@ def execute_before_any_test(worker_id, tmpdir_factory):
 
         config.SETTINGS.cache.address = f"{BUILD_NAME}-cache-{db_id}"
         config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
+        config.SETTINGS.broker.address = f"{BUILD_NAME}-message-queue-{db_id}"
         config.SETTINGS.storage.local = config.FileSystemStorageSettings(path="/opt/infrahub/storage")
     else:
         storage_dir = tmpdir_factory.mktemp("storage")
@@ -413,6 +414,36 @@ class TestHelper:
     @staticmethod
     def get_message_bus_rpc() -> BusRPCMock:
         return BusRPCMock()
+
+
+class FakeLogger:
+    def __init__(self) -> None:
+        self.info_logs: List[Optional[str]] = []
+        self.error_logs: List[Optional[str]] = []
+
+    def debug(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
+        """Send a debug event"""
+
+    def info(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
+        self.info_logs.append(event)
+
+    def warning(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
+        """Send a warning event"""
+
+    def error(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
+        """Send an error event."""
+        self.error_logs.append(event)
+
+    def critical(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
+        """Send a critical event."""
+
+    def exception(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
+        """Send an exception event."""
+
+
+@pytest.fixture()
+def fake_log() -> FakeLogger:
+    return FakeLogger()
 
 
 @pytest.fixture()

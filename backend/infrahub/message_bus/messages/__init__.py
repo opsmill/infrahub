@@ -39,6 +39,7 @@ from .request_repository_checks import RequestRepositoryChecks
 from .request_repository_userchecks import RequestRepositoryUserChecks
 from .schema_migration_path import SchemaMigrationPath, SchemaMigrationPathResponse
 from .schema_validator_path import SchemaValidatorPath, SchemaValidatorPathResponse
+from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
 from .send_webhook_event import SendWebhookEvent
 from .transform_jinja_template import TransformJinjaTemplate, TransformJinjaTemplateResponse
 from .transform_python_data import TransformPythonData, TransformPythonDataResponse
@@ -84,6 +85,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "request.proposed_change.run_tests": RequestProposedChangeRunTests,
     "request.repository.checks": RequestRepositoryChecks,
     "request.repository.user_checks": RequestRepositoryUserChecks,
+    "send.echo.request": SendEchoRequest,
     "send.webhook.event": SendWebhookEvent,
     "transform.jinja.template": TransformJinjaTemplate,
     "transform.python.data": TransformPythonData,
@@ -97,6 +99,7 @@ RESPONSE_MAP: Dict[str, Type[InfrahubResponse]] = {
     "transform.python.data": TransformPythonDataResponse,
     "git.diff.names_only": GitDiffNamesOnlyResponse,
     "git.file.get": GitFileGetResponse,
+    "send.echo.request": SendEchoRequestResponse,
     "schema.migration.path": SchemaMigrationPathResponse,
     "schema.validator.path": SchemaValidatorPathResponse,
 }
