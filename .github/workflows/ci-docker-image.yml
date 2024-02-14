@@ -71,6 +71,7 @@ jobs:
           file: ${{ env.DOCKERFILE }}
           provenance: false   # To avoid cross platform "unknown"
           push: ${{ inputs.publish }}
+          target: "backend"
           platforms: ${{ env.PLATFORMS }}
           tags: ${{ inputs.tags }}
           labels: ${{ inputs.labels }}
