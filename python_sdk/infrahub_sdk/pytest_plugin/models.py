@@ -155,7 +155,10 @@ class InfrahubPythonTransformIntegrationTest(InfrahubIntegrationTest):
 
 class InfrahubTest(pydantic.BaseModel):
     name: str = pydantic.Field(..., description="Name of the test, must be unique")
-    expect: InfrahubTestExpectedResult
+    expect: InfrahubTestExpectedResult = pydantic.Field(
+        InfrahubTestExpectedResult.PASS,
+        description="Expected outcome of the test, can be either PASS (default) or FAIL",
+    )
     spec: Union[
         InfrahubCheckUnitProcessTest,
         InfrahubCheckIntegrationTest,
