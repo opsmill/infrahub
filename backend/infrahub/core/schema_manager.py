@@ -1488,7 +1488,9 @@ class SchemaManager(NodeManager):
         current_schema = self.get_schema_branch(name=branch.name)
         current_schema.clear_cache()
         schema_diff = current_schema.get_hash_full().compare(branch.schema_hash)
-        branch_schema = await self.load_schema_from_db(db=db, branch=branch, schema=current_schema, schema_diff=schema_diff)
+        branch_schema = await self.load_schema_from_db(
+            db=db, branch=branch, schema=current_schema, schema_diff=schema_diff
+        )
         self.set_schema_branch(name=branch.name, schema=branch_schema)
         return branch_schema
 
