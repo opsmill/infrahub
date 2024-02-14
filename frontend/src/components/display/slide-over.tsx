@@ -40,17 +40,17 @@ export default function SlideOver(props: Props) {
 
         <div className="before:fixed inset-0 overflow-hidden">
           <div className="absolute inset-0 overflow-hidden">
-            <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full">
+            <div className="pointer-events-none fixed inset-y-0 right-0 flex">
               <Transition.Child
                 as={Fragment}
-                enter="transform transition ease-in-out duration-500 sm:duration-700"
+                enter="transform transition ease-in-out duration-500"
                 enterFrom="translate-x-full"
                 enterTo={`${offestWidth[offset]}`}
-                leave="transform transition ease-in-out duration-500 sm:duration-700"
+                leave="transform transition ease-in-out duration-500"
                 leaveFrom={`${offestWidth[offset]}`}
                 leaveTo="translate-x-full">
                 <Dialog.Panel
-                  className={`bg-custom-white pointer-events-auto ${panelWidth} shadow-xl flex flex-col`}
+                  className={`bg-custom-white pointer-events-auto shadow-xl flex flex-col ${panelWidth} ${offestWidth[offset]}`}
                   data-testid="side-panel-container">
                   <div className="px-4 py-4 sm:px-4 bg-gray-50 border-b">
                     <div className="w-full">

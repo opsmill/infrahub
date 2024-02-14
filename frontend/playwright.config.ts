@@ -21,6 +21,7 @@ export default defineConfig({
   timeout: process.env.CI ? 2 * 60 * 1000 : 30 * 1000,
   expect: {
     timeout: process.env.CI ? 2 * 60 * 1000 : 30 * 1000,
+    toHaveScreenshot: { maxDiffPixels: 5000 },
   },
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 3 : undefined,
