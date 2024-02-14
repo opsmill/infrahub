@@ -8,8 +8,17 @@ test.describe("object dropdown creation", () => {
     // Go to home page
     await page.goto("/");
 
-    // Open all devices
-    await page.getByRole("link", { name: "All Device(s)" }).click();
+    await Promise.all([
+      page.waitForResponse((response) => {
+        const reqData = response.request().postDataJSON();
+        const status = response.status();
+
+        return reqData?.operationName === "InfraDevice" && status === 200;
+      }),
+
+      // Open all devices
+      page.getByRole("link", { name: "All Device(s)" }).click(),
+    ]);
 
     // Open creation form
     await page.getByTestId("create-object-button").click();
@@ -29,7 +38,7 @@ test.describe("object dropdown creation", () => {
     await expect(page.getByRole("button", { name: "Create" })).toBeVisible();
 
     // Assert screenshot comparison
-    await expect(page).toHaveScreenshot();
+    await expect(page).toHaveScreenshot("dropdown-option-creation.png");
 
     // Create a new tag
     await page.getByLabel("Create TagmainStandard Tag").locator("#Name").click();
