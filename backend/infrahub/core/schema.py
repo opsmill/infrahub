@@ -1638,11 +1638,41 @@ core_models = {
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
-                {"name": "name", "kind": "Text", "unique": True, "branch": BranchSupportType.AGNOSTIC.value},
-                {"name": "description", "kind": "Text", "optional": True, "branch": BranchSupportType.AGNOSTIC.value},
-                {"name": "location", "kind": "Text", "unique": True, "branch": BranchSupportType.AGNOSTIC.value},
-                {"name": "username", "kind": "Text", "optional": True, "branch": BranchSupportType.AGNOSTIC.value},
-                {"name": "password", "kind": "Password", "optional": True, "branch": BranchSupportType.AGNOSTIC.value},
+                {
+                    "name": "name",
+                    "kind": "Text",
+                    "unique": True,
+                    "branch": BranchSupportType.AGNOSTIC.value,
+                    "order_weight": 1000,
+                },
+                {
+                    "name": "description",
+                    "kind": "Text",
+                    "optional": True,
+                    "branch": BranchSupportType.AGNOSTIC.value,
+                    "order_weight": 2000,
+                },
+                {
+                    "name": "location",
+                    "kind": "Text",
+                    "unique": True,
+                    "branch": BranchSupportType.AGNOSTIC.value,
+                    "order_weight": 3000,
+                },
+                {
+                    "name": "username",
+                    "kind": "Text",
+                    "optional": True,
+                    "branch": BranchSupportType.AGNOSTIC.value,
+                    "order_weight": 4000,
+                },
+                {
+                    "name": "password",
+                    "kind": "Password",
+                    "optional": True,
+                    "branch": BranchSupportType.AGNOSTIC.value,
+                    "order_weight": 5000,
+                },
             ],
             "relationships": [
                 {
@@ -1998,8 +2028,14 @@ core_models = {
             "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["LineageOwner", "LineageSource", InfrahubKind.GENERICREPOSITORY, InfrahubKind.TASKTARGET],
             "attributes": [
-                {"name": "default_branch", "kind": "Text", "default_value": "main"},
-                {"name": "commit", "kind": "Text", "optional": True, "branch": BranchSupportType.LOCAL.value},
+                {"name": "default_branch", "kind": "Text", "default_value": "main", "order_weight": 6000},
+                {
+                    "name": "commit",
+                    "kind": "Text",
+                    "optional": True,
+                    "branch": BranchSupportType.LOCAL.value,
+                    "order_weight": 7000,
+                },
             ],
         },
         {
@@ -2014,8 +2050,20 @@ core_models = {
             "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["LineageOwner", "LineageSource", InfrahubKind.GENERICREPOSITORY, InfrahubKind.TASKTARGET],
             "attributes": [
-                {"name": "ref", "kind": "Text", "default_value": "main", "branch": BranchSupportType.AWARE.value},
-                {"name": "commit", "kind": "Text", "optional": True, "branch": BranchSupportType.AWARE.value},
+                {
+                    "name": "ref",
+                    "kind": "Text",
+                    "default_value": "main",
+                    "branch": BranchSupportType.AWARE.value,
+                    "order_weight": 6000,
+                },
+                {
+                    "name": "commit",
+                    "kind": "Text",
+                    "optional": True,
+                    "branch": BranchSupportType.AWARE.value,
+                    "order_weight": 7000,
+                },
             ],
         },
         {
