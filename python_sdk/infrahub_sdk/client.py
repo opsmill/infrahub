@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import json
 import logging
 from logging import Logger
 from time import sleep
@@ -113,6 +114,13 @@ class BaseClient:
 
     def _record(self, response: httpx.Response) -> None:
         self.config.custom_recorder.record(response)
+
+    def _echo(self, url: str, query: str, variables: Optional[dict] = None) -> None:
+        if self.config.echo_graphql_queries:
+            print(f"URL: {url}")
+            print(f"QUERY:\n{query}")
+            if variables:
+                print(f"VARIABLES:\n{json.dumps(variables, indent=4)}\n")
 
 
 class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
@@ -412,7 +420,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         if self.insert_tracker and tracker:
             headers["X-Infrahub-Tracker"] = tracker
 
-        # self.log.error(payload)
+        self._echo(url=url, query=query, variables=variables)
 
         retry = True
         resp = None
@@ -787,6 +795,8 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         headers = copy.copy(self.headers or {})
         if self.insert_tracker and tracker:
             headers["X-Infrahub-Tracker"] = tracker
+
+        self._echo(url=url, query=query, variables=variables)
 
         retry = True
         resp = None
