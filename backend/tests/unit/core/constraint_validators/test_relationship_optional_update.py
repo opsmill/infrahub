@@ -68,6 +68,6 @@ async def test_validator(
     grouped_data_paths = await constraint_checker.check(message)
 
     assert len(grouped_data_paths) == 1
-    data_paths = grouped_data_paths[0].get_data_paths()
+    data_paths = grouped_data_paths[0].get_all_data_paths()
     assert len(data_paths) == 2
     assert {dp.node_id for dp in data_paths} == {person.id, person2.id}

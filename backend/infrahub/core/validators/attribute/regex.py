@@ -46,20 +46,22 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.return_labels = ["n.uuid", "av.value", "relationships(path)[-1] as value_relationship"]
 
     async def get_paths(self) -> GroupedDataPaths:
-        grouper = GroupedDataPaths(grouping_attribute="value")
+        grouped_data_paths = GroupedDataPaths()
         for result in self.results:
-            grouper.add_data_path(
+            value = str(result.get("av.value"))
+            grouped_data_paths.add_data_path(
                 DataPath(  # type: ignore[call-arg]
                     branch=str(result.get("value_relationship").get("branch")),
                     path_type=PathType.ATTRIBUTE,
                     node_id=str(result.get("n.uuid")),
                     field_name=self.attribute_schema.name,
                     kind=self.node_schema.kind,
-                    value=result.get("av.value"),
-                )
+                    value=value,
+                ),
+                grouping_key=value,
             )
 
-        return grouper
+        return grouped_data_paths
 
 
 class AttributeRegexChecker(ConstraintCheckerInterface):

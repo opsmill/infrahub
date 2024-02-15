@@ -1,13 +1,26 @@
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.diff import SchemaConflict
+from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
 from infrahub.database import InfrahubDatabase
+from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPath
 
 
 class TestUniquenessChecker:
+    async def __call_system_under_test(self, db, branch, schema):
+        checker = UniquenessChecker(db, branch)
+        schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind=schema.kind)
+        message = SchemaValidatorPath(
+            branch=branch,
+            constraint_name="node.uniqueness_constraints.update",
+            node_schema=schema,
+            schema_path=schema_path,
+        )
+        return await checker.check(message)
+
     async def test_no_violations(
         self,
         db: InfrahubDatabase,
@@ -19,29 +32,11 @@ class TestUniquenessChecker:
         branch: Branch,
     ):
         schema = registry.schema.get("TestCar", branch=branch)
-        checker = UniquenessChecker(db)
 
-        conflicts = await checker.get_conflicts(schemas=[schema], source_branch=branch)
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
-        assert not conflicts
-
-    async def test_no_violations_multiple_schemas(
-        self,
-        db: InfrahubDatabase,
-        car_accord_main,
-        car_camry_main,
-        car_volt_main,
-        car_yaris_main,
-        car_prius_main,
-        branch: Branch,
-    ):
-        car_schema = registry.schema.get("TestCar", branch=branch)
-        person_schema = registry.schema.get("TestPerson", branch=branch)
-        checker = UniquenessChecker(db)
-
-        conflicts = await checker.get_conflicts(schemas=[car_schema, person_schema], source_branch=branch)
-
-        assert not conflicts
+        assert len(grouped_data_paths) == 1
+        assert not grouped_data_paths[0].get_all_data_paths()
 
     async def test_one_violation(
         self,
@@ -53,102 +48,35 @@ class TestUniquenessChecker:
     ):
         schema = registry.schema.get("TestCar", branch=branch)
         schema.get_attribute("nbr_seats").unique = True
-        checker = UniquenessChecker(db)
 
-        conflicts = await checker.get_conflicts(schemas=[schema], source_branch=branch)
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
-        assert len(conflicts) == 2
+        assert len(grouped_data_paths) == 1
+        all_data_paths = grouped_data_paths[0].get_all_data_paths()
+        assert len(all_data_paths) == 2
         assert (
-            SchemaConflict(
-                name="TestCar/nbr_seats",
-                type="uniqueness-violation",
+            DataPath(
+                branch=default_branch.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=car_accord_main.id,
                 kind="TestCar",
-                id=car_accord_main.id,
-                path="TestCar/nbr_seats",
-                value=5,
-                branch=default_branch.name,
+                field_name="nbr_seats",
+                property_name="value",
+                value="5",
             )
-            in conflicts
+            in all_data_paths
         )
         assert (
-            SchemaConflict(
-                name="TestCar/nbr_seats",
-                type="uniqueness-violation",
+            DataPath(
+                branch=default_branch.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=car_prius_main.id,
                 kind="TestCar",
-                id=car_prius_main.id,
-                path="TestCar/nbr_seats",
-                value=5,
-                branch=default_branch.name,
+                field_name="nbr_seats",
+                property_name="value",
+                value="5",
             )
-            in conflicts
-        )
-
-    async def test_violation_multiple_schema(
-        self,
-        db: InfrahubDatabase,
-        car_accord_main,
-        car_prius_main,
-        person_john_main,
-        person_jane_main,
-        branch: Branch,
-        default_branch: Branch,
-    ):
-        car_schema = registry.schema.get("TestCar", branch=branch)
-        car_schema.get_attribute("nbr_seats").unique = True
-        person_schema = registry.schema.get("TestPerson", branch=branch)
-        person_schema.get_attribute("height").unique = True
-        checker = UniquenessChecker(db)
-
-        conflicts = await checker.get_conflicts(schemas=[car_schema, person_schema], source_branch=branch)
-
-        assert len(conflicts) == 4
-        assert (
-            SchemaConflict(
-                name="TestCar/nbr_seats",
-                type="uniqueness-violation",
-                kind="TestCar",
-                id=car_accord_main.id,
-                path="TestCar/nbr_seats",
-                value=5,
-                branch=default_branch.name,
-            )
-            in conflicts
-        )
-        assert (
-            SchemaConflict(
-                name="TestCar/nbr_seats",
-                type="uniqueness-violation",
-                kind="TestCar",
-                id=car_prius_main.id,
-                path="TestCar/nbr_seats",
-                value=5,
-                branch=default_branch.name,
-            )
-            in conflicts
-        )
-        assert (
-            SchemaConflict(
-                name="TestPerson/height",
-                type="uniqueness-violation",
-                kind="TestPerson",
-                id=person_john_main.id,
-                path="TestPerson/height",
-                value=180,
-                branch=default_branch.name,
-            )
-            in conflicts
-        )
-        assert (
-            SchemaConflict(
-                name="TestPerson/height",
-                type="uniqueness-violation",
-                kind="TestPerson",
-                id=person_jane_main.id,
-                path="TestPerson/height",
-                value=180,
-                branch=default_branch.name,
-            )
-            in conflicts
+            in all_data_paths
         )
 
     async def test_deleted_node_ignored(
@@ -162,11 +90,11 @@ class TestUniquenessChecker:
         await node_to_delete.delete(db=db)
         schema = registry.schema.get("TestCar", branch=branch)
         schema.get_attribute("nbr_seats").unique = True
-        checker = UniquenessChecker(db)
 
-        conflicts = await checker.get_conflicts(schemas=[schema], source_branch=branch)
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
-        assert not conflicts
+        assert len(grouped_data_paths) == 1
+        assert not grouped_data_paths[0].get_all_data_paths()
 
     async def test_get_latest_update(
         self,
@@ -179,11 +107,11 @@ class TestUniquenessChecker:
         car_to_update.nbr_seats.value = 3
         await car_to_update.save(db=db)
         schema = registry.schema.get("TestCar", branch=branch)
-        checker = UniquenessChecker(db)
 
-        conflicts = await checker.get_conflicts(schemas=[schema], source_branch=branch)
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
-        assert not conflicts
+        assert len(grouped_data_paths) == 1
+        assert not grouped_data_paths[0].get_all_data_paths()
 
     async def test_combined_uniqueness_constraint_no_violations(
         self,
@@ -204,11 +132,10 @@ class TestUniquenessChecker:
             await car.save(db=db)
         schema = registry.schema.get("TestCar", branch=branch)
         schema.uniqueness_constraints = [["color__value", "owner__name"]]
-        checker = UniquenessChecker(db)
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
-        conflicts = await checker.get_conflicts(schemas=[schema], source_branch=branch)
-
-        assert not conflicts
+        assert len(grouped_data_paths) == 1
+        assert not grouped_data_paths[0].get_all_data_paths()
 
     async def test_combined_uniqueness_constraints_with_violations(
         self,
@@ -237,58 +164,60 @@ class TestUniquenessChecker:
 
         schema = registry.schema.get("TestCar", branch=branch)
         schema.uniqueness_constraints = [["color__value", "owner__height"]]
-        checker = UniquenessChecker(db)
 
-        conflicts = await checker.get_conflicts(schemas=[schema], source_branch=branch)
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
-        assert len(conflicts) == 4
+        assert len(grouped_data_paths) == 1
+        all_data_paths = grouped_data_paths[0].get_all_data_paths()
+        assert len(all_data_paths) == 4
+
         assert (
-            SchemaConflict(
-                name="TestCar/color",
-                type="uniqueness-violation",
+            DataPath(
+                branch=branch.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=car_accord_main.id,
                 kind="TestCar",
-                id=car_accord_main.id,
-                path="TestCar/color",
+                field_name="color",
+                property_name="value",
                 value="#444445",
-                branch=branch.name,
             )
-            in conflicts
+            in all_data_paths
         )
         assert (
-            SchemaConflict(
-                name="TestCar/color",
-                type="uniqueness-violation",
+            DataPath(
+                branch=branch.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=car_prius_main.id,
                 kind="TestCar",
-                id=car_prius_main.id,
-                path="TestCar/color",
+                field_name="color",
+                property_name="value",
                 value="#444445",
-                branch=branch.name,
             )
-            in conflicts
+            in all_data_paths
         )
         assert (
-            SchemaConflict(
-                name="TestCar/owner/height",
-                type="uniqueness-violation",
-                kind="TestCar",
-                id=car_accord_main.id,
-                path="TestCar/owner/height",
-                value="180",
+            DataPath(
                 branch=branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=car_accord_main.id,
+                kind="TestCar",
+                field_name="owner",
+                property_name="height",
+                value="180",
             )
-            in conflicts
+            in all_data_paths
         )
         assert (
-            SchemaConflict(
-                name="TestCar/owner/height",
-                type="uniqueness-violation",
-                kind="TestCar",
-                id=car_prius_main.id,
-                path="TestCar/owner/height",
-                value="180",
+            DataPath(
                 branch=default_branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=car_prius_main.id,
+                kind="TestCar",
+                field_name="owner",
+                property_name="height",
+                value="180",
             )
-            in conflicts
+            in all_data_paths
         )
 
     async def test_generic_unique_attribute_violations(
@@ -308,34 +237,35 @@ class TestUniquenessChecker:
         await volt_car.save(db=db)
 
         schema = registry.schema.get("TestCar", branch=branch)
-        checker = UniquenessChecker(db)
 
-        conflicts = await checker.get_conflicts(schemas=[schema], source_branch=branch)
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
-        assert len(conflicts) == 2
+        assert len(grouped_data_paths) == 1
+        all_data_paths = grouped_data_paths[0].get_all_data_paths()
+        assert len(all_data_paths) == 2
         assert (
-            SchemaConflict(
-                name="TestCar/name",
-                type="uniqueness-violation",
-                kind="TestCar",
-                id=volt_car.id,
-                path="TestCar/name",
-                value="nolt",
+            DataPath(
                 branch=branch.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=volt_car.id,
+                kind="TestCar",
+                field_name="name",
+                property_name="value",
+                value="nolt",
             )
-            in conflicts
+            in all_data_paths
         )
         assert (
-            SchemaConflict(
-                name="TestCar/name",
-                type="uniqueness-violation",
-                kind="TestCar",
-                id=nolt_car.id,
-                path="TestCar/name",
-                value="nolt",
+            DataPath(
                 branch=default_branch.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=nolt_car.id,
+                kind="TestCar",
+                field_name="name",
+                property_name="value",
+                value="nolt",
             )
-            in conflicts
+            in all_data_paths
         )
 
     async def test_generic_unique_attribute_multiple_relationship_violations_to_same_node(
@@ -365,58 +295,59 @@ class TestUniquenessChecker:
 
         schema = registry.schema.get("TestCar", branch=branch)
         schema.uniqueness_constraints = [["owner__height", "previous_owner__height"]]
-        checker = UniquenessChecker(db)
 
-        conflicts = await checker.get_conflicts(schemas=[schema], source_branch=branch)
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
-        assert len(conflicts) == 4
+        assert len(grouped_data_paths) == 1
+        all_data_paths = grouped_data_paths[0].get_all_data_paths()
+        assert len(all_data_paths) == 4
         assert (
-            SchemaConflict(
-                name="TestCar/owner/height",
-                type="uniqueness-violation",
-                kind="TestCar",
-                id=volt_car.id,
-                path="TestCar/owner/height",
-                value="180",
+            DataPath(
                 branch=default_branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=volt_car.id,
+                kind="TestCar",
+                field_name="owner",
+                property_name="height",
+                value="180",
             )
-            in conflicts
+            in all_data_paths
         )
         assert (
-            SchemaConflict(
-                name="TestCar/owner/height",
-                type="uniqueness-violation",
-                kind="TestCar",
-                id=nolt_car.id,
-                path="TestCar/owner/height",
-                value="180",
+            DataPath(
                 branch=branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=nolt_car.id,
+                kind="TestCar",
+                field_name="owner",
+                property_name="height",
+                value="180",
             )
-            in conflicts
+            in all_data_paths
         )
         assert (
-            SchemaConflict(
-                name="TestCar/previous_owner/height",
-                type="uniqueness-violation",
-                kind="TestCar",
-                id=volt_car.id,
-                path="TestCar/previous_owner/height",
-                value="180",
+            DataPath(
                 branch=branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=volt_car.id,
+                kind="TestCar",
+                field_name="previous_owner",
+                property_name="height",
+                value="180",
             )
-            in conflicts
+            in all_data_paths
         )
         assert (
-            SchemaConflict(
-                name="TestCar/previous_owner/height",
-                type="uniqueness-violation",
-                kind="TestCar",
-                id=nolt_car.id,
-                path="TestCar/previous_owner/height",
-                value="180",
+            DataPath(
                 branch=branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=nolt_car.id,
+                kind="TestCar",
+                field_name="previous_owner",
+                property_name="height",
+                value="180",
             )
-            in conflicts
+            in all_data_paths
         )
 
     async def test_generic_unique_constraint_relationship_with_and_without_attr(
@@ -440,58 +371,58 @@ class TestUniquenessChecker:
 
         schema = registry.schema.get("TestCar", branch=branch)
         schema.uniqueness_constraints = [["owner", "previous_owner__height"]]
-        checker = UniquenessChecker(db)
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
-        conflicts = await checker.get_conflicts(schemas=[schema], source_branch=branch)
-
-        assert len(conflicts) == 4
+        assert len(grouped_data_paths) == 1
+        all_data_paths = grouped_data_paths[0].get_all_data_paths()
+        assert len(all_data_paths) == 4
         assert (
-            SchemaConflict(
-                name="TestCar/owner/id",
-                type="uniqueness-violation",
-                kind="TestCar",
-                id=volt_car.id,
-                path="TestCar/owner/id",
-                value=owner.id,
+            DataPath(
                 branch=default_branch.name,
-            )
-            in conflicts
-        )
-        assert (
-            SchemaConflict(
-                name="TestCar/owner/id",
-                type="uniqueness-violation",
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=volt_car.id,
                 kind="TestCar",
-                id=bolt_car.id,
-                path="TestCar/owner/id",
+                field_name="owner",
+                property_name="id",
                 value=owner.id,
+            )
+            in all_data_paths
+        )
+        assert (
+            DataPath(
                 branch=default_branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=bolt_car.id,
+                kind="TestCar",
+                field_name="owner",
+                property_name="id",
+                value=owner.id,
             )
-            in conflicts
+            in all_data_paths
         )
         assert (
-            SchemaConflict(
-                name="TestCar/previous_owner/height",
-                type="uniqueness-violation",
-                kind="TestCar",
-                id=volt_car.id,
-                path="TestCar/previous_owner/height",
-                value="180",
+            DataPath(
                 branch=branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=volt_car.id,
+                kind="TestCar",
+                field_name="previous_owner",
+                property_name="height",
+                value="180",
             )
-            in conflicts
+            in all_data_paths
         )
         assert (
-            SchemaConflict(
-                name="TestCar/previous_owner/height",
-                type="uniqueness-violation",
-                kind="TestCar",
-                id=bolt_car.id,
-                path="TestCar/previous_owner/height",
-                value="180",
+            DataPath(
                 branch=branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=bolt_car.id,
+                kind="TestCar",
+                field_name="previous_owner",
+                property_name="height",
+                value="180",
             )
-            in conflicts
+            in all_data_paths
         )
 
     async def test_relationship_violation_wo_attribute(
@@ -510,44 +441,44 @@ class TestUniquenessChecker:
 
         schema = registry.schema.get("TestCar", branch=branch)
         schema.uniqueness_constraints = [["owner"]]
-        checker = UniquenessChecker(db)
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
-        conflicts = await checker.get_conflicts(schemas=[schema], source_branch=branch)
-
-        assert len(conflicts) == 3
+        assert len(grouped_data_paths) == 1
+        all_data_paths = grouped_data_paths[0].get_all_data_paths()
+        assert len(all_data_paths) == 3
         assert (
-            SchemaConflict(
-                name="TestCar/owner/id",
-                type="uniqueness-violation",
-                kind="TestCar",
-                id=car_accord_main.id,
-                path="TestCar/owner/id",
-                value=person_john_main.id,
+            DataPath(
                 branch=default_branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=car_accord_main.id,
+                kind="TestCar",
+                field_name="owner",
+                property_name="id",
+                value=person_john_main.id,
             )
-            in conflicts
+            in all_data_paths
         )
         assert (
-            SchemaConflict(
-                name="TestCar/owner/id",
-                type="uniqueness-violation",
-                kind="TestCar",
-                id=car_prius_main.id,
-                path="TestCar/owner/id",
-                value=person_john_main.id,
+            DataPath(
                 branch=default_branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=car_prius_main.id,
+                kind="TestCar",
+                field_name="owner",
+                property_name="id",
+                value=person_john_main.id,
             )
-            in conflicts
+            in all_data_paths
         )
         assert (
-            SchemaConflict(
-                name="TestCar/owner/id",
-                type="uniqueness-violation",
-                kind="TestCar",
-                id=car_camry_main.id,
-                path="TestCar/owner/id",
-                value=person_john_main.id,
+            DataPath(
                 branch=branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=car_camry_main.id,
+                kind="TestCar",
+                field_name="owner",
+                property_name="id",
+                value=person_john_main.id,
             )
-            in conflicts
+            in all_data_paths
         )

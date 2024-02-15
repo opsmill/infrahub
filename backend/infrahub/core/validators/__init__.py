@@ -3,6 +3,7 @@ from typing import Dict, Optional, Type
 from .attribute.regex import AttributeRegexChecker
 from .interface import ConstraintCheckerInterface
 from .relationship.optional import RelationshipOptionalChecker
+from .uniqueness.checker import UniquenessChecker
 
 CONSTRAINT_VALIDATOR_MAP: Dict[str, Optional[Type[ConstraintCheckerInterface]]] = {
     "attribute.regex.update": AttributeRegexChecker,
@@ -17,7 +18,7 @@ CONSTRAINT_VALIDATOR_MAP: Dict[str, Optional[Type[ConstraintCheckerInterface]]] 
     "relationship.optional.update": RelationshipOptionalChecker,
     "relationship.min_count.update": None,
     "relationship.max_count.update": None,
-    "node.uniqueness_constraints.update": None,
+    "node.uniqueness_constraints.update": UniquenessChecker,
     "node.hierarchical.update": None,  # Generic
     "node.hierarchy.update": None,
     "node.parent.update": None,

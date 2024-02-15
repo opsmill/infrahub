@@ -68,9 +68,9 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
         self.return_labels = ["n.uuid", "r as root_relationship"]
 
     async def get_paths(self) -> GroupedDataPaths:
-        grouper = GroupedDataPaths()
+        grouped_data_paths = GroupedDataPaths()
         for result in self.results:
-            grouper.add_data_path(
+            grouped_data_paths.add_data_path(
                 DataPath(  # type: ignore[call-arg]
                     branch=result.get("root_relationship").get("branch"),
                     resource_type=PathResourceType.DATA,
@@ -80,7 +80,7 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
                 )
             )
 
-        return grouper
+        return grouped_data_paths
 
 
 class RelationshipOptionalChecker(ConstraintCheckerInterface):

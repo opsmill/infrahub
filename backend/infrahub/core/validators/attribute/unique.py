@@ -58,20 +58,22 @@ class AttributeUniqueUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         ]
 
     async def get_paths(self) -> GroupedDataPaths:
-        grouper = GroupedDataPaths(grouping_attribute="value")
+        grouped_data_paths = GroupedDataPaths()
         for result in self.results:
-            grouper.add_data_path(
+            value = str(result.get("value"))
+            grouped_data_paths.add_data_path(
                 DataPath(  # type: ignore[call-arg]
                     path_type=PathType.ATTRIBUTE,
                     branch=str(result.get("value_relationship").get("branch")),
                     node_id=str(result.get("node").get("uuid")),
                     field_name=self.attribute_schema.name,
                     kind=self.node_schema.kind,
-                    value=result.get("value"),
-                )
+                    value=value,
+                ),
+                grouping_key=value,
             )
 
-        return grouper
+        return grouped_data_paths
 
 
 class AttributeUniquenessChecker(ConstraintCheckerInterface):
