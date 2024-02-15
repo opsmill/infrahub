@@ -62,7 +62,7 @@ def import_adapter(sync_instance: SyncInstance, adapter: SyncAdapter):
         if AdapterClass is None:
             raise AttributeError(f"{adapter_name} not found in adapter.py")
     except (FileNotFoundError, AttributeError) as exc:
-        raise Exception(f"{adapter_name}: {str(exc)}")
+        raise ImportError(f"{adapter_name}: {str(exc)}") from exc
     return AdapterClass
 
 
