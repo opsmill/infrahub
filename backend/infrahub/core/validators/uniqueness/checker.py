@@ -1,81 +1,24 @@
 import asyncio
 from itertools import chain
-from typing import Dict, Iterable, List, Optional, Set, Tuple, Union
-
-from pydantic import BaseModel, Field
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.diff import SchemaConflict
-from infrahub.core.query.constraints.node_unique_attributes import NodeUniqueAttributeConstraintQuery
-from infrahub.core.query.constraints.request import (
-    NodeUniquenessQueryRequest,
-    QueryAttributePath,
-    QueryRelationshipAttributePath,
-)
+from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.database import InfrahubDatabase
 
-
-class NonUniqueRelatedAttribute(BaseModel):
-    relationship: RelationshipSchema
-    attribute_name: str
-    attribute_value: str
-    deepest_branch_name: str
-
-    def __hash__(self) -> int:
-        return hash(self.relationship.name + self.attribute_name + self.attribute_value)
-
-
-class NonUniqueAttribute(BaseModel):
-    attribute: AttributeSchema
-    attribute_name: str
-    attribute_value: str
-    deepest_branch_name: str
-
-    def __hash__(self) -> int:
-        return hash(self.attribute.name + self.attribute_name + self.attribute_value)
-
-
-class NonUniqueNode(BaseModel):
-    node_schema: Union[NodeSchema, GenericSchema]
-    node_id: str
-    non_unique_attributes: List[NonUniqueAttribute] = Field(default_factory=list)
-    non_unique_related_attributes: List[NonUniqueRelatedAttribute] = Field(default_factory=list)
-
-    def get_relationship_violation(
-        self, relationship_name: str, attribute_name: Optional[str]
-    ) -> Optional[NonUniqueRelatedAttribute]:
-        attribute_names = {attribute_name}
-        if attribute_name is None:
-            attribute_names.add("id")
-        for nura in self.non_unique_related_attributes:
-            if nura.relationship.name == relationship_name and nura.attribute_name in attribute_names:
-                return nura
-        return None
-
-    def get_attribute_violation(self, attribute_name: str) -> Optional[NonUniqueAttribute]:
-        for nua in self.non_unique_attributes:
-            if nua.attribute_name == attribute_name:
-                return nua
-        return None
-
-    def get_constraint_violation(
-        self, constraint_specifications: List[Tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]]
-    ) -> Optional[List[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]]]:
-        violations: List[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]] = []
-        for sub_schema, property_name in constraint_specifications:
-            if isinstance(sub_schema, AttributeSchema):
-                attribute_violation = self.get_attribute_violation(sub_schema.name)
-                if not attribute_violation:
-                    return None
-                violations.append(attribute_violation)
-            elif isinstance(sub_schema, RelationshipSchema):
-                relationship_violation = self.get_relationship_violation(sub_schema.name, property_name)
-                if not relationship_violation:
-                    return None
-                violations.append(relationship_violation)
-        return violations
+from ..interface import ConstraintCheckerInterface
+from ..model import SchemaConstraintValidatorRequest
+from .model import (
+    NodeUniquenessQueryRequest,
+    NonUniqueAttribute,
+    NonUniqueNode,
+    NonUniqueRelatedAttribute,
+    QueryAttributePath,
+    QueryRelationshipAttributePath,
+)
+from .query import NodeUniqueAttributeConstraintQuery
 
 
 def get_attribute_path_from_string(
@@ -92,33 +35,35 @@ def get_attribute_path_from_string(
     return attribute_schema or relationship_schema, property_name
 
 
-class UniquenessChecker:
-    def __init__(self, db: InfrahubDatabase, max_concurrent_execution: int = 5):
+class UniquenessChecker(ConstraintCheckerInterface):
+    def __init__(
+        self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, max_concurrent_execution: int = 5
+    ):
         self.db = db
+        self.branch = branch
         self.semaphore = asyncio.Semaphore(max_concurrent_execution)
 
-    async def get_conflicts(
-        self,
-        schemas: Iterable[Union[NodeSchema, GenericSchema, str]],
-        source_branch: Union[str, Branch],
-    ) -> List[SchemaConflict]:
-        if isinstance(source_branch, str):
-            source_branch = await registry.get_branch(db=self.db, branch=source_branch)
-        schema_objects = [
-            schema
-            if isinstance(schema, (NodeSchema, GenericSchema))
-            else registry.schema.get(schema, branch=source_branch)
-            for schema in schemas
-        ]
+    @property
+    def name(self) -> str:
+        return "node.uniqueness_constraints.update"
 
-        non_unique_nodes_lists = await asyncio.gather(
-            *[self.check_one_schema(schema, source_branch) for schema in schema_objects]
-        )
+    def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
+        return request.constraint_name == self.name
 
-        conflicts = []
+    async def get_branch(self) -> Branch:
+        if not isinstance(self.branch, Branch):
+            self.branch = await registry.get_branch(db=self.db, branch=self.branch)
+        return self.branch
+
+    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
+        schema_objects = [request.node_schema]
+
+        non_unique_nodes_lists = await asyncio.gather(*[self.check_one_schema(schema) for schema in schema_objects])
+
+        grouped_data_paths = GroupedDataPaths()
         for non_unique_node in chain(*non_unique_nodes_lists):
-            conflicts.extend(self.generate_object_conflicts(non_unique_node))
-        return conflicts
+            self.generate_data_paths(non_unique_node, grouped_data_paths)
+        return [grouped_data_paths]
 
     async def build_query_request(self, schema: Union[NodeSchema, GenericSchema]) -> NodeUniquenessQueryRequest:
         unique_attr_paths = [
@@ -157,13 +102,14 @@ class UniquenessChecker:
     async def check_one_schema(
         self,
         schema: Union[NodeSchema, GenericSchema],
-        branch: Branch,
     ) -> List[NonUniqueNode]:
         query_request = await self.build_query_request(schema)
 
         relationship_schema_by_identifier = {rel.identifier: rel for rel in schema.relationships}
 
-        query = await NodeUniqueAttributeConstraintQuery.init(db=self.db, branch=branch, query_request=query_request)
+        query = await NodeUniqueAttributeConstraintQuery.init(
+            db=self.db, branch=await self.get_branch(), query_request=query_request
+        )
         async with self.semaphore:
             query_results = await query.execute(db=self.db.start_session(read_only=True))
 
@@ -216,23 +162,20 @@ class UniquenessChecker:
                 constraint_violations |= set(violations)
         return constraint_violations
 
-    def generate_object_conflicts(self, non_unique_node: NonUniqueNode) -> List[SchemaConflict]:
+    def generate_data_paths(self, non_unique_node: NonUniqueNode, grouped_data_paths: GroupedDataPaths) -> None:
         constraint_violations = self.get_uniqueness_violations(non_unique_node)
-        conflicts = []
+        schema_kind = non_unique_node.node_schema.kind
         for violation in constraint_violations:
-            if isinstance(violation, NonUniqueRelatedAttribute):
-                path = f"{non_unique_node.node_schema.kind}/{violation.relationship.name}/{violation.attribute_name}"
-            else:
-                path = f"{non_unique_node.node_schema.kind}/{violation.attribute_name}"
-            conflicts.append(
-                SchemaConflict(
-                    name=path,
-                    type="uniqueness-violation",
-                    kind=non_unique_node.node_schema.kind,
-                    id=non_unique_node.node_id,
-                    path=path,
-                    value=violation.attribute_value,
+            grouping_key = f"{schema_kind}/{violation.grouping_key}"
+            grouped_data_paths.add_data_path(
+                DataPath(
                     branch=violation.deepest_branch_name,
-                )
+                    path_type=violation.path_type,
+                    node_id=non_unique_node.node_id,
+                    kind=schema_kind,
+                    field_name=violation.field_name,
+                    property_name=violation.property_name,
+                    value=violation.attribute_value,
+                ),
+                grouping_key=grouping_key,
             )
-        return conflicts

@@ -1,22 +1,20 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Sequence
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-# from infrahub.core.branch import Branch
 from infrahub.core.constants import PathResourceType, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 
-# from infrahub.database import InfrahubDatabase
+from ..interface import ConstraintCheckerInterface
 from ..shared import (
-    RelationshipSchemaValidator,
     RelationshipSchemaValidatorQuery,
-    SchemaValidatorQuery,
-    SchemaViolation,
 )
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
+    from ..model import SchemaConstraintValidatorRequest
 
 
 class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
@@ -71,10 +69,10 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
         self.return_labels = ["n.uuid", "r as root_relationship"]
 
     async def get_paths(self) -> GroupedDataPaths:
-        grouper = GroupedDataPaths()
+        grouped_data_paths = GroupedDataPaths()
         for result in self.results:
-            grouper.add_data_path(
-                DataPath(  # type: ignore[call-arg]
+            grouped_data_paths.add_data_path(
+                DataPath(
                     branch=result.get("root_relationship").get("branch"),
                     resource_type=PathResourceType.DATA,
                     path_type=PathType.NODE,
@@ -83,16 +81,34 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
                 )
             )
 
-        return grouper
+        return grouped_data_paths
 
 
-class RelationshipOptionalUpdateValidator(RelationshipSchemaValidator):
-    name: str = "relationship.optional.update"
-    queries: Sequence[type[SchemaValidatorQuery]] = [RelationshipOptionalUpdateValidatorQuery]
+class RelationshipOptionalChecker(ConstraintCheckerInterface):
+    query_classes = [RelationshipOptionalUpdateValidatorQuery]
 
-    async def run_validate(self, db: InfrahubDatabase, branch: Branch) -> List[SchemaViolation]:
-        # if the new schema has the relationship as Optional == True
-        # there is no need to validate the data at all
-        if self.relationship_schema.optional is True:
-            return []
-        return await super().run_validate(db=db, branch=branch)
+    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+        self.db = db
+        self.branch = branch
+
+    @property
+    def name(self) -> str:
+        return "relationship.optional.update"
+
+    def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
+        return request.constraint_name == "relationship.optional.update"
+
+    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
+        grouped_data_paths_list: List[GroupedDataPaths] = []
+        relationship_schema = request.node_schema.get_relationship(name=request.schema_path.field_name)
+        if relationship_schema.optional is True:
+            return grouped_data_paths_list
+
+        for query_class in self.query_classes:
+            # TODO add exception handling
+            query = await query_class.init(
+                db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
+            )
+            await query.execute(db=self.db)
+            grouped_data_paths_list.append(await query.get_paths())
+        return grouped_data_paths_list

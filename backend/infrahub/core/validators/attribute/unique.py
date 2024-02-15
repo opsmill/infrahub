@@ -1,15 +1,18 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Sequence
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 
-from ..shared import AttributeSchemaValidator, AttributeSchemaValidatorQuery, SchemaValidatorQuery, SchemaViolation
+from ..interface import ConstraintCheckerInterface
+from ..shared import AttributeSchemaValidatorQuery
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
+    from ..model import SchemaConstraintValidatorRequest
 
 
 class AttributeUniqueUpdateValidatorQuery(AttributeSchemaValidatorQuery):
@@ -56,29 +59,49 @@ class AttributeUniqueUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         ]
 
     async def get_paths(self) -> GroupedDataPaths:
-        grouper = GroupedDataPaths(grouping_attribute="value")
+        grouped_data_paths = GroupedDataPaths()
         for result in self.results:
-            grouper.add_data_path(
-                DataPath(  # type: ignore[call-arg]
+            value = str(result.get("value"))
+            grouped_data_paths.add_data_path(
+                DataPath(
                     path_type=PathType.ATTRIBUTE,
                     branch=str(result.get("value_relationship").get("branch")),
                     node_id=str(result.get("node").get("uuid")),
                     field_name=self.attribute_schema.name,
                     kind=self.node_schema.kind,
-                    value=result.get("value"),
-                )
+                    value=value,
+                ),
+                grouping_key=value,
             )
 
-        return grouper
+        return grouped_data_paths
 
 
-class AttributeUniqueUpdateValidator(AttributeSchemaValidator):
-    name: str = "attribute.unique.update"
-    queries: Sequence[type[SchemaValidatorQuery]] = [AttributeUniqueUpdateValidatorQuery]
+class AttributeUniquenessChecker(ConstraintCheckerInterface):
+    query_classes = [AttributeUniqueUpdateValidatorQuery]
 
-    async def run_validate(self, db: InfrahubDatabase, branch: Branch) -> List[SchemaViolation]:
-        # if the new attribute schema is NOT unique
-        # there is no need to validate the data at all
-        if self.attribute_schema.unique is False:
+    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+        self.db = db
+        self.branch = branch
+
+    @property
+    def name(self) -> str:
+        return "attribute.unique.update"
+
+    def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
+        return request.constraint_name == "attribute.unique.update"
+
+    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
+        grouped_data_paths_list = []
+        attribute_schema = request.node_schema.get_attribute(name=request.schema_path.field_name)
+        if attribute_schema.unique is False:
             return []
-        return await super().run_validate(db=db, branch=branch)
+
+        for query_class in self.query_classes:
+            # TODO add exception handling
+            query = await query_class.init(
+                db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
+            )
+            await query.execute(db=self.db)
+            grouped_data_paths_list.append(await query.get_paths())
+        return grouped_data_paths_list

@@ -44,15 +44,19 @@ class InfrahubPath(BaseModel):
 
 
 class DataPath(InfrahubPath):
-    resource_type: PathResourceType = Field(PathResourceType.DATA, description="Indicate the type of the resource")
+    resource_type: PathResourceType = Field(
+        default=PathResourceType.DATA, description="Indicate the type of the resource"
+    )
     branch: str = Field(..., description="Name of the branch")
     path_type: PathType
     node_id: str = Field(..., description="Kind of the model in the schema")
     kind: str = Field(..., description="Kind of the main node")
-    field_name: Optional[str] = Field(None, description="Name of the field (either an attribute or a relationship)")
-    property_name: Optional[str] = Field(None, description="Name of the property")
-    peer_id: Optional[str] = Field(None, description="")
-    value: Optional[Any] = Field(None, description="Optional value of the resource")
+    field_name: Optional[str] = Field(
+        default=None, description="Name of the field (either an attribute or a relationship)"
+    )
+    property_name: Optional[str] = Field(default=None, description="Name of the property")
+    peer_id: Optional[str] = Field(default=None, description="")
+    value: Optional[Any] = Field(default=None, description="Optional value of the resource")
 
     def get_path(self, with_peer: bool = True) -> str:
         identifier = f"{self.resource_type.value}/{self.node_id}"
@@ -74,29 +78,22 @@ class DataPath(InfrahubPath):
 
 
 class GroupedDataPaths:
-    def __init__(self, grouping_attribute: Optional[str] = None, data_paths: Optional[List[DataPath]] = None) -> None:
-        self._grouped_data_paths: Dict[Any, List[DataPath]] = defaultdict(list)
-        self._grouping_attribute = grouping_attribute
-        if data_paths:
-            self.add_data_paths(data_paths)
+    def __init__(self) -> None:
+        self._grouped_data_paths: Dict[str, List[DataPath]] = defaultdict(list)
 
-    def add_data_path(self, data_path: DataPath) -> None:
-        self.add_data_paths([data_path])
+    def add_data_path(self, data_path: DataPath, grouping_key: str = "") -> None:
+        self.add_data_paths([data_path], grouping_key)
 
-    def add_data_paths(self, data_paths: List[DataPath]) -> None:
-        for dp in data_paths:
-            if self._grouping_attribute:
-                grouping_key = getattr(dp, self._grouping_attribute)
-            else:
-                grouping_key = None
-            self._grouped_data_paths[grouping_key].append(dp)
+    def add_data_paths(self, data_paths: List[DataPath], grouping_key: str = "") -> None:
+        self._grouped_data_paths[grouping_key].extend(data_paths)
 
-    def get_data_paths(self, value: Optional[Any] = None) -> List[DataPath]:
-        if value:
-            return self._grouped_data_paths.get(value, [])
+    def get_data_paths(self, grouping_key: str = "") -> List[DataPath]:
+        return self._grouped_data_paths.get(grouping_key, [])
+
+    def get_all_data_paths(self) -> List[DataPath]:
         return list(chain(*self._grouped_data_paths.values()))
 
-    def get_grouping_keys(self) -> List[Any]:
+    def get_grouping_keys(self) -> List[str]:
         return list(self._grouped_data_paths.keys())
 
 

@@ -8,7 +8,7 @@ from infrahub.core.query import Query
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
-    from .request import NodeUniquenessQueryRequest
+    from .model import NodeUniquenessQueryRequest
 
 
 class NodeUniqueAttributeConstraintQuery(Query):

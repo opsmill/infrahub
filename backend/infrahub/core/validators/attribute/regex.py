@@ -1,14 +1,18 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Sequence
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 
-from ..shared import AttributeSchemaValidator, AttributeSchemaValidatorQuery, SchemaValidatorQuery
+from ..interface import ConstraintCheckerInterface
+from ..shared import AttributeSchemaValidatorQuery
 
 if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
+    from ..model import SchemaConstraintValidatorRequest
 
 
 class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
@@ -43,22 +47,45 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.return_labels = ["n.uuid", "av.value", "relationships(path)[-1] as value_relationship"]
 
     async def get_paths(self) -> GroupedDataPaths:
-        grouper = GroupedDataPaths(grouping_attribute="value")
+        grouped_data_paths = GroupedDataPaths()
         for result in self.results:
-            grouper.add_data_path(
-                DataPath(  # type: ignore[call-arg]
+            value = str(result.get("av.value"))
+            grouped_data_paths.add_data_path(
+                DataPath(
                     branch=str(result.get("value_relationship").get("branch")),
                     path_type=PathType.ATTRIBUTE,
                     node_id=str(result.get("n.uuid")),
                     field_name=self.attribute_schema.name,
                     kind=self.node_schema.kind,
-                    value=result.get("av.value"),
-                )
+                    value=value,
+                ),
+                grouping_key=value,
             )
 
-        return grouper
+        return grouped_data_paths
 
 
-class AttributeRegexUpdateValidator(AttributeSchemaValidator):
-    name: str = "attribute.regex.update"
-    queries: Sequence[type[SchemaValidatorQuery]] = [AttributeRegexUpdateValidatorQuery]
+class AttributeRegexChecker(ConstraintCheckerInterface):
+    query_classes = [AttributeRegexUpdateValidatorQuery]
+
+    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+        self.db = db
+        self.branch = branch
+
+    @property
+    def name(self) -> str:
+        return "attribute.regex.update"
+
+    def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
+        return request.constraint_name == "attribute.regex.update"
+
+    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
+        grouped_data_paths_list = []
+        for query_class in self.query_classes:
+            # TODO add exception handling
+            query = await query_class.init(
+                db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
+            )
+            await query.execute(db=self.db)
+            grouped_data_paths_list.append(await query.get_paths())
+        return grouped_data_paths_list

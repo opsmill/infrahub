@@ -5,12 +5,11 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import PathResourceType, PathType, SchemaPathType
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
-from infrahub.core.validators.attribute.regex import AttributeRegexUpdateValidator, AttributeRegexUpdateValidatorQuery
+from infrahub.core.validators.attribute.regex import AttributeRegexChecker, AttributeRegexUpdateValidatorQuery
+from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus.messages import (
-    SchemaValidatorPath,
-    SchemaValidatorPathResponse,
-)
+from infrahub.message_bus.messages import SchemaValidatorPathResponse
+from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPath
 from infrahub.services import InfrahubServices
 
 
@@ -35,7 +34,7 @@ async def test_query(
     await query.execute(db=db)
 
     grouped_paths = await query.get_paths()
-    all_data_paths = grouped_paths.get_data_paths()
+    all_data_paths = grouped_paths.get_all_data_paths()
     assert all_data_paths == [
         DataPath(
             resource_type=PathResourceType.DATA,
@@ -61,14 +60,20 @@ async def test_validator(
     name_attr.regex = r"^[A-Z]+$"
     registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
 
-    validator = AttributeRegexUpdateValidator(
+    request = SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="attribute.regex.update",
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
     )
-    results = await validator.run_validate(db=db, branch=default_branch)
 
-    assert len(results) == 1
-    assert results[0].display_label == f"Node (TestPerson: {person_john_main.id})"
+    constraint_checker = AttributeRegexChecker(db=db, branch=default_branch)
+    grouped_data_paths = await constraint_checker.check(request)
+
+    assert len(grouped_data_paths) == 1
+    data_paths = grouped_data_paths[0].get_all_data_paths()
+    assert len(data_paths) == 1
+    assert data_paths[0].node_id == person_john_main.id
 
 
 async def test_rpc(
