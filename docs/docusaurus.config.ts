@@ -8,10 +8,10 @@ const config: Config = {
   favicon: "img/favicon.ico",
 
   // Set the production url of your site here
-  url: "http://localhost:8000",
+  url: process.env.DOCS_IN_APP ? "http://localhost:8000" : "https://docs.infrahub.app",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: "/",
+  baseUrl: process.env.DOCS_IN_APP ? "/docs/" : "/",
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
