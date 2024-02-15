@@ -8,7 +8,7 @@ from httpx import HTTPStatusError
 
 from infrahub_sdk.transforms import get_transform_class_instance
 
-from ..exceptions import OutputMatchException, PythonTransformDefinitionError
+from ..exceptions import OutputMatchError, PythonTransformDefinitionError
 from ..models import InfrahubTestExpectedResult
 from .base import InfrahubItem
 
@@ -56,7 +56,7 @@ class InfrahubPythonTransformItem(InfrahubItem):
                 ]
             )
 
-        if isinstance(excinfo.value, OutputMatchException):
+        if isinstance(excinfo.value, OutputMatchError):
             return "\n".join([excinfo.value.message, excinfo.value.differences])
 
         return super().repr_failure(excinfo, style=style)
@@ -74,7 +74,7 @@ class InfrahubPythonTransformUnitProcessItem(InfrahubPythonTransformItem):
         differences = self.get_result_differences(computed)
 
         if computed is not None and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
-            raise OutputMatchException(name=self.name, message=differences)
+            raise OutputMatchError(name=self.name, message=differences)
 
 
 class InfrahubPythonTransformIntegrationItem(InfrahubPythonTransformItem):
@@ -88,4 +88,4 @@ class InfrahubPythonTransformIntegrationItem(InfrahubPythonTransformItem):
         differences = self.get_result_differences(computed)
 
         if computed is not None and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
-            raise OutputMatchException(name=self.name, message=differences)
+            raise OutputMatchError(name=self.name, message=differences)

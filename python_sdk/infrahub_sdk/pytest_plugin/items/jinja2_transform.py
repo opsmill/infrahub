@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.traceback import Traceback
 
 from ...utils import identify_faulty_jinja_code
-from ..exceptions import Jinja2TransformException, Jinja2TransformUndefinedError, OutputMatchException
+from ..exceptions import Jinja2TransformError, Jinja2TransformUndefinedError, OutputMatchError
 from ..models import InfrahubTestExpectedResult
 from .base import InfrahubItem
 
@@ -73,7 +73,7 @@ class InfrahubJinja2Item(InfrahubItem):
         if isinstance(excinfo.value, jinja2.TemplateSyntaxError):
             return "\n".join(["Syntax error detected in the template", excinfo.value.message or ""])
 
-        if isinstance(excinfo.value, OutputMatchException):
+        if isinstance(excinfo.value, OutputMatchError):
             return "\n".join([excinfo.value.message, excinfo.value.differences])
 
         return super().repr_failure(excinfo, style=style)
@@ -90,10 +90,10 @@ class InfrahubJinja2TransformUnitRenderItem(InfrahubJinja2Item):
         differences = self.get_result_differences(computed)
 
         if computed is not None and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
-            raise OutputMatchException(name=self.name, differences=differences)
+            raise OutputMatchError(name=self.name, differences=differences)
 
     def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
-        if isinstance(excinfo.value, (Jinja2TransformUndefinedError, Jinja2TransformException)):
+        if isinstance(excinfo.value, (Jinja2TransformUndefinedError, Jinja2TransformError)):
             return excinfo.value.message
 
         return super().repr_failure(excinfo, style=style)
@@ -110,4 +110,4 @@ class InfrahubJinja2TransformIntegrationItem(InfrahubJinja2Item):
         differences = self.get_result_differences(computed)
 
         if computed is not None and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
-            raise OutputMatchException(name=self.name, differences=differences)
+            raise OutputMatchError(name=self.name, differences=differences)

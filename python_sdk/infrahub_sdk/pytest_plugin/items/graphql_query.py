@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from httpx import HTTPStatusError
 
-from ..exceptions import OutputMatchException
+from ..exceptions import OutputMatchError
 from ..models import InfrahubTestExpectedResult
 from .base import InfrahubItem
 
@@ -35,7 +35,7 @@ class InfrahubGraphqlQueryItem(InfrahubItem):
                 ]
             )
 
-        if isinstance(excinfo.value, OutputMatchException):
+        if isinstance(excinfo.value, OutputMatchError):
             return "\n".join([excinfo.value.message, excinfo.value.differences])
 
         return super().repr_failure(excinfo, style=style)
@@ -52,4 +52,4 @@ class InfrahubGraphqlQueryIntegrationItem(InfrahubGraphqlQueryItem):
         differences = self.get_result_differences(computed)
 
         if self.test.spec.output and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
-            raise OutputMatchException(name=self.name, differences=differences)
+            raise OutputMatchError(name=self.name, differences=differences)
