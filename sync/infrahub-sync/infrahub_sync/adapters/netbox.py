@@ -68,10 +68,10 @@ class NetboxAdapter(DiffSyncMixin, DiffSync):
                 item = model(**data)
                 self.add(item)
 
-    def netbox_obj_to_diffsync(self, obj: NetboxRecord, mapping: SchemaMappingModel, model: NetboxModel) -> dict:   # pylint: disable=too-many-branches
+    def netbox_obj_to_diffsync(self, obj: NetboxRecord, mapping: SchemaMappingModel, model: NetboxModel) -> dict:  # pylint: disable=too-many-branches
         data: Dict[str, Any] = {"local_id": str(obj.id)}
 
-        for field in mapping.fields:    # pylint: disable=too-many-nested-blocks
+        for field in mapping.fields:  # pylint: disable=too-many-nested-blocks
             field_is_list = model.is_list(name=field.name)
 
             if field.static:
