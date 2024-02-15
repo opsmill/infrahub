@@ -553,13 +553,13 @@ files = [
 
 [[package]]
 name = "infrahub-sdk"
-version = "0.6.0"
+version = "0.7.0"
 description = "Python Client to interact with Infrahub"
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "infrahub_sdk-0.6.0-py3-none-any.whl", hash = "sha256:65ee65eac03f0e032f535e3991ddfeaed7d0312d627f76489d170b500987a9ae"},
-    {file = "infrahub_sdk-0.6.0.tar.gz", hash = "sha256:f4538e8ca6e8644fd08be70bc1c727a944d0651ba73435f73e63fae12df9a33a"},
+    {file = "infrahub_sdk-0.7.0-py3-none-any.whl", hash = "sha256:bae4b1430b1f6e025ecea86bc21913f4acb12751caf5096e3334c32348ce7ba5"},
+    {file = "infrahub_sdk-0.7.0.tar.gz", hash = "sha256:a6c7b06b1953c5aa305955f2e974e92546b9dada36e844377288b2623b13c30f"},
 ]
 
 [package.dependencies]
@@ -570,15 +570,16 @@ httpx = ">=0.23,<0.24"
 Jinja2 = ">=3.1.3,<4.0.0"
 jsonlines = ">=3.1,<4.0"
 numpy = [
-    {version = ">=1.26.2,<2.0.0", markers = "python_version >= \"3.12\""},
     {version = ">=1.24.2,<2.0.0", markers = "python_version >= \"3.8\" and python_version < \"3.12\""},
+    {version = ">=1.26.2,<2.0.0", markers = "python_version >= \"3.12\""},
 ]
 pendulum = [
-    {version = ">=3.0,<3.1", markers = "python_version >= \"3.12\""},
     {version = ">=2.1", markers = "python_version >= \"3.8\" and python_version < \"3.12\""},
+    {version = ">=3.0,<3.1", markers = "python_version >= \"3.12\""},
 ]
 pyarrow = ">=14.0.1,<15.0.0"
 pydantic = ">=1.7.4,<1.8 || >1.8,<1.8.1 || >1.8.1,<2.0.0 || >2.0.0,<2.0.1 || >2.0.1,<2.1.0 || >2.1.0,<3.0.0"
+pytest = "*"
 pyyaml = ">=6.0,<7.0"
 rich = ">=13.3,<14.0"
 toml = ">=0.10.2,<0.11.0"
@@ -1343,8 +1344,8 @@ files = [
 astroid = ">=3.0.1,<=3.1.0-dev0"
 colorama = {version = ">=0.4.5", markers = "sys_platform == \"win32\""}
 dill = [
-    {version = ">=0.3.7", markers = "python_version >= \"3.12\""},
     {version = ">=0.3.6", markers = "python_version >= \"3.11\" and python_version < \"3.12\""},
+    {version = ">=0.3.7", markers = "python_version >= \"3.12\""},
 ]
 isort = ">=4.2.5,<5.13.0 || >5.13.0,<6"
 mccabe = ">=0.6,<0.8"
@@ -1354,36 +1355,6 @@ tomlkit = ">=0.10.1"
 [package.extras]
 spelling = ["pyenchant (>=3.2,<4.0)"]
 testutils = ["gitpython (>3)"]
-
-[[package]]
-name = "pynautobot"
-version = "1.5.1"
-description = "Nautobot API client library"
-optional = false
-python-versions = ">=3.8,<4.0"
-files = [
-    {file = "pynautobot-1.5.1-py3-none-any.whl", hash = "sha256:e10c02d20344acb8ccf4b83481dfddeb9039cad46ddcfb208de6711f8573870f"},
-    {file = "pynautobot-1.5.1.tar.gz", hash = "sha256:23370ad77fc67176d6c05b75a4b1fef16e17204d75d9356585c9c68c43d1fbe1"},
-]
-
-[package.dependencies]
-requests = ">=2.30.0,<3.0.0"
-urllib3 = ">=1.21.1,<1.27"
-
-[[package]]
-name = "pynetbox"
-version = "7.3.3"
-description = "NetBox API client library"
-optional = false
-python-versions = "*"
-files = [
-    {file = "pynetbox-7.3.3-py3-none-any.whl", hash = "sha256:9bc25f83ff126f12d26976e544a2f0f6c7c898c261e6d47f8a4144ab47686d81"},
-    {file = "pynetbox-7.3.3.tar.gz", hash = "sha256:b0bcef4c3a019516d2425ae0ce5509eae7f4f11ad4510c9fe9527d468f22529b"},
-]
-
-[package.dependencies]
-packaging = "<24.0"
-requests = ">=2.20.0,<3.0"
 
 [[package]]
 name = "pytest"
@@ -2016,4 +1987,4 @@ dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "ed85899d5dafaf7023348b632b18b2e068f8ab51ea97823e14ecdb548190eceb"
+content-hash = "60e7e01da17efbae7e5334149f6d58789ac46642b791da6c26b27e9c6ffd05ae"
