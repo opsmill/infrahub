@@ -28,7 +28,6 @@ export default defineConfig({
   reporter: [
     ["list"],
     ["html", { open: "never" }],
-    ["buildkite-test-collector/playwright/reporter"],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
