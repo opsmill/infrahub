@@ -265,9 +265,10 @@ export const getFormStructureForMetaEditPaginated = (
       isRelationship: false,
       type: "select2step",
       label: field.split("_").filter(Boolean).join(" "),
-      value: row?.[field],
+      value: row?.[field]?.id,
       options: schemaOptions,
       config: {},
+      parent: row?.[field]?.__typename,
     };
   });
 
