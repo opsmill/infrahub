@@ -4,10 +4,11 @@ from infrahub.core.constants import PathResourceType, PathType, SchemaPathType
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.validators.attribute.unique import (
-    AttributeUniqueUpdateValidator,
+    AttributeUniquenessChecker,
     AttributeUniqueUpdateValidatorQuery,
 )
 from infrahub.database import InfrahubDatabase
+from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPath
 
 
 async def test_query(
@@ -89,14 +90,20 @@ async def test_validator(
     seats_attr = car_schema.get_attribute(name="nbr_seats")
     seats_attr.unique = True
 
-    validator = AttributeUniqueUpdateValidator(
+    message = SchemaValidatorPath(
+        branch=branch,
+        constraint_name="attribute.regex.update",
         node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_seats"),
     )
-    violations = await validator.run_validate(db=db, branch=branch)
 
-    assert len(violations) == 5
-    assert {v.node_id for v in violations} == {
+    constraint_checker = AttributeUniquenessChecker(db=db, branch=branch)
+    grouped_data_paths = await constraint_checker.check(message)
+
+    assert len(grouped_data_paths) == 1
+    data_paths = grouped_data_paths[0].get_data_paths()
+    assert len(data_paths) == 5
+    assert {dp.node_id for dp in data_paths} == {
         car.id,
         car_accord_main.id,
         car_prius_main.id,

@@ -2,8 +2,8 @@ from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.query.constraints.node_unique_attributes import NodeUniqueAttributeConstraintQuery
-from infrahub.core.query.constraints.request import NodeUniquenessQueryRequest
+from infrahub.core.validators.uniqueness.model import NodeUniquenessQueryRequest
+from infrahub.core.validators.uniqueness.query import NodeUniqueAttributeConstraintQuery
 from infrahub.database import InfrahubDatabase
 
 

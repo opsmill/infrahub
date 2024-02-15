@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Sequence
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 
-from ..shared import AttributeSchemaValidator, AttributeSchemaValidatorQuery, SchemaValidatorQuery, SchemaViolation
+from ..interface import ConstraintCheckerInterface
+from ..shared import AttributeSchemaValidatorQuery
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPath
 
 
 class AttributeUniqueUpdateValidatorQuery(AttributeSchemaValidatorQuery):
@@ -72,13 +74,31 @@ class AttributeUniqueUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         return grouper
 
 
-class AttributeUniqueUpdateValidator(AttributeSchemaValidator):
-    name: str = "attribute.unique.update"
-    queries: Sequence[type[SchemaValidatorQuery]] = [AttributeUniqueUpdateValidatorQuery]
+class AttributeUniquenessChecker(ConstraintCheckerInterface):
+    query_classes = [AttributeUniqueUpdateValidatorQuery]
 
-    async def run_validate(self, db: InfrahubDatabase, branch: Branch) -> List[SchemaViolation]:
-        # if the new attribute schema is NOT unique
-        # there is no need to validate the data at all
-        if self.attribute_schema.unique is False:
+    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+        self.db = db
+        self.branch = branch
+
+    @property
+    def name(self) -> str:
+        return "attribute.unique.update"
+
+    def supports(self, message: SchemaValidatorPath) -> bool:
+        return message.constraint_name == "attribute.unique.update"
+
+    async def check(self, message: SchemaValidatorPath) -> List[GroupedDataPaths]:
+        grouped_data_paths_list = []
+        attribute_schema = message.node_schema.get_attribute(name=message.schema_path.field_name)
+        if attribute_schema.unique is False:
             return []
-        return await super().run_validate(db=db, branch=branch)
+
+        for query_class in self.query_classes:
+            # TODO add exception handling
+            query = await query_class.init(
+                db=self.db, branch=self.branch, node_schema=message.node_schema, schema_path=message.schema_path
+            )
+            await query.execute(db=self.db)
+            grouped_data_paths_list.append(await query.get_paths())
+        return grouped_data_paths_list

@@ -7,7 +7,7 @@ from pydantic import Field
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.path import SchemaPath  # noqa: TCH001
 from infrahub.core.schema import GenericSchema, NodeSchema  # noqa: TCH001
-from infrahub.core.validators.shared import SchemaViolation  # noqa: TCH001
+from infrahub.core.validators.model import SchemaViolation  # noqa: TCH001
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse, InfrahubResponseData
 
 ROUTING_KEY = "schema.validator.path"

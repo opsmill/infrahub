@@ -1,20 +1,20 @@
 from typing import Dict, Optional, Type
 
-from .attribute.regex import AttributeRegexUpdateValidator
-from .relationship.optional import RelationshipOptionalUpdateValidator
-from .shared import SchemaValidator
+from .attribute.regex import AttributeRegexChecker
+from .interface import ConstraintCheckerInterface
+from .relationship.optional import RelationshipOptionalChecker
 
-CONSTRAINT_VALIDATOR_MAP: Dict[str, Optional[Type[SchemaValidator]]] = {
-    "attribute.regex.update": AttributeRegexUpdateValidator,
+CONSTRAINT_VALIDATOR_MAP: Dict[str, Optional[Type[ConstraintCheckerInterface]]] = {
+    "attribute.regex.update": AttributeRegexChecker,
     "attribute.enum.update": None,
-    "attribute.min_lenght.update": None,
+    "attribute.min_length.update": None,
     "attribute.max_length.update": None,
     "attribute.unique.update": None,
     "attribute.optional.update": None,
     "attribute.choices.update": None,
     "relationship.peer.update": None,
     "relationship.cardinality.update": None,
-    "relationship.optional.update": RelationshipOptionalUpdateValidator,
+    "relationship.optional.update": RelationshipOptionalChecker,
     "relationship.min_count.update": None,
     "relationship.max_count.update": None,
     "node.uniqueness_constraints.update": None,

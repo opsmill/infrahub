@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Sequence
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 
-from ..shared import AttributeSchemaValidator, AttributeSchemaValidatorQuery, SchemaValidatorQuery
+from ..interface import ConstraintCheckerInterface
+from ..shared import AttributeSchemaValidatorQuery
 
 if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPath
 
 
 class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
@@ -59,6 +62,27 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         return grouper
 
 
-class AttributeRegexUpdateValidator(AttributeSchemaValidator):
-    name: str = "attribute.regex.update"
-    queries: Sequence[type[SchemaValidatorQuery]] = [AttributeRegexUpdateValidatorQuery]
+class AttributeRegexChecker(ConstraintCheckerInterface):
+    query_classes = [AttributeRegexUpdateValidatorQuery]
+
+    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+        self.db = db
+        self.branch = branch
+
+    @property
+    def name(self) -> str:
+        return "attribute.regex.update"
+
+    def supports(self, message: SchemaValidatorPath) -> bool:
+        return message.constraint_name == "attribute.regex.update"
+
+    async def check(self, message: SchemaValidatorPath) -> List[GroupedDataPaths]:
+        grouped_data_paths_list = []
+        for query_class in self.query_classes:
+            # TODO add exception handling
+            query = await query_class.init(
+                db=self.db, branch=self.branch, node_schema=message.node_schema, schema_path=message.schema_path
+            )
+            await query.execute(db=self.db)
+            grouped_data_paths_list.append(await query.get_paths())
+        return grouped_data_paths_list

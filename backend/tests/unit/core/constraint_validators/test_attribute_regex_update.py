@@ -5,7 +5,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import PathResourceType, PathType, SchemaPathType
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
-from infrahub.core.validators.attribute.regex import AttributeRegexUpdateValidator, AttributeRegexUpdateValidatorQuery
+from infrahub.core.validators.attribute.regex import AttributeRegexChecker, AttributeRegexUpdateValidatorQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.messages import (
     SchemaValidatorPath,
@@ -61,14 +61,20 @@ async def test_validator(
     name_attr.regex = r"^[A-Z]+$"
     registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
 
-    validator = AttributeRegexUpdateValidator(
+    message = SchemaValidatorPath(
+        branch=default_branch,
+        constraint_name="attribute.regex.update",
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
     )
-    results = await validator.run_validate(db=db, branch=default_branch)
 
-    assert len(results) == 1
-    assert results[0].display_label == f"Node (TestPerson: {person_john_main.id})"
+    constraint_checker = AttributeRegexChecker(db=db, branch=default_branch)
+    grouped_data_paths = await constraint_checker.check(message)
+
+    assert len(grouped_data_paths) == 1
+    data_paths = grouped_data_paths[0].get_data_paths()
+    assert len(data_paths) == 1
+    assert data_paths[0].node_id == person_john_main.id
 
 
 async def test_rpc(
