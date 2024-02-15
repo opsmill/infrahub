@@ -14,6 +14,7 @@ import {
   getOptionsFromAttribute,
   getRelationshipOptions,
   getRelationshipValue,
+  getSelectParent,
 } from "./getSchemaObjectColumns";
 
 const getIsDisabled = ({ owner, user, isProtected, isReadOnly }: any) => {
@@ -110,6 +111,7 @@ const getFormStructureForCreateEdit = (
             isReadOnly: field.read_only,
           }),
           isInherited,
+          parent: isInherited && getSelectParent(row, field), // Used by select 2 steps
           field,
           schema,
         };
