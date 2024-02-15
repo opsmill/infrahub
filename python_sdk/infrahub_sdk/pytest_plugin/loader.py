@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import warnings
-from typing import Iterable
+from typing import Any, Iterable, Optional
 
 import pytest
 import yaml
-from pytest import Item
+from pytest import Item, MarkDecorator
 
 from .items import (
     InfrahubCheckIntegrationItem,
@@ -24,6 +24,12 @@ MARKER_MAPPING = {
     "Jinja2Transform": pytest.mark.infrahub_jinja2_transform,
     "PythonTransform": pytest.mark.infrahub_python_transform,
 }
+CONFIG_MAPPING = {
+    "Check": "get_check_definition",
+    "GraphqlQuery": None,
+    "Jinja2Transform": "get_jinja2_transform",
+    "PythonTransform": "get_python_transform",
+}
 
 ITEMS_MAPPING = {
     "check-unit-process": InfrahubCheckUnitProcessItem,
@@ -37,6 +43,68 @@ ITEMS_MAPPING = {
 
 
 class InfrahubYamlFile(pytest.File):
+    def get_marker(self, group: InfrahubTestGroup) -> Optional[MarkDecorator]:
+        """Instantiate and return the specific marker to apply to all tests in a group."""
+        marker_decorator = MARKER_MAPPING.get(group.resource)
+
+        marker = None
+        if marker_decorator is not None:
+            marker = marker_decorator(name=group.resource_name)
+
+        return marker
+
+    def get_resource_config(self, group: InfrahubTestGroup) -> Optional[Any]:
+        """Retrieve the resource configuration to apply to all tests in a group."""
+        resource_config_function = CONFIG_MAPPING.get(group.resource)
+
+        resource_config = None
+        if resource_config_function is not None:
+            func = getattr(self.session.infrahub_repo_config, resource_config_function)  # type:ignore[attr-defined]
+            try:
+                resource_config = func(group.resource_name)
+            except KeyError:
+                # Ignore error and just return None
+                pass
+
+        return resource_config
+
+    def collect_group(self, group: InfrahubTestGroup) -> Iterable[Item]:
+        """Collect all items for a group."""
+        marker = self.get_marker(group)
+        resource_config = self.get_resource_config(group)
+
+        if marker is None:
+            warnings.warn(Warning(f"No matching marker for {group.resource_name!r}, ignoring test items."))
+            yield
+
+        if resource_config is None:
+            warnings.warn(Warning(f"Unable to get resource {group.resource_name!r} in the repository config file."))
+            yield
+
+        for test in group.tests:
+            name = f"infrahub__{group.resource.value.lower()}__{group.resource_name}__{test.name}"
+
+            item_class: type[pytest.Item] = ITEMS_MAPPING[test.spec.kind]  # type: ignore[assignment]
+            item: pytest.Item = item_class.from_parent(
+                name=name,
+                parent=self,
+                resource_name=group.resource_name,
+                resource_config=resource_config,
+                test=test,
+            )
+
+            item.add_marker(pytest.mark.infrahub)
+            if marker:
+                item.add_marker(marker)
+            if "sanity" in test.spec.kind:
+                item.add_marker(pytest.mark.infrahub_sanity)
+            if "unit" in test.spec.kind:
+                item.add_marker(pytest.mark.infrahub_unit)
+            if "integration" in test.spec.kind:
+                item.add_marker(pytest.mark.infrahub_integraton)
+
+            yield item
+
     def collect(self) -> Iterable[Item]:
         raw = yaml.safe_load(self.path.open(encoding="utf-8"))
 
@@ -46,65 +114,5 @@ class InfrahubYamlFile(pytest.File):
         content = InfrahubTestFileV1(**raw)
 
         for test_group in content.infrahub_tests:
-            if test_group.resource == InfrahubTestResource.CHECK.value:
-                marker = MARKER_MAPPING[test_group.resource](name=test_group.resource_name)
-                try:
-                    resource_config = self.session.infrahub_repo_config.get_check_definition(test_group.resource_name)  # type: ignore[attr-defined]
-                except KeyError:
-                    warnings.warn(
-                        Warning(
-                            f"Unable to find check definition {test_group.resource_name!r} in the repository config file."
-                        )
-                    )
-                    continue
-
-            if test_group.resource == InfrahubTestResource.GRAPHQL_QUERY.value:
-                marker = MARKER_MAPPING[test_group.resource](name=test_group.resource_name)
-                resource_config = None
-
-            if test_group.resource == InfrahubTestResource.JINJA2_TRANSFORM.value:
-                marker = MARKER_MAPPING[test_group.resource](name=test_group.resource_name)
-                try:
-                    resource_config = self.session.infrahub_repo_config.get_jinja2_transform(test_group.resource_name)  # type: ignore[attr-defined]
-                except KeyError:
-                    warnings.warn(
-                        Warning(
-                            f"Unable to find jinja2 transform {test_group.resource_name!r} in the repository config file."
-                        )
-                    )
-                    continue
-
-            if test_group.resource == InfrahubTestResource.PYTHON_TRANSFORM.value:
-                marker = MARKER_MAPPING[test_group.resource](name=test_group.resource_name)
-                try:
-                    resource_config = self.session.infrahub_repo_config.get_python_transform(test_group.resource_name)  # type: ignore[attr-defined]
-                except KeyError:
-                    warnings.warn(
-                        Warning(
-                            f"Unable to find python transform {test_group.resource_name!r} in the repository config file."
-                        )
-                    )
-                    continue
-
-            for test in test_group.tests:
-                name = f"infrahub__{test_group.resource.value.lower()}__{test_group.resource_name}__{test.name}"
-
-                item_class: type[pytest.Item] = ITEMS_MAPPING[test.spec.kind]  # type: ignore[assignment]
-                item: pytest.Item = item_class.from_parent(
-                    name=name,
-                    parent=self,
-                    resource_name=test_group.resource_name,
-                    resource_config=resource_config,
-                    test=test,
-                )
-
-                item.add_marker(pytest.mark.infrahub)
-                item.add_marker(marker)
-                if "sanity" in test.spec.kind:
-                    item.add_marker(pytest.mark.infrahub_sanity)
-                if "unit" in test.spec.kind:
-                    item.add_marker(pytest.mark.infrahub_unit)
-                if "integration" in test.spec.kind:
-                    item.add_marker(pytest.mark.infrahub_integraton)
-
+            for item in self.collect_group(test_group):
                 yield item
