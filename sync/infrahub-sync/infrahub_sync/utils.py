@@ -113,15 +113,18 @@ def get_potenda_from_instance(
     source = import_adapter(sync_instance=sync_instance, adapter=sync_instance.source)
     destination = import_adapter(sync_instance=sync_instance, adapter=sync_instance.destination)
 
-    internal_storage_engine = LocalStore()
+    source_store = LocalStore()
+    destination_store = LocalStore()
 
     if sync_instance.store:
         if sync_instance.store.type == "redis":
             if sync_instance.store.settings and isinstance(sync_instance.store.settings, dict):
                 redis_settings = sync_instance.store.settings
-                internal_storage_engine = RedisStore(**redis_settings)
+                source_store = RedisStore(**redis_settings, name=sync_instance.source.name)
+                destination_store = RedisStore(**redis_settings, name=sync_instance.destination.name)
             else:
-                internal_storage_engine = RedisStore()
+                source_store = RedisStore(name=sync_instance.source.name)
+                destination_store = RedisStore(name=sync_instance.destination.name)
 
     if sync_instance.source.name == "infrahub" and branch:
         src = source(
@@ -129,14 +132,14 @@ def get_potenda_from_instance(
             target="source",
             adapter=sync_instance.source,
             branch=branch,
-            internal_storage_engine=internal_storage_engine,
+            internal_storage_engine=source_store,
         )
     else:
         src = source(
             config=sync_instance,
             target="source",
             adapter=sync_instance.source,
-            internal_storage_engine=internal_storage_engine,
+            internal_storage_engine=source_store,
         )
     if sync_instance.destination.name == "infrahub" and branch:
         dst = destination(
@@ -144,14 +147,14 @@ def get_potenda_from_instance(
             target="destination",
             adapter=sync_instance.destination,
             branch=branch,
-            internal_storage_engine=internal_storage_engine,
+            internal_storage_engine=destination_store,
         )
     else:
         dst = destination(
             config=sync_instance,
             target="destination",
             adapter=sync_instance.destination,
-            internal_storage_engine=internal_storage_engine,
+            internal_storage_engine=destination_store,
         )
 
     ptd = Potenda(

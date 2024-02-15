@@ -44,7 +44,8 @@ def diff_cmd(
         print_error_and_abort("Failed to load sync instance.")
 
     ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch, show_progress=show_progress)
-    ptd.load()
+    ptd.source_load()
+    ptd.destination_load()
 
     mydiff = ptd.diff()
 
@@ -71,7 +72,8 @@ def sync_cmd(
         print_error_and_abort("Failed to load sync instance.")
 
     ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch, show_progress=show_progress)
-    ptd.load()
+    ptd.source_load()
+    ptd.destination_load()
 
     mydiff = ptd.diff()
 
