@@ -1,6 +1,6 @@
 from typing import Any, List, Optional
 
-from infrahub_sync.adapters.nautobot import NautobotModel
+from infrahub_sync.adapters.infrahub import InfrahubModel
 
 # -------------------------------------------------------
 # AUTO-GENERATED FILE, DO NOT MODIFY
@@ -8,7 +8,7 @@ from infrahub_sync.adapters.nautobot import NautobotModel
 #  All modifications will be lost the next time you reexecute this command
 # -------------------------------------------------------
 
-class CoreStandardGroup(NautobotModel):
+class CoreStandardGroup(InfrahubModel):
     _modelname = "CoreStandardGroup"
     _identifiers = ("name",)
     _attributes = ("description",)
@@ -17,7 +17,7 @@ class CoreStandardGroup(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class BuiltinTag(NautobotModel):
+class BuiltinTag(InfrahubModel):
     _modelname = "BuiltinTag"
     _identifiers = ("name",)
     _attributes = ("description",)
@@ -26,7 +26,7 @@ class BuiltinTag(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class InfraAutonomousSystem(NautobotModel):
+class InfraAutonomousSystem(InfrahubModel):
     _modelname = "InfraAutonomousSystem"
     _identifiers = ("name",)
     _attributes = ("organization", "description")
@@ -37,7 +37,7 @@ class InfraAutonomousSystem(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class InfraCircuit(NautobotModel):
+class InfraCircuit(InfrahubModel):
     _modelname = "InfraCircuit"
     _identifiers = ("circuit_id",)
     _attributes = ("provider", "type", "tags", "description", "vendor_id")
@@ -50,7 +50,7 @@ class InfraCircuit(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class TemplateCircuitType(NautobotModel):
+class TemplateCircuitType(InfrahubModel):
     _modelname = "TemplateCircuitType"
     _identifiers = ("name",)
     _attributes = ("description",)
@@ -59,7 +59,7 @@ class TemplateCircuitType(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class InfraDevice(NautobotModel):
+class InfraDevice(InfrahubModel):
     _modelname = "InfraDevice"
     _identifiers = ("location", "organization", "name")
     _attributes = ("model", "rack", "role", "tags", "platform", "serial_number", "asset_tag")
@@ -76,7 +76,7 @@ class InfraDevice(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class TemplateDeviceType(NautobotModel):
+class TemplateDeviceType(InfrahubModel):
     _modelname = "TemplateDeviceType"
     _identifiers = ("name", "manufacturer")
     _attributes = ("tags", "part_number", "height", "full_depth")
@@ -89,7 +89,7 @@ class TemplateDeviceType(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class InfraFrontPort(NautobotModel):
+class InfraFrontPort(InfrahubModel):
     _modelname = "InfraFrontPort"
     _identifiers = ("name", "device")
     _attributes = ("rear_port", "description", "port_type")
@@ -101,7 +101,7 @@ class InfraFrontPort(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class InfraInterfaceL2L3(NautobotModel):
+class InfraInterfaceL2L3(InfrahubModel):
     _modelname = "InfraInterfaceL2L3"
     _identifiers = ("name", "device")
     _attributes = ("tagged_vlan", "tags", "l2_mode", "description", "mgmt_only", "mac_address", "interface_type")
@@ -118,20 +118,19 @@ class InfraInterfaceL2L3(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class InfraIPAddress(NautobotModel):
+class InfraIPAddress(InfrahubModel):
     _modelname = "InfraIPAddress"
-    _identifiers = ("address", "prefix")
-    _attributes = ("organization", "interfaces", "role", "description")
+    _identifiers = ("address", "vrf")
+    _attributes = ("organization", "role", "description")
     address: str
     description: Optional[str]
     organization: Optional[str]
-    interfaces: List[str] = []
-    prefix: Optional[str]
+    vrf: Optional[str]
     role: Optional[str]
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class TemplateLocationType(NautobotModel):
+class TemplateLocationType(InfrahubModel):
     _modelname = "TemplateLocationType"
     _identifiers = ("name",)
     _attributes = ("description",)
@@ -140,16 +139,7 @@ class TemplateLocationType(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class NautobotNamespace(NautobotModel):
-    _modelname = "NautobotNamespace"
-    _identifiers = ("name",)
-    _attributes = ("description",)
-    name: str
-    description: Optional[str]
-    local_id: Optional[str]
-    local_data: Optional[Any]
-
-class InfraPlatform(NautobotModel):
+class InfraPlatform(InfrahubModel):
     _modelname = "InfraPlatform"
     _identifiers = ("name", "manufacturer")
     _attributes = ("description", "napalm_driver")
@@ -160,7 +150,7 @@ class InfraPlatform(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class InfraProviderNetwork(NautobotModel):
+class InfraProviderNetwork(InfrahubModel):
     _modelname = "InfraProviderNetwork"
     _identifiers = ("name",)
     _attributes = ("provider", "tags", "description", "vendor_id")
@@ -172,21 +162,21 @@ class InfraProviderNetwork(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class InfraPrefix(NautobotModel):
+class InfraPrefix(InfrahubModel):
     _modelname = "InfraPrefix"
-    _identifiers = ("prefix", "namespace")
-    _attributes = ("organization", "location", "role", "vlan", "description")
+    _identifiers = ("prefix", "vrf", "organization")
+    _attributes = ("location", "role", "vlan", "description")
     prefix: str
     description: Optional[str]
     organization: Optional[str]
-    namespace: Optional[str]
     location: Optional[str]
     role: Optional[str]
+    vrf: Optional[str]
     vlan: Optional[str]
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class InfraRack(NautobotModel):
+class InfraRack(InfrahubModel):
     _modelname = "InfraRack"
     _identifiers = ("name",)
     _attributes = ("location", "role", "tags", "height", "facility_id", "serial_number", "asset_tag")
@@ -201,7 +191,7 @@ class InfraRack(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class InfraRearPort(NautobotModel):
+class InfraRearPort(InfrahubModel):
     _modelname = "InfraRearPort"
     _identifiers = ("name", "device")
     _attributes = ("description", "port_type")
@@ -212,7 +202,7 @@ class InfraRearPort(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class InfraRouteTarget(NautobotModel):
+class InfraRouteTarget(InfrahubModel):
     _modelname = "InfraRouteTarget"
     _identifiers = ("name", "organization")
     _attributes = ("description",)
@@ -222,7 +212,7 @@ class InfraRouteTarget(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class InfraVLAN(NautobotModel):
+class InfraVLAN(InfrahubModel):
     _modelname = "InfraVLAN"
     _identifiers = ("name", "vlan_id", "location", "organization")
     _attributes = ("role", "vlan_group", "description")
@@ -236,21 +226,20 @@ class InfraVLAN(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class InfraVRF(NautobotModel):
+class InfraVRF(InfrahubModel):
     _modelname = "InfraVRF"
-    _identifiers = ("name", "namespace")
+    _identifiers = ("name",)
     _attributes = ("organization", "import_rt", "export_rt", "description", "vrf_rd")
     name: str
     description: Optional[str]
     vrf_rd: Optional[str]
     organization: Optional[str]
-    namespace: Optional[str]
     import_rt: List[str] = []
     export_rt: List[str] = []
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class CoreOrganization(NautobotModel):
+class CoreOrganization(InfrahubModel):
     _modelname = "CoreOrganization"
     _identifiers = ("name",)
     _attributes = ("group", "description", "type")
@@ -261,8 +250,8 @@ class CoreOrganization(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class BuiltinRole(NautobotModel):
-    _modelname = "BuiltinRole"
+class BuiltinStatus(InfrahubModel):
+    _modelname = "BuiltinStatus"
     _identifiers = ("name",)
     _attributes = ("label", "description")
     name: str
@@ -271,14 +260,23 @@ class BuiltinRole(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
-class BuiltinLocation(NautobotModel):
+class BuiltinRole(InfrahubModel):
+    _modelname = "BuiltinRole"
+    _identifiers = ("name",)
+    _attributes = ("description",)
+    name: str
+    description: Optional[str]
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+class BuiltinLocation(InfrahubModel):
     _modelname = "BuiltinLocation"
     _identifiers = ("name",)
-    _attributes = ("tags", "location_type", "description", "type")
+    _attributes = ("organization", "location_type", "description", "type")
     name: str
     description: Optional[str]
     type: str
-    tags: List[str] = []
+    organization: Optional[str]
     location_type: Optional[str]
     local_id: Optional[str]
     local_data: Optional[Any]

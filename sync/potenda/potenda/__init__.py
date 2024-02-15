@@ -52,22 +52,22 @@ class Potenda:
         try:
             print(f"Load: Importing data from {self.source}")
             self.source.load()
-        except Exception as e:
-            raise Exception(f"An error occurred while loading {self.source}: {e}")
+        except Exception as exc:
+            raise Exception(f"An error occurred while loading {self.source}: {exc}")
 
     def destination_load(self):
         try:
             print(f"Load: Importing data from {self.destination}")
             self.destination.load()
-        except Exception as e:
-            raise Exception(f"An error occurred while loading {self.destination}: {e}")
+        except Exception as exc:
+            raise Exception(f"An error occurred while loading {self.destination}: {exc}")
 
     def load(self):
         try:
             self.source_load()
             self.destination_load()
-        except Exception as e:
-            raise Exception(f"An error occurred while loading the sync: {e}")
+        except Exception as exc:
+            raise Exception(f"An error occurred while loading the sync: {exc}")
 
     def diff(self) -> Diff:
         print(f"Diff: Comparing data from {self.source} to {self.destination}")

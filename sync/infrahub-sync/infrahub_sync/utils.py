@@ -62,7 +62,7 @@ def import_adapter(sync_instance: SyncInstance, adapter: SyncAdapter):
         if AdapterClass is None:
             raise AttributeError(f"{adapter_name} not found in adapter.py")
     except (FileNotFoundError, AttributeError) as exc:
-        raise ImportError(f"{adapter_name}: {str(exc)}")
+        raise Exception(f"{adapter_name}: {str(exc)}")
     return AdapterClass
 
 
@@ -99,7 +99,7 @@ def get_instance(
     if config_file_path:
         directory_path = config_file_path.parent
         if config_file_path.is_file():
-            with config_file_path.open("r") as file:
+            with config_file_path.open("r", encoding="UTF-8") as file:
                 config_data = yaml.safe_load(file)
                 return SyncInstance(**config_data, directory=str(directory_path))
 

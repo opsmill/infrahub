@@ -33,11 +33,11 @@ def update_node(node: InfrahubNodeSync, attrs: dict):
                     new_peer_ids = [node._client.store.get(key=value, kind=rel.peer).id for value in list(attr_value)]
                     in_both, existing_only, new_only = compare_lists(existing_peer_ids, new_peer_ids)  # noqa: F841
 
-                    for id in existing_only:
-                        attr.remove(id)
+                    for existing_id in existing_only:
+                        attr.remove(existing_id)
 
-                    for id in new_only:
-                        attr.add(id)
+                    for new_id in new_only:
+                        attr.add(new_id)
 
     return node
 
