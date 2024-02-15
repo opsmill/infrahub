@@ -14,7 +14,10 @@ const getMutationDetailsFromFormData = (
   const updatedObject = R.clone(formData);
 
   schema.attributes?.forEach((attribute) => {
-    const updatedValue = updatedObject[attribute.name]?.value ?? attribute?.default_value;
+    const updatedValue =
+      updatedObject[attribute.name]?.value?.id ??
+      updatedObject[attribute.name]?.value ??
+      attribute?.default_value;
 
     if (attribute.read_only) {
       // Delete the attribute if it's read-only
@@ -45,32 +48,33 @@ const getMutationDetailsFromFormData = (
 
     if (mode === "update" && existingObject) {
       if (isOneToOne) {
-        const existingValue = existingObject[relationship.name]?.id;
+        const existingValue = existingObject[relationship.name]?.node?.id;
 
         const updatedValue = updatedObject[relationship.name]?.id;
 
         if (updatedValue === existingValue) {
           delete updatedObject[relationship.name];
+          return;
         }
 
         if (!updatedValue && !existingValue) {
           delete updatedObject[relationship.name];
+          return;
         }
       } else {
         const existingValue = existingObject[relationship.name]?.edges
           .map((r: any) => r.node?.id)
           .sort();
 
-        const updatedIds = updatedObject[relationship.name]?.list
-          ?.map((value: any) => value.id)
-          .sort();
+        const updatedIds = updatedObject[relationship.name]?.list?.sort() ?? [];
 
         if (
           existingValue &&
-          updatedIds &&
+          updatedIds.length &&
           JSON.stringify(updatedIds) === JSON.stringify(existingValue)
         ) {
           delete updatedObject[relationship.name];
+          return;
         }
       }
     }
@@ -98,14 +102,15 @@ const getMutationDetailsFromFormData = (
         (key) => key !== "list"
       );
 
-      updatedObject[relationship.name] = updatedObject[relationship.name].list.map((row: any) => {
+      updatedObject[relationship.name] = updatedObject[relationship.name].list.map((id: string) => {
         const objWithMetaFields: any = {
-          id: row.id,
+          id,
         };
 
         fieldKeys.forEach((key) => {
           objWithMetaFields[key] = updatedObject[relationship.name][key];
         });
+
         return objWithMetaFields;
       });
     }

@@ -53,6 +53,11 @@ class InfrahubServices:
         await self.message_bus.initialize(service=self)
         await self.scheduler.initialize(service=self)
 
+    async def shutdown(self) -> None:
+        """Initialize the Services"""
+        await self.scheduler.shutdown()
+        await self.message_bus.shutdown()
+
     async def send(self, message: InfrahubMessage, delay: Optional[MessageTTL] = None) -> None:
         routing_key = ROUTING_KEY_MAP.get(type(message))
         if not routing_key:

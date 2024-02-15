@@ -1,12 +1,11 @@
 ---
-label: Relationship
-layout: default
-order: 700
+title: Relationship
 ---
+
 <!-- vale off -->
 <!-- markdownlint-disable MD012 -->
 {% macro attribute_constraints(attr) -%}
-{% if attr.regex %} Regex: `{{attr.regex}}`{% endif %}{% if attr.regex and (attr.min_length or attr.max_length) %}<br>{% endif %}{% if attr.min_length or attr.max_length %} Length: min {{attr.min_length | default("-")}}, max {{attr.max_length | default("-")}}{% endif -%}
+{% if attr.regex %} Regex: `{{attr.regex}}`{% endif %}{% if attr.regex and (attr.min_length or attr.max_length) %}<br />{% endif %}{% if attr.min_length or attr.max_length %} Length: min {{attr.min_length | default("-")}}, max {{attr.max_length | default("-")}}{% endif -%}
 {%- endmacro %}
 {% macro bool_to_str(value) -%}
 {% if value == true %}True{% else %}False{% endif -%}
@@ -28,7 +27,7 @@ In a schema file, a relationship can be defined inside a `node`, a `generic` or 
 
 Below is the list of all available options to define a Relationship in the schema
 
-| Name | Type | Description | Mandatory | { class="compact" }
+| Name | Type | Description | Mandatory |
 | ---- | ---- | ---- | --------- |
 {%- for attr in ns.node.attributes | sort(attribute='name') %}
 {%-  if attr.name not in ["inherited"] %}
@@ -41,7 +40,7 @@ Below is the list of all available options to define a Relationship in the schem
 {% for attr in ns.node.attributes | sort(attribute='name') -%}
 ### {{ attr.name }}
 
-| Key | Value | { class="compact" }
+| Key | Value |
 | ---- | --------------- |
 | **Name** | {{ attr.name }} |
 | **Kind** | `{{ attr.kind }}` |
@@ -57,7 +56,7 @@ Below is the list of all available options to define a Relationship in the schem
 {% for rel in ns.node.relationships | sort(attribute='name') -%}
 ## {{ rel.name }}
 
-| Key | Value | { class="compact" }
+| Key | Value |
 | ---- | --------------- |
 | **Name** | {{ rel.name }} |
 | **Kind** | {% if rel.cardinality == "one" %}`Object`{%else%}`List`{%endif%} |

@@ -211,6 +211,21 @@ class InfrahubDatabase:
             return f"extract(i in {items} | i.{item_name})"
         return f"[i IN {items} | i.{item_name}]"
 
+    def render_list_comprehension_with_list(self, items: str, item_names: List[str]) -> str:
+        item_names_str = ",".join([f"i.{name}" for name in item_names])
+        if self.db_type == DatabaseType.MEMGRAPH:
+            return f"extract(i in {items} | [{item_names_str}])"
+        return f"[i IN {items} | [{item_names_str}]]"
+
+    def render_uuid_generation(self, node_label: str, node_attr: str) -> str:
+        generate_uuid_query = f"SET {node_label}.{node_attr} = randomUUID()"
+        if self.db_type == DatabaseType.MEMGRAPH:
+            generate_uuid_query = f"""
+            CALL uuid_generator.get() YIELD uuid
+            SET {node_label}.{node_attr} = uuid
+            """
+        return generate_uuid_query
+
 
 async def create_database(driver: AsyncDriver, database_name: str) -> None:
     default_db = driver.session()

@@ -1,0 +1,28 @@
+---
+title: Branches management
+---
+import CodeBlock from "@theme/CodeBlock";
+import branchList from '!!raw-loader!../../../python_sdk/examples/branch_list.py';
+import branchCreate from '!!raw-loader!../../../python_sdk/examples/branch_create.py';
+import branchRebase from '!!raw-loader!../../../python_sdk/examples/branch_rebase.py';
+import branchMerge from '!!raw-loader!../../../python_sdk/examples/branch_merge.py';
+
+# Branches management with the Python SDK
+
+The Python SDK can be used for all standard operations on the branches: list, merge, rebase, and so on.
+
+## List all the branches
+
+<CodeBlock language="python">{branchList}</CodeBlock>
+
+## Create a branch
+
+<CodeBlock language="python">{branchCreate}</CodeBlock>
+
+## Rebase a branch
+
+<CodeBlock language="python">{branchRebase}</CodeBlock>
+
+## Merge a branch
+
+<CodeBlock language="python">{branchMerge}</CodeBlock>

@@ -67,7 +67,6 @@ describe("Object creation and deletion", () => {
     // Get the actual number of items
     cy.get(".hidden > div.flex > .text-sm > :nth-child(2)").then((element) => {
       itemsNumber = parseInt(element.text());
-      cy.log("itemsNumber: ", itemsNumber);
 
       // Get the delete button for the new account
       cy.contains(NEW_ACCOUNT.name).scrollIntoView();

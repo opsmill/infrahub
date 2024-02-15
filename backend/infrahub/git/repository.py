@@ -1694,7 +1694,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             template = templateEnv.get_template(location)
             return template.render(**data)
         except Exception as exc:
-            log.critical(exc, exc_info=True, repository=self.name, commit=commit, location=location)
+            log.error(exc, exc_info=True, repository=self.name, commit=commit, location=location)
             raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc)) from exc
 
     async def execute_python_check(
@@ -2174,3 +2174,17 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryBase):
         self.create_commit_worktree(commit=commit)
         await self.import_objects_from_files(branch_name=self.infrahub_branch_name, commit=commit)
         await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=commit)
+
+
+async def get_initialized_repo(
+    repository_id: str, name: str, service: InfrahubServices, repository_kind: str
+) -> Union[InfrahubReadOnlyRepository, InfrahubRepository]:
+    if repository_kind == InfrahubKind.REPOSITORY:
+        return await InfrahubRepository.init(id=repository_id, name=name, client=service._client, service=service)
+
+    if repository_kind == InfrahubKind.READONLYREPOSITORY:
+        return await InfrahubReadOnlyRepository.init(
+            id=repository_id, name=name, client=service._client, service=service
+        )
+
+    raise NotImplementedError(f"The repository kind {repository_kind} has not been implemented")

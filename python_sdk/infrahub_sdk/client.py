@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import json
 import logging
 from logging import Logger
 from time import sleep
 from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
 
 import httpx
+from typing_extensions import TypedDict as ExtensionTypedDict
 
 from infrahub_sdk.batch import InfrahubBatch
 from infrahub_sdk.branch import (
@@ -43,6 +45,13 @@ if TYPE_CHECKING:
     from types import TracebackType
 
 # pylint: disable=redefined-builtin  disable=too-many-lines
+
+
+class NodeDiff(ExtensionTypedDict):
+    branch: str
+    actions: List[str]
+    kind: str
+    node: str
 
 
 class ProcessRelationsNode(TypedDict):
@@ -105,6 +114,13 @@ class BaseClient:
 
     def _record(self, response: httpx.Response) -> None:
         self.config.custom_recorder.record(response)
+
+    def _echo(self, url: str, query: str, variables: Optional[dict] = None) -> None:
+        if self.config.echo_graphql_queries:
+            print(f"URL: {url}")
+            print(f"QUERY:\n{query}")
+            if variables:
+                print(f"VARIABLES:\n{json.dumps(variables, indent=4)}\n")
 
 
 class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
@@ -404,7 +420,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         if self.insert_tracker and tracker:
             headers["X-Infrahub-Tracker"] = tracker
 
-        # self.log.error(payload)
+        self._echo(url=url, query=query, variables=variables)
 
         retry = True
         resp = None
@@ -611,6 +627,28 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return resp.json()
 
+    async def get_diff_summary(
+        self,
+        branch: str,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> List[NodeDiff]:
+        query = """
+            query {
+                DiffSummary {
+                    kind
+                    node
+                    branch
+                    actions
+                }
+            }
+        """
+        response = await self.execute_graphql(
+            query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
+        )
+        return response["DiffSummary"]
+
     async def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:
         return InfrahubBatch(semaphore=self.concurrent_execution_limit, return_exceptions=return_exceptions)
 
@@ -757,6 +795,8 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         headers = copy.copy(self.headers or {})
         if self.insert_tracker and tracker:
             headers["X-Infrahub-Tracker"] = tracker
+
+        self._echo(url=url, query=query, variables=variables)
 
         retry = True
         resp = None
@@ -1074,6 +1114,28 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             resp.raise_for_status()
 
         return resp.json()
+
+    def get_diff_summary(
+        self,
+        branch: str,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> List[NodeDiff]:
+        query = """
+            query {
+                DiffSummary {
+                    kind
+                    node
+                    branch
+                    actions
+                }
+            }
+        """
+        response = self.execute_graphql(
+            query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
+        )
+        return response["DiffSummary"]
 
     def repository_update_commit(
         self, branch_name: str, repository_id: str, commit: str, is_read_only: bool = False

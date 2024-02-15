@@ -7,8 +7,8 @@ from rich.logging import RichHandler
 
 from infrahub import config
 from infrahub.core.graph import GRAPH_VERSION
-from infrahub.core.graph.migrations import get_migrations
 from infrahub.core.initialization import first_time_initialization, get_root_node, initialization
+from infrahub.core.migrations.graph import get_graph_migrations
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.log import get_logger
@@ -72,7 +72,7 @@ async def _migrate(check: bool) -> None:
         log.info("Checking current state of the Database")
 
         root_node = await get_root_node(db=db)
-        migrations = await get_migrations(root=root_node)
+        migrations = await get_graph_migrations(root=root_node)
 
         if not migrations:
             log.info(f"Database up-to-date (v{root_node.graph_version}), no migration to execute.")

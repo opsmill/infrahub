@@ -95,8 +95,8 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
     # roles_dict = {}
 
     log.info("Creating Site")
-    site_hq = await Node.init(db=db, schema="BuiltinLocation")
-    await site_hq.new(db=db, name="HQ", type="Site")
+    site_hq = await Node.init(db=db, schema="InfraSite")
+    await site_hq.new(db=db, name="HQ")
     await site_hq.save(db=db)
 
     active_status = "active"

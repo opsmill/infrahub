@@ -22,6 +22,7 @@ async def build_subquery_filter(
     name: Optional[str] = None,
     branch: Branch = None,
     subquery_idx: int = 1,
+    partial_match: bool = False,
 ) -> Tuple[str, dict[str, Any], str]:
     params = {}
     prefix = f"filter{subquery_idx}"
@@ -43,6 +44,7 @@ async def build_subquery_filter(
         branch=branch,
         param_prefix=prefix,
         db=db,
+        partial_match=partial_match,
     )
     params.update(field_params)
 

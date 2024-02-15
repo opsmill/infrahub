@@ -15,8 +15,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import CommitNotFoundError
-from infrahub.message_bus import messages
-from infrahub.message_bus.responses import ContentResponse
+from infrahub.message_bus.messages import GitFileGet, GitFileGetResponse
 
 if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
@@ -51,7 +50,7 @@ async def get_file(
     if not commit:
         raise CommitNotFoundError(identifier=repository_id, commit="", message="No commits found on this repository")
 
-    message = messages.GitFileGet(
+    message = GitFileGet(
         repository_id=repo.id,
         repository_name=repo.name.value,  # type: ignore[attr-defined]
         repository_kind=repo.get_kind(),
@@ -59,6 +58,5 @@ async def get_file(
         file=file_path,
     )
 
-    response = await service.message_bus.rpc(message=message)
-    content = response.parse(response_class=ContentResponse)
-    return PlainTextResponse(content=content.content)
+    response = await service.message_bus.rpc(message=message, response_class=GitFileGetResponse)
+    return PlainTextResponse(content=response.data.content)

@@ -6,7 +6,7 @@ ignorecase: false
 action:
   name: replace
 swap:
-  (?i:Github): GitHub
+  (?i:[^/]Github): GitHub
   (?i:gitpod): GitPod
   (?i:[^/]Graphql): GraphQL
   infrahub(?:\s|$): Infrahub

@@ -1,4 +1,3 @@
-import copy
 import logging
 import uuid
 from collections import defaultdict
@@ -11,7 +10,27 @@ from infrahub_sdk.exceptions import GraphQLError
 # flake8: noqa
 # pylint: skip-file
 
-SITES = ["atl", "ord", "jfk", "den", "dfw", "iad", "bkk", "sfo", "iah", "mco"]
+CONTINENT_COUNTRIES = {
+    "North America": ["United States of America", "Canada"],
+    "South America": ["Mexico", "Brazil"],
+    "Afrika": ["Morocco", "Senegal"],
+    "Europe": ["France", "Spain", "Italy"],
+    "Asia": ["Japan", "China"],
+    "Oceania": ["Australia", "New Zealand"],
+}
+
+SITES = [
+    {"name": "atl", "country": "United States of America", "city": "Atlanta", "contact": "Bailey Li"},
+    {"name": "ord", "country": "United States of America", "city": "Chicago", "contact": "Kayden Kennedy"},
+    {"name": "jfk", "country": "United States of America", "city": "New York", "contact": "Micaela Marsh"},
+    {"name": "den", "country": "United States of America", "city": "Denver", "contact": "Francesca Wilcox"},
+    {"name": "dfw", "country": "United States of America", "city": "Dallas", "contact": "Carmelo Moran"},
+    {"name": "iad", "country": "United States of America", "city": "Washington D.C.", "contact": "Avery Jimenez"},
+    {"name": "sea", "country": "United States of America", "city": "Seattle", "contact": "Charlotte Little"},
+    {"name": "sfo", "country": "United States of America", "city": "San Francisco", "contact": "Taliyah Sampson"},
+    {"name": "iah", "country": "United States of America", "city": "Houston", "contact": "Fernanda Solomon"},
+    {"name": "mco", "country": "United States of America", "city": "Orlando", "contact": "Arthur Rose"},
+]
 
 PLATFORMS = (
     ("Cisco IOS", "ios", "ios", "cisco_ios", "ios"),
@@ -39,7 +58,7 @@ ACTIVE_STATUS = "active"
 BACKBONE_ROLE = "backbone"
 
 
-def site_names_generator(nbr_site=2) -> List[str]:
+def site_generator(nbr_site=2) -> List[Dict[str, str]]:
     """Generate a list of site names by iterating over the list of SITES defined above and by increasing the id.
 
     site_names_generator(nbr_site=5)
@@ -49,7 +68,7 @@ def site_names_generator(nbr_site=2) -> List[str]:
         result >> ["atl1", "ord1", "jfk1", "den1", "dfw1", "iad1", "bkk1", "sfo1", "iah1", "mco1", "atl2", "ord2"]
     """
 
-    site_names: List[str] = []
+    sites: List[Dict[str, str]] = []
 
     # Calculate how many loop over the entire list we need to make
     # and how many site we need to generate on the last loop
@@ -61,9 +80,9 @@ def site_names_generator(nbr_site=2) -> List[str]:
         if idx == nbr_loop:
             nbr_this_loop = nbr_last_loop
 
-        site_names.extend([f"{site}{idx}" for site in SITES[:nbr_this_loop]])
+        sites.extend([{**site, **{"name": f"{site['name']}{idx}"}} for site in SITES[:nbr_this_loop]])
 
-    return site_names
+    return sites
 
 
 P2P_NETWORKS_POOL = {
@@ -221,7 +240,7 @@ async def group_add_member(client: InfrahubClient, group: InfrahubNode, members:
     await client.execute_graphql(query=query, branch_name=branch)
 
 
-async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str, site_name: str):
+async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str, site: Dict[str, str]):
     group_eng = store.get("Engineering Team")
     group_ops = store.get("Operation Team")
     account_pop = store.get("pop-builder")
@@ -234,17 +253,22 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
     group_arista_devices = store.get(kind="CoreStandardGroup", key="arista_devices")
     group_transit_interfaces = store.get(kind="CoreStandardGroup", key="transit_interfaces")
 
+    country = store.get(kind="InfraCountry", key=site["country"])
     # --------------------------------------------------
     # Create the Site
     # --------------------------------------------------
     site = await client.create(
         branch=branch,
-        kind="BuiltinLocation",
-        name={"value": site_name, "is_protected": True, "source": account_crm.id},
-        type={"value": "SITE", "is_protected": True, "source": account_crm.id},
+        kind="InfraSite",
+        name={"value": site["name"], "is_protected": True, "source": account_crm.id},
+        contact={"value": site["contact"], "is_protected": True, "source": account_crm.id},
+        city={"value": site["city"], "is_protected": True, "source": account_crm.id},
+        parent=country,
     )
     await site.save()
     log.info(f"- Created {site._schema.kind} - {site.name.value}")
+
+    site_name = site.name.value
 
     peer_networks = {
         0: next(P2P_NETWORK_POOL).hosts(),
@@ -260,6 +284,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         obj = await client.create(
             branch=branch,
             kind="InfraVLAN",
+            site={"id": site.id, "source": account_pop.id, "is_protected": True},
             name={"value": f"{site_name}_{vlan[1]}", "is_protected": True, "source": account_pop.id},
             vlan_id={"value": int(vlan[0]), "is_protected": True, "owner": group_eng.id, "source": account_pop.id},
             status={"value": ACTIVE_STATUS, "owner": group_ops.id},
@@ -366,7 +391,8 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             await intf.save()
 
             store.set(key=f"{device_name}-l3-{intf_idx}", node=intf)
-            INTERFACE_OBJS[device_name].append(intf)
+            if intf_role == "backbone":
+                INTERFACE_OBJS[device_name].append(intf)
 
             address = None
             if intf_role == "peer":
@@ -423,7 +449,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                     kind="InfraCircuitEndpoint",
                     site=site,
                     circuit=circuit.id,
-                    connected_interface=intf.id,
+                    connected_endpoint=intf.id,
                 )
                 await endpoint1.save()
 
@@ -543,7 +569,7 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
     )
     log.info(f"- Creating branch: {new_branch_name!r}")
     # Querying the object for now, need to pull from the store instead
-    site = await client.get(branch=new_branch_name, kind="BuiltinLocation", name__value=site_name)
+    site = await client.get(branch=new_branch_name, kind="InfraSite", name__value=site_name)
     device = await client.get(branch=new_branch_name, kind="InfraDevice", name__value=device_name)
     gtt_organization = await client.get(branch=new_branch_name, kind="CoreOrganization", name__value="GTT")
 
@@ -595,7 +621,7 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
         kind="InfraCircuitEndpoint",
         site=site,
         circuit=circuit.id,
-        connected_interface=intf.id,
+        connected_endpoint=intf.id,
     )
     await endpoint1.save()
 
@@ -830,6 +856,20 @@ async def branch_scenario_conflict_platform(client: InfrahubClient, log: logging
     await platform3_main.save()
 
 
+async def generate_continents_countries(client: InfrahubClient, log: logging.Logger, branch: str):
+    for continent, countries in CONTINENT_COUNTRIES.items():
+        continent_obj = await client.create(branch=branch, kind="InfraContinent", data={"name": continent})
+        await continent_obj.save()
+        store.set(key=continent, node=continent_obj)
+
+        for country in countries:
+            country_obj = await client.create(
+                branch=branch, kind="InfraCountry", data={"name": country, "parent": continent_obj}
+            )
+            await country_obj.save()
+            store.set(key=country, node=country_obj)
+
+
 # ---------------------------------------------------------------
 # Use the `infrahubctl run` command line to execute this script
 #
@@ -837,7 +877,13 @@ async def branch_scenario_conflict_platform(client: InfrahubClient, log: logging
 #
 # ---------------------------------------------------------------
 async def run(client: InfrahubClient, log: logging.Logger, branch: str):
-    SITE_NAMES = site_names_generator(nbr_site=5)
+    # ------------------------------------------
+    # Create Continents, Countries
+    # ------------------------------------------
+    batch = await client.create_batch()
+    batch.add(task=generate_continents_countries, client=client, branch=branch, log=log)
+    async for _, response in batch.execute():
+        log.info(f"Location {response} Creation Completed")
 
     # ------------------------------------------
     # Create User Accounts, Groups, Organizations & Platforms
@@ -893,7 +939,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     account_cloe = store.get("Chloe O'Brian")
 
     # ------------------------------------------
-    # Create Autonommous Systems
+    # Create Autonomous Systems
     # ------------------------------------------
     log.info(f"Creating Autonommous Systems")
     batch = await client.create_batch()
@@ -959,10 +1005,10 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # Create Sites
     # ------------------------------------------
     log.info("Creating Site and associated objects (Device, Circuit, BGP Sessions)")
+    sites = site_generator(nbr_site=5)
     batch = await client.create_batch()
-
-    for site_name in SITE_NAMES:
-        batch.add(task=generate_site, site_name=site_name, client=client, branch=branch, log=log)
+    for site in sites:
+        batch.add(task=generate_site, site=site, client=client, branch=branch, log=log)
 
     async for _, response in batch.execute():
         log.debug(f"Site {response} Creation Completed")
@@ -972,15 +1018,15 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # --------------------------------------------------
     log.info("Creating Full Mesh iBGP SESSION between all the Edge devices")
     batch = await client.create_batch()
-    for site1 in SITE_NAMES:
-        for site2 in SITE_NAMES:
+    for site1 in sites:
+        for site2 in sites:
             if site1 == site2:
                 continue
 
             for idx1 in range(1, 3):
                 for idx2 in range(1, 3):
-                    device1 = f"{site1}-edge{idx1}"
-                    device2 = f"{site2}-edge{idx2}"
+                    device1 = f"{site1['name']}-edge{idx1}"
+                    device2 = f"{site2['name']}-edge{idx2}"
 
                     loopback1 = store.get(key=f"{device1}-loopback")
                     loopback2 = store.get(key=f"{device2}-loopback")
@@ -1017,17 +1063,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         site2 = backbone_link[2]
         device = backbone_link[1]
 
-        # Build a new list with the names of the other sites for later
-        other_site_site1 = copy.copy(SITE_NAMES)
-        other_site_site1.remove(site1)
-        other_site_site1 = sorted(other_site_site1)
-
-        other_site_site2 = copy.copy(SITE_NAMES)
-        other_site_site2.remove(site2)
-        other_site_site2 = sorted(other_site_site2)
-
-        intf1 = INTERFACE_OBJS[f"{site1}-{device}"][other_site_site1.index(site2) + 2]
-        intf2 = INTERFACE_OBJS[f"{site2}-{device}"][other_site_site2.index(site1) + 2]
+        intf1 = INTERFACE_OBJS[f"{site1}-{device}"].pop(0)
+        intf2 = INTERFACE_OBJS[f"{site2}-{device}"].pop(0)
 
         circuit_id = BACKBONE_CIRCUIT_IDS[idx]
 
@@ -1106,16 +1143,16 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     #  Scenario 1 - Add a Peering
     #  Scenario 2 - Change the IP Address between 2 edges
     #  Scenario 3 - Delete a Circuit + Peering
-    #  Scenario 4 - Create some Relatioinship One and Attribute conflicts on a device
+    #  Scenario 4 - Create some Relationship One and Attribute conflicts on a device
     #  Scenario 5 - Create some Node ADD and DELETE conflicts on some platform objects
     # --------------------------------------------------
     if branch == "main":
         await branch_scenario_add_transit(
-            site_name=SITE_NAMES[1],
+            site_name=sites[1]["name"],
             client=client,
             log=log,
         )
-        await branch_scenario_replace_ip_addresses(site_name=SITE_NAMES[2], client=client, log=log)
-        await branch_scenario_remove_colt(site_name=SITE_NAMES[0], client=client, log=log)
-        await branch_scenario_conflict_device(site_name=SITE_NAMES[3], client=client, log=log)
+        await branch_scenario_replace_ip_addresses(site_name=sites[2]["name"], client=client, log=log)
+        await branch_scenario_remove_colt(site_name=sites[0]["name"], client=client, log=log)
+        await branch_scenario_conflict_device(site_name=sites[3]["name"], client=client, log=log)
         await branch_scenario_conflict_platform(client=client, log=log)

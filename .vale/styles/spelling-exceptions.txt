@@ -16,6 +16,7 @@ devcontainer
 direnv
 docker
 dockerfile
+docusaurus
 e2e
 enum
 enums

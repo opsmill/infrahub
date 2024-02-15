@@ -29,7 +29,7 @@ from infrahub_sdk.ctl.utils import (
 from infrahub_sdk.ctl.validate import app as validate_app
 from infrahub_sdk.exceptions import GraphQLError, InfrahubTransformNotFoundError
 from infrahub_sdk.transforms import get_transform_class_instance
-from infrahub_sdk.utils import get_branch, identify_faulty_jinja_code
+from infrahub_sdk.utils import get_branch, identify_faulty_jinja_code, write_to_file
 
 from .exporter import dump
 from .importer import load
@@ -109,7 +109,7 @@ def _run_transform(query: str, variables: Dict[str, Any], transformer: Callable,
     branch = get_branch(branch)
 
     try:
-        response = execute_graphql_query(query, variables, branch, debug)
+        response = {"data": execute_graphql_query(query, variables, branch, debug)}
     except QueryNotFoundError as exc:
         console.print(f"[red]Unable to find query : {exc}")
         raise typer.Exit(1) from exc
@@ -140,6 +140,7 @@ def render(
     branch: str = typer.Option(None, help="Branch on which to render the transform."),
     debug: bool = False,
     config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
+    out: str = typer.Option(None, help="Path to a file to save the result."),
 ) -> None:
     """Render a local Jinja2 Transform for debugging purpose."""
 
@@ -157,7 +158,11 @@ def render(
 
     transformer = functools.partial(render_jinja2_template, transform_config.template_path, variables_dict)
     result = _run_transform(transform_config.query, variables_dict, transformer, branch, debug)
-    console.print(result)
+
+    if out:
+        write_to_file(Path(out), result)
+    else:
+        console.print(result)
 
 
 @app.command(name="transform")
@@ -170,6 +175,7 @@ def transform(
     debug: bool = False,
     config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
     list_available: bool = typer.Option(False, "--list", help="Show available transforms"),
+    out: str = typer.Option(None, help="Path to a file to save the result."),
 ) -> None:
     """Render a local transform (TransformPython) for debugging purpose."""
 
@@ -202,7 +208,12 @@ def transform(
     result = _run_transform(
         query=transform_instance.query, variables=variables_dict, transformer=transformer, branch=branch, debug=debug
     )
-    console.print(json.dumps(result, indent=2))
+
+    json_string = json.dumps(result, indent=2, sort_keys=True)
+    if out:
+        write_to_file(Path(out), json_string)
+    else:
+        console.print(json_string)
 
 
 @app.command(name="run")

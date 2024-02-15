@@ -72,7 +72,7 @@ export const DynamicControl = (props: DynamicFieldData) => {
       return (
         <OpsSelectRegister
           {...props}
-          options={options.values}
+          options={options}
           register={register}
           setValue={setValue}
           value={existingValue ?? value}
@@ -82,7 +82,7 @@ export const DynamicControl = (props: DynamicFieldData) => {
       return (
         <OpsSelectRegister
           {...props}
-          options={options.values}
+          options={options}
           register={register}
           setValue={setValue}
           value={existingValue ?? value}
@@ -94,7 +94,7 @@ export const DynamicControl = (props: DynamicFieldData) => {
       return (
         <OpsSelectRegister
           {...props}
-          options={options.values}
+          options={options}
           register={register}
           setValue={setValue}
           value={existingValue ?? value}
@@ -103,16 +103,22 @@ export const DynamicControl = (props: DynamicFieldData) => {
       );
     }
     case "select2step": {
-      const selectOptions = options.values.map((o) => ({
+      const selectOptions = options.map((o) => ({
         name: o.name,
         id: o.id,
       }));
+
       const regex = /^Related/; // starts with Related
 
-      const selectValue = {
-        parent: value?.__typename?.replace(regex, ""),
-        child: value?.id,
-      };
+      const parent = value?.__typename?.replace(regex, "");
+      const child = value?.id;
+
+      const selectValue = parent
+        ? {
+            parent,
+            child,
+          }
+        : ""; // Initial value msut be empty if not defined
 
       return (
         <OpsSelect2StepRegister
@@ -125,15 +131,11 @@ export const DynamicControl = (props: DynamicFieldData) => {
       );
     }
     case "multiselect": {
-      const selectOptions = options?.values ?? value;
-
-      const currentValue = selectOptions.filter((option) => (value || []).indexOf(option.id) > -1);
-
       return (
         <OpsMultiSelectRegister
           {...props}
-          options={options.values}
-          value={existingValue ?? currentValue}
+          options={options}
+          value={value}
           register={register}
           setValue={setValue}
         />

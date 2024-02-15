@@ -134,6 +134,18 @@ async def count_relationships(db: InfrahubDatabase) -> int:
     return result[0][0]
 
 
+async def count_nodes(db: InfrahubDatabase, label: str) -> int:
+    """Return the total number of nodes of a given label in the database."""
+    query = """
+    MATCH (node)
+    WHERE $label IN LABELS(node)
+    RETURN count(node) as count
+    """
+    params: dict = {"label": label}
+    result = await db.execute_query(query=query, params=params)
+    return result[0][0]
+
+
 async def delete_all_nodes(db: InfrahubDatabase):
     query = """
     MATCH (n)

@@ -14,7 +14,6 @@ from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.operations import git
-from infrahub.message_bus.responses import DiffNamesResponse
 from infrahub.services import InfrahubServices
 from tests.conftest import TestHelper
 
@@ -128,12 +127,8 @@ async def test_git_rpc_diff(
     bus_simulator = helper.get_message_bus_simulator()
     service = InfrahubServices(client=InfrahubClient(), message_bus=bus_simulator)
     bus_simulator.service = service
-    await service.send(message=message)
-
-    assert len(bus_simulator.replies) == 1
-    reply = bus_simulator.replies[0]
-    result = reply.parse(DiffNamesResponse)
-    assert result.files_changed == ["README.md", "test_files/sports.yml"]
+    result = await service.message_bus.rpc(message=message, response_class=messages.GitDiffNamesOnlyResponse)
+    assert result.data.files_changed == ["README.md", "test_files/sports.yml"]
 
     message = messages.GitDiffNamesOnly(
         repository_id=str(UUIDT()),
@@ -143,12 +138,8 @@ async def test_git_rpc_diff(
         second_commit=commit_main,
         meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),
     )
-    await service.send(message=message)
-
-    assert len(bus_simulator.replies) == 2
-    reply = bus_simulator.replies[1]
-    result = reply.parse(DiffNamesResponse)
-    assert result.files_changed == ["test_files/sports.yml"]
+    result = await service.message_bus.rpc(message=message, response_class=messages.GitDiffNamesOnlyResponse)
+    assert result.data.files_changed == ["test_files/sports.yml"]
 
 
 class TestAddReadOnly:

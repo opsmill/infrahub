@@ -26,7 +26,7 @@ env:
   BUILDKITE_ANALYTICS_BRANCH: ${{ github.ref }}
   BUILDKITE_BRANCH: ${{ github.ref }}
   BUILDKITE_COMMIT: ${{ github.sha }}
-  VALE_VERSION: "2.29.7"
+  VALE_VERSION: "3.0.7"
 
 jobs:
    # ------------------------------------------ Check Files Changes  ------------------------------------------
@@ -128,7 +128,7 @@ jobs:
         uses: DavidAnson/markdownlint-cli2-action@v15
         with:
           config: .markdownlint.yaml
-          globs: '**/*.md'
+          globs: '**/*.{md,mdx}'
 
   infrahub-poetry-check:
     if: |
@@ -207,7 +207,8 @@ jobs:
       - name: "Mypy Tests"
         run: "poetry run mypy --show-error-codes infrahub_sdk/"
       - name: "Unit Tests"
-        run: "poetry run pytest -v --cov=infrahub_sdk tests/unit/"
+        run: "poetry --directory python_sdk run pytest -v --cov=infrahub_sdk python_sdk/tests/unit/"
+        working-directory: ./
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
       - name: "Coveralls : Unit Tests"
@@ -449,6 +450,9 @@ jobs:
           file: frontend/coverage/lcov.info
 
   documentation:
+    defaults:
+      run:
+        working-directory: ./docs
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -563,24 +567,6 @@ jobs:
       - name: Run End to End Tests
         working-directory: ./frontend
         run: npm run cypress:run:e2e
-      - name: Upload JUnit to Buildkite
-        run: |
-          for REPORT in frontend/cypress/results/junit-*.xml; do
-            curl \
-              -X POST \
-              -H "Authorization: Token token=\"$BUILDKITE_ANALYTICS_TOKEN\"" \
-              -F "data=@$REPORT" \
-              -F "format=junit" \
-              -F "run_env[CI]=github_actions" \
-              -F "run_env[key]=$GITHUB_ACTION-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT" \
-              -F "run_env[number]=$GITHUB_RUN_NUMBER" \
-              -F "run_env[branch]=$GITHUB_REF" \
-              -F "run_env[commit_sha]=$GITHUB_SHA" \
-              -F "run_env[url]=https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-              https://analytics-api.buildkite.com/v1/uploads ;
-          done
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_E2E_CYPRESS }}
       - name: Containers after tests
         run: docker ps -a
       - name: Upload cypress screenshots
@@ -706,6 +692,63 @@ jobs:
       - name: Display server status
         if: always()
         run: invoke demo.status
+  # ------------------------------------------ Benchmarks ------------------------------------------------
+  backend-benchmark:
+    needs:
+      - javascript-lint
+      - files-changed
+      - yaml-lint
+      - python-lint
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    runs-on:
+      group: huge-runners
+    env:
+      INFRAHUB_DB_TYPE: memgraph
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+      - name: "Setup environment"
+        run: |
+          pipx install poetry
+          poetry config virtualenvs.prefer-active-python true
+          pip install invoke toml
+      - name: Set Version of Pydantic
+        run: poetry add pydantic@^2
+      - name: "Install Package"
+        run: "poetry install"
+
+      - name: Select infrahub db port
+        run: echo "INFRAHUB_DB_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+      - name: Create docker compose override
+        run: mv development/docker-compose.dev-override-benchmark.yml development/docker-compose.dev-override.yml
+
+      - name: Start dependencies
+        run: invoke demo.dev-start
+
+      - name: Update PATH
+        run: "echo ~/.cargo/bin >> $GITHUB_PATH"
+      - name: Run benchmarks
+        uses: CodSpeedHQ/action@v2
+        with:
+          token: ${{ secrets.CODSPEED_TOKEN }}
+          run: "poetry run pytest -v backend/tests/benchmark/ --codspeed"
+        env:
+          INFRAHUB_TEST_IN_DOCKER: "false"
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
     needs:

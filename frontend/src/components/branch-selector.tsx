@@ -178,9 +178,7 @@ export default function BranchSelector() {
       label: "Branched from",
       type: "select",
       value: defaultBranch,
-      options: {
-        values: branchesOptions,
-      },
+      options: branchesOptions,
       isProtected: true,
       isOptional: true,
     },
@@ -202,7 +200,7 @@ export default function BranchSelector() {
   ];
 
   return (
-    <div className="flex" data-cy="branch-select-menu" data-testid="branch-select-menu">
+    <div className="flex h-12" data-cy="branch-select-menu" data-testid="branch-select-menu">
       <SelectButton
         value={branch}
         valueLabel={valueLabel}

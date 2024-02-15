@@ -7,6 +7,7 @@ import { useContext, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import { Retry } from "../../components/buttons/retry";
 import { RoundedButton } from "../../components/buttons/rounded-button";
 import SlideOver from "../../components/display/slide-over";
 import ModalDelete from "../../components/modals/modal-delete";
@@ -100,7 +101,7 @@ export default function ObjectItems(props: any) {
 
   // Get all the needed columns (attributes + relationships)
   const columns = getSchemaObjectColumns(schemaData, true);
-  const attributes = getObjectAttributes(schemaData);
+  const attributes = getObjectAttributes(schemaData, true);
   const relationships = getObjectRelationships(schemaData, true);
 
   const queryString = schemaData
@@ -118,11 +119,16 @@ export default function ObjectItems(props: any) {
     ${queryString}
   `;
 
-  const { loading, error, data = {}, refetch } = useQuery(query, { skip: !schemaData });
+  const {
+    loading,
+    error,
+    data = {},
+    refetch,
+  } = useQuery(query, { skip: !schemaData, notifyOnNetworkStatusChange: true });
 
   const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
-  const { count, edges } = result;
+  const { count = "...", edges } = result;
 
   useTitle(`${schemaKindName[objectname]} list`);
 
@@ -171,6 +177,8 @@ export default function ObjectItems(props: any) {
     setIsLoading(false);
   };
 
+  const handleRefetch = () => refetch();
+
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching list." />;
   }
@@ -185,6 +193,10 @@ export default function ObjectItems(props: any) {
             </h1>
 
             <div className="text-sm">{schemaData?.description}</div>
+
+            <div className="ml-2">
+              <Retry isLoading={loading} onClick={handleRefetch} />
+            </div>
           </div>
         )}
 
@@ -224,14 +236,14 @@ export default function ObjectItems(props: any) {
               {rows?.map((row: any, index: number) => (
                 <tr
                   key={index}
-                  className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
+                  className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer h-[36px]"
                   data-cy="object-table-row">
                   {columns?.map((attribute) => (
                     <td key={row.id + "-" + attribute.name} className="p-0">
                       <Link
-                        className="whitespace-wrap px-2 py-1 text-xs text-gray-900 min-h-7 flex items-center"
+                        className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
                         to={constructPath(getObjectDetailsUrl(row.id, row.__typename))}>
-                        <div className="flex-grow">{getObjectItemDisplayValue(row, attribute)}</div>
+                        <div>{getObjectItemDisplayValue(row, attribute)}</div>
                       </Link>
                     </td>
                   ))}

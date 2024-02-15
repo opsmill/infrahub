@@ -45,7 +45,6 @@ types-pyyaml = "*"
 typer-cli = "*"
 ruff = "^0.1.8"
 pytest-xdist = "^3.3.1"
-buildkite-test-collector = "^0.1.7"
 types-python-slugify = "^8.0.0.3"
 
 [tool.poetry.scripts]
@@ -153,28 +152,34 @@ task-tags = [
 preview = true
 
 select = [
-    # mccabe complexity
-    "C90",
-    # pycodestyle errors
-    "E",
-    # pycodestyle warnings
-    "W",
-    # pyflakes
-    "F",
-    # isort-like checks
-    "I",
-    # flake8-datetimez
-    "DTZ",
-    # flake8-import-conventions
-    "ICN",
-    # flake8-type-checking
-    "TCH",
-    # flake8-debugger
-    "T10",
-    # flake8-quotes
-    "Q",
-    # flake8-2020
-    "YTT",
+    "C90",  # mccabe complexity
+    "DJ",   # flake8-django
+    "DTZ",  # flake8-datetimez
+    "E",    # pycodestyle errors
+    "EXE",  # flake8-executable
+    "F",    # pyflakes
+    "I",    # isort-like checks
+    "ICN",  # flake8-import-conventions
+    "PL",   # pylint
+    "Q",    # flake8-quotes
+    "TCH",  # flake8-type-checking
+    "TRIO", # flake8-trio
+    "T10",  # flake8-debugger
+    "W",    # pycodestyle warnings
+    "YTT",  # flake8-2020
+]
+
+ignore = [
+
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one. Alternatively ignored after further       #
+# investigation if they are deemed to not make sense.                                            #
+##################################################################################################
+    "PLR0912", # Too many branches
+    "PLR0913", # Too many arguments in function definition
+    "PLR0917", # Too many positional arguments
+    "PLR6301", # Method could be a function, class method, or static method
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/
@@ -192,7 +197,7 @@ max-line-length = 150
 
 [tool.ruff.mccabe]
 # Target max-complexity=10
-max-complexity = 31
+max-complexity = 17
 
 [tool.ruff.per-file-ignores]
 

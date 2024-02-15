@@ -162,24 +162,6 @@ files = [
 tzdata = ["tzdata"]
 
 [[package]]
-name = "buildkite-test-collector"
-version = "0.1.7"
-description = "Buildkite Test Analytics collector"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "buildkite-test-collector-0.1.7.tar.gz", hash = "sha256:555b5b7ef771e4ced23e004899c18f837faaa3b6167f3d129b871f8c2419abdb"},
-    {file = "buildkite_test_collector-0.1.7-py3-none-any.whl", hash = "sha256:4eba9667f0c215ac41520bd464e98d1fd195680d3879596622a5305043774f0e"},
-]
-
-[package.dependencies]
-pytest = ">=7"
-requests = ">=2"
-
-[package.extras]
-dev = ["check-manifest", "mock (>=4)", "pylint", "responses", "twine"]
-
-[[package]]
 name = "certifi"
 version = "2023.7.22"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -2209,4 +2191,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "d44be1e661209f4ce51d1286d4e7254c3c3866376d2ec56777d704b0582587e9"
+content-hash = "60899c5dad06c5fc307b3bedb5cf31fd74a623746415afb1022fc7b4ee9c6893"

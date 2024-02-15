@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
-    from infrahub.message_bus.rpc import InfrahubRpcClient
+    from infrahub.graphql import GraphqlContext
 
 log = get_logger()
 
@@ -45,11 +45,11 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         at: str,
+        database: Optional[InfrahubDatabase] = None,
     ):
         obj, result = await super().mutate_create(root, info, data, branch, at)
-
+        context: GraphqlContext = info.context
         # Create the new repository in the filesystem.
-        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
         log.info("create_repository", name=obj.name.value)
 
         if obj.get_kind() == "CoreReadOnlyRepository":
@@ -67,7 +67,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 location=obj.location.value,
                 default_branch_name=obj.default_branch.value,
             )
-        await rpc_client.send(message=message)
+        await context.rpc_client.send(message=message)
 
         # TODO Validate that the creation of the repository went as expected
 
@@ -84,11 +84,10 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ):
-        db: InfrahubDatabase = database or info.context.get("infrahub_database")
-        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
+        context: GraphqlContext = info.context
         if not node:
             node = await NodeManager.get_one_by_id_or_default_filter(
-                db=db,
+                db=context.db,
                 schema_name=cls._meta.schema.kind,
                 id=data.get("id"),
                 branch=branch,
@@ -97,7 +96,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 include_source=True,
             )
         if node.get_kind() != infrahubkind.READONLYREPOSITORY:
-            return await super().mutate_update(root, info, data, branch, at, database=db, node=node)
+            return await super().mutate_update(root, info, data, branch, at, database=context.db, node=node)
 
         current_commit = node.commit.value
         current_ref = node.ref.value
@@ -108,7 +107,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         if data.ref and data.ref.value:
             new_ref = data.ref.value
 
-        obj, result = await super().mutate_update(root, info, data, branch, at, database=db, node=node)
+        obj, result = await super().mutate_update(root, info, data, branch, at, database=context.db, node=node)
 
         send_update_message = (new_commit and new_commit != current_commit) or (new_ref and new_ref != current_ref)
         if not send_update_message:
@@ -130,5 +129,5 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             infrahub_branch_name=branch.name,
         )
 
-        await rpc_client.send(message=message)
+        await context.rpc_client.send(message=message)
         return obj, result

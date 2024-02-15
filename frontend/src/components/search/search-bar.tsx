@@ -8,7 +8,7 @@ import { SEARCH } from "../../graphql/queries/objects/search";
 import LoadingScreen from "../../screens/loading-screen/loading-screen";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { debounce } from "../../utils/common";
+import { classNames, debounce } from "../../utils/common";
 import { Background } from "../display/background";
 import { POPOVER_SIZE, PopOver } from "../display/popover";
 import { Input } from "../inputs/input";
@@ -16,12 +16,23 @@ import Transition from "../utils/transition";
 import { SearchResults } from "./search-results";
 
 type tSearchInput = {
-  loading?: boolean;
   onChange: Function;
+  className?: string;
+  containerClassName?: string;
+  loading?: boolean;
+  placeholder?: string;
+  testId?: string;
 };
 
-const SearchInput = (props: tSearchInput) => {
-  const { loading, onChange } = props;
+export const SearchInput = (props: tSearchInput) => {
+  const {
+    className = "",
+    containerClassName = "",
+    loading,
+    onChange,
+    placeholder = "Search",
+    testId = "search-bar",
+  } = props;
 
   const [search, setSearch] = useState("");
 
@@ -38,21 +49,23 @@ const SearchInput = (props: tSearchInput) => {
   };
 
   return (
-    <div className="flex flex-1 items-center justify-center relative">
-      <div className="flex flex-1 items-center justify-center relative max-w-[600px] z-20">
-        <Input
-          value={search}
-          onChange={handleChange}
-          data-testid="search-bar"
-          className="py-2 pl-10 placeholder-gray-500"
-          placeholder="Search"
-          onFocus={handleFocus}
-        />
+    <div
+      className={classNames(
+        "flex flex-1 items-center relative max-w-[600px] z-20",
+        containerClassName
+      )}>
+      <Input
+        value={search}
+        onChange={handleChange}
+        data-testid={testId}
+        className={classNames("py-2 pl-10 placeholder-gray-500", className)}
+        placeholder={placeholder}
+        onFocus={handleFocus}
+      />
 
-        {loading && <LoadingScreen hideText size={20} className="absolute left-4" />}
+      {loading && <LoadingScreen hideText size={20} className="absolute left-4" />}
 
-        {!loading && <Icon icon={"mdi:magnify"} className="absolute left-4 text-custom-blue-10" />}
-      </div>
+      {!loading && <Icon icon={"mdi:magnify"} className="absolute left-4 text-custom-blue-10" />}
     </div>
   );
 };
@@ -66,19 +79,21 @@ export const SearchBar = () => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
-  const handleSearch = async (newValue: string) => {
+  const handleSearch = async (newValue: string = "") => {
+    const cleanedValue = newValue.trim();
+
     try {
       // Set search to set open / close if empty
-      setSearch(newValue);
+      setSearch(cleanedValue);
 
-      if (!newValue) return;
+      if (!cleanedValue) return;
 
       setIsLoading(true);
 
       const { data } = await graphqlClient.query({
         query: SEARCH,
         variables: {
-          search: newValue,
+          search: cleanedValue,
         },
         context: {
           date,
@@ -121,12 +136,14 @@ export const SearchBar = () => {
   const isOpen = !!search && !!results?.edges;
 
   return (
-    <div className="flex flex-1">
+    <div className="relative flex flex-1">
       <Transition show={isOpen}>
         <Background onClick={handleClick} className="bg-transparent" />
       </Transition>
 
-      <SearchInput loading={isLoading} onChange={handleChange} />
+      <div className="flex flex-1 justify-center">
+        <SearchInput loading={isLoading} onChange={handleChange} />
+      </div>
 
       <Transition show={isOpen}>
         <PopOver

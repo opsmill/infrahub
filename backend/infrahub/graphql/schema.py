@@ -18,7 +18,6 @@ from .mutations import (
     BranchValidate,
     CoreAccountSelfUpdate,
     CoreAccountTokenCreate,
-    ProposedChangeRequestRefreshArtifacts,
     ProposedChangeRequestRunCheck,
     RelationshipAdd,
     RelationshipRemove,
@@ -26,14 +25,16 @@ from .mutations import (
     SchemaDropdownRemove,
     SchemaEnumAdd,
     SchemaEnumRemove,
+    TaskCreate,
+    TaskUpdate,
 )
-from .queries import BranchQueryList, DiffSummary, InfrahubInfo
+from .queries import BranchQueryList, DiffSummary, InfrahubInfo, Task
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo  # pylint: disable=no-name-in-module
 
-    from infrahub.auth import AccountSession
-    from infrahub.database import InfrahubDatabase
+    from . import GraphqlContext
+
 
 # pylint: disable=unused-argument
 
@@ -44,13 +45,12 @@ async def default_paginated_list_resolver(root: dict, info: GraphQLResolveInfo, 
 
 
 async def account_resolver(root, info: GraphQLResolveInfo):
-    account_session: AccountSession = info.context.get("account_session")
     fields = await extract_fields(info.field_nodes[0].selection_set)
+    context: GraphqlContext = info.context
 
-    db: InfrahubDatabase = info.context.get("infrahub_database")
-    async with db.start_session() as db:
+    async with context.db.start_session() as db:
         results = await NodeManager.query(
-            schema=InfrahubKind.ACCOUNT, filters={"ids": [account_session.account_id]}, fields=fields, db=db
+            schema=InfrahubKind.ACCOUNT, filters={"ids": [context.account_session.account_id]}, fields=fields, db=db
         )
         if results:
             account_profile = await results[0].to_graphql(db=db, fields=fields)
@@ -58,7 +58,7 @@ async def account_resolver(root, info: GraphQLResolveInfo):
 
         raise NodeNotFound(
             node_type=InfrahubKind.ACCOUNT,
-            identifier=account_session.account_id,
+            identifier=context.account_session.account_id,
         )
 
 
@@ -69,12 +69,13 @@ class InfrahubBaseQuery(ObjectType):
 
     InfrahubInfo = InfrahubInfo
 
+    InfrahubTask = Task
+
 
 class InfrahubBaseMutation(ObjectType):
     CoreAccountTokenCreate = CoreAccountTokenCreate.Field()
     CoreAccountSelfUpdate = CoreAccountSelfUpdate.Field()
     CoreProposedChangeRunCheck = ProposedChangeRequestRunCheck.Field()
-    CoreProposedChangeRefreshArtifacts = ProposedChangeRequestRefreshArtifacts.Field()
 
     BranchCreate = BranchCreate.Field()
     BranchDelete = BranchDelete.Field()
@@ -82,6 +83,8 @@ class InfrahubBaseMutation(ObjectType):
     BranchMerge = BranchMerge.Field()
     BranchUpdate = BranchUpdate.Field()
     BranchValidate = BranchValidate.Field()
+    InfrahubTaskCreate = TaskCreate.Field()
+    InfrahubTaskUpdate = TaskUpdate.Field()
 
     RelationshipAdd = RelationshipAdd.Field()
     RelationshipRemove = RelationshipRemove.Field()

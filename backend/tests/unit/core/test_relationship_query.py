@@ -4,9 +4,11 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import RelationshipDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.relationship import (
+    RelationshipCountPerNodeQuery,
     RelationshipCreateQuery,
     RelationshipDataDeleteQuery,
     RelationshipDeleteQuery,
@@ -149,6 +151,7 @@ async def test_query_RelationshipDeleteQuery(
         source_id=person_jack_tags_main.id,
         branch=branch.name,
         peer_id=tag_blue_main.id,
+        peer_kind=tag_blue_main.get_kind(),
         peer_db_id=tag_blue_main.db_id,
         rel_node_id=rel_node.get("uuid"),
         rel_node_db_id=rel_node.element_id,
@@ -215,6 +218,7 @@ async def test_query_RelationshipDeleteQuery(
         source_id=person_jack_tags_main.id,
         branch=branch.name,
         peer_id=tag_blue_main.id,
+        peer_kind=tag_blue_main.get_kind(),
         peer_db_id=tag_blue_main.db_id,
         rel_node_id=latest_rel_node.get("uuid"),
         rel_node_db_id=latest_rel_node.element_id,
@@ -499,3 +503,57 @@ async def test_query_RelationshipDataDeleteQuery(
     )
 
     assert len(paths) == 4
+
+
+async def test_query_RelationshipCountPerNodeQuery(
+    db: InfrahubDatabase,
+    person_john_main,
+    person_jane_main,
+    car_accord_main,
+    car_camry_main,
+    car_volt_main,
+    car_prius_main,
+    car_yaris_main,
+    branch: Branch,
+):
+    person_schema = registry.schema.get(name="TestPerson")
+    rel_schema = person_schema.get_relationship("cars")
+
+    albert = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await albert.new(db=db, name="Albert", height=120)
+    await albert.save(db=db)
+
+    peer_ids = [person_john_main.id, person_jane_main.id, albert.id]
+
+    query = await RelationshipCountPerNodeQuery.init(
+        db=db,
+        node_ids=peer_ids,
+        identifier=rel_schema.identifier,
+        direction=RelationshipDirection.INBOUND,
+        branch=branch,
+        at=Timestamp(),
+    )
+    await query.execute(db=db)
+    count_per_peer = await query.get_count_per_peer()
+    assert count_per_peer == {
+        person_john_main.id: 3,
+        person_jane_main.id: 2,
+        albert.id: 0,
+    }
+
+    # Revert the direction to ensure this is working as expected
+    query = await RelationshipCountPerNodeQuery.init(
+        db=db,
+        node_ids=peer_ids,
+        identifier=rel_schema.identifier,
+        direction=RelationshipDirection.OUTBOUND,
+        branch=branch,
+        at=Timestamp(),
+    )
+    await query.execute(db=db)
+    count_per_peer = await query.get_count_per_peer()
+    assert count_per_peer == {
+        person_john_main.id: 0,
+        person_jane_main.id: 0,
+        albert.id: 0,
+    }

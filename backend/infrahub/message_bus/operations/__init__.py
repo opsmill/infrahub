@@ -1,13 +1,21 @@
 import json
 
-from infrahub.log import get_logger
-from infrahub.message_bus import InfrahubResponse, messages
-from infrahub.message_bus.operations import check, event, finalize, git, refresh, requests, send, transform, trigger
+from infrahub.message_bus import RPCErrorResponse, messages
+from infrahub.message_bus.operations import (
+    check,
+    event,
+    finalize,
+    git,
+    refresh,
+    requests,
+    schema,
+    send,
+    transform,
+    trigger,
+)
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
 from infrahub.tasks.check import set_check_status
-
-log = get_logger()
 
 COMMAND_MAP = {
     "check.artifact.create": check.artifact.create,
@@ -38,12 +46,16 @@ COMMAND_MAP = {
     "request.artifact_definition.generate": requests.artifact_definition.generate,
     "request.proposed_change.cancel": requests.proposed_change.cancel,
     "request.proposed_change.data_integrity": requests.proposed_change.data_integrity,
+    "request.proposed_change.pipeline": requests.proposed_change.pipeline,
     "request.proposed_change.refresh_artifacts": requests.proposed_change.refresh_artifacts,
     "request.proposed_change.repository_checks": requests.proposed_change.repository_checks,
+    "request.proposed_change.run_tests": requests.proposed_change.run_tests,
     "request.proposed_change.schema_integrity": requests.proposed_change.schema_integrity,
     "request.repository.checks": requests.repository.checks,
     "request.repository.user_checks": requests.repository.user_checks,
     "send.webhook.event": send.webhook.event,
+    "schema.migration.path": schema.migration.path,
+    "schema.validator.path": schema.validator.path,
     "transform.jinja.template": transform.jinja.template,
     "transform.python.data": transform.python.data,
     "trigger.artifact_definition.generate": trigger.artifact_definition.generate,
@@ -60,11 +72,11 @@ async def execute_message(routing_key: str, message_body: bytes, service: Infrah
         await COMMAND_MAP[routing_key](message=message, service=service)
     except Exception as exc:  # pylint: disable=broad-except
         if message.reply_requested:
-            response = InfrahubResponse(passed=False, response_class="rpc_error", response_data={"error": str(exc)})
+            response = RPCErrorResponse(errors=[str(exc)], initial_message=message.model_dump())
             await service.reply(message=response, initiator=message)
             return
         if message.reached_max_retries:
-            log.error("Message failed after maximum number of retries", error=str(exc))
+            service.log.error("Message failed after maximum number of retries", error=str(exc))
             await set_check_status(message, conclusion="failure", service=service)
             return
         message.increase_retry_count()

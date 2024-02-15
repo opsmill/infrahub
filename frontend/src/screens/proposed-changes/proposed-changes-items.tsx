@@ -5,6 +5,7 @@ import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Retry } from "../../components/buttons/retry";
 import { RoundedButton } from "../../components/buttons/rounded-button";
 import SlideOver from "../../components/display/slide-over";
 import {
@@ -53,11 +54,18 @@ export const ProposedChanges = () => {
     ${queryString}
   `;
 
-  const { loading, error, data = {}, refetch } = useQuery(query, { skip: !schemaData });
+  const {
+    loading,
+    error,
+    data = {},
+    refetch,
+  } = useQuery(query, { skip: !schemaData, notifyOnNetworkStatusChange: true });
+
+  const handleRefetch = () => refetch();
 
   const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
-  const { count, edges } = result;
+  const { count = "...", edges = [] } = result;
 
   useTitle("Proposed changes list");
 
@@ -68,10 +76,6 @@ export const ProposedChanges = () => {
       id: auth?.data?.sub,
     },
   };
-
-  if (!schemaData || loading) {
-    return <LoadingScreen />;
-  }
 
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching the proposed changes list." />;
@@ -93,14 +97,14 @@ export const ProposedChanges = () => {
 
   return (
     <div>
-      <div className="bg-white flex items-center p-4 w-full">
-        {schemaData && (
-          <div className="sm:flex-auto flex items-center">
-            <h1 className="text-md font-semibold text-gray-900">
-              {schemaData.name} ({count})
-            </h1>
+      <div className="bg-white flex items-center justify-between p-4 w-full">
+        <div className="flex items-center">
+          <h1 className="text-base font-semibold">Proposed changes ({count})</h1>
+
+          <div className="mx-2">
+            <Retry isLoading={loading} onClick={handleRefetch} />
           </div>
-        )}
+        </div>
 
         <RoundedButton
           disabled={!auth?.permissions?.write}
@@ -112,6 +116,8 @@ export const ProposedChanges = () => {
       </div>
 
       <ul className="grid gap-6 grid-cols-1 p-6">
+        {!rows && loading && <LoadingScreen />}
+
         {rows.map((row: any, index: number) => (
           <ProposedChange key={index} row={row} refetch={refetch} />
         ))}

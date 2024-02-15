@@ -36,7 +36,6 @@ from graphql import (  # pylint: disable=no-name-in-module
 from graphql.utilities import (  # pylint: disable=no-name-in-module,import-error
     get_operation_ast,
 )
-from starlette.background import BackgroundTasks
 from starlette.datastructures import UploadFile
 from starlette.requests import HTTPConnection, Request
 from starlette.responses import JSONResponse, Response
@@ -59,11 +58,23 @@ from infrahub_sdk.utils import str_to_bool
 import infrahub.config as config
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
-from infrahub.core import get_branch, registry
+from infrahub.core import get_branch
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
+from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.log import get_logger
+
+from .metrics import (
+    GRAPHQL_DURATION_METRICS,
+    GRAPHQL_QUERY_DEPTH_METRICS,
+    GRAPHQL_QUERY_ERRORS_METRICS,
+    GRAPHQL_QUERY_HEIGHT_METRICS,
+    GRAPHQL_QUERY_OBJECTS_METRICS,
+    # GRAPHQL_QUERY_VARS_METRICS,
+    GRAPHQL_RESPONSE_SIZE_METRICS,
+    GRAPHQL_TOP_LEVEL_QUERIES_METRICS,
+)
 
 if TYPE_CHECKING:
     import graphene
@@ -182,40 +193,6 @@ class InfrahubGraphQLApp:
 
         return cast(Response, response)
 
-    async def _get_context_value(
-        self, db: InfrahubDatabase, request: HTTPConnection, branch: Branch, account_session: AccountSession
-    ) -> Dict:
-        context_value = {
-            "infrahub_branch": branch,
-            "infrahub_at": Timestamp(request.query_params.get("at", None)),
-            "request": request,
-            "background": BackgroundTasks(),
-            "infrahub_database": db,
-            "infrahub_rpc_client": request.app.state.rpc_client,
-            "account_session": account_session,
-            "related_node_ids": set(),
-        }
-
-        return context_value
-
-    async def _get_context_value_ws(
-        self,
-        db: InfrahubDatabase,
-        branch: Branch,
-        websocket: WebSocket,
-        account_session: Optional[AccountSession] = None,
-    ) -> Dict:
-        context_value = {
-            "infrahub_branch": branch,
-            "infrahub_at": Timestamp(),
-            "background": BackgroundTasks(),
-            "infrahub_database": db,
-            "infrahub_rpc_client": websocket.app.state.rpc_client,
-            "account_session": account_session,
-            "related_node_ids": set(),
-        }
-        return context_value
-
     async def _handle_http_request(
         self, request: Request, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
     ) -> JSONResponse:
@@ -229,27 +206,46 @@ class InfrahubGraphQLApp:
 
         operation = operations
         query = operation["query"]
-        schema_branch = registry.schema.get_schema_branch(name=branch.name)
-        graphql_schema = await schema_branch.get_graphql_schema(db=db)
-        analyzed_query = InfrahubGraphQLQueryAnalyzer(query=query, schema=graphql_schema, branch=branch)
+
+        at = request.query_params.get("at", None)
+        graphql_params = prepare_graphql_params(
+            db=db, branch=branch, at=at, account_session=account_session, request=request
+        )
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(query=query, schema=graphql_params.schema, branch=branch)
         await self.permission_checker.check(account_session=account_session, analyzed_query=analyzed_query)
 
         variable_values = operation.get("variables")
         operation_name = operation.get("operationName")
-        context_value = await self._get_context_value(
-            request=request, db=db, branch=branch, account_session=account_session
-        )
 
-        result = await graphql(
-            schema=graphql_schema,
-            source=query,
-            context_value=context_value,
-            root_value=self.root_value,
-            middleware=self.middleware,
-            variable_values=variable_values,
-            operation_name=operation_name,
-            execution_context_class=self.execution_context_class,
-        )
+        # if the query contains some mutation, it's not currently supported to set AT manually
+        if analyzed_query.contains_mutation:
+            graphql_params.context.at = Timestamp()
+
+        if operation_name == "IntrospectionQuery":
+            nbr_object_in_schema = len(graphql_params.schema.type_map)
+            self.logger.debug(
+                "Processing IntrospectionQuery .. ", branch=branch.name, nbr_object_in_schema=nbr_object_in_schema
+            )
+
+        labels = {
+            "type": "mutation" if analyzed_query.contains_mutation else "query",
+            "branch": branch.name,
+            "operation": operation_name if operation_name is not None else "",
+            "name": analyzed_query.operations[0].name,
+            "query_id": "",
+        }
+
+        with GRAPHQL_DURATION_METRICS.labels(**labels).time():
+            result = await graphql(
+                schema=graphql_params.schema,
+                source=query,
+                context_value=graphql_params.context,
+                root_value=self.root_value,
+                middleware=self.middleware,
+                variable_values=variable_values,
+                operation_name=operation_name,
+                execution_context_class=self.execution_context_class,
+            )
 
         response: Dict[str, Any] = {"data": result.data}
         if result.errors:
@@ -261,11 +257,26 @@ class InfrahubGraphQLApp:
                     )
             response["errors"] = [self.error_formatter(error) for error in result.errors]
 
-        return JSONResponse(
+        json_response = JSONResponse(
             response,
             status_code=200,
-            background=context_value.get("background"),
+            background=graphql_params.context.background,
         )
+
+        GRAPHQL_RESPONSE_SIZE_METRICS.labels(**labels).observe(len(json_response.render(response)))
+        GRAPHQL_QUERY_DEPTH_METRICS.labels(**labels).observe(await analyzed_query.calculate_depth())
+        GRAPHQL_QUERY_HEIGHT_METRICS.labels(**labels).observe(await analyzed_query.calculate_height())
+        # GRAPHQL_QUERY_VARS_METRICS.labels(**labels).observe(len(analyzed_query.variables))
+        GRAPHQL_TOP_LEVEL_QUERIES_METRICS.labels(**labels).observe(analyzed_query.nbr_queries)
+        GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(
+            len(await analyzed_query.get_models_in_use(types=graphql_params.context.types))
+        )
+
+        valid, errors = analyzed_query.is_valid
+        if not valid:
+            GRAPHQL_QUERY_ERRORS_METRICS.labels(**labels).observe(len(errors))
+
+        return json_response
 
     async def _run_websocket_server(self, db: InfrahubDatabase, branch: Branch, websocket: WebSocket) -> None:
         subscriptions: Dict[str, AsyncGenerator[Any, None]] = {}
@@ -324,18 +335,16 @@ class InfrahubGraphQLApp:
         variable_values = data.get("variables")
         operation_name = data.get("operationName")
 
-        context_value = await self._get_context_value_ws(db=db, branch=branch, websocket=websocket)
+        graphql_params = prepare_graphql_params(db=db, branch=branch)
+
         errors: List[GraphQLError] = []
         operation: Optional[OperationDefinitionNode] = None
         document: Optional[DocumentNode] = None
 
-        schema_branch = registry.schema.get_schema_branch(name=branch.name)
-        graphql_schema = await schema_branch.get_graphql_schema(db=db)
-
         try:
             document = parse(query)
             operation = get_operation_ast(document, operation_name)
-            errors = validate(graphql_schema, document)
+            errors = validate(graphql_params.schema, document)
         except GraphQLError as e:
             errors = [e]
 
@@ -343,12 +352,12 @@ class InfrahubGraphQLApp:
             assert document is not None
             if operation and operation.operation == OperationType.SUBSCRIPTION:
                 errors = await self._start_subscription(
-                    graphql_schema=graphql_schema,
+                    graphql_schema=graphql_params.schema,
                     websocket=websocket,
                     operation_id=operation_id,
                     subscriptions=subscriptions,
                     document=document,
-                    context_value=context_value,
+                    context_value=graphql_params.context,
                     variable_values=variable_values,
                     operation_name=operation_name,
                 )

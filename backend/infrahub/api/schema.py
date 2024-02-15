@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from pydantic import BaseModel, Field, model_validator
 from starlette.responses import JSONResponse
 
@@ -10,9 +10,11 @@ from infrahub import config, lock
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.migrations.schema.runner import schema_migrations_runner
 from infrahub.core.models import SchemaBranchHash  # noqa: TCH001
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema_manager import SchemaNamespace  # noqa: TCH001
+from infrahub.core.validators.checker import schema_validators_checker
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import PermissionDeniedError, SchemaNotFound
 from infrahub.log import get_logger
@@ -22,6 +24,8 @@ from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
     from typing_extensions import Self
+
+    from infrahub.services import InfrahubServices
 
 
 log = get_logger()
@@ -125,13 +129,15 @@ async def get_schema_by_kind(
 
 
 @router.post("/load")
-async def load_schema(
+async def load_schema(  # noqa: PLR0911 pylint: disable=R0911,too-many-branches,too-many-statements
+    request: Request,
     schemas: SchemasLoadAPI,
     background_tasks: BackgroundTasks,
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
     _: str = Depends(get_current_user),
 ) -> JSONResponse:
+    service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)
 
     errors: List[str] = []
@@ -144,34 +150,65 @@ async def load_schema(
     async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
 
+        # ----------------------------------------------------------
+        # Validate if the format of the new schema is valid
+        # ----------------------------------------------------------
         # We create a copy of the existing branch schema to do some validation before loading it.
-        tmp_schema = branch_schema.duplicate()
+        candidate_schema = branch_schema.duplicate()
         try:
             for schema in schemas.schemas:
-                tmp_schema.load_schema(schema=schema)
-            tmp_schema.process()
+                candidate_schema.load_schema(schema=schema)
+            candidate_schema.process()
         except SchemaNotFound as exc:
             return JSONResponse(status_code=422, content={"error": exc.message})
         except ValueError as exc:
             return JSONResponse(status_code=422, content={"error": str(exc)})
 
-        diff = tmp_schema.diff(branch_schema)
+        result = branch_schema.validate_update(other=candidate_schema)
 
-        if diff.all:
-            log.info(f"Schema has diff, will need to be updated {diff.all}", branch=branch.name)
-            async with db.start_transaction() as db:
-                await registry.schema.update_schema_branch(
-                    schema=tmp_schema, db=db, branch=branch.name, limit=diff.all, update_db=True
-                )
-                branch.update_schema_hash()
-                log.info("Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
-                await branch.save(db=db)
+        if result.errors:
+            return JSONResponse(
+                status_code=422, content={"error": ", ".join([error.to_string() for error in result.errors])}
+            )
 
-            if config.SETTINGS.broker.enable:
-                message = messages.EventSchemaUpdate(
-                    branch=branch.name,
-                    meta=Meta(initiator_id=WORKER_IDENTITY),
-                )
-                background_tasks.add_task(services.send, message)
+        if not result.diff.all:
+            return JSONResponse(status_code=202, content={})
+
+        # ----------------------------------------------------------
+        # Validate if the new schema is valid with the content of the database
+        # ----------------------------------------------------------
+        error_messages, _ = await schema_validators_checker(
+            branch=branch, schema=candidate_schema, constraints=result.constraints, service=service
+        )
+        if error_messages:
+            return JSONResponse(status_code=422, content={"error": ",\n".join(error_messages)})
+
+        # ----------------------------------------------------------
+        # Update the schema
+        # ----------------------------------------------------------
+        log.info("Schema has diff, will need to be updated", diff=result.diff.all, branch=branch.name)
+        async with db.start_transaction() as dbt:
+            await registry.schema.update_schema_branch(
+                schema=candidate_schema, db=dbt, branch=branch.name, limit=result.diff.all, update_db=True
+            )
+            branch.update_schema_hash()
+            log.info("Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
+            await branch.save(db=dbt)
+
+        # ----------------------------------------------------------
+        # Run the migrations
+        # ----------------------------------------------------------
+        error_messages = await schema_migrations_runner(
+            branch=branch, schema=candidate_schema, migrations=result.migrations, service=service
+        )
+        if error_messages:
+            return JSONResponse(status_code=500, content={"error": ",\n".join(error_messages)})
+
+        if config.SETTINGS.broker.enable:
+            message = messages.EventSchemaUpdate(
+                branch=branch.name,
+                meta=Meta(initiator_id=WORKER_IDENTITY),
+            )
+            background_tasks.add_task(services.send, message)
 
     return JSONResponse(status_code=202, content={})

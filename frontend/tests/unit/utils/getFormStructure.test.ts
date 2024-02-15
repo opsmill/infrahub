@@ -20,15 +20,14 @@ describe("Form structure and object update", () => {
       accountTokenDetailsMocksSchema[0],
       accountTokenDetailsMocksSchema,
       genericsMocks,
-      [],
-      accountTokenDetailsMocksDataWithDate.InternalAccountToken.edges[0].node,
-      {}
+      accountTokenDetailsMocksDataWithDate.InternalAccountToken.edges[0].node
     );
 
     // For each attribute, check from the mock data
     calculatedAttributes.map((attribute, index) => {
       // Slices last character to remove the closing bracket
-      const mockData = JSON.stringify(accountTokenFormStructure[index]).slice(-1);
+      const mockString = JSON.stringify(accountTokenFormStructure[index]);
+      const mockData = mockString.substring(0, mockString.length - 1);
 
       expect(JSON.stringify(attribute)).toContain(mockData);
     });

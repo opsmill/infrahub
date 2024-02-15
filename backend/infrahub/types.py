@@ -57,7 +57,7 @@ class InfrahubDataType:
         return getattr(module, cls.graphql_query)
 
     @classmethod
-    def get_graphql_type_name(cls):
+    def get_graphql_type_name(cls) -> str:
         return cls.get_graphql_type().__name__
 
     @classmethod
@@ -238,7 +238,7 @@ class Checkbox(InfrahubDataType):
     graphql_query = "CheckboxAttributeType"
     graphql_input = "CheckboxAttributeInput"
     graphql_filter = graphene.Boolean
-    infrahub = "String"
+    infrahub = "Boolean"
 
 
 class List(InfrahubDataType):
