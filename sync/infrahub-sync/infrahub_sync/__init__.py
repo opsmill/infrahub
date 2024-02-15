@@ -21,9 +21,11 @@ class SyncAdapter(BaseModel):
     name: str
     settings: Optional[Dict[str, Any]]
 
+
 class SyncStore(BaseModel):
     type: str
     settings: Optional[Dict[str, Any]]
+
 
 class SyncConfig(BaseModel):
     name: str

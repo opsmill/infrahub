@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any, Dict
 
 import pynautobot
 from diffsync import DiffSync, DiffSyncModel
-
 from infrahub_sync import (
     DiffSyncMixin,
     DiffSyncModelMixin,

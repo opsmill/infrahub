@@ -1,5 +1,5 @@
 ---
-name: from-nautobot
+name: from-nautobot-v2
 source:
   name: nautobot
   settings:

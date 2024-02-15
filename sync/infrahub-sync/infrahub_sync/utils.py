@@ -8,13 +8,15 @@ import yaml
 from diffsync.store.local import LocalStore
 from diffsync.store.redis import RedisStore
 from infrahub_sdk.schema import GenericSchema, NodeSchema
+from potenda import Potenda
 
 from infrahub_sync import SyncAdapter, SyncConfig, SyncInstance
 from infrahub_sync.generator import render_template
-from potenda import Potenda
 
 
-def render_adapter(sync_instance: SyncInstance, schema: MutableMapping[str, NodeSchema | GenericSchema]) -> List[Tuple[str, str]]:
+def render_adapter(
+    sync_instance: SyncInstance, schema: MutableMapping[str, NodeSchema | GenericSchema]
+) -> List[Tuple[str, str]]:
     files_to_render = (
         ("diffsync_models.j2", "sync_models.py"),
         ("diffsync_adapter.j2", "sync_adapter.py"),
@@ -22,7 +24,6 @@ def render_adapter(sync_instance: SyncInstance, schema: MutableMapping[str, Node
     rendered_files = []
     for adapter in [sync_instance.source, sync_instance.destination]:
         output_dir_absolute = str(os.path.join(sync_instance.directory, adapter.name))
-
 
         output_dir_path = Path(output_dir_absolute)
         if not output_dir_path.is_dir():
@@ -67,7 +68,7 @@ def import_adapter(sync_instance: SyncInstance, adapter: SyncAdapter):
 
 def get_all_sync(directory: Optional[str] = None) -> List[SyncInstance]:
     results = []
-    search_directory = Path(directory) if directory else Path(__file__).parent / "sync"
+    search_directory = Path(directory) if directory else Path(__file__).parent
     config_files = search_directory.glob("**/config.yml")
 
     for config_file in config_files:
@@ -79,7 +80,10 @@ def get_all_sync(directory: Optional[str] = None) -> List[SyncInstance]:
 
     return results
 
-def get_instance(name: Optional[str] = None, config_file: Optional[str] = None, directory: Optional[str] = None) -> Optional[SyncInstance]:
+
+def get_instance(
+    name: Optional[str] = None, config_file: Optional[str] = None, directory: Optional[str] = None
+) -> Optional[SyncInstance]:
     config_file_path = None
     if config_file:
         if Path(config_file).is_absolute() or directory is None:
@@ -125,30 +129,30 @@ def get_potenda_from_instance(
             target="source",
             adapter=sync_instance.source,
             branch=branch,
-            internal_storage_engine=internal_storage_engine
-            )
+            internal_storage_engine=internal_storage_engine,
+        )
     else:
         src = source(
             config=sync_instance,
             target="source",
             adapter=sync_instance.source,
-            internal_storage_engine=internal_storage_engine
-            )
+            internal_storage_engine=internal_storage_engine,
+        )
     if sync_instance.destination.name == "infrahub" and branch:
         dst = destination(
             config=sync_instance,
             target="destination",
             adapter=sync_instance.destination,
             branch=branch,
-            internal_storage_engine=internal_storage_engine
-            )
+            internal_storage_engine=internal_storage_engine,
+        )
     else:
         dst = destination(
             config=sync_instance,
             target="destination",
             adapter=sync_instance.destination,
-            internal_storage_engine=internal_storage_engine
-            )
+            internal_storage_engine=internal_storage_engine,
+        )
 
     ptd = Potenda(
         destination=dst,

@@ -1,15 +1,10 @@
-import json
 import logging
-import os
-from pathlib import Path
 from timeit import default_timer as timer
 
 import typer
-import yaml
 from infrahub_sdk import InfrahubClientSync
 from rich.console import Console
 
-from infrahub_sync import SyncInstance
 from infrahub_sync.utils import get_all_sync, get_instance, get_potenda_from_instance, render_adapter
 
 app = typer.Typer()
@@ -17,9 +12,11 @@ console = Console()
 
 logging.basicConfig(level=logging.WARNING)
 
+
 def print_error_and_abort(message: str):
     console.print(f"Error: {message}", style="bold red")
     raise typer.Abort()
+
 
 @app.command(name="list")
 def list_projects(
@@ -64,7 +61,6 @@ def sync_cmd(
         default=True, help="Print the differences between the source and the destinatio before syncing"
     ),
     show_progress: bool = typer.Option(default=True, help="Show a progress bar during syncing"),
-
 ):
     """Synchronize the data between source and the destination systems for a given project or configuration file."""
     if sum([bool(name), bool(config_file)]) != 1:
@@ -73,7 +69,6 @@ def sync_cmd(
     sync_instance = get_instance(name=name, config_file=config_file, directory=directory)
     if not sync_instance:
         print_error_and_abort("Failed to load sync instance.")
-
 
     ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch, show_progress=show_progress)
     ptd.load()

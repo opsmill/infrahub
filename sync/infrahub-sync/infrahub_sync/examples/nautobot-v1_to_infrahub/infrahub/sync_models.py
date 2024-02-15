@@ -8,834 +8,224 @@ from infrahub_sync.adapters.infrahub import InfrahubModel
 #  All modifications will be lost the next time you reexecute this command
 # -------------------------------------------------------
 
-
-
-
 class CoreStandardGroup(InfrahubModel):
     _modelname = "CoreStandardGroup"
-    _identifiers = (&#34;name&#34;,)
-    _attributes = (&#34;description&#34;,)
-
-
-
-
+    _identifiers = ("name",)
+    _attributes = ("description",)
     name: str
-
-
-
-
-
     description: Optional[str]
-
-
-
-
-
-
-
-
-
-
-
-
     local_id: Optional[str]
     local_data: Optional[Any]
-
-
-
-
-
-
 
 class BuiltinTag(InfrahubModel):
     _modelname = "BuiltinTag"
-    _identifiers = (&#34;name&#34;,)
-    _attributes = (&#34;description&#34;,)
-
-
-
-
+    _identifiers = ("name",)
+    _attributes = ("description",)
     name: str
-
-
-
     description: Optional[str]
-
-
-
-
-
-
-
-
     local_id: Optional[str]
     local_data: Optional[Any]
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+class InfraAutonomousSystem(InfrahubModel):
+    _modelname = "InfraAutonomousSystem"
+    _identifiers = ("name",)
+    _attributes = ("organization", "description")
+    name: str
+    asn: int
+    description: Optional[str]
+    organization: str
+    local_id: Optional[str]
+    local_data: Optional[Any]
 
 class InfraCircuit(InfrahubModel):
     _modelname = "InfraCircuit"
-    _identifiers = (&#34;circuit_id&#34;,)
-    _attributes = (&#34;provider&#34;, &#34;type&#34;, &#34;tags&#34;, &#34;description&#34;, &#34;vendor_id&#34;)
-
-
-
-
+    _identifiers = ("circuit_id",)
+    _attributes = ("provider", "type", "tags", "description", "vendor_id")
     circuit_id: str
-
-
-
     description: Optional[str]
-
-
-
     vendor_id: Optional[str]
-
-
-
-
-
-
-
-
     provider: str
-
-
-
-
-
     type: str
-
-
-
     tags: List[str] = []
-
-
-
-
-
-
-
     local_id: Optional[str]
     local_data: Optional[Any]
-
-
-
-
-
-
 
 class TemplateCircuitType(InfrahubModel):
     _modelname = "TemplateCircuitType"
-    _identifiers = (&#34;name&#34;,)
-    _attributes = (&#34;tags&#34;, &#34;description&#34;)
-
-
-
-
+    _identifiers = ("name",)
+    _attributes = ("description",)
     name: str
-
-
-
     description: Optional[str]
-
-
-
-
-
-
-
-
-    tags: List[str] = []
-
-
-
-
-
-
-
     local_id: Optional[str]
     local_data: Optional[Any]
-
-
-
-
 
 class InfraDevice(InfrahubModel):
     _modelname = "InfraDevice"
-    _identifiers = (&#34;name&#34;, &#34;location&#34;, &#34;rack&#34;, &#34;organization&#34;)
-    _attributes = (&#34;model&#34;, &#34;role&#34;, &#34;tags&#34;, &#34;description&#34;, &#34;serial_number&#34;, &#34;asset_tag&#34;)
-
-
-
-
+    _identifiers = ("location", "organization", "name")
+    _attributes = ("model", "rack", "role", "tags", "platform", "serial_number", "asset_tag")
     name: Optional[str]
-
-
-
-    description: Optional[str]
-
-
-
     serial_number: Optional[str]
-
-
-
     asset_tag: Optional[str]
-
-
-
-
     location: str
-
-
-
     model: str
-
-
-
     rack: Optional[str]
-
-
-
-
-
     role: Optional[str]
-
-
-
-
-
-
-
     tags: List[str] = []
-
-
-
-
-
-
-
+    platform: Optional[str]
     organization: Optional[str]
-
-
-
-
-
-
-
-
-
     local_id: Optional[str]
     local_data: Optional[Any]
-
-
-
-
 
 class TemplateDeviceType(InfrahubModel):
     _modelname = "TemplateDeviceType"
-    _identifiers = (&#34;name&#34;, &#34;manufacturer&#34;)
-    _attributes = (&#34;tags&#34;, &#34;part_number&#34;, &#34;height&#34;, &#34;full_depth&#34;)
-
-
-
-
+    _identifiers = ("name", "manufacturer")
+    _attributes = ("tags", "part_number", "height", "full_depth")
     part_number: Optional[str]
-
-
-
     height: Optional[int]
-
-
-
     full_depth: Optional[bool]
-
-
-
     name: str
-
-
-
-
-
-
-
-
-
-
     manufacturer: str
-
-
-
     tags: List[str] = []
-
-
-
-
-
-
-
     local_id: Optional[str]
     local_data: Optional[Any]
-
-
-
-
-
-
-
-
 
 class InfraIPAddress(InfrahubModel):
     _modelname = "InfraIPAddress"
-    _identifiers = (&#34;address&#34;, &#34;vrf&#34;)
-    _attributes = (&#34;organization&#34;, &#34;description&#34;)
-
-
-
-
+    _identifiers = ("address", "vrf")
+    _attributes = ("organization", "role", "description")
     address: str
-
-
-
     description: Optional[str]
-
-
-
-
     organization: Optional[str]
-
-
-
-
-
-
-
     vrf: Optional[str]
-
-
-
-
-
-
-
-
-
+    role: Optional[str]
     local_id: Optional[str]
     local_data: Optional[Any]
 
-
-
-
-
-
-
-
-
-
+class InfraPlatform(InfrahubModel):
+    _modelname = "InfraPlatform"
+    _identifiers = ("name", "manufacturer")
+    _attributes = ("description", "napalm_driver")
+    name: str
+    description: Optional[str]
+    napalm_driver: Optional[str]
+    local_id: Optional[str]
+    local_data: Optional[Any]
 
 class InfraProviderNetwork(InfrahubModel):
     _modelname = "InfraProviderNetwork"
-    _identifiers = (&#34;name&#34;,)
-    _attributes = (&#34;provider&#34;, &#34;tags&#34;, &#34;description&#34;, &#34;vendor_id&#34;)
-
-
-
-
+    _identifiers = ("name",)
+    _attributes = ("provider", "tags", "description", "vendor_id")
     name: str
-
-
-
     description: Optional[str]
-
-
-
     vendor_id: Optional[str]
-
-
-
-
-
-
     provider: str
-
-
-
     tags: List[str] = []
-
-
-
-
-
-
-
-
-
     local_id: Optional[str]
     local_data: Optional[Any]
-
-
-
-
 
 class InfraPrefix(InfrahubModel):
     _modelname = "InfraPrefix"
-    _identifiers = (&#34;prefix&#34;, &#34;vrf&#34;)
-    _attributes = (&#34;organization&#34;, &#34;role&#34;, &#34;description&#34;)
-
-
-
-
+    _identifiers = ("prefix", "vrf", "organization")
+    _attributes = ("location", "role", "vlan", "description")
     prefix: str
-
-
-
     description: Optional[str]
-
-
-
-
     organization: Optional[str]
-
-
-
-
-
-
-
-
-
+    location: Optional[str]
     role: Optional[str]
-
-
-
-
-
     vrf: Optional[str]
-
-
-
-
-
-
-
-
-
-
-
+    vlan: Optional[str]
     local_id: Optional[str]
     local_data: Optional[Any]
-
-
-
-
 
 class InfraRack(InfrahubModel):
     _modelname = "InfraRack"
-    _identifiers = (&#34;name&#34;, &#34;location&#34;)
-    _attributes = (&#34;role&#34;, &#34;tags&#34;, &#34;height&#34;, &#34;facility_id&#34;, &#34;serial_number&#34;, &#34;asset_tag&#34;)
-
-
-
-
+    _identifiers = ("name",)
+    _attributes = ("location", "role", "tags", "height", "facility_id", "serial_number", "asset_tag")
     name: str
-
-
-
-
-
     height: str
-
-
-
     facility_id: Optional[str]
-
-
-
     serial_number: Optional[str]
-
-
-
     asset_tag: Optional[str]
-
-
-
-
     location: str
-
-
-
-
-
     role: Optional[str]
-
-
-
     tags: List[str] = []
-
-
-
-
-
-
-
     local_id: Optional[str]
     local_data: Optional[Any]
-
-
-
-
-
-
 
 class InfraRouteTarget(InfrahubModel):
     _modelname = "InfraRouteTarget"
-    _identifiers = (&#34;name&#34;, &#34;organization&#34;)
-    _attributes = (&#34;description&#34;,)
-
-
-
-
+    _identifiers = ("name", "organization")
+    _attributes = ("description",)
     name: str
-
-
-
     description: Optional[str]
-
-
-
-
     organization: Optional[str]
-
-
-
-
-
-
-
-
-
     local_id: Optional[str]
     local_data: Optional[Any]
-
-
-
-
 
 class InfraVLAN(InfrahubModel):
     _modelname = "InfraVLAN"
-    _identifiers = (&#34;name&#34;, &#34;vlan_id&#34;, &#34;location&#34;, &#34;vlan_group&#34;)
-    _attributes = (&#34;organization&#34;, &#34;description&#34;)
-
-
-
-
+    _identifiers = ("name", "vlan_id", "location", "organization")
+    _attributes = ("role", "vlan_group", "description")
     name: str
-
-
-
     description: Optional[str]
-
-
-
     vlan_id: int
-
-
-
-
     organization: Optional[str]
-
-
-
     location: Optional[str]
-
-
-
-
-
-
-
-
-
+    role: Optional[str]
     vlan_group: Optional[str]
-
-
-
-
-
-
-
     local_id: Optional[str]
     local_data: Optional[Any]
-
-
-
-
 
 class InfraVRF(InfrahubModel):
     _modelname = "InfraVRF"
-    _identifiers = (&#34;name&#34;,)
-    _attributes = (&#34;organization&#34;, &#34;import_rt&#34;, &#34;export_rt&#34;, &#34;description&#34;, &#34;vrf_rd&#34;)
-
-
-
-
+    _identifiers = ("name",)
+    _attributes = ("organization", "import_rt", "export_rt", "description", "vrf_rd")
     name: str
-
-
-
     description: Optional[str]
-
-
-
     vrf_rd: Optional[str]
-
-
-
-
     organization: Optional[str]
-
-
-
-
-
-
-
-
-
-
-
     import_rt: List[str] = []
-
-
-
     export_rt: List[str] = []
-
-
-
-
-
-
-
     local_id: Optional[str]
     local_data: Optional[Any]
-
-
-
-
 
 class CoreOrganization(InfrahubModel):
     _modelname = "CoreOrganization"
-    _identifiers = (&#34;name&#34;,)
-    _attributes = (&#34;group&#34;, &#34;description&#34;, &#34;type&#34;)
-
-
-
-
+    _identifiers = ("name",)
+    _attributes = ("group", "description", "type")
     name: str
-
-
-
-
-
     description: Optional[str]
-
-
-
     type: Optional[str]
-
-
-
-
-
-
     group: Optional[str]
-
-
-
-
-
-
-
     local_id: Optional[str]
     local_data: Optional[Any]
 
-
-
-
-
-
+class BuiltinStatus(InfrahubModel):
+    _modelname = "BuiltinStatus"
+    _identifiers = ("name",)
+    _attributes = ("label", "description")
+    name: str
+    label: Optional[str]
+    description: Optional[str]
+    local_id: Optional[str]
+    local_data: Optional[Any]
 
 class BuiltinRole(InfrahubModel):
     _modelname = "BuiltinRole"
-    _identifiers = (&#34;name&#34;,)
-    _attributes = (&#34;description&#34;,)
-
-
-
-
+    _identifiers = ("name",)
+    _attributes = ("description",)
     name: str
-
-
-
-
-
     description: Optional[str]
-
-
-
-
-
-
-
-
     local_id: Optional[str]
     local_data: Optional[Any]
-
-
-
-
 
 class BuiltinLocation(InfrahubModel):
     _modelname = "BuiltinLocation"
-    _identifiers = (&#34;name&#34;,)
-    _attributes = (&#34;organization&#34;, &#34;tags&#34;, &#34;group&#34;, &#34;description&#34;, &#34;type&#34;)
-
-
-
-
+    _identifiers = ("name",)
+    _attributes = ("organization", "description", "type")
     name: str
-
-
-
     description: Optional[str]
-
-
-
     type: str
-
-
-
-
-
-
     organization: Optional[str]
-
-
-
-    tags: List[str] = []
-
-
-
-    group: Optional[str]
-
-
-
-
-
-
-
-
-
-
-
     local_id: Optional[str]
     local_data: Optional[Any]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
