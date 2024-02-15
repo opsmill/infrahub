@@ -4,7 +4,7 @@ from typing import Any, Iterable, Optional
 
 import pytest
 import yaml
-from pytest import Item, MarkDecorator
+from pytest import Item
 
 from .items import (
     InfrahubCheckIntegrationItem,
@@ -50,16 +50,6 @@ ITEMS_MAPPING = {
 
 
 class InfrahubYamlFile(pytest.File):
-    def get_marker(self, group: InfrahubTestGroup) -> Optional[MarkDecorator]:
-        """Instantiate and return the specific marker to apply to all tests in a group."""
-        marker_decorator = MARKER_MAPPING.get(group.resource)
-
-        marker = None
-        if marker_decorator is not None:
-            marker = marker_decorator(name=group.resource_name)
-
-        return marker
-
     def get_resource_config(self, group: InfrahubTestGroup) -> Optional[Any]:
         """Retrieve the resource configuration to apply to all tests in a group."""
         resource_config_function = CONFIG_MAPPING.get(group.resource)
@@ -77,7 +67,7 @@ class InfrahubYamlFile(pytest.File):
 
     def collect_group(self, group: InfrahubTestGroup) -> Iterable[Item]:
         """Collect all items for a group."""
-        marker = self.get_marker(group)
+        marker = MARKER_MAPPING[group.resource]
         resource_config = self.get_resource_config(group)
 
         for test in group.tests:
@@ -91,8 +81,7 @@ class InfrahubYamlFile(pytest.File):
             )
 
             item.add_marker(pytest.mark.infrahub)
-            if marker:
-                item.add_marker(marker)
+            item.add_marker(marker)
             if "sanity" in test.spec.kind:
                 item.add_marker(pytest.mark.infrahub_sanity)
             if "unit" in test.spec.kind:
