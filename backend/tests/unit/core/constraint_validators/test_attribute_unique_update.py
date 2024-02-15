@@ -7,8 +7,8 @@ from infrahub.core.validators.attribute.unique import (
     AttributeUniquenessChecker,
     AttributeUniqueUpdateValidatorQuery,
 )
+from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPath
 
 
 async def test_query(
@@ -90,7 +90,7 @@ async def test_validator(
     seats_attr = car_schema.get_attribute(name="nbr_seats")
     seats_attr.unique = True
 
-    message = SchemaValidatorPath(
+    request = SchemaConstraintValidatorRequest(
         branch=branch,
         constraint_name="attribute.regex.update",
         node_schema=car_schema,
@@ -98,7 +98,7 @@ async def test_validator(
     )
 
     constraint_checker = AttributeUniquenessChecker(db=db, branch=branch)
-    grouped_data_paths = await constraint_checker.check(message)
+    grouped_data_paths = await constraint_checker.check(request)
 
     assert len(grouped_data_paths) == 1
     data_paths = grouped_data_paths[0].get_all_data_paths()

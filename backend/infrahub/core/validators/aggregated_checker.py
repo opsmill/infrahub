@@ -16,9 +16,9 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.path import GroupedDataPaths
     from infrahub.database import InfrahubDatabase
-    from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPath
 
     from .interface import ConstraintCheckerInterface
+    from .model import SchemaConstraintValidatorRequest
 
 
 class AggregatedConstraintChecker:
@@ -29,18 +29,18 @@ class AggregatedConstraintChecker:
         self.db = db
         self.branch = branch
 
-    async def run_constraints(self, message: SchemaValidatorPath) -> List[SchemaViolation]:
+    async def run_constraints(self, request: SchemaConstraintValidatorRequest) -> List[SchemaViolation]:
         grouped_data_paths_by_constraint_name: Dict[str, List[GroupedDataPaths]] = {}
         for constraint in self.constraints:
-            if constraint.supports(message):
-                grouped_data_paths_by_constraint_name[constraint.name] = await constraint.check(message)
+            if constraint.supports(request):
+                grouped_data_paths_by_constraint_name[constraint.name] = await constraint.check(request)
 
         ids: List[str] = []
         for grouped_path in chain(*grouped_data_paths_by_constraint_name.values()):
             ids.extend([path.node_id for path in grouped_path.get_all_data_paths()])
         # Try to query the nodes with their display label
         # it's possible that it might not work if the obj is not valid with the schema
-        fields = {"display_label": None, message.schema_path.field_name: None}
+        fields = {"display_label": None, request.schema_path.field_name: None}
         try:
             nodes = await registry.manager.get_many(db=self.db, ids=ids, branch=self.branch, fields=fields)
         except ValidationError:
@@ -53,7 +53,7 @@ class AggregatedConstraintChecker:
                 node_display_label = None
                 if node:
                     node_display_label = await node.render_display_label()
-                    if message.node_schema.display_labels:
+                    if request.node_schema.display_labels:
                         display_label = f"Node {node_display_label} ({node.get_kind()}: {path.node_id})"
                     else:
                         display_label = f"Node {node_display_label}"
@@ -66,16 +66,16 @@ class AggregatedConstraintChecker:
                     display_label=node_display_label or display_label,
                     full_display_label=display_label,
                 )
-                violation.message = await self.render_error_message(
-                    violation=violation, constraint_name=constraint_name, message=message
+                violation.message = await self.render_error_request(
+                    violation=violation, constraint_name=constraint_name, request=request
                 )
                 violations.append(violation)
         return violations
 
-    async def render_error_message(
-        self, violation: SchemaViolation, constraint_name: str, message: SchemaValidatorPath
+    async def render_error_request(
+        self, violation: SchemaViolation, constraint_name: str, request: SchemaConstraintValidatorRequest
     ) -> str:
-        return f"{violation.full_display_label} is not compatible with the constraint {constraint_name!r} at {message.schema_path.get_path()!r}"
+        return f"{violation.full_display_label} is not compatible with the constraint {constraint_name!r} at {request.schema_path.get_path()!r}"
 
 
 def build_aggregated_constraint_checker(db: InfrahubDatabase, branch: Optional[Branch]) -> AggregatedConstraintChecker:

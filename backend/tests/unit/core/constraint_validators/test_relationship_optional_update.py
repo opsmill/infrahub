@@ -3,12 +3,12 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import PathResourceType, PathType, SchemaPathType
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
+from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.relationship.optional import (
     RelationshipOptionalChecker,
     RelationshipOptionalUpdateValidatorQuery,
 )
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPath
 
 
 async def test_query(
@@ -57,7 +57,7 @@ async def test_validator(
     name_rel = person_schema.get_relationship(name="cars")
     name_rel.optional = False
 
-    message = SchemaValidatorPath(
+    request = SchemaConstraintValidatorRequest(
         branch=default_branch,
         constraint_name="attribute.regex.update",
         node_schema=person_schema,
@@ -65,7 +65,7 @@ async def test_validator(
     )
 
     constraint_checker = RelationshipOptionalChecker(db=db, branch=default_branch)
-    grouped_data_paths = await constraint_checker.check(message)
+    grouped_data_paths = await constraint_checker.check(request)
 
     assert len(grouped_data_paths) == 1
     data_paths = grouped_data_paths[0].get_all_data_paths()

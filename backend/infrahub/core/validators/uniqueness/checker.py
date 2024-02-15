@@ -7,9 +7,9 @@ from infrahub.core.branch import Branch
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPath
 
 from ..interface import ConstraintCheckerInterface
+from ..model import SchemaConstraintValidatorRequest
 from .model import (
     NodeUniquenessQueryRequest,
     NonUniqueAttribute,
@@ -47,16 +47,16 @@ class UniquenessChecker(ConstraintCheckerInterface):
     def name(self) -> str:
         return "node.uniqueness_constraints.update"
 
-    def supports(self, message: SchemaValidatorPath) -> bool:
-        return message.constraint_name == self.name
+    def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
+        return request.constraint_name == self.name
 
     async def get_branch(self) -> Branch:
         if not isinstance(self.branch, Branch):
             self.branch = await registry.get_branch(db=self.db, branch=self.branch)
         return self.branch
 
-    async def check(self, message: SchemaValidatorPath) -> List[GroupedDataPaths]:
-        schema_objects = [message.node_schema]
+    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
+        schema_objects = [request.node_schema]
 
         non_unique_nodes_lists = await asyncio.gather(*[self.check_one_schema(schema) for schema in schema_objects])
 

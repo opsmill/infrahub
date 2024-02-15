@@ -11,7 +11,8 @@ from ..shared import AttributeSchemaValidatorQuery
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-    from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPath
+
+    from ..model import SchemaConstraintValidatorRequest
 
 
 class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
@@ -75,15 +76,15 @@ class AttributeRegexChecker(ConstraintCheckerInterface):
     def name(self) -> str:
         return "attribute.regex.update"
 
-    def supports(self, message: SchemaValidatorPath) -> bool:
-        return message.constraint_name == "attribute.regex.update"
+    def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
+        return request.constraint_name == "attribute.regex.update"
 
-    async def check(self, message: SchemaValidatorPath) -> List[GroupedDataPaths]:
+    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
         grouped_data_paths_list = []
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
-                db=self.db, branch=self.branch, node_schema=message.node_schema, schema_path=message.schema_path
+                db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())

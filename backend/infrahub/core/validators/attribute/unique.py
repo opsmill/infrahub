@@ -11,7 +11,8 @@ from ..shared import AttributeSchemaValidatorQuery
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-    from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPath
+
+    from ..model import SchemaConstraintValidatorRequest
 
 
 class AttributeUniqueUpdateValidatorQuery(AttributeSchemaValidatorQuery):
@@ -87,19 +88,19 @@ class AttributeUniquenessChecker(ConstraintCheckerInterface):
     def name(self) -> str:
         return "attribute.unique.update"
 
-    def supports(self, message: SchemaValidatorPath) -> bool:
-        return message.constraint_name == "attribute.unique.update"
+    def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
+        return request.constraint_name == "attribute.unique.update"
 
-    async def check(self, message: SchemaValidatorPath) -> List[GroupedDataPaths]:
+    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
         grouped_data_paths_list = []
-        attribute_schema = message.node_schema.get_attribute(name=message.schema_path.field_name)
+        attribute_schema = request.node_schema.get_attribute(name=request.schema_path.field_name)
         if attribute_schema.unique is False:
             return []
 
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
-                db=self.db, branch=self.branch, node_schema=message.node_schema, schema_path=message.schema_path
+                db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())

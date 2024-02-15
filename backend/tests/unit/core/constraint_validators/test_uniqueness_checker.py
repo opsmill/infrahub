@@ -4,22 +4,22 @@ from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
+from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPath
 
 
 class TestUniquenessChecker:
     async def __call_system_under_test(self, db, branch, schema):
         checker = UniquenessChecker(db, branch)
         schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind=schema.kind)
-        message = SchemaValidatorPath(
+        request = SchemaConstraintValidatorRequest(
             branch=branch,
             constraint_name="node.uniqueness_constraints.update",
             node_schema=schema,
             schema_path=schema_path,
         )
-        return await checker.check(message)
+        return await checker.check(request)
 
     async def test_no_violations(
         self,

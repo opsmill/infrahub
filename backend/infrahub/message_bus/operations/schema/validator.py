@@ -1,4 +1,5 @@
 from infrahub.core.validators.aggregated_checker import build_aggregated_constraint_checker
+from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.log import get_logger
 from infrahub.message_bus.messages.schema_validator_path import (
     SchemaValidatorPath,
@@ -19,8 +20,15 @@ async def path(message: SchemaValidatorPath, service: InfrahubServices) -> None:
             path=message.schema_path.get_path(),
         )
 
+        constraint_request = SchemaConstraintValidatorRequest(
+            branch=message.branch,
+            constraint_name=message.constraint_name,
+            node_schema=message.node_schema,
+            schema_path=message.schema_path,
+        )
+
         aggregated_constraint_checker = build_aggregated_constraint_checker(db, message.branch)
-        violations = await aggregated_constraint_checker.run_constraints(message)
+        violations = await aggregated_constraint_checker.run_constraints(constraint_request)
 
         if message.reply_requested:
             response = SchemaValidatorPathResponse(

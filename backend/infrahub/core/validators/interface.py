@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from infrahub.core.path import GroupedDataPaths  # noqa: TCH001
-from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPath
+
+from .model import SchemaConstraintValidatorRequest
 
 
 class ConstraintCheckerInterface(ABC):
@@ -12,9 +13,9 @@ class ConstraintCheckerInterface(ABC):
         ...
 
     @abstractmethod
-    def supports(self, message: SchemaValidatorPath) -> bool:
+    def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         ...
 
     @abstractmethod
-    async def check(self, message: SchemaValidatorPath) -> List[GroupedDataPaths]:
+    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
         ...

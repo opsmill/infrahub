@@ -6,11 +6,10 @@ from infrahub.core.constants import PathResourceType, PathType, SchemaPathType
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.validators.attribute.regex import AttributeRegexChecker, AttributeRegexUpdateValidatorQuery
+from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus.messages import (
-    SchemaValidatorPath,
-    SchemaValidatorPathResponse,
-)
+from infrahub.message_bus.messages import SchemaValidatorPathResponse
+from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPath
 from infrahub.services import InfrahubServices
 
 
@@ -61,7 +60,7 @@ async def test_validator(
     name_attr.regex = r"^[A-Z]+$"
     registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
 
-    message = SchemaValidatorPath(
+    request = SchemaConstraintValidatorRequest(
         branch=default_branch,
         constraint_name="attribute.regex.update",
         node_schema=person_schema,
@@ -69,7 +68,7 @@ async def test_validator(
     )
 
     constraint_checker = AttributeRegexChecker(db=db, branch=default_branch)
-    grouped_data_paths = await constraint_checker.check(message)
+    grouped_data_paths = await constraint_checker.check(request)
 
     assert len(grouped_data_paths) == 1
     data_paths = grouped_data_paths[0].get_all_data_paths()
