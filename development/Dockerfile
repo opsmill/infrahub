@@ -43,6 +43,8 @@ RUN npm run build && npm cache clean --force \
 # ****************************************************************
 FROM frontend
 
+ENV DOCS_IN_APP=1
+
 RUN mkdir /docs
 
 COPY docs/package.json  docs/package-lock.json /docs/
