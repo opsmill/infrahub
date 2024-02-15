@@ -9,14 +9,18 @@ from pytest import Item, MarkDecorator
 
 from .items import (
     InfrahubCheckIntegrationItem,
+    InfrahubCheckSanityItem,
     InfrahubCheckUnitProcessItem,
     InfrahubGraphqlQueryIntegrationItem,
+    InfrahubGraphqlQuerySanityItem,
     InfrahubJinja2TransformIntegrationItem,
+    InfrahubJinja2TransformSanityItem,
     InfrahubJinja2TransformUnitRenderItem,
     InfrahubPythonTransformIntegrationItem,
+    InfrahubPythonTransformSanityItem,
     InfrahubPythonTransformUnitProcessItem,
 )
-from .models import InfrahubTestFileV1, InfrahubTestResource
+from .models import InfrahubTestFileV1, InfrahubTestGroup
 
 MARKER_MAPPING = {
     "Check": pytest.mark.infrahub_check,
@@ -32,11 +36,15 @@ CONFIG_MAPPING = {
 }
 
 ITEMS_MAPPING = {
+    "check-sanity": InfrahubCheckSanityItem,
     "check-unit-process": InfrahubCheckUnitProcessItem,
     "check-integration": InfrahubCheckIntegrationItem,
+    "graphql-sanity": InfrahubGraphqlQuerySanityItem,
     "graphql-query-integration": InfrahubGraphqlQueryIntegrationItem,
+    "jinja2-sanity": InfrahubJinja2TransformSanityItem,
     "jinja2-transform-unit-render": InfrahubJinja2TransformUnitRenderItem,
     "jinja2-transform-integration": InfrahubJinja2TransformIntegrationItem,
+    "python-sanity": InfrahubPythonTransformSanityItem,
     "python-transform-unit-process": InfrahubPythonTransformUnitProcessItem,
     "python-transform-integration": InfrahubPythonTransformIntegrationItem,
 }

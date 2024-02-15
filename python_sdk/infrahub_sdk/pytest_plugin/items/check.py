@@ -59,6 +59,11 @@ class InfrahubCheckItem(InfrahubItem):
         return super().repr_failure(excinfo, style=style)
 
 
+class InfrahubCheckSanityItem(InfrahubCheckItem):
+    def runtest(self) -> None:
+        pass
+
+
 class InfrahubCheckUnitProcessItem(InfrahubCheckItem):
     def runtest(self) -> None:
         input_data = self.test.spec.get_input_data()

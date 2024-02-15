@@ -41,6 +41,11 @@ class InfrahubGraphqlQueryItem(InfrahubItem):
         return super().repr_failure(excinfo, style=style)
 
 
+class InfrahubGraphqlQuerySanityItem(InfrahubGraphqlQueryItem):
+    def runtest(self) -> None:
+        pass
+
+
 class InfrahubGraphqlQueryIntegrationItem(InfrahubGraphqlQueryItem):
     def runtest(self) -> None:
         computed = self.execute_query()

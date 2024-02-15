@@ -62,6 +62,11 @@ class InfrahubPythonTransformItem(InfrahubItem):
         return super().repr_failure(excinfo, style=style)
 
 
+class InfrahubPythonTransformSanityItem(InfrahubPythonTransformItem):
+    def runtest(self) -> None:
+        pass
+
+
 class InfrahubPythonTransformUnitProcessItem(InfrahubPythonTransformItem):
     def runtest(self) -> None:
         input_data = self.test.spec.get_input_data()

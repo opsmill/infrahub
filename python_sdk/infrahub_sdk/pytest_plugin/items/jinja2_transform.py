@@ -79,6 +79,11 @@ class InfrahubJinja2Item(InfrahubItem):
         return super().repr_failure(excinfo, style=style)
 
 
+class InfrahubJinja2TransformSanityItem(InfrahubJinja2Item):
+    def runtest(self) -> None:
+        pass
+
+
 class InfrahubJinja2TransformUnitRenderItem(InfrahubJinja2Item):
     def runtest(self) -> None:
         computed = self.render_jinja2_template(self.test.spec.get_input_data())
