@@ -1,7 +1,7 @@
 import os
 import shutil
 from itertools import islice
-from typing import Dict
+from typing import Any, Dict
 
 import pendulum
 import pytest
@@ -1007,7 +1007,7 @@ async def base_dataset_04(
 
 @pytest.fixture
 async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_group_schema) -> None:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "generics": [
             {
                 "name": "Choice",
@@ -1365,7 +1365,7 @@ async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_gener
 
 @pytest.fixture
 async def person_tag_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
-    SCHEMA = {
+    SCHEMA: Dict[str, Any] = {
         "nodes": [
             {
                 "name": "Tag",
@@ -1832,7 +1832,7 @@ async def vehicule_person_schema(
 
 @pytest.fixture
 async def fruit_tag_schema(db: InfrahubDatabase, group_schema, data_schema) -> SchemaRoot:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Tag",
@@ -1866,7 +1866,7 @@ async def fruit_tag_schema(db: InfrahubDatabase, group_schema, data_schema) -> S
 
 @pytest.fixture
 async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schema) -> SchemaRoot:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Tag",
@@ -1920,7 +1920,7 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
 async def hierarchical_location_schema(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
 ) -> None:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "generics": [
             {
                 "name": "Generic",
@@ -2086,7 +2086,7 @@ async def hierarchical_groups_data(
 
 @pytest.fixture
 async def prefix_schema(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Prefix",
@@ -2137,7 +2137,7 @@ async def init_db(empty_database, db: InfrahubDatabase) -> None:
 
 @pytest.fixture
 async def organization_schema() -> SchemaRoot:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Organization",
@@ -2173,7 +2173,7 @@ async def organization_schema() -> SchemaRoot:
 
 @pytest.fixture
 async def builtin_schema() -> SchemaRoot:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Status",

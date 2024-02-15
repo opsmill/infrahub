@@ -1317,7 +1317,7 @@ internal_schema = {
     ],
 }
 
-core_models = {
+core_models: dict[str, Any] = {
     "generics": [
         {
             "name": "Node",

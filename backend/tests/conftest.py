@@ -4,7 +4,7 @@ import os
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypeVar
+from typing import Any, AsyncGenerator, Dict, List, Optional, TypeVar
 
 import pytest
 import ujson
@@ -61,7 +61,7 @@ def event_loop():
 
 
 @pytest.fixture(scope="module")
-async def db() -> InfrahubDatabase:
+async def db() -> AsyncGenerator[InfrahubDatabase, None]:
     driver = InfrahubDatabase(driver=await get_db(retry=1))
 
     yield driver
@@ -146,7 +146,7 @@ def execute_before_any_test(worker_id, tmpdir_factory):
 
 @pytest.fixture
 async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "generics": [
             {
                 "name": "Owner",
@@ -174,7 +174,7 @@ async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
 
 @pytest.fixture
 async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "generics": [
             {
                 "name": "Group",
@@ -211,7 +211,7 @@ async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema
 
 @pytest.fixture
 async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema) -> None:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Car",
@@ -262,7 +262,7 @@ async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_g
 
 @pytest.fixture
 async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "generics": [
             {
                 "name": "Node",
@@ -345,7 +345,7 @@ class BusSimulator(InfrahubMessageBus):
         self.messages: List[InfrahubMessage] = []
         self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
         self.service: InfrahubServices = InfrahubServices(database=database, message_bus=self)
-        self.replies: Dict[str, List[InfrahubResponse]] = defaultdict(list)
+        self.replies: Dict[str, List[InfrahubMessage]] = defaultdict(list)
 
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
         self.messages.append(message)
@@ -359,7 +359,7 @@ class BusSimulator(InfrahubMessageBus):
         self.replies[correlation_id].append(message)
 
     async def rpc(self, message: InfrahubMessage, response_class: ResponseClass) -> ResponseClass:  # type: ignore[override]
-        routing_key = ROUTING_KEY_MAP.get(type(message))
+        routing_key = ROUTING_KEY_MAP.get(type(message), "")
 
         correlation_id = str(UUIDT())
         message.meta = Meta(correlation_id=correlation_id, reply_to="ci-testing")
