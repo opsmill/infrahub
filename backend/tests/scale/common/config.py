@@ -15,6 +15,7 @@ class Config(BaseSettings):
     db_protocol: str = "bolt"
     db_host: str = "localhost"
     db_port: int = 7687
+    client_timeout: int = 1000
 
     class Config:
         env_prefix = "INFRAHUB_"

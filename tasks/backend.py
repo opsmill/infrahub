@@ -165,13 +165,15 @@ def test_scale_env_destroy(context: Context, database: str = INFRAHUB_DATABASE):
         return execute_command(context=context, command=command)
 
 
-@task(optional=["schema", "stager", "amount", "test"])
+@task(optional=["schema", "stager", "amount", "test", "attrs", "rels"])
 def test_scale(
     context: Context,
     schema: Path = f"{ESCAPED_REPO_PATH}/backend/tests/scale/schema.yml",
     stager: str = None,
     amount: int = None,
     test: str = None,
+    attrs: int = None,
+    rels: int = None,
 ):
     args = []
     if stager:
@@ -185,6 +187,12 @@ def test_scale(
 
     if schema:
         args.extend(["--schema", schema])
+
+    if attrs:
+        args.extend(["--attrs", attrs])
+
+    if rels:
+        args.extend(["--rels", rels])
 
     with context.cd(ESCAPED_REPO_PATH):
         base_cmd = ["python", "backend/tests/scale/main.py"]

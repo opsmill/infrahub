@@ -1,3 +1,5 @@
+import time
+
 from infrahub_sdk import Config
 from locust import HttpUser, User, task
 
@@ -21,7 +23,7 @@ class InfrahubUIUser(HttpUser):
 
 class InfrahubClientUser(User):
     address = config.url
-    config = Config(api_token=config.api_token)
+    config = Config(api_token=config.api_token, timeout=config.client_timeout)
     delete_this_node = None
     update_this_node = None
 
@@ -33,15 +35,19 @@ class InfrahubClientUser(User):
 
     @task
     def crud(self):
-        objects = self.client.all(kind="InfraNode", limit=50)
+        begin = time.time()
+        # Run for at least 5 minutes
+        while time.time() < begin + 300:
+            objects = self.client.all(kind="InfraNode", limit=50)
 
-        if len(objects) >= 2:
-            delete_this_node, update_this_node = objects[0:2]
+            if len(objects) >= 2:
+                delete_this_node, update_this_node = objects[0:2]
 
-        obj = self.client.create(kind="InfraNode", data={"name": random_ascii_string()})
-        obj.save()
+            obj = self.client.create(kind="InfraNode", data={"name": random_ascii_string()})
+            obj.save()
 
-        update_this_node.name.value = random_ascii_string()
-        update_this_node.save()
+            if len(objects) >= 2:
+                update_this_node.name.value = random_ascii_string()
+                update_this_node.save()
 
-        delete_this_node.delete()
+                delete_this_node.delete()
