@@ -39,7 +39,7 @@ async def test_query(
     await query.execute(db=db)
 
     grouped_paths = await query.get_paths()
-    assert len(grouped_paths.get_data_paths(5)) == 3
+    assert len(grouped_paths.get_data_paths("5")) == 3
 
     assert DataPath(
         resource_type=PathResourceType.DATA,
@@ -48,8 +48,8 @@ async def test_query(
         node_id=car.id,
         kind="TestCar",
         field_name="nbr_seats",
-        value=5,
-    ) in grouped_paths.get_data_paths(5)
+        value="5",
+    ) in grouped_paths.get_data_paths("5")
     assert DataPath(
         resource_type=PathResourceType.DATA,
         branch=default_branch.name,
@@ -57,8 +57,8 @@ async def test_query(
         node_id=car_accord_main.id,
         kind="TestCar",
         field_name="nbr_seats",
-        value=5,
-    ) in grouped_paths.get_data_paths(5)
+        value="5",
+    ) in grouped_paths.get_data_paths("5")
     assert DataPath(
         resource_type=PathResourceType.DATA,
         branch=default_branch.name,
@@ -66,10 +66,10 @@ async def test_query(
         node_id=car_prius_main.id,
         kind="TestCar",
         field_name="nbr_seats",
-        value=5,
-    ) in grouped_paths.get_data_paths(5)
-    assert len(grouped_paths.get_data_paths(4)) == 2
-    assert {dp.node_id for dp in grouped_paths.get_data_paths(4)} == {car_yaris_main.id, car_volt_main.id}
+        value="5",
+    ) in grouped_paths.get_data_paths("5")
+    assert len(grouped_paths.get_data_paths("4")) == 2
+    assert {dp.node_id for dp in grouped_paths.get_data_paths("4")} == {car_yaris_main.id, car_volt_main.id}
 
 
 async def test_validator(

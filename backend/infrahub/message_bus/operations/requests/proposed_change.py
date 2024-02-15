@@ -9,7 +9,6 @@ from pydantic import BaseModel
 from infrahub import config, lock
 from infrahub.core.constants import (
     CheckType,
-    DiffAction,
     InfrahubKind,
     ProposedChangeState,
 )
@@ -18,7 +17,6 @@ from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConf
 from infrahub.core.registry import registry
 from infrahub.core.schema_manager import SchemaBranch, SchemaUpdateConstraintInfo
 from infrahub.core.validators.checker import schema_validators_checker
-from infrahub.core.validators.uniqueness.checker import UniquenessChecker
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
@@ -200,24 +198,6 @@ async def schema_integrity(
                     branch="placeholder",
                 )
             )
-
-    # ------------------------------------------------------------------------
-    # Node Uniqueness Validation, need to re-integrated into the new framework
-    # ------------------------------------------------------------------------
-    altered_schema_kinds = set()
-    for node_diff in message.branch_diff.diff_summary:
-        if node_diff["branch"] == message.source_branch and {DiffAction.ADDED, DiffAction.UPDATED} & set(
-            node_diff["actions"]
-        ):
-            altered_schema_kinds.add(node_diff["kind"])
-
-    uniqueness_checker = UniquenessChecker(db=service.database)
-    conflicts.extend(
-        await uniqueness_checker.get_conflicts(
-            schemas=altered_schema_kinds,
-            source_branch=message.source_branch,
-        )
-    )
 
     if not conflicts:
         return

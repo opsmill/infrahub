@@ -7,7 +7,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.core.utils import count_relationships
-from infrahub.core.validators.shared import SchemaViolation
+from infrahub.core.validators.model import SchemaViolation
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.messages.schema_migration_path import SchemaMigrationPathResponse
 from infrahub.message_bus.messages.schema_validator_path import (
