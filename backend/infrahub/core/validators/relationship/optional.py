@@ -71,7 +71,7 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
         grouped_data_paths = GroupedDataPaths()
         for result in self.results:
             grouped_data_paths.add_data_path(
-                DataPath(  # type: ignore[call-arg]
+                DataPath(
                     branch=result.get("root_relationship").get("branch"),
                     resource_type=PathResourceType.DATA,
                     path_type=PathType.NODE,

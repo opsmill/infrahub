@@ -62,7 +62,7 @@ class AttributeUniqueUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         for result in self.results:
             value = str(result.get("value"))
             grouped_data_paths.add_data_path(
-                DataPath(  # type: ignore[call-arg]
+                DataPath(
                     path_type=PathType.ATTRIBUTE,
                     branch=str(result.get("value_relationship").get("branch")),
                     node_id=str(result.get("node").get("uuid")),

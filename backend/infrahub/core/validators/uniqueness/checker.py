@@ -4,7 +4,6 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.database import InfrahubDatabase
@@ -167,24 +166,15 @@ class UniquenessChecker(ConstraintCheckerInterface):
         constraint_violations = self.get_uniqueness_violations(non_unique_node)
         schema_kind = non_unique_node.node_schema.kind
         for violation in constraint_violations:
-            if isinstance(violation, NonUniqueRelatedAttribute):
-                grouping_key = f"{schema_kind}/{violation.relationship.name}/{violation.attribute_name}/{violation.attribute_value}"
-                path_type = PathType.RELATIONSHIP_ONE
-                field_name = violation.relationship.name
-                property_name = violation.attribute_name
-            else:
-                grouping_key = f"{schema_kind}/{violation.attribute_name}/{violation.attribute_value}"
-                path_type = PathType.ATTRIBUTE
-                field_name = violation.attribute_name
-                property_name = "value"
+            grouping_key = f"{schema_kind}/{violation.grouping_key}"
             grouped_data_paths.add_data_path(
-                DataPath(  # type: ignore[call-arg]
+                DataPath(
                     branch=violation.deepest_branch_name,
-                    path_type=path_type,
+                    path_type=violation.path_type,
                     node_id=non_unique_node.node_id,
                     kind=schema_kind,
-                    field_name=field_name,
-                    property_name=property_name,
+                    field_name=violation.field_name,
+                    property_name=violation.property_name,
                     value=violation.attribute_value,
                 ),
                 grouping_key=grouping_key,

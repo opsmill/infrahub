@@ -30,7 +30,7 @@ async def test_query(
     await query.execute(db=db)
 
     grouped_paths = await query.get_paths()
-    all_paths = grouped_paths.get_data_paths()
+    all_paths = grouped_paths.get_all_data_paths()
     assert all_paths == [
         DataPath(
             resource_type=PathResourceType.DATA,

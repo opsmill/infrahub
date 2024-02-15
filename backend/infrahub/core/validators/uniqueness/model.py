@@ -2,6 +2,7 @@ from typing import List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field
 
+from infrahub.core.constants import PathType
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
 
 
@@ -30,6 +31,22 @@ class NonUniqueRelatedAttribute(BaseModel):
     def __hash__(self) -> int:
         return hash(self.relationship.name + self.attribute_name + self.attribute_value)
 
+    @property
+    def grouping_key(self) -> str:
+        return f"{self.relationship.name}/{self.attribute_name}/{self.attribute_value}"
+
+    @property
+    def path_type(self) -> PathType:
+        return PathType.RELATIONSHIP_ONE
+
+    @property
+    def field_name(self) -> str:
+        return self.relationship.name
+
+    @property
+    def property_name(self) -> str:
+        return self.attribute_name
+
 
 class NonUniqueAttribute(BaseModel):
     attribute: AttributeSchema
@@ -39,6 +56,22 @@ class NonUniqueAttribute(BaseModel):
 
     def __hash__(self) -> int:
         return hash(self.attribute.name + self.attribute_name + self.attribute_value)
+
+    @property
+    def grouping_key(self) -> str:
+        return f"{self.attribute_name}/{self.attribute_value}"
+
+    @property
+    def path_type(self) -> PathType:
+        return PathType.ATTRIBUTE
+
+    @property
+    def field_name(self) -> str:
+        return self.attribute_name
+
+    @property
+    def property_name(self) -> str:
+        return "value"
 
 
 class NonUniqueNode(BaseModel):

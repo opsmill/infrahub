@@ -50,7 +50,7 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         for result in self.results:
             value = str(result.get("av.value"))
             grouped_data_paths.add_data_path(
-                DataPath(  # type: ignore[call-arg]
+                DataPath(
                     branch=str(result.get("value_relationship").get("branch")),
                     path_type=PathType.ATTRIBUTE,
                     node_id=str(result.get("n.uuid")),

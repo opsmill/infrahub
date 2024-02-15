@@ -49,7 +49,7 @@ class AggregatedConstraintChecker:
         violations = []
         for constraint_name, grouped_paths in grouped_data_paths_by_constraint_name.items():
             for path in chain(*[gp.get_all_data_paths() for gp in grouped_paths]):
-                node = nodes.get(path.node_id, None)
+                node = nodes.get(path.node_id)
                 node_display_label = None
                 if node:
                     node_display_label = await node.render_display_label()
@@ -79,18 +79,14 @@ class AggregatedConstraintChecker:
 
 
 def build_aggregated_constraint_checker(db: InfrahubDatabase, branch: Optional[Branch]) -> AggregatedConstraintChecker:
-    relationship_optional_checker = RelationshipOptionalChecker(db=db, branch=branch)
-    attribute_regex_checker = AttributeRegexChecker(db=db, branch=branch)
-    attribute_uniqueness_checker = AttributeUniquenessChecker(db=db, branch=branch)
-    uniqueness_constraint_checker = UniquenessChecker(db=db, branch=branch)
     aggregated_constraint_checker = AggregatedConstraintChecker(
-        [
-            relationship_optional_checker,
-            attribute_regex_checker,
-            attribute_uniqueness_checker,
-            uniqueness_constraint_checker,
+        constraints=[
+            RelationshipOptionalChecker(db=db, branch=branch),
+            AttributeRegexChecker(db=db, branch=branch),
+            AttributeUniquenessChecker(db=db, branch=branch),
+            UniquenessChecker(db=db, branch=branch),
         ],
-        db,
+        db=db,
         branch=branch,
     )
     return aggregated_constraint_checker
