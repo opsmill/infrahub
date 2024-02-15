@@ -27,9 +27,9 @@ export const Retry = (props: tRetryProps) => {
   return (
     <div
       className={classNames(
-        "flex items-center p-1 rounded-full",
-        isLoading ? "cursor-not-allowed animate-spin" : "",
-        !isLoading && isDisabled ? "cursor-pointer hover:bg-gray-200" : "cursor-not-allowed"
+        "flex items-center p-1 rounded-full cursor-pointer",
+        isLoading ? "animate-spin" : "",
+        isLoading || isDisabled ? "!cursor-not-allowed" : "hover:bg-gray-200"
       )}
       onClick={handleClick}>
       <Icon
