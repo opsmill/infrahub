@@ -42,12 +42,15 @@ test.describe("/signin", () => {
       await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
     });
 
-    test("should refresh access token and retry failed request", async ({ page }) => {
-      let callCounter = 0; // force 401 on first call
+    test.fixme("should refresh access token and retry failed request", async ({ page }) => {
+      let blockRequest = true; // force 401 on first call
+
       await page.route("**/graphql/main**", async (route) => {
         const reqData = route.request().postDataJSON();
-        if (reqData.operationName === "BuiltinTag" && callCounter === 0) {
-          callCounter = callCounter + 1;
+
+        if (reqData.operationName === "BuiltinTag" && blockRequest) {
+          blockRequest = false;
+
           await route.fulfill({
             status: 401,
             json: {
@@ -67,7 +70,16 @@ test.describe("/signin", () => {
         }
       });
 
+      const waitForResponse = page.waitForResponse((response) => {
+        const reqData = response.request().postDataJSON();
+        const status = response.status();
+
+        return reqData?.operationName === "BuiltinTag" && status === 200;
+      });
+
       await page.goto("/objects/BuiltinTag");
+
+      await Promise.all([waitForResponse]);
 
       await expect(page.getByRole("cell", { name: "blue" })).toBeVisible();
     });

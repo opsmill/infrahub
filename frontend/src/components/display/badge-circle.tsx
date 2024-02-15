@@ -11,7 +11,7 @@ export enum CIRCLE_BADGE_TYPES {
 
 // type BadgeProps = {}
 
-const DEFAULT_CLASS = "flex items-center text-sm font-medium mr-2 px-2.5 py-0.5 rounded";
+const DEFAULT_CLASS = "flex items-center font-medium mr-2 last:mr-0 rounded";
 
 const getClassName = (type?: CIRCLE_BADGE_TYPES, onClick?: Function) => {
   switch (type) {
@@ -99,6 +99,9 @@ export const BadgeCircle = (props: tBadgeCircleProps) => {
   const customCircleClassName = getCircleClasseName(type, onClick || onDelete);
 
   const handleClick = (event: any) => {
+    // Do not block click if there is no onClick
+    if (!onClick) return;
+
     event.stopPropagation();
     event.preventDefault();
 

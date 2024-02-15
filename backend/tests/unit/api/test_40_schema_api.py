@@ -2,11 +2,18 @@ from fastapi.testclient import TestClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, SchemaPathType
 from infrahub.core.initialization import create_branch
+from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.core.utils import count_relationships
+from infrahub.core.validators.shared import SchemaViolation
 from infrahub.database import InfrahubDatabase
+from infrahub.message_bus.messages.schema_migration_path import SchemaMigrationPathResponse
+from infrahub.message_bus.messages.schema_validator_path import (
+    SchemaValidatorPathResponse,
+    SchemaValidatorPathResponseData,
+)
 
 
 async def test_schema_read_endpoint_default_branch(
@@ -315,12 +322,15 @@ async def test_schema_load_endpoint_valid_with_extensions(
     db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
+    rpc_bus,
     default_branch: Branch,
     authentication_base,
     helper,
 ):
     org_schema = registry.schema.get(name="CoreOrganization", branch=default_branch.name)
     initial_nbr_relationships = len(org_schema.relationships)
+
+    rpc_bus.response.append(SchemaMigrationPathResponse(data={"errors": []}))
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -330,6 +340,7 @@ async def test_schema_load_endpoint_valid_with_extensions(
             json={"schemas": [helper.schema_file("infra_w_extensions_01.json")]},
         )
 
+    assert response.json() == {}
     assert response.status_code == 202
 
     org_schema = registry.schema.get(name="CoreOrganization", branch=default_branch.name)
@@ -431,4 +442,65 @@ async def test_schema_load_endpoint_not_valid_with_generics_02(
             json={"schemas": [helper.schema_file("not_valid_w_generics_02.json")]},
         )
 
+    assert response.status_code == 422
+
+
+async def test_schema_load_endpoint_constraints_not_valid(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers,
+    rpc_bus,
+    default_branch: Branch,
+    authentication_base,
+    car_person_schema,
+    car_accord_main,
+    car_volt_main,
+    person_john_main,
+    helper,
+):
+    # person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    # await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
+    # await person.save(db=db)
+
+    rpc_bus.response.append(
+        SchemaValidatorPathResponse(
+            data=SchemaValidatorPathResponseData(
+                violations=[
+                    SchemaViolation(
+                        node_id="cf85d101-c6d6-41aa-b1ab-41bc4c7d46f1",
+                        node_kind="TestPerson",
+                        display_label="ALFRED",
+                        full_display_label="Alfred TestPerson(cf85d101-c6d6-41aa-b1ab-41bc4c7d46f1)",
+                        message="clear error message",
+                    )
+                ],
+                constraint_name="attribute.regex.update",
+                schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
+            )
+        )
+    )
+
+    person_schema = {
+        "name": "Person",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "display_labels": ["name__value"],
+        "branch": "aware",
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True, "regex": "^[A-Z]+$"},
+            {"name": "height", "kind": "Number", "optional": True},
+        ],
+        "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"}],
+    }
+
+    # Must execute in a with block to execute the startup/shutdown events
+    # async with AsyncClient(app=app, base_url="http://test") as ac:
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [{"version": "1.0", "nodes": [person_schema]}]},
+        )
+
+    assert response.json() == {"error": "clear error message"}
     assert response.status_code == 422

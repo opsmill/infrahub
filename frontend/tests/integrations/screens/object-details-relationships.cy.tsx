@@ -100,8 +100,6 @@ describe("List screen", () => {
   it("should fetch items and render list", () => {
     cy.viewport(1920, 1080);
 
-    cy.log("deviceDetailsMocksSchema: ", deviceDetailsMocksSchema);
-
     // Mount the view with the default route and the mocked data
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
@@ -117,12 +115,11 @@ describe("List screen", () => {
       }
     );
 
-    cy.get(".border-transparent").should(
-      "have.text",
-      `${interfaceLabelName}${deviceDetailsMocksData.InfraDevice.edges[0].node.interfaces.count}`
-    );
+    const tabName = `${interfaceLabelName}${deviceDetailsMocksData.InfraDevice.edges[0].node.interfaces.count}`;
 
-    cy.get(".border-transparent").click();
+    cy.contains(tabName).should("exist");
+
+    cy.contains(tabName).click();
 
     cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", interfacesArrayCount);
 

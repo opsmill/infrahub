@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 from graphene import InputObjectType, Mutation
+from typing_extensions import Self
 
 from infrahub.core.schema import NodeSchema
 from infrahub.log import get_logger
@@ -16,14 +17,19 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
-    from infrahub.message_bus.rpc import InfrahubRpcClient
+    from infrahub.graphql import GraphqlContext
 
 log = get_logger()
 
 
 class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+        cls,
+        schema: NodeSchema,
+        _meta: Optional[Any] = None,
+        **options: Dict[str, Any],
+    ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -43,16 +49,19 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         at: str,
-    ):
-        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
+        database: Optional[InfrahubDatabase] = None,
+    ) -> Tuple[Node, Self]:
+        context: GraphqlContext = info.context
 
         artifact_definition, result = await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
 
         events = [
             messages.RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch=branch.name),
         ]
-        for event in events:
-            await rpc_client.send(event)
+
+        if context.rpc_client:
+            for event in events:
+                await context.rpc_client.send(event)
 
         return artifact_definition, result
 
@@ -66,15 +75,17 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
-    ):
-        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
+    ) -> Tuple[Node, Self]:
+        context: GraphqlContext = info.context
 
         artifact_definition, result = await super().mutate_update(root=root, info=info, data=data, branch=branch, at=at)
 
         events = [
             messages.RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch=branch.name),
         ]
-        for event in events:
-            await rpc_client.send(event)
+
+        if context.rpc_client:
+            for event in events:
+                await context.rpc_client.send(event)
 
         return artifact_definition, result

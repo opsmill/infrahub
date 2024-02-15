@@ -8,7 +8,8 @@ ENV PYTHONUNBUFFERED 1
 
 ENV PATH="${PATH}:/root/.local/bin" \
     PROMETHEUS_MULTIPROC_DIR="/prom_shared" \
-    INFRAHUB_FRONTEND_DIRECTORY="/opt/infrahub/frontend"
+    INFRAHUB_FRONTEND_DIRECTORY="/opt/infrahub/frontend" \
+    INFRAHUB_DOCS_DIRECTORY="/opt/infrahub/docs"
 
 RUN mkdir /prom_shared /remote
 
@@ -35,6 +36,25 @@ WORKDIR /source
 
 RUN npm install --omit=dev
 COPY frontend/ /source/
+RUN npm run build && npm cache clean --force \
+
+# ****************************************************************
+# STAGE : Documentation
+# ****************************************************************
+FROM frontend
+
+ENV DOCS_IN_APP=1
+
+RUN mkdir /docs
+
+COPY docs/package.json  docs/package-lock.json /docs/
+COPY backend/infrahub/config.py /backend/infrahub/
+COPY models/ /models/
+COPY python_sdk/examples/  /python_sdk/examples/
+WORKDIR /docs
+
+RUN npm install --omit=dev
+COPY docs/ /docs/
 RUN npm run build && npm cache clean --force
 
 # ****************************************************************
@@ -61,6 +81,11 @@ WORKDIR /source
 COPY --from=frontend /source/dist/ /opt/infrahub/frontend/dist
 
 # --------------------------------------------
+# Import Documentation Build
+# --------------------------------------------
+COPY --from=frontend /docs/build/ /opt/infrahub/docs/build
+
+# --------------------------------------------
 # Install Dependencies
 #   Copy in only pyproject.toml/poetry.lock to help with caching this layer if no updates to dependencies
 # --------------------------------------------
@@ -79,24 +104,3 @@ RUN poetry install --no-interaction --no-ansi
 RUN apt-get autoremove -y && \
     apt-get clean all && \
     rm -rf /var/lib/apt/lists/*
-
-# ****************************************************************
-# STAGE : Gitpod
-# ****************************************************************
-
-FROM backend AS gitpod
-
-# --------------------------------------------
-# Create new user and assign the right permissions
-# --------------------------------------------
-ARG USER_ID=33333
-ARG GROUP_ID=33333
-
-RUN addgroup --gid ${GROUP_ID} user
-RUN adduser --disabled-password --gecos '' --uid ${USER_ID} --gid ${GROUP_ID} user
-
-RUN chown -R ${USER_ID}:${GROUP_ID} /prom_shared
-RUN chown -R ${USER_ID}:${GROUP_ID} /opt
-RUN chown -R ${USER_ID}:${GROUP_ID} /remote
-
-USER user

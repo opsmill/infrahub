@@ -13,9 +13,8 @@ from .types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.branch import Branch
     from infrahub.core.schema import NodeSchema
-    from infrahub.database import InfrahubDatabase
+    from infrahub.graphql import GraphqlContext
 
 
 async def default_resolver(*args, **kwargs):
@@ -54,10 +53,7 @@ async def default_resolver(*args, **kwargs):
         return parent.get(field_name, None)
 
     # Extract the contextual information from the request context
-    at = info.context.get("infrahub_at")
-    branch: Branch = info.context.get("infrahub_branch")
-    db: InfrahubDatabase = info.context.get("infrahub_database")
-    related_node_ids: set = info.context.get("related_node_ids")
+    context: GraphqlContext = info.context
 
     # Extract the name of the fields in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -72,25 +68,27 @@ async def default_resolver(*args, **kwargs):
         if "__" in key and value or key in ["id", "ids"]
     }
 
-    async with db.start_session() as db:
+    async with context.db.start_session() as db:
         objs = await NodeManager.query_peers(
             db=db,
             ids=[parent["id"]],
             schema=node_rel,
             filters=filters,
             fields=fields,
-            at=at,
-            branch=branch,
+            at=context.at,
+            branch=context.branch,
         )
 
         if node_rel.cardinality == "many":
-            return [await obj.to_graphql(db=db, fields=fields, related_node_ids=related_node_ids) for obj in objs]
+            return [
+                await obj.to_graphql(db=db, fields=fields, related_node_ids=context.related_node_ids) for obj in objs
+            ]
 
         # If cardinality is one
         if not objs:
             return None
 
-        return await objs[0].to_graphql(db=db, fields=fields, related_node_ids=related_node_ids)
+        return await objs[0].to_graphql(db=db, fields=fields, related_node_ids=context.related_node_ids)
 
 
 async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Dict[str, Any]:
@@ -103,11 +101,7 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
 
     node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
 
-    # Extract the contextual information from the request context
-    at = info.context.get("infrahub_at")
-    branch: Branch = info.context.get("infrahub_branch")
-    db: InfrahubDatabase = info.context.get("infrahub_database")
-    related_node_ids: set = info.context.get("related_node_ids")
+    context: GraphqlContext = info.context
 
     # Extract the name of the fields in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -127,21 +121,21 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
     }
     response: Dict[str, Any] = {"node": None, "properties": {}}
 
-    async with db.start_session() as db:
+    async with context.db.start_session() as db:
         objs = await NodeManager.query_peers(
             db=db,
             ids=[parent["id"]],
             schema=node_rel,
             filters=filters,
             fields=node_fields,
-            at=at,
-            branch=branch,
+            at=context.at,
+            branch=context.branch,
         )
 
         if not objs:
             return response
 
-        node_graph = await objs[0].to_graphql(db=db, fields=node_fields, related_node_ids=related_node_ids)
+        node_graph = await objs[0].to_graphql(db=db, fields=node_fields, related_node_ids=context.related_node_ids)
         for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
             value = node_graph.pop(key, None)
             if value:
@@ -161,11 +155,7 @@ async def many_relationship_resolver(
     # Extract the InfraHub schema by inspecting the GQL Schema
     node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
 
-    # Extract the contextual information from the request context
-    at = info.context.get("infrahub_at")
-    branch: Branch = info.context.get("infrahub_branch")
-    db: InfrahubDatabase = info.context.get("infrahub_database")
-    related_node_ids: set = info.context.get("related_node_ids")
+    context: GraphqlContext = info.context
 
     # Extract the name of the fields in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -191,7 +181,7 @@ async def many_relationship_resolver(
 
     response: Dict[str, Any] = {"edges": [], "count": None}
 
-    async with db.start_session() as db:
+    async with context.db.start_session() as db:
         ids = [parent["id"]]
         if include_descendants:
             query = await NodeGetHierarchyQuery.init(
@@ -199,8 +189,8 @@ async def many_relationship_resolver(
                 direction=RelationshipHierarchyDirection.DESCENDANTS,
                 node_id=parent["id"],
                 node_schema=node_schema,
-                at=at,
-                branch=branch,
+                at=context.at,
+                branch=context.branch,
             )
             await query.execute(db=db)
             descendants_ids = list(query.get_peer_ids())
@@ -212,8 +202,8 @@ async def many_relationship_resolver(
                 ids=ids,
                 schema=node_rel,
                 filters=filters,
-                at=at,
-                branch=branch,
+                at=context.at,
+                branch=context.branch,
             )
 
         if not node_fields:
@@ -227,14 +217,14 @@ async def many_relationship_resolver(
             fields=node_fields,
             offset=offset,
             limit=limit,
-            at=at,
-            branch=branch,
+            at=context.at,
+            branch=context.branch,
         )
 
         if not objs:
             return response
         node_graph = [
-            await obj.to_graphql(db=db, fields=node_fields, related_node_ids=related_node_ids) for obj in objs
+            await obj.to_graphql(db=db, fields=node_fields, related_node_ids=context.related_node_ids) for obj in objs
         ]
 
         entries = []
@@ -274,10 +264,7 @@ async def hierarchy_resolver(
     # Extract the InfraHub schema by inspecting the GQL Schema
     node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
 
-    # Extract the contextual information from the request context
-    at = info.context.get("infrahub_at")
-    branch: Branch = info.context.get("infrahub_branch")
-    db: InfrahubDatabase = info.context.get("infrahub_database")
+    context: GraphqlContext = info.context
 
     # Extract the name of the fields in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -295,7 +282,7 @@ async def hierarchy_resolver(
 
     response: Dict[str, Any] = {"edges": [], "count": None}
 
-    async with db.start_session() as db:
+    async with context.db.start_session() as db:
         if "count" in fields:
             response["count"] = await NodeManager.count_hierarchy(
                 db=db,
@@ -303,8 +290,8 @@ async def hierarchy_resolver(
                 direction=direction,
                 node_schema=node_schema,
                 filters=filters,
-                at=at,
-                branch=branch,
+                at=context.at,
+                branch=context.branch,
             )
 
         if not node_fields:
@@ -319,8 +306,8 @@ async def hierarchy_resolver(
             fields=node_fields,
             offset=offset,
             limit=limit,
-            at=at,
-            branch=branch,
+            at=context.at,
+            branch=context.branch,
         )
 
         if not objs:

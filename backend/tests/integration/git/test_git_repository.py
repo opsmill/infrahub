@@ -139,14 +139,14 @@ class TestInfrahubClient:
         # 1. Modify an object to validate if its being properly updated
         # 2. Add an object that doesn't exist in GIt and validate that it's been deleted
         value_before_change = queries[0].query.value
-        queries[0].query.value = "query myquery { BuiltinLocation { edges { node { id }}}}"
+        queries[0].query.value = "query myquery { InfraSite { edges { node { id }}}}"
         await queries[0].save()
 
         obj = await Node.init(schema=InfrahubKind.GRAPHQLQUERY, db=db)
         await obj.new(
             db=db,
             name="soontobedeletedquery",
-            query="query soontobedeletedquery { BuiltinLocation { edges { node { id }}}}",
+            query="query soontobedeletedquery { InfraSite { edges { node { id }}}}",
             repository=str(repo.id),
         )
         await obj.save(db=db)

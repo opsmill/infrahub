@@ -8,7 +8,7 @@ from infrahub_sdk import InfrahubClient, InfrahubNode, NodeStore
 # pylint: skip-file
 
 ROLES = ["role11", "role21", "role31"]
-STATUSES = ["reserved", "provisioning", "active", "mainteance", "obsolete"]
+STATUSES = ["reserved", "provisioning", "active", "maintenance", "obsolete"]
 TAGS = ["blue", "green", "red", "tenant", "provider"]
 
 ORGANIZATIONS = (
@@ -28,8 +28,8 @@ APPLICATIONS = (
     ("Infrahub-client", "Infrahub Client"),
     ("Infrahub-api", "Infrahub Api"),
     ("Infrahub-redis", "Infrahub Redis"),
-    ("Domain-controler", "Domain Controler"),
-    ("DNS", "DNS Authorative Server"),
+    ("Domain-controller", "Domain Controller"),
+    ("DNS", "DNS Authoritative Server"),
     ("docker", "Docker"),
     ("Gitlab", "Gitlab Server"),
 )
@@ -78,7 +78,7 @@ FQDNS = (
 )
 
 RULES = (
-    # Index, Name, Action, Description, Source Addresses, Desination Addresses, Source Services, Desination Services, Source Applicatons, Desination Applicatons, Status
+    # Index, Name, Action, Description, Source Addresses, Destination Addresses, Source Services, Destination Services, Source Applications, Destination Applications, Status
     (
         1,
         "dns-office-to-dc",

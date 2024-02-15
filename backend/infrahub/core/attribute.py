@@ -190,7 +190,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 ) from exc
 
             if not is_valid:
-                raise ValidationError({name: f"{value} be conform with the regex: {schema.regex!r}"})
+                raise ValidationError({name: f"{value} must be conform with the regex: {schema.regex!r}"})
 
         if schema.min_length:
             if len(value) < schema.min_length:
@@ -370,12 +370,16 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return True
 
     async def to_graphql(
-        self, db: InfrahubDatabase, fields: Optional[dict] = None, related_node_ids: Optional[set] = None
+        self,
+        db: InfrahubDatabase,
+        fields: Optional[dict] = None,
+        related_node_ids: Optional[set] = None,
+        filter_sensitive: bool = False,
     ) -> dict:
         """Generate GraphQL Payload for this attribute."""
         # pylint: disable=too-many-branches
 
-        response = {
+        response: dict[str, Any] = {
             "id": self.id,
         }
 
@@ -421,10 +425,18 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
             if field_name == "value" and isinstance(field, Enum):
                 field = field.name
-            if isinstance(field, (str, int, bool, dict, list)):
+            if isinstance(field, str):
+                response[field_name] = self._filter_sensitive(value=field, filter_sensitive=filter_sensitive)
+            elif isinstance(field, (int, bool, dict, list)):
                 response[field_name] = field
 
         return response
+
+    def _filter_sensitive(self, value: str, filter_sensitive: bool) -> str:
+        if filter_sensitive and self.schema.kind in ["HashedPassword", "Password"]:
+            return "***"
+
+        return value
 
     async def from_graphql(self, data: dict) -> bool:
         """Update attr from GraphQL payload"""

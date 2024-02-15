@@ -23,12 +23,12 @@ from .branch import (
 from .main import InfrahubMutation, InfrahubMutationMixin, InfrahubMutationOptions
 from .proposed_change import (
     InfrahubProposedChangeMutation,
-    ProposedChangeRequestRefreshArtifacts,
     ProposedChangeRequestRunCheck,
 )
 from .relationship import RelationshipAdd, RelationshipRemove
 from .repository import InfrahubRepositoryMutation
 from .schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
+from .task import TaskCreate, TaskUpdate
 
 __all__ = [
     "AnyAttributeInput",
@@ -53,7 +53,6 @@ __all__ = [
     "JSONAttributeInput",
     "ListAttributeInput",
     "NumberAttributeInput",
-    "ProposedChangeRequestRefreshArtifacts",
     "ProposedChangeRequestRunCheck",
     "RelationshipAdd",
     "RelationshipRemove",
@@ -63,4 +62,6 @@ __all__ = [
     "SchemaDropdownRemove",
     "SchemaEnumAdd",
     "SchemaEnumRemove",
+    "TaskCreate",
+    "TaskUpdate",
 ]

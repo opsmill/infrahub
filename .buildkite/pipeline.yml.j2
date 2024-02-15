@@ -90,3 +90,21 @@ steps:
       - sv-oss/node-n#v0.1.2:
           node-version: v20
     command: .buildkite/e2e-testing.sh
+    ##### backend benchmark
+{%- if backend_files %}
+  - label: ":github: Backend benchmark"
+    key: backend-benchmark
+    depends_on:
+      - files-changed
+    {%- if python_all %}
+      - python-lint
+    {%- endif %}
+    allow_dependency_failure: false
+    timeout_in_minutes: 40
+    env:
+      INFRAHUB_DB_TYPE: memgraph
+      PYTHON_VERSION: 3.11
+    agents:
+      queue: huge-runner
+    command: .buildkite/backend-benchmark.sh
+{%- endif %}

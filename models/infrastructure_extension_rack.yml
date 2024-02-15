@@ -4,7 +4,7 @@ version: '1.0'
 nodes:
   - name: Rack
     namespace: Infra
-    description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed."
+    description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed"
     label: "Rack"
     default_filter: name__value
     icon: clarity:rack-server-solid
@@ -57,8 +57,8 @@ nodes:
             color: "#ff6600"
         optional: true
     relationships:
-      - name: location
-        peer: BuiltinLocation
+      - name: site
+        peer: InfraSite
         optional: false
         cardinality: one
         kind: Attribute
@@ -69,7 +69,7 @@ nodes:
         kind: Attribute
 extensions:
   nodes:
-    - kind: BuiltinLocation
+    - kind: InfraSite
       relationships:
         - name: racks
           peer: InfraRack

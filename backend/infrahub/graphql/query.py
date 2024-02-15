@@ -2,21 +2,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Union
 
-import graphene
 from graphql import graphql
 
 from infrahub.core import get_branch
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
-
-from .generator import generate_query_mixin
-from .schema import InfrahubBaseQuery
+from infrahub.graphql import prepare_graphql_params
 
 if TYPE_CHECKING:
     from graphql.execution import ExecutionResult
 
-    from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 
@@ -29,7 +26,8 @@ async def execute_query(
 ) -> ExecutionResult:
     """Helper function to Execute a GraphQL Query."""
 
-    branch = branch or await get_branch(db=db, branch=branch)
+    if not isinstance(branch, Branch):
+        branch = await get_branch(db=db, branch=branch)
     at = Timestamp(at)
 
     graphql_query = await NodeManager.get_one_by_default_filter(
@@ -38,26 +36,14 @@ async def execute_query(
     if not graphql_query:
         raise ValueError(f"Unable to find the {InfrahubKind.GRAPHQLQUERY} {name}")
 
+    gql_params = prepare_graphql_params(branch=branch, db=db, at=at, include_mutation=False, include_subscription=False)
+
     result = await graphql(
-        graphene.Schema(query=await get_gql_query(db=db, branch=branch), auto_camelcase=False).graphql_schema,
+        schema=gql_params.schema,
         source=graphql_query.query.value,
-        context_value={
-            "infrahub_database": db,
-            "infrahub_branch": branch,
-            "infrahub_at": at,
-            "related_node_ids": set(),
-        },
+        context_value=gql_params.context,
         root_value=None,
         variable_values=params or {},
     )
 
     return result
-
-
-async def get_gql_query(db: InfrahubDatabase, branch: Union[Branch, str]) -> type[InfrahubBaseQuery]:
-    QueryMixin = await generate_query_mixin(db=db, branch=branch)
-
-    class Query(InfrahubBaseQuery, QueryMixin):
-        pass
-
-    return Query

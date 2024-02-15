@@ -49,7 +49,7 @@ yaml_all: &yaml_all
   - "**/*.{yml,yaml}"
 
 markdown_all: &markdown_all
-  - "**/*.md"
+  - "**/*.{md,mdx}"
 
 
 backend_all:

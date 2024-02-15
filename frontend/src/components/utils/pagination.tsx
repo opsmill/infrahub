@@ -54,13 +54,13 @@ export const Pagination = (props: tPaginationType) => {
     setPagination(newPagination);
   };
 
-  const handleLimitChange = (option: SelectOption) => {
-    if (option.id === limit) {
+  const handleLimitChange = (newLimit: Number) => {
+    if (newLimit === limit) {
       return;
     }
 
     const newPagination = {
-      limit: option.id,
+      limit: newLimit,
       offset,
     };
 

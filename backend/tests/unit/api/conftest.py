@@ -40,6 +40,15 @@ def rpc_bus(helper):
 
 
 @pytest.fixture
+def rpc_bus_simulator(helper, db):
+    original = config.OVERRIDE.message_bus
+    bus = helper.get_message_bus_simulator(db=db)
+    config.OVERRIDE.message_bus = bus
+    yield bus
+    config.OVERRIDE.message_bus = original
+
+
+@pytest.fixture
 async def car_person_data(
     db: InfrahubDatabase, register_core_models_schema, car_person_schema, first_account
 ) -> Dict[str, Node]:

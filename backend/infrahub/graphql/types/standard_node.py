@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any, Dict
+
 from graphene import ObjectType
 from graphene.types.objecttype import ObjectTypeOptions
 
 import infrahub.config as config
+
+if TYPE_CHECKING:
+    from infrahub.graphql import GraphqlContext
 
 
 class InfrahubObjectTypeOptions(ObjectTypeOptions):
@@ -27,23 +32,27 @@ class InfrahubObjectType(ObjectType):
         super().__init_subclass_with_meta__(_meta=_meta, interfaces=interfaces, **options)
 
     @classmethod
-    async def get_list(cls, fields, context, **kwargs):
-        at = context.get("infrahub_at")
-        branch = context.get("infrahub_branch")
-        account = context.get("infrahub_account", None)
-        db = context.get("infrahub_database")
-
-        async with db.session(database=config.SETTINGS.database.database_name) as session:
-            context["infrahub_session"] = session
-
+    async def get_list(cls, fields: Dict[str, Any], context: GraphqlContext, **kwargs):
+        async with context.db.session(database=config.SETTINGS.database.database_name) as db:
             filters = {key: value for key, value in kwargs.items() if "__" in key and value}
 
             if filters:
                 objs = await cls._meta.model.get_list(
-                    filters=filters, at=at, branch=branch, account=account, include_source=True, db=db
+                    filters=filters,
+                    at=context.at,
+                    branch=context.branch,
+                    account=context.account_session,
+                    include_source=True,
+                    db=db,
                 )
             else:
-                objs = await cls._meta.model.get_list(at=at, branch=branch, account=account, include_source=True, db=db)
+                objs = await cls._meta.model.get_list(
+                    at=context.at,
+                    branch=context.branch,
+                    account=context.account_session,
+                    include_source=True,
+                    db=db,
+                )
 
             if not objs:
                 return []

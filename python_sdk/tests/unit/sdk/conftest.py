@@ -1,5 +1,8 @@
 import re
+import sys
 from dataclasses import dataclass
+from io import StringIO
+from typing import AsyncGenerator, Optional
 
 import pytest
 import ujson
@@ -16,6 +19,7 @@ from infrahub_sdk.utils import get_fixtures_dir
 class BothClients:
     sync: InfrahubClientSync
     standard: InfrahubClient
+    stdout: Optional[StringIO] = None
 
 
 @pytest.fixture
@@ -30,6 +34,22 @@ async def clients() -> BothClients:
         sync=InfrahubClientSync.init(address="http://mock", insert_tracker=True, pagination_size=3),
     )
     return both
+
+
+@pytest.fixture
+async def echo_clients(clients: BothClients) -> AsyncGenerator[BothClients, None]:
+    clients.standard.config.echo_graphql_queries = True
+    clients.sync.config.echo_graphql_queries = True
+    clients.stdout = StringIO()
+    backup_stdout = sys.stdout
+    sys.stdout = clients.stdout
+
+    yield clients
+
+    sys.stdout = backup_stdout
+
+    clients.standard.config.echo_graphql_queries = False
+    clients.sync.config.echo_graphql_queries = False
 
 
 @pytest.fixture

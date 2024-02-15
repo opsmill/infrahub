@@ -1,6 +1,6 @@
 from typing import Dict, Type
 
-from infrahub.message_bus import InfrahubMessage
+from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
 from .check_artifact_create import CheckArtifactCreate
 from .check_repository_checkdefinition import CheckRepositoryCheckDefinition
@@ -14,8 +14,8 @@ from .event_schema_update import EventSchemaUpdate
 from .event_worker_newprimaryapi import EventWorkerNewPrimaryAPI
 from .finalize_validator_execution import FinalizeValidatorExecution
 from .git_branch_create import GitBranchCreate
-from .git_diff_namesonly import GitDiffNamesOnly
-from .git_file_get import GitFileGet
+from .git_diff_namesonly import GitDiffNamesOnly, GitDiffNamesOnlyResponse
+from .git_file_get import GitFileGet, GitFileGetResponse
 from .git_repository_add import GitRepositoryAdd
 from .git_repository_merge import GitRepositoryMerge
 from .git_repository_read_only_add import GitRepositoryAddReadOnly
@@ -30,14 +30,18 @@ from .request_git_sync import RequestGitSync
 from .request_graphqlquerygroup_update import RequestGraphQLQueryGroupUpdate
 from .request_proposed_change_cancel import RequestProposedChangeCancel
 from .request_proposedchange_dataintegrity import RequestProposedChangeDataIntegrity
+from .request_proposedchange_pipeline import RequestProposedChangePipeline
 from .request_proposedchange_refreshartifacts import RequestProposedChangeRefreshArtifacts
 from .request_proposedchange_repositorychecks import RequestProposedChangeRepositoryChecks
+from .request_proposedchange_runtests import RequestProposedChangeRunTests
 from .request_proposedchange_schemaintegrity import RequestProposedChangeSchemaIntegrity
 from .request_repository_checks import RequestRepositoryChecks
 from .request_repository_userchecks import RequestRepositoryUserChecks
+from .schema_migration_path import SchemaMigrationPath, SchemaMigrationPathResponse
+from .schema_validator_path import SchemaValidatorPath, SchemaValidatorPathResponse
 from .send_webhook_event import SendWebhookEvent
-from .transform_jinja_template import TransformJinjaTemplate
-from .transform_python_data import TransformPythonData
+from .transform_jinja_template import TransformJinjaTemplate, TransformJinjaTemplateResponse
+from .transform_python_data import TransformPythonData, TransformPythonDataResponse
 from .trigger_artifact_definition_generate import TriggerArtifactDefinitionGenerate
 from .trigger_proposed_change_cancel import TriggerProposedChangeCancel
 from .trigger_webhook_actions import TriggerWebhookActions
@@ -61,6 +65,8 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "git.repository.merge": GitRepositoryMerge,
     "git.repository.add_read_only": GitRepositoryAddReadOnly,
     "git.repository.pull_read_only": GitRepositoryPullReadOnly,
+    "schema.migration.path": SchemaMigrationPath,
+    "schema.validator.path": SchemaValidatorPath,
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.webhook.configuration": RefreshWebhookConfiguration,
     "request.artifact.generate": RequestArtifactGenerate,
@@ -71,9 +77,11 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "request.graphql_query_group.update": RequestGraphQLQueryGroupUpdate,
     "request.proposed_change.cancel": RequestProposedChangeCancel,
     "request.proposed_change.data_integrity": RequestProposedChangeDataIntegrity,
+    "request.proposed_change.pipeline": RequestProposedChangePipeline,
     "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,
     "request.proposed_change.repository_checks": RequestProposedChangeRepositoryChecks,
     "request.proposed_change.schema_integrity": RequestProposedChangeSchemaIntegrity,
+    "request.proposed_change.run_tests": RequestProposedChangeRunTests,
     "request.repository.checks": RequestRepositoryChecks,
     "request.repository.user_checks": RequestRepositoryUserChecks,
     "send.webhook.event": SendWebhookEvent,
@@ -82,6 +90,15 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "trigger.artifact_definition.generate": TriggerArtifactDefinitionGenerate,
     "trigger.proposed_change.cancel": TriggerProposedChangeCancel,
     "trigger.webhook.actions": TriggerWebhookActions,
+}
+
+RESPONSE_MAP: Dict[str, Type[InfrahubResponse]] = {
+    "transform.jinja.template": TransformJinjaTemplateResponse,
+    "transform.python.data": TransformPythonDataResponse,
+    "git.diff.names_only": GitDiffNamesOnlyResponse,
+    "git.file.get": GitFileGetResponse,
+    "schema.migration.path": SchemaMigrationPathResponse,
+    "schema.validator.path": SchemaValidatorPathResponse,
 }
 
 
@@ -98,6 +115,7 @@ def message_priority(routing_key: str) -> int:
         "git.file.get": 4,
         "request.artifact.generate": 2,
         "request.git.sync": 4,
+        "request.proposed_change.pipeline": 5,
         "request.proposed_change.repository_checks": 5,
         "transform.jinja.template": 4,
         "transform.python.data": 4,

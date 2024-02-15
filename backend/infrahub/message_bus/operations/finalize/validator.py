@@ -27,7 +27,9 @@ async def execution(message: messages.FinalizeValidatorExecution, service: Infra
         await validator.save()
 
     required_checks_data = await service.cache.get(key=checks_key) or ""
-    required_checks = required_checks_data.split(",")
+    # Remove instances of empty checks
+    required_checks = [required_check for required_check in required_checks_data.split(",") if required_check]
+
     completed_checks_data = await service.cache.list_keys(
         filter_pattern=f"validator_execution_id:{message.validator_execution_id}:check_execution_id:*"
     )

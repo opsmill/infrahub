@@ -10,7 +10,7 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from .standard_node import InfrahubObjectType
 
 if TYPE_CHECKING:
-    from infrahub.database import InfrahubDatabase
+    from infrahub.graphql import GraphqlContext
 
 
 class BranchType(InfrahubObjectType):
@@ -29,13 +29,11 @@ class BranchType(InfrahubObjectType):
         model = Branch
 
     @classmethod
-    async def get_list(cls, fields: dict, context: dict, *args, **kwargs):  # pylint: disable=unused-argument
-        db: InfrahubDatabase = context.get("infrahub_database")
-
-        async with db.start_session() as db:
+    async def get_list(cls, fields: dict, context: GraphqlContext, *args, **kwargs):  # pylint: disable=unused-argument
+        async with context.db.start_session() as db:
             objs = await Branch.get_list(db=db, **kwargs)
 
             if not objs:
                 return []
 
-            return [obj.to_graphql(fields=fields) for obj in objs if obj.name != GLOBAL_BRANCH_NAME]
+            return [await obj.to_graphql(fields=fields) for obj in objs if obj.name != GLOBAL_BRANCH_NAME]

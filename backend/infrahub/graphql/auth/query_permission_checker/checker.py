@@ -11,7 +11,7 @@ class GraphQLQueryPermissionChecker:
     def __init__(self, sub_checkers: List[GraphQLQueryPermissionCheckerInterface]):
         self.sub_checkers = sub_checkers
 
-    async def check(self, account_session: AccountSession, analyzed_query: InfrahubGraphQLQueryAnalyzer):
+    async def check(self, account_session: AccountSession, analyzed_query: InfrahubGraphQLQueryAnalyzer) -> None:
         for sub_checker in self.sub_checkers:
             if await sub_checker.supports(account_session):
                 await sub_checker.check(analyzed_query)

@@ -6,6 +6,7 @@ export enum BADGE_TYPES {
   CANCEL,
   WARNING,
   LIGHT,
+  TRANSPARENT,
   DISABLED,
 }
 
@@ -15,7 +16,7 @@ const DEFAULT_CLASS = `
   flex font-medium mr-2 last:mr-0 px-2.5 py-0.5 rounded
 `;
 
-const getClassName = (type: BADGE_TYPES, onClick: Function, disabled?: boolean) => {
+const getClassName = (type?: BADGE_TYPES, onClick?: Function, disabled?: boolean) => {
   switch (type) {
     case BADGE_TYPES.VALIDATE: {
       return `
@@ -40,7 +41,13 @@ const getClassName = (type: BADGE_TYPES, onClick: Function, disabled?: boolean) 
     }
     case BADGE_TYPES.LIGHT: {
       return `
-        text-gray-800 bg-custom-white
+        text-gray-800 bg-gray-100
+        ${onClick && !disabled ? "cursor-pointer hover:bg-gray-50" : ""}
+      `;
+    }
+    case BADGE_TYPES.TRANSPARENT: {
+      return `
+        text-gray-800 bg-transparent,
         ${onClick && !disabled ? "cursor-pointer hover:bg-gray-50" : ""}
       `;
     }
@@ -61,7 +68,17 @@ const getClassName = (type: BADGE_TYPES, onClick: Function, disabled?: boolean) 
   }
 };
 
-export const Badge = (props: any) => {
+type tBadgeProps = {
+  type?: BADGE_TYPES;
+  className?: string;
+  children?: any | any[];
+  value?: any;
+  onDelete?: Function;
+  onClick?: Function;
+  disabled?: boolean;
+};
+
+export const Badge = (props: tBadgeProps) => {
   const { type, className, children, onDelete, value, onClick, disabled } = props;
 
   const customClassName = getClassName(type, onClick || onDelete, disabled);

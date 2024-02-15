@@ -39,14 +39,15 @@ def parse_helper_get_input(text: str) -> str:
 def get(
     input_str: str = typer.Argument(... if sys.stdin.isatty() else sys.stdin.read().strip()),
     config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
-):
+) -> None:
     if not config.SETTINGS:
         config.load_and_exit(config_file_name=config_file)
 
     try:
         location = parse_helper_get_input(text=input_str)
     except ValueError as exc:
-        raise typer.Exit(str(exc)) from exc
+        print(str(exc))
+        raise typer.Exit(1) from exc
 
     # FIXME currently we are only querying the repo in the main branch,
     # this will not work if a new repository is added in a branch first.
@@ -54,7 +55,8 @@ def get(
     repo = client.get(kind=InfrahubKind.GENERICREPOSITORY, location__value=location)
 
     if not repo:
-        raise typer.Exit("Repository not found in the database.")
+        print("Repository not found in the database.")
+        raise typer.Exit(1)
 
     print(f"username={repo.username.value}")
     print(f"password={repo.password.value}")
@@ -65,5 +67,5 @@ def get(
 def store(
     input_str: str = typer.Argument(None),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
-):
+) -> None:
     raise typer.Exit()

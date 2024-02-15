@@ -5,7 +5,8 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus import InfrahubResponse
+from infrahub.message_bus.messages.transform_jinja_template import TransformJinjaTemplateResponse
+from infrahub.message_bus.messages.transform_python_data import TransformPythonDataResponse
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
@@ -40,9 +41,8 @@ async def test_transform_endpoint(
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        mock_response = InfrahubResponse(
-            response_class="transform_response",
-            response_data={"transformed_data": {"KEY1": "value1", "KEY2": "value2"}},
+        mock_response = TransformPythonDataResponse(
+            data={"transformed_data": {"KEY1": "value1", "KEY2": "value2"}},
         )
         rpc_bus.add_mock_reply(response=mock_response)
 
@@ -80,9 +80,8 @@ async def test_rfile_endpoint(
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        mock_response = InfrahubResponse(
-            response_class="template_response",
-            response_data={"rendered_template": "Rendered by a mocked agent"},
+        mock_response = TransformJinjaTemplateResponse(
+            data={"rendered_template": "Rendered by a mocked agent"},
         )
         rpc_bus.add_mock_reply(response=mock_response)
 

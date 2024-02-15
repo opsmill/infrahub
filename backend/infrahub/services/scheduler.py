@@ -61,6 +61,9 @@ class InfrahubScheduler:
                 run_schedule(schedule=schedule, service=self.service), name=f"scheduled_task_{schedule.name}"
             )
 
+    async def shutdown(self) -> None:
+        self.running = False
+
 
 async def run_schedule(schedule: Schedule, service: InfrahubServices) -> None:
     """Execute the task provided in the schedule as per the defined interval

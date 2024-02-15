@@ -19,7 +19,7 @@
     "extensions": {
         "nodes": [
             {
-                "kind": "BuiltinLocation",
+                "kind": "InfraSite",
                 "attributes": [
                     {"name": "address", "kind": "Text", "optional": true }
                 ]

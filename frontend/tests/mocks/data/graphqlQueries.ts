@@ -1,34 +1,30 @@
 export const graphqlQueriesMocksQuery = `
 query CoreGraphQLQuery {
-  CoreGraphQLQuery(offset: 0,limit: 10) {
+  CoreGraphQLQuery(offset: 0, limit: 10) {
     count
     edges {
       node {
         id
         display_label
         __typename
-          name {
-              value
+        name {
+          value
+        }
+        description {
+          value
+        }
+        repository {
+          node {
+            display_label
           }
-          description {
-              value
+        }
+        tags {
+          edges {
+            node {
+              display_label
+            }
           }
-          query {
-              value
-          }
-
-          repository {
-              node {
-                display_label
-              }
-          }
-          tags {
-              edges {
-                node {
-                  display_label
-                }
-              }
-          }
+        }
       }
     }
   }
@@ -37,35 +33,31 @@ query CoreGraphQLQuery {
 
 export const graphqlQueriesMocksQueryWithLimit = `
 query CoreGraphQLQuery {
-  CoreGraphQLQuery(offset: 0,limit: 50) {
+  CoreGraphQLQuery(offset: 0, limit: 50) {
     count
     edges {
       node {
         id
         display_label
         __typename
-          name {
-              value
+        name {
+          value
+        }
+        description {
+          value
+        }
+        repository {
+          node {
+            display_label
           }
-          description {
-              value
+        }
+        tags {
+          edges {
+            node {
+              display_label
+            }
           }
-          query {
-              value
-          }
-
-          repository {
-              node {
-                display_label
-              }
-          }
-          tags {
-              edges {
-                node {
-                  display_label
-                }
-              }
-          }
+        }
       }
     }
   }

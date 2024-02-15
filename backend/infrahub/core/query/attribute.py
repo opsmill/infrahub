@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
-from infrahub.core.constants.schema_property import FlagProperty, NodeProperty
+from infrahub.core.constants.schema import FlagProperty, NodeProperty
 from infrahub.core.query import Query, QueryNode, QueryRel, QueryType
 from infrahub.core.timestamp import Timestamp
 
@@ -189,6 +189,7 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,dis
     include_match: bool = True,
     param_prefix: Optional[str] = None,
     db: Optional[InfrahubDatabase] = None,
+    partial_match: bool = False,
 ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
     """Generate Query String Snippet to filter the right node."""
 
@@ -218,13 +219,17 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,dis
     if filter_name == "value":
         query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]))
 
-        if filter_value is not None:
-            query_filter.append(
-                QueryNode(name="av", labels=["AttributeValue"], params={"value": f"${param_prefix}_value"})
-            )
-            query_params[f"{param_prefix}_value"] = filter_value
-        else:
+        if filter_value is None:
             query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+        else:
+            if partial_match:
+                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+                query_where.append(f"av.value CONTAINS ${param_prefix}_value")
+            else:
+                query_filter.append(
+                    QueryNode(name="av", labels=["AttributeValue"], params={"value": f"${param_prefix}_value"})
+                )
+            query_params[f"{param_prefix}_value"] = filter_value
 
     elif filter_name == "values" and isinstance(filter_value, list):
         query_filter.extend(
