@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from typing import Any, Iterable, Optional
 
 import pytest
@@ -81,20 +80,10 @@ class InfrahubYamlFile(pytest.File):
         marker = self.get_marker(group)
         resource_config = self.get_resource_config(group)
 
-        if marker is None:
-            warnings.warn(Warning(f"No matching marker for {group.resource_name!r}, ignoring test items."))
-            yield
-
-        if resource_config is None:
-            warnings.warn(Warning(f"Unable to get resource {group.resource_name!r} in the repository config file."))
-            yield
-
         for test in group.tests:
-            name = f"infrahub__{group.resource.value.lower()}__{group.resource_name}__{test.name}"
-
             item_class: type[pytest.Item] = ITEMS_MAPPING[test.spec.kind]  # type: ignore[assignment]
             item: pytest.Item = item_class.from_parent(
-                name=name,
+                name=f"infrahub__{group.resource.value.lower()}__{group.resource_name}__{test.name}",
                 parent=self,
                 resource_name=group.resource_name,
                 resource_config=resource_config,
