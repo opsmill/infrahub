@@ -24,10 +24,7 @@ classifiers = [
 python = "^3.11"
 infrahub-sdk = "^0.7.0"
 structlog = "^22.3.0"
-pynetbox = "^7.0.1"
-pynautobot = "^1.5.0"
 diffsync = "^1.10.0"
-
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"

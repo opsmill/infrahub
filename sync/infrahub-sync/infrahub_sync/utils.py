@@ -82,14 +82,19 @@ def get_all_sync(directory: Optional[str] = None) -> List[SyncInstance]:
 
 
 def get_instance(
-    name: Optional[str] = None, config_file: Optional[str] = None, directory: Optional[str] = None
+    name: Optional[str] = None, config_file: Optional[str] = "config.yml", directory: Optional[str] = None
 ) -> Optional[SyncInstance]:
+    if name:
+        all_sync_instances = get_all_sync(directory=directory)
+        for item in all_sync_instances:
+            if item.name == name:
+                return item
+
     config_file_path = None
-    if config_file:
-        if Path(config_file).is_absolute() or directory is None:
-            config_file_path = Path(config_file)
-        elif directory:
-            config_file_path = Path(directory) / Path(config_file)
+    if Path(config_file).is_absolute() or directory is None:
+        config_file_path = Path(config_file)
+    elif directory:
+        config_file_path = Path(directory) / Path(config_file)
 
     if config_file_path:
         directory_path = config_file_path.parent
@@ -97,12 +102,6 @@ def get_instance(
             with config_file_path.open("r") as file:
                 config_data = yaml.safe_load(file)
                 return SyncInstance(**config_data, directory=str(directory_path))
-    else:
-        if name:
-            all_sync_instances = get_all_sync(directory=directory)
-            for item in all_sync_instances:
-                if item.name == name:
-                    return item
 
     return None
 

@@ -9,16 +9,21 @@ from .sync_models import (
  InfraAutonomousSystem,
  InfraCircuit,
  InfraDevice,
+ InfraFrontPort,
  InfraIPAddress,
+ InfraInterfaceL2L3,
  InfraPlatform,
  InfraPrefix,
  InfraProviderNetwork,
  InfraRack,
+ InfraRearPort,
  InfraRouteTarget,
  InfraVLAN,
  InfraVRF,
+ NautobotNamespace,
  TemplateCircuitType,
  TemplateDeviceType,
+ TemplateLocationType,
 )
 
 
@@ -35,11 +40,16 @@ class NautobotSync(NautobotAdapter):
  TemplateCircuitType = TemplateCircuitType
  InfraDevice = InfraDevice
  TemplateDeviceType = TemplateDeviceType
+ InfraFrontPort = InfraFrontPort
+ InfraInterfaceL2L3 = InfraInterfaceL2L3
  InfraIPAddress = InfraIPAddress
+ TemplateLocationType = TemplateLocationType
+ NautobotNamespace = NautobotNamespace
  InfraPlatform = InfraPlatform
  InfraProviderNetwork = InfraProviderNetwork
  InfraPrefix = InfraPrefix
  InfraRack = InfraRack
+ InfraRearPort = InfraRearPort
  InfraRouteTarget = InfraRouteTarget
  InfraVLAN = InfraVLAN
  InfraVRF = InfraVRF

@@ -89,15 +89,63 @@ class TemplateDeviceType(NautobotModel):
     local_id: Optional[str]
     local_data: Optional[Any]
 
+class InfraFrontPort(NautobotModel):
+    _modelname = "InfraFrontPort"
+    _identifiers = ("name", "device")
+    _attributes = ("rear_port", "description", "port_type")
+    name: str
+    description: Optional[str]
+    port_type: Optional[str]
+    rear_port: List[str] = []
+    device: str
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+class InfraInterfaceL2L3(NautobotModel):
+    _modelname = "InfraInterfaceL2L3"
+    _identifiers = ("name", "device")
+    _attributes = ("tagged_vlan", "tags", "l2_mode", "description", "mgmt_only", "mac_address", "interface_type")
+    l2_mode: Optional[str]
+    name: str
+    description: Optional[str]
+    mgmt_only: Optional[bool]
+    mac_address: Optional[str]
+    interface_type: Optional[str]
+    untagged_vlan: Optional[str]
+    tagged_vlan: List[str] = []
+    device: str
+    tags: List[str] = []
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
 class InfraIPAddress(NautobotModel):
     _modelname = "InfraIPAddress"
     _identifiers = ("address", "prefix")
-    _attributes = ("organization", "role", "description")
+    _attributes = ("organization", "interfaces", "role", "description")
     address: str
     description: Optional[str]
     organization: Optional[str]
+    interfaces: List[str] = []
     prefix: Optional[str]
     role: Optional[str]
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+class TemplateLocationType(NautobotModel):
+    _modelname = "TemplateLocationType"
+    _identifiers = ("name",)
+    _attributes = ("description",)
+    name: str
+    description: Optional[str]
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+class NautobotNamespace(NautobotModel):
+    _modelname = "NautobotNamespace"
+    _identifiers = ("name",)
+    _attributes = ("description",)
+    name: str
+    description: Optional[str]
     local_id: Optional[str]
     local_data: Optional[Any]
 
@@ -108,6 +156,7 @@ class InfraPlatform(NautobotModel):
     name: str
     description: Optional[str]
     napalm_driver: Optional[str]
+    manufacturer: str
     local_id: Optional[str]
     local_data: Optional[Any]
 
@@ -130,6 +179,7 @@ class InfraPrefix(NautobotModel):
     prefix: str
     description: Optional[str]
     organization: Optional[str]
+    namespace: Optional[str]
     location: Optional[str]
     role: Optional[str]
     vlan: Optional[str]
@@ -148,6 +198,17 @@ class InfraRack(NautobotModel):
     location: str
     role: Optional[str]
     tags: List[str] = []
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+class InfraRearPort(NautobotModel):
+    _modelname = "InfraRearPort"
+    _identifiers = ("name", "device")
+    _attributes = ("description", "port_type")
+    name: str
+    description: Optional[str]
+    port_type: Optional[str]
+    device: str
     local_id: Optional[str]
     local_data: Optional[Any]
 
@@ -183,6 +244,7 @@ class InfraVRF(NautobotModel):
     description: Optional[str]
     vrf_rd: Optional[str]
     organization: Optional[str]
+    namespace: Optional[str]
     import_rt: List[str] = []
     export_rt: List[str] = []
     local_id: Optional[str]
@@ -212,10 +274,11 @@ class BuiltinRole(NautobotModel):
 class BuiltinLocation(NautobotModel):
     _modelname = "BuiltinLocation"
     _identifiers = ("name",)
-    _attributes = ("tags", "description", "type")
+    _attributes = ("tags", "location_type", "description", "type")
     name: str
     description: Optional[str]
     type: str
     tags: List[str] = []
+    location_type: Optional[str]
     local_id: Optional[str]
     local_data: Optional[Any]

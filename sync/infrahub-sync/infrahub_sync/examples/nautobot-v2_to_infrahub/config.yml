@@ -10,6 +10,12 @@ destination:
   settings:
     url: "http://localhost:8000"
 
+store:
+  type: redis
+  settings:
+    host: localhost
+    port: 6379
+
 order: [
   "BuiltinTag",
   "BuiltinRole",
