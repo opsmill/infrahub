@@ -35,10 +35,6 @@ class InfrahubPythonTransformItem(InfrahubItem):
             search_path=self.session.infrahub_config_path.parent,  # type: ignore[attr-defined]
         )
 
-        for attr in ("query", "transform"):
-            if not hasattr(self.transform_instance, attr):
-                raise PythonTransformDefinitionError(f"Missing attribute or function {attr}")
-
     def run_transform(self, variables: Dict[str, Any]) -> Any:
         return asyncio.run(self.transform_instance.run(data=variables))
 
@@ -64,12 +60,14 @@ class InfrahubPythonTransformItem(InfrahubItem):
 
 class InfrahubPythonTransformSmokeItem(InfrahubPythonTransformItem):
     def runtest(self) -> None:
-        pass
+        for attr in ("query", "transform"):
+            if not hasattr(self.transform_instance, attr):
+                raise PythonTransformDefinitionError(f"Missing attribute or function {attr}")
 
 
 class InfrahubPythonTransformUnitProcessItem(InfrahubPythonTransformItem):
     def runtest(self) -> None:
-        input_data = self.test.spec.get_input_data()
+        input_data = self.test.spec.get_input_data()  # type: ignore[union-attr]
         computed = self.run_transform(input_data)
         differences = self.get_result_differences(computed)
 

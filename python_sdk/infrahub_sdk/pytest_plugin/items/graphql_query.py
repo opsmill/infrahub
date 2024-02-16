@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from httpx import HTTPStatusError
 
+from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
+
 from ..exceptions import OutputMatchError
 from ..models import InfrahubTestExpectedResult
 from .base import InfrahubItem
@@ -43,7 +45,8 @@ class InfrahubGraphqlQueryItem(InfrahubItem):
 
 class InfrahubGraphqlQuerySmokeItem(InfrahubGraphqlQueryItem):
     def runtest(self) -> None:
-        pass
+        query = self.test.spec.path.read_text()  # type: ignore[attr-defined,union-attr]
+        GraphQLQueryAnalyzer(query)
 
 
 class InfrahubGraphqlQueryIntegrationItem(InfrahubGraphqlQueryItem):
@@ -51,5 +54,5 @@ class InfrahubGraphqlQueryIntegrationItem(InfrahubGraphqlQueryItem):
         computed = self.execute_query()
         differences = self.get_result_differences(computed)
 
-        if self.test.spec.output and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
+        if self.test.spec.output and differences and self.test.expect == InfrahubTestExpectedResult.PASS:  # type: ignore[union-attr]
             raise OutputMatchError(name=self.name, differences=differences)

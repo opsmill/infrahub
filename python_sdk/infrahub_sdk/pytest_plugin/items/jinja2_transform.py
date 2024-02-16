@@ -11,21 +11,26 @@ from rich.traceback import Traceback
 
 from ...utils import identify_faulty_jinja_code
 from ..exceptions import Jinja2TransformError, Jinja2TransformUndefinedError, OutputMatchError
-from ..models import InfrahubTestExpectedResult
+from ..models import InfrahubInputOutputTest, InfrahubTestExpectedResult
 from .base import InfrahubItem
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from pytest import ExceptionInfo
 
 
 class InfrahubJinja2Item(InfrahubItem):
-    def render_jinja2_template(self, variables: Dict[str, Any]) -> Optional[str]:
+    def get_jinja2_environment(self) -> jinja2.Environment:
         loader = jinja2.FileSystemLoader(self.session.infrahub_config_path.parent)  # type: ignore[attr-defined]
-        env = jinja2.Environment(loader=loader, trim_blocks=True, lstrip_blocks=True)
-        template = env.get_template(str(self.resource_config.template_path))  # type: ignore[attr-defined]
+        return jinja2.Environment(loader=loader, trim_blocks=True, lstrip_blocks=True)
 
+    def get_jinja2_template(self) -> jinja2.Template:
+        return self.get_jinja2_environment().get_template(str(self.resource_config.template_path))  # type: ignore[attr-defined]
+
+    def render_jinja2_template(self, variables: Dict[str, Any]) -> Optional[str]:
         try:
-            return template.render(**variables)
+            return self.get_jinja2_template().render(**variables)
         except jinja2.UndefinedError as exc:
             traceback = Traceback(show_locals=False)
             errors = identify_faulty_jinja_code(traceback=traceback)
@@ -44,7 +49,7 @@ class InfrahubJinja2Item(InfrahubItem):
             return None
 
     def get_result_differences(self, computed: Any) -> Optional[str]:
-        if not self.test.spec.output or computed is None:
+        if not isinstance(self.test.spec, InfrahubInputOutputTest) or not self.test.spec.output or computed is None:
             return None
 
         differences = difflib.unified_diff(
@@ -81,12 +86,13 @@ class InfrahubJinja2Item(InfrahubItem):
 
 class InfrahubJinja2TransformSmokeItem(InfrahubJinja2Item):
     def runtest(self) -> None:
-        pass
+        file_path: Path = self.resource_config.template_path  # type: ignore[attr-defined]
+        self.get_jinja2_environment().parse(file_path.read_text(), filename=file_path.name)
 
 
 class InfrahubJinja2TransformUnitRenderItem(InfrahubJinja2Item):
     def runtest(self) -> None:
-        computed = self.render_jinja2_template(self.test.spec.get_input_data())
+        computed = self.render_jinja2_template(self.test.spec.get_input_data())  # type: ignore[union-attr]
         differences = self.get_result_differences(computed)
 
         if computed is not None and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
