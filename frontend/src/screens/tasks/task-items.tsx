@@ -4,6 +4,7 @@ import { Pagination } from "../../components/utils/pagination";
 import { TASK_OBJECT } from "../../config/constants";
 import useQuery from "../../hooks/useQuery";
 
+import { forwardRef, useImperativeHandle } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { DateDisplay } from "../../components/display/date-display";
 import { DurationDisplay } from "../../components/display/duration-display";
@@ -15,7 +16,7 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getConclusionBadge } from "./task-item-details";
 
-export const TaskItems = () => {
+export const TaskItems = forwardRef((props, ref) => {
   const { objectid } = useParams();
   const location = useLocation();
 
@@ -30,7 +31,10 @@ export const TaskItems = () => {
     ${queryString}
   `;
 
-  const { loading, error, data = {} } = useQuery(query);
+  const { loading, error, data = {}, refetch } = useQuery(query);
+
+  // Provide refetch function to parent
+  useImperativeHandle(ref, () => ({ refetch }));
 
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching list." />;
@@ -104,4 +108,4 @@ export const TaskItems = () => {
       )}
     </div>
   );
-};
+});

@@ -9,10 +9,11 @@ import {
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import { Retry } from "../../components/buttons/retry";
 import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
 import SlideOver from "../../components/display/slide-over";
 import { Tabs } from "../../components/tabs";
@@ -53,7 +54,7 @@ import { TaskItemDetails } from "../tasks/task-item-details";
 import { TaskItems } from "../tasks/task-items";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
-import RelationshipsDetails from "./relationships-details-paginated";
+import { RelationshipsDetails } from "./relationships-details-paginated";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -79,6 +80,8 @@ export default function ObjectItemDetails(props: any) {
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
   const navigate = useNavigate();
+
+  const refetchRef = useRef(null);
 
   const schemaData = generic || schema;
 
@@ -120,7 +123,13 @@ export default function ObjectItemDetails(props: any) {
     notifyOnNetworkStatusChange: true,
   });
 
-  // const handleRefetch = () => refetch();
+  // TODO: refactor to not need the ref to refetch child query
+  const handleRefetch = () => {
+    refetch();
+    if (refetchRef?.current?.refetch) {
+      refetchRef?.current?.refetch();
+    }
+  };
 
   const objectDetailsData = schemaData && data && data[schemaData?.kind]?.edges[0]?.node;
 
@@ -185,7 +194,7 @@ export default function ObjectItemDetails(props: any) {
               <p className="max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
 
               <div className="ml-2">
-                {/* <Retry isLoading={loading} onClick={handleRefetch} /> */}
+                <Retry isLoading={loading} onClick={handleRefetch} />
               </div>
             </div>
 
@@ -344,10 +353,11 @@ export default function ObjectItemDetails(props: any) {
           parentNode={objectDetailsData}
           parentSchema={schemaData}
           refetchObjectDetails={refetch}
+          ref={refetchRef}
         />
       )}
 
-      {qspTab && qspTab === "tasks" && !qspTaskId && <TaskItems />}
+      {qspTab && qspTab === "tasks" && !qspTaskId && <TaskItems ref={refetchRef} />}
 
       {qspTab && qspTab === "tasks" && qspTaskId && (
         <div>
@@ -363,7 +373,7 @@ export default function ObjectItemDetails(props: any) {
             </Link>
           </div>
 
-          <TaskItemDetails />
+          <TaskItemDetails ref={refetchRef} />
         </div>
       )}
 

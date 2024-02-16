@@ -1,6 +1,7 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
+import { forwardRef, useImperativeHandle } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -27,7 +28,8 @@ interface RelationshipsDetailsProps {
   refetchObjectDetails: Function;
 }
 
-export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
+// Forward ref needed to provide ref to parent to refetch
+export const RelationshipsDetails = forwardRef((props: RelationshipsDetailsProps, ref) => {
   const { parentNode, refetchObjectDetails } = props;
 
   const { objectname, objectid } = useParams();
@@ -76,6 +78,9 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
   `;
 
   const { loading, error, data, refetch } = useQuery(query, { skip: !relationshipTab });
+
+  // Provide refetch function to parent
+  useImperativeHandle(ref, () => ({ refetch }));
 
   const updatePageData = () => {
     return Promise.all([refetch(), refetchObjectDetails()]);
@@ -140,4 +145,4 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
       <Pagination count={count} />
     </div>
   );
-}
+});
