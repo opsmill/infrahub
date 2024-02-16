@@ -32,7 +32,7 @@ class InfrahubItem(pytest.Item):
         self.resource_config: InfrahubRepositoryConfigElement = resource_config
         self.test: InfrahubTest = test
 
-        # Sanity tests do not need this, hence this clause
+        # Smoke tests do not need this, hence this clause
         if isinstance(self.test.spec, InfrahubInputOutputTest):
             self.test.spec.update_paths(base_dir=self.fspath.dirpath())
 

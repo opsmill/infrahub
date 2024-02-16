@@ -59,7 +59,7 @@ class InfrahubCheckItem(InfrahubItem):
         return super().repr_failure(excinfo, style=style)
 
 
-class InfrahubCheckSanityItem(InfrahubCheckItem):
+class InfrahubCheckSmokeItem(InfrahubCheckItem):
     def runtest(self) -> None:
         pass
 

@@ -79,7 +79,7 @@ class InfrahubJinja2Item(InfrahubItem):
         return super().repr_failure(excinfo, style=style)
 
 
-class InfrahubJinja2TransformSanityItem(InfrahubJinja2Item):
+class InfrahubJinja2TransformSmokeItem(InfrahubJinja2Item):
     def runtest(self) -> None:
         pass
 

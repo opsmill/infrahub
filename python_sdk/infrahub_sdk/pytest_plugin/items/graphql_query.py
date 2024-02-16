@@ -41,7 +41,7 @@ class InfrahubGraphqlQueryItem(InfrahubItem):
         return super().repr_failure(excinfo, style=style)
 
 
-class InfrahubGraphqlQuerySanityItem(InfrahubGraphqlQueryItem):
+class InfrahubGraphqlQuerySmokeItem(InfrahubGraphqlQueryItem):
     def runtest(self) -> None:
         pass
 

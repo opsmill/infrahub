@@ -8,15 +8,15 @@ from pytest import Item
 
 from .items import (
     InfrahubCheckIntegrationItem,
-    InfrahubCheckSanityItem,
+    InfrahubCheckSmokeItem,
     InfrahubCheckUnitProcessItem,
     InfrahubGraphqlQueryIntegrationItem,
-    InfrahubGraphqlQuerySanityItem,
+    InfrahubGraphqlQuerySmokeItem,
     InfrahubJinja2TransformIntegrationItem,
-    InfrahubJinja2TransformSanityItem,
+    InfrahubJinja2TransformSmokeItem,
     InfrahubJinja2TransformUnitRenderItem,
     InfrahubPythonTransformIntegrationItem,
-    InfrahubPythonTransformSanityItem,
+    InfrahubPythonTransformSmokeItem,
     InfrahubPythonTransformUnitProcessItem,
 )
 from .models import InfrahubTestFileV1, InfrahubTestGroup
@@ -35,15 +35,15 @@ CONFIG_MAPPING = {
 }
 
 ITEMS_MAPPING = {
-    "check-sanity": InfrahubCheckSanityItem,
+    "check-smoke": InfrahubCheckSmokeItem,
     "check-unit-process": InfrahubCheckUnitProcessItem,
     "check-integration": InfrahubCheckIntegrationItem,
-    "graphql-query-sanity": InfrahubGraphqlQuerySanityItem,
+    "graphql-query-smoke": InfrahubGraphqlQuerySmokeItem,
     "graphql-query-integration": InfrahubGraphqlQueryIntegrationItem,
-    "jinja2-transform-sanity": InfrahubJinja2TransformSanityItem,
+    "jinja2-transform-smoke": InfrahubJinja2TransformSmokeItem,
     "jinja2-transform-unit-render": InfrahubJinja2TransformUnitRenderItem,
     "jinja2-transform-integration": InfrahubJinja2TransformIntegrationItem,
-    "python-transform-sanity": InfrahubPythonTransformSanityItem,
+    "python-transform-smoke": InfrahubPythonTransformSmokeItem,
     "python-transform-unit-process": InfrahubPythonTransformUnitProcessItem,
     "python-transform-integration": InfrahubPythonTransformIntegrationItem,
 }
@@ -82,8 +82,8 @@ class InfrahubYamlFile(pytest.File):
 
             item.add_marker(pytest.mark.infrahub)
             item.add_marker(marker)
-            if "sanity" in test.spec.kind:
-                item.add_marker(pytest.mark.infrahub_sanity)
+            if "smoke" in test.spec.kind:
+                item.add_marker(pytest.mark.infrahub_smoke)
             if "unit" in test.spec.kind:
                 item.add_marker(pytest.mark.infrahub_unit)
             if "integration" in test.spec.kind:

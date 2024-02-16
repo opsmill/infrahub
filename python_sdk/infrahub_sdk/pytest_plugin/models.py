@@ -128,8 +128,8 @@ class InfrahubIntegrationTest(InfrahubInputOutputTest):
         return self.parse_user_provided_data(self.variables)
 
 
-class InfrahubCheckSanityTest(InfrahubBaseTest):
-    kind: Literal["check-sanity"]
+class InfrahubCheckSmokeTest(InfrahubBaseTest):
+    kind: Literal["check-smoke"]
 
 
 class InfrahubCheckUnitProcessTest(InfrahubInputOutputTest):
@@ -140,8 +140,8 @@ class InfrahubCheckIntegrationTest(InfrahubIntegrationTest):
     kind: Literal["check-integration"]
 
 
-class InfrahubGraphqlQuerySanityTest(InfrahubBaseTest):
-    kind: Literal["graphql-query-sanity"]
+class InfrahubGraphqlQuerySmokeTest(InfrahubBaseTest):
+    kind: Literal["graphql-query-smoke"]
     path: Path = pydantic.Field(description="Path to the file in which the GraphQL query is defined")
 
 
@@ -150,8 +150,8 @@ class InfrahubGraphqlQueryIntegrationTest(InfrahubIntegrationTest):
     query: str = pydantic.Field(description="Name of a pre-defined GraphQL query to execute")
 
 
-class InfrahubJinja2TransformSanityTest(InfrahubBaseTest):
-    kind: Literal["jinja2-transform-sanity"]
+class InfrahubJinja2TransformSmokeTest(InfrahubBaseTest):
+    kind: Literal["jinja2-transform-smoke"]
 
 
 class InfrahubJinja2TransformUnitRenderTest(InfrahubInputOutputTest):
@@ -162,8 +162,8 @@ class InfrahubJinja2TransformIntegrationTest(InfrahubIntegrationTest):
     kind: Literal["jinja2-transform-integration"]
 
 
-class InfrahubPythonTransformSanityTest(InfrahubBaseTest):
-    kind: Literal["python-transform-sanity"]
+class InfrahubPythonTransformSmokeTest(InfrahubBaseTest):
+    kind: Literal["python-transform-smoke"]
 
 
 class InfrahubPythonTransformUnitProcessTest(InfrahubInputOutputTest):
@@ -181,15 +181,15 @@ class InfrahubTest(pydantic.BaseModel):
         description="Expected outcome of the test, can be either PASS (default) or FAIL",
     )
     spec: Union[
-        InfrahubCheckSanityTest,
+        InfrahubCheckSmokeTest,
         InfrahubCheckUnitProcessTest,
         InfrahubCheckIntegrationTest,
-        InfrahubGraphqlQuerySanityTest,
+        InfrahubGraphqlQuerySmokeTest,
         InfrahubGraphqlQueryIntegrationTest,
-        InfrahubJinja2TransformSanityTest,
+        InfrahubJinja2TransformSmokeTest,
         InfrahubJinja2TransformUnitRenderTest,
         InfrahubJinja2TransformIntegrationTest,
-        InfrahubPythonTransformSanityTest,
+        InfrahubPythonTransformSmokeTest,
         InfrahubPythonTransformUnitProcessTest,
         InfrahubPythonTransformIntegrationTest,
     ] = pydantic.Field(..., discriminator="kind")

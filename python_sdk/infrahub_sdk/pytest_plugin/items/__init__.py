@@ -1,26 +1,26 @@
-from .check import InfrahubCheckIntegrationItem, InfrahubCheckSanityItem, InfrahubCheckUnitProcessItem
-from .graphql_query import InfrahubGraphqlQueryIntegrationItem, InfrahubGraphqlQuerySanityItem
+from .check import InfrahubCheckIntegrationItem, InfrahubCheckSmokeItem, InfrahubCheckUnitProcessItem
+from .graphql_query import InfrahubGraphqlQueryIntegrationItem, InfrahubGraphqlQuerySmokeItem
 from .jinja2_transform import (
     InfrahubJinja2TransformIntegrationItem,
-    InfrahubJinja2TransformSanityItem,
+    InfrahubJinja2TransformSmokeItem,
     InfrahubJinja2TransformUnitRenderItem,
 )
 from .python_transform import (
     InfrahubPythonTransformIntegrationItem,
-    InfrahubPythonTransformSanityItem,
+    InfrahubPythonTransformSmokeItem,
     InfrahubPythonTransformUnitProcessItem,
 )
 
 __all__ = [
     "InfrahubCheckIntegrationItem",
-    "InfrahubCheckSanityItem",
+    "InfrahubCheckSmokeItem",
     "InfrahubCheckUnitProcessItem",
     "InfrahubGraphqlQueryIntegrationItem",
-    "InfrahubGraphqlQuerySanityItem",
+    "InfrahubGraphqlQuerySmokeItem",
     "InfrahubJinja2TransformIntegrationItem",
-    "InfrahubJinja2TransformSanityItem",
+    "InfrahubJinja2TransformSmokeItem",
     "InfrahubJinja2TransformUnitRenderItem",
     "InfrahubPythonTransformIntegrationItem",
-    "InfrahubPythonTransformSanityItem",
+    "InfrahubPythonTransformSmokeItem",
     "InfrahubPythonTransformUnitProcessItem",
 ]

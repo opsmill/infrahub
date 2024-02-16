@@ -62,7 +62,7 @@ class InfrahubPythonTransformItem(InfrahubItem):
         return super().repr_failure(excinfo, style=style)
 
 
-class InfrahubPythonTransformSanityItem(InfrahubPythonTransformItem):
+class InfrahubPythonTransformSmokeItem(InfrahubPythonTransformItem):
     def runtest(self) -> None:
         pass
 

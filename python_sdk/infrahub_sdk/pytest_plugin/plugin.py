@@ -94,7 +94,7 @@ def pytest_collect_file(parent: Union[Collector, Item], file_path: Path) -> Opti
 
 def pytest_configure(config: Config) -> None:
     config.addinivalue_line("markers", "infrahub: Infrahub test")
-    config.addinivalue_line("markers", "infrahub_sanity: Sanity test for an Infrahub resource")
+    config.addinivalue_line("markers", "infrahub_smoke: Smoke test for an Infrahub resource")
     config.addinivalue_line("markers", "infrahub_unit: Unit test for an Infrahub resource, works without dependencies")
     config.addinivalue_line(
         "markers",
