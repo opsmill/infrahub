@@ -47,5 +47,21 @@ test.describe("/objects/:objectname/:objectid", () => {
       // Relationships Generics
       await expect(page.locator("dl")).toContainText("Device");
     });
+
+    test("should display the select 2 steps corectly", async ({ page }) => {
+      await page.goto("/");
+      await page.getByRole("link", { name: "All Device(s)" }).click();
+      await page.getByRole("link", { name: "atl1-edge1" }).click();
+      await page.getByText("Interfaces14").click();
+      await page.getByRole("link", { name: "Backbone: Connected to jfk1-" }).click();
+      await page.getByRole("button", { name: "Edit" }).click();
+      await page.getByTestId("select2step-1").scrollIntoViewIfNeeded();
+      await expect(page.getByTestId("select2step-1").getByTestId("select-input")).toHaveValue(
+        "CircuitEndpoint"
+      );
+      await expect(
+        await page.getByTestId("select2step-2").getByTestId("select-input").inputValue()
+      ).toMatch(/InfraCircuitEndpoint\(ID: .*\)/g);
+    });
   });
 });

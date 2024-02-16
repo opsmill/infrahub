@@ -20,6 +20,7 @@ export interface DynamicFieldData {
   isUnique?: boolean;
   disabled?: boolean;
   preventObjectsCreation?: boolean;
+  parent?: string;
 }
 
 // Different values for "kind" property of each attribute in the schema

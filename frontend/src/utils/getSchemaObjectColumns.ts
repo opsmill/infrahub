@@ -236,6 +236,12 @@ export const getRelationshipOptions = (row: any, field: any, schemas: any[], gen
   return [option];
 };
 
+export const getSelectParent = (row: any, field: any) => {
+  const parent = row[field.name]?.node?.__typename;
+
+  return parent;
+};
+
 export const getOptionsFromAttribute = (attribute: any, value: any) => {
   if (attribute.kind === "List") {
     return value?.map((option: any) => ({

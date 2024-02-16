@@ -16,12 +16,11 @@ export const DynamicControl = (props: DynamicFieldData) => {
   const {
     type,
     name,
-    // kind,
     value,
     options = {
       values: [],
     },
-    // config = {},
+    parent,
   } = props;
 
   const { register, setValue, getValues } = useFormContext();
@@ -108,15 +107,10 @@ export const DynamicControl = (props: DynamicFieldData) => {
         id: o.id,
       }));
 
-      const regex = /^Related/; // starts with Related
-
-      const parent = value?.__typename?.replace(regex, "");
-      const child = value?.id;
-
       const selectValue = parent
         ? {
             parent,
-            child,
+            child: value,
           }
         : ""; // Initial value msut be empty if not defined
 

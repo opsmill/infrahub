@@ -68,21 +68,24 @@ export const OpsSelect2Step = (props: Props) => {
       },
     });
 
-    const newRigthOptions = data[selectedLeft]?.edges.map((edge: any) => edge.node);
+    // Filter the options to not select the current object
+    const newRigthOptions = data[selectedLeft]?.edges
+      .map((edge: any) => edge.node)
+      .filter((option: any) => option.id !== objectid)
+      .map((option: any) => ({
+        name: option.display_label,
+        id: option.id,
+      }));
 
-    setOptionsRight(
-      newRigthOptions
-        // Filter the options to not select the current object
-        .filter((option: any) => option.id !== objectid)
-        .map((option: any) => ({
-          name: option.display_label,
-          id: option.id,
-        }))
-    );
+    setOptionsRight(newRigthOptions);
 
-    if (value.child) {
-      setSelectedRight(value.child);
+    const rightOptionsIds = newRigthOptions.map((option: any) => option.id);
+
+    if (value.child && rightOptionsIds.includes(value.child)) {
+      return setSelectedRight(value.child);
     }
+
+    return setSelectedRight("");
   }, [selectedLeft]);
 
   useEffect(() => {
