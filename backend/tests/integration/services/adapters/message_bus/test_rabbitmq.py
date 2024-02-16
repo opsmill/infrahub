@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from aio_pika.abc import AbstractIncomingMessage
 
     from infrahub.config import BrokerSettings
+    from tests.adapters.log import FakeLogger
 
 
 @dataclass
@@ -113,7 +114,7 @@ class RabbitMQManager:
         if payload:
             params["json"] = payload
         headers = {"content-type": "application/json"}
-        retry_counter = 0
+        retry_counter: float = 0
         retry_request = True
         while retry_request:
             try:
@@ -368,7 +369,7 @@ async def test_rabbitmq_publish(rabbitmq_api: RabbitMQManager) -> None:
     assert parsed_delayed_message == delayed_message
 
 
-async def test_rabbitmq_callback(rabbitmq_api: RabbitMQManager, fake_log) -> None:
+async def test_rabbitmq_callback(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:
     """Validates that incoming messages gets parsed by the callback method."""
 
     bus = RabbitMQMessageBus(settings=rabbitmq_api.settings)
@@ -388,7 +389,7 @@ async def test_rabbitmq_callback(rabbitmq_api: RabbitMQManager, fake_log) -> Non
     await service.shutdown()
 
 
-async def test_rabbitmq_callback_with_invalid_routing_key(rabbitmq_api: RabbitMQManager, fake_log) -> None:
+async def test_rabbitmq_callback_with_invalid_routing_key(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:
     """Validate that messages with an invalid routing key is logged."""
 
     bus = RabbitMQMessageBus(settings=rabbitmq_api.settings)
@@ -407,7 +408,7 @@ async def test_rabbitmq_callback_with_invalid_routing_key(rabbitmq_api: RabbitMQ
     await service.shutdown()
 
 
-async def test_rabbitmq_rpc(rabbitmq_api: RabbitMQManager, fake_log) -> None:
+async def test_rabbitmq_rpc(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:
     """Validates that incoming messages gets parsed by the callback method."""
 
     bus = RabbitMQMessageBus(settings=rabbitmq_api.settings)

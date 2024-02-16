@@ -151,7 +151,10 @@ addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope"
 [tool.mypy]
 pretty = true
 ignore_missing_imports = true
-exclude = "^backend/tests/"
+exclude = [
+    "^backend/tests/scale",
+    "^backend/tests/unit",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.*"

@@ -63,6 +63,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
     events: list[InfrahubMessage] = []
 
     repositories = await _get_proposed_change_repositories(message=message, service=service)
+
     if not message.source_branch_data_only and await _validate_repository_merge_conflicts(repositories=repositories):
         for repo in repositories:
             if not repo.read_only:

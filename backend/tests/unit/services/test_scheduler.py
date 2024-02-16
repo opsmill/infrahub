@@ -1,5 +1,12 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from infrahub.services import InfrahubServices
 from infrahub.services.scheduler import InfrahubScheduler, Schedule, run_schedule
+
+if TYPE_CHECKING:
+    from tests.adapters.log import FakeLogger
 
 
 async def nothing_to_see(service: InfrahubServices) -> None:
@@ -13,7 +20,7 @@ async def log_once_and_stop(service: InfrahubServices) -> None:
         service.scheduler.running = False
 
 
-async def test_scheduler_return_on_not_running(fake_log):
+async def test_scheduler_return_on_not_running(fake_log: FakeLogger):
     """The scheduler should return without writing entries to the log if it is not running."""
     schedule_manager = InfrahubScheduler()
     schedule_manager.running = False
@@ -25,7 +32,7 @@ async def test_scheduler_return_on_not_running(fake_log):
     assert len(fake_log.info_logs) == 0
 
 
-async def test_scheduler_exit_after_first(fake_log):
+async def test_scheduler_exit_after_first(fake_log: FakeLogger):
     """The scheduler should return without writing entries to the log if it is not running."""
 
     schedule_manager = InfrahubScheduler()
@@ -41,7 +48,7 @@ async def test_scheduler_exit_after_first(fake_log):
     assert fake_log.info_logs[2] == "Writing entry to the log"
 
 
-async def test_scheduler_task_with_error(fake_log):
+async def test_scheduler_task_with_error(fake_log: FakeLogger):
     """The scheduler should return without writing entries to the log if it is not running."""
     schedule_manager = InfrahubScheduler()
     schedule_manager.running = True
