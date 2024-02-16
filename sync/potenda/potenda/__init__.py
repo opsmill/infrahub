@@ -1,11 +1,11 @@
 from typing import List, Optional
 
+from tqdm import tqdm
+
 from diffsync import DiffSync
 from diffsync.diff import Diff
 from diffsync.enum import DiffSyncFlags
 from diffsync.logging import enable_console_logging
-from tqdm import tqdm
-
 from infrahub_sync import SyncInstance
 
 
