@@ -1,7 +1,7 @@
 import asyncio
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, Optional
 
 import pytest
 import yaml
@@ -29,7 +29,7 @@ def event_loop():
 
 
 @pytest.fixture(scope="module")
-async def db() -> InfrahubDatabase:
+async def db() -> AsyncGenerator[InfrahubDatabase, None]:
     driver = InfrahubDatabase(driver=await get_db(retry=1))
 
     yield driver
