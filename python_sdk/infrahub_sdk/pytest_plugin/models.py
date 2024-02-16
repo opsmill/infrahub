@@ -28,7 +28,11 @@ class InfrahubTestResource(str, Enum):
     GRAPHQL_QUERY = "GraphqlQuery"
 
 
-class InfrahubInputOutputTest(pydantic.BaseModel):
+class InfrahubBaseTest(pydantic.BaseModel):
+    """Basic Infrahub test model used as a common ground for all tests."""
+
+
+class InfrahubInputOutputTest(InfrahubBaseTest):
     directory: Optional[Path] = pydantic.Field(
         None, description="Path to the directory where the input and output files are located"
     )
@@ -124,6 +128,10 @@ class InfrahubIntegrationTest(InfrahubInputOutputTest):
         return self.parse_user_provided_data(self.variables)
 
 
+class InfrahubCheckSanityTest(InfrahubBaseTest):
+    kind: Literal["check-sanity"]
+
+
 class InfrahubCheckUnitProcessTest(InfrahubInputOutputTest):
     kind: Literal["check-unit-process"]
 
@@ -132,9 +140,18 @@ class InfrahubCheckIntegrationTest(InfrahubIntegrationTest):
     kind: Literal["check-integration"]
 
 
+class InfrahubGraphqlQuerySanityTest(InfrahubBaseTest):
+    kind: Literal["graphql-query-sanity"]
+    path: Path = pydantic.Field(description="Path to the file in which the GraphQL query is defined")
+
+
 class InfrahubGraphqlQueryIntegrationTest(InfrahubIntegrationTest):
     kind: Literal["graphql-query-integration"]
     query: str = pydantic.Field(description="Name of a pre-defined GraphQL query to execute")
+
+
+class InfrahubJinja2TransformSanityTest(InfrahubBaseTest):
+    kind: Literal["jinja2-transform-sanity"]
 
 
 class InfrahubJinja2TransformUnitRenderTest(InfrahubInputOutputTest):
@@ -143,6 +160,10 @@ class InfrahubJinja2TransformUnitRenderTest(InfrahubInputOutputTest):
 
 class InfrahubJinja2TransformIntegrationTest(InfrahubIntegrationTest):
     kind: Literal["jinja2-transform-integration"]
+
+
+class InfrahubPythonTransformSanityTest(InfrahubBaseTest):
+    kind: Literal["python-transform-sanity"]
 
 
 class InfrahubPythonTransformUnitProcessTest(InfrahubInputOutputTest):
@@ -160,11 +181,15 @@ class InfrahubTest(pydantic.BaseModel):
         description="Expected outcome of the test, can be either PASS (default) or FAIL",
     )
     spec: Union[
+        InfrahubCheckSanityTest,
         InfrahubCheckUnitProcessTest,
         InfrahubCheckIntegrationTest,
+        InfrahubGraphqlQuerySanityTest,
         InfrahubGraphqlQueryIntegrationTest,
+        InfrahubJinja2TransformSanityTest,
         InfrahubJinja2TransformUnitRenderTest,
         InfrahubJinja2TransformIntegrationTest,
+        InfrahubPythonTransformSanityTest,
         InfrahubPythonTransformUnitProcessTest,
         InfrahubPythonTransformIntegrationTest,
     ] = pydantic.Field(..., discriminator="kind")
