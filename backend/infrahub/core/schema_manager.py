@@ -39,6 +39,7 @@ from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
     RelationshipSchema,
+    SchemaAttributePath,
     SchemaRoot,
     internal_schema,
 )
@@ -492,7 +493,7 @@ class SchemaBranch:
         self.validate_kinds()
         self.validate_count_against_cardinality()
         self.validate_identifiers()
-        # self.validate_uniqueness_constraints
+        self.validate_uniqueness_constraints()
         self.validate_display_labels()
         self.validate_order_by()
         self.validate_default_filters()
@@ -579,7 +580,7 @@ class SchemaBranch:
         schema_map_override: Dict[str, Union[NodeSchema, GenericSchema]],
         relationship_allowed: bool = False,
         schema_attribute_name: Optional[str] = None,
-    ) -> None:
+    ) -> SchemaAttributePath:
         error_header = f"{node_schema.kind}"
         error_header += f".{schema_attribute_name}" if schema_attribute_name else ""
         allowed_leaf_properties = ["value"]
@@ -604,8 +605,26 @@ class SchemaBranch:
             raise ValueError(
                 f"{error_header}: attribute property must be one of {allowed_leaf_properties}, not {schema_attribute_path.attribute_property_name}"
             )
+        return schema_attribute_path
+
+    def validate_uniqueness_constraints(self) -> None:
+        full_schema_objects = self.to_dict_schema_object()
+        schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node_schema = self.get(name=name, duplicate=False)
+
+            if not node_schema.uniqueness_constraints:
+                continue
+
+            for constraint_paths in node_schema.uniqueness_constraints:
+                for constraint_path in constraint_paths:
+                    self._validate_attribute_path(
+                        node_schema, constraint_path, schema_map, schema_attribute_name="uniqueness_constraints"
+                    )
 
     def validate_display_labels(self) -> None:
+        full_schema_objects = self.to_dict_schema_object()
+        schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
             node_schema = self.get(name=name, duplicate=False)
 
@@ -613,13 +632,13 @@ class SchemaBranch:
                 continue
 
             for display_label_path in node_schema.display_labels:
-                full_schema_objects = self.to_dict_schema_object()
-                schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
                 self._validate_attribute_path(
                     node_schema, display_label_path, schema_map, schema_attribute_name="display_labels"
                 )
 
     def validate_order_by(self) -> None:
+        full_schema_objects = self.to_dict_schema_object()
+        schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
             node_schema = self.get(name=name, duplicate=False)
 
@@ -627,21 +646,19 @@ class SchemaBranch:
                 continue
 
             for order_by_path in node_schema.order_by:
-                full_schema_objects = self.to_dict_schema_object()
-                schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
                 self._validate_attribute_path(
                     node_schema, order_by_path, schema_map, relationship_allowed=True, schema_attribute_name="order_by"
                 )
 
     def validate_default_filters(self) -> None:
+        full_schema_objects = self.to_dict_schema_object()
+        schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.default_filter:
                 continue
 
-            full_schema_objects = self.to_dict_schema_object()
-            schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
             self._validate_attribute_path(
                 node_schema, node_schema.default_filter, schema_map, schema_attribute_name="default_filter"
             )

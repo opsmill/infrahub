@@ -783,6 +783,67 @@ async def test_schema_branch_validate_menu_placement():
 
 
 @pytest.mark.parametrize(
+    "uniqueness_constraints",
+    [
+        [["my_generic_name__value"], ["mybool__value"]],
+        [["my_generic_name__value"]],
+    ],
+)
+async def test_validate_uniqueness_constraints_success(schema_all_in_one, uniqueness_constraints):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["uniqueness_constraints"] = uniqueness_constraints
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.validate_uniqueness_constraints()
+
+
+@pytest.mark.parametrize(
+    "uniqueness_constraints,expected_error",
+    [
+        (
+            [["mybool__value", "notanattribute__value"]],
+            "InfraGenericInterface.uniqueness_constraints: notanattribute__value is invalid on schema InfraGenericInterface",
+        ),
+        (
+            [["my_generic_name__something"]],
+            "InfraGenericInterface.uniqueness_constraints: something is not a valid property of my_generic_name",
+        ),
+        (
+            [["status__value"]],
+            "InfraGenericInterface.uniqueness_constraints: value is not a valid attribute of BuiltinStatus",
+        ),
+        (
+            [["badges__name__value"]],
+            "InfraGenericInterface.uniqueness_constraints: this property only supports attributes",
+        ),
+        (
+            [["mybool", "badges"]],
+            "InfraGenericInterface.uniqueness_constraints: this property only supports attributes, not relationships",
+        ),
+        (
+            [["primary_tag__name__value"]],
+            "InfraGenericInterface.uniqueness_constraints: this property only supports attributes",
+        ),
+        (
+            [["mybool__value", "status__name__value"]],
+            "InfraGenericInterface.uniqueness_constraints: this property only supports attributes",
+        ),
+    ],
+)
+async def test_validate_uniqueness_constraints_error(schema_all_in_one, uniqueness_constraints, expected_error):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["uniqueness_constraints"] = uniqueness_constraints
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValueError, match=expected_error):
+        schema.validate_uniqueness_constraints()
+
+
+@pytest.mark.parametrize(
     "display_labels",
     [
         ["my_generic_name__value", "mybool__value"],
