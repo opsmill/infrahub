@@ -7,7 +7,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { Fragment, useContext, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
 import { RoundedButton } from "../../components/buttons/rounded-button";
@@ -16,7 +16,7 @@ import SlideOver from "../../components/display/slide-over";
 import { SelectOption } from "../../components/inputs/select";
 import ModalDelete from "../../components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
-import { Link } from "../../components/utils/link";
+import { Link as StyledLink } from "../../components/utils/link";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
@@ -238,7 +238,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               name={relationshipSchema?.label}
               value={
                 <>
-                  <Link
+                  <StyledLink
                     to={constructPath(
                       getObjectDetailsUrl(
                         relationshipsData.node?.id,
@@ -246,7 +246,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       )
                     )}>
                     {relationshipsData.node?.display_label}
-                  </Link>
+                  </StyledLink>
 
                   {relationshipsData.properties && (
                     <div className="px-2">
