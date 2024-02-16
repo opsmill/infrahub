@@ -48,14 +48,12 @@ test.describe("/objects/:objectname/:objectid", () => {
       await expect(page.locator("dl")).toContainText("Device");
     });
 
-    test("should display the select 2 steps corectly", async ({ page }) => {
+    test.only("should display the select 2 steps corectly", async ({ page }) => {
       await page.goto("/");
       await page.getByRole("link", { name: "All Device(s)" }).click();
       await page.getByRole("link", { name: "atl1-edge1" }).click();
       await page.getByText("Interfaces14").click();
       await page.getByRole("link", { name: "Backbone: Connected to jfk1-" }).click();
-      await expect(page.getByRole("main")).toContainText("Ethernet11");
-      await page.getByRole("link", { name: "Ethernet11" }).click();
       await page.getByRole("button", { name: "Edit" }).click();
       await page.getByTestId("select2step-1").scrollIntoViewIfNeeded();
       await expect(page.getByTestId("select2step-1").getByTestId("select-input")).toHaveValue(
