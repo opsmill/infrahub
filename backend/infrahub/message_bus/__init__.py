@@ -92,7 +92,7 @@ class InfrahubResponse(InfrahubMessage):
     data: Union[dict, InfrahubResponseData] = Field(default_factory=dict)
     errors: List[str] = Field(default_factory=list)
     initial_message: Optional[dict] = Field(
-        None,
+        default=None,
         description="Initial message in dict format, the primary goal of this field is to provide additional context when there is an error",
     )
 

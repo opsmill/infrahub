@@ -145,6 +145,7 @@ class BrokerSettings(BaseSettings):
     maximum_message_retries: int = Field(
         default=10, description="The maximum number of retries that are attempted for failed messages"
     )
+    virtualhost: str = Field(default="/", description="The virtual host to connect to")
 
     @property
     def service_port(self) -> int:
