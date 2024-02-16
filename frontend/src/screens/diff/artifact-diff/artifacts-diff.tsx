@@ -1,5 +1,5 @@
 import { useAtom } from "jotai";
-import { useCallback, useEffect, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
 import "react-diff-view/style/index.css";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -13,7 +13,7 @@ import LoadingScreen from "../../loading-screen/loading-screen";
 import NoDataFound from "../../no-data-found/no-data-found";
 import { ArtifactRepoDiff } from "./artifact-repo-diff";
 
-export const ArtifactsDiff = () => {
+export const ArtifactsDiff = forwardRef((props, ref) => {
   const [artifactsDiff, setArtifactsDiff] = useState({});
   const { branchname } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
@@ -51,6 +51,9 @@ export const ArtifactsDiff = () => {
     setIsLoading(false);
   }, [branchname, branchOnly, timeFrom, timeTo, proposedChangesDetails?.source_branch?.value]);
 
+  // Provide refetch function to parent
+  useImperativeHandle(ref, () => ({ refetch: fetchFiles }));
+
   const setFilesInState = useCallback(async () => {
     await fetchFiles();
   }, []);
@@ -76,4 +79,4 @@ export const ArtifactsDiff = () => {
       ))}
     </div>
   );
-};
+});

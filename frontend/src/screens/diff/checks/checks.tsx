@@ -1,4 +1,5 @@
 import { gql } from "@apollo/client";
+import { forwardRef, useImperativeHandle } from "react";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../../config/qsp";
@@ -10,7 +11,7 @@ import { ChecksSummary } from "./checks-summary";
 import { Validator } from "./validator";
 import { ValidatorDetails } from "./validator-details";
 
-export const Checks = () => {
+export const Checks = forwardRef((props, ref) => {
   const { proposedchange } = useParams();
   const [qspTab] = useQueryParam(QSP.VALIDATOR_DETAILS, StringParam);
 
@@ -23,6 +24,9 @@ export const Checks = () => {
   `;
 
   const { loading, error, data, refetch } = useQuery(query, { pollInterval: 10000 });
+
+  // Provide refetch function to parent
+  useImperativeHandle(ref, () => ({ refetch }));
 
   const validators = data?.CoreValidator?.edges?.map((edge: any) => edge.node);
 
@@ -51,4 +55,4 @@ export const Checks = () => {
       </div>
     </div>
   );
-};
+});
