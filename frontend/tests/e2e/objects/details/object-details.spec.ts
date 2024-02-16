@@ -57,11 +57,11 @@ test.describe("/objects/:objectname/:objectid", () => {
       await page.getByRole("button", { name: "Edit" }).click();
       await page.getByTestId("select2step-1").scrollIntoViewIfNeeded();
       await expect(page.getByTestId("select2step-1").getByTestId("select-input")).toHaveValue(
-        "InterfaceL3"
+        "CircuitEndpoint"
       );
-      await expect(page.getByTestId("select2step-2").getByTestId("select-input")).toHaveValue(
-        "Ethernet4"
-      );
+      await expect(
+        await page.getByTestId("select2step-2").getByTestId("select-input").inputValue()
+      ).toMatch(/InfraCircuitEndpoint\(ID: .*\)/g);
     });
   });
 });
