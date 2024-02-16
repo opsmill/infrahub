@@ -4,6 +4,7 @@ import enum
 import hashlib
 import keyword
 import re
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from infrahub_sdk.utils import compare_lists
@@ -92,6 +93,18 @@ class QueryArrowBidir(QueryArrow):
 class QueryArrows(BaseModel):
     left: QueryArrow
     right: QueryArrow
+
+
+@dataclass
+class SchemaAttributePath:
+    relationship_schema: Optional[RelationshipSchema] = None
+    related_schema: Optional[Union[NodeSchema, GenericSchema]] = None
+    attribute_schema: Optional[AttributeSchema] = None
+    attribute_property_name: Optional[str] = None
+
+
+class AttributePathParsingError(Exception):
+    ...
 
 
 class FilterSchema(HashableModel):
@@ -683,6 +696,43 @@ class BaseNodeSchema(HashableModel):  # pylint: disable=too-many-public-methods
             raise ValueError(f"Name can not be set to a reserved keyword '{value}' is not allowed.")
 
         return value
+
+    async def parse_attribute_path(
+        self, attribute_path: str, branch: Optional[Union[Branch, str]] = None
+    ) -> SchemaAttributePath:
+        allowed_leaf_properties = ["value"]
+        schema_path = SchemaAttributePath()
+        relationship_piece: Optional[str] = None
+        attribute_piece: Optional[str] = None
+        property_piece: Optional[str] = None
+        path_parts = attribute_path.split("__")
+        if path_parts[0] in self.relationship_names:
+            relationship_piece = path_parts[0]
+            attribute_piece = path_parts[1] if len(path_parts) > 1 else None
+            property_piece = path_parts[2] if len(path_parts) > 2 else None
+        elif path_parts[0] in self.attribute_names:
+            attribute_piece = path_parts[0]
+            property_piece = path_parts[1] if len(path_parts) > 1 else None
+        else:
+            raise AttributePathParsingError(f"{attribute_path} is invalid on schema {self.kind}")
+        if relationship_piece:
+            if relationship_piece not in self.relationship_names:
+                raise AttributePathParsingError(f"{relationship_piece} is not a relationship of schema {self.kind}")
+            relationship_schema = self.get_relationship(path_parts[0])
+            schema_path.relationship_schema = relationship_schema
+            schema_path.related_schema = await relationship_schema.get_peer_schema(branch=branch)
+        if attribute_piece:
+            schema_to_check = schema_path.related_schema or self
+            if attribute_piece not in schema_to_check.attribute_names:
+                raise AttributePathParsingError(f"{attribute_piece} is not a valid attribute of {schema_to_check.kind}")
+            schema_path.attribute_schema = schema_to_check.get_attribute(attribute_piece)
+        if property_piece:
+            if property_piece not in allowed_leaf_properties:
+                raise AttributePathParsingError(
+                    f"{property_piece} is not a valid property of {schema_path.attribute_schema.name}"
+                )
+            schema_path.attribute_property_name = property_piece
+        return schema_path
 
 
 class GenericSchema(BaseNodeSchema):
