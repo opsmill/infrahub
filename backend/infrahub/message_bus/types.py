@@ -74,9 +74,9 @@ class ProposedChangeArtifactDefinition(BaseModel):
 
     @property
     def transform_location(self) -> str:
-        if InfrahubKind.TRANSFORMJINJA2:
+        if self.transform_kind == InfrahubKind.TRANSFORMJINJA2:
             return self.template_path
-        if InfrahubKind.TRANSFORMPYTHON:
+        if self.transform_kind == InfrahubKind.TRANSFORMPYTHON:
             return f"{self.file_path}::{self.class_name}"
 
         raise ValueError("Invalid kind for Transform")
