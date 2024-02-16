@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, List, Optional, Union
 
+# from infrahub.core.display_label.renderer import DisplayLabelRenderer
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import is_valid_uuid
 
 from infrahub.core import registry
+
+# from infrahub.core.attribute_path.parser import AttributePathParser
 from infrahub.core.constants import BranchSupportType, InfrahubKind
 from infrahub.core.query.node import (
     NodeCheckIDQuery,
@@ -59,6 +62,15 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     def get_kind(self) -> str:
         """Return the main Kind of the Object."""
         return self._schema.kind
+
+    def get_schema(self) -> NodeSchema:
+        return self._schema
+
+    def get_branch(self) -> Branch:
+        return self._branch
+
+    def get_updated_at(self) -> Optional[Timestamp]:
+        return self._updated_at
 
     def get_id(self) -> str:
         """Return the ID of the node"""
@@ -468,67 +480,68 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             relm: RelationshipManager = getattr(self, rel_name)
             await relm.validate_constraints(db=db, branch=branch)
 
-    async def to_graphql(
-        self,
-        db: InfrahubDatabase,
-        fields: Optional[dict] = None,
-        related_node_ids: Optional[set] = None,
-        filter_sensitive: bool = False,
-    ) -> dict:
-        """Generate GraphQL Payload for all attributes
+    # async def to_graphql(
+    #     self,
+    #     db: InfrahubDatabase,
+    #     fields: Optional[dict] = None,
+    #     related_node_ids: Optional[set] = None,
+    #     filter_sensitive: bool = False,
+    # ) -> dict:
+    #     """Generate GraphQL Payload for all attributes
 
-        Returns:
-            (dict): Return GraphQL Payload
-        """
+    #     Returns:
+    #         (dict): Return GraphQL Payload
+    #     """
 
-        response: dict[str, Any] = {"id": self.id, "type": self.get_kind()}
+    #     response: dict[str, Any] = {"id": self.id, "type": self.get_kind()}
 
-        if related_node_ids is not None:
-            related_node_ids.add(self.id)
+    #     if related_node_ids is not None:
+    #         related_node_ids.add(self.id)
 
-        FIELD_NAME_TO_EXCLUDE = ["id"] + self._schema.relationship_names
+    #     FIELD_NAME_TO_EXCLUDE = ["id"] + self._schema.relationship_names
 
-        if fields and isinstance(fields, dict):
-            field_names = [field_name for field_name in fields.keys() if field_name not in FIELD_NAME_TO_EXCLUDE]
-        else:
-            field_names = self._schema.attribute_names + ["__typename", "display_label"]
+    #     if fields and isinstance(fields, dict):
+    #         field_names = [field_name for field_name in fields.keys() if field_name not in FIELD_NAME_TO_EXCLUDE]
+    #     else:
+    #         field_names = self._schema.attribute_names + ["__typename", "display_label"]
 
-        for field_name in field_names:
-            if field_name == "__typename":
-                response[field_name] = self.get_kind()
-                continue
+    #     for field_name in field_names:
+    #         if field_name == "__typename":
+    #             response[field_name] = self.get_kind()
+    #             continue
 
-            if field_name == "display_label":
-                response[field_name] = await self.render_display_label(db=db)
-                continue
+    #         if field_name == "display_label":
+    #             display_label_renderer = DisplayLabelRenderer(AttributePathParser())
+    #             response[field_name] = await display_label_renderer.render(self, self._branch)
+    #             continue
 
-            if field_name == "_updated_at":
-                if self._updated_at:
-                    response[field_name] = await self._updated_at.to_graphql()
-                else:
-                    response[field_name] = None
-                continue
+    #         if field_name == "_updated_at":
+    #             if self._updated_at:
+    #                 response[field_name] = await self._updated_at.to_graphql()
+    #             else:
+    #                 response[field_name] = None
+    #             continue
 
-            field: Optional[BaseAttribute] = getattr(self, field_name, None)
+    #         field: Optional[BaseAttribute] = getattr(self, field_name, None)
 
-            if not field:
-                response[field_name] = None
-                continue
+    #         if not field:
+    #             response[field_name] = None
+    #             continue
 
-            if fields and isinstance(fields, dict):
-                response[field_name] = await field.to_graphql(
-                    db=db,
-                    fields=fields.get(field_name),
-                    related_node_ids=related_node_ids,
-                    filter_sensitive=filter_sensitive,
-                )
-            else:
-                response[field_name] = await field.to_graphql(
-                    db=db,
-                    filter_sensitive=filter_sensitive,
-                )
+    #         if fields and isinstance(fields, dict):
+    #             response[field_name] = await field.to_graphql(
+    #                 db=db,
+    #                 fields=fields.get(field_name),
+    #                 related_node_ids=related_node_ids,
+    #                 filter_sensitive=filter_sensitive,
+    #             )
+    #         else:
+    #             response[field_name] = await field.to_graphql(
+    #                 db=db,
+    #                 filter_sensitive=filter_sensitive,
+    #             )
 
-        return response
+    #     return response
 
     async def from_graphql(self, data: dict, db: InfrahubDatabase) -> bool:
         """Update object from a GraphQL payload."""
@@ -545,24 +558,3 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 changed |= await rel.update(db=db, data=value)
 
         return changed
-
-    async def render_display_label(self, db: Optional[InfrahubDatabase] = None):  # pylint: disable=unused-argument
-        if not self._schema.display_labels:
-            return repr(self)
-
-        display_elements = []
-        for item in self._schema.display_labels:
-            item_elements = item.split("__")
-            if len(item_elements) != 2:
-                raise ValidationError("Display Label can only have one level")
-
-            if item_elements[0] not in self._schema.attribute_names:
-                raise ValidationError("Only Attribute can be used in Display Label")
-
-            attr = getattr(self, item_elements[0])
-            display_elements.append(str(getattr(attr, item_elements[1])))
-
-        display_label = " ".join(display_elements)
-        if display_label.strip() == "":
-            return repr(self)
-        return display_label.strip()

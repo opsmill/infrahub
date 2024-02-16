@@ -3,6 +3,7 @@ from itertools import chain
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 from infrahub.core import registry
+from infrahub.core.attribute_path.parser import AttributePathParser
 from infrahub.core.branch import Branch
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
@@ -21,27 +22,18 @@ from .model import (
 from .query import NodeUniqueAttributeConstraintQuery
 
 
-def get_attribute_path_from_string(
-    path: str, schema: Union[NodeSchema, GenericSchema]
-) -> Tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]:
-    if "__" in path:
-        name, property_name = path.split("__")
-    else:
-        name, property_name = path, None
-    attribute_schema = schema.get_attribute(name, raise_on_error=False)
-    relationship_schema = schema.get_relationship(name, raise_on_error=False)
-    if not (attribute_schema or relationship_schema):
-        raise ValueError(f"{path} is not valid on {schema.kind}")
-    return attribute_schema or relationship_schema, property_name
-
-
 class UniquenessChecker(ConstraintCheckerInterface):
     def __init__(
-        self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, max_concurrent_execution: int = 5
+        self,
+        db: InfrahubDatabase,
+        attribute_path_parser: AttributePathParser,
+        branch: Optional[Union[Branch, str]] = None,
+        max_concurrent_execution: int = 5,
     ):
         self.db = db
         self.branch = branch
         self.semaphore = asyncio.Semaphore(max_concurrent_execution)
+        self.attribute_path_parser = attribute_path_parser
 
     @property
     def name(self) -> str:
@@ -62,7 +54,7 @@ class UniquenessChecker(ConstraintCheckerInterface):
 
         grouped_data_paths = GroupedDataPaths()
         for non_unique_node in chain(*non_unique_nodes_lists):
-            self.generate_data_paths(non_unique_node, grouped_data_paths)
+            await self.generate_data_paths(non_unique_node, grouped_data_paths)
         return [grouped_data_paths]
 
     async def build_query_request(self, schema: Union[NodeSchema, GenericSchema]) -> NodeUniquenessQueryRequest:
@@ -81,15 +73,19 @@ class UniquenessChecker(ConstraintCheckerInterface):
 
         for uniqueness_constraint in schema.uniqueness_constraints:
             for path in uniqueness_constraint:
-                sub_schema, property_name = get_attribute_path_from_string(path, schema)
-                if isinstance(sub_schema, AttributeSchema):
-                    unique_attr_paths.append(
-                        QueryAttributePath(attribute_name=sub_schema.name, property_name=property_name)
-                    )
-                elif isinstance(sub_schema, RelationshipSchema):
+                parsed_attribute_path = self.attribute_path_parser.parse(schema, path, branch=await self.get_branch())
+                if parsed_attribute_path.relationship_schema:
                     relationship_attr_paths.append(
                         QueryRelationshipAttributePath(
-                            identifier=sub_schema.get_identifier(), attribute_name=property_name
+                            identifier=parsed_attribute_path.relationship_schema.get_identifier(),
+                            attribute_name=parsed_attribute_path.attribute_property_name,
+                        )
+                    )
+                else:
+                    unique_attr_paths.append(
+                        QueryAttributePath(
+                            attribute_name=parsed_attribute_path.attribute_schema.name,
+                            property_name=parsed_attribute_path.attribute_property_name,
                         )
                     )
 
@@ -144,7 +140,7 @@ class UniquenessChecker(ConstraintCheckerInterface):
                 )
         return list(non_unique_nodes_by_id.values())
 
-    def get_uniqueness_violations(
+    async def get_uniqueness_violations(
         self, non_unique_node: NonUniqueNode
     ) -> Set[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]]:
         constraint_violations: Set[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]] = set()
@@ -155,15 +151,24 @@ class UniquenessChecker(ConstraintCheckerInterface):
         for uniqueness_constraint in non_unique_node.node_schema.uniqueness_constraints or []:
             constraint_spec: List[Tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]] = []
             for element in uniqueness_constraint:
-                sub_schema, property_name = get_attribute_path_from_string(element, non_unique_node.node_schema)
-                constraint_spec.append((sub_schema, property_name))
+                parsed_attribute_path = self.attribute_path_parser.parse(
+                    non_unique_node.node_schema, element, branch=await self.get_branch()
+                )
+                if parsed_attribute_path.relationship_schema:
+                    constraint_spec.append(
+                        (parsed_attribute_path.relationship_schema, parsed_attribute_path.attribute_schema.name)
+                    )
+                else:
+                    constraint_spec.append(
+                        (parsed_attribute_path.attribute_schema, parsed_attribute_path.attribute_property_name)
+                    )
             violations = non_unique_node.get_constraint_violation(constraint_spec)
             if violations:
                 constraint_violations |= set(violations)
         return constraint_violations
 
-    def generate_data_paths(self, non_unique_node: NonUniqueNode, grouped_data_paths: GroupedDataPaths) -> None:
-        constraint_violations = self.get_uniqueness_violations(non_unique_node)
+    async def generate_data_paths(self, non_unique_node: NonUniqueNode, grouped_data_paths: GroupedDataPaths) -> None:
+        constraint_violations = await self.get_uniqueness_violations(non_unique_node)
         schema_kind = non_unique_node.node_schema.kind
         for violation in constraint_violations:
             grouping_key = f"{schema_kind}/{violation.grouping_key}"

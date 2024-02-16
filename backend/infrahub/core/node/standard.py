@@ -57,22 +57,22 @@ class StandardNode(BaseModel):
 
         return annotation_origin or field.annotation
 
-    async def to_graphql(self, fields: dict) -> dict:
-        response = {"id": self.uuid}
+    # async def to_graphql(self, fields: dict) -> dict:
+    #     response = {"id": self.uuid}
 
-        for field_name in fields.keys():
-            if field_name in ["id"]:
-                continue
-            if field_name == "__typename":
-                response[field_name] = self.get_type()
-                continue
-            field = getattr(self, field_name)
-            if field is None:
-                response[field_name] = None
-                continue
-            response[field_name] = field
+    #     for field_name in fields.keys():
+    #         if field_name in ["id"]:
+    #             continue
+    #         if field_name == "__typename":
+    #             response[field_name] = self.get_type()
+    #             continue
+    #         field = getattr(self, field_name)
+    #         if field is None:
+    #             response[field_name] = None
+    #             continue
+    #         response[field_name] = field
 
-        return response
+    #     return response
 
     async def save(self, db: InfrahubDatabase) -> bool:
         """Create or Update the Node in the database."""

@@ -1,4 +1,5 @@
 from infrahub.core import registry
+from infrahub.core.attribute_path.parser import AttributePathParser
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
@@ -11,7 +12,7 @@ from infrahub.database import InfrahubDatabase
 
 class TestUniquenessChecker:
     async def __call_system_under_test(self, db, branch, schema):
-        checker = UniquenessChecker(db, branch)
+        checker = UniquenessChecker(db, attribute_path_parser=AttributePathParser(branch), branch=branch)
         schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind=schema.kind)
         request = SchemaConstraintValidatorRequest(
             branch=branch,

@@ -2,8 +2,10 @@ import pytest
 from infrahub_sdk import UUIDT
 
 from infrahub.core import registry
+from infrahub.core.attribute_path.parser import AttributePathParser
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind
+from infrahub.core.display_label.renderer import DisplayLabelRenderer
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -197,29 +199,32 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     }
 
     node_schema = NodeSchema(**schema_01)
+    display_label_renderer = DisplayLabelRenderer(AttributePathParser())
     registry.schema.set(name=node_schema.kind, schema=node_schema)
 
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
-    assert await obj.render_display_label(db=db) == "John"
+    assert await display_label_renderer.render(obj) == "John"
 
     # Display Labels with 2 attributes
     schema_01["display_labels"] = ["firstname__value", "age__value"]
     node_schema = NodeSchema(**schema_01)
+    display_label_renderer = DisplayLabelRenderer(AttributePathParser())
     registry.schema.set(name=node_schema.kind, schema=node_schema)
 
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
-    assert await obj.render_display_label(db=db) == "John 99"
+    assert await display_label_renderer.render(obj) == "John 99"
 
     # Empty Display Label
     schema_01["display_labels"] = []
     node_schema = NodeSchema(**schema_01)
+    display_label_renderer = DisplayLabelRenderer(AttributePathParser())
     registry.schema.set(name=node_schema.kind, schema=node_schema)
 
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
-    assert await obj.render_display_label(db=db) == f"TestDisplay(ID: {obj.id})[NEW]"
+    assert await display_label_renderer.render(obj) == f"TestDisplay(ID: {obj.id})[NEW]"
 
 
 async def test_node_init_with_single_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):

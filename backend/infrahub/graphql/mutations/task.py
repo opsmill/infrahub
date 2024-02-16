@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict
 from uuid import UUID, uuid4
 
+from dependencies.registry import get_component_registry
 from graphene import Boolean, Enum, Field, InputObjectType, List, Mutation, ObjectType, String
 from graphene.types.uuid import UUID as GrapheneUUID
 from infrahub_sdk.utils import extract_fields_first_node
@@ -12,6 +13,8 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.task import Task
 from infrahub.core.task_log import TaskLog
 from infrahub.core.timestamp import current_timestamp
+from infrahub.core.to_graphql.aggregated import AggregatedToGraphQLTranslators
+from infrahub.core.to_graphql.model import ToGraphQLRequest
 from infrahub.exceptions import NodeNotFound
 from infrahub.graphql.types.task_log import RelatedTaskLogCreateInput
 
@@ -60,6 +63,7 @@ class TaskCreate(Mutation):
         data: TaskCreateInput,
     ) -> TaskCreate:
         context: GraphqlContext = info.context
+        to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
 
         account_id = str(data.created_by) if data.created_by else None
 
@@ -94,7 +98,9 @@ class TaskCreate(Mutation):
         result: Dict[str, Any] = {"ok": True}
 
         if "object" in fields:
-            result["object"] = await task.to_graphql(fields=fields["object"])
+            result["object"] = await to_graphql_translator.to_graphql(
+                ToGraphQLRequest(obj=task, db=context.db, fields=fields["object"])
+            )
 
         return cls(**result)
 
@@ -114,6 +120,7 @@ class TaskUpdate(Mutation):
         data: TaskUpdateInput,
     ) -> TaskUpdate:
         context: GraphqlContext = info.context
+        to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
         task_id = str(data.id)
         task = await Task.get(id=task_id, db=context.db)
 
@@ -140,6 +147,8 @@ class TaskUpdate(Mutation):
         result: Dict[str, Any] = {"ok": True}
 
         if "object" in fields:
-            result["object"] = await task.to_graphql(fields=fields["object"])
+            result["object"] = await to_graphql_translator.to_graphql(
+                ToGraphQLRequest(obj=task, db=context.db, fields=fields["object"])
+            )
 
         return cls(**result)

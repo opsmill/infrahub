@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
+from dependencies.registry import get_component_registry
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
 from infrahub_sdk.utils import extract_fields
@@ -18,6 +19,8 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.to_graphql.aggregated import AggregatedToGraphQLTranslators
+from infrahub.core.to_graphql.model import ToGraphQLRequest
 from infrahub.exceptions import NodeNotFound, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
@@ -52,6 +55,7 @@ class InfrahubMutationMixin:
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, *args, **kwargs):
         context: GraphqlContext = info.context
+        to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
 
         obj = None
         mutation = None
@@ -98,7 +102,9 @@ class InfrahubMutationMixin:
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
-            data = await obj.to_graphql(db=context.db, filter_sensitive=True)
+            data = await to_graphql_translator.to_graphql(
+                ToGraphQLRequest(obj=obj, db=context.db, filter_sensitive=True)
+            )
 
             message = messages.EventNodeMutated(
                 branch=context.branch.name,
@@ -124,6 +130,7 @@ class InfrahubMutationMixin:
     ) -> Tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
+        to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
 
         node_class = Node
         if cls._meta.schema.kind in registry.node:
@@ -147,7 +154,9 @@ class InfrahubMutationMixin:
         fields = await extract_fields(info.field_nodes[0].selection_set)
         result = {"ok": True}
         if "object" in fields:
-            result["object"] = await obj.to_graphql(db=context.db, fields=fields.get("object", {}))
+            result["object"] = await to_graphql_translator.to_graphql(
+                ToGraphQLRequest(obj=obj, db=context.db, fields=fields.get("object", {}))
+            )
 
         return obj, cls(**result)
 
@@ -164,6 +173,7 @@ class InfrahubMutationMixin:
     ):
         context: GraphqlContext = info.context
         db = database or context.db
+        to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
 
         obj = node or await NodeManager.get_one_by_id_or_default_filter(
             db=db,
@@ -191,13 +201,17 @@ class InfrahubMutationMixin:
             if db.is_transaction:
                 await obj.save(db=db)
                 if fields_object:
-                    result["object"] = await obj.to_graphql(db=db, fields=fields_object)
+                    result["object"] = await to_graphql_translator.to_graphql(
+                        ToGraphQLRequest(obj=obj, db=db, fields=fields_object)
+                    )
 
             else:
                 async with db.start_transaction() as dbt:
                     await obj.save(db=dbt)
                     if fields_object:
-                        result["object"] = await obj.to_graphql(db=dbt, fields=fields_object)
+                        result["object"] = await to_graphql_translator.to_graphql(
+                            ToGraphQLRequest(obj=obj, db=dbt, fields=fields_object)
+                        )
 
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc

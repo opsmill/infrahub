@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 import pydantic
+from dependencies.registry import get_component_registry
 from graphene import Boolean, Field, InputObjectType, List, Mutation, String
 from graphql import GraphQLResolveInfo
 from infrahub_sdk.utils import extract_fields
@@ -11,6 +12,8 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff import BranchDiffer
 from infrahub.core.merge import BranchMerger
+from infrahub.core.to_graphql.aggregated import AggregatedToGraphQLTranslators
+from infrahub.core.to_graphql.model import ToGraphQLRequest
 from infrahub.exceptions import BranchNotFound
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
@@ -50,6 +53,7 @@ class BranchCreate(Mutation):
         cls, root: dict, info: GraphQLResolveInfo, data: BranchCreateInput, background_execution: bool = False
     ) -> Self:
         context: GraphqlContext = info.context
+        to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
 
         # Check if the branch already exist
         try:
@@ -93,7 +97,10 @@ class BranchCreate(Mutation):
             )
             context.background.add_task(services.send, message)
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+        graphql = await to_graphql_translator.to_graphql(
+            ToGraphQLRequest(obj=obj, db=context.db, fields=fields.get("object", {}))
+        )
+        return cls(object=graphql, ok=ok)
 
 
 class BranchNameInput(InputObjectType):
@@ -161,6 +168,7 @@ class BranchRebase(Mutation):
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
+        to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
 
         obj = await Branch.get_by_name(db=context.db, name=data["name"])
         async with context.db.start_transaction() as db:
@@ -170,7 +178,10 @@ class BranchRebase(Mutation):
 
         ok = True
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+        graphql = await to_graphql_translator.to_graphql(
+            ToGraphQLRequest(obj=obj, db=context.db, fields=fields.get("object", {}))
+        )
+        return cls(object=graphql, ok=ok)
 
 
 class BranchValidate(Mutation):
@@ -184,6 +195,7 @@ class BranchValidate(Mutation):
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
+        to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
 
         obj = await Branch.get_by_name(db=context.db, name=data["name"])
         ok = True
@@ -199,7 +211,10 @@ class BranchValidate(Mutation):
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), messages=validation_messages, ok=ok)
+        graphql = await to_graphql_translator.to_graphql(
+            ToGraphQLRequest(obj=obj, db=context.db, fields=fields.get("object", {}))
+        )
+        return cls(object=graphql, messages=validation_messages, ok=ok)
 
 
 class BranchMerge(Mutation):
@@ -212,6 +227,7 @@ class BranchMerge(Mutation):
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
+        to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
 
         obj = await Branch.get_by_name(db=context.db, name=data["name"])
 
@@ -241,4 +257,7 @@ class BranchMerge(Mutation):
             )
             context.background.add_task(services.send, message)
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+        graphql = await to_graphql_translator.to_graphql(
+            ToGraphQLRequest(obj=obj, db=context.db, fields=fields.get("object", {}))
+        )
+        return cls(object=graphql, ok=ok)

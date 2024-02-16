@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from dependencies.registry import get_component_registry
 from graphene import ObjectType
 from infrahub_sdk.utils import extract_fields
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.to_graphql.aggregated import AggregatedToGraphQLTranslators
+from infrahub.core.to_graphql.model import ToGraphQLRequest
 from infrahub.exceptions import NodeNotFound
 
 from .mutations import (
@@ -47,14 +50,14 @@ async def default_paginated_list_resolver(root: dict, info: GraphQLResolveInfo, 
 async def account_resolver(root, info: GraphQLResolveInfo):
     fields = await extract_fields(info.field_nodes[0].selection_set)
     context: GraphqlContext = info.context
+    to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
 
     async with context.db.start_session() as db:
         results = await NodeManager.query(
             schema=InfrahubKind.ACCOUNT, filters={"ids": [context.account_session.account_id]}, fields=fields, db=db
         )
         if results:
-            account_profile = await results[0].to_graphql(db=db, fields=fields)
-            return account_profile
+            return await to_graphql_translator.to_graphql(ToGraphQLRequest(db=db, obj=results[0], fields=fields))
 
         raise NodeNotFound(
             node_type=InfrahubKind.ACCOUNT,

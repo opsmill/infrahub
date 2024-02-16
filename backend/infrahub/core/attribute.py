@@ -369,74 +369,74 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return True
 
-    async def to_graphql(
-        self,
-        db: InfrahubDatabase,
-        fields: Optional[dict] = None,
-        related_node_ids: Optional[set] = None,
-        filter_sensitive: bool = False,
-    ) -> dict:
-        """Generate GraphQL Payload for this attribute."""
-        # pylint: disable=too-many-branches
+    # async def to_graphql(
+    #     self,
+    #     db: InfrahubDatabase,
+    #     fields: Optional[dict] = None,
+    #     related_node_ids: Optional[set] = None,
+    #     filter_sensitive: bool = False,
+    # ) -> dict:
+    #     """Generate GraphQL Payload for this attribute."""
+    #     # pylint: disable=too-many-branches
 
-        response: dict[str, Any] = {
-            "id": self.id,
-        }
+    #     response: dict[str, Any] = {
+    #         "id": self.id,
+    #     }
 
-        if fields and isinstance(fields, dict):
-            field_names = fields.keys()
-        else:
-            # REMOVED updated_at for now, need to investigate further how it's being used today
-            field_names = ["__typename", "value"] + self._node_properties + self._flag_properties
+    #     if fields and isinstance(fields, dict):
+    #         field_names = fields.keys()
+    #     else:
+    #         # REMOVED updated_at for now, need to investigate further how it's being used today
+    #         field_names = ["__typename", "value"] + self._node_properties + self._flag_properties
 
-        for field_name in field_names:
-            if field_name == "updated_at":
-                if self.updated_at:
-                    response[field_name] = await self.updated_at.to_graphql()
-                else:
-                    response[field_name] = None
-                continue
+    #     for field_name in field_names:
+    #         if field_name == "updated_at":
+    #             if self.updated_at:
+    #                 response[field_name] = await self.updated_at.to_graphql()
+    #             else:
+    #                 response[field_name] = None
+    #             continue
 
-            if field_name == "__typename":
-                response[field_name] = self.get_kind()
-                continue
+    #         if field_name == "__typename":
+    #             response[field_name] = self.get_kind()
+    #             continue
 
-            if field_name in ["source", "owner"]:
-                node_attr_getter = getattr(self, f"get_{field_name}")
-                node_attr = await node_attr_getter(db=db)
-                if not node_attr:
-                    response[field_name] = None
-                elif fields and isinstance(fields, dict):
-                    response[field_name] = await node_attr.to_graphql(
-                        db=db, fields=fields[field_name], related_node_ids=related_node_ids
-                    )
-                else:
-                    response[field_name] = await node_attr.to_graphql(
-                        db=db,
-                        fields={"id": None, "display_label": None, "__typename": None},
-                        related_node_ids=related_node_ids,
-                    )
-                continue
+    #         if field_name in ["source", "owner"]:
+    #             node_attr_getter = getattr(self, f"get_{field_name}")
+    #             node_attr = await node_attr_getter(db=db)
+    #             if not node_attr:
+    #                 response[field_name] = None
+    #             elif fields and isinstance(fields, dict):
+    #                 response[field_name] = await node_attr.to_graphql(
+    #                     db=db, fields=fields[field_name], related_node_ids=related_node_ids
+    #                 )
+    #             else:
+    #                 response[field_name] = await node_attr.to_graphql(
+    #                     db=db,
+    #                     fields={"id": None, "display_label": None, "__typename": None},
+    #                     related_node_ids=related_node_ids,
+    #                 )
+    #             continue
 
-            if field_name.startswith("_"):
-                field = getattr(self, field_name[1:])
-            else:
-                field = getattr(self, field_name)
+    #         if field_name.startswith("_"):
+    #             field = getattr(self, field_name[1:])
+    #         else:
+    #             field = getattr(self, field_name)
 
-            if field_name == "value" and isinstance(field, Enum):
-                field = field.name
-            if isinstance(field, str):
-                response[field_name] = self._filter_sensitive(value=field, filter_sensitive=filter_sensitive)
-            elif isinstance(field, (int, bool, dict, list)):
-                response[field_name] = field
+    #         if field_name == "value" and isinstance(field, Enum):
+    #             field = field.name
+    #         if isinstance(field, str):
+    #             response[field_name] = self._filter_sensitive(value=field, filter_sensitive=filter_sensitive)
+    #         elif isinstance(field, (int, bool, dict, list)):
+    #             response[field_name] = field
 
-        return response
+    #     return response
 
-    def _filter_sensitive(self, value: str, filter_sensitive: bool) -> str:
-        if filter_sensitive and self.schema.kind in ["HashedPassword", "Password"]:
-            return "***"
+    # def _filter_sensitive(self, value: str, filter_sensitive: bool) -> str:
+    #     if filter_sensitive and self.schema.kind in ["HashedPassword", "Password"]:
+    #         return "***"
 
-        return value
+    #     return value
 
     async def from_graphql(self, data: dict) -> bool:
         """Update attr from GraphQL payload"""

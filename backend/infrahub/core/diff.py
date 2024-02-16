@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
-from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
 
+from dependencies.registry import get_component_registry
 from pydantic.v1 import BaseModel, Field
 from typing_extensions import Self
 
@@ -16,6 +16,7 @@ from infrahub.core.constants import (
     RelationshipCardinality,
     RelationshipStatus,
 )
+from infrahub.core.display_label.renderer import DisplayLabelRenderer
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.diff import (
     DiffAttributeQuery,
@@ -34,6 +35,17 @@ from infrahub.exceptions import (
 from infrahub.message_bus.messages import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 from infrahub.services import services
 
+from .diff_model import (
+    DiffSummaryElement,
+    FileDiffElement,
+    NodeAttributeDiffElement,
+    NodeDiffElement,
+    PropertyDiffElement,
+    RelationshipDiffElement,
+    RelationshipEdgeNodeDiffElement,
+    ValueElement,
+)
+
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.message_bus.rpc import InfrahubRpcClient
@@ -47,133 +59,6 @@ if TYPE_CHECKING:
 class RelationshipPath(BaseModel):
     paths: List[str] = Field(default_factory=list)
     conflict_paths: List[str] = Field(default_factory=list)
-
-
-class BaseDiffElement(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
-
-    def to_graphql(self) -> Dict[str, Any]:
-        """Recursively Export the model to a dict for GraphQL.
-        The main rules of convertion are:
-            - Ignore the fields mark as exclude=True
-            - Convert the Dict in List
-        """
-        resp: Dict[str, Any] = {}
-        for key, value in self:
-            if isinstance(value, BaseModel):
-                resp[key] = value.to_graphql()  # type: ignore[attr-defined]
-            elif isinstance(value, dict):
-                resp[key] = [item.to_graphql() for item in value.values()]
-            elif self.__fields__[key].field_info.exclude:
-                continue
-            elif isinstance(value, Enum):
-                resp[key] = value.value
-            elif isinstance(value, Timestamp):
-                resp[key] = value.to_string()
-            else:
-                resp[key] = value
-
-        return resp
-
-
-class ValueElement(BaseDiffElement):
-    previous: Optional[Any] = None
-    new: Optional[Any] = None
-
-    def __hash__(self) -> int:
-        return hash(type(self))
-
-
-class PropertyDiffElement(BaseDiffElement):
-    branch: str
-    type: str
-    action: DiffAction
-    path: Optional[str] = None
-    db_id: str = Field(exclude=True)
-    rel_id: str = Field(exclude=True)
-    origin_rel_id: Optional[str] = Field(None, exclude=True)
-    value: Optional[ValueElement] = None
-    changed_at: Optional[Timestamp] = None
-
-
-class NodeAttributeDiffElement(BaseDiffElement):
-    id: str
-    name: str
-    path: str
-    action: DiffAction
-    db_id: str = Field(exclude=True)
-    rel_id: str = Field(exclude=True)
-    origin_rel_id: Optional[str] = Field(None, exclude=True)
-    changed_at: Optional[Timestamp] = None
-    properties: Dict[str, PropertyDiffElement]
-
-
-class NodeDiffElement(BaseDiffElement):
-    branch: Optional[str] = None
-    labels: List[str]
-    kind: str
-    id: str
-    path: str
-    action: DiffAction
-    db_id: str = Field(exclude=True)
-    rel_id: Optional[str] = Field(None, exclude=True)
-    changed_at: Optional[Timestamp] = None
-    attributes: Dict[str, NodeAttributeDiffElement]
-
-
-class RelationshipEdgeNodeDiffElement(BaseDiffElement):
-    id: str
-    db_id: Optional[str] = Field(None, exclude=True)
-    rel_id: Optional[str] = Field(None, exclude=True)
-    labels: List[str]
-    kind: str
-
-
-class RelationshipDiffElement(BaseDiffElement):
-    branch: Optional[str] = None
-    id: str
-    db_id: str = Field(exclude=True)
-    name: str
-    action: DiffAction
-    nodes: Dict[str, RelationshipEdgeNodeDiffElement]
-    properties: Dict[str, PropertyDiffElement]
-    changed_at: Optional[Timestamp] = None
-    paths: List[str]
-    conflict_paths: List[str]
-
-    def get_node_id_by_kind(self, kind: str) -> Optional[str]:
-        ids = [rel.id for rel in self.nodes.values() if rel.kind == kind]
-        if ids:
-            return ids[0]
-        return None
-
-
-class FileDiffElement(BaseDiffElement):
-    branch: str
-    location: str
-    repository: str
-    action: DiffAction
-    commit_from: str
-    commit_to: str
-
-    def __hash__(self) -> int:
-        return hash((type(self),) + tuple(self.__dict__.values()))
-
-
-class DiffSummaryElement(BaseModel):
-    branch: str = Field(..., description="The branch where the change occured")
-    node: str = Field(..., description="The unique ID of the node")
-    kind: str = Field(..., description="The kind of the node as defined by its namespace and name")
-    actions: List[DiffAction] = Field(..., description="A list of actions on this node.")
-
-    def to_graphql(self) -> Dict[str, Union[str, List[str]]]:
-        return {
-            "branch": self.branch,
-            "node": self.node,
-            "kind": self.kind,
-            "actions": [action.value for action in self.actions],
-        }
 
 
 class ModifiedPath(BaseModel):
@@ -611,10 +496,11 @@ class BranchDiffer:
         for branch_name, entries in branch_kind_node.items():
             for kind, ids in entries.items():
                 schema = registry.schema.get(name=kind, branch=branch_name)
+                display_label_renderer = get_component_registry().get_component(DisplayLabelRenderer)
                 fields = schema.generate_fields_for_display_label()
                 query_nodes = await NodeManager.get_many(ids=ids, fields=fields, db=db, branch=branch_name)
                 for node_id, node in query_nodes.items():
-                    display_label_map[branch_name][node_id] = await node.render_display_label(db=db)
+                    display_label_map[branch_name][node_id] = await display_label_renderer.render(node, branch_name)
                     kind_map[branch_name][node_id] = kind
 
             for relationship in cardinality_one_branch_relationships[branch_name]:

@@ -3,7 +3,11 @@ from __future__ import annotations
 from itertools import chain
 from typing import TYPE_CHECKING, Dict, List, Optional
 
+from dependencies.registry import get_component_registry
+
 from infrahub.core import registry
+from infrahub.core.attribute_path.parser import AttributePathParser
+from infrahub.core.display_label.renderer import DisplayLabelRenderer
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
 from infrahub.exceptions import ValidationError
 
@@ -23,9 +27,14 @@ if TYPE_CHECKING:
 
 class AggregatedConstraintChecker:
     def __init__(
-        self, constraints: List[ConstraintCheckerInterface], db: InfrahubDatabase, branch: Optional[Branch] = None
+        self,
+        constraints: List[ConstraintCheckerInterface],
+        display_label_renderer: DisplayLabelRenderer,
+        db: InfrahubDatabase,
+        branch: Optional[Branch] = None,
     ):
         self.constraints = constraints
+        self.display_label_renderer = display_label_renderer
         self.db = db
         self.branch = branch
 
@@ -52,7 +61,7 @@ class AggregatedConstraintChecker:
                 node = nodes.get(path.node_id)
                 node_display_label = None
                 if node:
-                    node_display_label = await node.render_display_label()
+                    node_display_label = await self.display_label_renderer.render(node, branch=self.branch)
                     if request.node_schema.display_labels:
                         display_label = f"Node {node_display_label} ({node.get_kind()}: {path.node_id})"
                     else:
@@ -78,14 +87,18 @@ class AggregatedConstraintChecker:
         return f"{violation.full_display_label} is not compatible with the constraint {constraint_name!r} at {request.schema_path.get_path()!r}"
 
 
+# TODO: move to dependencies
 def build_aggregated_constraint_checker(db: InfrahubDatabase, branch: Optional[Branch]) -> AggregatedConstraintChecker:
     aggregated_constraint_checker = AggregatedConstraintChecker(
         constraints=[
             RelationshipOptionalChecker(db=db, branch=branch),
             AttributeRegexChecker(db=db, branch=branch),
             AttributeUniquenessChecker(db=db, branch=branch),
-            UniquenessChecker(db=db, branch=branch),
+            UniquenessChecker(
+                db=db, attribute_path_parser=get_component_registry().get_component(AttributePathParser), branch=branch
+            ),
         ],
+        display_label_renderer=get_component_registry().get_component(DisplayLabelRenderer),
         db=db,
         branch=branch,
     )

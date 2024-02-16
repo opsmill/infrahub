@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict
 
+from dependencies.registry import get_component_registry
+
 from infrahub.core.manager import NodeManager
+from infrahub.core.to_graphql.aggregated import AggregatedToGraphQLTranslators
+from infrahub.core.to_graphql.model import ToGraphQLRequest
 
 if TYPE_CHECKING:
     from infrahub.graphql import GraphqlContext
@@ -13,6 +17,7 @@ class GetListMixin:
 
     @classmethod
     async def get_list(cls, fields: dict, context: GraphqlContext, **kwargs):
+        to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
         async with context.db.start_session() as db:
             filters = {key: value for key, value in kwargs.items() if ("__" in key and value) or key == "ids"}
 
@@ -31,11 +36,15 @@ class GetListMixin:
             if not objs:
                 return []
             return [
-                await obj.to_graphql(db=db, fields=fields, related_node_ids=context.related_node_ids) for obj in objs
+                await to_graphql_translator.to_graphql(
+                    ToGraphQLRequest(obj=obj, db=db, fields=fields, related_node_ids=context.related_node_ids)
+                )
+                for obj in objs
             ]
 
     @classmethod
     async def get_paginated_list(cls, fields: dict, context: GraphqlContext, **kwargs):
+        to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
         partial_match = kwargs.pop("partial_match", False)
 
         async with context.db.start_session() as db:
@@ -69,10 +78,15 @@ class GetListMixin:
                 include_owner=True,
                 partial_match=partial_match,
             )
-
             if objs:
                 objects = [
-                    {"node": await obj.to_graphql(db=db, fields=node_fields, related_node_ids=context.related_node_ids)}
+                    {
+                        "node": await to_graphql_translator.to_graphql(
+                            ToGraphQLRequest(
+                                db=db, obj=obj, fields=node_fields, related_node_ids=context.related_node_ids
+                            )
+                        )
+                    }
                     for obj in objs
                 ]
                 response["edges"] = objects

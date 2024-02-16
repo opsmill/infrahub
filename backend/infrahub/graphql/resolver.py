@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
+from dependencies.registry import get_component_registry
 from infrahub_sdk.utils import extract_fields
 
 from infrahub.core.constants import RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetHierarchyQuery
+from infrahub.core.to_graphql.aggregated import AggregatedToGraphQLTranslators
+from infrahub.core.to_graphql.model import ToGraphQLRequest
 
 from .types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
 
@@ -44,6 +47,7 @@ async def default_resolver(*args, **kwargs):
         field_name = info.field_name
     else:
         raise ValueError(f"expected either 2 or 4 args for default_resolver, got {len(args)}")
+    to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
 
     # Extract the InfraHub schema by inspecting the GQL Schema
     node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
@@ -81,14 +85,23 @@ async def default_resolver(*args, **kwargs):
 
         if node_rel.cardinality == "many":
             return [
-                await obj.to_graphql(db=db, fields=fields, related_node_ids=context.related_node_ids) for obj in objs
+                await to_graphql_translator.to_graphql(
+                    to_graphql_request=ToGraphQLRequest(
+                        obj=obj, db=db, fields=fields, related_node_ids=context.related_node_ids
+                    )
+                )
+                for obj in objs
             ]
 
         # If cardinality is one
         if not objs:
             return None
 
-        return await objs[0].to_graphql(db=db, fields=fields, related_node_ids=context.related_node_ids)
+        return await to_graphql_translator.to_graphql(
+            to_graphql_request=ToGraphQLRequest(
+                obj=objs[0], db=db, fields=fields, related_node_ids=context.related_node_ids
+            )
+        )
 
 
 async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Dict[str, Any]:
@@ -102,6 +115,7 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
     node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
 
     context: GraphqlContext = info.context
+    to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
 
     # Extract the name of the fields in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -135,7 +149,11 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
         if not objs:
             return response
 
-        node_graph = await objs[0].to_graphql(db=db, fields=node_fields, related_node_ids=context.related_node_ids)
+        node_graph = await to_graphql_translator.to_graphql(
+            to_graphql_request=ToGraphQLRequest(
+                obj=objs[0], db=db, fields=node_fields, related_node_ids=context.related_node_ids
+            )
+        )
         for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
             value = node_graph.pop(key, None)
             if value:
@@ -156,6 +174,7 @@ async def many_relationship_resolver(
     node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
 
     context: GraphqlContext = info.context
+    to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
 
     # Extract the name of the fields in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -224,7 +243,12 @@ async def many_relationship_resolver(
         if not objs:
             return response
         node_graph = [
-            await obj.to_graphql(db=db, fields=node_fields, related_node_ids=context.related_node_ids) for obj in objs
+            await to_graphql_translator.to_graphql(
+                to_graphql_request=ToGraphQLRequest(
+                    obj=obj, db=db, fields=node_fields, related_node_ids=context.related_node_ids
+                )
+            )
+            for obj in objs
         ]
 
         entries = []
@@ -265,6 +289,7 @@ async def hierarchy_resolver(
     node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
 
     context: GraphqlContext = info.context
+    to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
 
     # Extract the name of the fields in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -312,7 +337,12 @@ async def hierarchy_resolver(
 
         if not objs:
             return response
-        node_graph = [await obj.to_graphql(db=db, fields=node_fields) for obj in objs.values()]
+        node_graph = [
+            await to_graphql_translator.to_graphql(
+                to_graphql_request=ToGraphQLRequest(obj=obj, db=db, fields=node_fields)
+            )
+            for obj in objs.values()
+        ]
 
         entries = []
         for node in node_graph:

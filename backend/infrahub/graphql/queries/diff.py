@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict, Optional, Union
 
+from dependencies.registry import get_component_registry
 from graphene import Boolean, Field, List, ObjectType, String
 
 from infrahub.core.diff import BranchDiffer
+from infrahub.core.to_graphql.aggregated import AggregatedToGraphQLTranslators
+from infrahub.core.to_graphql.model import ToGraphQLRequest
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -42,11 +45,13 @@ class DiffSummaryEntry(ObjectType):
         time_to: Optional[str] = None,
     ) -> list[Dict[str, Union[str, list[str]]]]:
         context: GraphqlContext = info.context
+        to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
+
         diff = await BranchDiffer.init(
             db=context.db, branch=context.branch, diff_from=time_from, diff_to=time_to, branch_only=branch_only
         )
         summary = await diff.get_summary(db=context.db)
-        return [entry.to_graphql() for entry in summary]
+        return [await to_graphql_translator.to_graphql(ToGraphQLRequest(obj=entry, db=context.db)) for entry in summary]
 
 
 DiffSummary = Field(

@@ -5,12 +5,15 @@ import hashlib
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
+from dependencies.registry import get_component_registry
 from infrahub_sdk.utils import compare_lists, duplicates
 from pydantic import BaseModel, ConfigDict, Field
 
 import infrahub.config as config
 from infrahub import lock
 from infrahub.core import get_branch, get_branch_from_registry
+from infrahub.core.attribute_path.exception import AttributePathParsingError
+from infrahub.core.attribute_path.parser import AttributePathParser
 from infrahub.core.constants import (
     RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
@@ -572,39 +575,36 @@ class SchemaBranch:
         relationship_allowed: bool = False,
         schema_attribute_name: Optional[str] = None,
     ) -> None:
+        attribute_path_parser = get_component_registry().get_component(AttributePathParser)
         error_header = f"{node_schema.kind}"
         error_header += f".{schema_attribute_name}" if schema_attribute_name else ""
         allowed_leaf_properties = ["value"]
-        path_parts = path.split("__")
-        if len(path_parts) == 3:
-            relationship_name, attribute_name, attribute_property_name = path_parts
-        elif len(path_parts) == 2:
-            relationship_name = None
-            attribute_name, attribute_property_name = path_parts
-        else:
-            relationship_prefix = "[<relationship>__]" if relationship_allowed else ""
+        try:
+            parsed_attribute_path = attribute_path_parser.parse(node_schema, path, branch=self.name)
+        except AttributePathParsingError as exc:
+            raise ValueError(f"{error_header}: {str(exc)}") from exc
+        if parsed_attribute_path.relationship_schema and not relationship_allowed:
+            raise ValueError(f"{error_header}: this property only supports attributes, not relationships")
+
+        if (
+            parsed_attribute_path.relationship_schema
+            and parsed_attribute_path.relationship_schema != RelationshipCardinality.ONE
+        ):
             raise ValueError(
-                f"{error_header}: {path} must be of the format {relationship_prefix}<attribute>__<property>, the separator is two underscores"
+                f"{error_header}: cannot use {parsed_attribute_path.relationship_schema.name} relationship, relationship must be of cardinality=one"
             )
 
-        if relationship_name:
-            if not relationship_allowed:
-                raise ValueError(f"{error_header}: this property only supports attributes, not relationships")
-            relationship_schema = node_schema.get_relationship(relationship_name, raise_on_error=False)
-            if relationship_schema.cardinality != RelationshipCardinality.ONE:
-                raise ValueError(
-                    f"{error_header}: cannot use {relationship_name} relationship, relationship must be of cardinality one"
-                )
-            node_schema = self.get(relationship_schema.peer)
-
-        attribute = node_schema.get_attribute(attribute_name, raise_on_error=False)
-        if not attribute:
-            raise ValueError(f"{error_header}: {attribute_name} is not an attribute of {node_schema.kind}")
-
-        if attribute_property_name not in allowed_leaf_properties:
+        if parsed_attribute_path.attribute_property_name not in allowed_leaf_properties:
             raise ValueError(
-                f"{error_header}: attribute property must be one of {allowed_leaf_properties}, not {attribute_property_name}"
+                f"{error_header}: attribute property must be one of {allowed_leaf_properties}, not {parsed_attribute_path.attribute_property_name}"
             )
+
+    def validate_uniqueness_constraints(self) -> None:
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node_schema = self.get(name=name, duplicate=False)
+
+            if not node_schema.uniqueness_constraints:
+                continue
 
     def validate_display_labels(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):

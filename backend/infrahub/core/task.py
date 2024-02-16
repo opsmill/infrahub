@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional, Type
 
+from dependencies.registry import get_component_registry
 from pydantic import ConfigDict, Field
 
 from infrahub.core.constants import TaskConclusion
@@ -8,6 +9,8 @@ from infrahub.core.node.standard import StandardNode
 from infrahub.core.query.standard_node import StandardNodeQuery
 from infrahub.core.query.task import TaskNodeCreateQuery, TaskNodeQuery, TaskNodeQueryWithLogs
 from infrahub.core.timestamp import current_timestamp
+from infrahub.core.to_graphql.aggregated import AggregatedToGraphQLTranslators
+from infrahub.core.to_graphql.model import ToGraphQLRequest
 from infrahub.database import InfrahubDatabase
 from infrahub.utils import get_nested_dict
 
@@ -43,6 +46,7 @@ class Task(StandardNode):
         ids: List[str],
         related_nodes: List[str],
     ) -> Dict[str, Any]:
+        to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
         log_fields = get_nested_dict(nested_dict=fields, keys=["edges", "node", "logs", "edges", "node"])
         count = None
         if "count" in fields:
@@ -62,17 +66,15 @@ class Task(StandardNode):
         for result in query.get_results():
             related_node = result.get("rn")
             task_result = result.get_node("n")
-            logs = []
             if log_fields:
                 logs_results = result.get_node_collection("logs")
-                logs = [
-                    {
-                        "node": await TaskLog.from_db(result, extras={"task_id": task_result.get("uuid")}).to_graphql(
-                            fields=log_fields
-                        )
-                    }
-                    for result in logs_results
-                ]
+                logs = []
+                for log_result in logs_results:
+                    task_log = TaskLog.from_db(log_result, extras={"task_id": task_result.get("uuid")})
+                    graphql = await to_graphql_translator.to_graphql(
+                        ToGraphQLRequest(db=db, obj=task_log, fields=log_fields)
+                    )
+                    logs.append({"node": graphql})
 
             task = cls.from_db(task_result)
             nodes.append(

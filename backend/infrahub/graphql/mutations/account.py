@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Any, Dict
 
+from dependencies.registry import get_component_registry
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 from infrahub_sdk import UUIDT
@@ -11,6 +12,8 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.to_graphql.aggregated import AggregatedToGraphQLTranslators
+from infrahub.core.to_graphql.model import ToGraphQLRequest
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFound, PermissionDeniedError
 
@@ -77,6 +80,7 @@ class AccountMixin:
     async def create_token(
         cls, db: InfrahubDatabase, account: Node, data: Dict[str, Any], info: GraphQLResolveInfo
     ) -> Self:
+        to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
         obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
         token = str(UUIDT())
         await obj.new(
@@ -91,7 +95,10 @@ class AccountMixin:
             await obj.save(db=db)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
-        return cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=True)  # type: ignore[call-arg]
+        graphql = await to_graphql_translator.to_graphql(
+            ToGraphQLRequest(db=db, obj=object, fields=fields.get("object", {}))
+        )
+        return cls(object=graphql, ok=True)  # type: ignore[call-arg]
 
     @classmethod
     async def update_self(

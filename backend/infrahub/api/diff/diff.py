@@ -5,6 +5,7 @@ import enum
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
+from dependencies.registry import get_component_registry
 from fastapi import APIRouter, Depends, Request
 from fastapi.logger import logger
 from infrahub_sdk.utils import compare_lists
@@ -16,8 +17,11 @@ from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.diff import BranchDiffer, NodeDiffElement, RelationshipDiffElement  # noqa: TCH001
+from infrahub.core.display_label.renderer import DisplayLabelRenderer
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema_manager import INTERNAL_SCHEMA_NODE_KINDS
+from infrahub.core.to_graphql.aggregated import AggregatedToGraphQLTranslators
+from infrahub.core.to_graphql.model import ToGraphQLRequest
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 
 from .validation_models import DiffQueryValidated
@@ -308,7 +312,8 @@ async def get_display_labels_per_kind(kind: str, ids: List[str], branch_name: st
     schema = registry.schema.get(name=kind, branch=branch)
     fields = schema.generate_fields_for_display_label()
     nodes = await NodeManager.get_many(ids=ids, fields=fields, db=db, branch=branch)
-    return {node_id: await node.render_display_label(db=db) for node_id, node in nodes.items()}
+    display_label_renderer = get_component_registry().get_component(DisplayLabelRenderer)
+    return {node_id: await display_label_renderer.render(node, branch_name) for node_id, node in nodes.items()}
 
 
 async def get_display_labels(nodes: Dict[str, Dict[str, List[str]]], db: InfrahubDatabase) -> Dict[str, Dict[str, str]]:
@@ -327,10 +332,16 @@ async def get_display_labels(nodes: Dict[str, Dict[str, List[str]]], db: Infrahu
 # ----------------------------------------------------------------------
 #
 # ----------------------------------------------------------------------
-def extract_diff_relationship_one(
-    node_id: str, name: str, identifier: str, rels: List[RelationshipDiffElement], display_labels: Dict[str, str]
+async def extract_diff_relationship_one(
+    db: InfrahubDatabase,
+    node_id: str,
+    name: str,
+    identifier: str,
+    rels: List[RelationshipDiffElement],
+    display_labels: Dict[str, str],
 ) -> Optional[BranchDiffRelationshipOne]:
     """Extract a BranchDiffRelationshipOne object from a list of RelationshipDiffElement."""
+    to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
 
     changed_at = None
 
@@ -361,7 +372,10 @@ def extract_diff_relationship_one(
             name=name,
             identifier=identifier,
             peer=peer_value,
-            properties=[prop.to_graphql() for prop in rel.properties.values()],
+            properties=[
+                await to_graphql_translator.to_graphql(ToGraphQLRequest(obj=prop, db=db))
+                for prop in rel.properties.values()
+            ],
             changed_at=changed_at,
             action=rel.action,
         )
@@ -383,7 +397,10 @@ def extract_diff_relationship_one(
             name=name,
             identifier=identifier,
             peer=peer_value,
-            properties=[prop.to_graphql() for prop in rel_added.properties.values()],
+            properties=[
+                await to_graphql_translator.to_graphql(ToGraphQLRequest(obj=prop, db=db))
+                for prop in rel_added.properties.values()
+            ],
             changed_at=changed_at,
             action="updated",
         )
@@ -396,10 +413,16 @@ def extract_diff_relationship_one(
     return None
 
 
-def extract_diff_relationship_many(
-    node_id: str, name: str, identifier: str, rels: List[RelationshipDiffElement], display_labels: Dict[str, str]
+async def extract_diff_relationship_many(
+    db: InfrahubDatabase,
+    node_id: str,
+    name: str,
+    identifier: str,
+    rels: List[RelationshipDiffElement],
+    display_labels: Dict[str, str],
 ) -> Optional[BranchDiffRelationshipMany]:
     """Extract a BranchDiffRelationshipMany object from a list of RelationshipDiffElement."""
+    to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
 
     if not rels:
         return None
@@ -428,7 +451,10 @@ def extract_diff_relationship_many(
                 id=rel.id,
                 identifier=identifier,
                 peer=peer,
-                properties=[prop.to_graphql() for prop in rel.properties.values()],
+                properties=[
+                    await to_graphql_translator.to_graphql(ToGraphQLRequest(obj=prop, db=db))
+                    for prop in rel.properties.values()
+                ],
                 changed_at=changed_at,
                 action=rel.action,
             )
@@ -661,7 +687,8 @@ class DiffPayload:
                         if rel_schema := schema.get_relationship_by_identifier(id=rel_name, raise_on_error=False):
                             diff_rel = None
                             if rel_schema.cardinality == RelationshipCardinality.ONE:
-                                diff_rel = extract_diff_relationship_one(
+                                diff_rel = await extract_diff_relationship_one(
+                                    db=self.db,
                                     node_id=item.id,
                                     name=rel_schema.name,
                                     identifier=rel_name,
@@ -669,7 +696,8 @@ class DiffPayload:
                                     display_labels=branch_display_labels,
                                 )
                             elif rel_schema.cardinality == RelationshipCardinality.MANY:
-                                diff_rel = extract_diff_relationship_many(
+                                diff_rel = await extract_diff_relationship_many(
+                                    db=self.db,
                                     node_id=item.id,
                                     name=rel_schema.name,
                                     identifier=rel_name,
@@ -727,7 +755,8 @@ class DiffPayload:
 
                     diff_rel = None
                     if rel_schema.cardinality == RelationshipCardinality.ONE:
-                        diff_rel = extract_diff_relationship_one(
+                        diff_rel = await extract_diff_relationship_one(
+                            db=self.db,
                             node_id=node_in_rel,
                             name=rel_schema.name,
                             identifier=rel_name,
@@ -736,7 +765,8 @@ class DiffPayload:
                         )
 
                     elif rel_schema.cardinality == RelationshipCardinality.MANY:
-                        diff_rel = extract_diff_relationship_many(
+                        diff_rel = await extract_diff_relationship_many(
+                            db=self.db,
                             node_id=node_in_rel,
                             name=rel_schema.name,
                             identifier=rel_name,
@@ -826,7 +856,8 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
                     if rel_schema := schema.get_relationship_by_identifier(id=rel_name, raise_on_error=False):
                         diff_rel = None
                         if rel_schema.cardinality == RelationshipCardinality.ONE:
-                            diff_rel = extract_diff_relationship_one(
+                            diff_rel = await extract_diff_relationship_one(
+                                db=db,
                                 node_id=item.id,
                                 name=rel_schema.name,
                                 identifier=rel_name,
@@ -834,7 +865,8 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
                                 display_labels=branch_display_labels,
                             )
                         elif rel_schema.cardinality == RelationshipCardinality.MANY:
-                            diff_rel = extract_diff_relationship_many(
+                            diff_rel = await extract_diff_relationship_many(
+                                db=db,
                                 node_id=item.id,
                                 name=rel_schema.name,
                                 identifier=rel_name,
@@ -879,7 +911,8 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
                     )
 
                 if rel_schema.cardinality == RelationshipCardinality.ONE:
-                    diff_rel = extract_diff_relationship_one(
+                    diff_rel = await extract_diff_relationship_one(
+                        db=db,
                         node_id=node_in_rel,
                         name=rel_schema.name,
                         identifier=rel_name,
@@ -891,7 +924,8 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
                         node_diff.summary.inc(diff_rel.action.value)
 
                 elif rel_schema.cardinality == RelationshipCardinality.MANY:
-                    diff_rel = extract_diff_relationship_many(
+                    diff_rel = await extract_diff_relationship_many(
+                        db=db,
                         node_id=node_in_rel,
                         name=rel_schema.name,
                         identifier=rel_name,

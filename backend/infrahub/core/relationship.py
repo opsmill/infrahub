@@ -361,41 +361,41 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         return self
 
-    async def to_graphql(self, fields: dict, db: InfrahubDatabase, related_node_ids: Optional[set] = None) -> dict:
-        """Generate GraphQL Payload for the associated Peer."""
+    # async def to_graphql(self, fields: dict, db: InfrahubDatabase, related_node_ids: Optional[set] = None) -> dict:
+    #     """Generate GraphQL Payload for the associated Peer."""
 
-        peer_fields = {
-            key: value
-            for key, value in fields.items()
-            if not key.startswith(PREFIX_PROPERTY) or not key == "__typename"
-        }
-        rel_fields = {
-            key.replace(PREFIX_PROPERTY, ""): value for key, value in fields.items() if key.startswith(PREFIX_PROPERTY)
-        }
+    #     peer_fields = {
+    #         key: value
+    #         for key, value in fields.items()
+    #         if not key.startswith(PREFIX_PROPERTY) or not key == "__typename"
+    #     }
+    #     rel_fields = {
+    #         key.replace(PREFIX_PROPERTY, ""): value for key, value in fields.items() if key.startswith(PREFIX_PROPERTY)
+    #     }
 
-        peer = await self.get_peer(db=db)
-        response = await peer.to_graphql(fields=peer_fields, db=db, related_node_ids=related_node_ids)
+    #     peer = await self.get_peer(db=db)
+    #     response = await peer.to_graphql(fields=peer_fields, db=db, related_node_ids=related_node_ids)
 
-        for field_name in rel_fields.keys():
-            if field_name == "updated_at":
-                response[f"{PREFIX_PROPERTY}{field_name}"] = await self.updated_at.to_graphql(db=db)
+    #     for field_name in rel_fields.keys():
+    #         if field_name == "updated_at":
+    #             response[f"{PREFIX_PROPERTY}{field_name}"] = await self.updated_at.to_graphql(db=db)
 
-            if field_name in self._node_properties:
-                node_prop_getter = getattr(self, f"get_{field_name}")
-                node_prop = await node_prop_getter(db=db)
-                if not node_prop:
-                    response[f"{PREFIX_PROPERTY}{field_name}"] = None
-                else:
-                    response[f"{PREFIX_PROPERTY}{field_name}"] = await node_prop.to_graphql(
-                        db=db, fields=rel_fields[field_name], related_node_ids=related_node_ids
-                    )
-            if field_name in self._flag_properties:
-                response[f"{PREFIX_PROPERTY}{field_name}"] = getattr(self, field_name)
+    #         if field_name in self._node_properties:
+    #             node_prop_getter = getattr(self, f"get_{field_name}")
+    #             node_prop = await node_prop_getter(db=db)
+    #             if not node_prop:
+    #                 response[f"{PREFIX_PROPERTY}{field_name}"] = None
+    #             else:
+    #                 response[f"{PREFIX_PROPERTY}{field_name}"] = await node_prop.to_graphql(
+    #                     db=db, fields=rel_fields[field_name], related_node_ids=related_node_ids
+    #                 )
+    #         if field_name in self._flag_properties:
+    #             response[f"{PREFIX_PROPERTY}{field_name}"] = getattr(self, field_name)
 
-        if "__typename" in fields:
-            response["__typename"] = f"Related{peer.get_kind()}"
+    #     if "__typename" in fields:
+    #         response["__typename"] = f"Related{peer.get_kind()}"
 
-        return response
+    #     return response
 
     async def get_create_data(self, db: InfrahubDatabase):
         # pylint: disable=no-member
@@ -968,15 +968,15 @@ class RelationshipManager:
         for rel in await self.get_relationships(db=db):
             await rel.delete(at=delete_at, db=db)
 
-    async def to_graphql(
-        self, db: InfrahubDatabase, fields: Optional[dict] = None, related_node_ids: Optional[set] = None
-    ) -> Union[dict, None]:
-        # NOTE Need to investigate when and why we are passing the peer directly here, how do we account for many relationship
-        if self.schema.cardinality == "many":
-            raise TypeError("to_graphql is not available for relationship with multiple cardinality")
+    # async def to_graphql(
+    #     self, db: InfrahubDatabase, fields: Optional[dict] = None, related_node_ids: Optional[set] = None
+    # ) -> Union[dict, None]:
+    #     # NOTE Need to investigate when and why we are passing the peer directly here, how do we account for many relationship
+    #     if self.schema.cardinality == "many":
+    #         raise TypeError("to_graphql is not available for relationship with multiple cardinality")
 
-        relationships = await self.get_relationships(db=db)
-        if not relationships:
-            return None
+    #     relationships = await self.get_relationships(db=db)
+    #     if not relationships:
+    #         return None
 
-        return await relationships[0].to_graphql(fields=fields, db=db, related_node_ids=related_node_ids)
+    #     return await relationships[0].to_graphql(fields=fields, db=db, related_node_ids=related_node_ids)

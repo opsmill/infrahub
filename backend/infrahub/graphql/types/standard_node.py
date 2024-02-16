@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict
 
+from dependencies.registry import get_component_registry
 from graphene import ObjectType
 from graphene.types.objecttype import ObjectTypeOptions
 
 import infrahub.config as config
+from infrahub.core.to_graphql.aggregated import AggregatedToGraphQLTranslators
+from infrahub.core.to_graphql.model import ToGraphQLRequest
 
 if TYPE_CHECKING:
     from infrahub.graphql import GraphqlContext
@@ -33,6 +36,7 @@ class InfrahubObjectType(ObjectType):
 
     @classmethod
     async def get_list(cls, fields: Dict[str, Any], context: GraphqlContext, **kwargs):
+        to_graphql_translator = get_component_registry().get_component(AggregatedToGraphQLTranslators)
         async with context.db.session(database=config.SETTINGS.database.database_name) as db:
             filters = {key: value for key, value in kwargs.items() if "__" in key and value}
 
@@ -56,5 +60,6 @@ class InfrahubObjectType(ObjectType):
 
             if not objs:
                 return []
-
-            return [obj.to_graphql(fields=fields) for obj in objs]
+            return [
+                await to_graphql_translator.to_graphql(ToGraphQLRequest(db=db, obj=obj, fields=fields)) for obj in objs
+            ]

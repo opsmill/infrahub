@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from infrahub_sdk import Timestamp as BaseTimestamp
 
@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 class Timestamp(BaseTimestamp):
-    async def to_graphql(self, *args: Any, **kwargs: Any) -> DateTime:  # pylint: disable=unused-argument
+    async def to_graphql(self) -> DateTime:
         return self.obj
 
 
