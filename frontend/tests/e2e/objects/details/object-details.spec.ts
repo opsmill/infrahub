@@ -48,7 +48,7 @@ test.describe("/objects/:objectname/:objectid", () => {
       await expect(page.locator("dl")).toContainText("Device");
     });
 
-    test.only("should display the select 2 steps corectly", async ({ page }) => {
+    test("should display the select 2 steps corectly", async ({ page }) => {
       await page.goto("/");
       await page.getByRole("link", { name: "All Device(s)" }).click();
       await page.getByRole("link", { name: "atl1-edge1" }).click();
