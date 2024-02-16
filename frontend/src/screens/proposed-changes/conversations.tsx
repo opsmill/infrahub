@@ -4,7 +4,7 @@ import { Icon } from "@iconify-icon/react";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
+import { forwardRef, useContext, useImperativeHandle, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Button, BUTTON_TYPES } from "../../components/buttons/button";
@@ -94,7 +94,7 @@ export const getFormStructure = (
   },
 ];
 
-export const Conversations = (props: tConversations) => {
+export const Conversations = forwardRef((props: tConversations, ref) => {
   const { refetch: detailsRefetch } = props;
   const { proposedchange } = useParams();
   const [branches] = useAtom(branchesState);
@@ -121,6 +121,9 @@ export const Conversations = (props: tConversations) => {
   const { error, data, refetch, networkStatus } = useQuery(query, {
     notifyOnNetworkStatusChange: true,
   });
+
+  // Provide refetch function to parent
+  useImperativeHandle(ref, () => ({ refetch }));
 
   const isGetProposedChangesThreadsLoadingForthFistTime = networkStatus === NetworkStatus.loading;
   const isGetProposedChangesThreadsReloading = networkStatus === NetworkStatus.refetch;
@@ -616,4 +619,4 @@ export const Conversations = (props: tConversations) => {
       </SlideOver>
     </div>
   );
-};
+});

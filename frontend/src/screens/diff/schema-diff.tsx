@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -9,7 +9,7 @@ import { fetchUrl, getUrlWithQsp } from "../../utils/fetch";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { DataDiffNode } from "./data-diff-node";
 
-export const SchemaDiff = () => {
+export const SchemaDiff = forwardRef((props, ref) => {
   const { branchname } = useParams();
   const [diff, setDiff] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,6 +44,9 @@ export const SchemaDiff = () => {
     setIsLoading(false);
   }, [branchname, branchOnly, timeFrom, timeTo]);
 
+  // Provide refetch function to parent
+  useImperativeHandle(ref, () => ({ refetch: fetchDiffDetails }));
+
   useEffect(() => {
     fetchDiffDetails();
   }, [fetchDiffDetails]);
@@ -61,4 +64,4 @@ export const SchemaDiff = () => {
       )}
     </>
   );
-};
+});

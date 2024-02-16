@@ -1,5 +1,5 @@
 import { useAtom } from "jotai";
-import { useCallback, useEffect, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
 import "react-diff-view/style/index.css";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -12,7 +12,7 @@ import LoadingScreen from "../../loading-screen/loading-screen";
 import NoDataFound from "../../no-data-found/no-data-found";
 import { FileRepoDiff } from "./file-repo-diff";
 
-export const FilesDiff = () => {
+export const FilesDiff = forwardRef((props, ref) => {
   const [filesDiff, setFilesDiff] = useState({});
   const { branchname } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
@@ -52,6 +52,9 @@ export const FilesDiff = () => {
     setIsLoading(false);
   }, [branchname, branchOnly, timeFrom, timeTo, proposedChangesDetails?.source_branch?.value]);
 
+  // Provide refetch function to parent
+  useImperativeHandle(ref, () => ({ refetch: fetchFiles }));
+
   const setFilesInState = useCallback(async () => {
     await fetchFiles();
   }, []);
@@ -79,4 +82,4 @@ export const FilesDiff = () => {
       ))}
     </div>
   );
-};
+});

@@ -1,8 +1,10 @@
 import { gql } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
+import { useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
+import { Retry } from "../../components/buttons/retry";
 import { Tabs } from "../../components/tabs";
 import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
@@ -28,20 +30,20 @@ export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
 };
 
-const renderContent = (tab: string | null | undefined, refetch: any) => {
+const renderContent = (tab: string | null | undefined, refetch: any, ref: any) => {
   switch (tab) {
     case DIFF_TABS.FILES:
-      return <FilesDiff />;
+      return <FilesDiff ref={ref} />;
     case DIFF_TABS.ARTIFACTS:
-      return <ArtifactsDiff />;
+      return <ArtifactsDiff ref={ref} />;
     case DIFF_TABS.SCHEMA:
-      return <SchemaDiff />;
+      return <SchemaDiff ref={ref} />;
     case DIFF_TABS.DATA:
-      return <DataDiff />;
+      return <DataDiff ref={ref} />;
     case DIFF_TABS.CHECKS:
-      return <Checks />;
+      return <Checks ref={ref} />;
     default: {
-      return <Conversations refetch={refetch} />;
+      return <Conversations refetch={refetch} ref={ref} />;
     }
   }
 };
@@ -58,6 +60,7 @@ export const ProposedChangesDetails = () => {
       ? `${proposedChange.display_label} details`
       : "Proposed changes details"
   );
+  const refetchRef = useRef(null);
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
   const relationships = getObjectRelationships(schemaData);
@@ -78,6 +81,14 @@ export const ProposedChangesDetails = () => {
   `;
 
   const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
+
+  // TODO: refactor to not need the ref to refetch child query
+  const handleRefetch = () => {
+    refetch();
+    if (refetchRef?.current?.refetch) {
+      refetchRef?.current?.refetch();
+    }
+  };
 
   if (!schemaData || loading) {
     return <LoadingScreen />;
@@ -142,11 +153,15 @@ export const ProposedChangesDetails = () => {
         />
 
         <p className="mt-1 mr-2 max-w-2xl text-sm text-gray-500">{result?.display_label}</p>
+
+        <div className="ml-2">
+          <Retry isLoading={loading} onClick={handleRefetch} />
+        </div>
       </div>
 
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
-      {renderContent(qspTab, refetch)}
+      {renderContent(qspTab, refetch, refetchRef)}
     </>
   );
 };

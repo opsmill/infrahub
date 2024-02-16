@@ -1,6 +1,13 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
-import { createContext, useCallback, useEffect, useState } from "react";
+import {
+  createContext,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useState,
+} from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -52,7 +59,7 @@ const constructChecksDictionnary = (checks: any[]) => {
   return dictionnary;
 };
 
-export const DataDiff = () => {
+export const DataDiff = forwardRef((props, ref) => {
   const { branchname, proposedchange } = useParams();
 
   const [branchOnly, setBranchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
@@ -134,6 +141,9 @@ export const DataDiff = () => {
     setIsLoading(false);
   }, [branchname, branchOnly, timeFrom, timeTo]);
 
+  // Provide refetch function to parent
+  useImperativeHandle(ref, () => ({ refetch: fetchDiffDetails }));
+
   useEffect(() => {
     fetchDiffDetails();
   }, [fetchDiffDetails]);
@@ -190,4 +200,4 @@ export const DataDiff = () => {
       )}
     </>
   );
-};
+});
