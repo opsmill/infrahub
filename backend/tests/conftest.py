@@ -211,8 +211,8 @@ async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema
 
 
 @pytest.fixture
-async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema) -> None:
-    SCHEMA: dict[str, Any] = {
+async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema, data_schema) -> SchemaRoot:
+    schema: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Car",
@@ -257,8 +257,12 @@ async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_g
         ],
     }
 
-    schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    return SchemaRoot(**schema)
+
+
+@pytest.fixture
+async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered) -> None:
+    registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
 
 
 @pytest.fixture

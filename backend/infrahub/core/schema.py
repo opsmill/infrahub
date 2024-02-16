@@ -306,7 +306,7 @@ class RelationshipSchema(HashableModel):
     def get_class(self):
         return Relationship
 
-    async def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None):
+    def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None):
         return registry.schema.get(name=self.peer, branch=branch, duplicate=False)
 
     @property
@@ -350,7 +350,7 @@ class RelationshipSchema(HashableModel):
         query_params[f"{prefix}_rel_name"] = self.identifier
 
         rel_type = self.get_class().rel_type
-        peer_schema = await self.get_peer_schema(branch=branch)
+        peer_schema = self.get_peer_schema(branch=branch)
 
         if include_match:
             query_filter.append(QueryNode(name="n"))
@@ -697,8 +697,11 @@ class BaseNodeSchema(HashableModel):  # pylint: disable=too-many-public-methods
 
         return value
 
-    async def parse_attribute_path(
-        self, attribute_path: str, branch: Optional[Union[Branch, str]] = None
+    def parse_attribute_path(
+        self,
+        attribute_path: str,
+        branch: Optional[Union[Branch, str]] = None,
+        schema_map_override: Optional[Dict[str, Union[NodeSchema, GenericSchema]]] = None,
     ) -> SchemaAttributePath:
         allowed_leaf_properties = ["value"]
         schema_path = SchemaAttributePath()
@@ -720,7 +723,13 @@ class BaseNodeSchema(HashableModel):  # pylint: disable=too-many-public-methods
                 raise AttributePathParsingError(f"{relationship_piece} is not a relationship of schema {self.kind}")
             relationship_schema = self.get_relationship(path_parts[0])
             schema_path.relationship_schema = relationship_schema
-            schema_path.related_schema = await relationship_schema.get_peer_schema(branch=branch)
+            if schema_map_override:
+                try:
+                    schema_path.related_schema = schema_map_override.get(relationship_schema.peer)
+                except KeyError as exc:
+                    raise AttributePathParsingError(f"No schema {relationship_schema.peer} in map") from exc
+            else:
+                schema_path.related_schema = relationship_schema.get_peer_schema(branch=branch)
         if attribute_piece:
             schema_to_check = schema_path.related_schema or self
             if attribute_piece not in schema_to_check.attribute_names:

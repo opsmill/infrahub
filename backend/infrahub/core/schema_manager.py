@@ -32,6 +32,7 @@ from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
 from infrahub.core.schema import (
+    AttributePathParsingError,
     AttributeSchema,
     BaseNodeSchema,
     FilterSchema,
@@ -164,8 +165,13 @@ class SchemaBranch:
         return SchemaBranchHash(main=self.get_hash(), nodes=self.nodes, generics=self.generics)
 
     def to_dict(self) -> Dict[str, Any]:
-        # TODO need to implement a flag to return the real objects if needed
         return {"nodes": self.nodes, "generics": self.generics}
+
+    def to_dict_schema_object(self) -> Dict[str, Dict[str, Union[NodeSchema, GenericSchema]]]:
+        return {
+            "nodes": {name: self.get(name) for name in self.nodes},
+            "generics": {name: self.get(name) for name in self.generics},
+        }
 
     def clear_cache(self):
         self._graphql_manager = None
@@ -486,6 +492,7 @@ class SchemaBranch:
         self.validate_kinds()
         self.validate_count_against_cardinality()
         self.validate_identifiers()
+        # self.validate_uniqueness_constraints
         self.validate_display_labels()
         self.validate_order_by()
         self.validate_default_filters()
@@ -569,41 +576,33 @@ class SchemaBranch:
         self,
         node_schema: BaseNodeSchema,
         path: str,
+        schema_map_override: Dict[str, Union[NodeSchema, GenericSchema]],
         relationship_allowed: bool = False,
         schema_attribute_name: Optional[str] = None,
     ) -> None:
         error_header = f"{node_schema.kind}"
         error_header += f".{schema_attribute_name}" if schema_attribute_name else ""
         allowed_leaf_properties = ["value"]
-        path_parts = path.split("__")
-        if len(path_parts) == 3:
-            relationship_name, attribute_name, attribute_property_name = path_parts
-        elif len(path_parts) == 2:
-            relationship_name = None
-            attribute_name, attribute_property_name = path_parts
-        else:
-            relationship_prefix = "[<relationship>__]" if relationship_allowed else ""
-            raise ValueError(
-                f"{error_header}: {path} must be of the format {relationship_prefix}<attribute>__<property>, the separator is two underscores"
-            )
+        try:
+            schema_attribute_path = node_schema.parse_attribute_path(path, schema_map_override=schema_map_override)
+        except AttributePathParsingError as exc:
+            raise ValueError(f"{error_header}: {exc}") from exc
 
-        if relationship_name:
+        if schema_attribute_path.relationship_schema:
             if not relationship_allowed:
                 raise ValueError(f"{error_header}: this property only supports attributes, not relationships")
-            relationship_schema = node_schema.get_relationship(relationship_name, raise_on_error=False)
-            if relationship_schema.cardinality != RelationshipCardinality.ONE:
+            if schema_attribute_path.relationship_schema.cardinality != RelationshipCardinality.ONE:
                 raise ValueError(
-                    f"{error_header}: cannot use {relationship_name} relationship, relationship must be of cardinality one"
+                    f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
+                    " relationship must be of cardinality one"
                 )
-            node_schema = self.get(relationship_schema.peer)
 
-        attribute = node_schema.get_attribute(attribute_name, raise_on_error=False)
-        if not attribute:
-            raise ValueError(f"{error_header}: {attribute_name} is not an attribute of {node_schema.kind}")
-
-        if attribute_property_name not in allowed_leaf_properties:
+        if (
+            schema_attribute_path.attribute_property_name
+            and schema_attribute_path.attribute_property_name not in allowed_leaf_properties
+        ):
             raise ValueError(
-                f"{error_header}: attribute property must be one of {allowed_leaf_properties}, not {attribute_property_name}"
+                f"{error_header}: attribute property must be one of {allowed_leaf_properties}, not {schema_attribute_path.attribute_property_name}"
             )
 
     def validate_display_labels(self) -> None:
@@ -614,7 +613,11 @@ class SchemaBranch:
                 continue
 
             for display_label_path in node_schema.display_labels:
-                self._validate_attribute_path(node_schema, display_label_path, schema_attribute_name="display_labels")
+                full_schema_objects = self.to_dict_schema_object()
+                schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
+                self._validate_attribute_path(
+                    node_schema, display_label_path, schema_map, schema_attribute_name="display_labels"
+                )
 
     def validate_order_by(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
@@ -624,8 +627,10 @@ class SchemaBranch:
                 continue
 
             for order_by_path in node_schema.order_by:
+                full_schema_objects = self.to_dict_schema_object()
+                schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
                 self._validate_attribute_path(
-                    node_schema, order_by_path, relationship_allowed=True, schema_attribute_name="order_by"
+                    node_schema, order_by_path, schema_map, relationship_allowed=True, schema_attribute_name="order_by"
                 )
 
     def validate_default_filters(self) -> None:
@@ -635,8 +640,10 @@ class SchemaBranch:
             if not node_schema.default_filter:
                 continue
 
+            full_schema_objects = self.to_dict_schema_object()
+            schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
             self._validate_attribute_path(
-                node_schema, node_schema.default_filter, schema_attribute_name="default_filter"
+                node_schema, node_schema.default_filter, schema_map, schema_attribute_name="default_filter"
             )
 
     def validate_names(self) -> None:
