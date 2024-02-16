@@ -7,7 +7,8 @@ from infrahub.message_bus.messages import MESSAGE_MAP, RESPONSE_MAP
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.schema_manager import SchemaBranch, SchemaUpdateMigrationInfo
+    from infrahub.core.models import SchemaUpdateMigrationInfo
+    from infrahub.core.schema_manager import SchemaBranch
     from infrahub.message_bus.messages.schema_migration_path import SchemaMigrationPathResponse
     from infrahub.services import InfrahubServices
 

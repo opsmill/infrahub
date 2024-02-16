@@ -6,7 +6,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from infrahub_sdk.utils import compare_lists, duplicates
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel
 
 import infrahub.config as config
 from infrahub import lock
@@ -23,11 +23,17 @@ from infrahub.core.constants import (
     RelationshipKind,
     SchemaPathType,
     UpdateSupport,
-    UpdateValidationErrorType,
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations import MIGRATION_MAP
-from infrahub.core.models import HashableModelDiff, SchemaBranchDiff, SchemaBranchHash
+from infrahub.core.models import (
+    HashableModelDiff,
+    SchemaBranchDiff,
+    SchemaBranchHash,
+    SchemaDiff,
+    SchemaUpdateConstraintInfo,
+    SchemaUpdateValidationResult,
+)
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
@@ -79,57 +85,6 @@ KIND_FILTER_MAP = {
 }
 
 
-class SchemaDiff(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    added: Dict[str, HashableModelDiff] = Field(default_factory=dict)
-    changed: Dict[str, HashableModelDiff] = Field(default_factory=dict)
-    removed: Dict[str, HashableModelDiff] = Field(default_factory=dict)
-
-    @property
-    def all(self) -> List[str]:
-        return list(self.changed.keys()) + list(self.added.keys()) + list(self.removed.keys())
-
-
-class SchemaUpdateValidationError(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    path: SchemaPath
-    error: UpdateValidationErrorType
-    message: Optional[str] = None
-
-    def to_string(self) -> str:
-        return f"{self.error.value!r}: {self.path.schema_kind} {self.path.field_name} {self.message}"
-
-
-class SchemaUpdateMigrationInfo(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    path: SchemaPath
-    migration_name: str
-
-    @property
-    def routing_key(self):
-        return "schema.migration.path"
-
-
-class SchemaUpdateConstraintInfo(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    path: SchemaPath
-    constraint_name: str
-
-    @property
-    def routing_key(self):
-        return "schema.validator.path"
-
-    def __hash__(self) -> int:
-        return hash((type(self),) + tuple([self.constraint_name + self.path.get_path()]))
-
-
-class SchemaUpdateValidationResult(BaseModel):
-    errors: List[SchemaUpdateValidationError] = Field(default_factory=list)
-    constraints: List[SchemaUpdateConstraintInfo] = Field(default_factory=list)
-    migrations: List[SchemaUpdateMigrationInfo] = Field(default_factory=list)
-    diff: SchemaDiff
-
-
 class SchemaNamespace(BaseModel):
     name: str
     user_editable: bool
@@ -147,6 +102,18 @@ class SchemaBranch:
         if data:
             self.nodes = data.get("nodes", {})
             self.generics = data.get("generics", {})
+
+    @property
+    def node_names(self) -> List[str]:
+        return list(self.nodes.keys())
+
+    @property
+    def generic_names(self) -> List[str]:
+        return list(self.generics.keys())
+
+    @property
+    def all_names(self) -> List[str]:
+        return self.node_names + self.generic_names
 
     def get_hash(self) -> str:
         """Calculate the hash for this objects based on the content of nodes and generics.
@@ -238,126 +205,9 @@ class SchemaBranch:
 
     def validate_update(self, other: SchemaBranch) -> SchemaUpdateValidationResult:
         diff = self.diff(other=other)
-
-        result = SchemaUpdateValidationResult(diff=diff)
-
-        for schema_name, schema_diff in diff.changed.items():
-            schema = self.get(name=schema_name, duplicate=False)
-
-            # Nothing to do today if we add a new model in the schema
-            # for node_field_name, _ in schema_diff.added.items():
-            #     pass
-
-            # Not possible today, we need to add some specific mutations to support that
-            # for node_field_name, _ in schema_diff.removed.items():
-            #     pass
-
-            for node_field_name, node_field_diff in schema_diff.changed.items():
-                if node_field_diff and node_field_name in ["attributes", "relationships"]:
-                    field_type = node_field_name[:-1]  # Remove the trailing 's's
-                    path_type = SchemaPathType.ATTRIBUTE if field_type == "attribute" else SchemaPathType.RELATIONSHIP
-                    for field_name, _ in node_field_diff.added.items():
-                        if field_type == "attribute":
-                            result.migrations.append(
-                                SchemaUpdateMigrationInfo(
-                                    path=SchemaPath(
-                                        schema_kind=schema_name, path_type=path_type, field_name=field_name
-                                    ),
-                                    migration_name="node.attribute.add",
-                                )
-                            )
-
-                    for field_name, _ in node_field_diff.removed.items():
-                        result.migrations.append(
-                            SchemaUpdateMigrationInfo(
-                                path=SchemaPath(schema_kind=schema_name, path_type=path_type, field_name=field_name),
-                                migration_name=f"node.{field_type}.remove",
-                            )
-                        )
-
-                    for field_name, sub_field_diff in node_field_diff.changed.items():
-                        field = schema.get_field(name=field_name)
-
-                        for prop_name, _ in sub_field_diff.changed.items():
-                            field_info = field.model_fields[prop_name]
-                            field_update = field_info.json_schema_extra.get("update")
-
-                            schema_path = SchemaPath(
-                                schema_kind=schema_name,
-                                path_type=path_type,
-                                field_name=field_name,
-                                property_name=prop_name,
-                            )
-
-                            self._validate_field(
-                                schema_path=schema_path,
-                                field_update=field_update,
-                                result=result,
-                            )
-
-                else:
-                    field_info = schema.model_fields[node_field_name]
-                    field_update = field_info.json_schema_extra.get("update")
-
-                    schema_path = SchemaPath(
-                        schema_kind=schema_name,
-                        path_type=SchemaPathType.NODE,
-                        field_name=node_field_name,
-                        property_name=node_field_name,
-                    )
-                    self._validate_field(
-                        schema_path=schema_path,
-                        field_update=field_update,
-                        result=result,
-                    )
-
+        result = SchemaUpdateValidationResult.init(diff=diff, schema=self)
+        result.validate_all(migration_map=MIGRATION_MAP, validator_map=CONSTRAINT_VALIDATOR_MAP)
         return result
-
-    def _validate_field(
-        self,
-        schema_path: SchemaPath,
-        field_update: str,
-        result: SchemaUpdateValidationResult,
-    ) -> None:
-        if field_update == UpdateSupport.NOT_SUPPORTED.value:
-            result.errors.append(
-                SchemaUpdateValidationError(
-                    path=schema_path,
-                    error=UpdateValidationErrorType.NOT_SUPPORTED,
-                )
-            )
-        elif field_update == UpdateSupport.MIGRATION_REQUIRED.value:
-            migration_name = f"{schema_path.path_type.value}.{schema_path.field_name}.update"
-            result.migrations.append(
-                SchemaUpdateMigrationInfo(
-                    path=schema_path,
-                    migration_name=migration_name,
-                )
-            )
-            if MIGRATION_MAP.get(migration_name, None) is None:
-                result.errors.append(
-                    SchemaUpdateValidationError(
-                        path=schema_path,
-                        error=UpdateValidationErrorType.MIGRATION_NOT_AVAILABLE,
-                        message=f"Migration {migration_name!r} is not available yet",
-                    )
-                )
-        elif field_update == UpdateSupport.VALIDATE_CONSTRAINT.value:
-            constraint_name = f"{schema_path.path_type.value}.{schema_path.property_name}.update"
-            result.constraints.append(
-                SchemaUpdateConstraintInfo(
-                    path=schema_path,
-                    constraint_name=constraint_name,
-                )
-            )
-            if CONSTRAINT_VALIDATOR_MAP.get(constraint_name, None) is None:
-                result.errors.append(
-                    SchemaUpdateValidationError(
-                        path=schema_path,
-                        error=UpdateValidationErrorType.VALIDATOR_NOT_AVAILABLE,
-                        message=f"Validator {constraint_name!r} is not available yet",
-                    )
-                )
 
     def duplicate(self, name: Optional[str] = None) -> SchemaBranch:
         """Duplicate the current object but conserve the same cache."""
@@ -400,7 +250,22 @@ class SchemaBranch:
             return self._cache[key]
 
         raise SchemaNotFound(
-            branch_name=self.name, identifier=name, message=f"Unable to find the schema '{name}' in the registry"
+            branch_name=self.name, identifier=name, message=f"Unable to find the schema {name!r} in the registry"
+        )
+
+    def get_by_id(self, id: str, duplicate: bool = True) -> Union[NodeSchema, GenericSchema]:
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+            if node.id != id:
+                continue
+            if duplicate is False:
+                return node
+            return self.get(name=name, duplicate=True)
+
+        raise SchemaNotFound(
+            branch_name=self.name,
+            identifier=id,
+            message=f"Unable to find the schema with the id {id!r} in the registry",
         )
 
     def has(self, name: str) -> bool:
