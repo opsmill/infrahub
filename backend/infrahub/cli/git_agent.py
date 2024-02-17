@@ -9,6 +9,7 @@ from infrahub_sdk import InfrahubClient
 from prometheus_client import start_http_server
 from rich.logging import RichHandler
 
+from dependencies.registry import build_component_registry
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
@@ -82,6 +83,7 @@ async def _start(debug: bool, port: int) -> None:
 
     async with service.database.start_session() as db:
         await initialization(db=db)
+    build_component_registry()
 
     await service.message_bus.subscribe()
 

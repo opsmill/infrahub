@@ -11,6 +11,7 @@ import ujson
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import str_to_bool
 
+from dependencies.registry import build_component_registry
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core import registry
@@ -347,6 +348,7 @@ class BusSimulator(InfrahubMessageBus):
         self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
         self.service: InfrahubServices = InfrahubServices(database=database, message_bus=self)
         self.replies: Dict[str, List[InfrahubMessage]] = defaultdict(list)
+        build_component_registry()
 
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
         self.messages.append(message)

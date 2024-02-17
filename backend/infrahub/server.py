@@ -17,6 +17,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic import ValidationError
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
+from dependencies.registry import build_component_registry
 from infrahub import __version__, config
 from infrahub.api import router as api
 from infrahub.api.exception_handlers import generic_api_exception_handler
@@ -56,6 +57,7 @@ async def app_initialization(application: FastAPI) -> None:
 
     initialize_lock()
 
+    build_component_registry()
     async with application.state.db.start_session() as db:
         await initialization(db=db)
 
