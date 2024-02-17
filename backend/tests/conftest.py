@@ -8,10 +8,10 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, TypeVar
 
 import pytest
 import ujson
+from dependencies.registry import build_component_registry
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import str_to_bool
 
-from dependencies.registry import build_component_registry
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core import registry
