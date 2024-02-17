@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Any, Dict, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, TypeVar
 
 from .exceptions import UntrackedDependencyError
 
@@ -28,17 +28,13 @@ class ComponentDependencyRegistry:
             cls.the_instance = cls()
         return cls.the_instance
 
-    def get_component(
-        self, component_class: type[T], db: InfrahubDatabase, branch: Optional[Branch] = None
-    ) -> T:
+    def get_component(self, component_class: type[T], db: InfrahubDatabase, branch: Optional[Branch] = None) -> T:
         if component_class not in self._built_components:
             component = self.build_component(component_class, db=db, branch=branch)
             self._built_components[component_class] = component
         return self._built_components[component_class]
 
-    def build_component(
-        self, component_class: type[T], db: InfrahubDatabase, branch: Optional[Branch] = None
-    ) -> T:
+    def build_component(self, component_class: type[T], db: InfrahubDatabase, branch: Optional[Branch] = None) -> T:
         if component_class not in self._available_components:
             raise UntrackedDependencyError(f"'{component_class}' is not a tracked dependency")
         return self._available_components[component_class].build(db=db, branch=branch)

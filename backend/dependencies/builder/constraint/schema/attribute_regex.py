@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional
 
 from infrahub.core.branch import Branch
 from infrahub.core.validators.attribute.regex import AttributeRegexChecker
