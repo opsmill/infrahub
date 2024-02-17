@@ -9,6 +9,7 @@ from infrahub_sdk import InfrahubClient
 from prometheus_client import start_http_server
 from rich.logging import RichHandler
 
+from dependencies.registry import build_component_registry
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization

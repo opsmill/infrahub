@@ -19,7 +19,6 @@ class ComponentDependencyRegistry:
     the_instance: Optional[ComponentDependencyRegistry] = None
 
     def __init__(self) -> None:
-        self._built_components: Dict[type, Any] = {}
         self._available_components: Dict[type, type[DependencyBuilder]] = {}
 
     @classmethod
@@ -29,12 +28,6 @@ class ComponentDependencyRegistry:
         return cls.the_instance
 
     def get_component(self, component_class: type[T], db: InfrahubDatabase, branch: Optional[Branch] = None) -> T:
-        if component_class not in self._built_components:
-            component = self.build_component(component_class, db=db, branch=branch)
-            self._built_components[component_class] = component
-        return self._built_components[component_class]
-
-    def build_component(self, component_class: type[T], db: InfrahubDatabase, branch: Optional[Branch] = None) -> T:
         if component_class not in self._available_components:
             raise UntrackedDependencyError(f"'{component_class}' is not a tracked dependency")
         return self._available_components[component_class].build(db=db, branch=branch)

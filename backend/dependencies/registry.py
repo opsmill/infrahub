@@ -7,7 +7,7 @@ from .component.registry import ComponentDependencyRegistry
 
 
 def build_component_registry():
-    component_registry = ComponentDependencyRegistry()
+    component_registry = ComponentDependencyRegistry.get_registry()
     component_registry.track_dependency(AggregatedSchemaConstraintsDependency)
     component_registry.track_dependency(SchemaAttributeRegexConstraintDependency)
     component_registry.track_dependency(SchemaAttributeUniqueConstraintDependency)
