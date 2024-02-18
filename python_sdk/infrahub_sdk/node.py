@@ -374,6 +374,8 @@ class RelatedNodeSync(RelatedNodeBase):
 class RelationshipManagerBase:
     """Base class for RelationshipManager and RelationshipManagerSync"""
 
+    initialized: bool = False
+
     def __init__(self, name: str, branch: str, schema: RelationshipSchema):
         """
         Args:
