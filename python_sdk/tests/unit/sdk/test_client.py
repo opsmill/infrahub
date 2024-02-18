@@ -394,7 +394,7 @@ QUERY:
         }
     }
     }
-    
+
 VARIABLES:
 {
     "name": "red"

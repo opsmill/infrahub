@@ -30,7 +30,9 @@ def load(
     console = Console()
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
-    client = aiorun(initialize_client(timeout=timeout, max_concurrent_execution=concurrent, retry_on_failure=True))
+    client = aiorun(
+        initialize_client(branch=branch, timeout=timeout, max_concurrent_execution=concurrent, retry_on_failure=True)
+    )
     importer = LineDelimitedJSONImporter(
         client,
         InfrahubSchemaTopologicalSorter(),
