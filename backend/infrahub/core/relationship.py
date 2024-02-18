@@ -251,7 +251,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self.peer_id = self._peer.id
 
     def get_peer_schema(self) -> NodeSchema:
-        return registry.schema.get(name=self.schema.peer, branch=self.branch)
+        return registry.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
 
     def compare_properties_with_data(self, data: RelationshipPeerData) -> List[str]:
         different_properties = []

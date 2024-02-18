@@ -168,10 +168,10 @@ class SchemaBranch:
     def to_dict(self) -> Dict[str, Any]:
         return {"nodes": self.nodes, "generics": self.generics}
 
-    def to_dict_schema_object(self) -> Dict[str, Dict[str, Union[NodeSchema, GenericSchema]]]:
+    def to_dict_schema_object(self, duplicate: bool = False) -> Dict[str, Dict[str, Union[NodeSchema, GenericSchema]]]:
         return {
-            "nodes": {name: self.get(name) for name in self.nodes},
-            "generics": {name: self.get(name) for name in self.generics},
+            "nodes": {name: self.get(name, duplicate=duplicate) for name in self.nodes},
+            "generics": {name: self.get(name, duplicate=duplicate) for name in self.generics},
         }
 
     def clear_cache(self):
