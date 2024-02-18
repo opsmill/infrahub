@@ -462,8 +462,8 @@ class DiffPayload:
         self.entries[node_id].action[branch] = action
 
     async def _prepare(self) -> None:
-        self.rels_per_node = await self.diff.get_relationships_per_node(db=self.db)
-        node_ids = await self.diff.get_node_id_per_kind(db=self.db)
+        self.rels_per_node = await self.diff.get_relationships_per_node()
+        node_ids = await self.diff.get_node_id_per_kind()
 
         self.display_labels = await get_display_labels(nodes=node_ids, db=self.db)
 
