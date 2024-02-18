@@ -4,11 +4,11 @@ from graphene import Boolean, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 
 from infrahub import config, lock
-from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, ValidatorConclusion
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge import BranchMerger
+from infrahub.core.migrations.schema.runner import schema_migrations_runner
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
@@ -104,6 +104,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             updated_state = ProposedChangeState(state_update)
             state.validate_state_transition(updated_state)
 
+        merger: Optional[BranchMerger] = None
         async with context.db.start_transaction() as dbt:
             proposed_change, result = await super().mutate_update(
                 root=root, info=info, data=data, branch=branch, at=at, database=dbt, node=obj
@@ -133,16 +134,9 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                                 conflict_resolution[check.conflicts.value[0]["path"]] = keep_source_value
 
                 async with lock.registry.global_graph_lock():
-                    merger = BranchMerger(branch=source_branch)
-                    await merger.merge(service=context.service, db=dbt, conflict_resolution=conflict_resolution)
-
-                    # Copy the schema from the origin branch and set the hash and the schema_changed_at value
-                    origin_branch = await source_branch.get_origin_branch(db=dbt)
-                    updated_schema = await registry.schema.load_schema_from_db(db=dbt, branch=origin_branch)
-                    registry.schema.set_schema_branch(name=origin_branch.name, schema=updated_schema)
-                    origin_branch.update_schema_hash()
-
-                    await origin_branch.save(db=dbt)
+                    merger = BranchMerger(db=dbt, source_branch=source_branch, service=context.service)
+                    await merger.merge(conflict_resolution=conflict_resolution)
+                    await merger.update_schema()
 
                 if config.SETTINGS.broker.enable and context.background:
                     log_data = get_log_data()
@@ -153,6 +147,16 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                         meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
                     )
                     context.background.add_task(services.send, message)
+
+        if merger and merger.migrations:
+            errors = await schema_migrations_runner(
+                branch=merger.destination_branch,
+                schema=merger.destination_schema,
+                migrations=merger.migrations,
+                service=context.service,
+            )
+            for error in errors:
+                context.service.log.error(error)
 
         return proposed_change, result
 
