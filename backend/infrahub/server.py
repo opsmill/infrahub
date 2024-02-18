@@ -27,7 +27,6 @@ from infrahub.exceptions import Error
 from infrahub.graphql.api.endpoints import router as graphql_router
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
-from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
 from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.cache.redis import RedisCache
@@ -67,9 +66,6 @@ async def app_initialization(application: FastAPI) -> None:
     )
     await service.initialize()
     services.prepare(service=service)
-    # Initialize RPC Client
-    rpc_client = InfrahubRpcClient()
-    application.state.rpc_client = rpc_client
     application.state.service = service
 
 

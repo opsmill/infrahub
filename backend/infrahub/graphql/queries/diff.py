@@ -45,7 +45,7 @@ class DiffSummaryEntry(ObjectType):
         diff = await BranchDiffer.init(
             db=context.db, branch=context.branch, diff_from=time_from, diff_to=time_to, branch_only=branch_only
         )
-        summary = await diff.get_summary(db=context.db)
+        summary = await diff.get_summary()
         return [entry.to_graphql() for entry in summary]
 
 

@@ -10,7 +10,6 @@ from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import BranchNotFound, ValidationError
-from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
 async def test_branch_name_validator(db: InfrahubDatabase):
@@ -293,9 +292,7 @@ async def test_rebase_flag(db: InfrahubDatabase, base_dataset_02):
     assert cars[0].name.value == "volt"
 
 
-async def test_delete_branch(
-    db: InfrahubDatabase, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main, car_person_schema
-):
+async def test_delete_branch(db: InfrahubDatabase, default_branch: Branch, repos_in_main, car_person_schema):
     branch_name = "delete-me"
     branch = await create_branch(branch_name=branch_name, db=db)
     found = await Branch.get_by_name(name=branch_name, db=db)

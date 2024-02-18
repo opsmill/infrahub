@@ -284,7 +284,6 @@ async def test_branch_create_invalid_names(
 async def test_branch_create_with_repositories(
     db: InfrahubDatabase,
     default_branch: Branch,
-    rpc_client,
     repos_and_checks_in_main,
     register_core_models_schema,
     data_schema,
@@ -300,7 +299,7 @@ async def test_branch_create_with_repositories(
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch, rpc_client=rpc_client)
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,

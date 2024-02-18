@@ -23,7 +23,7 @@ from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from .validation_models import DiffQueryValidated
 
 if TYPE_CHECKING:
-    from infrahub.message_bus.rpc import InfrahubRpcClient
+    from infrahub.services import InfrahubServices
 
 # pylint: disable=too-many-branches,too-many-lines
 
@@ -781,12 +781,12 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
     nodes_in_diff = []
 
     # Query the Diff per Nodes and per Relationships from the database
-    nodes = await diff.get_nodes(db=db)
-    rels = await diff.get_relationships(db=db)
+    nodes = await diff.get_nodes()
+    rels = await diff.get_relationships()
 
     # Organize the Relationships data per node and per relationship name in order to simplify the association with the nodes Later on.
-    rels_per_node = await diff.get_relationships_per_node(db=db)
-    node_ids = await diff.get_node_id_per_kind(db=db)
+    rels_per_node = await diff.get_relationships_per_node()
+    node_ids = await diff.get_node_id_per_kind()
 
     display_labels = await get_display_labels(nodes=node_ids, db=db)
     # Generate the Diff per node and associated the appropriate relationships if they are present in the schema
@@ -965,11 +965,13 @@ async def get_diff_files(
     _: str = Depends(get_current_user),
 ) -> Dict[str, Dict[str, BranchDiffRepository]]:
     response: Dict[str, Dict[str, BranchDiffRepository]] = defaultdict(dict)
-    rpc_client: InfrahubRpcClient = request.app.state.rpc_client
+    service: InfrahubServices = request.app.state.service
 
     # Query the Diff for all files and repository from the database
-    diff = await BranchDiffer.init(db=db, branch=branch, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
-    diff_files = await diff.get_files(db=db, rpc_client=rpc_client)
+    diff = await BranchDiffer.init(
+        db=db, branch=branch, diff_from=time_from, diff_to=time_to, branch_only=branch_only, service=service
+    )
+    diff_files = await diff.get_files()
 
     for branch_name, items in diff_files.items():
         for item in items:

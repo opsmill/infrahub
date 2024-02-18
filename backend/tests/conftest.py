@@ -34,7 +34,7 @@ from infrahub.message_bus import InfrahubMessage, InfrahubResponse, Meta
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
-from infrahub.services import InfrahubServices
+from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
 BUILD_NAME = os.environ.get("INFRAHUB_BUILD_NAME", "infrahub")
@@ -449,3 +449,14 @@ def fake_log() -> FakeLogger:
 @pytest.fixture()
 def helper() -> TestHelper:
     return TestHelper()
+
+
+@pytest.fixture
+def patch_services(helper):
+    original = services.service.message_bus
+    bus = helper.get_message_bus_rpc()
+    services.service.message_bus = bus
+    services.prepare(service=services.service)
+    yield bus
+    services.service.message_bus = original
+    services.prepare(service=services.service)

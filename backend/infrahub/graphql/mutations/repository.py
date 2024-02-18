@@ -67,7 +67,9 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 location=obj.location.value,
                 default_branch_name=obj.default_branch.value,
             )
-        await context.rpc_client.send(message=message)
+
+        if context.service:
+            await context.service.send(message=message)
 
         # TODO Validate that the creation of the repository went as expected
 
@@ -128,6 +130,6 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             commit=new_commit,
             infrahub_branch_name=branch.name,
         )
-
-        await context.rpc_client.send(message=message)
+        if context.service:
+            await context.service.send(message=message)
         return obj, result

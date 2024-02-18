@@ -15,26 +15,14 @@ from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus import messages
-from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub.services import services
-
-
-@pytest.fixture
-def patch_services(helper):
-    original = services.service.message_bus
-    bus = helper.get_message_bus_rpc()
-    services.service.message_bus = bus
-    services.prepare(service=services.service)
-    yield bus
-    services.service.message_bus = original
-    services.prepare(service=services.service)
 
 
 async def test_diff_has_conflict_graph(db: InfrahubDatabase, base_dataset_02):
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
-    assert not await diff.has_conflict_graph(db=db)
+    assert not await diff.has_conflict_graph()
 
     # Change the name of C1 in Branch1 to create a conflict
     c1 = await NodeManager.get_one(id="c1", branch=branch1, db=db)
@@ -42,11 +30,11 @@ async def test_diff_has_conflict_graph(db: InfrahubDatabase, base_dataset_02):
     await c1.save(db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
-    assert await diff.has_conflict_graph(db=db)
+    assert await diff.has_conflict_graph()
 
     # The conflict shouldn't be reported if we are only considering the branch
     diff = await BranchDiffer.init(branch=branch1, branch_only=True, db=db)
-    assert not await diff.has_conflict_graph(db=db)
+    assert not await diff.has_conflict_graph()
 
 
 async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_02):
@@ -99,7 +87,7 @@ async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_
     ]
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
-    paths = await diff.get_modified_paths_graph(db=db)
+    paths = await diff.get_modified_paths_graph()
 
     # Due to how the conflict check works on ModifiedPath with def __eq__ we can't compare
     # the paths directly against each other, instead the string version of the paths are compared
@@ -114,16 +102,14 @@ async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_
     await c1.save(db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
-    paths = await diff.get_modified_paths_graph(db=db)
+    paths = await diff.get_modified_paths_graph()
     expected_paths_branch1.append("data/c1/name/value")
     modified_branch1 = sorted([str(path) for path in paths["branch1"]])
 
     assert modified_branch1 == sorted(expected_paths_branch1)
 
 
-async def test_diff_get_files_repository(
-    db: InfrahubDatabase, rpc_client, repos_in_main, base_dataset_02, patch_services
-):
+async def test_diff_get_files_repository(db: InfrahubDatabase, repos_in_main, base_dataset_02, patch_services):
     mock_response = messages.GitDiffNamesOnlyResponse(
         data={
             "files_changed": ["readme.md", "mydir/myfile.py"],
@@ -136,10 +122,9 @@ async def test_diff_get_files_repository(
 
     branch2 = await create_branch(branch_name="branch2", db=db)
 
-    diff = await BranchDiffer.init(branch=branch2, db=db)
+    diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
 
     resp = await diff.get_files_repository(
-        rpc_client=rpc_client,
         branch_name=branch2.name,
         repository=repos_in_main["repo01"],
         commit_from="aaaaaa",
@@ -157,7 +142,7 @@ async def test_diff_get_files_repository(
 
 
 async def test_diff_get_files_repositories_for_branch_case01(
-    db: InfrahubDatabase, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main, patch_services
+    db: InfrahubDatabase, default_branch: Branch, repos_in_main, patch_services
 ):
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     but only one has a different commit value between 2 and from so we expect only 2 files"""
@@ -181,9 +166,9 @@ async def test_diff_get_files_repositories_for_branch_case01(
     repo01.commit.value = "dddddddddd"
     await repo01.save(db=db)
 
-    diff = await BranchDiffer.init(branch=branch2, db=db)
+    diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
 
-    resp = await diff.get_files_repositories_for_branch(db=db, rpc_client=rpc_client, branch=branch2)
+    resp = await diff.get_files_repositories_for_branch(branch=branch2)
 
     assert len(resp) == 2
     assert isinstance(resp, list)
@@ -191,7 +176,7 @@ async def test_diff_get_files_repositories_for_branch_case01(
 
 
 async def test_diff_get_files_repositories_for_branch_case02(
-    db: InfrahubDatabase, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main, patch_services
+    db: InfrahubDatabase, default_branch: Branch, repos_in_main, patch_services
 ):
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     both repositories have a new commit value so we expect both to return something"""
@@ -227,18 +212,16 @@ async def test_diff_get_files_repositories_for_branch_case02(
     repo02.commit.value = "eeeeeeeeee"
     await repo02.save(db=db)
 
-    diff = await BranchDiffer.init(branch=branch2, db=db)
+    diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
 
-    resp = await diff.get_files_repositories_for_branch(db=db, rpc_client=rpc_client, branch=branch2)
+    resp = await diff.get_files_repositories_for_branch(branch=branch2)
 
     assert len(resp) == 3
     assert isinstance(resp, list)
     assert sorted([fde.location for fde in resp]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
 
 
-async def test_diff_get_files(
-    db: InfrahubDatabase, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main, patch_services
-):
+async def test_diff_get_files(db: InfrahubDatabase, default_branch: Branch, repos_in_main, patch_services):
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     both repositories have a new commit value so we expect both to return something"""
 
@@ -273,9 +256,9 @@ async def test_diff_get_files(
     repo02.commit.value = "eeeeeeeeee"
     await repo02.save(db=db)
 
-    diff = await BranchDiffer.init(branch=branch2, db=db)
+    diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
 
-    resp = await diff.get_files(db=db, rpc_client=rpc_client)
+    resp = await diff.get_files()
 
     assert len(resp) == 2
     assert "branch2" in resp
@@ -304,7 +287,7 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
 
     # Calculate the diff since the creation of the branch
     diff1 = await BranchDiffer.init(branch=branch2, db=db)
-    nodes = await diff1.get_nodes(db=db)
+    nodes = await diff1.get_nodes()
 
     expected_response_branch2_repo01_time01 = {
         "branch": "branch2",
@@ -350,7 +333,7 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
 
     # Calculate the diff since the creation of the branch
     diff1 = await BranchDiffer.init(branch=branch2, db=db, diff_to=time02)
-    nodes = await diff1.get_nodes(db=db)
+    nodes = await diff1.get_nodes()
 
     expected_response_branch2_repo01_time02 = {
         "branch": "branch2",
@@ -417,7 +400,7 @@ async def test_diff_get_nodes_multiple_changes(db: InfrahubDatabase, default_bra
     # It should change the previous value returned by the query
 
     diff2 = await BranchDiffer.init(branch=branch2, db=db, diff_from=time01_after)
-    nodes = await diff2.get_nodes(db=db)
+    nodes = await diff2.get_nodes()
 
     expected_response_branch2_repo01_time02 = {
         "branch": "branch2",
@@ -455,7 +438,7 @@ async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02):
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
-    nodes = await diff.get_nodes(db=db)
+    nodes = await diff.get_nodes()
 
     expected_response_main_c1 = {
         "branch": "main",
@@ -538,7 +521,7 @@ async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02):
     await p1.save(db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
-    nodes = await diff.get_nodes(db=db)
+    nodes = await diff.get_nodes()
 
     assert nodes["branch1"][p1.id].action == DiffAction.ADDED
     assert nodes["branch1"][p1.id].attributes["name"].action == DiffAction.ADDED
@@ -549,7 +532,7 @@ async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02):
     await p3.delete(db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
-    nodes = await diff.get_nodes(db=db)
+    nodes = await diff.get_nodes()
     assert nodes["branch1"]["p3"].action == DiffAction.REMOVED
     assert nodes["branch1"]["p3"].attributes["name"].action == DiffAction.REMOVED
     assert nodes["branch1"]["p3"].attributes["name"].properties["HAS_VALUE"].action == DiffAction.REMOVED
@@ -560,7 +543,7 @@ async def test_diff_get_nodes_rebased_branch(db: InfrahubDatabase, base_dataset_
 
     # Calculate the diff with the default value
     diff = await BranchDiffer.init(branch=branch2, db=db)
-    nodes = await diff.get_nodes(db=db)
+    nodes = await diff.get_nodes()
 
     assert list(nodes.keys()) == ["branch2"]
     assert list(nodes["branch2"].keys()) == ["p2"]
@@ -571,7 +554,7 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
-    rels = await diff.get_relationships(db=db)
+    rels = await diff.get_relationships()
 
     assert sorted(rels.keys()) == ["branch1", "main"]
     assert sorted(rels["branch1"]["testcar__testperson"].keys()) == ["r1", "r2"]
@@ -719,7 +702,7 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
     await c1_main.save(db=db, at=time12)
 
     diff = await BranchDiffer.init(branch=branch2, db=db, branch_only=False)
-    rels = await diff.get_relationships(db=db)
+    rels = await diff.get_relationships()
 
     assert sorted(rels.keys()) == ["branch2", "main"]
     assert len(rels["main"]["person_previous__car"].keys()) == 1
@@ -898,7 +881,7 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
     branch1 = await get_branch(branch="branch1", db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
-    rels = await diff.get_relationships(db=db)
+    rels = await diff.get_relationships()
 
     assert sorted(rels.keys()) == ["branch1", "main"]
     assert len(rels["main"]["builtintag__coreorganization"].keys()) == 1

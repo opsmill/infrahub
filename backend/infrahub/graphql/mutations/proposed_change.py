@@ -65,13 +65,14 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     input_value="Currently only the 'main' branch is supported as a destination for a proposed change"
                 )
 
-        message = messages.RequestProposedChangePipeline(
-            proposed_change=proposed_change.id,
-            source_branch=source_branch.name,
-            source_branch_data_only=source_branch.is_data_only,
-            destination_branch=destination_branch,
-        )
-        await context.rpc_client.send(message)
+        if context.service:
+            message = messages.RequestProposedChangePipeline(
+                proposed_change=proposed_change.id,
+                source_branch=source_branch.name,
+                source_branch_data_only=source_branch.is_data_only,
+                destination_branch=destination_branch,
+            )
+            await context.service.send(message=message)
 
         return proposed_change, result
 
@@ -133,7 +134,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
 
                 async with lock.registry.global_graph_lock():
                     merger = BranchMerger(branch=source_branch)
-                    await merger.merge(rpc_client=context.rpc_client, db=dbt, conflict_resolution=conflict_resolution)
+                    await merger.merge(service=context.service, db=dbt, conflict_resolution=conflict_resolution)
 
                     # Copy the schema from the origin branch and set the hash and the schema_changed_at value
                     origin_branch = await source_branch.get_origin_branch(db=dbt)
@@ -195,7 +196,8 @@ class ProposedChangeRequestRunCheck(Mutation):
             destination_branch=destination_branch,
             check_type=check_type,
         )
-        await context.rpc_client.send(message)
+        if context.service:
+            await context.service.send(message=message)
 
         return {"ok": True}
 

@@ -1,4 +1,3 @@
-import pytest
 from fastapi.testclient import TestClient
 
 from infrahub.core.constants import InfrahubKind
@@ -7,14 +6,6 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.messages.transform_jinja_template import TransformJinjaTemplateResponse
 from infrahub.message_bus.messages.transform_python_data import TransformPythonDataResponse
-from infrahub.message_bus.rpc import InfrahubRpcClientTesting
-
-
-@pytest.fixture
-def patch_rpc_client():
-    import infrahub.message_bus.rpc
-
-    infrahub.message_bus.rpc.InfrahubRpcClient = InfrahubRpcClientTesting
 
 
 async def test_transform_endpoint(
