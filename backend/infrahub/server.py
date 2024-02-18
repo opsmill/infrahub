@@ -7,7 +7,6 @@ from typing import Awaitable, Callable
 
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
-from dependencies.registry import build_component_registry
 from fastapi import FastAPI, Request, Response
 from fastapi.logger import logger
 from fastapi.responses import RedirectResponse

@@ -5,7 +5,6 @@ from asyncio import run as aiorun
 from typing import Any
 
 import typer
-from dependencies.registry import build_component_registry
 from infrahub_sdk import InfrahubClient
 from prometheus_client import start_http_server
 from rich.logging import RichHandler

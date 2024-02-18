@@ -8,7 +8,6 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, TypeVar
 
 import pytest
 import ujson
-from dependencies.registry import build_component_registry
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import str_to_bool
 
