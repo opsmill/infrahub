@@ -5,14 +5,6 @@ from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus import messages
-from infrahub.message_bus.rpc import InfrahubRpcClientTesting
-
-
-@pytest.fixture
-def patch_rpc_client():
-    import infrahub.message_bus.rpc
-
-    infrahub.message_bus.rpc.InfrahubRpcClient = InfrahubRpcClientTesting
 
 
 @pytest.fixture
@@ -26,7 +18,7 @@ async def base_authentication(
 
 
 async def test_query_endpoint_group_no_params(
-    db: InfrahubDatabase, client_headers, default_branch, patch_rpc_client, car_person_data
+    db: InfrahubDatabase, client_headers, default_branch, car_person_data, patch_services
 ):
     from infrahub.server import app
 
@@ -65,13 +57,11 @@ async def test_query_endpoint_group_no_params(
             subscribers=sorted(["AAAAAA", "BBBBBB"]),
             params={},
         )
-        in client.app.state.rpc_client.sent
+        in client.app.state.service.message_bus.messages
     )
 
 
-async def test_query_endpoint_group_params(
-    db: InfrahubDatabase, client_headers, default_branch, patch_rpc_client, car_person_data
-):
+async def test_query_endpoint_group_params(db: InfrahubDatabase, client_headers, default_branch, car_person_data):
     from infrahub.server import app
 
     client = TestClient(app)
@@ -103,7 +93,7 @@ async def test_query_endpoint_group_params(
             subscribers=[],
             params={"person": "John"},
         )
-        in client.app.state.rpc_client.sent
+        in client.app.state.service.message_bus.messages
     )
 
 

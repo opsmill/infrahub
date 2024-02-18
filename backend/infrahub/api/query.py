@@ -31,7 +31,7 @@ from infrahub.log import get_logger
 from infrahub.message_bus import messages
 
 if TYPE_CHECKING:
-    from infrahub.message_bus.rpc import InfrahubRpcClient
+    from infrahub.services import InfrahubServices
 
 log = get_logger()
 router = APIRouter(prefix="/query")
@@ -94,8 +94,8 @@ async def execute_query(
     related_node_ids = gql_params.context.related_node_ids or set()
 
     if update_group:
-        rpc_client: InfrahubRpcClient = request.app.state.rpc_client
-        await rpc_client.send(
+        service: InfrahubServices = request.app.state.service
+        await service.send(
             message=messages.RequestGraphQLQueryGroupUpdate(
                 branch=branch_params.branch.name,
                 query_id=gql_query.id,

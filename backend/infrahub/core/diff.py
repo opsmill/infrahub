@@ -32,11 +32,10 @@ from infrahub.exceptions import (
     DiffRangeValidationError,
 )
 from infrahub.message_bus.messages import GitDiffNamesOnly, GitDiffNamesOnlyResponse
-from infrahub.services import services
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
-    from infrahub.message_bus.rpc import InfrahubRpcClient
+    from infrahub.services import InfrahubServices
 
     from .branch import Branch
     from .node import Node
@@ -307,6 +306,8 @@ class BranchDiffer:
         kinds_include: Optional[List[str]] = None,
         kinds_exclude: Optional[List[str]] = None,
         branch_support: Optional[List[BranchSupportType]] = None,
+        db: Optional[InfrahubDatabase] = None,
+        service: Optional[InfrahubServices] = None,
     ):
         """_summary_
 
@@ -324,6 +325,9 @@ class BranchDiffer:
         self.branch = branch
         self.branch_only = branch_only
         self.origin_branch = origin_branch
+
+        self._db = db
+        self._service = service
 
         self.namespaces_include = namespaces_include
         self.namespaces_exclude = namespaces_exclude
@@ -357,6 +361,18 @@ class BranchDiffer:
         self._calculated_diff_rels_at: Optional[Timestamp] = None
         self._calculated_diff_files_at: Optional[Timestamp] = None
 
+    @property
+    def service(self) -> InfrahubServices:
+        if not self._service:
+            raise ValueError("BranchDiffer object was not initialized with InfrahubServices")
+        return self._service
+
+    @property
+    def db(self) -> InfrahubDatabase:
+        if not self._db:
+            raise ValueError("BranchDiffer object was not initialized with InfrahubDatabase")
+        return self._db
+
     @classmethod
     async def init(
         cls,
@@ -370,6 +386,7 @@ class BranchDiffer:
         kinds_include: Optional[List[str]] = None,
         kinds_exclude: Optional[List[str]] = None,
         branch_support: Optional[List[BranchSupportType]] = None,
+        service: Optional[InfrahubServices] = None,
     ) -> Self:
         origin_branch = await branch.get_origin_branch(db=db)
 
@@ -384,32 +401,32 @@ class BranchDiffer:
             kinds_include=kinds_include,
             kinds_exclude=kinds_exclude,
             branch_support=branch_support,
+            db=db,
+            service=service,
         )
 
     async def has_conflict(
         self,
-        db: InfrahubDatabase,
-        rpc_client: InfrahubRpcClient,  # pylint: disable=unused-argument
     ) -> bool:
         """Return True if the same path has been modified on multiple branches. False otherwise"""
 
-        return await self.has_conflict_graph(db=db)
+        return await self.has_conflict_graph()
 
-    async def has_conflict_graph(self, db: InfrahubDatabase) -> bool:
+    async def has_conflict_graph(self) -> bool:
         """Return True if the same path has been modified on multiple branches. False otherwise"""
 
-        if await self.get_conflicts_graph(db=db):
+        if await self.get_conflicts_graph():
             return True
 
         return False
 
-    async def get_summary(self, db: InfrahubDatabase) -> List[DiffSummaryElement]:
+    async def get_summary(self) -> List[DiffSummaryElement]:
         """Return a list of changed nodes and associated actions
 
         If only a relationship is modified for a given node it will have the updated action.
         """
-        nodes = await self.get_nodes(db=db)
-        relationships = await self.get_relationships(db=db)
+        nodes = await self.get_nodes()
+        relationships = await self.get_relationships()
         changes: Dict[str, Dict[str, DiffSummaryElement]] = {}
 
         for branch_name, branch_nodes in nodes.items():
@@ -441,18 +458,18 @@ class BranchDiffer:
 
         return summary
 
-    async def get_conflicts(self, db: InfrahubDatabase) -> List[DataConflict]:
+    async def get_conflicts(self) -> List[DataConflict]:
         """Return the list of conflicts identified by the diff as Path (tuple).
 
         For now we are not able to identify clearly enough the conflicts for the git repositories so this part is ignored.
         """
-        return await self.get_conflicts_graph(db=db)
+        return await self.get_conflicts_graph()
 
-    async def get_conflicts_graph(self, db: InfrahubDatabase) -> List[DataConflict]:
+    async def get_conflicts_graph(self) -> List[DataConflict]:
         if self.branch_only:
             return []
 
-        paths = await self.get_modified_paths_graph(db=db)
+        paths = await self.get_modified_paths_graph()
 
         # For now we assume that we can only have 2 branches but in the future we might need to support more
         branches = list(paths.keys())
@@ -493,7 +510,7 @@ class BranchDiffer:
             responses.append(response)
         return responses
 
-    async def get_modified_paths_graph(self, db: InfrahubDatabase) -> Dict[str, Set[ModifiedPath]]:
+    async def get_modified_paths_graph(self) -> Dict[str, Set[ModifiedPath]]:
         """Return a list of all the modified paths in the graph per branch.
 
         Path for a node : ("node", node_id, attr_name, prop_type)
@@ -505,7 +522,7 @@ class BranchDiffer:
 
         paths: Dict[str, Set[ModifiedPath]] = {}
 
-        nodes = await self.get_nodes(db=db)
+        nodes = await self.get_nodes()
         for branch_name, node_data in nodes.items():
             if self.branch_only and branch_name != self.branch.name:
                 continue
@@ -532,7 +549,7 @@ class BranchDiffer:
                         )
                         paths[branch_name].add(modified_path)
 
-        relationships = await self.get_relationships(db=db)
+        relationships = await self.get_relationships()
         cardinality_one_branch_relationships: Dict[str, List[ModifiedPath]] = {}
         branch_kind_node: Dict[str, Dict[str, List[str]]] = {}
         display_label_map: Dict[str, Dict[str, str]] = {}
@@ -612,9 +629,9 @@ class BranchDiffer:
             for kind, ids in entries.items():
                 schema = registry.schema.get(name=kind, branch=branch_name)
                 fields = schema.generate_fields_for_display_label()
-                query_nodes = await NodeManager.get_many(ids=ids, fields=fields, db=db, branch=branch_name)
+                query_nodes = await NodeManager.get_many(ids=ids, fields=fields, db=self.db, branch=branch_name)
                 for node_id, node in query_nodes.items():
-                    display_label_map[branch_name][node_id] = await node.render_display_label(db=db)
+                    display_label_map[branch_name][node_id] = await node.render_display_label(db=self.db)
                     kind_map[branch_name][node_id] = kind
 
             for relationship in cardinality_one_branch_relationships[branch_name]:
@@ -636,11 +653,11 @@ class BranchDiffer:
 
         return paths
 
-    async def get_nodes(self, db: InfrahubDatabase) -> Dict[str, Dict[str, NodeDiffElement]]:
+    async def get_nodes(self) -> Dict[str, Dict[str, NodeDiffElement]]:
         """Return all the nodes calculated by the diff, organized by branch."""
 
         if not self._calculated_diff_nodes_at:
-            await self._calculate_diff_nodes(db=db)
+            await self._calculate_diff_nodes()
 
         return {
             branch_name: data["nodes"]
@@ -648,7 +665,7 @@ class BranchDiffer:
             if not self.branch_only or branch_name == self.branch.name
         }
 
-    async def _calculate_diff_nodes(self, db: InfrahubDatabase) -> None:
+    async def _calculate_diff_nodes(self) -> None:
         """Calculate the diff for all the nodes and attributes.
 
         The results will be stored in self._results organized by branch.
@@ -657,7 +674,7 @@ class BranchDiffer:
         # Process nodes that have been Added or Removed first
         # ------------------------------------------------------------
         query_nodes = await DiffNodeQuery.init(
-            db=db,
+            db=self.db,
             branch=self.branch,
             diff_from=self.diff_from,
             diff_to=self.diff_to,
@@ -667,7 +684,7 @@ class BranchDiffer:
             kinds_exclude=self.kinds_exclude,
             branch_support=self.branch_support,
         )
-        await query_nodes.execute(db=db)
+        await query_nodes.execute(db=self.db)
 
         for result in query_nodes.get_results():
             node_id = result.get("n").get("uuid")
@@ -712,7 +729,7 @@ class BranchDiffer:
         # ------------------------------------------------------------
         attrs_to_query = set()
         query_attrs = await DiffAttributeQuery.init(
-            db=db,
+            db=self.db,
             branch=self.branch,
             diff_from=self.diff_from,
             diff_to=self.diff_to,
@@ -722,7 +739,7 @@ class BranchDiffer:
             kinds_exclude=self.kinds_exclude,
             branch_support=self.branch_support,
         )
-        await query_attrs.execute(db=db)
+        await query_attrs.execute(db=self.db)
 
         for result in query_attrs.get_results():
             node_id = result.get("n").get("uuid")
@@ -797,13 +814,13 @@ class BranchDiffer:
         # Query the current value for all attributes that have been updated
         # ------------------------------------------------------------
         origin_attr_query = await DiffNodePropertiesByIDSQuery.init(
-            db=db,
+            db=self.db,
             ids=list(attrs_to_query),
             branch=self.branch,
             at=self.diff_from,
         )
 
-        await origin_attr_query.execute(db=db)
+        await origin_attr_query.execute(db=self.db)
 
         for result in query_attrs.get_results():
             node_id = result.get("n").get("uuid")
@@ -864,9 +881,9 @@ class BranchDiffer:
 
         self._calculated_diff_nodes_at = Timestamp()
 
-    async def get_relationships(self, db: InfrahubDatabase) -> Dict[str, Dict[str, Dict[str, RelationshipDiffElement]]]:
+    async def get_relationships(self) -> Dict[str, Dict[str, Dict[str, RelationshipDiffElement]]]:
         if not self._calculated_diff_rels_at:
-            await self._calculated_diff_rels(db=db)
+            await self._calculated_diff_rels()
 
         return {
             branch_name: data["rels"]
@@ -874,10 +891,8 @@ class BranchDiffer:
             if not self.branch_only or branch_name == self.branch.name
         }
 
-    async def get_relationships_per_node(
-        self, db: InfrahubDatabase
-    ) -> Dict[str, Dict[str, Dict[str, List[RelationshipDiffElement]]]]:
-        rels = await self.get_relationships(db=db)
+    async def get_relationships_per_node(self) -> Dict[str, Dict[str, Dict[str, List[RelationshipDiffElement]]]]:
+        rels = await self.get_relationships()
 
         # Organize the Relationships data per node and per relationship name in order to simplify the association with the nodes Later on.
         rels_per_node: Dict[str, Dict[str, Dict[str, List[RelationshipDiffElement]]]] = defaultdict(
@@ -891,10 +906,10 @@ class BranchDiffer:
 
         return rels_per_node
 
-    async def get_node_id_per_kind(self, db: InfrahubDatabase) -> Dict[str, Dict[str, List[str]]]:
+    async def get_node_id_per_kind(self) -> Dict[str, Dict[str, List[str]]]:
         # Node IDs organized per Branch and per Kind
-        rels = await self.get_relationships(db=db)
-        nodes = await self.get_nodes(db=db)
+        rels = await self.get_relationships()
+        nodes = await self.get_nodes()
 
         node_ids: Dict[str, Dict[str, List[str]]] = defaultdict(lambda: defaultdict(list))
 
@@ -913,7 +928,7 @@ class BranchDiffer:
 
         return node_ids
 
-    async def _calculated_diff_rels(self, db: InfrahubDatabase) -> None:
+    async def _calculated_diff_rels(self) -> None:
         """Calculate the diff for all the relationships between Nodes.
 
         The results will be stored in self._results organized by branch.
@@ -926,7 +941,7 @@ class BranchDiffer:
         #   to identify the relationship that have been ADDED or DELETED
         # ------------------------------------------------------------
         query_rels = await DiffRelationshipQuery.init(
-            db=db,
+            db=self.db,
             branch=self.branch,
             diff_from=self.diff_from,
             diff_to=self.diff_to,
@@ -936,7 +951,7 @@ class BranchDiffer:
             kinds_exclude=self.kinds_exclude,
             branch_support=self.branch_support,
         )
-        await query_rels.execute(db=db)
+        await query_rels.execute(db=self.db)
 
         for result in query_rels.get_results():
             branch_name = result.get("r1").get("branch")
@@ -999,9 +1014,9 @@ class BranchDiffer:
         #  Then we can process the properties themselves
         # ------------------------------------------------------------
         query_props = await DiffRelationshipPropertyQuery.init(
-            db=db, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
+            db=self.db, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
         )
-        await query_props.execute(db=db)
+        await query_props.execute(db=self.db)
 
         for result in query_props.get_results():
             branch_name = result.get("r3").get("branch")
@@ -1056,13 +1071,13 @@ class BranchDiffer:
         #  Usually we need more information to determine if the rel has been updated, added or removed
         # ------------------------------------------------------------
         origin_rel_properties_query = await DiffRelationshipPropertiesByIDSRangeQuery.init(
-            db=db,
+            db=self.db,
             ids=rel_ids_to_query,
             branch=self.branch,
             diff_from=self.diff_from,
             diff_to=self.diff_to,
         )
-        await origin_rel_properties_query.execute(db=db)
+        await origin_rel_properties_query.execute(db=self.db)
 
         for result in query_props.get_results():
             branch_name = result.get("r3").get("branch")
@@ -1124,9 +1139,9 @@ class BranchDiffer:
 
         return relationship_paths
 
-    async def get_files(self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient) -> Dict[str, List[FileDiffElement]]:
+    async def get_files(self) -> Dict[str, List[FileDiffElement]]:
         if not self._calculated_diff_files_at:
-            await self._calculated_diff_files(db=db, rpc_client=rpc_client)
+            await self._calculated_diff_files()
 
         return {
             branch_name: data["files"]
@@ -1134,21 +1149,18 @@ class BranchDiffer:
             if not self.branch_only or branch_name == self.branch.name
         }
 
-    async def _calculated_diff_files(self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient) -> None:
-        self._results[self.branch.name]["files"] = await self.get_files_repositories_for_branch(
-            db=db, rpc_client=rpc_client, branch=self.branch
-        )
+    async def _calculated_diff_files(self) -> None:
+        self._results[self.branch.name]["files"] = await self.get_files_repositories_for_branch(branch=self.branch)
 
         if self.origin_branch:
             self._results[self.origin_branch.name]["files"] = await self.get_files_repositories_for_branch(
-                db=db, rpc_client=rpc_client, branch=self.origin_branch
+                branch=self.origin_branch
             )
 
         self._calculated_diff_files_at = Timestamp()
 
     async def get_files_repository(
         self,
-        rpc_client: InfrahubRpcClient,  # pylint: disable=unused-argument
         branch_name: str,
         repository: Node,
         commit_from: str,
@@ -1166,7 +1178,7 @@ class BranchDiffer:
             second_commit=commit_to,
         )
 
-        reply = await services.service.message_bus.rpc(message=message, response_class=GitDiffNamesOnlyResponse)
+        reply = await self.service.message_bus.rpc(message=message, response_class=GitDiffNamesOnlyResponse)
         diff = reply.data
 
         actions = {
@@ -1190,22 +1202,20 @@ class BranchDiffer:
 
         return files
 
-    async def get_files_repositories_for_branch(
-        self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient, branch: Branch
-    ) -> List[FileDiffElement]:
+    async def get_files_repositories_for_branch(self, branch: Branch) -> List[FileDiffElement]:
         tasks = []
         files = []
 
         repos_to = {
             repo.id: repo
             for repo in await NodeManager.query(
-                schema=InfrahubKind.GENERICREPOSITORY, db=db, branch=branch, at=self.diff_to
+                schema=InfrahubKind.GENERICREPOSITORY, db=self.db, branch=branch, at=self.diff_to
             )
         }
         repos_from = {
             repo.id: repo
             for repo in await NodeManager.query(
-                schema=InfrahubKind.GENERICREPOSITORY, db=db, branch=branch, at=self.diff_from
+                schema=InfrahubKind.GENERICREPOSITORY, db=self.db, branch=branch, at=self.diff_from
             )
         }
 
@@ -1219,7 +1229,6 @@ class BranchDiffer:
 
             tasks.append(
                 self.get_files_repository(
-                    rpc_client=rpc_client,
                     branch_name=branch.name,
                     repository=repos_to[repo_id],
                     commit_from=repos_from[repo_id].commit.value,  # type: ignore[attr-defined]

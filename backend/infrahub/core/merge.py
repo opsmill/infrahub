@@ -25,7 +25,7 @@ from .diff import BranchDiffer, DataConflict
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
-    from infrahub.message_bus.rpc import InfrahubRpcClient
+    from infrahub.services import InfrahubServices
 
     from .branch import Branch
 
@@ -51,12 +51,12 @@ class BranchMerger:
     async def validate_graph(self, db: InfrahubDatabase) -> List[DataConflict]:
         # Check the diff and ensure the branch doesn't have some conflict
         diff = await BranchDiffer.init(db=db, branch=self.branch)
-        return await diff.get_conflicts(db=db)
+        return await diff.get_conflicts()
 
     async def merge(
         self,
         db: InfrahubDatabase,
-        rpc_client: Optional[InfrahubRpcClient] = None,
+        service: Optional[InfrahubServices] = None,
         at: Optional[Union[str, Timestamp]] = None,
         conflict_resolution: Optional[Dict[str, bool]] = None,
     ) -> None:
@@ -88,7 +88,7 @@ class BranchMerger:
         # From the Graph or From the repositories
         await self.merge_graph(db=db, at=at, conflict_resolution=conflict_resolution)
 
-        await self.merge_repositories(rpc_client=rpc_client, db=db)
+        await self.merge_repositories(service=service, db=db)
 
     async def merge_graph(  # pylint: disable=too-many-branches,too-many-statements
         self,
@@ -104,7 +104,7 @@ class BranchMerger:
         at = Timestamp(at)
 
         diff = await BranchDiffer.init(branch=self.branch, db=db)
-        nodes = await diff.get_nodes(db=db)
+        nodes = await diff.get_nodes()
 
         if self.branch.name in nodes:
             origin_nodes_query = await NodeListGetInfoQuery.init(
@@ -203,7 +203,7 @@ class BranchMerger:
         # ---------------------------------------------
         # RELATIONSHIPS
         # ---------------------------------------------
-        rels = await diff.get_relationships(db=db)
+        rels = await diff.get_relationships()
         branch_relationships = rels.get(self.branch.name, {})
 
         for rel_name in branch_relationships.keys():
@@ -264,7 +264,7 @@ class BranchMerger:
             await self.branch.save(db=db)
             registry.branch[self.branch.name] = self.branch
 
-    async def merge_repositories(self, db: InfrahubDatabase, rpc_client: Optional[InfrahubRpcClient] = None) -> None:
+    async def merge_repositories(self, db: InfrahubDatabase, service: Optional[InfrahubServices] = None) -> None:
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
         repos_in_main_list = await NodeManager.query(schema=InfrahubKind.REPOSITORY, db=db)
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}
@@ -290,6 +290,6 @@ class BranchMerger:
                 )
             )
 
-        if rpc_client:
+        if service:
             for event in events:
-                await rpc_client.send(message=event)
+                await service.send(message=event)

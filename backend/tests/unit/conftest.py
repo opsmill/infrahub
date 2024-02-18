@@ -32,13 +32,7 @@ from infrahub.core.schema_manager import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
-from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub.test_data import dataset01 as ds01
-
-
-@pytest.fixture
-async def rpc_client() -> InfrahubRpcClientTesting:
-    return InfrahubRpcClientTesting()
 
 
 @pytest.fixture(params=["main", "branch2"])

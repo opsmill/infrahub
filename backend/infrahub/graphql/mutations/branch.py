@@ -190,7 +190,7 @@ class BranchValidate(Mutation):
         validation_messages = ""
 
         diff = await BranchDiffer.init(db=context.db, branch=obj)
-        conflicts = await diff.get_conflicts(db=context.db)
+        conflicts = await diff.get_conflicts()
 
         if conflicts:
             ok = False
@@ -218,7 +218,7 @@ class BranchMerge(Mutation):
         async with lock.registry.global_graph_lock():
             async with context.db.start_transaction() as db:
                 merger = BranchMerger(branch=obj)
-                await merger.merge(rpc_client=context.rpc_client, db=db)
+                await merger.merge(service=context.service, db=db)
 
                 # Copy the schema from the origin branch and set the hash and the schema_changed_at value
                 if origin_branch := await obj.get_origin_branch(db=db):
