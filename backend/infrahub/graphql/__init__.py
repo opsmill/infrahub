@@ -11,14 +11,13 @@ from infrahub.core.timestamp import Timestamp
 from .manager import GraphQLSchemaManager
 
 if TYPE_CHECKING:
-    from infrahub.services import InfrahubServices
     from graphql import GraphQLSchema
     from starlette.requests import HTTPConnection
 
     from infrahub.auth import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-    from infrahub.message_bus.rpc import InfrahubRpcClient
+    from infrahub.services import InfrahubServices
 
 
 @dataclass
