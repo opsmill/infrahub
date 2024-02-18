@@ -8,7 +8,7 @@ from pytest_httpx import HTTPXMock
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind, PathResourceType, SchemaPathType
+from infrahub.core.constants import InfrahubKind, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -104,7 +104,6 @@ async def test_get_proposed_change_schema_integrity_constraints(
             "field_name": "cars",
             "path_type": SchemaPathType.RELATIONSHIP,
             "property_name": "optional",
-            "resource_type": PathResourceType.SCHEMA,
             "schema_id": None,
             "schema_kind": "TestPerson",
         },

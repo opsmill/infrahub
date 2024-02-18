@@ -4,10 +4,10 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.migrations.schema.runner import schema_migrations_runner
+from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema
-from infrahub.core.schema_manager import SchemaUpdateMigrationInfo
 from infrahub.core.utils import count_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.services import InfrahubServices

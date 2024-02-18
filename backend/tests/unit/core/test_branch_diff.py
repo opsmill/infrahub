@@ -1025,8 +1025,8 @@ async def test_diff_schema_changes(
     )
     schema_branch = registry.schema.get_schema_branch(name=branch2.name)
 
-    diff = BranchDiffer(branch=branch2)
-    summary = await diff.get_schema_summary(db=db)
+    diff = BranchDiffer(db=db, branch=branch2)
+    summary = await diff.get_schema_summary()
 
     assert list(summary.keys()) == ["branch2", "main"]
     assert set([element.kind for elements in summary.values() for element in elements]) == {"SchemaNode"}
