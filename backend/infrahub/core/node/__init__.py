@@ -56,6 +56,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         _meta.default_filter = default_filter
         super(Node, cls).__init_subclass_with_meta__(_meta=_meta, **options)
 
+    def get_schema(self) -> NodeSchema:
+        return self._schema
+
     def get_kind(self) -> str:
         """Return the main Kind of the Object."""
         return self._schema.kind

@@ -250,10 +250,6 @@ module = "infrahub.core.registry"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.relationship"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.schema"
 ignore_errors = true
 

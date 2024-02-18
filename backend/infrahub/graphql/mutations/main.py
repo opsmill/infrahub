@@ -16,8 +16,11 @@ from infrahub.core import registry
 from infrahub.core.constants import MutationAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.node.constraints.uniqueness import NodeUniquenessConstraint
+from infrahub.core.relationship.constraints.count import RelationshipCountConstraint
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import NodeNotFound, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
@@ -31,6 +34,7 @@ if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.branch import Branch
+    from infrahub.core.relationship.model import RelationshipManager
     from infrahub.database import InfrahubDatabase
 
     from .. import GraphqlContext
@@ -46,6 +50,22 @@ log = get_logger()
 # ------------------------------------------
 class InfrahubMutationOptions(MutationOptions):
     schema = None
+
+
+async def run_constraints(
+    node: Node, db: InfrahubDatabase, branch: Branch, field_filters: Optional[List[str]] = None
+) -> None:
+    component_registry = get_component_registry()
+    node_uniqueness_constraint = component_registry.get_component(NodeUniquenessConstraint, db=db, branch=branch)
+    relationship_manager_constraint = component_registry.get_component(
+        RelationshipCountConstraint, db=db, branch=branch
+    )
+    await node_uniqueness_constraint.check(node, filters=field_filters)
+    for rel_name in node.get_schema().relationship_names:
+        if field_filters and rel_name not in field_filters:
+            continue
+        relm: RelationshipManager = getattr(node, rel_name)
+        await relationship_manager_constraint.check(relm)
 
 
 class InfrahubMutationMixin:
@@ -133,7 +153,7 @@ class InfrahubMutationMixin:
             obj = await node_class.init(db=db, schema=cls._meta.schema, branch=branch, at=at)
             await obj.new(db=db, **data)
             fields_to_validate = list(data)
-            await obj.validate_constraints(db=db, branch=branch, filters=fields_to_validate)
+            await run_constraints(obj, db, branch, field_filters=fields_to_validate)
 
             if db.is_transaction:
                 await obj.save(db=db)
@@ -181,7 +201,7 @@ class InfrahubMutationMixin:
         try:
             await obj.from_graphql(db=db, data=data)
             fields_to_validate = list(data)
-            await obj.validate_constraints(db=db, branch=branch, at=at, filters=fields_to_validate)
+            await run_constraints(obj, db, branch, field_filters=fields_to_validate)
             node_id = data.pop("id", obj.id)
             fields = list(data.keys())
             validate_mutation_permissions_update_node(

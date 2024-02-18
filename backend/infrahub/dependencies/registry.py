@@ -1,3 +1,5 @@
+from .builder.constraint.node.uniqueness import NodeUniquenessConstraintDependency
+from .builder.constraint.relationship_manager.count import RelationshipCountConstraintDependency
 from .builder.constraint.schema.aggregated import AggregatedSchemaConstraintsDependency
 from .builder.constraint.schema.attribute_regex import SchemaAttributeRegexConstraintDependency
 from .builder.constraint.schema.attribute_uniqueness import SchemaAttributeUniqueConstraintDependency
@@ -13,7 +15,8 @@ def build_component_registry() -> ComponentDependencyRegistry:
     component_registry.track_dependency(SchemaAttributeUniqueConstraintDependency)
     component_registry.track_dependency(SchemaRelationshipOptionalConstraintDependency)
     component_registry.track_dependency(SchemaUniquenessConstraintDependency)
-
+    component_registry.track_dependency(NodeUniquenessConstraintDependency)
+    component_registry.track_dependency(RelationshipCountConstraintDependency)
     return component_registry
 
 
