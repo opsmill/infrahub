@@ -434,10 +434,12 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             is_visible=self.is_visible,
         )
         if hasattr(self, "source_id"):
-            data.source_prop.append(NodePropertyData(name="source", peer_id=str(self.source_id)))
+            if self.source_id:
+                data.source_prop.append(NodePropertyData(name="source", peer_id=str(self.source_id)))
 
         if hasattr(self, "owner_id"):
-            data.owner_prop.append(NodePropertyData(name="owner", peer_id=str(self.owner_id)))
+            if self.owner_id:
+                data.owner_prop.append(NodePropertyData(name="owner", peer_id=str(self.owner_id)))
 
         return data
 
