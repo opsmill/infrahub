@@ -207,7 +207,7 @@ class NodeManager:
 
         # if display_label has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields:
-            peer_schema = await schema.get_peer_schema(branch=branch)
+            peer_schema = schema.get_peer_schema(branch=branch)
             if peer_schema.display_labels:
                 display_label_fields = peer_schema.generate_fields_for_display_label()
                 fields = deep_merge_dict(fields, display_label_fields)

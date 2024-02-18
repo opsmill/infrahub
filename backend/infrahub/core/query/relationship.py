@@ -498,7 +498,7 @@ class RelationshipGetPeerQuery(Query):
         self.params.update(branch_params)
         self.order_by = []
 
-        peer_schema = await self.schema.get_peer_schema(branch=self.branch)
+        peer_schema = self.schema.get_peer_schema(branch=self.branch)
 
         self.params["source_ids"] = self.source_ids
         self.params["rel_identifier"] = self.schema.identifier

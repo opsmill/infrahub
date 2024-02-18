@@ -783,6 +783,67 @@ async def test_schema_branch_validate_menu_placement():
 
 
 @pytest.mark.parametrize(
+    "uniqueness_constraints",
+    [
+        [["my_generic_name__value"], ["mybool__value"]],
+        [["my_generic_name__value"]],
+    ],
+)
+async def test_validate_uniqueness_constraints_success(schema_all_in_one, uniqueness_constraints):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["uniqueness_constraints"] = uniqueness_constraints
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.validate_uniqueness_constraints()
+
+
+@pytest.mark.parametrize(
+    "uniqueness_constraints,expected_error",
+    [
+        (
+            [["mybool__value", "notanattribute__value"]],
+            "InfraGenericInterface.uniqueness_constraints: notanattribute__value is invalid on schema InfraGenericInterface",
+        ),
+        (
+            [["my_generic_name__something"]],
+            "InfraGenericInterface.uniqueness_constraints: something is not a valid property of my_generic_name",
+        ),
+        (
+            [["status__value"]],
+            "InfraGenericInterface.uniqueness_constraints: value is not a valid attribute of BuiltinStatus",
+        ),
+        (
+            [["badges__name__value"]],
+            "InfraGenericInterface.uniqueness_constraints: this property only supports attributes",
+        ),
+        (
+            [["mybool", "badges"]],
+            "InfraGenericInterface.uniqueness_constraints: this property only supports attributes, not relationships",
+        ),
+        (
+            [["primary_tag__name__value"]],
+            "InfraGenericInterface.uniqueness_constraints: this property only supports attributes",
+        ),
+        (
+            [["mybool__value", "status__name__value"]],
+            "InfraGenericInterface.uniqueness_constraints: this property only supports attributes",
+        ),
+    ],
+)
+async def test_validate_uniqueness_constraints_error(schema_all_in_one, uniqueness_constraints, expected_error):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["uniqueness_constraints"] = uniqueness_constraints
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValueError, match=expected_error):
+        schema.validate_uniqueness_constraints()
+
+
+@pytest.mark.parametrize(
     "display_labels",
     [
         ["my_generic_name__value", "mybool__value"],
@@ -804,16 +865,18 @@ async def test_validate_display_labels_success(schema_all_in_one, display_labels
     [
         (
             ["mybool__value", "notanattribute__value"],
-            "InfraGenericInterface.display_labels: notanattribute is not an attribute of InfraGenericInterface",
+            "InfraGenericInterface.display_labels: notanattribute__value is invalid on schema InfraGenericInterface",
         ),
-        (["my_generic_name__something"], "InfraGenericInterface.display_labels: attribute property must be one of"),
+        (
+            ["my_generic_name__something"],
+            "InfraGenericInterface.display_labels: something is not a valid property of my_generic_name",
+        ),
         (
             ["status__value"],
-            "InfraGenericInterface.display_labels: status is not an attribute of InfraGenericInterface",
+            "InfraGenericInterface.display_labels: value is not a valid attribute of BuiltinStatus",
         ),
         (["badges__name__value"], "InfraGenericInterface.display_labels: this property only supports attributes"),
-        (["mybool"], "InfraGenericInterface.display_labels: mybool must be of the format"),
-        (["badges"], "InfraGenericInterface.display_labels: badges must be of the format"),
+        (["badges"], "InfraGenericInterface.display_labels: this property only supports attributes, not relationships"),
         (["primary_tag__name__value"], "InfraGenericInterface.display_labels: this property only supports attributes"),
         (
             ["mybool__value", "status__name__value"],
@@ -856,14 +919,19 @@ async def test_validate_order_by_success(schema_all_in_one, order_by):
     [
         (
             ["mybool__value", "notanattribute__value"],
-            "InfraGenericInterface.order_by: notanattribute is not an attribute of InfraGenericInterface",
+            "InfraGenericInterface.order_by: notanattribute__value is invalid on schema InfraGenericInterface",
         ),
-        (["my_generic_name__something"], "InfraGenericInterface.order_by: attribute property must be one of"),
-        (["status__value"], "InfraGenericInterface.order_by: status is not an attribute of InfraGenericInterface"),
+        (
+            ["my_generic_name__something"],
+            "InfraGenericInterface.order_by: something is not a valid property of my_generic_name",
+        ),
+        (["status__value"], "InfraGenericInterface.order_by: value is not a valid attribute of BuiltinStatus"),
         (["badges__name__value"], "InfraGenericInterface.order_by: cannot use badges relationship"),
-        (["mybool"], "InfraGenericInterface.order_by: mybool must be of the format"),
-        (["badges"], "InfraGenericInterface.order_by: badges must be of the format"),
-        (["status__name__nothing"], "InfraGenericInterface.order_by: attribute property must be one of"),
+        (
+            ["badges"],
+            "InfraGenericInterface.order_by: cannot use badges relationship, relationship must be of cardinality one",
+        ),
+        (["status__name__nothing"], "InfraGenericInterface.order_by: nothing is not a valid property of name"),
     ],
 )
 async def test_validate_order_by_error(schema_all_in_one, order_by, expected_error):
@@ -896,15 +964,26 @@ async def test_validate_default_filter_success(schema_all_in_one, default_filter
     [
         (
             "notanattribute__value",
-            "InfraGenericInterface.default_filter: notanattribute is not an attribute of InfraGenericInterface",
+            "InfraGenericInterface.default_filter: notanattribute__value is invalid on schema InfraGenericInterface",
         ),
-        ("my_generic_name__something", "InfraGenericInterface.default_filter: attribute property must be one of"),
-        ("badges__name__value", "InfraGenericInterface.default_filter: this property only supports attributes"),
-        ("mybool", "InfraGenericInterface.default_filter: mybool must be of the format"),
-        ("badges", "InfraGenericInterface.default_filter: badges must be of the format"),
-        ("status__name__nothing", "InfraGenericInterface.default_filter: this property only supports attributes"),
-        ("primary_tag__name__value", "InfraGenericInterface.default_filter: this property only supports attributes"),
-        ("status__name__value", "InfraGenericInterface.default_filter: this property only supports attributes"),
+        (
+            "my_generic_name__something",
+            "InfraGenericInterface.default_filter: something is not a valid property of my_generic_name",
+        ),
+        (
+            "badges__name__value",
+            "InfraGenericInterface.default_filter: this property only supports attributes, not relationships",
+        ),
+        ("badges", "InfraGenericInterface.default_filter: this property only supports attributes, not relationships"),
+        ("status__name__nothing", "InfraGenericInterface.default_filter: nothing is not a valid property of name"),
+        (
+            "primary_tag__name__value",
+            "InfraGenericInterface.default_filter: this property only supports attributes, not relationship",
+        ),
+        (
+            "status__name__value",
+            "InfraGenericInterface.default_filter: this property only supports attributes, not relationship",
+        ),
     ],
 )
 async def test_validate_default_filter_error(schema_all_in_one, default_filter, expected_error):
