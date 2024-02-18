@@ -5,8 +5,7 @@ description = ""
 authors = ["OpsMill <info@opsmill.com>"]
 
 packages = [
-    { include = "infrahub", from = "backend" },
-    { include = "dependencies", from = "backend" }
+    { include = "infrahub", from = "backend" }
 ]
 
 
