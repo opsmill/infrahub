@@ -421,7 +421,7 @@ async def test_query_echo(httpx_mock: HTTPXMock, echo_clients, client_type):  # 
         }
     }
     }
-    """
+"""
 
     variables = {"name": "red"}
 
