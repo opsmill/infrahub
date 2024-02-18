@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, String
 
@@ -29,7 +29,12 @@ class BranchType(InfrahubObjectType):
         model = Branch
 
     @classmethod
-    async def get_list(cls, fields: dict, context: GraphqlContext, *args, **kwargs):  # pylint: disable=unused-argument
+    async def get_list(
+        cls,
+        fields: dict,
+        context: GraphqlContext,
+        **kwargs: Any,
+    ) -> list[dict[str, Any]]:
         async with context.db.start_session() as db:
             objs = await Branch.get_list(db=db, **kwargs)
 
