@@ -751,7 +751,7 @@ class InfrahubNodeBase:
             #     data[item_name] = None
             #     continue
             # el
-            if rel is None:
+            if rel is None or not rel.initialized:
                 continue
 
             rel_data = rel._generate_input_data()
