@@ -6,7 +6,7 @@ from locust import User, task
 import common.stagers
 
 from .protocols import LocustInfrahubClient
-from .utils import random_ascii_string
+from .utils import prepare_node_attributes, random_ascii_string
 
 
 class InfrahubClientUser(User):
@@ -63,13 +63,12 @@ class InfrahubClientUser(User):
         stager(
             client=self.client,
             amount=self.custom_options["amount"],
-            attrs=self.custom_options["attrs"],
-            rels=self.custom_options["rels"],
         )
         print("--- 20s cool down period")
         time.sleep(20)
 
         print("--- starting test")
+        extra_attributes = prepare_node_attributes(self.client)
         begin = time.time()
         # Run for at least 5 minutes
         while time.time() < begin + 300:
@@ -78,7 +77,7 @@ class InfrahubClientUser(User):
             if len(objects) >= 2:
                 delete_this_node, update_this_node = objects[0:2]
 
-            obj = self.client.create(kind="InfraNode", data={"name": random_ascii_string()})
+            obj = self.client.create(kind="InfraNode", data={"name": random_ascii_string(), **extra_attributes})
             obj.save()
 
             if len(objects) >= 2:

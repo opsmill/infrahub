@@ -5,7 +5,7 @@ import click
 import common.events
 import common.users
 import gevent
-from common.config import Config as ScaleTestConfig
+from common.config import config
 from locust import events
 from locust.env import Environment
 from locust.stats import PERCENTILES_TO_REPORT, StatsCSVFileWriter
@@ -39,13 +39,16 @@ from locust.stats import PERCENTILES_TO_REPORT, StatsCSVFileWriter
 )
 @click.option("--test", default="InfrahubClientUser", help="The Locust test user class")
 def main(schema: Path, stager: str, amount: int, attrs: int, rels: int, test: str) -> int:
-    config = ScaleTestConfig()
-
     if not hasattr(common.users, test):
         print(f"Invalid test class provided: {test}")
         return 1
 
     user_class = getattr(common.users, test)
+
+    config.node_amount = amount
+    config.attrs_amount = attrs
+    config.rels_amount = rels
+
     env = Environment(user_classes=[user_class], events=events)
     env.custom_options = {
         "config": config,
