@@ -1,7 +1,6 @@
-from dependencies.registry import get_component_registry
-
 from infrahub.core.validators.aggregated_checker import AggregatedConstraintChecker
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.log import get_logger
 from infrahub.message_bus.messages.schema_validator_path import (
     SchemaValidatorPath,

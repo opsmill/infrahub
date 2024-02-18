@@ -8,7 +8,6 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, TypeVar
 
 import pytest
 import ujson
-from dependencies.registry import build_component_registry
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import str_to_bool
 
@@ -30,6 +29,7 @@ from infrahub.core.schema import (
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
+from infrahub.dependencies.registry import build_component_registry
 from infrahub.lock import initialize_lock
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse, Meta
 from infrahub.message_bus.messages import ROUTING_KEY_MAP

@@ -6,7 +6,7 @@ from .builder.constraint.schema.uniqueness import SchemaUniquenessConstraintDepe
 from .component.registry import ComponentDependencyRegistry
 
 
-def build_component_registry():
+def build_component_registry() -> ComponentDependencyRegistry:
     component_registry = ComponentDependencyRegistry.get_registry()
     component_registry.track_dependency(AggregatedSchemaConstraintsDependency)
     component_registry.track_dependency(SchemaAttributeRegexConstraintDependency)
@@ -17,5 +17,5 @@ def build_component_registry():
     return component_registry
 
 
-def get_component_registry():
+def get_component_registry() -> ComponentDependencyRegistry:
     return ComponentDependencyRegistry.get_registry()

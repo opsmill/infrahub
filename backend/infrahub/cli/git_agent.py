@@ -5,7 +5,6 @@ from asyncio import run as aiorun
 from typing import Any
 
 import typer
-from dependencies.registry import build_component_registry
 from infrahub_sdk import InfrahubClient
 from prometheus_client import start_http_server
 from rich.logging import RichHandler
@@ -14,6 +13,7 @@ from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, get_db
+from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import initialize_repositories_directory
 from infrahub.git.actions import sync_remote_repositories
 from infrahub.lock import initialize_lock
