@@ -760,9 +760,8 @@ class DiffPayload:
     async def generate_diff_payload(self) -> BranchDiff:
         # Query the Diff per Nodes and per Relationships from the database
 
-        self.nodes = await self.diff.get_nodes(db=self.db)
-
-        self.rels = await self.diff.get_relationships(db=self.db)
+        self.nodes = await self.diff.get_nodes()
+        self.rels = await self.diff.get_relationships()
 
         await self._prepare()
         # Organize the Relationships data per node and per relationship name in order to simplify the association with the nodes Later on.
