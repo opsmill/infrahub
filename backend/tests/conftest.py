@@ -46,8 +46,15 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
+    markexpr = getattr(config.option, "markexpr", "")
+
+    if not markexpr:
+        markexpr = "not neo4j"
+    else:
+        markexpr = f"not neo4j and ({markexpr})"
+
     if not config.option.neo4j:
-        setattr(config.option, "markexpr", "not neo4j")
+        setattr(config.option, "markexpr", markexpr)
 
 
 @pytest.fixture(scope="session")
