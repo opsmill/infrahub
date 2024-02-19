@@ -106,6 +106,10 @@ class BranchMerger:
             elif isinstance(node, GenericSchema):
                 schema_diff.generics.append(node.kind)
 
+        # Remove duplicates if any
+        schema_diff.nodes = list(set(schema_diff.nodes))
+        schema_diff.generics = list(set(schema_diff.generics))
+
         return schema_diff
 
     async def update_schema(self) -> bool:
