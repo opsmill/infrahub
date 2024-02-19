@@ -89,6 +89,20 @@ async def location_schema() -> NodeSchema:
 
 
 @pytest.fixture
+async def std_group_schema() -> NodeSchema:
+    data = {
+        "name": "StandardGroup",
+        "namespace": "Core",
+        "default_filter": "name__value",
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "description", "kind": "String", "optional": True},
+        ],
+    }
+    return NodeSchema(**data)  # type: ignore
+
+
+@pytest.fixture
 async def location_data01_no_pagination():
     data = {
         "__typename": "BuiltinLocation",

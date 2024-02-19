@@ -15,6 +15,7 @@ from typing import (
     get_args,
 )
 
+from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.exceptions import Error, FeatureNotSupported, FilterNotFound, NodeNotFound
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.schema import GenericSchema, RelationshipCardinality, RelationshipKind
@@ -1080,6 +1081,9 @@ class InfrahubNode(InfrahubNodeBase):
         else:
             await self.update(at=at)
 
+        if update_group_context is None and self._client.mode == InfrahubClientMode.TRACKING:
+            update_group_context = True
+
         if not isinstance(self._schema, GenericSchema):
             if "CoreGroup" in self._schema.inherit_from:
                 await self._client.group_context.add_related_groups(
@@ -1089,9 +1093,9 @@ class InfrahubNode(InfrahubNodeBase):
                 await self._client.group_context.add_related_nodes(
                     ids=[self.id], update_group_context=update_group_context
                 )
-
         else:
             await self._client.group_context.add_related_nodes(ids=[self.id], update_group_context=update_group_context)
+
         self._client.store.set(key=self.id, node=self)
 
     async def generate_query_data(
@@ -1415,14 +1419,17 @@ class InfrahubNodeSync(InfrahubNodeBase):
         else:
             self.update(at=at)
 
+        if update_group_context is None and self._client.mode == InfrahubClientMode.TRACKING:
+            update_group_context = True
+
         if not isinstance(self._schema, GenericSchema):
             if "CoreGroup" in self._schema.inherit_from:
                 self._client.group_context.add_related_groups(ids=[self.id], update_group_context=update_group_context)
             else:
                 self._client.group_context.add_related_nodes(ids=[self.id], update_group_context=update_group_context)
-
         else:
             self._client.group_context.add_related_nodes(ids=[self.id], update_group_context=update_group_context)
+
         self._client.store.set(key=self.id, node=self)
 
     def generate_query_data(
