@@ -133,9 +133,8 @@ class BaseClient:
         delete_unused_nodes: bool = False,
     ) -> Self:
         self.mode = InfrahubClientMode.TRACKING
-        self.set_context_properties(
-            identifier=identifier or self.identifier, params=params, delete_unused_nodes=delete_unused_nodes
-        )
+        identifier = identifier or self.identifier or "python-sdk"
+        self.set_context_properties(identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes)
         return self
 
     def set_context_properties(
@@ -781,7 +780,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         branch = branch or self.default_branch
         schema = self.schema.get(kind=kind, branch=branch)
 
-        node = InfrahubNode(client=self, schema=schema, branch=branch, data={"id": id})
+        node = InfrahubNodeSync(client=self, schema=schema, branch=branch, data={"id": id})
         node.delete()
 
     def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:

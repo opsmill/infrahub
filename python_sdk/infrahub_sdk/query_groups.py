@@ -9,8 +9,8 @@ from infrahub_sdk.utils import dict_hash
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
-    from infrahub_sdk.node import InfrahubNode, RelatedNode, RelatedNodeSync
-    from infrahub_sdk.schema import NodeSchema
+    from infrahub_sdk.node import InfrahubNode, InfrahubNodeSync, RelatedNode, RelatedNodeSync
+    from infrahub_sdk.schema import GenericSchema, NodeSchema
 
 
 class InfrahubGroupContextBase:
@@ -61,18 +61,18 @@ class InfrahubGroupContextBase:
 
         return group_name
 
-    def _generate_group_description(self, schema: NodeSchema) -> str:
+    def _generate_group_description(self, schema: Union[NodeSchema, GenericSchema]) -> str:
         """Generate the description of the group from the params and ensure it's not longer tha"""
         if not self.params:
             return ""
 
-        description = self._get_params_as_str()
-        description_max_length = schema.get_attribute(name="description").max_length
-        if description_max_length and len(description) > description_max_length:
-            length = description_max_length - 5
-            return description[:length] + "..."
+        description_str = self._get_params_as_str()
+        description = schema.get_attribute(name="description")
+        if description and description.max_length and len(description_str) > description.max_length:
+            length = description.max_length - 5
+            return description_str[:length] + "..."
 
-        return description
+        return description_str
 
 
 class InfrahubGroupContext(InfrahubGroupContextBase):
@@ -92,19 +92,19 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
         if not store_peers:
             return group
 
-        self.previous_members = group.members.peers
-        self.previous_children = group.children.peers
+        self.previous_members = group.members.peers  # type: ignore[attr-defined]
+        self.previous_children = group.children.peers  # type: ignore[attr-defined]
         return group
 
-    async def delete_unused(self):
+    async def delete_unused(self) -> None:
         if self.previous_members and self.unused_member_ids:
             for member in self.previous_members:
-                if member.id in self.unused_member_ids:
+                if member.id in self.unused_member_ids and member.typename:
                     await self.client.delete(kind=member.typename, id=member.id)
 
         if self.previous_children and self.unused_child_ids:
             for child in self.previous_children:
-                if child.id in self.unused_child_ids:
+                if child.id in self.unused_child_ids and child.typename:
                     await self.client.delete(kind=child.typename, id=child.id)
 
     async def add_related_nodes(self, ids: List[str], update_group_context: Optional[bool] = False) -> None:
@@ -171,8 +171,8 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
             return
 
         # Calculate how many nodes should be deleted
-        self.unused_member_ids = set(existing_group.members.peer_ids) - set(members)
-        self.unused_child_ids = set(existing_group.children.peer_ids) - set(children)
+        self.unused_member_ids = set(existing_group.members.peer_ids) - set(members)  # type: ignore
+        self.unused_child_ids = set(existing_group.children.peer_ids) - set(children)  # type: ignore
 
         if not self.delete_unused_nodes:
             return
@@ -190,7 +190,7 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
         super().__init__()
         self.client = client
 
-    def get_group(self, store_peers: bool = False) -> Optional[InfrahubNode]:
+    def get_group(self, store_peers: bool = False) -> Optional[InfrahubNodeSync]:
         group_name = self._generate_group_name()
         try:
             group = self.client.get(kind=self.group_type, name__value=group_name, include=["members", "children"])
@@ -200,19 +200,19 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
         if not store_peers:
             return group
 
-        self.previous_members = group.members.peers
-        self.previous_children = group.children.peers
+        self.previous_members = group.members.peers  # type: ignore[attr-defined]
+        self.previous_children = group.children.peers  # type: ignore[attr-defined]
         return group
 
-    def delete_unused(self):
+    def delete_unused(self) -> None:
         if self.previous_members and self.unused_member_ids:
             for member in self.previous_members:
-                if member.id in self.unused_member_ids:
+                if member.id in self.unused_member_ids and member.typename:
                     self.client.delete(kind=member.typename, id=member.id)
 
         if self.previous_children and self.unused_child_ids:
             for child in self.previous_children:
-                if child.id in self.unused_child_ids:
+                if child.id in self.unused_child_ids and child.typename:
                     self.client.delete(kind=child.typename, id=child.id)
 
     def add_related_nodes(self, ids: List[str], update_group_context: Optional[bool] = False) -> None:
@@ -275,8 +275,8 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
             return
 
         # Calculate how many nodes should be deleted
-        self.unused_member_ids = set(existing_group.members.peer_ids) - set(members)
-        self.unused_child_ids = set(existing_group.children.peer_ids) - set(children)
+        self.unused_member_ids = set(existing_group.members.peer_ids) - set(members)  # type: ignore
+        self.unused_child_ids = set(existing_group.children.peer_ids) - set(children)  # type: ignore
 
         if not self.delete_unused_nodes:
             return

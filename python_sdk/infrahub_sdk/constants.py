@@ -1,7 +1,7 @@
 import enum
 
 
-class InfrahubClientMode(enum.StrEnum):
+class InfrahubClientMode(str, enum.Enum):
     DEFAULT = "default"
     TRACKING = "tracking"
     # IDEMPOTENT = "idempotent"
