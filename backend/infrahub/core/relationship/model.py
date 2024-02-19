@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple, Union
 
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import intersection
@@ -743,11 +743,14 @@ class RelationshipManager:
 
         return list(self._relationships)
 
-    async def update(self, data: Union[List[Union[str, Node]], str, Node, None], db: InfrahubDatabase) -> bool:
+    async def update(
+        self, data: Union[List[Union[str, Node]], Dict[str, Any], str, Node, None], db: InfrahubDatabase
+    ) -> bool:
         """Replace and Update the list of relationships with this one."""
-        if not data:
-            return False
-        list_data: List[Union[str, Node]] = [data] if not isinstance(data, list) else data
+        if not isinstance(data, list):
+            list_data: Sequence[Union[str, Node, Dict[str, Any], None]] = [data]
+        else:
+            list_data = data
 
         # Reset the list of relationship and save the previous one to see if we can reuse some
         previous_relationships = {rel.peer_id: rel for rel in await self.get_relationships(db=db) if rel.peer_id}
@@ -762,7 +765,7 @@ class RelationshipManager:
                 item_id = getattr(item, "id", None)
                 if item_id and item_id in previous_relationships:
                     self._relationships.append(previous_relationships[str(item_id)])
-                continue
+                    continue
 
             if isinstance(item, type(None)) and previous_relationships:
                 for rel in previous_relationships.values():
