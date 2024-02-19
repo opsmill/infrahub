@@ -380,15 +380,18 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         """Generate GraphQL Payload for the associated Peer."""
 
         if not fields:
-            return {}
-        peer_fields = {
-            key: value
-            for key, value in fields.items()
-            if not key.startswith(PREFIX_PROPERTY) or not key == "__typename"
-        }
-        rel_fields = {
-            key.replace(PREFIX_PROPERTY, ""): value for key, value in fields.items() if key.startswith(PREFIX_PROPERTY)
-        }
+            peer_fields, rel_fields = {}, {}
+        else:
+            peer_fields = {
+                key: value
+                for key, value in fields.items()
+                if not key.startswith(PREFIX_PROPERTY) or not key == "__typename"
+            }
+            rel_fields = {
+                key.replace(PREFIX_PROPERTY, ""): value
+                for key, value in fields.items()
+                if key.startswith(PREFIX_PROPERTY)
+            }
 
         peer = await self.get_peer(db=db)
         response = await peer.to_graphql(fields=peer_fields, db=db, related_node_ids=related_node_ids)
@@ -409,7 +412,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             if field_name in self._flag_properties:
                 response[f"{PREFIX_PROPERTY}{field_name}"] = getattr(self, field_name)
 
-        if "__typename" in fields:
+        if fields and "__typename" in fields:
             response["__typename"] = f"Related{peer.get_kind()}"
 
         return response
@@ -433,13 +436,11 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             is_protected=self.is_protected,
             is_visible=self.is_visible,
         )
-        if hasattr(self, "source_id"):
-            if self.source_id:
-                data.source_prop.append(NodePropertyData(name="source", peer_id=str(self.source_id)))
+        if hasattr(self, "source_id") and self.source_id:
+            data.source_prop.append(NodePropertyData(name="source", peer_id=str(self.source_id)))
 
-        if hasattr(self, "owner_id"):
-            if self.owner_id:
-                data.owner_prop.append(NodePropertyData(name="owner", peer_id=str(self.owner_id)))
+        if hasattr(self, "owner_id") and self.owner_id:
+            data.owner_prop.append(NodePropertyData(name="owner", peer_id=str(self.owner_id)))
 
         return data
 
