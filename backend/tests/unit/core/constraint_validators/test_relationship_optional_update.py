@@ -1,6 +1,6 @@
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import PathResourceType, PathType, SchemaPathType
+from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
@@ -33,7 +33,6 @@ async def test_query(
     all_paths = grouped_paths.get_all_data_paths()
     assert all_paths == [
         DataPath(
-            resource_type=PathResourceType.DATA,
             branch=branch.name,
             path_type=PathType.NODE,
             node_id=person.id,

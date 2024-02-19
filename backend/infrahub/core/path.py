@@ -35,6 +35,10 @@ class InfrahubPath(BaseModel):
     def get_path(self) -> str:
         raise NotImplementedError()
 
+    @property
+    def resource_type(self) -> PathResourceType:
+        raise NotImplementedError()
+
     # def from_string(self, value: str):
     #     raise NotImplementedError
 
@@ -153,8 +157,11 @@ class SchemaPath(InfrahubPath):
 
 
 class FilePath(InfrahubPath):
-    resource_type: PathResourceType = Field(PathResourceType.SCHEMA, description="Indicate the type of the resource")
     repository_name: str = Field(..., description="name of the repository")
+
+    @property
+    def resource_type(self) -> PathResourceType:
+        return PathResourceType.FILE
 
     def get_path(self) -> str:
         return f"{self.resource_type.value}/{self.repository_name}"
