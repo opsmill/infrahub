@@ -46,7 +46,7 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
 
     source_branch = await registry.get_branch(db=service.database, branch=message.source_branch)
     diff = await BranchDiffer.init(db=service.database, branch=source_branch, branch_only=False)
-    conflicts = await diff.get_conflicts_graph(db=service.database)
+    conflicts = await diff.get_conflicts_graph()
 
     async with service.database.start_transaction() as db:
         object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
