@@ -374,6 +374,8 @@ class RelatedNodeSync(RelatedNodeBase):
 class RelationshipManagerBase:
     """Base class for RelationshipManager and RelationshipManagerSync"""
 
+    initialized: bool = False
+
     def __init__(self, name: str, branch: str, schema: RelationshipSchema):
         """
         Args:
@@ -751,7 +753,7 @@ class InfrahubNodeBase:
             #     data[item_name] = None
             #     continue
             # el
-            if rel is None:
+            if rel is None or not rel.initialized:
                 continue
 
             rel_data = rel._generate_input_data()
