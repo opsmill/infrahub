@@ -4,7 +4,9 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge import BranchMerger
+from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath, SchemaPathType
 from infrahub.core.schema import AttributeSchema
 from infrahub.database import InfrahubDatabase
 
@@ -175,4 +177,48 @@ async def test_merge_update_schema(
 
     merger = BranchMerger(db=db, source_branch=branch2, destination_branch=default_branch)
     assert await merger.update_schema() is True
-    assert len(merger.migrations) == 4
+    assert sorted(merger.migrations, key=lambda x: x.path.get_path()) == sorted(
+        [
+            SchemaUpdateMigrationInfo(
+                path=SchemaPath(
+                    path_type=SchemaPathType.ATTRIBUTE,
+                    schema_kind="TestCar",
+                    schema_id=None,
+                    field_name="4motion",
+                    property_name=None,
+                ),
+                migration_name="node.attribute.add",
+            ),
+            SchemaUpdateMigrationInfo(
+                path=SchemaPath(
+                    path_type=SchemaPathType.ATTRIBUTE,
+                    schema_kind="TestCar",
+                    schema_id=None,
+                    field_name="transmission",
+                    property_name=None,
+                ),
+                migration_name="node.attribute.remove",
+            ),
+            SchemaUpdateMigrationInfo(
+                path=SchemaPath(
+                    path_type=SchemaPathType.ATTRIBUTE,
+                    schema_kind="TestPerson",
+                    schema_id=None,
+                    field_name="color",
+                    property_name=None,
+                ),
+                migration_name="node.attribute.add",
+            ),
+            SchemaUpdateMigrationInfo(
+                path=SchemaPath(
+                    path_type=SchemaPathType.ATTRIBUTE,
+                    schema_kind="TestPerson",
+                    schema_id=None,
+                    field_name="height",
+                    property_name=None,
+                ),
+                migration_name="node.attribute.remove",
+            ),
+        ],
+        key=lambda x: x.path.get_path(),
+    )
