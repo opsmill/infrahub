@@ -1,12 +1,8 @@
-from typing import Optional
-
-from infrahub.core.branch import Branch
 from infrahub.core.node.constraints.uniqueness import NodeUniquenessConstraint
-from infrahub.database import InfrahubDatabase
-from infrahub.dependencies.interface import DependencyBuilder
+from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilderContext
 
 
 class NodeUniquenessConstraintDependency(DependencyBuilder[NodeUniquenessConstraint]):
     @classmethod
-    def build(cls, db: InfrahubDatabase, branch: Optional[Branch] = None) -> NodeUniquenessConstraint:
-        return NodeUniquenessConstraint(db=db, branch=branch)
+    def build(cls, context: DependencyBuilderContext) -> NodeUniquenessConstraint:
+        return NodeUniquenessConstraint(db=context.db, branch=context.branch)

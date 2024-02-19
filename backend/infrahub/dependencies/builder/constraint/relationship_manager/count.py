@@ -1,13 +1,9 @@
-from typing import Optional
-
-from infrahub.core.branch import Branch
 from infrahub.core.relationship.constraints.count import RelationshipCountConstraint
-from infrahub.database import InfrahubDatabase
 
-from ....interface import DependencyBuilder
+from ....interface import DependencyBuilder, DependencyBuilderContext
 
 
 class RelationshipCountConstraintDependency(DependencyBuilder[RelationshipCountConstraint]):
     @classmethod
-    def build(cls, db: InfrahubDatabase, branch: Optional[Branch] = None) -> RelationshipCountConstraint:
-        return RelationshipCountConstraint(db=db, branch=branch)
+    def build(cls, context: DependencyBuilderContext) -> RelationshipCountConstraint:
+        return RelationshipCountConstraint(db=context.db, branch=context.branch)
