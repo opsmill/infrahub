@@ -73,7 +73,7 @@ class InfrahubYamlFile(pytest.File):
         for test in group.tests:
             item_class: type[pytest.Item] = ITEMS_MAPPING[test.spec.kind]  # type: ignore[assignment]
             item: pytest.Item = item_class.from_parent(
-                name=f"infrahub__{group.resource.value.lower()}__{group.resource_name}__{test.name}",
+                name=f"{marker.markname}__{group.resource_name}__{test.name}",
                 parent=self,
                 resource_name=group.resource_name,
                 resource_config=resource_config,
