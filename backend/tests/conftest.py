@@ -29,6 +29,7 @@ from infrahub.core.schema import (
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
+from infrahub.dependencies.registry import build_component_registry
 from infrahub.lock import initialize_lock
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse, Meta
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
@@ -351,6 +352,7 @@ class BusSimulator(InfrahubMessageBus):
         self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
         self.service: InfrahubServices = InfrahubServices(database=database, message_bus=self)
         self.replies: Dict[str, List[InfrahubMessage]] = defaultdict(list)
+        build_component_registry()
 
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
         self.messages.append(message)

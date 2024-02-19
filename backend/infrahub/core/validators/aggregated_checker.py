@@ -4,13 +4,9 @@ from itertools import chain
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 from infrahub.core import registry
-from infrahub.core.validators.uniqueness.checker import UniquenessChecker
 from infrahub.exceptions import ValidationError
 
-from .attribute.regex import AttributeRegexChecker
-from .attribute.unique import AttributeUniquenessChecker
 from .model import SchemaViolation
-from .relationship.optional import RelationshipOptionalChecker
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -76,17 +72,3 @@ class AggregatedConstraintChecker:
         self, violation: SchemaViolation, constraint_name: str, request: SchemaConstraintValidatorRequest
     ) -> str:
         return f"{violation.full_display_label} is not compatible with the constraint {constraint_name!r} at {request.schema_path.get_path()!r}"
-
-
-def build_aggregated_constraint_checker(db: InfrahubDatabase, branch: Optional[Branch]) -> AggregatedConstraintChecker:
-    aggregated_constraint_checker = AggregatedConstraintChecker(
-        constraints=[
-            RelationshipOptionalChecker(db=db, branch=branch),
-            AttributeRegexChecker(db=db, branch=branch),
-            AttributeUniquenessChecker(db=db, branch=branch),
-            UniquenessChecker(db=db, branch=branch),
-        ],
-        db=db,
-        branch=branch,
-    )
-    return aggregated_constraint_checker

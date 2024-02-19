@@ -23,6 +23,7 @@ from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode, get_db
+from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import Error
 from infrahub.graphql.api.endpoints import router as graphql_router
 from infrahub.lock import initialize_lock
@@ -56,6 +57,7 @@ async def app_initialization(application: FastAPI) -> None:
 
     initialize_lock()
 
+    build_component_registry()
     async with application.state.db.start_session() as db:
         await initialization(db=db)
 
