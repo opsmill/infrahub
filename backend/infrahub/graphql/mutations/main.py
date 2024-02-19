@@ -126,7 +126,7 @@ class InfrahubMutationMixin:
     ) -> Tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
-        component_registry = await get_component_registry()
+        component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
         node_class = Node
@@ -168,7 +168,7 @@ class InfrahubMutationMixin:
     ):
         context: GraphqlContext = info.context
         db = database or context.db
-        component_registry = await get_component_registry()
+        component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
         obj = node or await NodeManager.get_one_by_id_or_default_filter(

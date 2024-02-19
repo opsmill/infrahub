@@ -1,13 +1,12 @@
 from dataclasses import dataclass
 from typing import List, Optional
 
-from infrahub_sdk.exceptions import ValidationError
-
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
 from infrahub.core.query.relationship import RelationshipCountPerNodeQuery
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import ValidationError
 
 from ..model import RelationshipManager
 from .interface import RelationshipManagerConstraintInterface
@@ -85,13 +84,11 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         for node in nodes_to_validate:
             if node.max_count and count_per_peer[node.uuid] + 1 > node.max_count:
                 raise ValidationError(
-                    identifier=relm.schema.name,
-                    message=f"Node {node.uuid} has {count_per_peer[node.uuid] + 1} peers "
+                    f"Node {node.uuid} has {count_per_peer[node.uuid] + 1} peers "
                     f"for {relm.schema.identifier}, only {node.max_count} allowed",
                 )
             if node.min_count and count_per_peer[node.uuid] - 1 < node.min_count:
                 raise ValidationError(
-                    identifier=relm.schema.name,
-                    message=f"Node {node.uuid} has {count_per_peer[node.uuid] - 1} peers "
+                    f"Node {node.uuid} has {count_per_peer[node.uuid] - 1} peers "
                     f"for {relm.schema.identifier}, no more than {node.min_count} allowed",
                 )
