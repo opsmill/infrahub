@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field
@@ -15,6 +15,7 @@ from infrahub.core.constants import (
 from infrahub.core.path import SchemaPath
 
 if TYPE_CHECKING:
+    from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.core.schema_manager import SchemaBranch
 
 
@@ -135,65 +136,76 @@ class SchemaUpdateValidationResult(BaseModel):
 
             for node_field_name, node_field_diff in schema_diff.changed.items():
                 if node_field_diff and node_field_name in ["attributes", "relationships"]:
-                    field_type = node_field_name[:-1]  # Remove the trailing 's's
-                    path_type = SchemaPathType.ATTRIBUTE if field_type == "attribute" else SchemaPathType.RELATIONSHIP
-                    for field_name, _ in node_field_diff.added.items():
-                        if field_type == "attribute":
-                            self.migrations.append(
-                                SchemaUpdateMigrationInfo(
-                                    path=SchemaPath(  # type: ignore[call-arg]
-                                        schema_kind=schema_name, path_type=path_type, field_name=field_name
-                                    ),
-                                    migration_name="node.attribute.add",
-                                )
-                            )
-
-                    for field_name, _ in node_field_diff.removed.items():
-                        self.migrations.append(
-                            SchemaUpdateMigrationInfo(  # type: ignore[call-arg]
-                                path=SchemaPath(  # type: ignore[call-arg]
-                                    schema_kind=schema_name, path_type=path_type, field_name=field_name
-                                ),
-                                migration_name=f"node.{field_type}.remove",
-                            )
-                        )
-
-                    for field_name, sub_field_diff in node_field_diff.changed.items():
-                        field = schema_node.get_field(name=field_name)
-
-                        if not sub_field_diff or not field:
-                            raise ValueError("sub_field_diff and field must be defined, unexpected situation")
-
-                        for prop_name, _ in sub_field_diff.changed.items():
-                            field_info = field.model_fields[prop_name]
-                            field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
-
-                            schema_path = SchemaPath(  # type: ignore[call-arg]
-                                schema_kind=schema_name,
-                                path_type=path_type,
-                                field_name=field_name,
-                                property_name=prop_name,
-                            )
-
-                            self._process_field(
-                                schema_path=schema_path,
-                                field_update=field_update,
-                            )
-
+                    self._process_attrs_rels(
+                        schema=schema_node, node_field_name=node_field_name, node_field_diff=node_field_diff
+                    )
                 else:
-                    field_info = schema_node.model_fields[node_field_name]
-                    field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
+                    self._process_node_attributes(schema=schema_node, node_field_name=node_field_name)
 
-                    schema_path = SchemaPath(  # type: ignore[call-arg]
-                        schema_kind=schema_name,
-                        path_type=SchemaPathType.NODE,
-                        field_name=node_field_name,
-                        property_name=node_field_name,
+    def _process_attrs_rels(
+        self,
+        schema: Union[NodeSchema, GenericSchema],
+        node_field_name: str,
+        node_field_diff: HashableModelDiff,
+    ) -> None:
+        path_type = SchemaPathType.ATTRIBUTE if node_field_name == "attributes" else SchemaPathType.RELATIONSHIP
+        for field_name, _ in node_field_diff.added.items():
+            if path_type == SchemaPathType.ATTRIBUTE:
+                self.migrations.append(
+                    SchemaUpdateMigrationInfo(
+                        path=SchemaPath(  # type: ignore[call-arg]
+                            schema_kind=schema.kind, path_type=path_type, field_name=field_name
+                        ),
+                        migration_name="node.attribute.add",
                     )
-                    self._process_field(
-                        schema_path=schema_path,
-                        field_update=field_update,
-                    )
+                )
+
+        for field_name, _ in node_field_diff.removed.items():
+            self.migrations.append(
+                SchemaUpdateMigrationInfo(  # type: ignore[call-arg]
+                    path=SchemaPath(  # type: ignore[call-arg]
+                        schema_kind=schema.kind, path_type=path_type, field_name=field_name
+                    ),
+                    migration_name=f"node.{path_type.value}.remove",
+                )
+            )
+
+        for field_name, sub_field_diff in node_field_diff.changed.items():
+            field = schema.get_field(name=field_name)
+
+            if not sub_field_diff or not field:
+                raise ValueError("sub_field_diff and field must be defined, unexpected situation")
+
+            for prop_name in sub_field_diff.changed:
+                field_info = field.model_fields[prop_name]
+                field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
+
+                schema_path = SchemaPath(  # type: ignore[call-arg]
+                    schema_kind=schema.kind,
+                    path_type=path_type,
+                    field_name=field_name,
+                    property_name=prop_name,
+                )
+
+                self._process_field(
+                    schema_path=schema_path,
+                    field_update=field_update,
+                )
+
+    def _process_node_attributes(self, schema: Union[NodeSchema, GenericSchema], node_field_name: str) -> None:
+        field_info = schema.model_fields[node_field_name]
+        field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
+
+        schema_path = SchemaPath(  # type: ignore[call-arg]
+            schema_kind=schema.kind,
+            path_type=SchemaPathType.NODE,
+            field_name=node_field_name,
+            property_name=node_field_name,
+        )
+        self._process_field(
+            schema_path=schema_path,
+            field_update=field_update,
+        )
 
     def _process_field(
         self,
