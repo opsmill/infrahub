@@ -1,13 +1,9 @@
-from typing import Optional
-
-from infrahub.core.branch import Branch
 from infrahub.core.validators.relationship.optional import RelationshipOptionalChecker
-from infrahub.database import InfrahubDatabase
 
-from ....interface import DependencyBuilder
+from ....interface import DependencyBuilder, DependencyBuilderContext
 
 
 class SchemaRelationshipOptionalConstraintDependency(DependencyBuilder[RelationshipOptionalChecker]):
     @classmethod
-    def build(cls, db: InfrahubDatabase, branch: Optional[Branch] = None) -> RelationshipOptionalChecker:
-        return RelationshipOptionalChecker(db=db, branch=branch)
+    def build(cls, context: DependencyBuilderContext) -> RelationshipOptionalChecker:
+        return RelationshipOptionalChecker(db=context.db, branch=context.branch)

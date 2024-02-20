@@ -22,7 +22,7 @@ async def relm(db: InfrahubDatabase, default_branch, register_core_models_schema
     rel_schema = model.get_relationship("member_of_groups")
 
     relm = await RelationshipManager.init(
-        db=db, schema=rel_schema, branch=default_branch, at=Timestamp(), node=test_account, name="member_of_groups"
+        db=db, schema=rel_schema, branch=default_branch, at=Timestamp(), node=test_account
     )
 
     return relm

@@ -1,13 +1,9 @@
-from typing import Optional
-
-from infrahub.core.branch import Branch
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
-from infrahub.database import InfrahubDatabase
 
-from ....interface import DependencyBuilder
+from ....interface import DependencyBuilder, DependencyBuilderContext
 
 
 class SchemaUniquenessConstraintDependency(DependencyBuilder[UniquenessChecker]):
     @classmethod
-    def build(cls, db: InfrahubDatabase, branch: Optional[Branch] = None) -> UniquenessChecker:
-        return UniquenessChecker(db=db, branch=branch)
+    def build(cls, context: DependencyBuilderContext) -> UniquenessChecker:
+        return UniquenessChecker(db=context.db, branch=context.branch)

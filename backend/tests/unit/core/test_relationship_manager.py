@@ -14,7 +14,7 @@ async def test_one_init_no_input_no_rel(db: InfrahubDatabase, person_jack_main: 
     rel_schema = person_schema.get_relationship("primary_tag")
 
     relm = await RelationshipManager.init(
-        db=db, schema=rel_schema, branch=branch, at=Timestamp(), node=person_jack_main, name="primary_tag"
+        db=db, schema=rel_schema, branch=branch, at=Timestamp(), node=person_jack_main
     )
 
     # shouldn't be able to iterate over it since it's a "one" relationship
@@ -36,7 +36,6 @@ async def test_one_init_no_input_existing_rel(
         branch=branch,
         at=Timestamp(),
         node=person_jack_primary_tag_main,
-        name="primary_tag",
     )
 
     peer = await relm.get_peer(db=db)
@@ -48,7 +47,7 @@ async def test_many_init_no_input_no_rel(db: InfrahubDatabase, person_jack_main:
     rel_schema = person_schema.get_relationship("tags")
 
     relm = await RelationshipManager.init(
-        db=db, schema=rel_schema, branch=branch, at=Timestamp(), node=person_jack_main, name="tags"
+        db=db, schema=rel_schema, branch=branch, at=Timestamp(), node=person_jack_main
     )
 
     # shouldn't be able to query the peer since it's many type relationship
@@ -63,7 +62,7 @@ async def test_many_init_no_input_existing_rel(db: InfrahubDatabase, person_jack
     rel_schema = person_schema.get_relationship("tags")
 
     relm = await RelationshipManager.init(
-        db=db, schema=rel_schema, branch=branch, at=Timestamp(), node=person_jack_tags_main, name="tags"
+        db=db, schema=rel_schema, branch=branch, at=Timestamp(), node=person_jack_tags_main
     )
 
     assert len(await relm.get(db=db)) == 2
@@ -79,7 +78,6 @@ async def test_one_init_input_obj(db: InfrahubDatabase, tag_blue_main: Node, per
         branch=branch,
         at=Timestamp(),
         node=person_jack_main,
-        name="primary_tag",
         data=tag_blue_main,
     )
 
@@ -103,7 +101,6 @@ async def test_one_save_input_obj(db: InfrahubDatabase, tag_blue_main: Node, per
         branch=branch,
         at=Timestamp(),
         node=person_jack_main,
-        name="primary_tag",
         data=tag_blue_main,
     )
     await relm.save(db=db)
@@ -134,7 +131,6 @@ async def test_one_udpate(
         branch=branch,
         at=Timestamp(),
         node=person_jack_primary_tag_main,
-        name="primary_tag",
         data=tag_blue_main,
     )
     await relm.save(db=db)
@@ -159,7 +155,6 @@ async def test_many_init_input_obj(
         branch=branch,
         at=Timestamp(),
         node=person_jack_main,
-        name="tags",
         data=[tag_blue_main, tag_red_main],
     )
 
@@ -189,7 +184,6 @@ async def test_many_save_input_obj(
         branch=branch,
         at=Timestamp(),
         node=person_jack_main,
-        name="tags",
         data=[tag_blue_main, tag_red_main],
     )
     await relm.save(db=db)
@@ -212,7 +206,7 @@ async def test_many_update(
     rel_schema = person_schema.get_relationship("tags")
 
     relm = await RelationshipManager.init(
-        db=db, schema=rel_schema, branch=branch, at=Timestamp(), node=person_jack_main, name="tags"
+        db=db, schema=rel_schema, branch=branch, at=Timestamp(), node=person_jack_main
     )
     await relm.save(db=db)
 
