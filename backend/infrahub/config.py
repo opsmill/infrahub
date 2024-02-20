@@ -291,6 +291,15 @@ class ConfiguredSettings:
         if not config_file:
             config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
             config_file = os.path.abspath(config_file_name)
+        load(config_file)
+
+    def initialize_and_exit(self, config_file: Optional[str] = None) -> None:
+        """Initialize the settings if they have not been initialized, exit on failures."""
+        if self.initialized:
+            return
+        if not config_file:
+            config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
+            config_file = os.path.abspath(config_file_name)
         load_and_exit(config_file)
 
     @property
