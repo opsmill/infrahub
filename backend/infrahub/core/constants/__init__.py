@@ -187,6 +187,15 @@ class RelationshipDirection(InfrahubStringEnum):
     OUTBOUND = "outbound"
     INBOUND = "inbound"
 
+    @property
+    def neighbor_direction(self) -> RelationshipDirection:
+        NEIGHBOR_MAP = {
+            RelationshipDirection.BIDIR: RelationshipDirection.BIDIR,
+            RelationshipDirection.INBOUND: RelationshipDirection.OUTBOUND,
+            RelationshipDirection.OUTBOUND: RelationshipDirection.INBOUND,
+        }
+        return NEIGHBOR_MAP[self]
+
 
 class RelationshipHierarchyDirection(InfrahubStringEnum):
     ANCESTORS = "ancestors"

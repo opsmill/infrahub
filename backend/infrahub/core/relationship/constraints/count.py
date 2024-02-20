@@ -32,7 +32,7 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
             peer_ids_present_local_only,
             peer_ids_present_database_only,
             _,
-        ) = await relm._fetch_relationship_ids(db=self.db)
+        ) = await relm.fetch_relationship_ids(db=self.db)
 
         nodes_to_validate: List[NodeToValidate] = []
 
@@ -62,17 +62,11 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
                         NodeToValidate(uuid=peer_id, min_count=peer_rel.min_count, cardinality=peer_rel.cardinality)
                     )
 
-        direction = RelationshipDirection.BIDIR
-        if relm.schema.direction == RelationshipDirection.INBOUND:
-            direction = RelationshipDirection.OUTBOUND
-        elif relm.schema.direction == RelationshipDirection.OUTBOUND:
-            direction = RelationshipDirection.INBOUND
-
         query = await RelationshipCountPerNodeQuery.init(
             db=self.db,
             node_ids=[node.uuid for node in nodes_to_validate],
             identifier=relm.schema.identifier,
-            direction=direction,
+            direction=relm.schema.direction.neighbor_direction,
             branch=branch,
         )
         await query.execute(db=self.db)

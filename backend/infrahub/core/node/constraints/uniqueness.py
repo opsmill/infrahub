@@ -14,13 +14,12 @@ if TYPE_CHECKING:
 
 
 class NodeUniquenessConstraint(NodeConstraintInterface):
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None) -> None:
+    def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
         self.db = db
         self.branch = branch
 
     async def check(self, node: Node, at: Optional[Timestamp] = None, filters: Optional[List[str]] = None) -> None:
         at = Timestamp(at)
-        branch = await registry.get_branch() if not self.branch else self.branch
         node_schema = node.get_schema()
         for unique_attr in node_schema.unique_attributes:
             if filters and unique_attr.name not in filters:
@@ -30,7 +29,7 @@ class NodeUniquenessConstraint(NodeConstraintInterface):
             attr = getattr(node, unique_attr.name)
             if unique_attr.inherited:
                 for generic_parent_schema_name in node_schema.inherit_from:
-                    generic_parent_schema = registry.schema.get(generic_parent_schema_name, branch=branch)
+                    generic_parent_schema = registry.schema.get(generic_parent_schema_name, branch=self.branch)
                     parent_attr = generic_parent_schema.get_attribute(unique_attr.name, raise_on_error=False)
                     if parent_attr is None:
                         continue
@@ -42,7 +41,7 @@ class NodeUniquenessConstraint(NodeConstraintInterface):
                 filters={f"{unique_attr.name}__value": attr.value},
                 fields={},
                 db=self.db,
-                branch=branch,
+                branch=self.branch,
                 at=at,
             )
 

@@ -180,7 +180,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
     ) -> Self:
         hash_before = hash(self)
 
-        self.id = id or self.id if id or self.id else None
+        self.id = id or self.id
         self.db_id = db_id or self.db_id
 
         await self._process_data(data=data)
@@ -196,32 +196,21 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
     async def get_node(self, db: InfrahubDatabase) -> Node:
         """Return the node of the relationship."""
-        if self._node is None:
-            await self._get_node(db=db)
+        if self._node:
+            return self._node
 
-        if self._node is None:
-            raise ValueError("Cannot get node")
-
-        return self._node
-
-    async def _get_node(self, db: InfrahubDatabase) -> bool:
-        try:
-            node = await registry.manager.get_one_by_id_or_default_filter(
-                db=db,
-                id=self.node_id,
-                schema_name=self.schema.kind,
-                branch=self.branch,
-                at=self.at,
-                include_owner=True,
-                include_source=True,
-            )
-        except NodeNotFound:
-            return False
-
+        node = await registry.manager.get_one_by_id_or_default_filter(
+            db=db,
+            id=self.node_id,
+            schema_name=self.schema.kind,
+            branch=self.branch,
+            at=self.at,
+            include_owner=True,
+            include_source=True,
+        )
         self._node = node
         self._node_id = self._node.id
-
-        return True
+        return node
 
     async def set_peer(self, value: Union[str, Node]) -> None:
         if isinstance(value, str):
@@ -577,6 +566,9 @@ class RelationshipValidatorList:
         self._relationships.remove(value)
         self._relationships_count -= 1
 
+    def as_list(self) -> List[Relationship]:
+        return self._relationships
+
 
 class RelationshipManager:
     def __init__(  # pylint: disable=unused-argument
@@ -677,7 +669,7 @@ class RelationshipManager:
             return registry.get_global_branch()
         return self.branch
 
-    async def _fetch_relationship_ids(
+    async def fetch_relationship_ids(
         self, db: InfrahubDatabase, at: Optional[Timestamp] = None
     ) -> Tuple[List[str], List[str], List[str], Dict[str, RelationshipPeerData]]:
         """Fetch the latest relationships from the database and returns :
@@ -713,7 +705,7 @@ class RelationshipManager:
             peer_ids_present_local_only,
             peer_ids_present_database_only,
             peers_database,
-        ) = await self._fetch_relationship_ids(at=at, db=db)
+        ) = await self.fetch_relationship_ids(at=at, db=db)
 
         for peer_id in peer_ids_present_database_only:
             self._relationships.append(
@@ -742,7 +734,7 @@ class RelationshipManager:
         if not self.has_fetched_relationships:
             await self._fetch_relationships(db=db)
 
-        return list(self._relationships)
+        return self._relationships.as_list()
 
     async def update(
         self, data: Union[List[Union[str, Node]], Dict[str, Any], str, Node, None], db: InfrahubDatabase
@@ -858,7 +850,7 @@ class RelationshipManager:
             peer_ids_present_local_only,
             peer_ids_present_database_only,
             peers_database,
-        ) = await self._fetch_relationship_ids(db=db)
+        ) = await self.fetch_relationship_ids(db=db)
 
         # If we have previously fetched the relationships from the database
         # Update the one in the database that shouldn't be here.
