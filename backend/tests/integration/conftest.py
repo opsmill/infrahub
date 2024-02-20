@@ -70,7 +70,7 @@ async def init_db_base(db: InfrahubDatabase):
 class IntegrationHelper:
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
-        self._admin_headers = {}
+        self._admin_headers: dict[str, Any] = {}
 
     async def admin_headers(self) -> Dict[str, Any]:
         if not self._admin_headers:

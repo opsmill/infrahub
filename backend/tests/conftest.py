@@ -1,18 +1,17 @@
 import asyncio
 import importlib
+import json
 import os
 import sys
-from collections import defaultdict
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, List, Optional, TypeVar
+from tempfile import TemporaryDirectory
+from typing import Any, AsyncGenerator, Generator, List, Optional, TypeVar
 
 import pytest
 import ujson
-from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import str_to_bool
 
 from infrahub import config
-from infrahub.components import ComponentType
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind
@@ -29,14 +28,13 @@ from infrahub.core.schema import (
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
-from infrahub.dependencies.registry import build_component_registry
 from infrahub.lock import initialize_lock
-from infrahub.message_bus import InfrahubMessage, InfrahubResponse, Meta
-from infrahub.message_bus.messages import ROUTING_KEY_MAP
-from infrahub.message_bus.operations import execute_message
+from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.types import MessageTTL
-from infrahub.services import InfrahubServices, services
+from infrahub.services import services
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
+from tests.adapters.log import FakeLogger
+from tests.adapters.message_bus import BusRecorder, BusSimulator
 
 BUILD_NAME = os.environ.get("INFRAHUB_BUILD_NAME", "infrahub")
 TEST_IN_DOCKER = str_to_bool(os.environ.get("INFRAHUB_TEST_IN_DOCKER", "false"))
@@ -314,8 +312,34 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
+@pytest.fixture(scope="module")
+def tmp_path_module_scope() -> Generator[str, None, None]:
+    """Fixture similar to tmp_path but with scope=module"""
+    with TemporaryDirectory() as tmpdir:
+        if sys.platform == "darwin" and tmpdir.startswith("/var/"):
+            # On Mac /var is symlinked to /private/var. TemporaryDirectory uses the /var prefix
+            # however when using 'git worktree list --porcelain' the path is returned with
+            # /prefix/var and InfrahubRepository fails to initialize the repository as the
+            # relative path of the repository isn't handled correctly
+            tmpdir = f"/private{tmpdir}"
+        yield tmpdir
+
+
+@pytest.fixture(scope="module")
+def git_repos_dir_module_scope(tmp_path_module_scope: str) -> Generator[str, None, None]:
+    repos_dir = os.path.join(str(tmp_path_module_scope), "repositories")
+
+    os.mkdir(repos_dir)
+    old_repos_dir = config.SETTINGS.git.repositories_directory
+    config.SETTINGS.git.repositories_directory = repos_dir
+
+    yield repos_dir
+
+    config.SETTINGS.git.repositories_directory = old_repos_dir
+
+
 class BusRPCMock(InfrahubMessageBus):
-    def __init__(self):
+    def __init__(self) -> None:
         self.response: List[InfrahubResponse] = []
         self.messages: List[InfrahubMessage] = []
 
@@ -327,60 +351,9 @@ class BusRPCMock(InfrahubMessageBus):
 
     async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
         self.messages.append(message)
-        return self.response.pop()
-
-
-class BusRecorder(InfrahubMessageBus):
-    def __init__(self, component_type: Optional[ComponentType] = None):
-        self.messages: List[InfrahubMessage] = []
-        self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
-
-    async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
-        self.messages.append(message)
-        if routing_key not in self.messages_per_routing_key:
-            self.messages_per_routing_key[routing_key] = []
-        self.messages_per_routing_key[routing_key].append(message)
-
-    @property
-    def seen_routing_keys(self) -> List[str]:
-        return list(self.messages_per_routing_key.keys())
-
-
-class BusSimulator(InfrahubMessageBus):
-    def __init__(self, database: Optional[InfrahubDatabase] = None):
-        self.messages: List[InfrahubMessage] = []
-        self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
-        self.service: InfrahubServices = InfrahubServices(database=database, message_bus=self)
-        self.replies: Dict[str, List[InfrahubMessage]] = defaultdict(list)
-        build_component_registry()
-
-    async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
-        self.messages.append(message)
-        if routing_key not in self.messages_per_routing_key:
-            self.messages_per_routing_key[routing_key] = []
-        self.messages_per_routing_key[routing_key].append(message)
-        await execute_message(routing_key=routing_key, message_body=message.body, service=self.service)
-
-    async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
-        correlation_id = message.meta.correlation_id or "default"
-        self.replies[correlation_id].append(message)
-
-    async def rpc(self, message: InfrahubMessage, response_class: ResponseClass) -> ResponseClass:  # type: ignore[override]
-        routing_key = ROUTING_KEY_MAP.get(type(message), "")
-
-        correlation_id = str(UUIDT())
-        message.meta = Meta(correlation_id=correlation_id, reply_to="ci-testing")
-
-        await self.publish(message=message, routing_key=routing_key)
-        reply_id = correlation_id or "default"
-        assert len(self.replies[reply_id]) == 1
-        response = self.replies[reply_id][0]
-        data = ujson.loads(response.body)
-        return response_class(**data)  # type: ignore[operator]
-
-    @property
-    def seen_routing_keys(self) -> List[str]:
-        return list(self.messages_per_routing_key.keys())
+        response = self.response.pop()
+        data = json.loads(response.body)
+        return response_class(**data)
 
 
 class TestHelper:
@@ -420,31 +393,6 @@ class TestHelper:
     @staticmethod
     def get_message_bus_rpc() -> BusRPCMock:
         return BusRPCMock()
-
-
-class FakeLogger:
-    def __init__(self) -> None:
-        self.info_logs: List[Optional[str]] = []
-        self.error_logs: List[Optional[str]] = []
-
-    def debug(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        """Send a debug event"""
-
-    def info(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        self.info_logs.append(event)
-
-    def warning(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        """Send a warning event"""
-
-    def error(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        """Send an error event."""
-        self.error_logs.append(event)
-
-    def critical(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        """Send a critical event."""
-
-    def exception(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        """Send an exception event."""
 
 
 @pytest.fixture()

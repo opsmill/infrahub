@@ -865,7 +865,7 @@ class SchemaRoot(BaseModel):
 
 # TODO need to investigate how we could generate the internal schema
 # directly from the Pydantic Models to avoid the duplication of effort
-internal_schema = {
+internal_schema: dict[str, Any] = {
     "version": None,
     "nodes": [
         {

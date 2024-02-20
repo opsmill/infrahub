@@ -5,7 +5,6 @@ from typing import Any, Dict
 
 import pendulum
 import pytest
-from git.repo import Repo
 from infrahub_sdk import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
 from pytest_httpx import HTTPXMock
@@ -33,6 +32,7 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.test_data import dataset01 as ds01
+from tests.helpers.file_repo import FileRepo
 
 
 @pytest.fixture(params=["main", "branch2"])
@@ -77,14 +77,8 @@ def git_repos_dir(tmp_path) -> str:
 
 
 @pytest.fixture
-async def git_fixture_repo(git_sources_dir, git_repos_dir, helper) -> InfrahubRepository:
-    fixtures_dir = helper.get_fixtures_dir()
-    test_base = os.path.join(fixtures_dir, "repos/test_base")
-    shutil.copytree(test_base, f"{git_sources_dir}/test_base")
-    origin = Repo.init(f"{git_sources_dir}/test_base", initial_branch="main")
-    for untracked in origin.untracked_files:
-        origin.index.add(untracked)
-    origin.index.commit("First commit")
+async def git_fixture_repo(git_sources_dir, git_repos_dir) -> InfrahubRepository:
+    FileRepo(name="test_base", sources_directory=git_sources_dir)
 
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),

@@ -247,7 +247,7 @@ class Worktree(BaseModel):
     branch: Optional[str] = None
 
     @classmethod
-    def init(cls, text):
+    def init(cls, text: str) -> Worktree:
         lines = text.split("\n")
 
         full_directory = lines[0].replace("worktree ", "")

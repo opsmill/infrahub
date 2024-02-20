@@ -199,7 +199,7 @@ def infra_git_import(context: Context, database: str = INFRAHUB_DATABASE):
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
         execute_command(
             context=context,
-            command=f"{base_cmd} run infrahub-git cp -r backend/tests/fixtures/repos/{REPO_NAME} /remote/",
+            command=f"{base_cmd} run infrahub-git cp -r backend/tests/fixtures/repos/{REPO_NAME}/initial__main /remote/{REPO_NAME}",
         )
         execute_command(
             context=context,
