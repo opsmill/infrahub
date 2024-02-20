@@ -29,7 +29,7 @@ from infrahub.core.query.node import NodeListGetAttributeQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
 from infrahub.exceptions import ValidationError
-from infrahub.helpers import hash_password
+from infrahub.helpers import hash_password, is_hashed_password
 
 from .constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
 
@@ -505,6 +505,8 @@ class HashedPassword(BaseAttribute):
     def serialize(self, value: str) -> str:
         """Serialize the value before storing it in the database."""
 
+        if is_hashed_password(value):
+            return value
         return hash_password(value)
 
 
