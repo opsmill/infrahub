@@ -14,12 +14,12 @@ from pydantic import AliasChoices, Field, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from infrahub.database.constants import DatabaseType
+from infrahub.exceptions import InitializationError
 
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
-SETTINGS: Settings = None
 
 VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
@@ -280,6 +280,91 @@ class Override:
     cache: Optional[InfrahubCache] = None
 
 
+@dataclass
+class ConfiguredSettings:
+    settings: Optional[Settings] = None
+
+    def initialize(self, config_file: Optional[str] = None) -> None:
+        """Initialize the settings if they have not been initialized."""
+        if self.initialized:
+            return
+        if not config_file:
+            config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
+            config_file = os.path.abspath(config_file_name)
+        load(config_file)
+
+    def initialize_and_exit(self, config_file: Optional[str] = None) -> None:
+        """Initialize the settings if they have not been initialized, exit on failures."""
+        if self.initialized:
+            return
+        if not config_file:
+            config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
+            config_file = os.path.abspath(config_file_name)
+        load_and_exit(config_file)
+
+    @property
+    def active_settings(self) -> Settings:
+        if self.settings:
+            return self.settings
+        raise InitializationError
+
+    @property
+    def initialized(self) -> bool:
+        return self.settings is not None
+
+    @property
+    def main(self) -> MainSettings:
+        return self.active_settings.main
+
+    @property
+    def api(self) -> ApiSettings:
+        return self.active_settings.api
+
+    @property
+    def git(self) -> GitSettings:
+        return self.active_settings.git
+
+    @property
+    def database(self) -> DatabaseSettings:
+        return self.active_settings.database
+
+    @property
+    def broker(self) -> BrokerSettings:
+        return self.active_settings.broker
+
+    @property
+    def cache(self) -> CacheSettings:
+        return self.active_settings.cache
+
+    @property
+    def miscellaneous(self) -> MiscellaneousSettings:
+        return self.active_settings.miscellaneous
+
+    @property
+    def logging(self) -> LoggingSettings:
+        return self.active_settings.logging
+
+    @property
+    def analytics(self) -> AnalyticsSettings:
+        return self.active_settings.analytics
+
+    @property
+    def security(self) -> SecuritySettings:
+        return self.active_settings.security
+
+    @property
+    def storage(self) -> StorageSettings:
+        return self.active_settings.storage
+
+    @property
+    def trace(self) -> TraceSettings:
+        return self.active_settings.trace
+
+    @property
+    def experimental_features(self) -> ExperimentalFeaturesSettings:
+        return self.active_settings.experimental_features
+
+
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
@@ -304,20 +389,19 @@ def load(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str
     Configuration is loaded from a config file in toml format that contains the settings,
     or from a dictionary of those settings passed in as "config_data"
     """
-    global SETTINGS  # pylint: disable=global-statement
 
     if config_data:
-        SETTINGS = Settings(**config_data)
+        SETTINGS.settings = Settings(**config_data)
         return
 
     if os.path.exists(config_file_name):
         config_string = Path(config_file_name).read_text(encoding="utf-8")
         config_tmp = toml.loads(config_string)
 
-        SETTINGS = Settings(**config_tmp)
+        SETTINGS.settings = Settings(**config_tmp)
         return
 
-    SETTINGS = Settings()
+    SETTINGS.settings = Settings()
 
 
 def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str, Any]] = None) -> None:
@@ -340,3 +424,4 @@ def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional
 
 
 OVERRIDE: Override = Override()
+SETTINGS: ConfiguredSettings = ConfiguredSettings()

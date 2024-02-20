@@ -37,11 +37,7 @@ from infrahub.worker import WORKER_IDENTITY
 
 
 async def app_initialization(application: FastAPI) -> None:
-    if not config.SETTINGS:
-        config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
-        config_file_path = os.path.abspath(config_file_name)
-        log.info("application_init", config_file=config_file_path)
-        config.load_and_exit(config_file_path)
+    config.SETTINGS.initialize_and_exit()
 
     # Initialize trace
     if config.SETTINGS.trace.enable:
