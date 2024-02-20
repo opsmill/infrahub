@@ -262,10 +262,6 @@ module = "infrahub.core.utils"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.config"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.database"
 ignore_errors = true
 
