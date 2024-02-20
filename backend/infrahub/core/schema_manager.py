@@ -242,7 +242,7 @@ class SchemaBranch:
         To ensure that no-one will ever change an object in the cache,
         by default the function always returns a copy of the object, not the object itself
 
-        If duplicate is set to false, the real objet will be returned.
+        If duplicate is set to false, the real object will be returned.
         """
         key = None
         if name in self.nodes:
@@ -461,6 +461,10 @@ class SchemaBranch:
                     f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
                     " relationship must be of cardinality one"
                 )
+            if schema_attribute_path.attribute_schema:
+                raise ValueError(
+                    f"{error_header}: cannot use attributes of related node in constraint, only the relationship"
+                )
 
         if (
             schema_attribute_path.attribute_property_name
@@ -483,7 +487,7 @@ class SchemaBranch:
             for constraint_paths in node_schema.uniqueness_constraints:
                 for constraint_path in constraint_paths:
                     self._validate_attribute_path(
-                        node_schema, constraint_path, schema_map, schema_attribute_name="uniqueness_constraints"
+                        node_schema, constraint_path, schema_map, schema_attribute_name="uniqueness_constraints", relationship_allowed=True
                     )
 
     def validate_display_labels(self) -> None:
