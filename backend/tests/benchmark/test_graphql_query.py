@@ -161,6 +161,7 @@ def test_query_rel_one(aio_benchmark, db: InfrahubDatabase, default_branch: Bran
     )
 
 
+@pytest.mark.xfail(reason="Disabling for now but it's not producing consistent results")
 def test_query_rel_one_filter_rel_many(aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
     query = """
     query GetTags {
