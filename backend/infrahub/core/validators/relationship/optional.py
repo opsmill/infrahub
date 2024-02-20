@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from infrahub.core.constants import PathResourceType, PathType
+from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 
 from ..interface import ConstraintCheckerInterface
@@ -74,7 +74,6 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
             grouped_data_paths.add_data_path(
                 DataPath(
                     branch=result.get("root_relationship").get("branch"),
-                    resource_type=PathResourceType.DATA,
                     path_type=PathType.NODE,
                     node_id=str(result.get("n.uuid")),
                     kind=self.node_schema.kind,

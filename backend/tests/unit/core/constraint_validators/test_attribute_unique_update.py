@@ -1,6 +1,6 @@
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import PathResourceType, PathType, SchemaPathType
+from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.validators.attribute.unique import (
@@ -42,7 +42,6 @@ async def test_query(
     assert len(grouped_paths.get_data_paths("5")) == 3
 
     assert DataPath(
-        resource_type=PathResourceType.DATA,
         branch=branch.name,
         path_type=PathType.ATTRIBUTE,
         node_id=car.id,
@@ -51,7 +50,6 @@ async def test_query(
         value="5",
     ) in grouped_paths.get_data_paths("5")
     assert DataPath(
-        resource_type=PathResourceType.DATA,
         branch=default_branch.name,
         path_type=PathType.ATTRIBUTE,
         node_id=car_accord_main.id,
@@ -60,7 +58,6 @@ async def test_query(
         value="5",
     ) in grouped_paths.get_data_paths("5")
     assert DataPath(
-        resource_type=PathResourceType.DATA,
         branch=default_branch.name,
         path_type=PathType.ATTRIBUTE,
         node_id=car_prius_main.id,

@@ -5,13 +5,14 @@ import pytest
 from deepdiff import DeepDiff
 from pydantic.v1 import Field
 
-from infrahub.core import get_branch
+from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, InfrahubKind
 from infrahub.core.diff import BaseDiffElement, BranchDiffer
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import AttributeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus import messages
@@ -989,6 +990,46 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
         ).to_dict()
         == {}
     )
+
+
+async def test_diff_schema_changes(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, car_person_schema
+):
+    schema_main = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.update_schema_branch(
+        db=db, branch=default_branch, schema=schema_main, limit=["TestCar", "TestPerson"], update_db=True
+    )
+
+    branch2 = await create_branch(db=db, branch_name="branch2")
+
+    # Update Schema in MAIN
+    person_schema_main = schema_main.get(name="TestPerson")
+    person_schema_main.attributes.pop(1)  # Remove height
+    person_schema_main.attributes.append(AttributeSchema(name="color", kind="Text", optional=True))
+    schema_main.set(name="TestPerson", schema=person_schema_main)
+    schema_main.process()
+    await registry.schema.update_schema_branch(
+        db=db, branch=default_branch, schema=schema_main, limit=["TestCar", "TestPerson"], update_db=True
+    )
+
+    # Update Schema in BRANCH
+    schema_branch = registry.schema.get_schema_branch(name=branch2.name)
+    schema_branch.duplicate()
+    car_schema_branch = schema_main.get(name="TestCar")
+    car_schema_branch.attributes.pop(4)  # Remove transmission
+    car_schema_branch.attributes.append(AttributeSchema(name="4motion", kind="Boolean", default_value=False))
+    schema_branch.set(name="TestCar", schema=car_schema_branch)
+    schema_branch.process()
+    await registry.schema.update_schema_branch(
+        db=db, branch=branch2, schema=schema_branch, limit=["TestCar", "TestPerson"], update_db=True
+    )
+    schema_branch = registry.schema.get_schema_branch(name=branch2.name)
+
+    diff = BranchDiffer(db=db, branch=branch2)
+    summary = await diff.get_schema_summary()
+
+    assert list(summary.keys()) == ["branch2", "main"]
+    assert set([element.kind for elements in summary.values() for element in elements]) == {"SchemaNode"}
 
 
 async def test_base_diff_element():

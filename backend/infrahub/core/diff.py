@@ -458,6 +458,21 @@ class BranchDiffer:
 
         return summary
 
+    async def get_schema_summary(self) -> Dict[str, List[DiffSummaryElement]]:
+        """Return a list of DiffSummaryElement for SchemaNode organized per Branch."""
+        summary: Dict[str, List[DiffSummaryElement]] = defaultdict(list)
+        for element in await self.get_summary():
+            if element.kind == "SchemaNode":
+                summary[element.branch].append(element)
+        return summary
+
+    async def has_schema_changes(self, branch: Optional[str] = None) -> bool:
+        schema_summary = await self.get_schema_summary()
+        if (branch and branch in schema_summary) or (not branch and schema_summary):
+            return True
+
+        return False
+
     async def get_conflicts(self) -> List[DataConflict]:
         """Return the list of conflicts identified by the diff as Path (tuple).
 

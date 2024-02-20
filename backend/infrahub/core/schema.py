@@ -174,6 +174,14 @@ class AttributeSchema(HashableModel):
 
     _sort_by: List[str] = ["name"]
 
+    @property
+    def is_attribute(self) -> bool:
+        return True
+
+    @property
+    def is_relationship(self) -> bool:
+        return False
+
     @field_validator("kind")
     @classmethod
     def kind_options(cls, v):
@@ -302,6 +310,14 @@ class RelationshipSchema(HashableModel):
 
     _exclude_from_hash: List[str] = ["filters"]
     _sort_by: List[str] = ["name"]
+
+    @property
+    def is_attribute(self) -> bool:
+        return False
+
+    @property
+    def is_relationship(self) -> bool:
+        return True
 
     def get_class(self):
         return Relationship

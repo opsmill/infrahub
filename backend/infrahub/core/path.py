@@ -1,12 +1,16 @@
+from __future__ import annotations
+
 from collections import defaultdict
 from itertools import chain
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 from typing_extensions import Self
 
 from infrahub.core.constants import PathResourceType, PathType, SchemaPathType
-from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema
+
+if TYPE_CHECKING:
+    from infrahub.core.schema import GenericSchema, NodeSchema
 
 # DataPath
 #   Node
@@ -31,6 +35,10 @@ class InfrahubPath(BaseModel):
     def get_path(self) -> str:
         raise NotImplementedError()
 
+    @property
+    def resource_type(self) -> PathResourceType:
+        raise NotImplementedError()
+
     # def from_string(self, value: str):
     #     raise NotImplementedError
 
@@ -44,9 +52,6 @@ class InfrahubPath(BaseModel):
 
 
 class DataPath(InfrahubPath):
-    resource_type: PathResourceType = Field(
-        default=PathResourceType.DATA, description="Indicate the type of the resource"
-    )
     branch: str = Field(..., description="Name of the branch")
     path_type: PathType
     node_id: str = Field(..., description="Kind of the model in the schema")
@@ -57,6 +62,10 @@ class DataPath(InfrahubPath):
     property_name: Optional[str] = Field(default=None, description="Name of the property")
     peer_id: Optional[str] = Field(default=None, description="")
     value: Optional[Any] = Field(default=None, description="Optional value of the resource")
+
+    @property
+    def resource_type(self) -> PathResourceType:
+        return PathResourceType.DATA
 
     def get_path(self, with_peer: bool = True) -> str:
         identifier = f"{self.resource_type.value}/{self.node_id}"
@@ -98,12 +107,15 @@ class GroupedDataPaths:
 
 
 class SchemaPath(InfrahubPath):
-    resource_type: PathResourceType = Field(PathResourceType.SCHEMA, description="Indicate the type of the resource")
     path_type: SchemaPathType
     schema_kind: str = Field(..., description="Kind of the model in the schema")
     schema_id: Optional[str] = Field(None, description="UUID of the model in the schema")
     field_name: Optional[str] = Field(None, description="Name of the field (either an attribute or a relationship)")
     property_name: Optional[str] = Field(None, description="Name of the property")
+
+    @property
+    def resource_type(self) -> PathResourceType:
+        return PathResourceType.SCHEMA
 
     def get_path(self) -> str:
         identifier = f"{self.resource_type.value}/{self.schema_kind}"
@@ -129,17 +141,13 @@ class SchemaPath(InfrahubPath):
 
         path_type = SchemaPathType.NODE
         if field_name:
-            path_type = (
-                SchemaPathType.ATTRIBUTE
-                if isinstance(schema.get_field(name=field_name), AttributeSchema)
-                else SchemaPathType.RELATIONSHIP
-            )
+            field = schema.get_field(name=field_name)
+            path_type = SchemaPathType.ATTRIBUTE if field and field.is_attribute else SchemaPathType.RELATIONSHIP
 
         if field_name and property_name and not hasattr(schema.get_field(name=field_name), property_name):
             raise ValueError(f"Property {property_name} is not valid for {schema.kind}:{field_name}")
 
         return cls(
-            resource_type=PathResourceType.SCHEMA,
             schema_kind=schema.kind,
             path_type=path_type,
             schema_id=schema_id,
@@ -149,8 +157,11 @@ class SchemaPath(InfrahubPath):
 
 
 class FilePath(InfrahubPath):
-    resource_type: PathResourceType = Field(PathResourceType.SCHEMA, description="Indicate the type of the resource")
     repository_name: str = Field(..., description="name of the repository")
+
+    @property
+    def resource_type(self) -> PathResourceType:
+        return PathResourceType.FILE
 
     def get_path(self) -> str:
         return f"{self.resource_type.value}/{self.repository_name}"

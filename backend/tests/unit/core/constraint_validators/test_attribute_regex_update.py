@@ -2,7 +2,7 @@ from infrahub_sdk import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import PathResourceType, PathType, SchemaPathType
+from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.validators.attribute.regex import AttributeRegexChecker, AttributeRegexUpdateValidatorQuery
@@ -37,7 +37,6 @@ async def test_query(
     all_data_paths = grouped_paths.get_all_data_paths()
     assert all_data_paths == [
         DataPath(
-            resource_type=PathResourceType.DATA,
             branch=default_branch.name,
             path_type=PathType.ATTRIBUTE,
             node_id=person_john_main.id,

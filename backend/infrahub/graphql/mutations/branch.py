@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import pydantic
 from graphene import Boolean, Field, InputObjectType, List, Mutation, String
@@ -11,6 +11,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff import BranchDiffer
 from infrahub.core.merge import BranchMerger
+from infrahub.core.migrations.schema.runner import schema_migrations_runner
 from infrahub.exceptions import BranchNotFound
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
@@ -215,21 +216,26 @@ class BranchMerge(Mutation):
 
         obj = await Branch.get_by_name(db=context.db, name=data["name"])
 
+        merger: Optional[BranchMerger] = None
         async with lock.registry.global_graph_lock():
             async with context.db.start_transaction() as db:
-                merger = BranchMerger(branch=obj)
-                await merger.merge(service=context.service, db=db)
-
-                # Copy the schema from the origin branch and set the hash and the schema_changed_at value
-                if origin_branch := await obj.get_origin_branch(db=db):
-                    updated_schema = await registry.schema.load_schema_from_db(db=db, branch=origin_branch)
-                    registry.schema.set_schema_branch(name=origin_branch.name, schema=updated_schema)
-                    origin_branch.update_schema_hash()
-                    await origin_branch.save(db=db)
+                merger = BranchMerger(db=db, source_branch=obj, service=context.service)
+                await merger.merge()
+                await merger.update_schema()
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
         ok = True
+
+        if merger and merger.migrations and context.service:
+            errors = await schema_migrations_runner(
+                branch=merger.destination_branch,
+                schema=merger.destination_schema,
+                migrations=merger.migrations,
+                service=context.service,
+            )
+            for error in errors:
+                context.service.log.error(error)
 
         if config.SETTINGS.broker.enable and context.background:
             log_data = get_log_data()
