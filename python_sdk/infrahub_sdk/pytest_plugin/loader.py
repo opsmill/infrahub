@@ -10,8 +10,8 @@ from .items import (
     InfrahubCheckIntegrationItem,
     InfrahubCheckSmokeItem,
     InfrahubCheckUnitProcessItem,
-    InfrahubGraphqlQueryIntegrationItem,
-    InfrahubGraphqlQuerySmokeItem,
+    InfrahubGraphQLQueryIntegrationItem,
+    InfrahubGraphQLQuerySmokeItem,
     InfrahubJinja2TransformIntegrationItem,
     InfrahubJinja2TransformSmokeItem,
     InfrahubJinja2TransformUnitRenderItem,
@@ -23,13 +23,13 @@ from .models import InfrahubTestFileV1, InfrahubTestGroup
 
 MARKER_MAPPING = {
     "Check": pytest.mark.infrahub_check,
-    "GraphqlQuery": pytest.mark.infrahub_graphql_query,
+    "GraphQLQuery": pytest.mark.infrahub_graphql_query,
     "Jinja2Transform": pytest.mark.infrahub_jinja2_transform,
     "PythonTransform": pytest.mark.infrahub_python_transform,
 }
 CONFIG_MAPPING = {
     "Check": "get_check_definition",
-    "GraphqlQuery": None,
+    "GraphQLQuery": None,
     "Jinja2Transform": "get_jinja2_transform",
     "PythonTransform": "get_python_transform",
 }
@@ -38,8 +38,8 @@ ITEMS_MAPPING = {
     "check-smoke": InfrahubCheckSmokeItem,
     "check-unit-process": InfrahubCheckUnitProcessItem,
     "check-integration": InfrahubCheckIntegrationItem,
-    "graphql-query-smoke": InfrahubGraphqlQuerySmokeItem,
-    "graphql-query-integration": InfrahubGraphqlQueryIntegrationItem,
+    "graphql-query-smoke": InfrahubGraphQLQuerySmokeItem,
+    "graphql-query-integration": InfrahubGraphQLQueryIntegrationItem,
     "jinja2-transform-smoke": InfrahubJinja2TransformSmokeItem,
     "jinja2-transform-unit-render": InfrahubJinja2TransformUnitRenderItem,
     "jinja2-transform-integration": InfrahubJinja2TransformIntegrationItem,

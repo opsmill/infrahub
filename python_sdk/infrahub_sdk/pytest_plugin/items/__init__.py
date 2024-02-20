@@ -1,5 +1,5 @@
 from .check import InfrahubCheckIntegrationItem, InfrahubCheckSmokeItem, InfrahubCheckUnitProcessItem
-from .graphql_query import InfrahubGraphqlQueryIntegrationItem, InfrahubGraphqlQuerySmokeItem
+from .graphql_query import InfrahubGraphQLQueryIntegrationItem, InfrahubGraphQLQuerySmokeItem
 from .jinja2_transform import (
     InfrahubJinja2TransformIntegrationItem,
     InfrahubJinja2TransformSmokeItem,
@@ -15,8 +15,8 @@ __all__ = [
     "InfrahubCheckIntegrationItem",
     "InfrahubCheckSmokeItem",
     "InfrahubCheckUnitProcessItem",
-    "InfrahubGraphqlQueryIntegrationItem",
-    "InfrahubGraphqlQuerySmokeItem",
+    "InfrahubGraphQLQueryIntegrationItem",
+    "InfrahubGraphQLQuerySmokeItem",
     "InfrahubJinja2TransformIntegrationItem",
     "InfrahubJinja2TransformSmokeItem",
     "InfrahubJinja2TransformUnitRenderItem",

@@ -25,7 +25,7 @@ class InfrahubTestResource(str, Enum):
     CHECK = "Check"
     JINJA2_TRANSFORM = "Jinja2Transform"
     PYTHON_TRANSFORM = "PythonTransform"
-    GRAPHQL_QUERY = "GraphqlQuery"
+    GRAPHQL_QUERY = "GraphQLQuery"
 
 
 class InfrahubBaseTest(pydantic.BaseModel):
@@ -140,12 +140,12 @@ class InfrahubCheckIntegrationTest(InfrahubIntegrationTest):
     kind: Literal["check-integration"]
 
 
-class InfrahubGraphqlQuerySmokeTest(InfrahubBaseTest):
+class InfrahubGraphQLQuerySmokeTest(InfrahubBaseTest):
     kind: Literal["graphql-query-smoke"]
     path: Path = pydantic.Field(description="Path to the file in which the GraphQL query is defined")
 
 
-class InfrahubGraphqlQueryIntegrationTest(InfrahubIntegrationTest):
+class InfrahubGraphQLQueryIntegrationTest(InfrahubIntegrationTest):
     kind: Literal["graphql-query-integration"]
     query: str = pydantic.Field(description="Name of a pre-defined GraphQL query to execute")
 
@@ -184,8 +184,8 @@ class InfrahubTest(pydantic.BaseModel):
         InfrahubCheckSmokeTest,
         InfrahubCheckUnitProcessTest,
         InfrahubCheckIntegrationTest,
-        InfrahubGraphqlQuerySmokeTest,
-        InfrahubGraphqlQueryIntegrationTest,
+        InfrahubGraphQLQuerySmokeTest,
+        InfrahubGraphQLQueryIntegrationTest,
         InfrahubJinja2TransformSmokeTest,
         InfrahubJinja2TransformUnitRenderTest,
         InfrahubJinja2TransformIntegrationTest,

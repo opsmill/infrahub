@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from pytest import ExceptionInfo
 
 
-class InfrahubGraphqlQueryItem(InfrahubItem):
+class InfrahubGraphQLQueryItem(InfrahubItem):
     def execute_query(self) -> Any:
         return self.session.infrahub_client.query_gql_query(  # type: ignore[attr-defined]
             self.test.spec.query,  # type: ignore[union-attr]
@@ -43,13 +43,13 @@ class InfrahubGraphqlQueryItem(InfrahubItem):
         return super().repr_failure(excinfo, style=style)
 
 
-class InfrahubGraphqlQuerySmokeItem(InfrahubGraphqlQueryItem):
+class InfrahubGraphQLQuerySmokeItem(InfrahubGraphQLQueryItem):
     def runtest(self) -> None:
         query = self.test.spec.path.read_text()  # type: ignore[attr-defined,union-attr]
         GraphQLQueryAnalyzer(query)
 
 
-class InfrahubGraphqlQueryIntegrationItem(InfrahubGraphqlQueryItem):
+class InfrahubGraphQLQueryIntegrationItem(InfrahubGraphQLQueryItem):
     def runtest(self) -> None:
         computed = self.execute_query()
         differences = self.get_result_differences(computed)
