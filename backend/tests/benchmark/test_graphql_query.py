@@ -161,38 +161,38 @@ def test_query_rel_one(aio_benchmark, db: InfrahubDatabase, default_branch: Bran
     )
 
 
-@pytest.mark.xfail(reason="Disabling for now but it's not producing consistent results")
-def test_query_rel_one_filter_rel_many(aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
-    query = """
-    query GetTags {
-        CoreGraphQLQuery(tags__name__value: "yellow") {
-            count
-            edges {
-                node {
-                    id
-                    display_label
-                    repository {
-                        node {
-                            id
-                            name {
-                                value
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    """
+# @pytest.mark.xfail(reason="Disabling for now but it's not producing consistent results")
+# def test_query_rel_one_filter_rel_many(aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
+#     query = """
+#     query GetTags {
+#         CoreGraphQLQuery(tags__name__value: "yellow") {
+#             count
+#             edges {
+#                 node {
+#                     id
+#                     display_label
+#                     repository {
+#                         node {
+#                             id
+#                             name {
+#                                 value
+#                             }
+#                         }
+#                     }
+#                 }
+#             }
+#         }
+#     }
+#     """
 
-    gql_params = prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
-    aio_benchmark(
-        graphql,
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
+#     gql_params = prepare_graphql_params(
+#         db=db, include_mutation=False, include_subscription=False, branch=default_branch
+#     )
+#     aio_benchmark(
+#         graphql,
+#         schema=gql_params.schema,
+#         source=query,
+#         context_value=gql_params.context,
+#         root_value=None,
+#         variable_values={},
+#     )
