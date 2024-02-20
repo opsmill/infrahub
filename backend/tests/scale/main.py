@@ -5,7 +5,6 @@ import click
 import common.events
 import common.users
 import gevent
-
 from common.config import Config as ScaleTestConfig
 from locust import events
 from locust.env import Environment

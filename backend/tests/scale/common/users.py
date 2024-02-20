@@ -1,13 +1,10 @@
 import time
 
-import yaml
+from infrahub_sdk import Config
+from locust import User, task
 
 import common.stagers
 
-from infrahub_sdk import Config
-from locust import HttpUser, User, task
-
-from .config import Config as ScaleTestConfig
 from .protocols import LocustInfrahubClient
 from .utils import random_ascii_string
 
@@ -30,7 +27,6 @@ class InfrahubClientUser(User):
             address=self.address, config=self.config, request_event=environment.events.request
         )
 
-
     @task
     def crud(self):
         print("--- staging")
@@ -44,12 +40,7 @@ class InfrahubClientUser(User):
 
         # Generate extra attributes
         attributes = [
-            {
-                "name": f"attr{i}",
-                "kind": "Text",
-                "default_value": "",
-                "optional": True
-            }
+            {"name": f"attr{i}", "kind": "Text", "default_value": "", "optional": True}
             for i in range(self.custom_options["attrs"])
         ]
         # Generate extra relationships
@@ -61,14 +52,20 @@ class InfrahubClientUser(User):
                 "cardinality": "one",
                 "identifier": f"builtintag__infranode_{i}",
                 "optional": True,
-
             }
             for i in range(self.custom_options["rels"])
         ]
-        common.stagers.load_schema(self.client, self.custom_options["schema"], extra_attributes=attributes, relationships=relationships)
+        common.stagers.load_schema(
+            self.client, self.custom_options["schema"], extra_attributes=attributes, relationships=relationships
+        )
         time.sleep(5)
         print("--- staging nodes, attributes and relations")
-        stager(client=self.client, amount=self.custom_options["amount"], attrs=self.custom_options["attrs"], rels=self.custom_options["rels"])
+        stager(
+            client=self.client,
+            amount=self.custom_options["amount"],
+            attrs=self.custom_options["attrs"],
+            rels=self.custom_options["rels"],
+        )
         print("--- 20s cool down period")
         time.sleep(20)
 
