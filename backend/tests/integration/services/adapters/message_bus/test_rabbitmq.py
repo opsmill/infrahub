@@ -56,6 +56,7 @@ class Queue:
 @dataclass
 class RabbitMQManager:
     settings: BrokerSettings
+    retry_timeout: int = 15
 
     @property
     def base_url(self) -> str:
@@ -112,15 +113,24 @@ class RabbitMQManager:
         if payload:
             params["json"] = payload
         headers = {"content-type": "application/json"}
-
-        async with httpx.AsyncClient() as client:
-            response = await client.request(
-                method=method,
-                url=url,
-                headers=headers,
-                auth=(self.settings.username, self.settings.password),
-                **params,
-            )
+        retry_counter = 0
+        retry_request = True
+        while retry_request:
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.request(
+                        method=method,
+                        url=url,
+                        headers=headers,
+                        auth=(self.settings.username, self.settings.password),
+                        **params,
+                    )
+                    retry_request = False
+            except httpx.NetworkError:
+                await asyncio.sleep(0.1)
+                retry_counter += 0.1
+                if retry_counter > self.retry_timeout:
+                    raise
         return response
 
 
