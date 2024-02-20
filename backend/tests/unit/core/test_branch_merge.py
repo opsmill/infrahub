@@ -154,7 +154,8 @@ async def test_merge_update_schema(
 
     # Update Schema in MAIN
     person_schema_main = schema_main.get(name="TestPerson")
-    person_schema_main.attributes.pop(1)  # Remove height
+    person_attribute_names = {attr.name: idx for idx, attr in enumerate(person_schema_main.attributes)}
+    person_schema_main.attributes.pop(person_attribute_names["height"])
     person_schema_main.attributes.append(AttributeSchema(name="color", kind="Text", optional=True))
     schema_main.set(name="TestPerson", schema=person_schema_main)
     schema_main.process()
@@ -166,7 +167,9 @@ async def test_merge_update_schema(
     schema_branch = registry.schema.get_schema_branch(name=branch2.name)
     schema_branch.duplicate()
     car_schema_branch = schema_main.get(name="TestCar")
-    car_schema_branch.attributes.pop(4)  # Remove transmission
+    car_attribute_names = {attr.name: idx for idx, attr in enumerate(car_schema_branch.attributes)}
+    car_schema_branch.attributes.pop(car_attribute_names["transmission"])
+
     car_schema_branch.attributes.append(AttributeSchema(name="4motion", kind="Boolean", default_value=False))
     schema_branch.set(name="TestCar", schema=car_schema_branch)
     schema_branch.process()
