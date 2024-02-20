@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import GenericSchema, NodeSchema
 
 
-class NodeUniquenessConstraint(NodeConstraintInterface):
+class NodeAttributeUniquenessConstraint(NodeConstraintInterface):
     def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
         self.db = db
         self.branch = branch
@@ -45,8 +45,7 @@ class NodeUniquenessConstraint(NodeConstraintInterface):
                 at=at,
             )
 
-            other_nodes = [n for n in nodes if n.id != node.id]
-            if other_nodes:
+            if any((n for n in nodes if n.get_id() != node.id)):
                 raise ValidationError(
                     {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
                 )
