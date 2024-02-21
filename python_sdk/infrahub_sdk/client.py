@@ -137,7 +137,11 @@ class BaseClient:
         return self
 
     def set_context_properties(
-        self, identifier: str, params: Optional[Dict[str, str]] = None, delete_unused_nodes: bool = True
+        self,
+        identifier: str,
+        params: Optional[Dict[str, str]] = None,
+        delete_unused_nodes: bool = True,
+        reset: bool = True,
     ) -> None:
         raise NotImplementedError()
 
@@ -159,8 +163,14 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         return cls(*args, **kwargs)
 
     def set_context_properties(
-        self, identifier: str, params: Optional[Dict[str, str]] = None, delete_unused_nodes: bool = True
+        self,
+        identifier: str,
+        params: Optional[Dict[str, str]] = None,
+        delete_unused_nodes: bool = True,
+        reset: bool = True,
     ) -> None:
+        if reset:
+            self.group_context = InfrahubGroupContext(self)  # pylint: disable=attribute-defined-outside-init
         self.group_context.set_properties(identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes)
 
     async def create(
@@ -756,8 +766,14 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         return cls(*args, **kwargs)
 
     def set_context_properties(
-        self, identifier: str, params: Optional[Dict[str, str]] = None, delete_unused_nodes: bool = True
+        self,
+        identifier: str,
+        params: Optional[Dict[str, str]] = None,
+        delete_unused_nodes: bool = True,
+        reset: bool = True,
     ) -> None:
+        if reset:
+            self.group_context = InfrahubGroupContextSync(self)  # pylint: disable=attribute-defined-outside-init
         self.group_context.set_properties(identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes)
 
     def create(
@@ -1295,4 +1311,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         return self
 
     def __exit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType) -> None:  # pylint: disable=unused-argument
-        self.group_context.update_group()
+        if exc_type is None and self.mode == InfrahubClientMode.TRACKING:
+            self.group_context.update_group()
+
+        self.mode = InfrahubClientMode.DEFAULT
