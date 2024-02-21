@@ -19,7 +19,7 @@ def directory_name_with_timestamp():
 
 
 def dump(
-    namespace: List[str] = typer.Option([], help="Namespace(s) to export"),
+    namespaces: List[str] = typer.Option([], help="Namespace(s) to export"),
     directory: Path = typer.Option(directory_name_with_timestamp, help="Directory path to store export"),
     quiet: bool = typer.Option(False, help="No console output"),
     config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
@@ -40,13 +40,7 @@ def dump(
     )
     exporter = LineDelimitedJSONExporter(client, console=Console() if not quiet else None)
     try:
-        aiorun(
-            exporter.export(
-                export_directory=directory,
-                namespaces=namespace,
-                branch=branch,
-            )
-        )
+        aiorun(exporter.export(export_directory=directory, namespaces=namespaces, branch=branch))
     except TransferError as exc:
         console.print(f"[red]{exc}")
         raise typer.Exit(1)
