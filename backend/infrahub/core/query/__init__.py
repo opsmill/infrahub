@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
@@ -359,7 +360,7 @@ class Query(ABC):
         query_str = "\n".join(tmp_query_lines)
 
         if var and not inline:
-            return "\n" + self.get_params_for_neo4j_shell() + "\n\n" + query_str
+            return "\n" + self.get_params_for_shell() + "\n\n" + query_str
         if var and inline:
             return self.insert_variables_in_query(query=query_str, variables=self.params)
 
@@ -378,15 +379,29 @@ class Query(ABC):
     @staticmethod
     def insert_variables_in_query(query: str, variables: dict) -> str:
         """Search for all the variables in a Query string and replace each variable with its value."""
+
+        def prep_value(v):
+            if isinstance(v, (int, list)):
+                return str(v)
+            return f'"{v}"'
+
         for key, value in variables.items():
-            if isinstance(value, (int, list)):
-                query = query.replace(f"${key}", str(value))
+            if isinstance(value, dict):
+                value_items = [f"{key1}: {prep_value(value1)}" for key1, value1 in value.items()]
+                value_str = "{ " + ", ".join(value_items) + " }"
+                query = query.replace(f"${key}", value_str)
             else:
-                query = query.replace(f"${key}", f'"{value}"')
+                query = query.replace(f"${key}", prep_value(value))
 
         return query
 
-    def get_params_for_neo4j_shell(self):
+    def get_params_for_shell(self):
+        if config.SETTINGS.database.db_type.value == "memgraph":
+            return json.dumps(self.params)
+
+        return self._get_params_for_neo4j_shell()
+
+    def _get_params_for_neo4j_shell(self):
         """Generate string to define some parameters in Neo4j browser interface.
         It's especially useful to later execute a query that includes some variables.
 
