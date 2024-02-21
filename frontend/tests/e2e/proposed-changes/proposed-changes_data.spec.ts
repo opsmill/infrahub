@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe.only("/proposed-changes diff data", () => {
+test.describe("/proposed-changes diff data", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
