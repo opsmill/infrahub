@@ -12,7 +12,7 @@ from infrahub_sdk.transfer.schema_sorter import InfrahubSchemaTopologicalSorter
 
 
 def load(
-    directory: Path = typer.Argument(default=None, help="Directory path of exported data."),
+    directory: Path = typer.Argument(default=Path().resolve(), help="Directory path of exported data"),
     continue_on_error: bool = typer.Option(
         False, help="Allow exceptions during loading and display them when complete"
     ),

@@ -46,12 +46,8 @@ class LineDelimitedJSONImporter(ImporterInterface):
         if self.console:
             self.console.print(f"{end}")
 
-    async def import_data(
-        self,
-        import_directory: Path,
-        branch: str,
-    ) -> None:
-        node_file = import_directory / Path("nodes.json")
+    async def import_data(self, import_directory: Path, branch: str) -> None:
+        node_file = import_directory / "nodes.json"
         if not node_file.exists():
             raise TransferFileNotFoundError(f"{node_file.absolute()} does not exist")
         with self.wrapped_task_output("Reading import directory"):

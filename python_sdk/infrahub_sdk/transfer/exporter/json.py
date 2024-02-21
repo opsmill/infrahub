@@ -27,14 +27,8 @@ class LineDelimitedJSONExporter(ExporterInterface):
         if self.console:
             self.console.print(f"{end}")
 
-    async def export(
-        self,
-        export_directory: Path,
-        namespaces: List[str],
-        branch: str,
-    ) -> None:
-        illegal_namespaces = set(ILLEGAL_NAMESPACES)
-        node_file = export_directory / Path("nodes.json")
+    async def export(self, export_directory: Path, namespaces: List[str], branch: str) -> None:
+        node_file = export_directory / "nodes.json"
         if node_file.exists():
             raise FileAlreadyExistsError(f"{node_file.absolute()} already exists")
         if set(namespaces) & illegal_namespaces:
