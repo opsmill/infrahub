@@ -71,7 +71,6 @@ class BaseClient:
 
     def __init__(
         self,
-        mode: InfrahubClientMode = InfrahubClientMode.DEFAULT,
         address: str = "",
         retry_on_failure: bool = False,
         retry_delay: int = 5,
@@ -83,7 +82,6 @@ class BaseClient:
         config: Optional[Union[Config, Dict[str, Any]]] = None,
         identifier: Optional[str] = None,
     ):
-        self.mode = mode
         self.client = None
         self.retry_on_failure = retry_on_failure
         self.retry_delay = retry_delay
@@ -103,6 +101,7 @@ class BaseClient:
         self.default_timeout = self.config.timeout
         self.config.address = address or self.config.address
         self.address = self.config.address
+        self.mode = self.config.mode
 
         if self.config.api_token:
             self.headers["X-INFRAHUB-KEY"] = self.config.api_token

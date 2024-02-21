@@ -5,6 +5,7 @@ try:
 except ImportError:
     import pydantic  # type: ignore[no-redef]
 
+from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.playback import JSONPlayback
 from infrahub_sdk.recorder import JSONRecorder, NoRecorder, Recorder, RecorderType
 from infrahub_sdk.types import AsyncRequester, RequesterTransport, SyncRequester
@@ -39,6 +40,7 @@ class Config(pydantic.BaseSettings):
         default=False,
         description="Indicates if the default Infrahub branch to target should come from the active branch in the local Git repository.",
     )
+    mode: InfrahubClientMode = pydantic.Field(InfrahubClientMode.DEFAULT, description="Default mode for the client")
     requester: Optional[AsyncRequester] = None
     timeout: int = pydantic.Field(default=10, description="Default connection timeout in seconds")
     transport: RequesterTransport = pydantic.Field(
