@@ -1050,7 +1050,7 @@ async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_grou
 async def car_person_schema_global(
     db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema
 ) -> None:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Car",
@@ -1144,7 +1144,7 @@ async def car_person_data_generic(db: InfrahubDatabase, register_core_models_sch
 
 @pytest.fixture
 async def car_person_manufacturer_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Car",
@@ -1198,7 +1198,7 @@ async def car_person_manufacturer_schema(db: InfrahubDatabase, default_branch: B
 async def car_person_schema_generics(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, data_schema
 ) -> SchemaRoot:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "generics": [
             {
                 "name": "Car",
@@ -1615,7 +1615,7 @@ async def group_group2_subscribers_main(
 async def all_attribute_types_schema(
     db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema
 ) -> NodeSchema:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "AllAttributeTypes",
         "namespace": "Test",
         "branch": BranchSupportType.AWARE.value,
@@ -1637,7 +1637,7 @@ async def all_attribute_types_schema(
 
 @pytest.fixture
 async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema) -> NodeSchema:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "Criticality",
         "namespace": "Test",
         "default_filter": "name__value",
@@ -1699,7 +1699,7 @@ async def criticality_high(db: InfrahubDatabase, default_branch: Branch, critica
 
 @pytest.fixture
 async def generic_vehicule_schema(db: InfrahubDatabase, default_branch: Branch) -> GenericSchema:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "Vehicule",
         "namespace": "Test",
         "attributes": [
@@ -1716,7 +1716,7 @@ async def generic_vehicule_schema(db: InfrahubDatabase, default_branch: Branch) 
 
 @pytest.fixture
 async def car_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, data_schema) -> NodeSchema:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "Car",
         "namespace": "Test",
         "inherit_from": ["TestVehicule"],
@@ -1734,7 +1734,7 @@ async def car_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehic
 
 @pytest.fixture
 async def motorcycle_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "Motorcycle",
         "namespace": "Test",
         "attributes": [
@@ -1752,7 +1752,7 @@ async def motorcycle_schema(db: InfrahubDatabase, default_branch: Branch, generi
 
 @pytest.fixture
 async def truck_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "Truck",
         "namespace": "Test",
         "attributes": [
@@ -1772,7 +1772,7 @@ async def truck_schema(db: InfrahubDatabase, default_branch: Branch, generic_veh
 async def boat_schema(
     db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, person_schema
 ) -> NodeSchema:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "Boat",
         "namespace": "Test",
         "inherit_from": ["TestVehicule"],
@@ -1793,7 +1793,7 @@ async def boat_schema(
 
 @pytest.fixture
 async def person_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "Person",
         "namespace": "Test",
         "default_filter": "name__value",
