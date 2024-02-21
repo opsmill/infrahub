@@ -419,7 +419,8 @@ def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional
     except ValidationError as err:
         print(f"Configuration not valid, found {len(err.errors())} error(s)")
         for error in err.errors():
-            print(f"  {'/'.join(error['loc'])} | {error['msg']} ({error['type']})")
+            error_locations = [str(location) for location in error["loc"]]
+            print(f"  {'/'.join(error_locations)} | {error['msg']} ({error['type']})")
         sys.exit(1)
 
 
