@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from graphql import graphql
 
@@ -18,6 +20,8 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
 from infrahub.test_data.dataset04 import load_data
+
+NBR_WARMUP = int(os.getenv("INFRAHUB_BENCHMARK_NBR_WARMUP", 5))
 
 
 @pytest.fixture(scope="module")
@@ -51,7 +55,7 @@ async def dataset04(db: InfrahubDatabase, default_branch, register_default_schem
     await load_data(db=db, nbr_query=250)
 
 
-def test_query_one_model(aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
+def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
     query = """
     query {
         CoreGraphQLQuery {
@@ -73,6 +77,16 @@ def test_query_one_model(aio_benchmark, db: InfrahubDatabase, default_branch: Br
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
 
+    for _ in range(0, NBR_WARMUP):
+        exec_async(
+            graphql,
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+
     aio_benchmark(
         graphql,
         schema=gql_params.schema,
@@ -83,7 +97,7 @@ def test_query_one_model(aio_benchmark, db: InfrahubDatabase, default_branch: Br
     )
 
 
-def test_query_rel_many(aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
+def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
     query = """
     query {
         CoreGraphQLQuery {
@@ -112,6 +126,17 @@ def test_query_rel_many(aio_benchmark, db: InfrahubDatabase, default_branch: Bra
     gql_params = prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
+
+    for _ in range(0, NBR_WARMUP):
+        exec_async(
+            graphql,
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+
     aio_benchmark(
         graphql,
         schema=gql_params.schema,
@@ -122,7 +147,7 @@ def test_query_rel_many(aio_benchmark, db: InfrahubDatabase, default_branch: Bra
     )
 
 
-def test_query_rel_one(aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
+def test_query_rel_one(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
     query = """
     query {
         CoreGraphQLQuery {
@@ -151,6 +176,17 @@ def test_query_rel_one(aio_benchmark, db: InfrahubDatabase, default_branch: Bran
     gql_params = prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
+
+    for _ in range(0, NBR_WARMUP):
+        exec_async(
+            graphql,
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+
     aio_benchmark(
         graphql,
         schema=gql_params.schema,
