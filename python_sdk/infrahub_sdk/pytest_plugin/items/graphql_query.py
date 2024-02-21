@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from httpx import HTTPStatusError
 
-from ..exceptions import OutputMatchException
+from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
+
+from ..exceptions import OutputMatchError
 from ..models import InfrahubTestExpectedResult
 from .base import InfrahubItem
 
@@ -13,7 +15,7 @@ if TYPE_CHECKING:
     from pytest import ExceptionInfo
 
 
-class InfrahubGraphqlQueryItem(InfrahubItem):
+class InfrahubGraphQLQueryItem(InfrahubItem):
     def execute_query(self) -> Any:
         return self.session.infrahub_client.query_gql_query(  # type: ignore[attr-defined]
             self.test.spec.query,  # type: ignore[union-attr]
@@ -35,16 +37,22 @@ class InfrahubGraphqlQueryItem(InfrahubItem):
                 ]
             )
 
-        if isinstance(excinfo.value, OutputMatchException):
+        if isinstance(excinfo.value, OutputMatchError):
             return "\n".join([excinfo.value.message, excinfo.value.differences])
 
         return super().repr_failure(excinfo, style=style)
 
 
-class InfrahubGraphqlQueryIntegrationItem(InfrahubGraphqlQueryItem):
+class InfrahubGraphQLQuerySmokeItem(InfrahubGraphQLQueryItem):
+    def runtest(self) -> None:
+        query = self.test.spec.path.read_text()  # type: ignore[attr-defined,union-attr]
+        GraphQLQueryAnalyzer(query)
+
+
+class InfrahubGraphQLQueryIntegrationItem(InfrahubGraphQLQueryItem):
     def runtest(self) -> None:
         computed = self.execute_query()
         differences = self.get_result_differences(computed)
 
-        if self.test.spec.output and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
-            raise OutputMatchException(name=self.name, differences=differences)
+        if self.test.spec.output and differences and self.test.expect == InfrahubTestExpectedResult.PASS:  # type: ignore[union-attr]
+            raise OutputMatchError(name=self.name, differences=differences)

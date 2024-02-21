@@ -25,10 +25,14 @@ class InfrahubTestResource(str, Enum):
     CHECK = "Check"
     JINJA2_TRANSFORM = "Jinja2Transform"
     PYTHON_TRANSFORM = "PythonTransform"
-    GRAPHQL_QUERY = "GraphqlQuery"
+    GRAPHQL_QUERY = "GraphQLQuery"
 
 
-class InfrahubInputOutputTest(pydantic.BaseModel):
+class InfrahubBaseTest(pydantic.BaseModel):
+    """Basic Infrahub test model used as a common ground for all tests."""
+
+
+class InfrahubInputOutputTest(InfrahubBaseTest):
     directory: Optional[Path] = pydantic.Field(
         None, description="Path to the directory where the input and output files are located"
     )
@@ -124,6 +128,10 @@ class InfrahubIntegrationTest(InfrahubInputOutputTest):
         return self.parse_user_provided_data(self.variables)
 
 
+class InfrahubCheckSmokeTest(InfrahubBaseTest):
+    kind: Literal["check-smoke"]
+
+
 class InfrahubCheckUnitProcessTest(InfrahubInputOutputTest):
     kind: Literal["check-unit-process"]
 
@@ -132,9 +140,18 @@ class InfrahubCheckIntegrationTest(InfrahubIntegrationTest):
     kind: Literal["check-integration"]
 
 
-class InfrahubGraphqlQueryIntegrationTest(InfrahubIntegrationTest):
+class InfrahubGraphQLQuerySmokeTest(InfrahubBaseTest):
+    kind: Literal["graphql-query-smoke"]
+    path: Path = pydantic.Field(description="Path to the file in which the GraphQL query is defined")
+
+
+class InfrahubGraphQLQueryIntegrationTest(InfrahubIntegrationTest):
     kind: Literal["graphql-query-integration"]
     query: str = pydantic.Field(description="Name of a pre-defined GraphQL query to execute")
+
+
+class InfrahubJinja2TransformSmokeTest(InfrahubBaseTest):
+    kind: Literal["jinja2-transform-smoke"]
 
 
 class InfrahubJinja2TransformUnitRenderTest(InfrahubInputOutputTest):
@@ -143,6 +160,10 @@ class InfrahubJinja2TransformUnitRenderTest(InfrahubInputOutputTest):
 
 class InfrahubJinja2TransformIntegrationTest(InfrahubIntegrationTest):
     kind: Literal["jinja2-transform-integration"]
+
+
+class InfrahubPythonTransformSmokeTest(InfrahubBaseTest):
+    kind: Literal["python-transform-smoke"]
 
 
 class InfrahubPythonTransformUnitProcessTest(InfrahubInputOutputTest):
@@ -155,13 +176,20 @@ class InfrahubPythonTransformIntegrationTest(InfrahubIntegrationTest):
 
 class InfrahubTest(pydantic.BaseModel):
     name: str = pydantic.Field(..., description="Name of the test, must be unique")
-    expect: InfrahubTestExpectedResult
+    expect: InfrahubTestExpectedResult = pydantic.Field(
+        InfrahubTestExpectedResult.PASS,
+        description="Expected outcome of the test, can be either PASS (default) or FAIL",
+    )
     spec: Union[
+        InfrahubCheckSmokeTest,
         InfrahubCheckUnitProcessTest,
         InfrahubCheckIntegrationTest,
-        InfrahubGraphqlQueryIntegrationTest,
+        InfrahubGraphQLQuerySmokeTest,
+        InfrahubGraphQLQueryIntegrationTest,
+        InfrahubJinja2TransformSmokeTest,
         InfrahubJinja2TransformUnitRenderTest,
         InfrahubJinja2TransformIntegrationTest,
+        InfrahubPythonTransformSmokeTest,
         InfrahubPythonTransformUnitProcessTest,
         InfrahubPythonTransformIntegrationTest,
     ] = pydantic.Field(..., discriminator="kind")

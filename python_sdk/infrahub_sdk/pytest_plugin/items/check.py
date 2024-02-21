@@ -35,10 +35,6 @@ class InfrahubCheckItem(InfrahubItem):
             search_path=self.session.infrahub_config_path.parent,  # type: ignore[attr-defined]
         )
 
-        for attr in ("query", "validate"):
-            if not hasattr(self.check_instance, attr):
-                raise CheckDefinitionError(f"Missing attribute or function {attr}")
-
     def run_check(self, variables: Dict[str, Any]) -> Any:
         return asyncio.run(self.check_instance.run(data=variables))
 
@@ -59,9 +55,16 @@ class InfrahubCheckItem(InfrahubItem):
         return super().repr_failure(excinfo, style=style)
 
 
+class InfrahubCheckSmokeItem(InfrahubCheckItem):
+    def runtest(self) -> None:
+        for attr in ("query", "validate"):
+            if not hasattr(self.check_instance, attr):
+                raise CheckDefinitionError(f"Missing attribute or function {attr}")
+
+
 class InfrahubCheckUnitProcessItem(InfrahubCheckItem):
     def runtest(self) -> None:
-        input_data = self.test.spec.get_input_data()
+        input_data = self.test.spec.get_input_data()  # type: ignore[union-attr]
         passed = self.run_check(input_data)
 
         if not passed and self.test.expect == InfrahubTestExpectedResult.PASS:

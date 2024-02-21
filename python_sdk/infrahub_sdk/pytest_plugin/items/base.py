@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 import pytest
 from git.exc import InvalidGitRepositoryError
 
+from ..models import InfrahubInputOutputTest
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -28,15 +30,22 @@ class InfrahubItem(pytest.Item):
 
         self.resource_name: str = resource_name
         self.resource_config: InfrahubRepositoryConfigElement = resource_config
-        test.spec.update_paths(base_dir=self.fspath.dirpath())
         self.test: InfrahubTest = test
+
+        # Smoke tests do not need this, hence this clause
+        if isinstance(self.test.spec, InfrahubInputOutputTest):
+            self.test.spec.update_paths(base_dir=self.fspath.dirpath())
 
     def get_result_differences(self, computed: Any) -> Optional[str]:
         """Compute the differences between the computed result and the expected one.
 
         If the results are not JSON parsable, this method must be redefined to handle them.
         """
-        if not self.test.spec.output or computed is None:
+        # We cannot compute a diff if:
+        # 1. Test is not an input/output one
+        # 2. Expected output is not provided
+        # 3. Output can't be computed
+        if not isinstance(self.test.spec, InfrahubInputOutputTest) or not self.test.spec.output or computed is None:
             return None
 
         expected = self.test.spec.get_output_data()

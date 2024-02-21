@@ -8,7 +8,7 @@ from httpx import HTTPStatusError
 
 from infrahub_sdk.transforms import get_transform_class_instance
 
-from ..exceptions import OutputMatchException, PythonTransformDefinitionError
+from ..exceptions import OutputMatchError, PythonTransformDefinitionError
 from ..models import InfrahubTestExpectedResult
 from .base import InfrahubItem
 
@@ -35,10 +35,6 @@ class InfrahubPythonTransformItem(InfrahubItem):
             search_path=self.session.infrahub_config_path.parent,  # type: ignore[attr-defined]
         )
 
-        for attr in ("query", "transform"):
-            if not hasattr(self.transform_instance, attr):
-                raise PythonTransformDefinitionError(f"Missing attribute or function {attr}")
-
     def run_transform(self, variables: Dict[str, Any]) -> Any:
         return asyncio.run(self.transform_instance.run(data=variables))
 
@@ -56,20 +52,27 @@ class InfrahubPythonTransformItem(InfrahubItem):
                 ]
             )
 
-        if isinstance(excinfo.value, OutputMatchException):
+        if isinstance(excinfo.value, OutputMatchError):
             return "\n".join([excinfo.value.message, excinfo.value.differences])
 
         return super().repr_failure(excinfo, style=style)
 
 
+class InfrahubPythonTransformSmokeItem(InfrahubPythonTransformItem):
+    def runtest(self) -> None:
+        for attr in ("query", "transform"):
+            if not hasattr(self.transform_instance, attr):
+                raise PythonTransformDefinitionError(f"Missing attribute or function {attr}")
+
+
 class InfrahubPythonTransformUnitProcessItem(InfrahubPythonTransformItem):
     def runtest(self) -> None:
-        input_data = self.test.spec.get_input_data()
+        input_data = self.test.spec.get_input_data()  # type: ignore[union-attr]
         computed = self.run_transform(input_data)
         differences = self.get_result_differences(computed)
 
         if computed is not None and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
-            raise OutputMatchException(name=self.name, message=differences)
+            raise OutputMatchError(name=self.name, message=differences)
 
 
 class InfrahubPythonTransformIntegrationItem(InfrahubPythonTransformItem):
@@ -83,4 +86,4 @@ class InfrahubPythonTransformIntegrationItem(InfrahubPythonTransformItem):
         differences = self.get_result_differences(computed)
 
         if computed is not None and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
-            raise OutputMatchException(name=self.name, message=differences)
+            raise OutputMatchError(name=self.name, message=differences)

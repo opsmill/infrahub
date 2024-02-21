@@ -10,7 +10,7 @@ from infrahub.core.timestamp import Timestamp
 
 OUTCOME_TO_CONCLUSION_MAP = {"passed": "success", "failed": "failure", "skipped": "failure"}
 OUTCOME_TO_SEVERITY_MAP = {"passed": "success", "failed": "error", "skipped": "warning"}
-ORDER_TYPE_MAP = {"infrahub_sanity": 0, "infrahub_unit": 1, "infrahub_integration": 2}
+ORDER_TYPE_MAP = {"infrahub_smoke": 0, "infrahub_unit": 1, "infrahub_integration": 2}
 ORDER_ITEM_MAP = {
     "infrahub_check": 0,
     "infrahub_graphql_query": 1,
@@ -56,7 +56,7 @@ class InfrahubBackendPlugin:
         """This function is called after item collection and gives the opportunity to work on the collection before sending the items for testing.
 
         All items without an "infrahub" marker will be discarded. Items will also be re-ordered to be run in a specific order:
-        1. Sanity tests
+        1. Smoke tests
         2. Unit tests
         3. Integration tests
 

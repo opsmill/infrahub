@@ -10,22 +10,27 @@ from rich.console import Console
 from rich.traceback import Traceback
 
 from ...utils import identify_faulty_jinja_code
-from ..exceptions import Jinja2TransformException, Jinja2TransformUndefinedError, OutputMatchException
-from ..models import InfrahubTestExpectedResult
+from ..exceptions import Jinja2TransformError, Jinja2TransformUndefinedError, OutputMatchError
+from ..models import InfrahubInputOutputTest, InfrahubTestExpectedResult
 from .base import InfrahubItem
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from pytest import ExceptionInfo
 
 
 class InfrahubJinja2Item(InfrahubItem):
-    def render_jinja2_template(self, variables: Dict[str, Any]) -> Optional[str]:
+    def get_jinja2_environment(self) -> jinja2.Environment:
         loader = jinja2.FileSystemLoader(self.session.infrahub_config_path.parent)  # type: ignore[attr-defined]
-        env = jinja2.Environment(loader=loader, trim_blocks=True, lstrip_blocks=True)
-        template = env.get_template(str(self.resource_config.template_path))  # type: ignore[attr-defined]
+        return jinja2.Environment(loader=loader, trim_blocks=True, lstrip_blocks=True)
 
+    def get_jinja2_template(self) -> jinja2.Template:
+        return self.get_jinja2_environment().get_template(str(self.resource_config.template_path))  # type: ignore[attr-defined]
+
+    def render_jinja2_template(self, variables: Dict[str, Any]) -> Optional[str]:
         try:
-            return template.render(**variables)
+            return self.get_jinja2_template().render(**variables)
         except jinja2.UndefinedError as exc:
             traceback = Traceback(show_locals=False)
             errors = identify_faulty_jinja_code(traceback=traceback)
@@ -44,7 +49,7 @@ class InfrahubJinja2Item(InfrahubItem):
             return None
 
     def get_result_differences(self, computed: Any) -> Optional[str]:
-        if not self.test.spec.output or computed is None:
+        if not isinstance(self.test.spec, InfrahubInputOutputTest) or not self.test.spec.output or computed is None:
             return None
 
         differences = difflib.unified_diff(
@@ -73,22 +78,28 @@ class InfrahubJinja2Item(InfrahubItem):
         if isinstance(excinfo.value, jinja2.TemplateSyntaxError):
             return "\n".join(["Syntax error detected in the template", excinfo.value.message or ""])
 
-        if isinstance(excinfo.value, OutputMatchException):
+        if isinstance(excinfo.value, OutputMatchError):
             return "\n".join([excinfo.value.message, excinfo.value.differences])
 
         return super().repr_failure(excinfo, style=style)
 
 
+class InfrahubJinja2TransformSmokeItem(InfrahubJinja2Item):
+    def runtest(self) -> None:
+        file_path: Path = self.resource_config.template_path  # type: ignore[attr-defined]
+        self.get_jinja2_environment().parse(file_path.read_text(), filename=file_path.name)
+
+
 class InfrahubJinja2TransformUnitRenderItem(InfrahubJinja2Item):
     def runtest(self) -> None:
-        computed = self.render_jinja2_template(self.test.spec.get_input_data())
+        computed = self.render_jinja2_template(self.test.spec.get_input_data())  # type: ignore[union-attr]
         differences = self.get_result_differences(computed)
 
         if computed is not None and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
-            raise OutputMatchException(name=self.name, differences=differences)
+            raise OutputMatchError(name=self.name, differences=differences)
 
     def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
-        if isinstance(excinfo.value, (Jinja2TransformUndefinedError, Jinja2TransformException)):
+        if isinstance(excinfo.value, (Jinja2TransformUndefinedError, Jinja2TransformError)):
             return excinfo.value.message
 
         return super().repr_failure(excinfo, style=style)
@@ -105,4 +116,4 @@ class InfrahubJinja2TransformIntegrationItem(InfrahubJinja2Item):
         differences = self.get_result_differences(computed)
 
         if computed is not None and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
-            raise OutputMatchException(name=self.name, differences=differences)
+            raise OutputMatchError(name=self.name, differences=differences)
