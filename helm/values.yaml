@@ -71,6 +71,8 @@ infrahubGit:
 # ----------- Infrahub Server -----------
 infrahubServer:
   type: ClusterIP
+  ingress:
+    hostname: infrahub-cluster.local
   infrahubServer:
     args:
       - gunicorn
