@@ -20,25 +20,13 @@ spec:
     spec:
       containers:
         - args: {{- toYaml .Values.infrahubServer.infrahubServer.args | nindent 12 }}
+          {{- with .Values.infrahubServer.infrahubServer.env }}
           env:
-            - name: INFRAHUB_ALLOW_ANONYMOUS_ACCESS
-              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubAllowAnonymousAccess }}
-            - name: INFRAHUB_CACHE_PORT
-              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubCachePort }}
-            - name: INFRAHUB_CONFIG
-              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubConfig }}
-            - name: INFRAHUB_DB_TYPE
-              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubDbType }}
-            - name: INFRAHUB_LOG_LEVEL
-              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubLogLevel }}
-            - name: INFRAHUB_PRODUCTION
-              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubProduction }}
-            - name: INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN
-              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubSecurityInitialAdminToken }}
-            - name: INFRAHUB_SECURITY_SECRET_KEY
-              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubSecuritySecretKey }}
-            - name: KUBERNETES_CLUSTER_DOMAIN
-              value: {{ quote .Values.global.kubernetesClusterDomain }}
+            {{- range $key, $value := . }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
           image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
           imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.messageQueue.messageQueue.imagePullPolicy }}
           livenessProbe:

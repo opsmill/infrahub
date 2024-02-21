@@ -24,7 +24,7 @@ spec:
             - name: INFRAHUB_ADDRESS
               value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubAddress }}
             - name: INFRAHUB_CACHE_PORT
-              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubCachePort }}
+              value: {{ quote .Values.infrahubServer.infrahubServer.env.INFRAHUB_CACHE_PORT }}
             - name: INFRAHUB_CONFIG
               value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubConfig }}
             - name: INFRAHUB_DB_TYPE
