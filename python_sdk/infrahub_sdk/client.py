@@ -9,6 +9,7 @@ from time import sleep
 from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
 
 import httpx
+from typing_extensions import Self
 from typing_extensions import TypedDict as ExtensionTypedDict
 
 from infrahub_sdk.batch import InfrahubBatch
@@ -18,6 +19,7 @@ from infrahub_sdk.branch import (
     InfrahubBranchManagerSync,
 )
 from infrahub_sdk.config import Config
+from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.data import RepositoryData
 from infrahub_sdk.exceptions import (
     AuthenticationError,
@@ -99,6 +101,7 @@ class BaseClient:
         self.default_timeout = self.config.timeout
         self.config.address = address or self.config.address
         self.address = self.config.address
+        self.mode = self.config.mode
 
         if self.config.api_token:
             self.headers["X-INFRAHUB-KEY"] = self.config.api_token
@@ -122,6 +125,26 @@ class BaseClient:
             if variables:
                 print(f"VARIABLES:\n{json.dumps(variables, indent=4)}\n")
 
+    def start_tracking(
+        self,
+        identifier: Optional[str] = None,
+        params: Optional[Dict[str, Any]] = None,
+        delete_unused_nodes: bool = False,
+    ) -> Self:
+        self.mode = InfrahubClientMode.TRACKING
+        identifier = identifier or self.identifier or "python-sdk"
+        self.set_context_properties(identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes)
+        return self
+
+    def set_context_properties(
+        self,
+        identifier: str,
+        params: Optional[Dict[str, str]] = None,
+        delete_unused_nodes: bool = True,
+        reset: bool = True,
+    ) -> None:
+        raise NotImplementedError()
+
 
 class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     """GraphQL Client to interact with Infrahub."""
@@ -139,8 +162,16 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     async def init(cls, *args: Any, **kwargs: Any) -> InfrahubClient:
         return cls(*args, **kwargs)
 
-    async def set_context_properties(self, identifier: str, params: Optional[Dict[str, str]] = None) -> None:
-        self.group_context.set_properties(identifier=identifier, params=params)
+    def set_context_properties(
+        self,
+        identifier: str,
+        params: Optional[Dict[str, str]] = None,
+        delete_unused_nodes: bool = True,
+        reset: bool = True,
+    ) -> None:
+        if reset:
+            self.group_context = InfrahubGroupContext(self)  # pylint: disable=attribute-defined-outside-init
+        self.group_context.set_properties(identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes)
 
     async def create(
         self,
@@ -156,6 +187,13 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             raise ValueError("Either data or a list of keywords but be provided")
 
         return InfrahubNode(client=self, schema=schema, branch=branch, data=data or kwargs)
+
+    async def delete(self, kind: str, id: str, branch: Optional[str] = None) -> None:
+        branch = branch or self.default_branch
+        schema = await self.schema.get(kind=kind, branch=branch)
+
+        node = InfrahubNode(client=self, schema=schema, branch=branch, data={"id": id})
+        await node.delete()
 
     async def get(
         self,
@@ -708,7 +746,10 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     async def __aexit__(
         self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType
     ) -> None:  # pylint: disable=unused-argument
-        await self.group_context.update_group()
+        if exc_type is None and self.mode == InfrahubClientMode.TRACKING:
+            await self.group_context.update_group()
+
+        self.mode = InfrahubClientMode.DEFAULT
 
 
 class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
@@ -724,8 +765,16 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
     def init(cls, *args: Any, **kwargs: Any) -> InfrahubClientSync:
         return cls(*args, **kwargs)
 
-    def set_context_properties(self, identifier: str, params: Optional[Dict[str, str]] = None) -> None:
-        self.group_context.set_properties(identifier=identifier, params=params)
+    def set_context_properties(
+        self,
+        identifier: str,
+        params: Optional[Dict[str, str]] = None,
+        delete_unused_nodes: bool = True,
+        reset: bool = True,
+    ) -> None:
+        if reset:
+            self.group_context = InfrahubGroupContextSync(self)  # pylint: disable=attribute-defined-outside-init
+        self.group_context.set_properties(identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes)
 
     def create(
         self,
@@ -741,6 +790,13 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             raise ValueError("Either data or a list of keywords but be provided")
 
         return InfrahubNodeSync(client=self, schema=schema, branch=branch, data=data or kwargs)
+
+    def delete(self, kind: str, id: str, branch: Optional[str] = None) -> None:
+        branch = branch or self.default_branch
+        schema = self.schema.get(kind=kind, branch=branch)
+
+        node = InfrahubNodeSync(client=self, schema=schema, branch=branch, data={"id": id})
+        node.delete()
 
     def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:
         raise NotImplementedError("This method hasn't been implemented in the sync client yet.")
@@ -1255,4 +1311,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         return self
 
     def __exit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType) -> None:  # pylint: disable=unused-argument
-        self.group_context.update_group()
+        if exc_type is None and self.mode == InfrahubClientMode.TRACKING:
+            self.group_context.update_group()
+
+        self.mode = InfrahubClientMode.DEFAULT

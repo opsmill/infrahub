@@ -4,6 +4,7 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
 from infrahub_sdk import Config, InfrahubClientSync
+from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.exceptions import BranchNotFound
 from infrahub_sdk.node import InfrahubNodeSync
 from infrahub_sdk.schema import SchemaRoot
@@ -164,3 +165,70 @@ class TestInfrahubClientSync:
         assert repo.transformations.peers == []  # type: ignore[attr-defined]
         repo.transformations.fetch()  # type: ignore[attr-defined]
         assert len(repo.transformations.peers) == 2  # type: ignore[attr-defined]
+
+    def test_tracking_mode(self, client: InfrahubClientSync, db: InfrahubDatabase, init_db_base, base_dataset):
+        tag_names = ["BLUE", "RED", "YELLOW"]
+        orgname = "Acme"
+
+        def create_org_with_tag(clt: InfrahubClientSync, nbr_tags: int):
+            tags = []
+            for idx in range(0, nbr_tags):
+                obj = clt.create(kind="BuiltinTag", name=f"tracking-{tag_names[idx]}")
+                obj.save(allow_upsert=True)
+                tags.append(obj)
+
+            org = clt.create(kind="CoreOrganization", name=orgname, tags=tags)
+            org.save(allow_upsert=True)
+
+        # First execution, we create one org with 3 tags
+        nbr_tags = 3
+        with client.start_tracking(params={"orgname": orgname}, delete_unused_nodes=True) as clt:
+            create_org_with_tag(clt=clt, nbr_tags=nbr_tags)
+
+        assert client.mode == InfrahubClientMode.DEFAULT
+        group = client.get(
+            kind="CoreStandardGroup", name__value=client.group_context._generate_group_name(), include=["members"]
+        )
+        assert len(group.members.peers) == 4
+        tags = client.all(kind="BuiltinTag")
+        assert len(tags) == 3
+
+        # Second execution, we create one org with 2 tags but we don't delete the third one
+        nbr_tags = 2
+        with client.start_tracking(params={"orgname": orgname}, delete_unused_nodes=False) as clt:
+            create_org_with_tag(clt=clt, nbr_tags=nbr_tags)
+
+        assert client.mode == InfrahubClientMode.DEFAULT
+        group = client.get(
+            kind="CoreStandardGroup", name__value=client.group_context._generate_group_name(), include=["members"]
+        )
+        assert len(group.members.peers) == 3
+        tags = client.all(kind="BuiltinTag")
+        assert len(tags) == 3
+
+        # Third execution, we create one org with 1 tag and we delete the second one
+        nbr_tags = 1
+        with client.start_tracking(params={"orgname": orgname}, delete_unused_nodes=True) as clt:
+            create_org_with_tag(clt=clt, nbr_tags=nbr_tags)
+
+        assert client.mode == InfrahubClientMode.DEFAULT
+        group = client.get(
+            kind="CoreStandardGroup", name__value=client.group_context._generate_group_name(), include=["members"]
+        )
+        assert len(group.members.peers) == 2
+
+        tags = client.all(kind="BuiltinTag")
+        assert len(tags) == 2
+
+        # Forth one, validate that the group will not be updated if there is an exception
+        nbr_tags = 3
+        with pytest.raises(ValueError):
+            with client.start_tracking(params={"orgname": orgname}, delete_unused_nodes=True) as clt:
+                create_org_with_tag(clt=clt, nbr_tags=nbr_tags)
+                raise ValueError("something happened")
+
+        assert client.mode == InfrahubClientMode.DEFAULT
+        group = client.get(
+            kind="CoreStandardGroup", name__value=client.group_context._generate_group_name(), include=["members"]
+        )
+        assert len(group.members.peers) == 2

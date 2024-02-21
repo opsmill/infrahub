@@ -211,6 +211,9 @@ class AttributeSchema(pydantic.BaseModel):
     read_only: bool = False
     choices: Optional[List[Dict[str, str]]] = None
     enum: Optional[List[Union[str, int]]] = None
+    max_length: Optional[int] = None
+    min_length: Optional[int] = None
+    regex: Optional[str] = None
 
 
 class RelationshipSchema(pydantic.BaseModel):
