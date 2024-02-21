@@ -281,11 +281,13 @@ class SchemaBranch:
         except SchemaNotFound:
             return False
 
-    def get_all(self, include_internal: bool = False) -> Dict[str, Union[NodeSchema, GenericSchema]]:
-        """Retrive everything in a single dictionary."""
+    def get_all(
+        self, include_internal: bool = False, duplicate: bool = True
+    ) -> Dict[str, Union[NodeSchema, GenericSchema]]:
+        """Retrieve everything in a single dictionary."""
 
         return {
-            name: self.get(name=name)
+            name: self.get(name=name, duplicate=duplicate)
             for name in list(self.nodes.keys()) + list(self.generics.keys())
             if include_internal or name not in INTERNAL_SCHEMA_NODE_KINDS
         }
@@ -487,7 +489,11 @@ class SchemaBranch:
             for constraint_paths in node_schema.uniqueness_constraints:
                 for constraint_path in constraint_paths:
                     self._validate_attribute_path(
-                        node_schema, constraint_path, schema_map, schema_attribute_name="uniqueness_constraints", relationship_allowed=True
+                        node_schema,
+                        constraint_path,
+                        schema_map,
+                        schema_attribute_name="uniqueness_constraints",
+                        relationship_allowed=True,
                     )
 
     def validate_display_labels(self) -> None:

@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field
 
@@ -8,12 +8,14 @@ from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, Rel
 
 class QueryRelationshipAttributePath(BaseModel):
     identifier: str
-    attribute_name: Optional[str]
+    attribute_name: Optional[str] = Field(default=None)
+    value: Optional[Any] = Field(default=None)
 
 
 class QueryAttributePath(BaseModel):
     attribute_name: str
-    property_name: Optional[str]
+    property_name: Optional[str] = Field(default=None)
+    value: Optional[Any] = Field(default=None)
 
 
 class NodeUniquenessQueryRequest(BaseModel):

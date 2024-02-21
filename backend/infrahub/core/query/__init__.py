@@ -216,6 +216,12 @@ class QueryResult:
     def get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship]:
         return self._get(label=label)
 
+    def get_as_str(self, label: str) -> Optional[str]:
+        item = self._get(label=label)
+        if item:
+            return str(item)
+        return None
+
     def get_node_collection(self, label: str) -> List[Neo4jNode]:
         entry = self._get(label=label)
         if isinstance(entry, list):
