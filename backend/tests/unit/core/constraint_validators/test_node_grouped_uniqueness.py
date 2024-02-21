@@ -33,6 +33,14 @@ class TestNodeGroupedUniquenessConstraint:
         with pytest.raises(ValidationError, match="Violates uniqueness constraint 'name'"):
             await self.__call_system_under_test(db=db, branch=default_branch, node=car_accord_main)
 
+    async def test_uniqueness_constraint_filters(
+        self, db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+    ):
+        car_accord_main.name.value = "camry"
+        car_accord_main.get_schema().uniqueness_constraints = [["name"], ["owner", "color"], ["nbr_seats", "owner"]]
+
+        await self.__call_system_under_test(db=db, branch=default_branch, node=car_accord_main, filters=["color"])
+
     async def test_uniqueness_constraint_no_conflict_two_attribute(
         self,
         db: InfrahubDatabase,

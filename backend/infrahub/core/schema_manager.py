@@ -445,6 +445,7 @@ class SchemaBranch:
         path: str,
         schema_map_override: Dict[str, Union[NodeSchema, GenericSchema]],
         relationship_allowed: bool = False,
+        relationship_attribute_allowed: bool = False,
         schema_attribute_name: Optional[str] = None,
     ) -> SchemaAttributePath:
         error_header = f"{node_schema.kind}"
@@ -463,7 +464,7 @@ class SchemaBranch:
                     f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
                     " relationship must be of cardinality one"
                 )
-            if schema_attribute_path.attribute_schema:
+            if not relationship_attribute_allowed and schema_attribute_path.attribute_schema:
                 raise ValueError(
                     f"{error_header}: cannot use attributes of related node in constraint, only the relationship"
                 )
@@ -521,7 +522,12 @@ class SchemaBranch:
 
             for order_by_path in node_schema.order_by:
                 self._validate_attribute_path(
-                    node_schema, order_by_path, schema_map, relationship_allowed=True, schema_attribute_name="order_by"
+                    node_schema,
+                    order_by_path,
+                    schema_map,
+                    relationship_allowed=True,
+                    relationship_attribute_allowed=True,
+                    schema_attribute_name="order_by",
                 )
 
     def validate_default_filters(self) -> None:

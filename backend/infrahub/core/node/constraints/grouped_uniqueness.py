@@ -90,14 +90,13 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
     ) -> NodeUniquenessQueryRequest:
         query_request = NodeUniquenessQueryRequest(kind=node_schema.kind)
         for path_group in path_groups:
+            include_in_query = not filters
             query_relationship_paths: List[QueryRelationshipAttributePath] = []
             query_attribute_paths: List[QueryAttributePath] = []
             for attribute_path in path_group:
-                include_in_query = True
                 if attribute_path.related_schema and attribute_path.relationship_schema:
-                    if filters and attribute_path.relationship_schema.name not in filters:
-                        include_in_query = False
-                        break
+                    if filters and attribute_path.relationship_schema.name in filters:
+                        include_in_query = True
                     query_relationship_paths.append(
                         QueryRelationshipAttributePath(
                             identifier=attribute_path.relationship_schema.get_identifier(),
@@ -105,9 +104,8 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                     )
                     continue
                 if attribute_path.attribute_schema:
-                    if filters and attribute_path.attribute_schema.name not in filters:
-                        include_in_query = False
-                        break
+                    if filters and attribute_path.attribute_schema.name in filters:
+                        include_in_query = True
                     attribute_name = attribute_path.attribute_schema.name
                     attribute_value = getattr(updated_node, attribute_name).value
                     query_attribute_paths.append(
