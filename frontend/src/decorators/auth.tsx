@@ -4,11 +4,11 @@ import { fetchUrl } from "../utils/fetch";
 import { CONFIG } from "../config/config";
 import { toast } from "react-toastify";
 import { Alert, ALERT_TYPES } from "../components/utils/alert";
-import { setTokens } from "./withAuth";
 import { Navigate, useLocation } from "react-router-dom";
 import { configState } from "../state/atoms/config.atom";
 import { useAtom } from "jotai/index";
 import { parseJwt } from "../utils/common";
+import { components } from "../infraops";
 
 type PermissionsType = {
   isAdmin: boolean;
@@ -22,6 +22,51 @@ type AuthContextType = {
   permissions?: PermissionsType;
   signIn: (data: any, callback?: () => void) => void;
   signOut: (callback?: () => void) => void;
+};
+
+export const saveTokensInLocalStorage = (result: any) => {
+  if (result?.access_token) {
+    localStorage.setItem(ACCESS_TOKEN_KEY, result?.access_token);
+  }
+
+  if (result?.refresh_token) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, result?.refresh_token);
+  }
+};
+
+export const removeTokensInLocalStorage = () => {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+};
+
+export const getNewToken = async () => {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+
+  if (!refreshToken) {
+    return;
+  }
+
+  const payload = {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${refreshToken}`,
+    },
+  };
+
+  const result: components["schemas"]["AccessTokenResponse"] = await fetchUrl(
+    CONFIG.AUTH_REFRESH_TOKEN_URL,
+    payload
+  );
+
+  if (!result?.access_token) {
+    removeTokensInLocalStorage();
+    window.location.reload();
+    return;
+  }
+
+  saveTokensInLocalStorage(result);
+
+  return result;
 };
 
 export const AuthContext = createContext<AuthContextType>(null!);
@@ -50,15 +95,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setAccessToken(result?.access_token);
-
-    setTokens(result);
-
+    saveTokensInLocalStorage(result);
     if (callback) callback();
   };
 
   const signOut = () => {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    removeTokensInLocalStorage();
     setAccessToken(null);
   };
 
