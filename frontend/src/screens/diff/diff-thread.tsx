@@ -9,7 +9,7 @@ import { SidePanelTitle } from "../../components/display/sidepanel-title";
 import SlideOver from "../../components/display/slide-over";
 import { Tooltip, TooltipPosition } from "../../components/utils/tooltip";
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "../../config/constants";
-import { AuthContext } from "../../decorators/withAuth";
+import { AuthContext } from "../../decorators/auth";
 import { getProposedChangesObjectThreads } from "../../graphql/queries/proposed-changes/getProposedChangesObjectThreads";
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";

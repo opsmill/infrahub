@@ -13,7 +13,7 @@ import {
   DEFAULT_BRANCH_NAME,
   PROPOSED_CHANGES_OBJECT,
 } from "../../config/constants";
-import { AuthContext } from "../../decorators/withAuth";
+import { AuthContext } from "../../decorators/auth";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";

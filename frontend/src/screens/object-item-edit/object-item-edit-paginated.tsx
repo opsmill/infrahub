@@ -4,7 +4,7 @@ import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
-import { AuthContext } from "../../decorators/withAuth";
+import { AuthContext } from "../../decorators/auth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";

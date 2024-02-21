@@ -3,7 +3,6 @@
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
-import { withAuth } from "../../../src/decorators/withAuth";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
 
 import { gql } from "@apollo/client";
@@ -42,6 +41,7 @@ import {
   taskMocksSchema as taskMocksSchema4,
 } from "../../mocks/data/task_4";
 import { TestProvider } from "../../mocks/jotai/atom";
+import { AuthProvider } from "../../../src/decorators/auth";
 
 // URL for the current view
 const mockedUrl = "/objects/TestTask";
@@ -103,7 +103,11 @@ const mocks: any[] = [
   },
 ];
 
-const AuthenticatedObjectItems = withAuth(ObjectItems);
+const AuthenticatedObjectItems = () => (
+  <AuthProvider>
+    <ObjectItems />
+  </AuthProvider>
+);
 
 describe("Object list", () => {
   beforeEach(function () {
@@ -150,7 +154,7 @@ describe("Object list", () => {
     );
 
     // Open edit panel
-    cy.get(".p-2").click();
+    cy.get("[data-cy='create']").click();
 
     // Save
     cy.get(".bg-custom-blue-700").click();
@@ -192,7 +196,7 @@ describe("Object list", () => {
     );
 
     // Open edit panel
-    cy.get(".p-2").click();
+    cy.get("[data-cy='create']").click();
 
     // Save
     cy.get(".bg-custom-blue-700").click();
@@ -232,7 +236,7 @@ describe("Object list", () => {
     );
 
     // Open edit panel
-    cy.get(".p-2").click();
+    cy.get("[data-cy='create']").click();
 
     // Save
     cy.get(".bg-custom-blue-700").click();
@@ -274,7 +278,7 @@ describe("Object list", () => {
     );
 
     // Open edit panel
-    cy.get(".p-2").click();
+    cy.get("[data-cy='create']").click();
 
     // Save
     cy.get(".bg-custom-blue-700").click();
@@ -316,7 +320,7 @@ describe("Object list", () => {
     );
 
     // Open edit panel
-    cy.get(".p-2").click();
+    cy.get("[data-cy='create']").click();
 
     // Save
     cy.get(".bg-custom-blue-700").click();
@@ -356,7 +360,7 @@ describe("Object list", () => {
     );
 
     // Open edit panel
-    cy.get(".p-2").click();
+    cy.get("[data-cy='create']").click();
 
     // Save
     cy.get(".bg-custom-blue-700").click();
@@ -396,7 +400,7 @@ describe("Object list", () => {
     );
 
     // Open edit panel
-    cy.get(".p-2").click();
+    cy.get("[data-cy='create']").click();
 
     // Type 0 as value
     cy.get("#Counter").type("0", { delay: 0, force: true });
@@ -441,7 +445,7 @@ describe("Object list", () => {
     );
 
     // Open edit panel
-    cy.get(".p-2").click();
+    cy.get("[data-cy='create']").click();
 
     // Save
     cy.get(".bg-custom-blue-700").click();
@@ -483,7 +487,7 @@ describe("Object list", () => {
     );
 
     // Open edit panel
-    cy.get(".p-2").click();
+    cy.get("[data-cy='create']").click();
 
     // Save
     cy.get(".bg-custom-blue-700").click();
@@ -523,7 +527,7 @@ describe("Object list", () => {
     );
 
     // Open edit panel
-    cy.get(".p-2").click();
+    cy.get("[data-cy='create']").click();
 
     // Save
     cy.get(".bg-custom-blue-700").click();

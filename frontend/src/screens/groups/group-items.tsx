@@ -10,7 +10,7 @@ import ModalDelete from "../../components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { Pagination } from "../../components/utils/pagination";
 import { GROUP_OBJECT } from "../../config/constants";
-import { AuthContext } from "../../decorators/withAuth";
+import { AuthContext } from "../../decorators/auth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getGroups } from "../../graphql/queries/groups/getGroups";

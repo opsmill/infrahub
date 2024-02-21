@@ -22,7 +22,7 @@ import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
-import { AuthContext } from "../../decorators/withAuth";
+import { AuthContext } from "../../decorators/auth";
 import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
 import UnlinkIcon from "../../images/icons/unlink.svg";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";

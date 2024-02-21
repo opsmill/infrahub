@@ -15,7 +15,7 @@ import ModalDelete from "../../components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { AuthContext } from "../../decorators/withAuth";
+import { AuthContext } from "../../decorators/auth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteBranch } from "../../graphql/mutations/branches/deleteBranch";
 import { mergeBranch } from "../../graphql/mutations/branches/mergeBranch";

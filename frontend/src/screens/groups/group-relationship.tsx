@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
@@ -13,7 +13,6 @@ import graphqlClient from "../../graphql/graphqlClientApollo";
 // import { ReactComponent as UnlinkIcon } from "../../images/icons/unlink.svg";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
-import { AuthContext } from "../../decorators/withAuth";
 import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
 import UnlinkIcon from "../../images/icons/unlink.svg";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
@@ -26,6 +25,7 @@ import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
+import { useAuth } from "../../decorators/auth";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -42,7 +42,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const { relationshipsData, relationshipSchema, refetch } = props;
 
   const { groupid } = useParams();
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
 
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);

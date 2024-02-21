@@ -6,7 +6,7 @@ import { useAtomValue } from "jotai/index";
 import { useContext } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
-import { AuthContext } from "../decorators/withAuth";
+import { AuthContext } from "../decorators/auth";
 import { Branch } from "../generated/graphql";
 import { BRANCH_CREATE } from "../graphql/mutations/branches/createBranch";
 import { DynamicFieldData } from "../screens/edit-form-hook/dynamic-control-types";

@@ -22,7 +22,7 @@ import {
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "../../../config/constants";
 import { QSP } from "../../../config/qsp";
-import { AuthContext } from "../../../decorators/withAuth";
+import { AuthContext } from "../../../decorators/auth";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { createObject } from "../../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";

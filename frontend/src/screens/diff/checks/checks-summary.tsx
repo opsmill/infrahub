@@ -12,7 +12,7 @@ import {
   VALIDATIONS_ENUM_MAP,
   VALIDATION_STATES,
 } from "../../../config/constants";
-import { AuthContext } from "../../../decorators/withAuth";
+import { AuthContext } from "../../../decorators/auth";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { runCheck } from "../../../graphql/mutations/diff/runCheck";
 import { genericsState } from "../../../state/atoms/schema.atom";

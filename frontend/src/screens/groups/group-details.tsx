@@ -19,7 +19,7 @@ import SlideOver from "../../components/display/slide-over";
 import { Tabs } from "../../components/tabs";
 import { DEFAULT_BRANCH_NAME, GROUP_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { AuthContext } from "../../decorators/withAuth";
+import { AuthContext } from "../../decorators/auth";
 import { getGroupDetails } from "../../graphql/queries/groups/getGroupDetails";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";

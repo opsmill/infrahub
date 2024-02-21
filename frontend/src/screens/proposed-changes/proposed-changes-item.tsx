@@ -13,7 +13,7 @@ import ModalDelete from "../../components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { Tooltip } from "../../components/utils/tooltip";
 import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
-import { AuthContext } from "../../decorators/withAuth";
+import { AuthContext } from "../../decorators/auth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";

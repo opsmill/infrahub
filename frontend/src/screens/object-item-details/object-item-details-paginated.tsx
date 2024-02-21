@@ -25,7 +25,7 @@ import {
   TASK_OBJECT,
 } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { AuthContext } from "../../decorators/withAuth";
+import { AuthContext } from "../../decorators/auth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";

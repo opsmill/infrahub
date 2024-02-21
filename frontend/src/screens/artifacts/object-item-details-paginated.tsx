@@ -15,7 +15,7 @@ import { Tabs } from "../../components/tabs";
 import { CONFIG } from "../../config/config";
 import { ARTIFACT_OBJECT, DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { AuthContext } from "../../decorators/withAuth";
+import { AuthContext } from "../../decorators/auth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";

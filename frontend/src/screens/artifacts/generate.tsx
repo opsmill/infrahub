@@ -7,7 +7,7 @@ import { BUTTON_TYPES, Button } from "../../components/buttons/button";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { CONFIG } from "../../config/config";
 import { QSP } from "../../config/qsp";
-import { AuthContext } from "../../decorators/withAuth";
+import { AuthContext } from "../../decorators/auth";
 import { classNames } from "../../utils/common";
 import { fetchUrl, getUrlWithQsp } from "../../utils/fetch";
 
