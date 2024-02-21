@@ -13,26 +13,6 @@ sync_client_methods = [method for method in dir(InfrahubClientSync) if not metho
 client_types = ["standard", "sync"]
 
 
-def replace_async_return_annotation(annotation: str) -> str:
-    """Allows for comparison between sync and async return annotations."""
-    replacements = {
-        "InfrahubClient": "InfrahubClientSync",
-        "InfrahubNode": "InfrahubNodeSync",
-        "List[InfrahubNode]": "List[InfrahubNodeSync]",
-    }
-    return replacements.get(annotation) or annotation
-
-
-def replace_sync_return_annotation(annotation: str) -> str:
-    """Allows for comparison between sync and async return annotations."""
-    replacements = {
-        "InfrahubClientSync": "InfrahubClient",
-        "InfrahubNodeSync": "InfrahubNode",
-        "List[InfrahubNodeSync]": "List[InfrahubNode]",
-    }
-    return replacements.get(annotation) or annotation
-
-
 async def test_method_sanity():
     """Validate that there is at least one public method and that both clients look the same."""
     assert async_client_methods
@@ -40,7 +20,7 @@ async def test_method_sanity():
 
 
 @pytest.mark.parametrize("method", async_client_methods)
-async def test_validate_method_signature(method):
+async def test_validate_method_signature(method, replace_async_return_annotation, replace_sync_return_annotation):
     async_method = getattr(InfrahubClient, method)
     sync_method = getattr(InfrahubClientSync, method)
     async_sig = inspect.signature(async_method)
@@ -394,7 +374,7 @@ QUERY:
         }
     }
     }
-    
+
 VARIABLES:
 {
     "name": "red"

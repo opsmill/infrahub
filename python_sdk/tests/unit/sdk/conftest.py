@@ -53,6 +53,38 @@ async def echo_clients(clients: BothClients) -> AsyncGenerator[BothClients, None
 
 
 @pytest.fixture
+def replace_async_return_annotation():
+    """Allows for comparison between sync and async return annotations."""
+
+    def replace_annotation(annotation: str) -> str:
+        replacements = {
+            "InfrahubClient": "InfrahubClientSync",
+            "InfrahubNode": "InfrahubNodeSync",
+            "List[InfrahubNode]": "List[InfrahubNodeSync]",
+            "Optional[InfrahubNode]": "Optional[InfrahubNodeSync]",
+        }
+        return replacements.get(annotation) or annotation
+
+    return replace_annotation
+
+
+@pytest.fixture
+def replace_sync_return_annotation() -> str:
+    """Allows for comparison between sync and async return annotations."""
+
+    def replace_annotation(annotation: str) -> str:
+        replacements = {
+            "InfrahubClientSync": "InfrahubClient",
+            "InfrahubNodeSync": "InfrahubNode",
+            "List[InfrahubNodeSync]": "List[InfrahubNode]",
+            "Optional[InfrahubNodeSync]": "Optional[InfrahubNode]",
+        }
+        return replacements.get(annotation) or annotation
+
+    return replace_annotation
+
+
+@pytest.fixture
 async def location_schema() -> NodeSchema:
     data = {
         "name": "Location",
