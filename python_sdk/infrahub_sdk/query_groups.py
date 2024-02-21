@@ -9,7 +9,7 @@ from infrahub_sdk.utils import dict_hash
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
-    from infrahub_sdk.node import InfrahubNode, InfrahubNodeSync, RelatedNode, RelatedNodeSync
+    from infrahub_sdk.node import InfrahubNode, InfrahubNodeSync, RelatedNodeBase
     from infrahub_sdk.schema import GenericSchema, NodeSchema
 
 
@@ -21,8 +21,8 @@ class InfrahubGroupContextBase:
         self.related_group_ids: List[str] = []
         self.unused_member_ids: Optional[List[str]] = None
         self.unused_child_ids: Optional[List[str]] = None
-        self.previous_members: Optional[List[Union[RelatedNode, RelatedNodeSync]]] = None
-        self.previous_children: Optional[List[Union[RelatedNode, RelatedNodeSync]]] = None
+        self.previous_members: Optional[List[RelatedNodeBase]] = None
+        self.previous_children: Optional[List[RelatedNodeBase]] = None
         self.identifier: Optional[str] = None
         self.params: Dict[str, str] = {}
         self.delete_unused_nodes: bool = False
@@ -38,13 +38,11 @@ class InfrahubGroupContextBase:
             params: A dictionary with new values for the params.
         """
         self.identifier = identifier
-        self.params = params if params is not None else {}
+        self.params = params or {}
         self.delete_unused_nodes = delete_unused_nodes
 
     def _get_params_as_str(self) -> str:
         """Convert the params in dict format, into a string"""
-        if not self.params:
-            raise ValueError("Params isn't defined")
         params_as_str: List[str] = []
         for key, value in self.params.items():
             params_as_str.append(f"{key}: {str(value)}")
@@ -62,7 +60,8 @@ class InfrahubGroupContextBase:
         return group_name
 
     def _generate_group_description(self, schema: Union[NodeSchema, GenericSchema]) -> str:
-        """Generate the description of the group from the params and ensure it's not longer tha"""
+        """Generate the description of the group from the params
+        and ensure it's not longer than the maximum length of the description field."""
         if not self.params:
             return ""
 
@@ -107,7 +106,7 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
                 if child.id in self.unused_child_ids and child.typename:
                     await self.client.delete(kind=child.typename, id=child.id)
 
-    async def add_related_nodes(self, ids: List[str], update_group_context: Optional[bool] = False) -> None:
+    async def add_related_nodes(self, ids: List[str], update_group_context: Optional[bool] = None) -> None:
         """
         Add related Nodes IDs to the context.
 
@@ -115,11 +114,12 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
             ids (List[str]): List of node IDs to be added.
             update_group_context (Optional[bool], optional): Flag to control whether to update the group context.
         """
-        combined_bool = self.client.update_group_context and update_group_context
-        if self.client.mode == InfrahubClientMode.TRACKING or combined_bool is True or combined_bool is None:
+        if update_group_context is not False and (
+            self.client.mode == InfrahubClientMode.TRACKING or self.client.update_group_context or update_group_context
+        ):
             self.related_node_ids.extend(ids)
 
-    async def add_related_groups(self, ids: List[str], update_group_context: Optional[bool] = False) -> None:
+    async def add_related_groups(self, ids: List[str], update_group_context: Optional[bool] = None) -> None:
         """
         Add related Groups IDs to the context.
 
@@ -127,11 +127,8 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
             ids (List[str]): List of group IDs to be added.
             update_group_context (Optional[bool], optional): Flag to control whether to update the group context.
         """
-        combined_bool = self.client.update_group_context and update_group_context
-        if (
-            self.client.mode.value == InfrahubClientMode.TRACKING.value
-            or combined_bool is True
-            or combined_bool is None
+        if update_group_context is not False and (
+            self.client.mode == InfrahubClientMode.TRACKING or self.client.update_group_context or update_group_context
         ):
             self.related_group_ids.extend(ids)
 
@@ -215,7 +212,7 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
                 if child.id in self.unused_child_ids and child.typename:
                     self.client.delete(kind=child.typename, id=child.id)
 
-    def add_related_nodes(self, ids: List[str], update_group_context: Optional[bool] = False) -> None:
+    def add_related_nodes(self, ids: List[str], update_group_context: Optional[bool] = None) -> None:
         """
         Add related Nodes IDs to the context.
 
@@ -223,11 +220,12 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
             ids (List[str]): List of node IDs to be added.
             update_group_context (Optional[bool], optional): Flag to control whether to update the group context.
         """
-        combined_bool = self.client.update_group_context and update_group_context
-        if self.client.mode == InfrahubClientMode.TRACKING or combined_bool is True or combined_bool is None:
+        if update_group_context is not False and (
+            self.client.mode == InfrahubClientMode.TRACKING or self.client.update_group_context or update_group_context
+        ):
             self.related_node_ids.extend(ids)
 
-    def add_related_groups(self, ids: List[str], update_group_context: Optional[bool] = False) -> None:
+    def add_related_groups(self, ids: List[str], update_group_context: Optional[bool] = None) -> None:
         """
         Add related Groups IDs to the context.
 
@@ -235,8 +233,9 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
             ids (List[str]): List of group IDs to be added.
             update_group_context (Optional[bool], optional): Flag to control whether to update the group context.
         """
-        combined_bool = self.client.update_group_context and update_group_context
-        if self.client.mode == InfrahubClientMode.TRACKING or combined_bool is True or combined_bool is None:
+        if update_group_context is not False and (
+            self.client.mode == InfrahubClientMode.TRACKING or self.client.update_group_context or update_group_context
+        ):
             self.related_group_ids.extend(ids)
 
     def update_group(self) -> None:

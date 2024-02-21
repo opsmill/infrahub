@@ -1,8 +1,30 @@
+import inspect
+
 import pytest
 
-from infrahub_sdk.query_groups import InfrahubGroupContextBase
+from infrahub_sdk.query_groups import InfrahubGroupContext, InfrahubGroupContextBase, InfrahubGroupContextSync
+
+async_methods = [method for method in dir(InfrahubGroupContext) if not method.startswith("_")]
+sync_methods = [method for method in dir(InfrahubGroupContextSync) if not method.startswith("_")]
 
 client_types = ["standard", "sync"]
+
+
+async def test_method_sanity():
+    """Validate that there is at least one public method and that both clients look the same."""
+    assert async_methods
+    assert async_methods == sync_methods
+
+
+@pytest.mark.parametrize("method", async_methods)
+async def test_validate_method_signature(method, replace_sync_return_annotation, replace_async_return_annotation):
+    async_method = getattr(InfrahubGroupContext, method)
+    sync_method = getattr(InfrahubGroupContextSync, method)
+    async_sig = inspect.signature(async_method)
+    sync_sig = inspect.signature(sync_method)
+    assert async_sig.parameters == sync_sig.parameters
+    assert async_sig.return_annotation == replace_sync_return_annotation(sync_sig.return_annotation)
+    assert replace_async_return_annotation(async_sig.return_annotation) == sync_sig.return_annotation
 
 
 def test_set_properties():
@@ -24,8 +46,7 @@ def test_get_params_as_str():
 
     context = InfrahubGroupContextBase()
     context.set_properties(identifier="MYID")
-    with pytest.raises(ValueError):
-        assert not context._get_params_as_str()
+    assert not context._get_params_as_str()
 
 
 def test_generate_group_name():
