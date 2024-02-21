@@ -79,8 +79,8 @@ class GraphRelationshipProperties(BaseModel):
         description="Indicator of the level of the branch compared to main, currently either 1 or 2 since we only support 1 level",
         ge=1,
     )
-    _from: str = Field(..., description="Time from which the relationship is valid", alias="from")
-    _to: str = Field(..., description="Time until which the relationship is valid", alias="to")
+    from_: str = Field(..., description="Time from which the relationship is valid", alias="from")
+    to_: str = Field(..., description="Time until which the relationship is valid", alias="to")
     status: RelationshipStatus = Field(..., description="status of the relationship")
     hierarchy: str = Field(..., description="Name of the hierarchy this relationship is part of")
 
