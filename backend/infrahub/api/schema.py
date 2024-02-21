@@ -199,7 +199,11 @@ async def load_schema(  # noqa: PLR0911 pylint: disable=R0911,too-many-branches,
         # Run the migrations
         # ----------------------------------------------------------
         error_messages = await schema_migrations_runner(
-            branch=branch, schema=candidate_schema, migrations=result.migrations, service=service
+            branch=branch,
+            new_schema=candidate_schema,
+            previous_schema=branch_schema,
+            migrations=result.migrations,
+            service=service,
         )
         if error_messages:
             return JSONResponse(status_code=500, content={"error": ",\n".join(error_messages)})

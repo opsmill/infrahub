@@ -15,11 +15,15 @@ async def path(message: SchemaMigrationPath, service: InfrahubServices) -> None:
         service.log.info(
             "schema.migration.path",
             migration=message.migration_name,
-            node_kind=message.node_schema.kind,
+            node_kind=message.new_node_schema.kind,
             path=message.schema_path.get_path(),
         )
         migration_class = MIGRATION_MAP.get(message.migration_name)
-        migration = migration_class(node_schema=message.node_schema, schema_path=message.schema_path)
+        migration = migration_class(
+            new_node_schema=message.new_node_schema,
+            previous_node_schema=message.previous_node_schema,
+            schema_path=message.schema_path,
+        )
         execution_result = await migration.execute(db=db, branch=message.branch)
 
         if message.reply_requested:

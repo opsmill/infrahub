@@ -67,7 +67,8 @@ async def test_query01(db: InfrahubDatabase, default_branch, init_database, sche
     assert await count_nodes(db=db, label="Attribute") == 0
 
     migration = NodeAttributeAddMigration(
-        node_schema=node,
+        new_node_schema=node,
+        previous_node_schema=node,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_doors"),
     )
     query = await NodeAttributeAddMigrationQuery01.init(db=db, branch=default_branch, migration=migration)
@@ -87,7 +88,8 @@ async def test_query01(db: InfrahubDatabase, default_branch, init_database, sche
 async def test_migration(db: InfrahubDatabase, default_branch, init_database, schema_aware):
     node = schema_aware
     migration = NodeAttributeAddMigration(
-        node_schema=node,
+        new_node_schema=node,
+        previous_node_schema=node,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_doors"),
     )
 
@@ -106,7 +108,8 @@ async def test_rpc(db: InfrahubDatabase, default_branch, init_database, schema_a
     correlation_id = str(UUIDT())
     message = SchemaMigrationPath(
         migration_name="node.attribute.add",
-        node_schema=node,
+        new_node_schema=node,
+        previous_node_schema=node,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_doors"),
         branch=default_branch,
         meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),

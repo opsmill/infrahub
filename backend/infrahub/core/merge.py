@@ -49,6 +49,7 @@ class BranchMerger:
         self._graph_diff: Optional[BranchDiffer] = None
 
         self._source_schema: Optional[SchemaBranch] = None
+        self._initial_source_schema: Optional[SchemaBranch] = None
         self._destination_schema: Optional[SchemaBranch] = None
 
         self._service = service
@@ -59,6 +60,12 @@ class BranchMerger:
             self._source_schema = registry.schema.get_schema_branch(name=self.source_branch.name).duplicate()
 
         return self._source_schema
+
+    @property
+    def initial_source_schema(self) -> SchemaBranch:
+        if self._initial_source_schema:
+            return self._initial_source_schema
+        raise ValueError("_initial_source_schema hasn't been initialized")
 
     @property
     def destination_schema(self) -> SchemaBranch:
@@ -138,7 +145,7 @@ class BranchMerger:
         # and we need to calculate a 3 ways comparison between
         # - The initial schema and the current schema in the source branch
         # - The initial schema and the current schema in the destination branch
-        initial_source_schema = await registry.schema.load_schema_from_db(
+        self._initial_source_schema = await registry.schema.load_schema_from_db(
             db=self.db,
             branch=self.source_branch,
             schema=self.source_schema.duplicate(),
@@ -146,8 +153,8 @@ class BranchMerger:
             at=Timestamp(self.source_branch.branched_from),
         )
 
-        diff_source = initial_source_schema.diff(other=self.source_schema)
-        diff_destination = initial_source_schema.diff(other=self.destination_schema)
+        diff_source = self.initial_source_schema.diff(other=self.source_schema)
+        diff_destination = self.initial_source_schema.diff(other=self.destination_schema)
         diff_both = diff_source + diff_destination
 
         validation = SchemaUpdateValidationResult.init(diff=diff_both, schema=updated_schema)
