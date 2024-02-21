@@ -3,7 +3,7 @@ import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import { Form } from "../edit-form-hook/form";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../../decorators/auth";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function SignIn() {
   let navigate = useNavigate();

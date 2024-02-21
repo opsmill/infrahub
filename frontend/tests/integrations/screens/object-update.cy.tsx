@@ -35,7 +35,7 @@ import {
   deviceDetailsUpdateMocksQuery,
 } from "../../mocks/data/devices";
 import { TestProvider } from "../../mocks/jotai/atom";
-import { AuthProvider } from "../../../src/decorators/auth";
+import { AuthProvider } from "../../../src/hooks/useAuth";
 
 // URL for the current view
 const mockedUrl = `/objects/InfraDevice/${deviceDetailsMocksId}`;

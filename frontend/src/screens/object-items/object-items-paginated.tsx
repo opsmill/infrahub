@@ -40,7 +40,7 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
-import { useAuth } from "../../decorators/auth";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();

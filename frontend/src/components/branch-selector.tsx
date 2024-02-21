@@ -3,10 +3,9 @@ import { Icon } from "@iconify-icon/react";
 import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
-import { AuthContext } from "../decorators/auth";
+import { useAuth } from "../hooks/useAuth";
 import { Branch } from "../generated/graphql";
 import { BRANCH_CREATE } from "../graphql/mutations/branches/createBranch";
 import { DynamicFieldData } from "../screens/edit-form-hook/dynamic-control-types";
@@ -22,7 +21,7 @@ export default function BranchSelector() {
   const [branches, setBranches] = useAtom(branchesState);
   const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const branch = useAtomValue(currentBranchAtom);
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
 
   const [createBranch, { loading }] = useMutation(BRANCH_CREATE);
 

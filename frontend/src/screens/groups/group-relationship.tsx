@@ -25,7 +25,7 @@ import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
-import { useAuth } from "../../decorators/auth";
+import { useAuth } from "../../hooks/useAuth";
 
 type iRelationDetailsProps = {
   parentNode: any;

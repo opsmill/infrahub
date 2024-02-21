@@ -18,7 +18,7 @@ import {
 } from "../../mocks/data/graphqlQueries";
 import { schemaMocks } from "../../mocks/data/schema";
 import { TestProvider } from "../../mocks/jotai/atom";
-import { AuthProvider } from "../../../src/decorators/auth";
+import { AuthProvider } from "../../../src/hooks/useAuth";
 
 // URL for the current view
 const mockedUrl = "/objects/CoreGraphQLQuery";

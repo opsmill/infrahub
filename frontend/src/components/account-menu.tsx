@@ -12,7 +12,7 @@ import { schemaState } from "../state/atoms/schema.atom";
 import { classNames, parseJwt } from "../utils/common";
 import { Avatar } from "./display/avatar";
 import { ALERT_TYPES, Alert } from "./utils/alert";
-import { useAuth } from "../decorators/auth";
+import { useAuth } from "../hooks/useAuth";
 
 const customId = "profile-alert";
 

@@ -41,7 +41,7 @@ import {
   taskMocksSchema as taskMocksSchema4,
 } from "../../mocks/data/task_4";
 import { TestProvider } from "../../mocks/jotai/atom";
-import { AuthProvider } from "../../../src/decorators/auth";
+import { AuthProvider } from "../../../src/hooks/useAuth";
 
 // URL for the current view
 const mockedUrl = "/objects/TestTask";

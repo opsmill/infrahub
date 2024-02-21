@@ -3,7 +3,7 @@ import { PlusIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Retry } from "../../components/buttons/retry";
 import { RoundedButton } from "../../components/buttons/rounded-button";
@@ -13,7 +13,7 @@ import {
   DEFAULT_BRANCH_NAME,
   PROPOSED_CHANGES_OBJECT,
 } from "../../config/constants";
-import { AuthContext } from "../../decorators/auth";
+import { useAuth } from "../../hooks/useAuth";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
@@ -30,7 +30,7 @@ import { ProposedChange } from "./proposed-changes-item";
 export const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);
   const [branches] = useAtom(branchesState);
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
   const branch = useAtomValue(currentBranchAtom);
   const navigate = useNavigate();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);

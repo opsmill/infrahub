@@ -1,7 +1,6 @@
 import { gql } from "@apollo/client";
 import { ArrowPathIcon, CheckCircleIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import { useContext } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Retry } from "../../../components/buttons/retry";
@@ -12,7 +11,7 @@ import {
   VALIDATIONS_ENUM_MAP,
   VALIDATION_STATES,
 } from "../../../config/constants";
-import { AuthContext } from "../../../decorators/auth";
+import { useAuth } from "../../../hooks/useAuth";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { runCheck } from "../../../graphql/mutations/diff/runCheck";
 import { genericsState } from "../../../state/atoms/schema.atom";
@@ -30,7 +29,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
   const { proposedchange } = useParams();
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [schemaList] = useAtom(genericsState);
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_VALIDATOR_OBJECT);
 

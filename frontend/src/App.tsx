@@ -2,7 +2,7 @@ import { addCollection } from "@iconify-icon/react";
 import mdiIcons from "@iconify-json/mdi/icons.json";
 import { Navigate, Route, Routes } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
-import { AuthProvider, RequireAuth } from "./decorators/auth";
+import { AuthProvider, RequireAuth } from "./hooks/useAuth";
 import { MAIN_ROUTES } from "./config/routes";
 import Layout from "./screens/layout/layout";
 import SignIn from "./screens/sign-in/sign-in";

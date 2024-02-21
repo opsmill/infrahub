@@ -20,7 +20,7 @@ import { proposedChangesId } from "../../mocks/data/conversations";
 import { profileId } from "../../mocks/data/profile";
 import { proposedChangesDetails } from "../../mocks/data/proposedChanges";
 import { TestProvider } from "../../mocks/jotai/atom";
-import { AuthProvider } from "../../../src/decorators/auth";
+import { AuthProvider } from "../../../src/hooks/useAuth";
 
 const url = `/proposed-changes/${proposedChangesId}&pr_tab=artifacts`;
 const path = "/proposed-changes/:proposedchange";

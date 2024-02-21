@@ -12,7 +12,7 @@ import {
   PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "../../config/constants";
-import { AuthContext } from "../../decorators/auth";
+import { useAuth } from "../../hooks/useAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
@@ -35,7 +35,7 @@ export const DataDiffComments = (props: tDataDiffComments) => {
 
   const { proposedchange } = useParams();
   const [schemaList] = useAtom(schemaState);
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);

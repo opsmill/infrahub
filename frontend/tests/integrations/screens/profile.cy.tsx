@@ -14,7 +14,7 @@ import {
   profileId,
 } from "../../mocks/data/profile";
 import { TestProvider } from "../../mocks/jotai/atom";
-import { AuthProvider } from "../../../src/decorators/auth";
+import { AuthProvider } from "../../../src/hooks/useAuth";
 import Header from "../../../src/screens/layout/header";
 
 // Mock the apollo query and data

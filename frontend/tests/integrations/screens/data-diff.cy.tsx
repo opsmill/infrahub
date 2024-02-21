@@ -25,7 +25,7 @@ import { profileId } from "../../mocks/data/profile";
 import { encodeJwt } from "../../../src/utils/common";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
 import graphqlClient from "../../../src/graphql/graphqlClientApollo";
-import { AuthProvider } from "../../../src/decorators/auth";
+import { AuthProvider } from "../../../src/hooks/useAuth";
 
 const url = `/proposed-changes/${proposedChangesId}`;
 const path = "/proposed-changes/:proposedchange";

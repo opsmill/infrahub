@@ -2,13 +2,13 @@ import { gql } from "@apollo/client";
 import { formatISO, isBefore, parseISO } from "date-fns";
 import { useAtomValue } from "jotai/index";
 import * as R from "ramda";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { toast } from "react-toastify";
 import {
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "../../config/constants";
-import { AuthContext } from "../../decorators/auth";
+import { useAuth } from "../../hooks/useAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
@@ -41,7 +41,7 @@ export const sortByDate = R.sort((a: any, b: any) =>
 export const Thread = (props: tThread) => {
   const { thread, refetch, displayContext } = props;
 
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
 
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
