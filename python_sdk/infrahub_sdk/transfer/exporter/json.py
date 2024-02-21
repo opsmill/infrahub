@@ -31,15 +31,15 @@ class LineDelimitedJSONExporter(ExporterInterface):
         node_file = export_directory / "nodes.json"
         if node_file.exists():
             raise FileAlreadyExistsError(f"{node_file.absolute()} already exists")
-        if set(namespaces) & illegal_namespaces:
-            raise InvalidNamespaceError(f"namespaces cannot include {illegal_namespaces}")
+        if set(namespaces) & ILLEGAL_NAMESPACES:
+            raise InvalidNamespaceError(f"namespaces cannot include {ILLEGAL_NAMESPACES}")
 
         with self.wrapped_task_output("Retrieving schema to export"):
             node_schema_map = await self.client.schema.all(branch=branch, namespaces=namespaces)
             node_schema_map = {
                 kind: schema
                 for kind, schema in node_schema_map.items()
-                if isinstance(schema, NodeSchema) and schema.namespace not in illegal_namespaces
+                if isinstance(schema, NodeSchema) and schema.namespace not in ILLEGAL_NAMESPACES
             }
             retrieved_namespaces = {node_schema.namespace for node_schema in node_schema_map.values()}
 
