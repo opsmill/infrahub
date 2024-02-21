@@ -10,29 +10,44 @@ log = get_logger()
 
 async def add(message: messages.GitRepositoryAdd, service: InfrahubServices) -> None:
     log.info("Cloning and importing repository", repository=message.repository_name, location=message.location)
-    async with lock.registry.get(name=message.repository_name, namespace="repository"):
-        repo = await InfrahubRepository.new(
-            id=message.repository_id, name=message.repository_name, location=message.location, client=service.client
-        )
-        await repo.import_objects_from_files(branch_name=repo.default_branch)
-        await repo.sync()
+    async with service.task_report(
+        related_node=message.repository_id,
+        title="Adding Repository",
+        created_by=message.created_by,
+    ) as task_report:
+        async with lock.registry.get(name=message.repository_name, namespace="repository"):
+            repo = await InfrahubRepository.new(
+                id=message.repository_id,
+                name=message.repository_name,
+                location=message.location,
+                client=service.client,
+                task_report=task_report,
+            )
+            await repo.import_objects_from_files(branch_name=repo.default_branch)
+            await repo.sync()
 
 
 async def add_read_only(message: messages.GitRepositoryAddReadOnly, service: InfrahubServices) -> None:
     log.info(
         "Cloning and importing read-only repository", repository=message.repository_name, location=message.location
     )
-    async with lock.registry.get(name=message.repository_name, namespace="repository"):
-        repo = await InfrahubReadOnlyRepository.new(
-            id=message.repository_id,
-            name=message.repository_name,
-            location=message.location,
-            client=service.client,
-            ref=message.ref,
-            infrahub_branch_name=message.infrahub_branch_name,
-        )
-        await repo.import_objects_from_files(branch_name=message.infrahub_branch_name)
-        await repo.sync_from_remote()
+    async with service.task_report(
+        related_node=message.repository_id,
+        title="Adding Repository",
+        created_by=message.created_by,
+    ) as task_report:
+        async with lock.registry.get(name=message.repository_name, namespace="repository"):
+            repo = await InfrahubReadOnlyRepository.new(
+                id=message.repository_id,
+                name=message.repository_name,
+                location=message.location,
+                client=service.client,
+                ref=message.ref,
+                infrahub_branch_name=message.infrahub_branch_name,
+                task_report=task_report,
+            )
+            await repo.import_objects_from_files(branch_name=message.infrahub_branch_name)
+            await repo.sync_from_remote()
 
 
 async def pull_read_only(message: messages.GitRepositoryPullReadOnly, service: InfrahubServices) -> None:

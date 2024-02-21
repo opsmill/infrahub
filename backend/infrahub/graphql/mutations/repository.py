@@ -51,7 +51,9 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         context: GraphqlContext = info.context
         # Create the new repository in the filesystem.
         log.info("create_repository", name=obj.name.value)
-
+        authenticated_user = None
+        if context.account_session and context.account_session.authenticated:
+            authenticated_user = context.account_session.account_id
         if obj.get_kind() == "CoreReadOnlyRepository":
             message = messages.GitRepositoryAddReadOnly(
                 repository_id=obj.id,
@@ -59,6 +61,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 location=obj.location.value,
                 ref=obj.ref.value,
                 infrahub_branch_name=branch.name,
+                created_by=authenticated_user,
             )
         else:
             message = messages.GitRepositoryAdd(
@@ -66,6 +69,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 repository_name=obj.name.value,
                 location=obj.location.value,
                 default_branch_name=obj.default_branch.value,
+                created_by=authenticated_user,
             )
 
         if context.service:
