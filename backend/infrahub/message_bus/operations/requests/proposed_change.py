@@ -380,13 +380,13 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
             commit = repo.get_commit_value(proposed_change.source_branch.value)
             worktree_directory = Path(repo.get_commit_worktree(commit=commit).directory)
 
-        return_code = await asyncio.to_thread(_execute, worktree_directory, repository, proposed_change)
-        log.info(
-            "repository_tests_completed",
-            proposed_change=message.proposed_change,
-            repository=repository.repository_name,
-            return_code=return_code,
-        )
+            return_code = await asyncio.to_thread(_execute, worktree_directory, repository, proposed_change)
+            log.info(
+                "repository_tests_completed",
+                proposed_change=message.proposed_change,
+                repository=repository.repository_name,
+                return_code=return_code,
+            )
 
 
 DESTINATION_ALLREPOSITORIES = """
