@@ -20,10 +20,7 @@ from infrahub.core.query.branch import (
 )
 from infrahub.core.registry import get_branch, registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import (
-    BranchNotFound,
-    ValidationError,
-)
+from infrahub.exceptions import BranchNotFound, InitializationError, ValidationError
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -90,6 +87,13 @@ class Branch(StandardNode):
     @classmethod
     def set_created_at(cls, value):
         return Timestamp(value).to_string()
+
+    @property
+    def active_schema_hash(self) -> SchemaBranchHash:
+        if self.schema_hash:
+            return self.schema_hash
+
+        raise InitializationError("The schema_hash has not been loaded for this branch")
 
     def update_schema_hash(self, at: Optional[Union[Timestamp, str]] = None) -> bool:
         latest_schema = registry.schema.get_schema_branch(name=self.name)

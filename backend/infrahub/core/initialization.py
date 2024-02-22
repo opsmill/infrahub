@@ -34,7 +34,7 @@ async def get_root_node(db: InfrahubDatabase, initialize: bool = False) -> Root:
     return roots[0]
 
 
-async def initialization(db: InfrahubDatabase):
+async def initialization(db: InfrahubDatabase) -> None:
     if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
         session = await db.session()
         await session.run(query="SET DATABASE SETTING 'log.level' TO 'INFO'")
@@ -48,7 +48,7 @@ async def initialization(db: InfrahubDatabase):
         log.debug("Checking Root Node")
 
         root = await get_root_node(db=db, initialize=True)
-        registry.id = root.uuid
+        registry.id = str(root.get_uuid())
 
     # ---------------------------------------------------
     # Initialize the Storage Driver
@@ -73,7 +73,7 @@ async def initialization(db: InfrahubDatabase):
 
         # Import the default branch
         default_branch: Branch = registry.get_branch_from_registry(branch=config.SETTINGS.main.default_branch)
-        hash_in_db = default_branch.schema_hash.main
+        hash_in_db = default_branch.active_schema_hash.main
         schema_default_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
         registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
 
@@ -81,7 +81,7 @@ async def initialization(db: InfrahubDatabase):
             log.warning(
                 "New schema detected after pulling the schema from the db",
                 hash_current=hash_in_db,
-                hash_new=default_branch.schema_hash.main,
+                hash_new=default_branch.active_schema_hash.main,
                 branch=default_branch.name,
             )
 
@@ -89,14 +89,14 @@ async def initialization(db: InfrahubDatabase):
             if branch.name in [default_branch.name, GLOBAL_BRANCH_NAME]:
                 continue
 
-            hash_in_db = branch.schema_hash.main
+            hash_in_db = branch.active_schema_hash.main
             log.info("Importing schema", branch=branch.name)
             await registry.schema.load_schema(db=db, branch=branch)
 
             if branch.update_schema_hash():
                 log.warning(
                     f"New schema detected after pulling the schema from the db :"
-                    f" {hash_in_db!r} >> {branch.schema_hash.main!r}",
+                    f" {hash_in_db!r} >> {branch.active_schema_hash.main!r}",
                     branch=branch.name,
                 )
 
@@ -193,7 +193,7 @@ async def create_branch(
     return branch
 
 
-async def first_time_initialization(db: InfrahubDatabase):
+async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create the default Branch
     # --------------------------------------------------
@@ -213,23 +213,23 @@ async def first_time_initialization(db: InfrahubDatabase):
     registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)
     default_branch.update_schema_hash()
     await default_branch.save(db=db)
-    log.info("Created the Schema in the database", hash=default_branch.schema_hash.main)
+    log.info("Created the Schema in the database", hash=default_branch.active_schema_hash.main)
 
     # --------------------------------------------------
     # Create Default Users and Groups
     # --------------------------------------------------
-    token_schema = registry.schema.get(name=InfrahubKind.ACCOUNTTOKEN)
+    token_schema = registry.schema.get_node_schema(name=InfrahubKind.ACCOUNTTOKEN)
+    admin_name = "admin"
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await obj.new(
         db=db,
-        name="admin",
+        name=admin_name,
         type="User",
         role="admin",
         password=config.SETTINGS.security.initial_admin_password,
-        # groups=[admin_grp],
     )
     await obj.save(db=db)
-    log.info(f"Created Account: {obj.name.value}", account_name=obj.name.value)
+    log.info(f"Created Account: {admin_name}", account_name=admin_name)
 
     if config.SETTINGS.security.initial_admin_token:
         token = await Node.init(db=db, schema=token_schema)

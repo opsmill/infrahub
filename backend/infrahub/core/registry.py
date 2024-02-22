@@ -49,7 +49,7 @@ class Registry:
     attr_group: dict = field(default_factory=dict)
     branch_object: Optional[Brancher] = None
     _manager: Optional[Type[NodeManager]] = None
-    _storage: Optional[Type[InfrahubObjectStorage]] = None
+    _storage: Optional[InfrahubObjectStorage] = None
 
     @property
     def schema(self) -> SchemaManager:
@@ -74,14 +74,14 @@ class Registry:
         self._manager = value
 
     @property
-    def storage(self) -> Type[InfrahubObjectStorage]:
+    def storage(self) -> InfrahubObjectStorage:
         if not self._storage:
             raise InitializationError
 
         return self._storage
 
     @storage.setter
-    def storage(self, value: Type[InfrahubObjectStorage]):
+    def storage(self, value: InfrahubObjectStorage):
         self._storage = value
 
     def schema_has_been_initialized(self) -> bool:
