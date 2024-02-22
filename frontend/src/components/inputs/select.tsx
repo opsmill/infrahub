@@ -703,6 +703,14 @@ export const Select = (props: SelectProps) => {
     setLocalOptions(options);
   }, [options?.length]);
 
+  useEffect(() => {
+    const newOption = multiple
+      ? options.filter((option) => value.includes(option.id))
+      : options?.find((option) => option?.id === value || option.name === value);
+
+    setSelectedOption(newOption ?? "");
+  }, [value]);
+
   // Needed for async options to avoid duplicates issues
   const comparedOptions = (a: SelectOption, b: SelectOption) => a?.id === b?.id;
 

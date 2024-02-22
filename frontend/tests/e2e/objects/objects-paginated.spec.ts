@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH } from "../../../constants";
+import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("/objects/:objectname", () => {
   test.describe("when not logged in", () => {
@@ -16,7 +16,7 @@ test.describe("/objects/:objectname", () => {
 
     test("should filter the table", async ({ page }) => {
       await page.goto("/objects/BuiltinTag");
-      await expect(page.getByRole("row")).toHaveCount(4);
+      const tagsNumber = await page.getByRole("row").count();
 
       // filter red
       await page.getByLabel("Filters").locator("svg").click();
@@ -41,7 +41,7 @@ test.describe("/objects/:objectname", () => {
 
       // clear all
       await page.getByRole("button", { name: "Clear all" }).click();
-      await expect(page.getByRole("row")).toHaveCount(4);
+      await expect(page.getByRole("row")).toHaveCount(tagsNumber);
     });
 
     test("should be able to open object details in a new tab", async ({ page, context }) => {

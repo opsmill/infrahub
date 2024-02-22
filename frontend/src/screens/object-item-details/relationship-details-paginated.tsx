@@ -16,10 +16,10 @@ import SlideOver from "../../components/display/slide-over";
 import { SelectOption } from "../../components/inputs/select";
 import ModalDelete from "../../components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
+import { Link as StyledLink } from "../../components/utils/link";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-// import { ReactComponent as UnlinkIcon } from "../../images/icons/unlink.svg";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { AuthContext } from "../../decorators/withAuth";
@@ -238,7 +238,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               name={relationshipSchema?.label}
               value={
                 <>
-                  <Link
+                  <StyledLink
                     to={constructPath(
                       getObjectDetailsUrl(
                         relationshipsData.node?.id,
@@ -246,7 +246,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       )
                     )}>
                     {relationshipsData.node?.display_label}
-                  </Link>
+                  </StyledLink>
 
                   {relationshipsData.properties && (
                     <div className="px-2">

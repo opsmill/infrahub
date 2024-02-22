@@ -264,6 +264,6 @@ async def user_check(message: messages.CheckRepositoryUserCheck, service: Infrah
 
     await service.cache.set(
         key=f"validator_execution_id:{message.validator_execution_id}:check_execution_id:{message.check_execution_id}",
-        value="success",
+        value=conclusion,
         expires=7200,
     )
