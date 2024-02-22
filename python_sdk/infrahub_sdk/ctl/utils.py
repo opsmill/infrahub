@@ -1,12 +1,14 @@
 import glob
 import os
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import pendulum
 from pendulum.datetime import DateTime
 from rich.console import Console
 from rich.markup import escape
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
 
@@ -90,6 +92,18 @@ def render_action_rich(value: str) -> str:
         return f"[red]{value.upper()}[/red]"
 
     return value.upper()
+
+
+@contextmanager
+def rich_progress_spinner(
+    console: Optional[Console] = None, description: str = "Working", total: Optional[float] = None
+) -> Generator:
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}")) as progress:
+        if console:
+            task_id = progress.add_task(description=description, total=None)
+        yield
+        if console:
+            progress.stop_task(task_id)
 
 
 def get_fixtures_dir() -> Path:
