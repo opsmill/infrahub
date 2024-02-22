@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Type
 
 import graphene
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.core.attribute import String
 from infrahub.core.constants import InfrahubKind, RelationshipKind
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema

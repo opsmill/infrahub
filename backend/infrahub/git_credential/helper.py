@@ -3,7 +3,7 @@ import sys
 import typer
 from infrahub_sdk import InfrahubClientSync
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.core.constants import InfrahubKind
 
 app = typer.Typer()

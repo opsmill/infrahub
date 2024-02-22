@@ -1,6 +1,6 @@
 from typing import Any
 
-import infrahub.config as config
+from infrahub import config
 
 from ..app import InfrahubGraphQLApp
 from ..auth.query_permission_checker.anonymous_checker import AnonymousGraphQLPermissionChecker

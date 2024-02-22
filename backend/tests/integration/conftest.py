@@ -7,7 +7,7 @@ import pytest
 import yaml
 from infrahub_sdk import UUIDT
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import first_time_initialization, initialization

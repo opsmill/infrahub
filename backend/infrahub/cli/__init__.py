@@ -2,7 +2,7 @@ from asyncio import run as aiorun
 
 import typer
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.cli.db import app as db_app
 from infrahub.cli.events import app as events_app
 from infrahub.cli.generate_schema import app as generate_schema_app
