@@ -1,0 +1,74 @@
+---
+# yamllint disable rule:truthy rule:truthy rule:line-length
+name: "Scale testing"
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+    inputs:
+      node_amount:
+        type: string
+        description: Number of nodes to use for scale testing
+        default: '10'
+        required: false
+  push:
+    branches:
+      - fac-scale-test-reporting
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  INFRAHUB_DB_USERNAME: neo4j
+  INFRAHUB_DB_PASSWORD: admin
+  INFRAHUB_DB_ADDRESS: localhost
+  INFRAHUB_DB_PORT: 7687
+  INFRAHUB_DB_PROTOCOL: bolt
+  INFRAHUB_BROKER_ADDRESS: message-queue
+  INFRAHUB_LOG_LEVEL: CRITICAL
+  INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
+  INFRAHUB_IMAGE_VER: "testing"
+
+jobs:
+  scale-tests:
+    runs-on:
+      group: huge-runners
+    timeout-minutes: 60
+    env:
+      INFRAHUB_DB_TYPE: neo4j
+      METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+        with:
+          ref: fac-scale-test-reporting
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+      - name: "Setup python environment"
+        run: |
+          pipx install poetry
+          poetry config virtualenvs.prefer-active-python true
+          pip install invoke toml
+      - name: "Install Package"
+        run: "poetry install --with test-scale"
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+      - name: "Start scale environment"
+        run: "poetry run invoke backend.test-scale-env-start -g 1"
+      - name: "Run test"
+        run: "poetry run invoke backend.test-scale --amount 10 -s backend/tests/scale/schema.yml --stager stage_infranode"
+      - name: "Push metrics"
+        run: "curl -v --data-binary @metrics.csv 'http://localhost:8429/api/v1/import/csv?format=1:metric:scale_test_response_time,2:time:unix_ms,3:label:operation_name,4:label:node_amount,5:label:attrs_amount,6:label:rels_amount'"
+      - name: "Wait for vmagent to push metrics"
+        run: "sleep 10"
+      - name: "Destroy scale environment"
+        if: always()
+        run: "invoke backend.test-scale-env-destroy"
