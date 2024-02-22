@@ -10,6 +10,7 @@ class BatchTask:
     task: Callable[[Any], Awaitable[Any]]
     args: Tuple[Any, ...]
     kwargs: Dict[str, Any]
+    id: Optional[str] = None
     node: Optional[InfrahubNode] = None
 
 
@@ -17,17 +18,16 @@ async def execute_batch_task_in_pool(
     task: BatchTask,
     semaphore: asyncio.Semaphore,
     return_exceptions: bool = False,
-) -> Tuple[Optional[InfrahubNode], Any]:
+) -> Tuple[BatchTask, Any]:
     async with semaphore:
         try:
             result = await task.task(*task.args, **task.kwargs)
-
         except Exception as exc:  # pylint: disable=broad-exception-caught
             if return_exceptions:
-                return (task.node, exc)
+                return (task, exc)
             raise exc
 
-        return (task.node, result)
+        return (task, result)
 
 
 class InfrahubBatch:
@@ -46,9 +46,14 @@ class InfrahubBatch:
         return len(self._tasks)
 
     def add(
-        self, *args: Any, task: Callable[[Any], Awaitable[Any]], node: Optional[InfrahubNode] = None, **kwargs: Any
+        self,
+        *args: Any,
+        id: Optional[str] = None,
+        task: Callable[[Any], Awaitable[Any]],
+        node: Optional[InfrahubNode] = None,
+        **kwargs: Any,
     ) -> None:
-        self._tasks.append(BatchTask(task=task, node=node, args=args, kwargs=kwargs))
+        self._tasks.append(BatchTask(id=id, task=task, node=node, args=args, kwargs=kwargs))
 
     async def execute(self) -> AsyncGenerator:
         tasks = []
@@ -63,7 +68,7 @@ class InfrahubBatch:
             )
 
         for completed_task in asyncio.as_completed(tasks):
-            node, result = await completed_task
+            batch_task, result = await completed_task
             if isinstance(result, Exception) and not self.return_exceptions:
                 raise result
-            yield node, result
+            yield batch_task, result
