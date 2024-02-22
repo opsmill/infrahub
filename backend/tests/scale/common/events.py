@@ -1,4 +1,6 @@
 import logging
+import os
+from csv import DictWriter
 from functools import wraps
 
 import gevent
@@ -12,6 +14,15 @@ from .config import Config
 from .utils import get_container_resource_usage, get_graphdb_stats
 
 config = Config()
+
+METRICS_FIELD_NAMES = [
+    "metric_value",
+    "timestamp",
+    "operation_name",
+    "node_amount",
+    "attrs_amount",
+    "rels_amount",
+]
 
 
 @events.test_start.add_listener
@@ -72,3 +83,16 @@ def request_event_handler(
     output = []
     output = [f"{k}={v}" for k, v in result.items()]
     print(", ".join(output))
+
+    result_metric = {
+        "metric_value": response_time,
+        "timestamp": int(start_time * 1000),
+        "operation_name": name,
+        "node_amount": config.node_amount,
+        "attrs_amount": config.attrs_amount,
+        "rels_amount": config.rels_amount,
+    }
+
+    with open("metrics.csv", "a") as file:
+        writer = DictWriter(file, fieldnames=METRICS_FIELD_NAMES)
+        writer.writerow(result_metric)
