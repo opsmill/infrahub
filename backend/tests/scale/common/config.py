@@ -17,6 +17,13 @@ class Config(BaseSettings):
     db_port: int = 7687
     client_timeout: int = 1000
 
+    node_amount: int = 10
+    attrs_amount: int = 0
+    rels_amount: int = 0
+
     class Config:
         env_prefix = "INFRAHUB_"
         case_sensitive = False
+
+
+config = Config()

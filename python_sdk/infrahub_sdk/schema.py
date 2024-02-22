@@ -459,7 +459,9 @@ class InfrahubSchema(InfrahubSchemaBase):
     async def load(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
         url = f"{self.client.address}/api/schema/load?branch={branch}"
-        response = await self.client._post(url=url, timeout=120, payload={"schemas": schemas})
+        response = await self.client._post(
+            url=url, timeout=max(120, self.client.default_timeout), payload={"schemas": schemas}
+        )
 
         if response.status_code == 202:
             return True, None
@@ -501,7 +503,10 @@ class InfrahubSchema(InfrahubSchemaBase):
 
         query = Mutation(mutation=mutation.value, input_data=input_data, query={"ok": None})
         await self.client.execute_graphql(
-            query=query.render(), branch_name=branch, tracker=f"mutation-{mutation.name}-add", timeout=60
+            query=query.render(),
+            branch_name=branch,
+            tracker=f"mutation-{mutation.name}-add",
+            timeout=max(60, self.client.default_timeout),
         )
 
     async def add_enum_option(
@@ -550,7 +555,10 @@ class InfrahubSchema(InfrahubSchemaBase):
 
         query = Mutation(mutation=mutation.value, input_data=input_data, query={"ok": None})
         await self.client.execute_graphql(
-            query=query.render(), branch_name=branch, tracker=f"mutation-{mutation.name}-remove", timeout=60
+            query=query.render(),
+            branch_name=branch,
+            tracker=f"mutation-{mutation.name}-remove",
+            timeout=max(60, self.client.default_timeout),
         )
 
     async def remove_dropdown_option(
@@ -688,7 +696,10 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
         query = Mutation(mutation=mutation.value, input_data=input_data, query={"ok": None})
         self.client.execute_graphql(
-            query=query.render(), branch_name=branch, tracker=f"mutation-{mutation.name}-add", timeout=60
+            query=query.render(),
+            branch_name=branch,
+            tracker=f"mutation-{mutation.name}-add",
+            timeout=max(60, self.client.default_timeout),
         )
 
     def add_enum_option(
@@ -735,7 +746,10 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
         query = Mutation(mutation=mutation.value, input_data=input_data, query={"ok": None})
         self.client.execute_graphql(
-            query=query.render(), branch_name=branch, tracker=f"mutation-{mutation.name}-remove", timeout=60
+            query=query.render(),
+            branch_name=branch,
+            tracker=f"mutation-{mutation.name}-remove",
+            timeout=max(60, self.client.default_timeout),
         )
 
     def remove_dropdown_option(
@@ -801,7 +815,9 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
     def load(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
         url = f"{self.client.address}/api/schema/load?branch={branch}"
-        response = self.client._post(url=url, timeout=60, payload={"schemas": schemas})
+        response = self.client._post(
+            url=url, timeout=max(60, self.client.default_timeout), payload={"schemas": schemas}
+        )
 
         if response.status_code == 202:
             return True, None
