@@ -1100,6 +1100,15 @@ class SchemaManager(NodeManager):
         default_branch = config.SETTINGS.main.default_branch
         return self._branches[default_branch].get(name=name, duplicate=duplicate)
 
+    def get_node_schema(
+        self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+    ) -> NodeSchema:
+        schema = self.get(name=name, branch=branch, duplicate=duplicate)
+        if isinstance(schema, NodeSchema):
+            return schema
+
+        raise ValueError("The selected node is not of type NodeSchema")
+
     def get_full(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, Union[NodeSchema, GenericSchema]]:
         branch = get_branch_from_registry(branch=branch)
 

@@ -783,7 +783,7 @@ class NodeSchema(BaseNodeSchema):
     parent: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value})
     children: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value})
 
-    def inherit_from_interface(self, interface: GenericSchema) -> NodeSchema:
+    def inherit_from_interface(self, interface: GenericSchema) -> None:
         existing_inherited_attributes = {item.name: idx for idx, item in enumerate(self.attributes) if item.inherited}
         existing_inherited_relationships = {
             item.name: idx for idx, item in enumerate(self.relationships) if item.inherited
