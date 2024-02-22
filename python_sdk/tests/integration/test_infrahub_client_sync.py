@@ -2,6 +2,7 @@ import pytest
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.server import app
 
 from infrahub_sdk import Config, InfrahubClientSync
 from infrahub_sdk.constants import InfrahubClientMode
@@ -17,9 +18,6 @@ from .conftest import InfrahubTestClient
 class TestInfrahubClientSync:
     @pytest.fixture(scope="class")
     async def test_client(self) -> InfrahubTestClient:
-        # pylint: disable=import-outside-toplevel
-        from infrahub.server import app
-
         return InfrahubTestClient(app)
 
     @pytest.fixture

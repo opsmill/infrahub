@@ -3,6 +3,7 @@ from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.server import app
 
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.constants import InfrahubClientMode
@@ -19,9 +20,6 @@ class TestInfrahubClient:
     @pytest.fixture(scope="class")
     async def test_client(self) -> InfrahubTestClient:
         registry.delete_all()
-
-        # pylint: disable=import-outside-toplevel
-        from infrahub.server import app
 
         return InfrahubTestClient(app)
 

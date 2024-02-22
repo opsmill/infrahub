@@ -2,6 +2,7 @@ import pytest
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.server import app
 
 from infrahub_sdk import Config, InfrahubClient, SchemaRoot
 from infrahub_sdk.exceptions import NodeNotFound
@@ -15,10 +16,6 @@ from .conftest import InfrahubTestClient
 class TestInfrahubNode:
     @pytest.fixture(scope="class")
     async def test_client(self):
-        # pylint: disable=import-outside-toplevel
-
-        from infrahub.server import app
-
         return InfrahubTestClient(app)
 
     @pytest.fixture
