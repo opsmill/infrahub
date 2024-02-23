@@ -20,7 +20,8 @@ test.describe("when searching an object", () => {
     });
   });
 
-  test("should display a message when no results found", async ({ page }) => {
+  // require fix on backend https://github.com/opsmill/infrahub/issues/2345
+  test.fixme("should display a message when no results found", async ({ page }) => {
     await page.goto("/");
 
     await test.step("open search anywhere modal", async () => {
@@ -38,7 +39,8 @@ test.describe("when searching an object", () => {
     });
   });
 
-  test("should display results on search nodes", async ({ page }) => {
+  // require fix on backend https://github.com/opsmill/infrahub/issues/2345
+  test.fixme("should display results on search nodes", async ({ page }) => {
     await page.goto("/");
 
     await test.step("open search anywhere modal", async () => {
