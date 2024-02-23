@@ -724,7 +724,7 @@ export const Select = (props: SelectProps) => {
         multiple={multiple}
         by={comparedOptions}
         {...otherProps}>
-        <div className="relative mt-1">
+        <div className="relative">
           <Combobox.Input
             as={multiple ? MultipleInput : Input}
             value={getInputValue()}
