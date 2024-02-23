@@ -11,7 +11,7 @@ class InfrahubCheckBackboneLinkRedundancy(InfrahubCheck):
 
         backbone_links_per_site = defaultdict(lambda: defaultdict(int))
 
-        for circuit in data["data"]["InfraCircuit"]["edges"]:
+        for circuit in data["InfraCircuit"]["edges"]:
             status = circuit["node"]["status"]["value"]
 
             for endpoint in circuit["node"]["endpoints"]["edges"]:
