@@ -1,3 +1,5 @@
+import { SchemaAttributeType } from "../screens/edit-form-hook/dynamic-control-types";
+
 export const DEFAULT_BRANCH_NAME = "main";
 
 export const ACCESS_TOKEN_KEY = "access_token";
@@ -129,6 +131,32 @@ export const attributesKindForListView = [
   "IPNetwork",
   "DateTime",
 ];
+
+export const SCHEMA_ATTRIBUTE_KIND: Record<string, SchemaAttributeType> = {
+  ID: "ID",
+  DROPDOWN: "Dropdown",
+  TEXT: "Text",
+  TEXTAREA: "TextArea",
+  DATETIME: "DateTime",
+  EMAIL: "Email",
+  PASSWORD: "Password",
+  HASHED_PASSWORD: "HashedPassword",
+  URL: "URL",
+  FILE: "File",
+  MacAddress: "File",
+  COLOR: "Color",
+  NUMBER: "Number",
+  BANDWIDTH: "Bandwidth",
+  IP_HOST: "IPHost",
+  IP_NETWORK: "IPNetwork",
+  CHECKBOX: "Checkbox",
+  LIST: "List",
+  JSON: "JSON",
+  ANY: "Any",
+  STRING: "String",
+  INTEGER: "Integer",
+  BOOLEAN: "Boolean",
+} as const;
 
 export const attributesKindForDetailsViewExclude = ["HashedPassword"];
 

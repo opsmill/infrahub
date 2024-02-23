@@ -1,51 +1,58 @@
 import { expect, test } from "@playwright/test";
 
-const OBJECT_SEARCH = "atl1-edge1";
-
 test.describe("when searching an object", () => {
-  test.fixme("should not retrieve a result", async ({ page }) => {
+  test("should open search anywhere modal", async ({ page }) => {
     await page.goto("/");
 
-    await Promise.all([
-      page.waitForResponse((response) => {
-        const reqData = response.request().postDataJSON();
-        const status = response.status();
+    await test.step("open search anywhere modal with click", async () => {
+      await page.getByPlaceholder("Search anywhere").click();
+      await expect(page.getByTestId("search-anywhere")).toBeVisible();
+    });
 
-        return reqData?.operationName === "CoreNode" && status === 200;
-      }),
+    await test.step("close search anywhere modal with esc key", async () => {
+      await page.locator("body").press("Escape");
+      await expect(page.getByTestId("search-anywhere")).not.toBeVisible();
+    });
 
-      page.getByTestId("search-bar").fill("test"),
-    ]);
-
-    const results = page.getByTestId("results-container");
-
-    await expect(results).toBeVisible();
-
-    const result = await results.getByText("No results found");
-
-    await expect(result).toBeVisible();
+    await test.step("open search anywhere modal when typing on header input", async () => {
+      await page.getByPlaceholder("Search anywhere").fill("e");
+      await expect(page.getByTestId("search-anywhere")).toBeVisible();
+    });
   });
 
-  test.fixme("should retrieve a result", async ({ page }) => {
+  // require fix on backend https://github.com/opsmill/infrahub/issues/2345
+  test.fixme("should display a message when no results found", async ({ page }) => {
     await page.goto("/");
 
-    await Promise.all([
-      page.waitForResponse((response) => {
-        const reqData = response.request().postDataJSON();
-        const status = response.status();
+    await test.step("open search anywhere modal", async () => {
+      await page.getByPlaceholder("Search anywhere").click();
+      await expect(page.getByTestId("search-anywhere")).toBeVisible();
+    });
 
-        return reqData?.operationName === "CoreNode" && status === 200;
-      }),
+    await test.step("open search anywhere modal when typing on header input", async () => {
+      await page
+        .getByTestId("search-anywhere")
+        .getByPlaceholder("Search anywhere")
+        .fill("no_results_query_for_test");
+      await expect(page.getByRole("heading")).toContainText("No results found");
+      await expect(page.getByRole("paragraph")).toContainText("Try using different keywords");
+    });
+  });
 
-      page.getByTestId("search-bar").fill(OBJECT_SEARCH),
-    ]);
+  // require fix on backend https://github.com/opsmill/infrahub/issues/2345
+  test.fixme("should display results on search nodes", async ({ page }) => {
+    await page.goto("/");
 
-    const results = page.getByTestId("results-container");
+    await test.step("open search anywhere modal", async () => {
+      await page.getByPlaceholder("Search anywhere").click();
+      await expect(page.getByTestId("search-anywhere")).toBeVisible();
+    });
 
-    await expect(results).toBeVisible();
-
-    const result = await page.getByTestId("results-container").getByText(OBJECT_SEARCH).first();
-
-    await expect(result).toBeVisible();
+    await test.step("find a matching result", async () => {
+      await page.getByTestId("search-anywhere").getByPlaceholder("Search anywhere").fill("atl1");
+      await expect(
+        page.getByTestId("search-anywhere").getByRole("option", { name: "atl1Site" })
+      ).toBeVisible();
+    });
   });
 });
