@@ -47,6 +47,7 @@ export type SchemaAttributeType =
   | "String"
   | "Boolean"
   | "JSON"
+  | "Integer"
   | "Dropdown";
 
 // Different kind of form inputs

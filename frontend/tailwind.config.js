@@ -9,6 +9,9 @@ export default {
       10: "40px",
     },
     extend: {
+      fontSize: {
+        xxs: "0.625rem",
+      },
       colors: {
         "custom-blue": {
           10: "#a7d9e6",
