@@ -10,15 +10,14 @@ from locust.exception import StopUser
 from locust.runners import Runner, WorkerRunner
 from locust.user.task import DefaultTaskSet, TaskSet
 
-from .config import Config
+from .config import config
 from .utils import get_container_resource_usage, get_graphdb_stats
-
-config = Config()
 
 METRICS_FIELD_NAMES = [
     "metric_value",
     "timestamp",
     "operation_name",
+    "stage",
     "node_amount",
     "attrs_amount",
     "rels_amount",
@@ -90,6 +89,7 @@ def request_event_handler(
         "metric_value": response_time,
         "timestamp": int(start_time * 1000),
         "operation_name": name,
+        "stage": config.current_stage,
         "node_amount": config.node_amount,
         "attrs_amount": config.attrs_amount,
         "rels_amount": config.rels_amount,

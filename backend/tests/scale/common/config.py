@@ -21,6 +21,8 @@ class Config(BaseSettings):
     attrs_amount: int = 0
     rels_amount: int = 0
 
+    current_stage: str = ""
+
     class Config:
         env_prefix = "INFRAHUB_"
         case_sensitive = False

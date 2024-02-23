@@ -5,6 +5,7 @@ from locust import User, task
 
 import common.stagers
 
+from .config import config
 from .protocols import LocustInfrahubClient
 from .utils import prepare_node_attributes, random_ascii_string
 
@@ -60,6 +61,7 @@ class InfrahubClientUser(User):
         )
         time.sleep(5)
         print("--- staging nodes, attributes and relations")
+        config.current_stage = "stager"
         stager(
             client=self.client,
             amount=self.custom_options["amount"],
@@ -68,6 +70,7 @@ class InfrahubClientUser(User):
         time.sleep(20)
 
         print("--- starting test")
+        config.current_stage = "test"
         extra_attributes = prepare_node_attributes(self.client)
         begin = time.time()
         # Run for at least 5 minutes

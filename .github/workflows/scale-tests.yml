@@ -66,9 +66,11 @@ jobs:
       - name: "Run test"
         run: "poetry run invoke backend.test-scale --amount 10 -s backend/tests/scale/schema.yml --stager stage_infranode"
       - name: "Push metrics"
-        run: "curl -v --data-binary @metrics.csv 'http://localhost:8429/api/v1/import/csv?format=1:metric:scale_test_response_time,2:time:unix_ms,3:label:operation_name,4:label:node_amount,5:label:attrs_amount,6:label:rels_amount'"
+        run: "curl -v --data-binary @metrics.csv 'http://localhost:8429/api/v1/import/csv?format=1:metric:scale_test_response_time,2:time:unix_ms,3:label:operation_name,4:label:stage,5:label:node_amount,6:label:attrs_amount,7:label:rels_amount'"
       - name: "Wait for vmagent to push metrics"
         run: "sleep 10"
       - name: "Destroy scale environment"
         if: always()
         run: "invoke backend.test-scale-env-destroy"
+      - name: "Print results"
+        run: "cat *.csv"
