@@ -14,6 +14,7 @@ import { getObjectDetailsUrl } from "../../utils/objects";
 import { Combobox } from "@headlessui/react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
+import { Skeleton } from "../skeleton";
 
 type SearchProps = {
   query: string;
@@ -75,8 +76,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
   const schemaData = generic || schema;
 
-  // const columns = getSchemaObjectColumns(schemaData, true, 7);
-  const columns = getSchemaObjectColumns(schemaData, true);
+  const columns = getSchemaObjectColumns(schemaData, true, 7);
 
   const queryString = schemaData
     ? getObjectDetailsPaginated({
@@ -93,7 +93,22 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
   const { loading, data } = useQuery(query, { skip: !schemaData });
 
-  if (loading) return <LoadingScreen hideText size={20} />;
+  if (loading) {
+    return (
+      <div className="flex py-3 w-full border-b border-gray-200">
+        <Skeleton className="h-6 w-6 rounded mx-1 mr-2" />
+
+        <div className="space-y-2 flex-grow">
+          <div className="flex space-x-2">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-4 w-20" />
+          </div>
+          <Skeleton className="h-4 max-w-xl" />
+          <Skeleton className="h-4 max-w-xl" />
+        </div>
+      </div>
+    );
+  }
 
   const objectDetailsData = schemaData && data?.[node.__typename]?.edges[0]?.node;
 
@@ -173,7 +188,7 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
         case SCHEMA_ATTRIBUTE_KIND.DROPDOWN:
           if (!("color" in value)) return value.value;
 
-          const color = value.color !== "" ? "#f1f1f1" : value.color;
+          const color = value.color === "" ? "#f1f1f1" : value.color;
           return (
             <div
               className="px-1.5 rounded-full text-gray-700 font-medium text-center"
