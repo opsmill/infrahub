@@ -153,14 +153,13 @@ type NodeAttributeProps = {
 
 const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
   const formatValue = (): string | number | boolean | ReactElement | null => {
-    if ("node" in value) {
+    if ("node" in value && value.node) {
       return value.node.display_label ?? null;
     }
-    if ("edges" in value) {
+    if ("edges" in value && value.edges?.length > 0) {
       return value.edges.map(({ node }) => node?.display_label).join(", ");
     }
-    if ("value" in value) {
-      if (!value.value) return value.value;
+    if ("value" in value && value.value) {
       switch (kind) {
         case SCHEMA_ATTRIBUTE_KIND.BOOLEAN:
           return <Icon icon={value.value ? "mdi:check" : "mdi:remove"} className="text-sm" />;

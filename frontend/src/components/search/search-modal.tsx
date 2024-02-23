@@ -99,7 +99,8 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
     return (
       <Dialog.Panel
         ref={forwardedRef}
-        className="w-full max-w-screen-md max-h-[75vh] rounded-2xl bg-gray-50 p-2.5 shadow-xl transition-all flex flex-col">
+        className="w-full max-w-screen-md max-h-[75vh] rounded-2xl bg-gray-50 p-2.5 shadow-xl transition-all flex flex-col"
+        data-testid="search-anywhere">
         <Combobox
           onChange={(url: string) => {
             if (url.length === 0) return;
