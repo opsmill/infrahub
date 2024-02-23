@@ -147,11 +147,12 @@ class InfrahubCheck:
 
         if not data:
             data = await self.collect_data()
+        unpacked = data.get("data") or data
 
         if asyncio.iscoroutinefunction(self.validate):
-            await self.validate(data=data)
+            await self.validate(data=unpacked)
         else:
-            self.validate(data=data)
+            self.validate(data=unpacked)
 
         nbr_errors = len([log for log in self.logs if log["level"] == "ERROR"])
 

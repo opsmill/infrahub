@@ -84,11 +84,12 @@ class InfrahubTransform:
 
         if not data:
             data = await self.collect_data()
+        unpacked = data.get("data") or data
 
         if asyncio.iscoroutinefunction(self.transform):
-            return await self.transform(data=data)
+            return await self.transform(data=unpacked)
 
-        return self.transform(data=data)
+        return self.transform(data=unpacked)
 
 
 def get_transform_class_instance(
