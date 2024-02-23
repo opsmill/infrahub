@@ -1,5 +1,5 @@
 import { Combobox, Dialog, Transition } from "@headlessui/react";
-import { ChangeEventHandler, forwardRef, Fragment, useState } from "react";
+import { ChangeEventHandler, forwardRef, Fragment, useEffect, useState } from "react";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
 import { classNames } from "../../utils/common";
@@ -47,6 +47,17 @@ export function SearchModal({ className = "" }: SearchModalProps) {
   function openModal() {
     setIsOpen(true);
   }
+
+  useEffect(() => {
+    const onSearchAnywhereShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        openModal();
+      }
+    };
+
+    document.addEventListener("keydown", onSearchAnywhereShortcut);
+    return () => document.removeEventListener("keydown", onSearchAnywhereShortcut);
+  }, []);
 
   return (
     <>
