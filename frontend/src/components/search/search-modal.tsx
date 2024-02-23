@@ -4,6 +4,7 @@ import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
 import { classNames } from "../../utils/common";
 import { SearchNodes } from "./search-nodes";
+import { useDebounce } from "../../hooks/useDebounce";
 
 type SearchInputProps = {
   className?: string;
@@ -106,6 +107,7 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
   ({ onSelection }, forwardedRef) => {
     const navigate = useNavigate();
     const [query, setQuery] = useState("");
+    const queryDebounced = useDebounce(query, 300);
 
     return (
       <Dialog.Panel
@@ -136,9 +138,9 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
             />
           </div>
 
-          {query && (
+          {queryDebounced && (
             <Combobox.Options static className="mt-2 overflow-y-auto">
-              <SearchNodes query={query} />
+              <SearchNodes query={queryDebounced} />
             </Combobox.Options>
           )}
         </Combobox>
