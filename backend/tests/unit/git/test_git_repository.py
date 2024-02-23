@@ -494,7 +494,7 @@ async def test_execute_python_transform_w_query(
     repo = git_repo_transforms
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
-    expected_data = {"DATA": {"mock": []}}
+    expected_data = {"MOCK": []}
 
     result = await repo.execute_python_transform(
         branch_name="main", commit=commit_main, location="transform01.py::Transform01", client=client
@@ -530,7 +530,7 @@ async def test_artifact_generate_python_new(
 
     expected_data = ArtifactGenerateResult(
         changed=True,
-        checksum="1d03a7fdc5c03106ec0c17efc42df9e7",
+        checksum="e889b9fab24aab3b23ea01d5342b514a",
         storage_id="ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a",
         artifact_id=result.artifact_id,
     )
@@ -562,7 +562,7 @@ async def test_artifact_generate_python_existing_same(
 
     expected_data = ArtifactGenerateResult(
         changed=False,
-        checksum="1d03a7fdc5c03106ec0c17efc42df9e7",
+        checksum="e889b9fab24aab3b23ea01d5342b514a",
         storage_id="13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
         artifact_id=artifact_node_02.id,
     )
@@ -596,7 +596,7 @@ async def test_artifact_generate_python_existing_different(
 
     expected_data = ArtifactGenerateResult(
         changed=True,
-        checksum="1d03a7fdc5c03106ec0c17efc42df9e7",
+        checksum="e889b9fab24aab3b23ea01d5342b514a",
         storage_id="ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a",
         artifact_id=artifact_node_01.id,
     )
