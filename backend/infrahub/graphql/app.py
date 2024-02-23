@@ -55,7 +55,7 @@ except ImportError:
 
 from infrahub_sdk.utils import str_to_bool
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
 from infrahub.core import get_branch

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, List
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.query import Query, QueryType
 from infrahub.core.utils import element_id_to_id

@@ -4,7 +4,7 @@ import re
 from inspect import isclass
 from typing import TYPE_CHECKING, List, Optional, Union
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.models import NodeKind
 from infrahub.core.timestamp import Timestamp

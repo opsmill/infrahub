@@ -440,7 +440,6 @@ ignore = [
 ##################################################################################################
     "PLC0415", # `import` should be at the top-level of a file
     "PLC1901", # `display_label.strip() == ""` can be simplified to `not display_label.strip()` as an empty string is falsey
-    "PLR0402", # [*] Use `from infrahub import config` in lieu of alias
     "PLR0904", # Too many public methods
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments in function definition

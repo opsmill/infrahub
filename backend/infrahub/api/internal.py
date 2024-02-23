@@ -1,8 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-import infrahub.config as config
-from infrahub import __version__
+from infrahub import __version__, config
 from infrahub.config import AnalyticsSettings, ExperimentalFeaturesSettings, LoggingSettings, MainSettings
 from infrahub.core import registry
 

@@ -8,8 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from infrahub_sdk.utils import compare_lists, duplicates
 from pydantic import BaseModel
 
-import infrahub.config as config
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.core import get_branch, get_branch_from_registry
 from infrahub.core.constants import (
     RESERVED_ATTR_GEN_NAMES,

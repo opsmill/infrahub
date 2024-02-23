@@ -35,7 +35,7 @@ from infrahub_sdk.utils import YamlFile, compare_lists
 from pydantic import ValidationError as PydanticValidationError
 from pydantic.v1 import BaseModel, Field
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import (
     CheckError,

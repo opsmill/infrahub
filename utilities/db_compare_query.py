@@ -1,6 +1,6 @@
 import time
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.database import execute_read_query_async
 
 # pylint: skip-file

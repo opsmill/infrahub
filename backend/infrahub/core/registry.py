@@ -4,8 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, Optional, Type, Union
 
-import infrahub.config as config
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.exceptions import (
     BranchNotFound,
