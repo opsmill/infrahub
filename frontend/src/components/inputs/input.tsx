@@ -42,7 +42,7 @@ export const Input = forwardRef((props: any, ref: any) => {
   );
 
   return (
-    <div className="relative flex items-center h-full w-full">
+    <div className="relative flex items-center w-full">
       <input
         onChange={handleInputChange}
         className={classNames(
