@@ -139,7 +139,7 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
           </div>
 
           {queryDebounced && (
-            <Combobox.Options static className="mt-2 overflow-y-auto">
+            <Combobox.Options static className="mt-2 overflow-x-hidden overflow-y-auto">
               <SearchNodes query={queryDebounced} />
             </Combobox.Options>
           )}
