@@ -111,7 +111,7 @@ const getFormStructureForCreateEdit = (
             isReadOnly: field.read_only,
           }),
           isInherited,
-          parent: isInherited && getSelectParent(row, field), // Used by select 2 steps
+          parent: isInherited && row && getSelectParent(row, field), // Used by select 2 steps
           field,
           schema,
         };
