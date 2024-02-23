@@ -20,7 +20,25 @@ test.describe("when searching an object", () => {
     });
   });
 
-  test("should display message when no results found", async ({ page }) => {
+  test("should display a message when no results found", async ({ page }) => {
+    await page.goto("/");
+
+    await test.step("open search anywhere modal", async () => {
+      await page.getByPlaceholder("Search anywhere").click();
+      await expect(page.getByTestId("search-anywhere")).toBeVisible();
+    });
+
+    await test.step("open search anywhere modal when typing on header input", async () => {
+      await page
+        .getByTestId("search-anywhere")
+        .getByPlaceholder("Search anywhere")
+        .fill("no_results_query_for_test");
+      await expect(page.getByRole("heading")).toContainText("No results found");
+      await expect(page.getByRole("paragraph")).toContainText("Try using different keywords");
+    });
+  });
+
+  test("should display results on search nodes", async ({ page }) => {
     await page.goto("/");
 
     await test.step("open search anywhere modal", async () => {
