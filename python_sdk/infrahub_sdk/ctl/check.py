@@ -82,10 +82,8 @@ async def run_check(
     check = await check_class.init(client=client, params=params, output=output, root_directory=path, branch=branch)
     param_log = f" - {params}" if params else ""
     try:
-        check.data = {
-            "data": execute_graphql_query(query=check.query, variables_dict=check.params, branch=branch, debug=False)
-        }
-        passed = await check.run()
+        data = execute_graphql_query(query=check.query, variables_dict=check.params, branch=branch, debug=False)
+        passed = await check.run(data)
         if passed:
             if not format_json:
                 log.info(f"{module_name}::{check}: [green]PASSED[/]{param_log}", extra={"markup": True})

@@ -5,7 +5,7 @@ class InfrahubCheckSpineNbrInterfaceDisabled(InfrahubCheck):
     query = "check_spine_interface_status"
 
     def validate(self, data):
-        for device in data["data"]["device"]:
+        for device in data["device"]:
             device_name = device["name"]["value"]
             device_id = device["id"]
 
