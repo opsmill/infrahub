@@ -4,7 +4,6 @@ import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import { Route, Routes } from "react-router-dom";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
-import { withAuth } from "../../../src/decorators/withAuth";
 import { withSchemaContext } from "../../../src/decorators/withSchemaContext";
 import { ArtifactsDiff } from "../../../src/screens/diff/artifact-diff/artifacts-diff";
 import { proposedChangedState } from "../../../src/state/atoms/proposedChanges.atom";
@@ -21,6 +20,7 @@ import { proposedChangesId } from "../../mocks/data/conversations";
 import { profileId } from "../../mocks/data/profile";
 import { proposedChangesDetails } from "../../mocks/data/proposedChanges";
 import { TestProvider } from "../../mocks/jotai/atom";
+import { AuthProvider } from "../../../src/hooks/useAuth";
 
 const url = `/proposed-changes/${proposedChangesId}&pr_tab=artifacts`;
 const path = "/proposed-changes/:proposedchange";
@@ -40,7 +40,11 @@ const mocks = [
 ];
 
 const SchemaArtifactsDiff = withSchemaContext(ArtifactsDiff);
-const AuthArtifactsDiff = withAuth(SchemaArtifactsDiff);
+const AuthArtifactsDiff = () => (
+  <AuthProvider>
+    <SchemaArtifactsDiff />
+  </AuthProvider>
+);
 
 // Provide the initial value for jotai
 const ArtifactsDiffProvider = ({ loggedIn }: { loggedIn: boolean }) => {

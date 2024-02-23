@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 import { ChevronLeftIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { RoundedButton } from "../../components/buttons/rounded-button";
@@ -13,7 +13,7 @@ import ModalDelete from "../../components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { Tooltip } from "../../components/utils/tooltip";
 import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
-import { AuthContext } from "../../decorators/withAuth";
+import { useAuth } from "../../hooks/useAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
@@ -27,7 +27,7 @@ export const ProposedChange = (props: any) => {
 
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
 

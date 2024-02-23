@@ -6,7 +6,7 @@ import {
   PlusIcon,
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import { Fragment, useContext, useState } from "react";
+import { Fragment, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
@@ -22,7 +22,7 @@ import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
-import { AuthContext } from "../../decorators/withAuth";
+import { useAuth } from "../../hooks/useAuth";
 import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
 import UnlinkIcon from "../../images/icons/unlink.svg";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
@@ -66,7 +66,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   } = props;
 
   const { objectname, objectid } = useParams();
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
 
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);

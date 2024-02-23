@@ -9,7 +9,7 @@ import { SidePanelTitle } from "../../components/display/sidepanel-title";
 import SlideOver from "../../components/display/slide-over";
 import { Tooltip, TooltipPosition } from "../../components/utils/tooltip";
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "../../config/constants";
-import { AuthContext } from "../../decorators/withAuth";
+import { useAuth } from "../../hooks/useAuth";
 import { getProposedChangesObjectThreads } from "../../graphql/queries/proposed-changes/getProposedChangesObjectThreads";
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -26,7 +26,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
 
   const { proposedchange } = useParams();
   const [schemaList] = useAtom(schemaState);
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
   const { node, currentBranch } = useContext(DiffContext);
   const [showThread, setShowThread] = useState(false);
 

@@ -1,7 +1,6 @@
 import { Icon } from "@iconify-icon/react";
-import { useContext } from "react";
 import { Link } from "react-router-dom";
-import { AuthContext } from "../../decorators/withAuth";
+import { useAuth } from "../../hooks/useAuth";
 import NoDataFound from "../../screens/no-data-found/no-data-found";
 import { classNames } from "../../utils/common";
 import { BUTTON_TYPES, Button } from "../buttons/button";
@@ -26,7 +25,7 @@ type tTableProps = {
 export const Table = (props: tTableProps) => {
   const { columns, rows, onDelete } = props;
 
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
 
   return (
     <>

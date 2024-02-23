@@ -6,7 +6,6 @@ import { formatDistanceToNow } from "date-fns";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
-import { withAuth } from "../../../src/decorators/withAuth";
 import ObjectDetails from "../../../src/screens/object-item-details/object-item-details-paginated";
 import { configState } from "../../../src/state/atoms/config.atom";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
@@ -36,6 +35,7 @@ import {
   deviceDetailsUpdateMocksQuery,
 } from "../../mocks/data/devices";
 import { TestProvider } from "../../mocks/jotai/atom";
+import { AuthProvider } from "../../../src/hooks/useAuth";
 
 // URL for the current view
 const mockedUrl = `/objects/InfraDevice/${deviceDetailsMocksId}`;
@@ -128,7 +128,11 @@ const mocksToken = [
   },
 ];
 
-const AuthenticatedObjectItems = withAuth(ObjectDetails);
+const AuthenticatedObjectItems = () => (
+  <AuthProvider>
+    <ObjectDetails />
+  </AuthProvider>
+);
 
 // Provide the initial value for jotai
 const ObjectDetailsProvider = () => {

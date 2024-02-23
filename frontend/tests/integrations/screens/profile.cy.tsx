@@ -5,8 +5,6 @@ import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { initials } from "../../../src/components/display/avatar";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
-import { withAuth } from "../../../src/decorators/withAuth";
-import Header from "../../../src/screens/layout/header";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
 import { encodeJwt } from "../../../src/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
@@ -16,6 +14,8 @@ import {
   profileId,
 } from "../../mocks/data/profile";
 import { TestProvider } from "../../mocks/jotai/atom";
+import { AuthProvider } from "../../../src/hooks/useAuth";
+import Header from "../../../src/screens/layout/header";
 
 // Mock the apollo query and data
 const mocks: any[] = [
@@ -31,7 +31,11 @@ const mocks: any[] = [
   },
 ];
 
-const AuthHeader = withAuth(Header);
+const AuthHeader = () => (
+  <AuthProvider>
+    <Header />
+  </AuthProvider>
+);
 
 describe("List screen", () => {
   it("should fetch items and render list", () => {

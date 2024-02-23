@@ -1,5 +1,5 @@
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -7,7 +7,7 @@ import { BUTTON_TYPES, Button } from "../../components/buttons/button";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { CONFIG } from "../../config/config";
 import { QSP } from "../../config/qsp";
-import { AuthContext } from "../../decorators/withAuth";
+import { useAuth } from "../../hooks/useAuth";
 import { classNames } from "../../utils/common";
 import { fetchUrl, getUrlWithQsp } from "../../utils/fetch";
 
@@ -26,7 +26,7 @@ export const Generate = (props: tGenerateProps) => {
   const [at] = useQueryParam(QSP.DATETIME, StringParam);
   const [isLoading, setIsLoading] = useState(false);
 
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
 
   const handleGenerate = async () => {
     try {

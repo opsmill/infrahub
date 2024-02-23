@@ -4,7 +4,7 @@ import { ArrowPathIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline"
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
@@ -15,7 +15,7 @@ import ModalDelete from "../../components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { AuthContext } from "../../decorators/withAuth";
+import { useAuth } from "../../hooks/useAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteBranch } from "../../graphql/mutations/branches/deleteBranch";
 import { mergeBranch } from "../../graphql/mutations/branches/mergeBranch";
@@ -36,7 +36,7 @@ import { getFormStructure } from "../proposed-changes/conversations";
 export const BranchDetails = () => {
   const { branchname } = useParams();
   const date = useAtomValue(datetimeAtom);
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
   const [branches, setBranches] = useAtom(branchesState);
   const [schemaList] = useAtom(schemaState);
 
