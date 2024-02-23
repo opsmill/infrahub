@@ -158,6 +158,7 @@ select = [
     "I",    # isort-like checks
     "ICN",  # flake8-import-conventions
     "PL",   # pylint
+    "PYI",  # flake8-pyi
     "Q",    # flake8-quotes
     "TCH",  # flake8-type-checking
     "TRIO", # flake8-trio

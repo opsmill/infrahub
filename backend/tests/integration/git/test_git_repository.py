@@ -16,6 +16,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.server import app, app_initialization
 from infrahub.utils import get_models_dir
+from tests.adapters.log import FakeTaskReportLogger
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import InfrahubTestClient
 
@@ -90,6 +91,7 @@ class TestInfrahubClient:
             id=obj.id,
             name=git_repo_infrahub_demo_edge.name,
             location=git_repo_infrahub_demo_edge.path,
+            task_report=FakeTaskReportLogger(),
         )
 
         repo.client = client

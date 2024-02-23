@@ -740,12 +740,15 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return True
 
-    async def __aenter__(self) -> InfrahubClient:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(
-        self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType
-    ) -> None:  # pylint: disable=unused-argument
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
         if exc_type is None and self.mode == InfrahubClientMode.TRACKING:
             await self.group_context.update_group()
 
@@ -1307,10 +1310,15 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         self.refresh_token = response.json()["refresh_token"]
         self.headers["Authorization"] = f"Bearer {self.access_token}"
 
-    def __enter__(self) -> InfrahubClientSync:
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType) -> None:  # pylint: disable=unused-argument
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
         if exc_type is None and self.mode == InfrahubClientMode.TRACKING:
             self.group_context.update_group()
 
