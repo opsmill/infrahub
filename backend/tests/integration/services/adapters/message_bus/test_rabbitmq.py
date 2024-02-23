@@ -431,5 +431,49 @@ async def test_rabbitmq_rpc(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger)
     assert response.data.response == "Reply to: You can reply to this message"
 
 
+async def test_rabbitmq_subscribe(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:
+    """Validates the subscribe method."""
+
+    bus = RabbitMQMessageBus(settings=rabbitmq_api.settings)
+    api_service = InfrahubServices(message_bus=bus, component_type=ComponentType.API_SERVER)
+    agent_service = InfrahubServices(message_bus=bus, component_type=ComponentType.GIT_AGENT, log=fake_log)
+    await bus.initialize(service=api_service)
+    await bus.shutdown()
+
+    await bus.initialize(service=agent_service)
+
+    subscribe_task = asyncio.create_task(bus.subscribe())
+
+    await agent_service.send(message=messages.SendEchoRequest(message="Hello there"))
+    await asyncio.sleep(delay=1)
+    await bus.shutdown()
+    subscribe_task.cancel()
+
+    assert fake_log.info_logs == ["Waiting for RPC instructions to execute .. ", "Received message: Hello there"]
+    assert fake_log.error_logs == []
+
+
+async def test_rabbitmq_subscribe_invalid_routing_key(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:
+    """Validates logging of invalid routing key"""
+
+    bus = RabbitMQMessageBus(settings=rabbitmq_api.settings)
+    api_service = InfrahubServices(message_bus=bus, component_type=ComponentType.API_SERVER)
+    agent_service = InfrahubServices(message_bus=bus, component_type=ComponentType.GIT_AGENT, log=fake_log)
+    await bus.initialize(service=api_service)
+    await bus.shutdown()
+
+    await bus.initialize(service=agent_service)
+
+    subscribe_task = asyncio.create_task(bus.subscribe())
+
+    await bus.publish(routing_key="request.something.invalid", message=messages.SendEchoRequest(message="Hello there"))
+    await asyncio.sleep(delay=1)
+    await bus.shutdown()
+    subscribe_task.cancel()
+
+    assert fake_log.info_logs == ["Waiting for RPC instructions to execute .. "]
+    assert fake_log.error_logs == ["Unhandled routing key for message"]
+
+
 async def on_callback(message: AbstractIncomingMessage, service: InfrahubServices) -> None:
     await execute_message(routing_key=message.routing_key or "", message_body=message.body, service=service)
