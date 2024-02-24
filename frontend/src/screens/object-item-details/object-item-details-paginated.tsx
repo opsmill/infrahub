@@ -381,22 +381,22 @@ export default function ObjectItemDetails(props: any) {
         title={
           <div className="space-y-2">
             <div className="flex">
-              <div className="flex items-center overflow-x-hidden flex-grow">
-                <div className="font-semibold text-gray-900">{schemaData.label}</div>
+              <div className="flex items-center overflow-hidden flex-grow">
+                <span className="font-semibold text-gray-900">{schemaData.label}</span>
 
                 <ChevronRightIcon
                   className="w-4 h-4 flex-shrink-0 mx-2 text-gray-400"
                   aria-hidden="true"
                 />
 
-                <p className="text-gray-500 text-ellipsis overflow-hidden">
+                <span className="text-gray-500 text-ellipsis overflow-hidden">
                   {objectDetailsData.display_label}
-                </p>
+                </span>
               </div>
 
               <div className="flex items-center ml-2">
                 <Icon icon="mdi:layers-triple" />
-                <div className="ml-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+                <span className="ml-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</span>
               </div>
             </div>
 
