@@ -32,6 +32,18 @@ env:
 
 jobs:
   scale-tests:
+    strategy:
+      matrix:
+        include:
+          - node-amount: 1000
+            attrs-amount: 0
+            rels-amount: 0
+          - node-amount: 10
+            attrs-amount: 100
+            rels-amount: 0
+          - node-amount: 10
+            attrs-amount: 0
+            rels-amount: 100
     runs-on:
       group: huge-runners
     timeout-minutes: 60
@@ -66,13 +78,13 @@ jobs:
       - name: "Store start time"
         run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
       - name: "Run test"
-        run: "poetry run invoke backend.test-scale --amount 10 -s backend/tests/scale/schema.yml --stager stage_infranode"
+        run: "poetry run invoke backend.test-scale --amount ${{ matrix.node-amount }} --attrs ${{ matrix.attrs-amount }} --rels ${{ matrix.rels-amount }} -s backend/tests/scale/schema.yml --stager stage_infranode"
       - name: "Push metrics"
         run: "curl -v --data-binary @metrics.csv 'http://localhost:8429/api/v1/import/csv?format=1:metric:scale_test_response_time,2:time:unix_ms,3:label:operation_name,4:label:stage,5:label:node_amount,6:label:attrs_amount,7:label:rels_amount'"
       - name: "Wait for vmagent to push metrics"
         run: "sleep 10"
       - name: "Show graph URL"
-        run: 'echo "https://grafana-prod.tailc018d.ts.net/d/ebf7ec72-db79-4fb7-9b46-4621ca9c407a/scale-tests?orgId=1&var-run_id=$GITHUB_RUN_ID&var-stage=test&from=$TEST_START_TIME&to=$(date +%s)000"'
+        run: 'echo "https://grafana-prod.tailc018d.ts.net/d/ebf7ec72-db79-4fb7-9b46-4621ca9c407a/scale-tests?orgId=1&var-run_id=$GITHUB_RUN_ID&var-stage=test&var-node_amount=${{ matrix.node-amount }}&var-attrs_amount=${{ matrix.attrs-amount }}&var-rels_amount=${{ matrix.rels-amount }}&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
       - name: "Destroy scale environment"
         if: always()
         run: "invoke backend.test-scale-env-destroy"
