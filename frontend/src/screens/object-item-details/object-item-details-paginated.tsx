@@ -380,21 +380,21 @@ export default function ObjectItemDetails(props: any) {
       <SlideOver
         title={
           <div className="space-y-2">
-            <div className="flex">
-              <div className="flex items-center overflow-hidden flex-grow">
-                <span className="font-semibold text-gray-900">{schemaData.label}</span>
+            <div className="flex items-start">
+              <div className="flex-grow flex items-center flex-wrap overflow-hidden">
+                <span className="font-semibold text-gray-900 truncate">{schemaData.label}</span>
 
                 <ChevronRightIcon
                   className="w-4 h-4 flex-shrink-0 mx-2 text-gray-400"
                   aria-hidden="true"
                 />
 
-                <span className="text-gray-500 text-ellipsis overflow-hidden">
+                <span className="flex-grow text-gray-500 overflow-hidden break-words">
                   {objectDetailsData.display_label}
                 </span>
               </div>
 
-              <div className="flex items-center ml-2">
+              <div className="flex items-center ml-3">
                 <Icon icon="mdi:layers-triple" />
                 <span className="ml-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</span>
               </div>
