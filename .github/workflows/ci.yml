@@ -69,7 +69,7 @@ jobs:
       - name: "Install Helm"
         uses: azure/setup-helm@v4.2.0
       - name: "Linting: helm lint"
-        run: "helm lint helm/"
+        run: "helm lint packaging/helm/"
 
   yaml-lint:
     if: needs.files-changed.outputs.yaml == 'true'

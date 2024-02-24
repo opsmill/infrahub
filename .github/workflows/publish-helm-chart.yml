@@ -46,7 +46,7 @@ jobs:
         id: version
         run: |
           if [[ "${{ inputs.version }}" == "" ]]; then
-            VERSION=$(helm show chart ./helm | grep '^version:' | cut -d ' ' -f2)
+            VERSION=$(helm show chart ./packaging/helm | grep '^version:' | cut -d ' ' -f2)
             echo "No version input provided, using Chart.yaml version: $VERSION"
           else
             VERSION="${{ inputs.version }}"
@@ -65,7 +65,7 @@ jobs:
 
       - name: Package Helm Chart
         run: |
-          helm package --dependency-update ./helm --version ${{ steps.version.outputs.version }}
+          helm package --dependency-update ./packaging/helm --version ${{ steps.version.outputs.version }}
 
       - name: Push Helm Chart to OCI Registry
         if: ${{ inputs.publish }}
