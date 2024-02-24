@@ -3,17 +3,14 @@
 name: "Scale testing"
 on:
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "0 2 * * *"
   workflow_dispatch:
     inputs:
-      node_amount:
+      commit:
         type: string
-        description: Number of nodes to use for scale testing
-        default: '10'
+        description: commit sha or branch name
+        default: ''
         required: false
-  push:
-    branches:
-      - fac-scale-test-reporting
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -54,7 +51,7 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
         with:
-          ref: fac-scale-test-reporting
+          ref: ${{ inputs.commit == '' && 'develop' || inputs.commit }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
