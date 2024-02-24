@@ -25,7 +25,7 @@ services:
     labels:
       infrahub_role: "database"
     ports:
-      - "6362:6362"
+      - "${INFRAHUB_DB_BACKUP_PORT:-6362}:6362"
 
 
 volumes:
