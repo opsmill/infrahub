@@ -18,10 +18,10 @@ export const SearchActions = ({ query }: SearchProps) => {
 
   const schemasInMenu = useMemo(() => {
     return [...schemas, ...generics].filter((s) => s.include_in_menu);
-  }, []);
+  }, [schemas.length, generics.length]);
 
-  const results = schemasInMenu.filter(({ name }) =>
-    name.toLowerCase().includes(query.toLowerCase())
+  const results = schemasInMenu.filter(({ kind, label, name }) =>
+    (label || kind || name).toLowerCase().includes(query.toLowerCase())
   );
 
   if (results.length === 0) return null;
@@ -50,7 +50,7 @@ const ActionResult = ({ schema }: ActionResultProps) => {
       <Icon icon="mdi:arrow-right-thin" />
       <span>Objects</span>
       <Icon icon="mdi:chevron-right" />
-      <span className="font-medium">{label || name || kind}</span>
+      <span className="font-medium">{label || kind || name}</span>
       <Icon icon="mdi:chevron-right" />
       <span className="font-semibold text-custom-blue-700">View</span>
     </SearchResultItem>

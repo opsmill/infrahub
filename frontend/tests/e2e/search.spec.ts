@@ -20,6 +20,23 @@ test.describe("when searching an object", () => {
     });
   });
 
+  test("displays link to Device list", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByTestId("sidebar-menu")).toBeVisible(); // Wait for schema to load
+
+    await test.step("open search anywhere modal with click", async () => {
+      await page.getByPlaceholder("Search anywhere").click();
+      await expect(page.getByTestId("search-anywhere")).toBeVisible();
+    });
+
+    await test.step("find a matching result", async () => {
+      await page.getByTestId("search-anywhere").getByPlaceholder("Search anywhere").fill("devi");
+      await expect(page.getByTestId("search-anywhere")).toContainText("Go to");
+      await page.getByRole("option", { name: "Objects Device View" }).click();
+      expect(page.url()).toContain("/objects/InfraDevice");
+    });
+  });
+
   // require fix on backend https://github.com/opsmill/infrahub/issues/2345
   test.fixme("should display a message when no results found", async ({ page }) => {
     await page.goto("/");
