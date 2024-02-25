@@ -29,7 +29,7 @@ export const SearchActions = ({ query }: SearchProps) => {
   const firstThreeMatches = results.slice(0, 3);
   return (
     <SearchGroup>
-      <SearchGroupTitle>GO TO</SearchGroupTitle>
+      <SearchGroupTitle>Go to</SearchGroupTitle>
 
       {firstThreeMatches.map((s) => (
         <ActionResult key={s.id} schema={s} />
