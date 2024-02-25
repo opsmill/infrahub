@@ -69,7 +69,7 @@ export const ProposedChanges = () => {
 
   useTitle("Proposed changes list");
 
-  const rows = edges?.map((edge: any) => edge.node);
+  const rows = edges?.map((edge: any) => edge.node).reverse();
 
   const customObject = {
     created_by: {
@@ -146,9 +146,7 @@ export const ProposedChanges = () => {
           </div>
         }
         open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}
-        // title={`Create ${objectname}`}
-      >
+        setOpen={setShowCreateDrawer}>
         <ObjectItemCreate
           onCreate={(response: any) => {
             setShowCreateDrawer(false);
