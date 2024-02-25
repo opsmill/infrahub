@@ -1,15 +1,15 @@
 import json
 import os
 import re
-
 from typing import List
+
 from fastapi import APIRouter
+from lunr.index import Index
 from pydantic import BaseModel
 
 from infrahub import __version__, config
 from infrahub.config import AnalyticsSettings, ExperimentalFeaturesSettings, LoggingSettings, MainSettings
 from infrahub.core import registry
-from lunr.index import Index
 
 router = APIRouter()
 
@@ -25,11 +25,11 @@ class InfoAPI(BaseModel):
     deployment_id: str
     version: str
 
+
 class SearchResultAPI(BaseModel):
     title: str
     url: str
     breadcrumb: List[str]
-
 
 
 @router.get("/config")
@@ -80,7 +80,7 @@ if os.path.exists(DOCS_SEARCH_INDEX_FILE):
     #     h: section.hash,
     #     p: title_id,
     # }
-    with open(DOCS_SEARCH_INDEX_FILE, 'r') as f:
+    with open(DOCS_SEARCH_INDEX_FILE, "r") as f:
         search_index = json.loads(f.read())
         page_search_index = search_index[0]
         heading_search_index = search_index[1]
@@ -88,7 +88,7 @@ if os.path.exists(DOCS_SEARCH_INDEX_FILE):
 
 
 def tokenize(text: str):
-    return re.findall(r'[^-\s]+', text.lower()) or []
+    return re.findall(r"[^-\s]+", text.lower()) or []
 
 
 def smart_queries(query: str):
@@ -112,9 +112,9 @@ async def search_docs(query: str) -> List[SearchResultAPI]:
 
     response_list = [
         {
-            'title': result["t"],
-            'url': result["u"] + result["h"],
-            'breadcrumb': next(doc["b"] for doc in page_search_index["documents"] if doc["i"] == int(result["p"]))
+            "title": result["t"],
+            "url": result["u"] + result["h"],
+            "breadcrumb": next(doc["b"] for doc in page_search_index["documents"] if doc["i"] == int(result["p"])),
         }
         for result in heading_results
     ]
