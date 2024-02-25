@@ -149,11 +149,26 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
   }
 );
 
-interface SearchResultsItemProps {
+interface SearchGroupTitleProps {
+  children: ReactNode;
+}
+
+export const SearchGroupTitle = ({ children }: SearchGroupTitleProps) => {
+  return (
+    <Combobox.Option
+      value=""
+      disabled
+      className="text-xxs mb-1 mt-2 font-semibold text-gray-500 flex items-center">
+      {children}
+    </Combobox.Option>
+  );
+};
+
+interface SearchResultItemProps {
   children: ReactNode;
   to: string;
 }
-export const SearchResultItem = ({ children, to }: SearchResultsItemProps) => {
+export const SearchResultItem = ({ children, to }: SearchResultItemProps) => {
   return (
     <Combobox.Option
       as={Link}

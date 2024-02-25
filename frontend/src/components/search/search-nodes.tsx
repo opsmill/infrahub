@@ -13,7 +13,7 @@ import { constructPath } from "../../utils/fetch";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { format } from "date-fns";
 import { Skeleton } from "../skeleton";
-import { SearchResultItem } from "./search-modal";
+import { SearchGroupTitle, SearchResultItem } from "./search-modal";
 
 type SearchProps = {
   query: string;
@@ -54,9 +54,15 @@ export const SearchNodes = ({ query }: SearchProps) => {
     );
   }
 
-  return results.edges.map(({ node }: NodesOptionsProps) => (
-    <NodesOptions key={node.id} node={node} />
-  ));
+  return (
+    <>
+      <SearchGroupTitle>Search results for &quot;{query}&quot;</SearchGroupTitle>
+
+      {results.edges.map(({ node }: NodesOptionsProps) => (
+        <NodesOptions key={node.id} node={node} />
+      ))}
+    </>
+  );
 };
 
 type NodesOptionsProps = {
