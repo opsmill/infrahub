@@ -92,26 +92,10 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
   const { loading, data } = useQuery(query, { skip: !schemaData });
 
-  if (loading) {
-    return (
-      <div className="flex py-3 w-full border-b border-gray-200">
-        <Skeleton className="h-6 w-6 rounded mx-1 mr-2" />
-
-        <div className="space-y-2 flex-grow">
-          <div className="flex space-x-2">
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-4 w-20" />
-          </div>
-          <Skeleton className="h-4 max-w-xl" />
-          <Skeleton className="h-4 max-w-xl" />
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <SearchResultNodeSkeleton />;
 
   const objectDetailsData = schemaData && data?.[node.__typename]?.edges[0]?.node;
-
-  if (!objectDetailsData) return <div>No data found for this object</div>;
+  if (!objectDetailsData) return <div className="text-sm">No data found for this object</div>;
 
   const url = constructPath(
     getObjectDetailsUrl(objectDetailsData.id, objectDetailsData.__typename)
@@ -200,6 +184,23 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
     <div className="flex flex-col text-xxs whitespace-nowrap">
       <span className="font-light">{title}</span>
       <span className="font-medium">{formatValue() || "-"}</span>
+    </div>
+  );
+};
+
+export const SearchResultNodeSkeleton = () => {
+  return (
+    <div className="flex py-3 w-full">
+      <Skeleton className="h-6 w-6 rounded mx-1 mr-2" />
+
+      <div className="space-y-2 flex-grow">
+        <div className="flex space-x-2">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+        <Skeleton className="h-4 max-w-xl" />
+        <Skeleton className="h-4 max-w-xl" />
+      </div>
     </div>
   );
 };
