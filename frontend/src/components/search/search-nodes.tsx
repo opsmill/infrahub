@@ -13,7 +13,7 @@ import { constructPath } from "../../utils/fetch";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { format } from "date-fns";
 import { Skeleton } from "../skeleton";
-import { SearchGroupTitle, SearchResultItem } from "./search-modal";
+import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-modal";
 
 type SearchProps = {
   query: string;
@@ -55,13 +55,13 @@ export const SearchNodes = ({ query }: SearchProps) => {
   }
 
   return (
-    <>
+    <SearchGroup>
       <SearchGroupTitle>Search results for &quot;{query}&quot;</SearchGroupTitle>
 
       {results.edges.map(({ node }: NodesOptionsProps) => (
         <NodesOptions key={node.id} node={node} />
       ))}
-    </>
+    </SearchGroup>
   );
 };
 
@@ -108,13 +108,13 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
   );
 
   return (
-    <SearchResultItem to={url}>
+    <SearchResultItem to={url} className="!items-start">
       <Icon
         icon={schemaData?.icon || "mdi:code-braces-box"}
-        className="text-lg px-2 py-0.5 text-custom-blue-700"
+        className="text-lg pr-2 py-0.5 text-custom-blue-700"
       />
 
-      <div className="flex-grow">
+      <div className="flex-grow text-sm">
         <span className="mr-1 font-semibold text-custom-blue-700">
           {objectDetailsData?.display_label}
         </span>
