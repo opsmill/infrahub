@@ -139,10 +139,10 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
             />
           </div>
 
-          {queryDebounced && (
+          {query && (
             <Combobox.Options static className="overflow-x-hidden overflow-y-auto divide-y">
-              <SearchActions query={queryDebounced} />
-              <SearchNodes query={queryDebounced} />
+              <SearchActions query={query} />
+              {queryDebounced && <SearchNodes query={queryDebounced} />}
             </Combobox.Options>
           )}
         </Combobox>

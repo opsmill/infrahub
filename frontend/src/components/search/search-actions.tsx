@@ -1,4 +1,5 @@
-import { useAtomValue } from "jotai/index";
+import { useMemo } from "react";
+import { useAtomValue } from "jotai";
 import {
   genericsState,
   iGenericSchema,
@@ -15,18 +16,22 @@ export const SearchActions = ({ query }: SearchProps) => {
   const schemas = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
 
-  const schemaInMenu = [...schemas, ...generics].filter((s) => s.include_in_menu);
-  const results = schemaInMenu.filter(({ name }) =>
+  const schemasInMenu = useMemo(() => {
+    return [...schemas, ...generics].filter((s) => s.include_in_menu);
+  }, []);
+
+  const results = schemasInMenu.filter(({ name }) =>
     name.toLowerCase().includes(query.toLowerCase())
   );
 
   if (results.length === 0) return null;
 
+  const firstThreeMatches = results.slice(0, 3);
   return (
     <SearchGroup>
       <SearchGroupTitle>GO TO</SearchGroupTitle>
 
-      {results.map((s) => (
+      {firstThreeMatches.map((s) => (
         <ActionResult key={s.id} schema={s} />
       ))}
     </SearchGroup>
