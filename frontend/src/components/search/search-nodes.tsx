@@ -11,10 +11,9 @@ import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObje
 import { gql } from "@apollo/client";
 import { constructPath } from "../../utils/fetch";
 import { getObjectDetailsUrl } from "../../utils/objects";
-import { Combobox } from "@headlessui/react";
-import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { Skeleton } from "../skeleton";
+import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-modal";
 
 type SearchProps = {
   query: string;
@@ -55,9 +54,15 @@ export const SearchNodes = ({ query }: SearchProps) => {
     );
   }
 
-  return results.edges.map(({ node }: NodesOptionsProps) => (
-    <NodesOptions key={node.id} node={node} />
-  ));
+  return (
+    <SearchGroup>
+      <SearchGroupTitle>Search results for &quot;{query}&quot;</SearchGroupTitle>
+
+      {results.edges.map(({ node }: NodesOptionsProps) => (
+        <NodesOptions key={node.id} node={node} />
+      ))}
+    </SearchGroup>
+  );
 };
 
 type NodesOptionsProps = {
@@ -93,45 +98,23 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
   const { loading, data } = useQuery(query, { skip: !schemaData });
 
-  if (loading) {
-    return (
-      <div className="flex py-3 w-full border-b border-gray-200">
-        <Skeleton className="h-6 w-6 rounded mx-1 mr-2" />
-
-        <div className="space-y-2 flex-grow">
-          <div className="flex space-x-2">
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-4 w-20" />
-          </div>
-          <Skeleton className="h-4 max-w-xl" />
-          <Skeleton className="h-4 max-w-xl" />
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <SearchResultNodeSkeleton />;
 
   const objectDetailsData = schemaData && data?.[node.__typename]?.edges[0]?.node;
-
-  if (!objectDetailsData) return <div>No data found for this object</div>;
+  if (!objectDetailsData) return <div className="text-sm">No data found for this object</div>;
 
   const url = constructPath(
     getObjectDetailsUrl(objectDetailsData.id, objectDetailsData.__typename)
   );
 
   return (
-    <Combobox.Option
-      as={Link}
-      value={url}
-      to={url}
-      className={({ active }) =>
-        `flex gap-1 text-sm border-b border-gray-200 py-3 ${active ? "bg-slate-200" : ""}`
-      }>
+    <SearchResultItem to={url} className="!items-start">
       <Icon
         icon={schemaData?.icon || "mdi:code-braces-box"}
-        className="text-lg px-2 py-0.5 text-custom-blue-700"
+        className="text-lg pr-2 py-0.5 text-custom-blue-700"
       />
 
-      <div className="flex-grow">
+      <div className="flex-grow text-sm">
         <span className="mr-1 font-semibold text-custom-blue-700">
           {objectDetailsData?.display_label}
         </span>
@@ -152,7 +135,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
             ))}
         </div>
       </div>
-    </Combobox.Option>
+    </SearchResultItem>
   );
 };
 
@@ -207,6 +190,23 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
     <div className="flex flex-col text-xxs whitespace-nowrap">
       <span className="font-light">{title}</span>
       <span className="font-medium">{formatValue() || "-"}</span>
+    </div>
+  );
+};
+
+export const SearchResultNodeSkeleton = () => {
+  return (
+    <div className="flex py-3 w-full">
+      <Skeleton className="h-6 w-6 rounded mx-1 mr-2" />
+
+      <div className="space-y-2 flex-grow">
+        <div className="flex space-x-2">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+        <Skeleton className="h-4 max-w-xl" />
+        <Skeleton className="h-4 max-w-xl" />
+      </div>
     </div>
   );
 };

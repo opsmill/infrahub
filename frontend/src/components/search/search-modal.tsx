@@ -1,10 +1,11 @@
 import { Combobox, Dialog, Transition } from "@headlessui/react";
-import { ChangeEventHandler, forwardRef, Fragment, useEffect, useState } from "react";
+import { ChangeEventHandler, forwardRef, Fragment, ReactNode, useEffect, useState } from "react";
 import { Icon } from "@iconify-icon/react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { classNames } from "../../utils/common";
 import { SearchNodes } from "./search-nodes";
 import { useDebounce } from "../../hooks/useDebounce";
+import { SearchActions } from "./search-actions";
 
 type SearchInputProps = {
   className?: string;
@@ -112,7 +113,7 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
     return (
       <Dialog.Panel
         ref={forwardedRef}
-        className="w-full max-w-screen-md max-h-[75vh] rounded-2xl bg-gray-50 p-2.5 shadow-xl transition-all flex flex-col"
+        className="w-full max-w-screen-md max-h-[75vh] rounded-2xl bg-gray-50 shadow-xl transition-all flex flex-col"
         data-testid="search-anywhere">
         <Combobox
           onChange={(url: string) => {
@@ -121,8 +122,8 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
             onSelection(url);
             navigate(url);
           }}>
-          <div className="relative">
-            <Combobox.Button className="absolute top-2.5 left-0 pl-2 flex items-center">
+          <div className="p-2.5 relative shadow">
+            <Combobox.Button className="absolute top-5 left-2.5 pl-2 flex items-center">
               <Icon icon="mdi:magnify" className="text-lg text-custom-blue-10" aria-hidden="true" />
             </Combobox.Button>
 
@@ -138,9 +139,10 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
             />
           </div>
 
-          {queryDebounced && (
-            <Combobox.Options static className="mt-2 overflow-x-hidden overflow-y-auto">
-              <SearchNodes query={queryDebounced} />
+          {query && (
+            <Combobox.Options static className="overflow-x-hidden overflow-y-auto divide-y">
+              <SearchActions query={query} />
+              {queryDebounced && <SearchNodes query={queryDebounced} />}
             </Combobox.Options>
           )}
         </Combobox>
@@ -148,3 +150,43 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
     );
   }
 );
+
+type SearchGroupProps = {
+  children: ReactNode;
+};
+
+export const SearchGroup = ({ children }: SearchGroupProps) => {
+  return <div className="p-2.5">{children}</div>;
+};
+export const SearchGroupTitle = ({ children }: SearchGroupProps) => {
+  return (
+    <Combobox.Option
+      value=""
+      disabled
+      className="text-xxs font-semibold text-gray-500 flex items-center">
+      {children}
+    </Combobox.Option>
+  );
+};
+
+type SearchResultItemProps = SearchGroupProps & {
+  className?: string;
+  to: string;
+};
+
+export const SearchResultItem = ({ className = "", children, to }: SearchResultItemProps) => {
+  return (
+    <Combobox.Option
+      as={Link}
+      value={to}
+      to={to}
+      className={({ active }) =>
+        classNames(
+          `flex items-center gap-1 text-xs px-2 py-3 ${active ? "bg-slate-200" : ""}`,
+          className
+        )
+      }>
+      {children}
+    </Combobox.Option>
+  );
+};
