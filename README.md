@@ -38,5 +38,5 @@ Leveraging [Codespaces](https://docs.github.com/en/codespaces/overview) from Git
 
 If you'd like to learn more about Infrahub or deploy via alternate means, please check out the documentation:
 
-- [Infrahub Documentation](./docs/readme.md)
-- [Deploy the demo environment on your laptop](./docs/tutorials/getting-started/#prepare-the-demo-environment)
+- [Infrahub Documentation](https://docs.infrahub.app/)
+- [Deploy the demo environment on your laptop](https://docs.infrahub.app/tutorials/getting-started/#prepare-the-demo-environment)
