@@ -1,7 +1,7 @@
 import { Combobox, Dialog, Transition } from "@headlessui/react";
-import { ChangeEventHandler, forwardRef, Fragment, useEffect, useState } from "react";
+import { ChangeEventHandler, forwardRef, Fragment, ReactNode, useEffect, useState } from "react";
 import { Icon } from "@iconify-icon/react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { classNames } from "../../utils/common";
 import { SearchNodes } from "./search-nodes";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -139,7 +139,7 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
           </div>
 
           {queryDebounced && (
-            <Combobox.Options static className="mt-2 overflow-x-hidden overflow-y-auto">
+            <Combobox.Options static className="mt-2 overflow-x-hidden overflow-y-auto divide-y">
               <SearchNodes query={queryDebounced} />
             </Combobox.Options>
           )}
@@ -148,3 +148,19 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
     );
   }
 );
+
+interface SearchResultsItemProps {
+  children: ReactNode;
+  to: string;
+}
+export const SearchResultItem = ({ children, to }: SearchResultsItemProps) => {
+  return (
+    <Combobox.Option
+      as={Link}
+      value={to}
+      to={to}
+      className={({ active }) => `flex gap-1 text-sm py-3 ${active ? "bg-slate-200" : ""}`}>
+      {children}
+    </Combobox.Option>
+  );
+};

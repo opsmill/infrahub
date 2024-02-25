@@ -11,10 +11,9 @@ import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObje
 import { gql } from "@apollo/client";
 import { constructPath } from "../../utils/fetch";
 import { getObjectDetailsUrl } from "../../utils/objects";
-import { Combobox } from "@headlessui/react";
-import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { Skeleton } from "../skeleton";
+import { SearchResultItem } from "./search-modal";
 
 type SearchProps = {
   query: string;
@@ -119,13 +118,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
   );
 
   return (
-    <Combobox.Option
-      as={Link}
-      value={url}
-      to={url}
-      className={({ active }) =>
-        `flex gap-1 text-sm border-b border-gray-200 py-3 ${active ? "bg-slate-200" : ""}`
-      }>
+    <SearchResultItem to={url}>
       <Icon
         icon={schemaData?.icon || "mdi:code-braces-box"}
         className="text-lg px-2 py-0.5 text-custom-blue-700"
@@ -152,7 +145,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
             ))}
         </div>
       </div>
-    </Combobox.Option>
+    </SearchResultItem>
   );
 };
 
