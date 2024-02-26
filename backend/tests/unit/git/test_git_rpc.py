@@ -31,7 +31,12 @@ class AsyncContextManagerMock:
     async def __aenter__(self, *args: Any, **kwargs: Any):
         return self
 
-    async def __aexit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType):
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ):
         pass
 
     def __call__(self, *args: Any, **kwargs: Any):
