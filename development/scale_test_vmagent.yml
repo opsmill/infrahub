@@ -7,3 +7,5 @@ scrape_configs:
     static_configs:
       - targets:
           - "database:2004"
+          - "infrahub-server:8000/metrics"
+          - "infrahub-git:8000"
