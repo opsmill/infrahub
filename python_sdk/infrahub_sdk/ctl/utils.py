@@ -100,7 +100,7 @@ def rich_progress_spinner(
 ) -> Generator:
     with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}")) as progress:
         if console:
-            task_id = progress.add_task(description=description, total=None)
+            task_id = progress.add_task(description=description, total=total)
         yield
         if console:
             progress.stop_task(task_id)

@@ -10,7 +10,7 @@ class BatchTask:
     task: Callable[[Any], Awaitable[Any]]
     args: Tuple[Any, ...]
     kwargs: Dict[str, Any]
-    id: Optional[str] = None
+    identifier: Optional[str] = None
     node: Optional[InfrahubNode] = None
 
 
@@ -48,12 +48,12 @@ class InfrahubBatch:
     def add(
         self,
         *args: Any,
-        id: Optional[str] = None,
+        identifier: Optional[str] = None,
         task: Callable[[Any], Awaitable[Any]],
         node: Optional[InfrahubNode] = None,
         **kwargs: Any,
     ) -> None:
-        self._tasks.append(BatchTask(id=id, task=task, node=node, args=args, kwargs=kwargs))
+        self._tasks.append(BatchTask(identifier=identifier, task=task, node=node, args=args, kwargs=kwargs))
 
     async def execute(self) -> AsyncGenerator:
         tasks = []
