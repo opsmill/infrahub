@@ -132,7 +132,6 @@ testpaths = [
 ]
 filterwarnings = [
     "ignore:Module already imported so cannot be rewritten",
-    "ignore:the imp module is deprecated",
     "ignore:Deprecated call to",
 ]
 addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope"
@@ -203,7 +202,6 @@ ignore = [
 # like this so that we can reactivate them one by one. Alternatively ignored after further       #
 # investigation if they are deemed to not make sense.                                            #
 ##################################################################################################
-    "PLC0415", # `import` should be at the top-level of a file
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments in function definition
     "PLR0917", # Too many positional arguments

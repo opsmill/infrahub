@@ -1,5 +1,6 @@
 import pytest
 from infrahub.core.schema import core_models
+from infrahub.server import app
 
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.schema import NodeSchema
@@ -12,9 +13,6 @@ from .conftest import InfrahubTestClient
 class TestInfrahubSchema:
     @pytest.fixture(scope="class")
     async def client(self):
-        # pylint: disable=import-outside-toplevel
-        from infrahub.server import app
-
         return InfrahubTestClient(app)
 
     async def test_schema_all(self, client, init_db_base):
