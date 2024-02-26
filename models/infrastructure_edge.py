@@ -932,8 +932,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         store.set(key=platform[0], node=obj)
 
     # Create all Groups, Accounts and Organizations
-    async for node, _ in batch.execute():
-        log.info(f"- Created {node._schema.kind} - {node.name.value}")
+    async for task, _ in batch.execute():
+        log.info(f"- Created {task.node._schema.kind} - {task.node.name.value}")
 
     account_pop = store.get("pop-builder")
     account_cloe = store.get("Chloe O'Brian")
@@ -956,8 +956,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         batch.add(task=obj.save, node=obj)
         store.set(key=org[0], node=obj)
 
-    async for node, _ in batch.execute():
-        log.info(f"- Created {node._schema.kind} - {node.name.value}")
+    async for task, _ in batch.execute():
+        log.info(f"- Created {task.node._schema.kind} - {task.node.name.value}")
 
     # ------------------------------------------
     # Create BGP Peer Groups
@@ -982,8 +982,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         batch.add(task=obj.save, node=obj)
         store.set(key=peer_group[0], node=obj)
 
-    async for node, _ in batch.execute():
-        log.info(f"- Created {node._schema.kind} - {node.name.value}")
+    async for task, _ in batch.execute():
+        log.info(f"- Created {task.node._schema.kind} - {task.node.name.value}")
 
     # ------------------------------------------
     # Create Tags
@@ -996,8 +996,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         batch.add(task=obj.save, node=obj)
         store.set(key=tag, node=obj)
 
-    async for node, _ in batch.execute():
-        log.info(f"- Created {node._schema.kind} - {node.name.value}")
+    async for task, _ in batch.execute():
+        log.info(f"- Created {task.node._schema.kind} - {task.node.name.value}")
 
     internal_as = store.get(kind="InfraAutonomousSystem", key="Duff")
 
