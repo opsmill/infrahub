@@ -8,6 +8,9 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
+from infrahub.services import InfrahubServices
+from tests.adapters.message_bus import BusRecorder
+from tests.helpers.graphql import graphql_mutation
 
 
 @pytest.fixture
@@ -77,6 +80,7 @@ async def test_branch_create(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["BranchCreate"]["ok"] is True
     assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # lenght of an UUID
     assert result.data["BranchCreate"]["object"]["name"] == "branch2"
@@ -102,6 +106,7 @@ async def test_branch_create(
         root_value=None,
         variable_values={},
     )
+    assert result.errors
     assert len(result.errors) == 1
     assert "The branch branch2, already exist" in result.errors[0].message
 
@@ -129,6 +134,7 @@ async def test_branch_create(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["BranchCreate"]["ok"] is True
     assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # lenght of an UUID
     assert result.data["BranchCreate"]["object"]["name"] == "branch3"
@@ -164,6 +170,7 @@ async def test_branch_create_registry(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["BranchCreate"]["ok"] is True
 
     branch2 = await Branch.get_by_name(db=db, name="branch2")
@@ -192,6 +199,7 @@ async def test_branch_query(
         root_value=None,
         variable_values={},
     )
+    assert branch3_result.data
     branch3 = branch3_result.data["BranchCreate"]["object"]
     query = """
     query {
@@ -244,6 +252,9 @@ async def test_branch_query(
         variable_values={},
     )
 
+    assert all_branches.data
+    assert name_response.data
+    assert id_response.data
     assert len(all_branches.data["Branch"]) == 2
     assert len(name_response.data["Branch"]) == 1
     assert len(id_response.data["Branch"]) == 1
@@ -274,6 +285,7 @@ async def test_branch_create_invalid_names(
         variable_values={"branch_name": "not valid"},
     )
 
+    assert result.errors
     assert len(result.errors) == 1
     assert (
         result.errors[0].message
@@ -309,6 +321,7 @@ async def test_branch_create_with_repositories(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["BranchCreate"]["ok"] is True
     assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
@@ -328,21 +341,19 @@ async def test_branch_rebase(db: InfrahubDatabase, default_branch: Branch, car_p
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
+    recorder = BusRecorder()
+    service = InfrahubServices(message_bus=recorder)
+    result = await graphql_mutation(query=query, db=db, branch=default_branch, service=service)
 
     assert result.errors is None
+    assert result.data
     assert result.data["BranchRebase"]["ok"] is True
     assert result.data["BranchRebase"]["object"]["id"] == str(branch2.uuid)
 
     new_branch2 = await Branch.get_by_name(db=db, name="branch2")
     assert new_branch2.branched_from != branch2.branched_from
+
+    assert recorder.seen_routing_keys == ["event.branch.rebased"]
 
 
 async def test_branch_rebase_wrong_branch(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
@@ -365,6 +376,7 @@ async def test_branch_rebase_wrong_branch(db: InfrahubDatabase, default_branch: 
         variable_values={},
     )
 
+    assert result.errors
     assert len(result.errors) == 1
     assert result.errors[0].message == "Branch: branch2 not found."
 
@@ -392,6 +404,7 @@ async def test_branch_validate(db: InfrahubDatabase, base_dataset_02, register_c
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["BranchValidate"]["ok"] is True
     assert result.data["BranchValidate"]["object"]["id"] == str(branch1.uuid)
 
@@ -421,6 +434,7 @@ async def test_branch_update(db: InfrahubDatabase, base_dataset_02):
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["BranchUpdate"]["ok"] is True
 
     branch4_updated = await Branch.get_by_name(db=db, name="branch4")
@@ -451,5 +465,6 @@ async def test_branch_merge(db: InfrahubDatabase, base_dataset_02, register_core
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["BranchMerge"]["ok"] is True
     assert result.data["BranchMerge"]["object"]["id"] == str(branch1.uuid)
