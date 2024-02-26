@@ -18,13 +18,13 @@ async def test_batch_return_exception(
 
     result_iter = batch.execute()
     # Assert first node success
-    node, result = await result_iter.__anext__()
-    assert node == results[0]
+    task, result = await result_iter.__anext__()
+    assert task.node == results[0]
     assert not isinstance(result, Exception)
 
     # Assert second node failure
-    node, result = await result_iter.__anext__()
-    assert node == results[1]
+    task, result = await result_iter.__anext__()
+    assert task.node == results[1]
     assert isinstance(result, GraphQLError)
     assert "An error occurred while executing the GraphQL Query" in str(result)
 
@@ -40,7 +40,7 @@ async def test_batch_exception(
         batch.add(task=obj.save, node=obj)
 
     with pytest.raises(GraphQLError) as exc:
-        async for node, result in batch.execute():
+        async for task, result in batch.execute():
             pass
     assert "An error occurred while executing the GraphQL Query" in str(exc.value)
 
