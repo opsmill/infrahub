@@ -16,6 +16,16 @@ It's meant to run on any laptop or server and it communicates with a remote Infr
 - Execute a GraphQL query store in a Git repository for troubleshooting.
 - Validate that input files conform with the format expected by Infrahub.
 
+## Installation
+
+`infrahubctl` is installed as a part of the Infrahub SDK for Python. The Infrahub SDK for Python is available on [PyPI](https://pypi.org/project/infrahub-sdk/) and can be installed using the `pip` package installer. It is recommended to install the SDK into a virtual environment.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install infrahub-sdk
+```
+
 ## Configuration
 
 `infrahubctl` requires a minimum configuration in order to connect to the right Infrahub server with the correct credentials. These settings can be provided either in a configuration file, `infrahubctl.toml`, or via environment variables.
