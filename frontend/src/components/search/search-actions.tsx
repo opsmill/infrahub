@@ -47,7 +47,6 @@ const ActionResult = ({ schema }: ActionResultProps) => {
 
   return (
     <SearchResultItem to={`/objects/${kind}`}>
-      <Icon icon="mdi:arrow-right-thin" />
       <span>Objects</span>
       <Icon icon="mdi:chevron-right" />
       <span className="font-medium">{label || kind || name}</span>
