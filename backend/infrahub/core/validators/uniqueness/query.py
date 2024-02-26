@@ -48,7 +48,9 @@ class NodeUniqueAttributeConstraintQuery(Query):
             else:
                 attr_paths_param.append((attr_path.attribute_name, property_rel_name))
 
-        relationship_attr_paths, relationship_only_attr_paths, relationship_attr_paths_with_value = [], [], []
+        relationship_attr_paths = []
+        relationship_only_attr_paths = []
+        relationship_attr_paths_with_value = []
         for rel_path in self.query_request.relationship_attribute_paths:
             if rel_path.attribute_name and rel_path.value:
                 relationship_attr_paths_with_value.append(

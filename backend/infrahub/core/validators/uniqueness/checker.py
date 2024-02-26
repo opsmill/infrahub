@@ -66,28 +66,28 @@ class UniquenessChecker(ConstraintCheckerInterface):
         return [grouped_data_paths]
 
     async def build_query_request(self, schema: Union[NodeSchema, GenericSchema]) -> NodeUniquenessQueryRequest:
-        unique_attr_paths = [
+        unique_attr_paths = {
             QueryAttributePath(attribute_name=attr_schema.name, property_name="value")
             for attr_schema in schema.unique_attributes
-        ]
-        relationship_attr_paths = []
+        }
+        relationship_attr_paths = set()
 
         if not schema.uniqueness_constraints:
             return NodeUniquenessQueryRequest(
                 kind=schema.kind,
                 unique_attribute_paths=unique_attr_paths,
-                relationship_attribute_paths=[],
+                relationship_attribute_paths=set(),
             )
 
         for uniqueness_constraint in schema.uniqueness_constraints:
             for path in uniqueness_constraint:
                 sub_schema, property_name = get_attribute_path_from_string(path, schema)
                 if isinstance(sub_schema, AttributeSchema):
-                    unique_attr_paths.append(
+                    unique_attr_paths.add(
                         QueryAttributePath(attribute_name=sub_schema.name, property_name=property_name)
                     )
                 elif isinstance(sub_schema, RelationshipSchema):
-                    relationship_attr_paths.append(
+                    relationship_attr_paths.add(
                         QueryRelationshipAttributePath(
                             identifier=sub_schema.get_identifier(), attribute_name=property_name
                         )

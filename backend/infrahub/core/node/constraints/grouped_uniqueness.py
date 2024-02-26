@@ -37,9 +37,7 @@ class SchemaAttributePathValue(SchemaAttributePath):
 
 class UniquenessQueryResultsIndex:
     def __init__(self, query_results: Iterable[QueryResult], exclude_node_ids: Set[str]):
-        # {relationship_identifier: {remote_node_id: [node_ids]}}
         self._relationship_index: Dict[str, Dict[str, Set[str]]] = {}
-        # {attribute_name: {value: [node_id]}}
         self._attribute_index: Dict[str, Dict[Any, Set[str]]] = {}
         self._all_node_ids: Set[str] = set()
         for query_result in query_results:
@@ -91,13 +89,13 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         query_request = NodeUniquenessQueryRequest(kind=node_schema.kind)
         for path_group in path_groups:
             include_in_query = not filters
-            query_relationship_paths: List[QueryRelationshipAttributePath] = []
-            query_attribute_paths: List[QueryAttributePath] = []
+            query_relationship_paths: Set[QueryRelationshipAttributePath] = set()
+            query_attribute_paths: Set[QueryAttributePath] = set()
             for attribute_path in path_group:
                 if attribute_path.related_schema and attribute_path.relationship_schema:
                     if filters and attribute_path.relationship_schema.name in filters:
                         include_in_query = True
-                    query_relationship_paths.append(
+                    query_relationship_paths.add(
                         QueryRelationshipAttributePath(
                             identifier=attribute_path.relationship_schema.get_identifier(),
                         )
@@ -108,7 +106,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                         include_in_query = True
                     attribute_name = attribute_path.attribute_schema.name
                     attribute_value = getattr(updated_node, attribute_name).value
-                    query_attribute_paths.append(
+                    query_attribute_paths.add(
                         QueryAttributePath(
                             attribute_name=attribute_name,
                             property_name=attribute_path.attribute_property_name or "value",
@@ -116,8 +114,8 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                         )
                     )
             if include_in_query:
-                query_request.relationship_attribute_paths = query_relationship_paths
-                query_request.unique_attribute_paths = query_attribute_paths
+                query_request.relationship_attribute_paths |= query_relationship_paths
+                query_request.unique_attribute_paths |= query_attribute_paths
         return query_request
 
     async def _get_node_attribute_path_values(

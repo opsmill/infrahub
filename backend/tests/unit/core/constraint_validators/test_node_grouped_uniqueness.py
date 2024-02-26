@@ -62,7 +62,7 @@ class TestNodeGroupedUniquenessConstraint:
         car_volt_main: Node,
     ):
         car_accord_main.name.value = "camry"
-        car_accord_main.get_schema().uniqueness_constraints = [["name", "color__value"]]
+        car_accord_main.get_schema().uniqueness_constraints = [["name", "color__value"], ["nbr_seats", "name"]]
 
         with pytest.raises(ValidationError, match="Violates uniqueness constraint 'name-color'"):
             await self.__call_system_under_test(db=db, branch=default_branch, node=car_accord_main)
