@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-sdk"
-version = "0.7.0"
+version = "0.8.1"
 description = "Python Client to interact with Infrahub"
 authors = ["OpsMill <contact@opsmill.com>"]
 readme = "README.md"
