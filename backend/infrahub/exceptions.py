@@ -66,6 +66,8 @@ class CommitNotFoundError(Error):
 
 
 class DataTypeNotFound(Error):
+    HTTP_CODE: int = 400
+
     def __init__(self, name, message=None):
         self.name = name
         self.message = message or f"Unable to find the DataType '{name}'."
@@ -73,6 +75,8 @@ class DataTypeNotFound(Error):
 
 
 class FileNotFound(Error):
+    HTTP_CODE: int = 404
+
     def __init__(self, repository_name, location, commit, message=None):
         self.repository_name = repository_name
         self.location = location
@@ -207,6 +211,8 @@ class QueryValidationError(Error):
 
 
 class ValidationError(Error):
+    HTTP_CODE = 422
+
     def __init__(self, input_value):
         self.message: Optional[str] = None
         self.location = None

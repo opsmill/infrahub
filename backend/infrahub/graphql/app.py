@@ -60,7 +60,7 @@ from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_sc
 from infrahub.auth import AccountSession, authentication_token
 from infrahub.core import get_branch
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import BranchNotFound
+from infrahub.exceptions import BranchNotFound, Error
 from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.log import get_logger
@@ -251,10 +251,7 @@ class InfrahubGraphQLApp:
         if result.errors:
             for error in result.errors:
                 if error.original_error:
-                    self.logger.error(
-                        "An exception occurred in resolvers",
-                        exc_info=error.original_error,
-                    )
+                    self._log_error(error=error.original_error)
             response["errors"] = [self.error_formatter(error) for error in result.errors]
 
         json_response = JSONResponse(
@@ -277,6 +274,24 @@ class InfrahubGraphQLApp:
             GRAPHQL_QUERY_ERRORS_METRICS.labels(**labels).observe(len(errors))
 
         return json_response
+
+    def _log_error(self, error: Exception) -> None:
+        if isinstance(error, Error):
+            if 500 <= error.HTTP_CODE <= 500:
+                self.logger.error(
+                    "An exception occurred in resolvers",
+                    exc_info=error,
+                )
+            elif error.HTTP_CODE == 401:
+                self.logger.info("Permission denied within resolver", message=error.message)
+            else:
+                self.logger.debug("An exception occurred in resolvers", exc_info=error)
+
+        else:
+            self.logger.critical(
+                "Unhandled exception occurred in resolvers",
+                exc_info=error,
+            )
 
     async def _run_websocket_server(self, db: InfrahubDatabase, branch: Branch, websocket: WebSocket) -> None:
         subscriptions: Dict[str, AsyncGenerator[Any, None]] = {}
