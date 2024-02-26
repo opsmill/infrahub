@@ -80,7 +80,7 @@ if os.path.exists(DOCS_SEARCH_INDEX_FILE):
     #     h: section.hash,
     #     p: title_id,
     # }
-    with open(DOCS_SEARCH_INDEX_FILE, "r") as f:
+    with open(DOCS_SEARCH_INDEX_FILE, "r", encoding="utf-8") as f:
         search_index = json.loads(f.read())
         page_search_index = search_index[0]
         heading_search_index = search_index[1]
