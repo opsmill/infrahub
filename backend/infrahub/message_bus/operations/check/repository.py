@@ -172,25 +172,25 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
                 )
                 await check.save()
 
+    elif success_condition in existing_checks:
+        existing_checks[success_condition].created_at.value = Timestamp().to_string()
+        await existing_checks[success_condition].save()
+        existing_checks.pop(success_condition)
+
     else:
-        if success_condition in existing_checks:
-            existing_checks[success_condition].created_at.value = Timestamp().to_string()
-            await existing_checks[success_condition].save()
-            existing_checks.pop(success_condition)
-        else:
-            check = await service.client.create(
-                kind=InfrahubKind.FILECHECK,
-                data={
-                    "name": "Merge Conflict Check",
-                    "origin": "ConflictCheck",
-                    "kind": "MergeConflictCheck",
-                    "validator": message.validator_id,
-                    "created_at": Timestamp().to_string(),
-                    "conclusion": "success",
-                    "severity": "info",
-                },
-            )
-            await check.save()
+        check = await service.client.create(
+            kind=InfrahubKind.FILECHECK,
+            data={
+                "name": "Merge Conflict Check",
+                "origin": "ConflictCheck",
+                "kind": "MergeConflictCheck",
+                "validator": message.validator_id,
+                "created_at": Timestamp().to_string(),
+                "conclusion": "success",
+                "severity": "info",
+            },
+        )
+        await check.save()
 
     for previous_result in existing_checks.values():
         await previous_result.delete()
