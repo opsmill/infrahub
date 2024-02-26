@@ -67,6 +67,7 @@ test.describe("/proposed-changes", () => {
           .first()
           .getByTestId("select-open-option-button")
           .click();
+        await expect(page.getByRole("option").nth(1)).toContainText(pcName); // last created branch should appear first
         await page.getByRole("option", { name: pcBranchName }).click();
         await page.getByRole("button", { name: "Create" }).click();
         await expect(page.getByText("ProposedChange created")).toBeVisible();
