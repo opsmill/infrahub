@@ -1,7 +1,7 @@
 import { Combobox, Dialog, Transition } from "@headlessui/react";
 import { ChangeEventHandler, forwardRef, Fragment, ReactNode, useEffect, useState } from "react";
 import { Icon } from "@iconify-icon/react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, LinkProps, useNavigate } from "react-router-dom";
 import { classNames } from "../../utils/common";
 import { SearchNodes } from "./search-nodes";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -171,22 +171,15 @@ export const SearchGroupTitle = ({ children }: SearchGroupProps) => {
   );
 };
 
-type SearchResultItemProps = SearchGroupProps & {
-  className?: string;
-  to: string;
-};
-
-export const SearchResultItem = ({ className = "", children, to }: SearchResultItemProps) => {
+export const SearchResultItem = ({ className = "", children, to, ...props }: LinkProps) => {
   return (
     <Combobox.Option
       as={Link}
       value={to}
       to={to}
+      {...props}
       className={({ active }) =>
-        classNames(
-          `flex items-center gap-1 text-xs px-2 py-3 ${active ? "bg-slate-200" : ""}`,
-          className
-        )
+        classNames(`flex items-center gap-1 text-xs p-2 ${active ? "bg-slate-200" : ""}`, className)
       }>
       {children}
     </Combobox.Option>
