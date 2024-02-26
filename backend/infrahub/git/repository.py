@@ -1112,6 +1112,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             )
             return
 
+        # Convert data to a dictionary to avoid it being `None` if the yaml file is just an empty document
+        data = data or {}
+
         try:
             configuration = InfrahubRepositoryConfig(**data)
             await self.log.info(f"Successfully parsed {config_file_name}")
