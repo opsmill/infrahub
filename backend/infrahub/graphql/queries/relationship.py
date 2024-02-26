@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict
 
 from graphene import Field, Int, List, ObjectType, String
-from infrahub_sdk.utils import extract_fields, extract_fields_first_node
+from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.core.query.relationship import RelationshipGetByIdentifierQuery
 from infrahub.graphql.types import RelationshipNode
