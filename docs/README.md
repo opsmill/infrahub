@@ -1,5 +1,7 @@
 # Infrahub Documentation Website
 
+This folder contains the source code and documentation powering https://docs.infrahub.app.
+
 This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
 
 ## Getting started
