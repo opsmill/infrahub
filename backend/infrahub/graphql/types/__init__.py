@@ -24,6 +24,7 @@ from .branch import BranchType
 from .interface import InfrahubInterface
 from .mixin import GetListMixin
 from .node import InfrahubObject
+from .relationship import RelationshipNode
 from .standard_node import InfrahubObjectType
 from .task import TaskNodes
 from .task_log import TaskLog, TaskLogEdge, TaskLogNodes
@@ -50,6 +51,7 @@ __all__ = [
     "GetListMixin",
     "InfrahubObject",
     "InfrahubObjectType",
+    "RelationshipNode",
     "TaskLog",
     "TaskLogEdge",
     "TaskLogNodes",

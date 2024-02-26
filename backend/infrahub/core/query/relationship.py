@@ -98,6 +98,15 @@ class RelationshipPeerData:
         return response
 
 
+@dataclass
+class RelationshipPeersData:
+    id: UUID
+    source_id: UUID
+    source_kind: str
+    destination_id: UUID
+    destination_kind: str
+
+
 class RelationshipQuery(Query):
     def __init__(
         self,
@@ -715,6 +724,57 @@ class RelationshipGetQuery(RelationshipQuery):
 
         self.add_to_query(query)
         self.return_labels = ["s", "d", "rl", "r1", "r2"]
+
+
+class RelationshipGetByIdentifierQuery(Query):
+    name = "relationship_get_identifier"
+
+    type: QueryType = QueryType.READ
+
+    def __init__(self, identifiers: List[str], *args, **kwargs) -> None:
+        self.identifiers = identifiers
+
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
+        self.params["identifiers"] = self.identifiers
+        self.params["branch"] = self.branch.name
+
+        rels_filter, rels_params = self.branch.get_query_filter_relationships(
+            rel_labels=["r1", "r2"], at=self.at.to_string(), include_outside_parentheses=True
+        )
+        self.params.update(rels_params)
+
+        query = """
+        MATCH (rl:Relationship)
+        WHERE rl.name IN $identifiers
+        CALL {
+            WITH rl
+            MATCH (src:Node)-[r1:IS_RELATED]-(rl:Relationship)-[r2:IS_RELATED]-(dst:Node)
+            WHERE %s
+            RETURN src, dst, r1, r2, rl as rl1
+            ORDER BY r1.branch_level DESC, r2.branch_level DESC, r1.from DESC, r2.from DESC
+            LIMIT 1
+        }
+        WITH src, dst, r1, r2, rl1 as rl
+        WHERE r1.status = "active" AND r2.status = "active"
+        """ % ("\n AND ".join(rels_filter),)
+
+        self.params["at"] = self.at.to_string()
+
+        self.add_to_query(query)
+        self.return_labels = ["src", "dst", "rl"]
+
+    def get_peers(self) -> Generator[RelationshipPeersData, None, None]:
+        for result in self.get_results():
+            data = RelationshipPeersData(
+                id=result.get("rl").get("uuid"),
+                source_id=result.get("src").get("uuid"),
+                source_kind=result.get("src").get("kind"),
+                destination_id=result.get("dst").get("uuid"),
+                destination_kind=result.get("dst").get("kind"),
+            )
+            yield data
 
 
 class RelationshipCountPerNodeQuery(Query):
