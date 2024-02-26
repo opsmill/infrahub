@@ -14,17 +14,19 @@ import { getObjectDetailsUrl } from "../../utils/objects";
 import { format } from "date-fns";
 import { Skeleton } from "../skeleton";
 import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-modal";
+import { useDebounce } from "../../hooks/useDebounce";
 
 type SearchProps = {
   query: string;
 };
 export const SearchNodes = ({ query }: SearchProps) => {
+  const queryDebounced = useDebounce(query, 300);
   const [fetchSearchNodes, { data, error, loading }] = useLazyQuery(SEARCH);
 
   useEffect(() => {
-    const cleanedValue = query.trim();
+    const cleanedValue = queryDebounced.trim();
     fetchSearchNodes({ variables: { search: cleanedValue } });
-  }, [query]);
+  }, [queryDebounced]);
 
   if (loading) {
     return (
@@ -45,20 +47,14 @@ export const SearchNodes = ({ query }: SearchProps) => {
 
   const results = data?.[NODE_OBJECT];
 
-  if (!results || results?.count === 0) {
-    return (
-      <div className="h-52 flex flex-col items-center justify-center">
-        <h2 className="text-sm font-semibold">No results found</h2>
-        <p className="text-xs">Try using different keywords</p>
-      </div>
-    );
-  }
+  if (!results || results?.count === 0) return null;
 
+  const firstFourMatches = results.edges.slice(0, 4);
   return (
     <SearchGroup>
       <SearchGroupTitle>Search results for &quot;{query}&quot;</SearchGroupTitle>
 
-      {results.edges.map(({ node }: NodesOptionsProps) => (
+      {firstFourMatches.map(({ node }: NodesOptionsProps) => (
         <NodesOptions key={node.id} node={node} />
       ))}
     </SearchGroup>
@@ -118,7 +114,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
         <span className="mr-1 font-semibold text-custom-blue-700">
           {objectDetailsData?.display_label}
         </span>
-        <span className="bg-gray-100 text-gray-800 text-xs me-1 px-2 py-0.5 rounded-full">
+        <span className="bg-gray-200 text-gray-800 text-xxs me-1 px-2 align-bottom rounded-full">
           {schemaData?.label}
         </span>
 
@@ -187,7 +183,7 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
   };
 
   return (
-    <div className="flex flex-col text-xxs whitespace-nowrap">
+    <div className="flex flex-col text-xxs whitespace-nowrap leading-3">
       <span className="font-light">{title}</span>
       <span className="font-medium">{formatValue() || "-"}</span>
     </div>

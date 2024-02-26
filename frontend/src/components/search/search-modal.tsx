@@ -3,9 +3,9 @@ import { ChangeEventHandler, forwardRef, Fragment, ReactNode, useEffect, useStat
 import { Icon } from "@iconify-icon/react";
 import { Link, LinkProps, useNavigate } from "react-router-dom";
 import { classNames } from "../../utils/common";
-import { SearchNodes } from "./search-nodes";
-import { useDebounce } from "../../hooks/useDebounce";
 import { SearchActions } from "./search-actions";
+import { SearchNodes } from "./search-nodes";
+import { SearchDocs } from "./search-docs";
 
 type SearchInputProps = {
   className?: string;
@@ -108,7 +108,6 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
   ({ onSelection }, forwardedRef) => {
     const navigate = useNavigate();
     const [query, setQuery] = useState("");
-    const queryDebounced = useDebounce(query, 300);
 
     return (
       <Dialog.Panel
@@ -119,8 +118,13 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
           onChange={(url: string) => {
             if (url.length === 0) return;
 
+            if (url.startsWith("http")) {
+              window.open(url, "_blank", "rel=noopener noreferrer, popup=false");
+            } else {
+              navigate(url);
+            }
+
             onSelection(url);
-            navigate(url);
           }}>
           <div className="p-2.5 relative">
             <Combobox.Button className="absolute top-5 left-2.5 pl-2 flex items-center">
@@ -144,7 +148,8 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
               static
               className="overflow-x-hidden overflow-y-auto divide-y shadow-inner">
               <SearchActions query={query} />
-              {queryDebounced && <SearchNodes query={queryDebounced} />}
+              <SearchNodes query={query} />
+              <SearchDocs query={query} />
             </Combobox.Options>
           )}
         </Combobox>

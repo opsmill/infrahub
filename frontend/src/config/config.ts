@@ -24,6 +24,7 @@ export const CONFIG = {
       ? `${INFRAHUB_API_SERVER_URL}/api/schema?branch=${branch}`
       : `${INFRAHUB_API_SERVER_URL}/api/schema`,
   CONFIG_URL: `${INFRAHUB_API_SERVER_URL}/api/config`,
+  SEARCH_URL: (query: string) => `${INFRAHUB_API_SERVER_URL}/api/search/docs?query=${query}`,
   INFO_URL: `${INFRAHUB_API_SERVER_URL}/api/info`,
   AUTH_SIGN_IN_URL: `${INFRAHUB_API_SERVER_URL}/api/auth/login`,
   SCHEMA_SUMMARY_URL: (branch?: string | null) =>
