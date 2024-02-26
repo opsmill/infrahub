@@ -75,7 +75,7 @@ async def _run(
     await func(client=client, log=log, branch=branch, **variables)
 
 
-def render_jinja2_template(template_path: Path, variables: Dict[str, str], data: str) -> str:
+def render_jinja2_template(template_path: Path, variables: Dict[str, str], data: Dict[str, Any]) -> str:
     if not template_path.is_file():
         console.print(f"[red]Unable to locate the template at {template_path}")
         raise typer.Exit(1)
@@ -109,7 +109,7 @@ def _run_transform(query: str, variables: Dict[str, Any], transformer: Callable,
     branch = get_branch(branch)
 
     try:
-        response = {"data": execute_graphql_query(query, variables, branch, debug)}
+        response = execute_graphql_query(query, variables, branch, debug)
     except QueryNotFoundError as exc:
         console.print(f"[red]Unable to find query : {exc}")
         raise typer.Exit(1) from exc
