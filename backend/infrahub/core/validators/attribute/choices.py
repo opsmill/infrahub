@@ -87,6 +87,10 @@ class AttributeChoicesChecker(ConstraintCheckerInterface):
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
         grouped_data_paths_list: List[GroupedDataPaths] = []
+        attribute_schema = request.node_schema.get_attribute(name=request.schema_path.field_name)
+        if attribute_schema.choices is None:
+            return grouped_data_paths_list
+
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
