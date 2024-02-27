@@ -19,7 +19,7 @@ services:
       cache:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "${INFRAHUB_SERVER_PORT:-8000}:8000"
     environment:
       - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
       - "INFRAHUB_PRODUCTION=false"
@@ -40,7 +40,21 @@ services:
       start_period: 10s
   database:
     ports:
-      - "7687:7687"
+      - "${INFRAHUB_DB_PORT:-7687}:7687"
+  vmagent:
+    image: victoriametrics/vmagent:v1.97.1
+    volumes:
+      - vmagentdata:/vmagentdata
+      - ./scale_test_vmagent.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--promscrape.config=/etc/prometheus/prometheus.yml"
+      - "--remoteWrite.url=${METRICS_ENDPOINT:-http://127.0.0.1:8424}"
+      - "--remoteWrite.label=job=scale-test"
+      - "--remoteWrite.label=run_id=${GITHUB_RUN_ID}"
+      - "--remoteWrite.label=run_number=${GITHUB_RUN_NUMBER}"
+    ports:
+      - "${VMAGENT_PORT:-8429}:8429"
 
 volumes:
   storage_data:
+  vmagentdata:
