@@ -148,6 +148,7 @@ export const SearchBar = () => {
       <Transition show={isOpen}>
         <PopOver
           static
+          fixed
           open={isOpen}
           width={POPOVER_SIZE.LARGE}
           height={POPOVER_SIZE.NONE}

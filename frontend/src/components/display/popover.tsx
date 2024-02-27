@@ -17,6 +17,7 @@ type PopOverProps = {
   children?: any;
   className?: string;
   buttonComponent?: any;
+  fixed?: boolean;
   title?: string;
   disabled?: boolean;
   width?: POPOVER_SIZE;
@@ -65,7 +66,7 @@ const PopOverPanel = forwardRef<HTMLDivElement, PopOverProps>(
       <Popover.Panel
         ref={ref}
         className={classNames(
-          "z-10 rounded-lg border shadow-xl grid grid-cols-1 divide-y divide-gray-200",
+          "absolute overflow-scroll z-10 rounded-lg border shadow-xl grid grid-cols-1 divide-y divide-gray-200",
           className?.includes("bg-") ? "" : "bg-custom-white",
           className ?? "",
           widthClass[width ?? POPOVER_SIZE.NONE],
@@ -88,14 +89,14 @@ const PopOverPanel = forwardRef<HTMLDivElement, PopOverProps>(
 );
 
 export const PopOver = (props: PopOverProps) => {
-  const { buttonComponent, disabled, static: staticProp, open, ...propsToPass } = props;
+  const { buttonComponent, fixed, disabled, static: staticProp, open, ...propsToPass } = props;
   let [referenceElement, setReferenceElement] = useState();
   let [popperElement, setPopperElement] = useState();
   let { styles, attributes } = usePopper(referenceElement, popperElement, {
     modifiers: [
       {
         name: "preventOverflow",
-        enabled: true,
+        enabled: !fixed,
         options: {
           padding: 8,
         },
