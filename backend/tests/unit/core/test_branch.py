@@ -95,9 +95,11 @@ async def test_branch_name_validator(db: InfrahubDatabase):
     with pytest.raises(PydanticValidationError):
         Branch(name="cr")
 
-    # No more than 32 characters
+    # No more than 250 characters
     with pytest.raises(PydanticValidationError):
-        Branch(name="qwertyuiopqwertyuiopqwertyuiopqwe")
+        Branch(
+            name="bklbvyzsqgllkryagisgpagqbisliossohumgqyebjcbrafdjgjzskbsmuxzloufibkhocxqxvpakmtecejwtcsuvfuskvapgaxlidutzaviwmymsxxskwqbgvrgvpkiuqyivccsbaqrwsitzvvzflchdzlvdqrjvfnfmybdbzkefwkhlctjuizwprvwoinsxxcwzjjcchbonasodsabrxdocloysizlfdgrclyfyamcaivkluskwrvunji"
+        )
 
     assert Branch(name="new-branch")
     assert Branch(name="cr1234-qwerty-qwerty")

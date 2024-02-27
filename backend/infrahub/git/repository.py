@@ -36,6 +36,7 @@ from pydantic import ValidationError as PydanticValidationError
 from pydantic.v1 import BaseModel, Field
 
 from infrahub import config
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import (
     CheckError,
@@ -801,6 +802,14 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         At the end, we need to delete the worktree in the temporary folder.
         """
+        try:
+            # Check if the branch can be created in the database
+            Branch(name=branch_name)
+        except PydanticValidationError as e:
+            log.warning(
+                "Git branch failed validation.", branch_name=branch_name, errors=[error["msg"] for error in e.errors()]
+            )
+            return False
 
         # Find the commit on the remote branch
         # Check out the commit in a worktree
