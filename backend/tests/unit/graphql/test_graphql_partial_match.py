@@ -1,11 +1,10 @@
 import pytest
 from deepdiff import DeepDiff
-from graphql import graphql
 
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import prepare_graphql_params
+from tests.helpers.graphql import graphql_query
 
 
 @pytest.mark.parametrize("filter_value", ["l", "o", "w", "low"])
@@ -35,18 +34,10 @@ async def test_query_filter_local_attrs_partial_match(
     """
         % filter_value
     )
-    gql_params = prepare_graphql_params(
-        branch=default_branch, db=db, include_mutation=False, include_subscription=False
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
+    result = await graphql_query(query=query, db=db, branch=default_branch)
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["TestCriticality"]["edges"]) == 1
     assert result.data["TestCriticality"]["edges"][0]["node"]["name"]["value"] == "low"
 
@@ -75,18 +66,10 @@ async def test_query_filter_local_int_attr_partial_match(
         }
     }
     """
-    gql_params = prepare_graphql_params(
-        branch=default_branch, db=db, include_mutation=False, include_subscription=False
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
+    result = await graphql_query(query=query, db=db, branch=default_branch)
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["TestCriticality"]["edges"]) == 1
     assert result.data["TestCriticality"]["count"] == 1
     assert result.data["TestCriticality"]["edges"][0]["node"]["name"]["value"] == "low"
@@ -116,18 +99,10 @@ async def test_query_filter_local_bool_attr_partial_match(
         }
     }
     """
-    gql_params = prepare_graphql_params(
-        branch=default_branch, db=db, include_mutation=False, include_subscription=False
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
+    result = await graphql_query(query=query, db=db, branch=default_branch)
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["TestCriticality"]["edges"]) == 1
     assert result.data["TestCriticality"]["count"] == 1
     assert result.data["TestCriticality"]["edges"][0]["node"]["name"]["value"] == "low"
@@ -159,19 +134,10 @@ async def test_query_filter_relationships_with_generic_filter_partial_match(
         }
     }
     """
-    gql_params = prepare_graphql_params(
-        db=db, branch=default_branch, include_mutation=False, include_subscription=False
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
+    result = await graphql_query(query=query, db=db, branch=default_branch)
 
     assert result.errors is None
-
+    assert result.data
     expected_results = [
         {
             "node": {
@@ -207,17 +173,9 @@ async def test_query_filter_relationships_with_generic_filter_mutliple_partial_m
         }
     }
     """
-    gql_params = prepare_graphql_params(
-        db=db, branch=default_branch, include_mutation=False, include_subscription=False
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
+    result = await graphql_query(query=query, db=db, branch=default_branch)
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["TestCar"]["edges"]) == 1
     assert result.data["TestCar"]["edges"][0]["node"]["id"] == smolt_car.id
