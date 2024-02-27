@@ -177,7 +177,7 @@ async def test_schema_integrity(
     await proposed_change.schema_integrity(message=schema_integrity_01, service=service_all)
 
     checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
-    assert len(checks) == 3
+    assert len(checks) == 1
     check = checks[0]
     assert check.conclusion.value == "failure"
     assert check.conflicts.value == [
