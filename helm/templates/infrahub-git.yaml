@@ -1,6 +1,6 @@
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-infrahub-git
   labels:
@@ -39,34 +39,24 @@ spec:
               mountPath: /config
       restartPolicy: Always
       volumes:
-        {{- if and .Values.infrahubGit.persistence.enabled }}
-        - name: git-data
-          persistentVolumeClaim:
-            claimName: {{ tpl (.Values.infrahubGit.persistence.existingClaim | default (printf "%s-%s" (include "infrahub-helm.fullname" .) "git-data")) . }}
-        {{- else }}
+        {{- if not .Values.infrahubGit.persistence.enabled }}
         - name: git-data
           emptyDir: {}
         {{- end }}
         - name: config-volume
           configMap:
             name: {{ include "infrahub-helm.fullname" . }}-infrahub-config
-
-{{- if and .Values.infrahubGit.persistence.enabled (not .Values.infrahubGit.persistence.existingClaim) }}
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: {{ include "infrahub-helm.fullname" . }}-git-data
-  labels:
-    service: git-data
-  {{- include "infrahub-helm.labels" . | nindent 4 }}
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: {{ .Values.infrahubGit.persistence.size | quote }}
-  {{- with .Values.infrahubGit.persistence.storageClassName }}
-  storageClassName: {{ . }}
+  {{- if and .Values.infrahubGit.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: git-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.infrahubGit.persistence.size | quote }}
+        {{- with .Values.infrahubGit.persistence.storageClassName }}
+        storageClassName: {{ . }}
+        {{- end }}
   {{- end }}
-{{- end }}
