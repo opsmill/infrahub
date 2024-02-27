@@ -85,7 +85,7 @@ class AttributeChoicesChecker(ConstraintCheckerInterface):
         return "attribute.choices.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name == "attribute.choices.update"
+        return request.constraint_name == self.name
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
         grouped_data_paths_list: List[GroupedDataPaths] = []
