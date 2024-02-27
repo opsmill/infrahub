@@ -20,25 +20,13 @@ spec:
     spec:
       containers:
         - args: {{- toYaml .Values.infrahubGit.infrahubGit.args | nindent 12 }}
+          {{- with .Values.infrahubGit.infrahubGit.env }}
           env:
-            - name: INFRAHUB_ADDRESS
-              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubAddress }}
-            - name: INFRAHUB_CACHE_PORT
-              value: {{ quote .Values.infrahubServer.infrahubServer.env.INFRAHUB_CACHE_PORT }}
-            - name: INFRAHUB_CONFIG
-              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubConfig }}
-            - name: INFRAHUB_DB_TYPE
-              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubDbType }}
-            - name: INFRAHUB_LOG_LEVEL
-              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubLogLevel }}
-            - name: INFRAHUB_PRODUCTION
-              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubProduction }}
-            - name: INFRAHUB_SDK_API_TOKEN
-              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubSdkApiToken }}
-            - name: INFRAHUB_SDK_TIMEOUT
-              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubSdkTimeout }}
-            - name: KUBERNETES_CLUSTER_DOMAIN
-              value: {{ quote .Values.global.kubernetesClusterDomain }}
+            {{- range $key, $value := . }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
           image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
           imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.messageQueue.messageQueue.imagePullPolicy }}
           name: infrahub-git

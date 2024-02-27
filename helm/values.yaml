@@ -54,14 +54,14 @@ infrahubGit:
       - start
       - --debug
     env:
-      infrahubAddress: http://infrahub-server:8000
-      infrahubCachePort: 6379
-      infrahubConfig: /config/infrahub.toml
-      infrahubDbType: neo4j
-      infrahubLogLevel: DEBUG
-      infrahubProduction: "false"
-      infrahubSdkApiToken: 06438eb2-8019-4776-878c-0941b1f1d1ec
-      infrahubSdkTimeout: "20"
+      INFRAHUB_ADDRESS: http://infrahub-server:8000
+      INFRAHUB_CACHE_PORT: 6379
+      INFRAHUB_CONFIG: /config/infrahub.toml
+      INFRAHUB_DB_TYPE: neo4j
+      INFRAHUB_LOG_LEVEL: DEBUG
+      INFRAHUB_PRODUCTION: "false"
+      INFRAHUB_SDK_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
+      INFRAHUB_SDK_TIMEOUT: "20"
     imagePullPolicy: Always
   waitForInfrahubServer:
     image:
