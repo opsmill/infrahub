@@ -1,5 +1,4 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
-import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
@@ -8,9 +7,11 @@ import { QSP } from "../../config/qsp";
 import { fetchUrl, getUrlWithQsp } from "../../utils/fetch";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { DataDiffNode } from "./data-diff-node";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 export const SchemaDiff = forwardRef((props, ref) => {
-  const { branchname } = useParams();
+  const currentBranch = useAtomValue(currentBranchAtom);
   const [diff, setDiff] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
@@ -18,11 +19,11 @@ export const SchemaDiff = forwardRef((props, ref) => {
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
 
   const fetchDiffDetails = useCallback(async () => {
-    if (!branchname) return;
+    if (!currentBranch) return;
 
     setIsLoading(true);
 
-    const url = CONFIG.SCHEMA_DIFF_URL(branchname);
+    const url = CONFIG.SCHEMA_DIFF_URL(currentBranch.name);
 
     const options: string[][] = [
       ["branch_only", branchOnly ?? ""],
@@ -42,7 +43,7 @@ export const SchemaDiff = forwardRef((props, ref) => {
     }
 
     setIsLoading(false);
-  }, [branchname, branchOnly, timeFrom, timeTo]);
+  }, [currentBranch?.name, branchOnly, timeFrom, timeTo]);
 
   // Provide refetch function to parent
   useImperativeHandle(ref, () => ({ refetch: fetchDiffDetails }));

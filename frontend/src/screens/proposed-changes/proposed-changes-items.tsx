@@ -5,6 +5,7 @@ import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import * as R from "ramda";
 import { Retry } from "../../components/buttons/retry";
 import { RoundedButton } from "../../components/buttons/rounded-button";
 import SlideOver from "../../components/display/slide-over";
@@ -83,7 +84,12 @@ export const ProposedChanges = () => {
 
   const branchesOptions: any[] = branches
     .filter((branch) => branch.name !== "main")
-    .map((branch) => ({ id: branch.name, name: branch.name }));
+    .map((branch) => ({ id: branch.name, name: branch.name, createdAt: branch.created_at }));
+
+  const branchesOptionsSortedByCreatedAt = R.sortWith(
+    [R.descend(R.prop("createdAt"))],
+    branchesOptions
+  );
 
   const reviewersOptions: any[] =
     data && accountSchemaData?.kind
@@ -93,7 +99,7 @@ export const ProposedChanges = () => {
         }))
       : [];
 
-  const formStructure = getFormStructure(branchesOptions, reviewersOptions);
+  const formStructure = getFormStructure(branchesOptionsSortedByCreatedAt, reviewersOptions);
 
   return (
     <div>
