@@ -107,7 +107,10 @@ infrahubServer:
     image:
       repository: busybox
       tag: latest
+
+
 infrahubServerDbInitJob:
+  enabled: false
   backoffLimit: 0
   infrahubServerDbInitJob:
     env:
@@ -117,6 +120,7 @@ infrahubServerDbInitJob:
     image:
       repository: busybox
       tag: latest
+
 
 # ----------- Mesage Queue (Rabbit MQ) -----------
 messageQueue:

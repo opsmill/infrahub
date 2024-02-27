@@ -1,3 +1,4 @@
+{{- if .Values.infrahubServerDbInitJob.enabled }}
 ---
 apiVersion: batch/v1
 kind: Job
@@ -38,3 +39,4 @@ spec:
         - name: config-volume
           configMap:
             name: {{ include "infrahub-helm.fullname" . }}-infrahub-config
+{{- end }}
