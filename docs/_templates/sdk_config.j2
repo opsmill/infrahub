@@ -30,8 +30,8 @@ The following settings can be defined in the Config class
 
 **Property**: {{ property.name }}  
 **Description**: {{ property.description }}  
-**Type**: {{ property.type }}  
+**Type**: `{{ property.type }}`  
 **Default value**: {{ property.default }}  
-**Choices**: {{ property.choices | join(" ") }}  
-**Environment variable**: {{ property.env_vars | join(" ") }}  
+**Choices**: {{ property.choices | join(",") }}  
+**Environment variable**: {{ property.env_vars | join(",") }}  
 {% endfor -%}

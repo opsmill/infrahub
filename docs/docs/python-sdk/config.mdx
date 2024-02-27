@@ -29,7 +29,7 @@ The following settings can be defined in the Config class
 
 **Property**: address  
 **Description**: The URL to use when connecting to Infrahub.  
-**Type**: string  
+**Type**: `string`  
 **Default value**: http://localhost:8000  
 **Choices**:   
 **Environment variable**: infrahub_sdk_address  
@@ -37,7 +37,7 @@ The following settings can be defined in the Config class
 
 **Property**: api_token  
 **Description**: API token for authentication against Infrahub.  
-**Type**: string  
+**Type**: `string`  
 **Default value**:   
 **Choices**:   
 **Environment variable**: infrahub_sdk_api_token  
@@ -45,7 +45,7 @@ The following settings can be defined in the Config class
 
 **Property**: echo_graphql_queries  
 **Description**: If set the GraphQL query and variables will be echoed to the screen  
-**Type**: boolean  
+**Type**: `boolean`  
 **Default value**: False  
 **Choices**:   
 **Environment variable**: infrahub_sdk_echo_graphql_queries  
@@ -53,7 +53,7 @@ The following settings can be defined in the Config class
 
 **Property**: username  
 **Description**: Username for accessing Infrahub  
-**Type**: string  
+**Type**: `string`  
 **Default value**:   
 **Choices**:   
 **Environment variable**: infrahub_sdk_username  
@@ -61,7 +61,7 @@ The following settings can be defined in the Config class
 
 **Property**: password  
 **Description**: Password for accessing Infrahub  
-**Type**: string  
+**Type**: `string`  
 **Default value**:   
 **Choices**:   
 **Environment variable**: infrahub_sdk_password  
@@ -69,15 +69,15 @@ The following settings can be defined in the Config class
 
 **Property**: recorder  
 **Description**: Select builtin recorder for later replay.  
-**Type**: enum  
+**Type**: `enum`  
 **Default value**: none  
-**Choices**: none json  
+**Choices**: none,json  
 **Environment variable**: infrahub_sdk_recorder  
 ## custom_recorder
 
 **Property**: custom_recorder  
 **Description**: Provides a way to record responses from the Infrahub API  
-**Type**: string  
+**Type**: `string`  
 **Default value**:   
 **Choices**:   
 **Environment variable**: infrahub_sdk_custom_recorder  
@@ -85,7 +85,7 @@ The following settings can be defined in the Config class
 
 **Property**: default_branch  
 **Description**: Default branch to target if not specified for each request.  
-**Type**: string  
+**Type**: `string`  
 **Default value**: main  
 **Choices**:   
 **Environment variable**: infrahub_sdk_default_branch  
@@ -93,7 +93,7 @@ The following settings can be defined in the Config class
 
 **Property**: default_branch_from_git  
 **Description**: Indicates if the default Infrahub branch to target should come from the active branch in the local Git repository.  
-**Type**: boolean  
+**Type**: `boolean`  
 **Default value**: False  
 **Choices**:   
 **Environment variable**: infrahub_sdk_default_branch_from_git  
@@ -101,15 +101,15 @@ The following settings can be defined in the Config class
 
 **Property**: mode  
 **Description**: Default mode for the client  
-**Type**: enum  
+**Type**: `enum`  
 **Default value**: default  
-**Choices**: default tracking  
+**Choices**: default,tracking  
 **Environment variable**: infrahub_sdk_mode  
 ## requester
 
 **Property**: requester  
 **Description**:   
-**Type**: string  
+**Type**: `string`  
 **Default value**:   
 **Choices**:   
 **Environment variable**: infrahub_sdk_requester  
@@ -117,7 +117,7 @@ The following settings can be defined in the Config class
 
 **Property**: timeout  
 **Description**: Default connection timeout in seconds  
-**Type**: integer  
+**Type**: `integer`  
 **Default value**: 10  
 **Choices**:   
 **Environment variable**: infrahub_sdk_timeout  
@@ -125,15 +125,15 @@ The following settings can be defined in the Config class
 
 **Property**: transport  
 **Description**: Set an alternate transport using a predefined option  
-**Type**: enum  
+**Type**: `enum`  
 **Default value**: httpx  
-**Choices**: httpx json  
+**Choices**: httpx,json  
 **Environment variable**: infrahub_sdk_transport  
 ## sync_requester
 
 **Property**: sync_requester  
 **Description**:   
-**Type**: string  
+**Type**: `string`  
 **Default value**:   
 **Choices**:   
 **Environment variable**: infrahub_sdk_sync_requester  
