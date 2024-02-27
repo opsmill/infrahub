@@ -6,7 +6,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Retry } from "../../components/buttons/retry";
 import { Tabs } from "../../components/tabs";
-import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
+import { PROPOSED_CHANGES_OBJECT, TASK_OBJECT, TASK_TAB } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
 import useQuery from "../../hooks/useQuery";
@@ -23,6 +23,7 @@ import { FilesDiff } from "../diff/file-diff/files-diff";
 import { SchemaDiff } from "../diff/schema-diff";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
+import { TaskItems } from "../tasks/task-items";
 import { Conversations } from "./conversations";
 import { ProposedChangesChecksTab } from "./proposed-changes-checks-tab";
 
@@ -42,6 +43,8 @@ const renderContent = (tab: string | null | undefined, refetch: any, ref: any) =
       return <DataDiff ref={ref} />;
     case DIFF_TABS.CHECKS:
       return <Checks ref={ref} />;
+    case TASK_TAB:
+      return <TaskItems ref={ref} />;
     default: {
       return <Conversations refetch={refetch} ref={ref} />;
     }
@@ -50,7 +53,8 @@ const renderContent = (tab: string | null | undefined, refetch: any, ref: any) =
 
 export const ProposedChangesDetails = () => {
   const { proposedchange } = useParams();
-  const [qspTab] = useQueryParam(QSP.PROPOSED_CHANGES_TAB, StringParam);
+  const [qspTab, setQspTab] = useQueryParam(QSP.PROPOSED_CHANGES_TAB, StringParam);
+  const [, setQspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
   const [, setValidatorQsp] = useQueryParam(QSP.VALIDATOR_DETAILS, StringParam);
   const [schemaList] = useAtom(schemaState);
   const [proposedChange, setProposedChange] = useAtom(proposedChangedState);
@@ -71,6 +75,7 @@ export const ProposedChangesDetails = () => {
         kind: schemaData.kind,
         attributes: schemaData.attributes,
         relationships,
+        taskKind: TASK_OBJECT,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schemaData
@@ -135,6 +140,15 @@ export const ProposedChangesDetails = () => {
       // Go back to the validators list when clicking on the tab if we are on the validator details view
       onClick: () => setValidatorQsp(undefined),
       component: ProposedChangesChecksTab,
+    },
+    {
+      label: "Tasks",
+      name: TASK_TAB,
+      count: data[TASK_OBJECT]?.count ?? 0,
+      onClick: () => {
+        setQspTab(TASK_TAB);
+        setQspTaskId(undefined);
+      },
     },
   ];
 

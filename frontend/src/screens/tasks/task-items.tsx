@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { Table } from "../../components/table/table";
 import { Pagination } from "../../components/utils/pagination";
-import { TASK_OBJECT } from "../../config/constants";
+import { TASK_OBJECT, TASK_TAB } from "../../config/constants";
 import useQuery from "../../hooks/useQuery";
 
 import { forwardRef, useImperativeHandle } from "react";
@@ -18,7 +18,7 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import { getConclusionBadge } from "./task-item-details";
 
 export const TaskItems = forwardRef((props, ref) => {
-  const { objectid } = useParams();
+  const { objectid, proposedchange } = useParams();
   const location = useLocation();
   const [pagination] = usePagination();
 
@@ -34,7 +34,7 @@ export const TaskItems = forwardRef((props, ref) => {
 
   const queryString = getTasksItems({
     kind: TASK_OBJECT,
-    relatedNode: objectid,
+    relatedNode: objectid || proposedchange,
     filters: filtersString,
   });
 
@@ -83,12 +83,12 @@ export const TaskItems = forwardRef((props, ref) => {
   ];
 
   const getUrl = (id: string) => {
-    if (!objectid) {
+    if (!objectid && !proposedchange) {
       return constructPath(`/tasks/${id}`);
     }
 
     return constructPath(pathname, [
-      { name: QSP.TAB, value: "tasks" },
+      { name: QSP.TAB, value: TASK_TAB },
       { name: QSP.TASK_ID, value: id },
     ]);
   };
