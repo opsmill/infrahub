@@ -1,7 +1,12 @@
 import enum
-from typing import Any, Dict, Optional, Protocol, runtime_checkable
+from typing import Any, Dict, Optional, Protocol, runtime_checkable, Set
 
 import httpx
+
+try:
+    from pydantic.v1.fields import ModelField
+except ImportError:
+    from pydantic.fields import ModelField
 
 
 class HTTPMethod(str, enum.Enum):
@@ -26,6 +31,10 @@ class SyncRequester(Protocol):
     ) -> httpx.Response:
         ...
 
+    @classmethod
+    def __modify_schema__(cls, field_schema: Dict[str, Set[str]], field: Optional[ModelField]):
+        field.type_ = str
+
 
 @runtime_checkable
 class AsyncRequester(Protocol):
@@ -38,3 +47,7 @@ class AsyncRequester(Protocol):
         payload: Optional[Dict] = None,
     ) -> httpx.Response:
         ...
+
+    @classmethod
+    def __modify_schema__(cls, field_schema: Dict[str, Set[str]], field: Optional[ModelField]):
+        field.type_ = str
