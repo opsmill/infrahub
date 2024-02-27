@@ -34,33 +34,35 @@ class AttributeChoicesUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         WHERE $node_kind IN LABELS(n)
         CALL {
             WITH n
-            MATCH (root:Root)<-[r:IS_PART_OF]-(n)
-            WHERE %(branch_filter)s
-            RETURN n as n1, r as r1
-            ORDER BY r.branch_level DESC, r.from DESC
+            MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
+            WHERE all(
+                r in relationships(path)
+                WHERE %(branch_filter)s
+            )
+            RETURN path as full_path, n as node, rv as value_relationship, av.value as attribute_value
+            ORDER BY rv.branch_level DESC, ra.branch_level DESC, rr.branch_level DESC, rv.from DESC, ra.from DESC, rr.from DESC
             LIMIT 1
         }
-        WITH n1 as n, r1 as rb
-        WHERE rb.status = "active"
-        MATCH path = (n)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[:HAS_VALUE]-(av:AttributeValue)
-        WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
-        WITH path, n, av
-        WITH path, n, av
-        WHERE av.value IS NOT NULL AND av.value != "NULL" AND NOT (av.value IN $allowed_values)
+        WITH full_path, node, attribute_value, value_relationship
+        WITH full_path, node, attribute_value, value_relationship
+        WHERE all(r in relationships(full_path) WHERE r.status = "active")
+        AND attribute_value IS NOT NULL
+        AND attribute_value != "NULL"
+        AND NOT (attribute_value IN $allowed_values)
         """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
-        self.return_labels = ["n.uuid", "av.value", "relationships(path)[-1] as value_relationship"]
+        self.return_labels = ["node.uuid", "attribute_value", "value_relationship"]
 
     async def get_paths(self) -> GroupedDataPaths:
         grouped_data_paths = GroupedDataPaths()
         for result in self.results:
-            value = str(result.get("av.value"))
+            value = str(result.get("attribute_value"))
             grouped_data_paths.add_data_path(
                 DataPath(
                     branch=str(result.get("value_relationship").get("branch")),
                     path_type=PathType.ATTRIBUTE,
-                    node_id=str(result.get("n.uuid")),
+                    node_id=str(result.get("node.uuid")),
                     field_name=self.attribute_schema.name,
                     kind=self.node_schema.kind,
                     value=value,
