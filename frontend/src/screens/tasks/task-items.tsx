@@ -11,6 +11,7 @@ import { DurationDisplay } from "../../components/display/duration-display";
 import { Id } from "../../components/utils/id";
 import { QSP } from "../../config/qsp";
 import { getTasksItems } from "../../graphql/queries/tasks/getTasksItems";
+import usePagination from "../../hooks/usePagination";
 import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -19,12 +20,22 @@ import { getConclusionBadge } from "./task-item-details";
 export const TaskItems = forwardRef((props, ref) => {
   const { objectid } = useParams();
   const location = useLocation();
+  const [pagination] = usePagination();
 
   const { pathname } = location;
+
+  const filtersString = [
+    // Add pagination filters
+    ...[
+      { name: "offset", value: pagination?.offset },
+      { name: "limit", value: pagination?.limit },
+    ].map((row: any) => `${row.name}: ${row.value}`),
+  ].join(",");
 
   const queryString = getTasksItems({
     kind: TASK_OBJECT,
     relatedNode: objectid,
+    filters: filtersString,
   });
 
   const query = gql`
