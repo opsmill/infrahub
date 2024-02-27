@@ -47,7 +47,7 @@ class AttributeChoicesUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND attribute_value IS NOT NULL
-        AND attribute_value != "NULL"
+        AND attribute_value <> "NULL"
         AND NOT (attribute_value IN $allowed_values)
         """ % {"branch_filter": branch_filter}
 
