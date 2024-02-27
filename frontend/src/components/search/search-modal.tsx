@@ -81,7 +81,7 @@ export function SearchModal({ className = "" }: SearchModalProps) {
           </Transition.Child>
 
           <div className="fixed inset-0">
-            <div className="flex items-center justify-center p-4">
+            <div className="flex items-center justify-center p-4 pt-1">
               <Transition.Child
                 as={Fragment}
                 enter="ease-out duration-300"
@@ -122,7 +122,7 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
             onSelection(url);
             navigate(url);
           }}>
-          <div className="p-2.5 relative shadow">
+          <div className="p-2.5 relative">
             <Combobox.Button className="absolute top-5 left-2.5 pl-2 flex items-center">
               <Icon icon="mdi:magnify" className="text-lg text-custom-blue-10" aria-hidden="true" />
             </Combobox.Button>
@@ -140,7 +140,9 @@ const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
           </div>
 
           {query && (
-            <Combobox.Options static className="overflow-x-hidden overflow-y-auto divide-y">
+            <Combobox.Options
+              static
+              className="overflow-x-hidden overflow-y-auto divide-y shadow-inner">
               <SearchActions query={query} />
               {queryDebounced && <SearchNodes query={queryDebounced} />}
             </Combobox.Options>
