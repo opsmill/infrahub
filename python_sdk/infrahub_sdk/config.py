@@ -53,7 +53,6 @@ class ConfigBase(pydantic.BaseSettings):
             raise ValueError("Both 'username' and 'password' needs to be set")
         return values
 
-
     @pydantic.root_validator(pre=True)
     @classmethod
     def set_transport(cls, values: Dict[str, Any]) -> Dict[str, Any]:
@@ -94,6 +93,7 @@ class ConfigBase(pydantic.BaseSettings):
         if self.username:
             return True
         return False
+
 
 class Config(ConfigBase):
     recorder: RecorderType = pydantic.Field(
