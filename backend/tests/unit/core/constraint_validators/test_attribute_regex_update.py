@@ -3,6 +3,7 @@ from infrahub_sdk import InfrahubClient
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.validators.attribute.regex import AttributeRegexChecker, AttributeRegexUpdateValidatorQuery
@@ -45,6 +46,69 @@ async def test_query(
             value="John",
         )
     ]
+
+
+async def test_query_update_on_branch(
+    db: InfrahubDatabase, branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
+):
+    person_john_main.name.value = "little john"
+    await person_john_main.save(db=db)
+
+    await branch.rebase(db=db)
+    person_john = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
+    person_john.name.value = "BIGJOHN"
+    await person_john.save(db=db)
+    person = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
+    await person.save(db=db)
+
+    person_schema = registry.schema.get(name="TestPerson")
+    name_attr = person_schema.get_attribute(name="name")
+    name_attr.regex = r"^[A-Z]+$"
+
+    node_schema = person_schema
+    schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
+
+    query = await AttributeRegexUpdateValidatorQuery.init(
+        db=db, branch=branch, node_schema=node_schema, schema_path=schema_path
+    )
+
+    await query.execute(db=db)
+
+    grouped_paths = await query.get_paths()
+    all_data_paths = grouped_paths.get_all_data_paths()
+    assert all_data_paths == []
+
+
+async def test_query_node_deleted_on_branch(
+    db: InfrahubDatabase, branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
+):
+    person_john_main.name.value = "little john"
+    await person_john_main.save(db=db)
+
+    await branch.rebase(db=db)
+    person_john = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
+    await person_john.delete(db=db)
+    person = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
+    await person.save(db=db)
+
+    person_schema = registry.schema.get(name="TestPerson")
+    name_attr = person_schema.get_attribute(name="name")
+    name_attr.regex = r"^[A-Z]+$"
+
+    node_schema = person_schema
+    schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
+
+    query = await AttributeRegexUpdateValidatorQuery.init(
+        db=db, branch=branch, node_schema=node_schema, schema_path=schema_path
+    )
+
+    await query.execute(db=db)
+
+    grouped_paths = await query.get_paths()
+    all_data_paths = grouped_paths.get_all_data_paths()
+    assert all_data_paths == []
 
 
 async def test_validator(
