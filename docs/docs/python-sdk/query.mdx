@@ -23,9 +23,9 @@ It's also possible to execute a GraphQL query directly with `client.execute_grap
 ## Query filters
 
 The `get` and `filters` method allow you to query using specific filters. The available filters depend on the schema of the node you will be
-querying for. A filter will be created for every attribute and relationship defined in the schema.
+querying. A filter will be created for every attribute and relationship defined in the schema.
 
-You can query Infrahub's schema, to discover the available filters for a give Node kind.
+To discover the available filters for a give Node kind, you can query Infrahub's schema.
 
 <Tabs groupId="async-sync">
   <TabItem value="Async" default>
@@ -44,7 +44,7 @@ You can query Infrahub's schema, to discover the available filters for a give No
   </TabItem>
 </Tabs>
 
-The `name` of each filter can be used as the argument for the `get` and `filters` method. The `kind` of the filter defines what type of value it accepts. 
+The `name` of each filter can be used as an argument for the `get` and `filters` method. The `kind` of the filter defines what type of value it accepts. 
 
 <Tabs groupId="async-sync">
   <TabItem value="Async" default>
@@ -54,7 +54,7 @@ The `name` of each filter can be used as the argument for the `get` and `filters
   </TabItem>
   <TabItem value="Sync">
   ```python
-  account = await client.get(kind="CoreAccount", name__value="admin")
+  account = client.get(kind="CoreAccount", name__value="admin")
   ```
   </TabItem>
 </Tabs>
@@ -101,7 +101,9 @@ The `get` method allows you to retrieve a single object of a given kind from Inf
   </TabItem>
 </Tabs>
 
-An `IndexError` exception will be raised, if the query would return multiple Nodes. `infrahub_sdk.exceptions.NodeNotFound` exception will be raised if the query returns no results.
+`IndexError` exception will be raised, if the query would return multiple Nodes. 
+
+`infrahub_sdk.exceptions.NodeNotFound` exception will be raised if the query returns no results.
 
 ## Query multiple objects
 
@@ -155,9 +157,9 @@ The `all` method allows you to retrieve all objects of a given kind from Infrahu
 
 For all 3 methods you must provide the `kind` of the objects you want to query and based on the schema the SDK will automatically generate the right GraphQL query.
 
-By default, the query will include, attributes, relationships of cardinality one and relationships of kind `Attribute` or `Parent`.
+By default, the query will include attributes, relationships of cardinality one and relationships of kind `Attribute` or `Parent`.
 
-It's possible to include or exclude attributes and/or relationships from the query, with the `include` and `exclude` arguments of the filter methods.
+It's possible to include or exclude attributes and/or relationships from the query by using the `include` and `exclude` arguments of the filter methods.
 
 <Tabs groupId="async-sync">
   <TabItem value="Async" default>
