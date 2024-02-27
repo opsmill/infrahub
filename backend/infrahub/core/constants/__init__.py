@@ -147,13 +147,16 @@ class ProposedChangeState(InfrahubStringEnum):
 
         raise ValidationError(input_value="Unable to trigger check on proposed changes that aren't in the open state")
 
+    def validate_editability(self) -> None:
+        if self in [ProposedChangeState.CANCELED, ProposedChangeState.MERGED]:
+            raise ValidationError(
+                input_value=f"A proposed change in the {self.value} state is not allowed to be updated"
+            )
+
     def validate_state_transition(self, updated_state: ProposedChangeState) -> None:
         if self == ProposedChangeState.OPEN:
             return
-        if self in [ProposedChangeState.CANCELED, ProposedChangeState.MERGED]:
-            raise ValidationError(
-                input_value=f"A proposed change is not allowed to transition from the {self.value} state"
-            )
+
         if self == ProposedChangeState.CLOSED and updated_state not in [
             ProposedChangeState.CANCELED,
             ProposedChangeState.OPEN,

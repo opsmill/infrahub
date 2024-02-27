@@ -99,6 +99,8 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             include_source=True,
         )
         state = ProposedChangeState(obj.state.value)
+        state.validate_editability()
+
         updated_state = None
         if state_update := data.get("state", {}).get("value"):
             updated_state = ProposedChangeState(state_update)
