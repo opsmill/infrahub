@@ -1751,28 +1751,68 @@ async def test_get_constraints_per_model_valid(schema_criticality_tag):
     schema_branch.process()
     constraints = await schema_branch.get_constraints_per_model(name="BuiltinCriticality")
 
-    assert [constraint.model_dump() for constraint in constraints] == [
-        {
-            "constraint_name": "relationship.optional.update",
-            "path": {
-                "field_name": "tags",
-                "path_type": SchemaPathType.RELATIONSHIP,
-                "property_name": "optional",
-                "schema_id": None,
-                "schema_kind": "BuiltinCriticality",
-            },
+    dumped_constraints = [constraint.model_dump() for constraint in constraints]
+    assert len(dumped_constraints) == 6
+    assert {
+        "constraint_name": "attribute.optional.update",
+        "path": {
+            "field_name": "name",
+            "path_type": SchemaPathType.ATTRIBUTE,
+            "property_name": "optional",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
         },
-        {
-            "constraint_name": "relationship.optional.update",
-            "path": {
-                "field_name": "primary_tag",
-                "path_type": SchemaPathType.RELATIONSHIP,
-                "property_name": "optional",
-                "schema_id": None,
-                "schema_kind": "BuiltinCriticality",
-            },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "attribute.optional.update",
+        "path": {
+            "field_name": "level",
+            "path_type": SchemaPathType.ATTRIBUTE,
+            "property_name": "optional",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
         },
-    ]
+    } in dumped_constraints
+    assert {
+        "constraint_name": "attribute.optional.update",
+        "path": {
+            "field_name": "color",
+            "path_type": SchemaPathType.ATTRIBUTE,
+            "property_name": "optional",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "attribute.optional.update",
+        "path": {
+            "field_name": "description",
+            "path_type": SchemaPathType.ATTRIBUTE,
+            "property_name": "optional",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "relationship.optional.update",
+        "path": {
+            "field_name": "tags",
+            "path_type": SchemaPathType.RELATIONSHIP,
+            "property_name": "optional",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "relationship.optional.update",
+        "path": {
+            "field_name": "primary_tag",
+            "path_type": SchemaPathType.RELATIONSHIP,
+            "property_name": "optional",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
+        },
+    } in dumped_constraints
 
 
 # -----------------------------------------------------------------
