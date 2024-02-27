@@ -56,15 +56,24 @@ spec:
               name: database-logs
       restartPolicy: Always
       volumes:
-        - hostPath:
-            path: /tmp/plugins
-          name: database-hostpath0
-        - hostPath:
-            path: /tmp/infrahub-helm
-          name: database-data
-        - hostPath:
-            path: /tmp/infrahub-helm
-          name: database-logs
+        - name: database-hostpath0
+          emptyDir: {}
+        {{- if and .Values.database.persistence.data.enabled }}
+        - name: database-data
+          persistentVolumeClaim:
+            claimName: {{ tpl (.Values.database.persistence.data.existingClaim | default (printf "%s-%s" (include "infrahub-helm.fullname" .) "database-data")) . }}
+        {{- else }}
+        - name: database-data
+          emptyDir: {}
+        {{- end }}
+        {{- if and .Values.database.persistence.logs.enabled }}
+        - name: database-logs
+          persistentVolumeClaim:
+            claimName: {{ tpl (.Values.database.persistence.logs.existingClaim | default (printf "%s-%s" (include "infrahub-helm.fullname" .) "database-logs")) . }}
+        {{- else }}
+        - name: database-logs
+          emptyDir: {}
+        {{- end }}
 
 ---
 apiVersion: v1

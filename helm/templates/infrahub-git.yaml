@@ -33,15 +33,20 @@ spec:
           resources: {}
           tty: true
           volumeMounts:
-            - mountPath: /opt/infrahub/git
-              name: git-data
+            - name: git-data
+              mountPath: /opt/infrahub/git
             - name: config-volume
               mountPath: /config
       restartPolicy: Always
       volumes:
-        - hostPath:
-            path: /tmp/infrahub-helm
-          name: git-data
+        {{- if and .Values.infrahubGit.persistence.enabled }}
+        - name: git-data
+          persistentVolumeClaim:
+            claimName: {{ tpl (.Values.infrahubGit.persistence.existingClaim | default (printf "%s-%s" (include "infrahub-helm.fullname" .) "git-data")) . }}
+        {{- else }}
+        - name: git-data
+          emptyDir: {}
+        {{- end }}
         - name: config-volume
           configMap:
             name: {{ include "infrahub-helm.fullname" . }}-infrahub-config

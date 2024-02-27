@@ -58,9 +58,14 @@ spec:
               mountPath: /config
       restartPolicy: Always
       volumes:
-        - hostPath:
-            path: /tmp/infrahub-helm
-          name: infrahub-server-storage-data
+        {{- if and .Values.infrahubServer.persistence.enabled }}
+        - name: infrahub-server-storage-data
+          persistentVolumeClaim:
+            claimName: {{ tpl (.Values.infrahubServer.persistence.existingClaim | default (printf "%s-%s" (include "infrahub-helm.fullname" .) "infrahub-server")) . }}
+        {{- else }}
+        - name: infrahub-server-storage-data
+          emptyDir: {}
+        {{- end }}
         - name: config-volume
           configMap:
             name: {{ include "infrahub-helm.fullname" . }}-infrahub-config
