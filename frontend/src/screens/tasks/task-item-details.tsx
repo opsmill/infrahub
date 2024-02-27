@@ -119,7 +119,11 @@ export const TaskItemDetails = forwardRef((props, ref) => {
           <h2 className="flex-1 font-semibold text-gray-900 m-2 ml-0">Task Logs ({count})</h2>
 
           <div className="flex flex-1 justify-end">
-            <SearchInput onChange={setSearch} placeholder="Search logs from message or severity" />
+            <SearchInput
+              onChange={setSearch}
+              containerClassName="!z-0"
+              placeholder="Search logs from message or severity"
+            />
           </div>
         </div>
 
