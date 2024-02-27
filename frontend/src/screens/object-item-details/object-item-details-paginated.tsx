@@ -23,10 +23,11 @@ import {
   DEFAULT_BRANCH_NAME,
   MENU_EXCLUDELIST,
   TASK_OBJECT,
+  TASK_TARGET,
 } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { useAuth } from "../../hooks/useAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
+import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
@@ -161,7 +162,8 @@ export default function ObjectItemDetails(props: any) {
       name: schemaData?.label,
     },
     ...getObjectTabs(relationshipsTabs, objectDetailsData),
-    {
+    // Includes the task tab only for specific objects
+    schema?.inherit_from?.includes(TASK_TARGET) && {
       label: "Tasks",
       name: "tasks",
       count: data[TASK_OBJECT]?.count ?? 0,
@@ -170,7 +172,7 @@ export default function ObjectItemDetails(props: any) {
         setQspTaskId(undefined);
       },
     },
-  ];
+  ].filter(Boolean);
 
   if (!objectDetailsData) {
     return null;
