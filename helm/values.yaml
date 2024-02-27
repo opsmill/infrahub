@@ -24,6 +24,13 @@ cache:
 # ----------- Databse -----------
 database:
   type: ClusterIP
+  persistence:
+    data:
+      enabled: true
+      size: 100Mi
+    logs:
+      enabled: true
+      size: 100Mi
   database:
     env:
       neo4JAuth: neo4j/admin
@@ -47,6 +54,9 @@ database:
 # ----------- Infrahub GIT -----------
 infrahubGit:
   replicas: 2
+  persistence:
+    enabled: true
+    size: 100Mi
   infrahubGit:
     args:
       - infrahub
@@ -73,6 +83,9 @@ infrahubServer:
   type: ClusterIP
   ingress:
     hostname: infrahub-cluster.local
+  persistence:
+    enabled: true
+    size: 100Mi
   infrahubServer:
     args:
       - gunicorn
@@ -161,17 +174,3 @@ messageQueue:
     periodSeconds: 30
     failureThreshold: 6
     successThreshold: 1
-
-# ----------- Persistent Storage -----------
-pvc:
-  # Database
-  databaseData:
-    storageRequest: 100Mi
-  databaseLogs:
-    storageRequest: 100Mi
-  # Infrahub Git
-  gitData:
-    storageRequest: 100Mi
-  # Infrahub Server
-  infrahubServerStorageData:
-    storageRequest: 100Mi

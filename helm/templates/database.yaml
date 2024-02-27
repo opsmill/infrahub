@@ -82,6 +82,7 @@ spec:
   ports:
 	  {{- .Values.database.ports | toYaml | nindent 4 }}
 
+{{- if and .Values.database.persistence.data.enabled (not .Values.database.persistence.data.existingClaim) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -95,8 +96,12 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: {{ .Values.pvc.databaseData.storageRequest | quote }}
-
+      storage: {{ .Values.database.persistence.data.size | quote }}
+  {{- with .Values.database.persistence.data.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}
+{{- if and .Values.database.persistence.logs.enabled (not .Values.database.persistence.logs.existingClaim) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -110,4 +115,8 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: {{ .Values.pvc.databaseLogs.storageRequest | quote }}
+      storage: {{ .Values.database.persistence.logs.size | quote }}
+  {{- with .Values.database.persistence.logs.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}

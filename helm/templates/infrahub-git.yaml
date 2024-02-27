@@ -46,6 +46,7 @@ spec:
           configMap:
             name: {{ include "infrahub-helm.fullname" . }}-infrahub-config
 
+{{- if and .Values.infrahubGit.persistence.enabled (not .Values.infrahubGit.persistence.existingClaim) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -59,4 +60,8 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: {{ .Values.pvc.gitData.storageRequest | quote }}
+      storage: {{ .Values.infrahubGit.persistence.size | quote }}
+  {{- with .Values.infrahubGit.persistence.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}

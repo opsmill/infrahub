@@ -81,6 +81,7 @@ spec:
   ports:
 	{{- .Values.infrahubServer.ports | toYaml | nindent 4 }}
 
+{{- if and .Values.infrahubServer.persistence.enabled (not .Values.infrahubServer.persistence.existingClaim) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -94,4 +95,8 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: {{ .Values.pvc.infrahubServerStorageData.storageRequest | quote }}
+      storage: {{ .Values.infrahubServer.persistence.size | quote }}
+  {{- with .Values.infrahubServer.persistence.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}

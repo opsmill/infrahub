@@ -88,7 +88,7 @@ helm delete infrahub
 
 ## Persistence
 
-The chart offers the ability to configure persistence for the database and other components. Check the `pvc` section in `values.yaml` for more details.
+The chart offers the ability to configure persistence for the database and other components. Check the `persistence` section of each component in `values.yaml` for more details.
 
 ## Customization
 
