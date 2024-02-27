@@ -59,96 +59,107 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
 
 
 async def pipeline(message: messages.RequestProposedChangePipeline, service: InfrahubServices) -> None:
-    service.log.info("Starting pipeline", proposed_change=message.proposed_change)
-    events: list[InfrahubMessage] = []
+    async with service.task_report(
+        related_node=message.proposed_change,
+        title="Starting pipeline",
+    ) as task_report:
+        await task_report.info("Initiating pipeline", proposed_change=message.proposed_change)
+        events: list[InfrahubMessage] = []
 
-    repositories = await _get_proposed_change_repositories(message=message, service=service)
+        repositories = await _get_proposed_change_repositories(message=message, service=service)
 
-    if not message.source_branch_data_only and await _validate_repository_merge_conflicts(repositories=repositories):
-        for repo in repositories:
-            if not repo.read_only:
-                events.append(
-                    messages.RequestRepositoryChecks(
-                        proposed_change=message.proposed_change,
-                        repository=repo.repository_id,
-                        source_branch=repo.source_branch,
-                        target_branch=repo.destination_branch,
+        if not message.source_branch_data_only and await _validate_repository_merge_conflicts(
+            repositories=repositories
+        ):
+            for repo in repositories:
+                if not repo.read_only:
+                    events.append(
+                        messages.RequestRepositoryChecks(
+                            proposed_change=message.proposed_change,
+                            repository=repo.repository_id,
+                            source_branch=repo.source_branch,
+                            target_branch=repo.destination_branch,
+                        )
                     )
+            for event in events:
+                event.assign_meta(parent=message)
+                await service.send(message=event)
+            await task_report.error("Pipeline aborted due to merge conflicts", proposed_change=message.proposed_change)
+            return
+
+        await _gather_repository_repository_diffs(repositories=repositories)
+
+        diff_summary = await service.client.get_diff_summary(branch=message.source_branch)
+        branch_diff = ProposedChangeBranchDiff(diff_summary=diff_summary, repositories=repositories)
+        await _populate_subscribers(branch_diff=branch_diff, service=service, branch=message.source_branch)
+
+        if message.check_type in [CheckType.ALL, CheckType.ARTIFACT]:
+            await task_report.info("Adding Refresh Artifact job", proposed_change=message.proposed_change)
+            events.append(
+                messages.RequestProposedChangeRefreshArtifacts(
+                    proposed_change=message.proposed_change,
+                    source_branch=message.source_branch,
+                    source_branch_data_only=message.source_branch_data_only,
+                    destination_branch=message.destination_branch,
+                    branch_diff=branch_diff,
                 )
+            )
+
+        if message.check_type in [CheckType.ALL, CheckType.DATA] and branch_diff.has_node_changes(
+            branch=message.source_branch
+        ):
+            await task_report.info("Adding Data Integrity job", proposed_change=message.proposed_change)
+            events.append(
+                messages.RequestProposedChangeDataIntegrity(
+                    proposed_change=message.proposed_change,
+                    source_branch=message.source_branch,
+                    source_branch_data_only=message.source_branch_data_only,
+                    destination_branch=message.destination_branch,
+                    branch_diff=branch_diff,
+                )
+            )
+
+        if message.check_type in [CheckType.ALL, CheckType.REPOSITORY, CheckType.USER]:
+            await task_report.info("Adding Repository Check job", proposed_change=message.proposed_change)
+            events.append(
+                messages.RequestProposedChangeRepositoryChecks(
+                    proposed_change=message.proposed_change,
+                    source_branch=message.source_branch,
+                    source_branch_data_only=message.source_branch_data_only,
+                    destination_branch=message.destination_branch,
+                    branch_diff=branch_diff,
+                )
+            )
+
+        if message.check_type in [CheckType.ALL, CheckType.SCHEMA] and branch_diff.has_data_changes(
+            branch=message.source_branch
+        ):
+            await task_report.info("Adding Schema Integrity job", proposed_change=message.proposed_change)
+            events.append(
+                messages.RequestProposedChangeSchemaIntegrity(
+                    proposed_change=message.proposed_change,
+                    source_branch=message.source_branch,
+                    source_branch_data_only=message.source_branch_data_only,
+                    destination_branch=message.destination_branch,
+                    branch_diff=branch_diff,
+                )
+            )
+
+        if message.check_type in [CheckType.ALL, CheckType.TEST]:
+            await task_report.info("Adding Repository Test job", proposed_change=message.proposed_change)
+            events.append(
+                messages.RequestProposedChangeRunTests(
+                    proposed_change=message.proposed_change,
+                    source_branch=message.source_branch,
+                    source_branch_data_only=message.source_branch_data_only,
+                    destination_branch=message.destination_branch,
+                    branch_diff=branch_diff,
+                )
+            )
+
         for event in events:
             event.assign_meta(parent=message)
             await service.send(message=event)
-        service.log.info("Pipeline aborted due to merge conflicts", proposed_change=message.proposed_change)
-        return
-
-    await _gather_repository_repository_diffs(repositories=repositories)
-
-    diff_summary = await service.client.get_diff_summary(branch=message.source_branch)
-    branch_diff = ProposedChangeBranchDiff(diff_summary=diff_summary, repositories=repositories)
-    await _populate_subscribers(branch_diff=branch_diff, service=service, branch=message.source_branch)
-
-    if message.check_type in [CheckType.ALL, CheckType.ARTIFACT]:
-        events.append(
-            messages.RequestProposedChangeRefreshArtifacts(
-                proposed_change=message.proposed_change,
-                source_branch=message.source_branch,
-                source_branch_data_only=message.source_branch_data_only,
-                destination_branch=message.destination_branch,
-                branch_diff=branch_diff,
-            )
-        )
-
-    if message.check_type in [CheckType.ALL, CheckType.DATA] and branch_diff.has_node_changes(
-        branch=message.source_branch
-    ):
-        events.append(
-            messages.RequestProposedChangeDataIntegrity(
-                proposed_change=message.proposed_change,
-                source_branch=message.source_branch,
-                source_branch_data_only=message.source_branch_data_only,
-                destination_branch=message.destination_branch,
-                branch_diff=branch_diff,
-            )
-        )
-
-    if message.check_type in [CheckType.ALL, CheckType.REPOSITORY, CheckType.USER]:
-        events.append(
-            messages.RequestProposedChangeRepositoryChecks(
-                proposed_change=message.proposed_change,
-                source_branch=message.source_branch,
-                source_branch_data_only=message.source_branch_data_only,
-                destination_branch=message.destination_branch,
-                branch_diff=branch_diff,
-            )
-        )
-
-    if message.check_type in [CheckType.ALL, CheckType.SCHEMA] and branch_diff.has_data_changes(
-        branch=message.source_branch
-    ):
-        events.append(
-            messages.RequestProposedChangeSchemaIntegrity(
-                proposed_change=message.proposed_change,
-                source_branch=message.source_branch,
-                source_branch_data_only=message.source_branch_data_only,
-                destination_branch=message.destination_branch,
-                branch_diff=branch_diff,
-            )
-        )
-
-    if message.check_type in [CheckType.ALL, CheckType.TEST]:
-        events.append(
-            messages.RequestProposedChangeRunTests(
-                proposed_change=message.proposed_change,
-                source_branch=message.source_branch,
-                source_branch_data_only=message.source_branch_data_only,
-                destination_branch=message.destination_branch,
-                branch_diff=branch_diff,
-            )
-        )
-
-    for event in events:
-        event.assign_meta(parent=message)
-        await service.send(message=event)
 
 
 async def schema_integrity(
