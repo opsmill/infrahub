@@ -21,7 +21,7 @@ export const OpsSelect2StepRegister = (props: Props) => {
   const { name, register, setValue, config, isProtected, disabled, ...propsToPass } = props;
 
   const inputRegister = register(name, {
-    value: props.value ?? "",
+    value: props.value?.child ?? "",
     ...config,
   });
 
