@@ -12,9 +12,8 @@ from neo4j import (
     AsyncTransaction,
     Record,
 )
-
-# from contextlib import asynccontextmanager
 from neo4j.exceptions import ClientError, ServiceUnavailable
+from typing_extensions import Self
 
 from infrahub import config
 from infrahub.exceptions import DatabaseError
@@ -39,7 +38,12 @@ class InfrahubDriver:
     async def __aenter__(self):
         raise NotImplementedError
 
-    async def __aexit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType):
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ):
         raise NotImplementedError
 
 
@@ -50,7 +54,12 @@ class InfrahubSession:
     async def __aenter__(self):
         raise NotImplementedError
 
-    async def __aexit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType):
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ):
         raise NotImplementedError
 
 
@@ -62,7 +71,12 @@ class InfrahubTransaction:
     async def __aenter__(self):
         raise NotImplementedError
 
-    async def __aexit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType):
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ):
         raise NotImplementedError
 
 
@@ -155,7 +169,7 @@ class InfrahubDatabase:
         self._transaction = await session.begin_transaction()
         return self._transaction
 
-    async def __aenter__(self) -> InfrahubDatabase:
+    async def __aenter__(self) -> Self:
         if self._mode == InfrahubDatabaseMode.SESSION:
             if self._session_mode == InfrahubDatabaseSessionMode.READ:
                 self._session = self._driver.session(
@@ -166,14 +180,18 @@ class InfrahubDatabase:
                     database=config.SETTINGS.database.database_name, default_access_mode=WRITE_ACCESS
                 )
 
-            return self
-
-        if self._mode == InfrahubDatabaseMode.TRANSACTION:
+        elif self._mode == InfrahubDatabaseMode.TRANSACTION:
             session = await self.session()
             self._transaction = await session.begin_transaction()
-            return self
 
-    async def __aexit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType):
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ):
         if self._mode == InfrahubDatabaseMode.SESSION:
             return await self._session.close()
 

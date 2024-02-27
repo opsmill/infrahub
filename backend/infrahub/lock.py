@@ -50,7 +50,12 @@ class InfrahubMultiLock:
     async def __aenter__(self):
         await self.acquire()
 
-    async def __aexit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType):
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ):
         await self.release()
 
     async def acquire(self) -> None:
@@ -91,7 +96,12 @@ class InfrahubLock:
     async def __aenter__(self):
         await self.acquire()
 
-    async def __aexit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType):
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ):
         await self.release()
 
     async def acquire(self) -> None:

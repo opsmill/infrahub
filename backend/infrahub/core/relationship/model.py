@@ -633,7 +633,7 @@ class RelationshipManager:
     def get_kind(self) -> str:
         return self.schema.kind
 
-    def __iter__(self) -> Iterable[Relationship]:
+    def __iter__(self) -> Iterator[Relationship]:
         if self.schema.cardinality == "one":
             raise TypeError("relationship with single cardinality are not iterable")
 
