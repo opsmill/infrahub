@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import enum
 import json
-from typing import Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable, Set
 
 import httpx
 
 try:
     from pydantic import v1 as pydantic  # type: ignore[attr-defined]
+    from pydantic.v1.fields import ModelField
 except ImportError:
     import pydantic  # type: ignore[no-redef]
+    from pydantic.fields import ModelField
 
 from infrahub_sdk.utils import generate_request_filename
 
@@ -23,6 +25,10 @@ class RecorderType(str, enum.Enum):
 class Recorder(Protocol):
     def record(self, response: httpx.Response) -> None:
         """Record the response from Infrahub"""
+
+    @classmethod
+    def __modify_schema__(cls, field_schema: Dict[str, Set[str]], field: Optional[ModelField]):
+        field.type_ = str
 
 
 class NoRecorder:
