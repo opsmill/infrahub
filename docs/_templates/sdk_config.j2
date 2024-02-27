@@ -1,0 +1,37 @@
+---
+title: Python SDK Configuration
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The Python SDK (Async or Sync) client can be configured using an instance of the Config class.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+  ```python
+  from infrahub_sdk import Config, InfrahubClient
+  config = Config(address="http://infrahub:8080", api_token="123-xyz-invalid-token")
+  client = await InfrahubClient.init(config=config)
+  ```
+  </TabItem>
+  <TabItem value="Sync">
+  ```python
+  from infrahub_sdk import Config, InfrahubClientSync
+  config = Config(address="http://infrahub:8080", api_token="123-xyz-invalid-token")
+  client = InfrahubClientSync.init(config=config)
+  ```
+  </TabItem>
+</Tabs>
+
+The following settings can be defined in the Config class
+
+{% for property in properties -%}
+## {{ property.name }}
+
+**Property**: {{ property.name }}  
+**Description**: {{ property.description }}  
+**Type**: {{ property.type }}  
+**Default value**: {{ property.default }}  
+**Choices**: {{ property.choices | join(" ") }}  
+**Environment variable**: {{ property.env_vars | join(" ") }}  
+{% endfor -%}

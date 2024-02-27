@@ -135,6 +135,7 @@ def _generate(context: Context):
     _generate_infrahubctl_documentation(context=context)
     _generate_infrahub_schema_documentation()
     _generate_infrahub_repository_configuration_documentation()
+    _generate_infrahub_sdk_configuration_documentation()
 
 
 def _generate_infrahubctl_documentation(context: Context):
@@ -182,6 +183,45 @@ def _generate_infrahub_schema_documentation() -> None:
 
         print(f"Docs saved to: {output_label}")
 
+
+def _generate_infrahub_sdk_configuration_documentation() -> None:
+    """Generate documentation for the Infrahub SDK configuration"""
+    import jinja2
+    from infrahub_sdk.config import Config
+
+    schema = Config.schema()
+
+    definitions = schema["definitions"]
+    properties = [
+        {
+            "name": name,
+            "description": property.get("description", ""),
+            "type": property.get("type", "enum"),
+            "choices": definitions[property["allOf"][0]["$ref"].split("/")[-1]]["enum"] if "allOf" in property else [],
+            "default": property.get("default", ""),
+            "env_vars": list(property.get("env_names", set())),
+        }
+        for name, property in schema["properties"].items()
+    ]
+
+    template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/sdk_config.j2"
+    output_file = f"{DOCUMENTATION_DIRECTORY}/docs/python-sdk/config.mdx"
+    output_label = f"docs/docs/python-sdk/config.mdx"
+
+    if not os.path.exists(template_file):
+        print(f"Unable to find the template file at {template_file}")
+        sys.exit(-1)
+
+    template_text = Path(template_file).read_text(encoding="utf-8")
+
+    environment = jinja2.Environment()
+    template = environment.from_string(template_text)
+    rendered_file = template.render(properties=properties)
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(rendered_file)
+
+    print(f"Docs saved to: {output_label}")
 
 def _generate_infrahub_repository_configuration_documentation() -> None:
     """Generate documentation for the Infrahub repository configuration file"""
