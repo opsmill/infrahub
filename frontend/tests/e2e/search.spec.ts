@@ -45,13 +45,12 @@ test.describe("when searching an object", () => {
       await expect(page.getByTestId("search-anywhere")).toBeVisible();
     });
 
+    const searchAnywhere = page.getByTestId("search-anywhere");
     await test.step("open search anywhere modal when typing on header input", async () => {
-      await page
-        .getByTestId("search-anywhere")
-        .getByPlaceholder("Search anywhere")
-        .fill("no_results_query_for_test");
-      await expect(page.getByRole("heading")).toContainText("No results found");
-      await expect(page.getByRole("paragraph")).toContainText("Try using different keywords");
+      await searchAnywhere.getByPlaceholder("Search anywhere").fill("no_results_query_for_test");
+      await expect(searchAnywhere.getByRole("option")).toContainText(
+        "Search in docs: no_results_query_for_test"
+      );
     });
   });
 
