@@ -87,14 +87,14 @@ if os.path.exists(DOCS_SEARCH_INDEX_FILE):
         docs_heading_index = Index.load(heading_search_index["index"])
 
 
-def tokenize(text: str):
+def tokenize(text: str) -> List[str]:
     return re.findall(r"[^-\s]+", text.lower()) or []
 
 
-def smart_queries(query: str):
+def smart_queries(query: str) -> str:
     tokens = tokenize(query)
     if len(tokens) == 0:
-        return []
+        return ""
 
     term_required_and_wildcard = [f"{term}*" for term in tokens]
 
@@ -110,12 +110,12 @@ async def search_docs(query: str) -> List[SearchResultAPI]:
         for result in search_results
     ]
 
-    response_list = [
-        {
-            "title": result["t"],
-            "url": result["u"] + result["h"],
-            "breadcrumb": next(doc["b"] for doc in page_search_index["documents"] if doc["i"] == int(result["p"])),
-        }
+    response_list: List[SearchResultAPI] = [
+        SearchResultAPI(
+            title=result["t"],
+            url=result["u"] + result["h"],
+            breadcrumb=next(doc["b"] for doc in page_search_index["documents"] if doc["i"] == int(result["p"])),
+        )
         for result in heading_results
     ]
 
