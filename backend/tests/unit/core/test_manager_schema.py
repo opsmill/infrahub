@@ -11,7 +11,6 @@ from infrahub.core.constants import (
     FilterSchemaKind,
     InfrahubKind,
     SchemaPathType,
-    UpdateValidationErrorType,
 )
 from infrahub.core.schema import (
     GenericSchema,
@@ -1628,19 +1627,7 @@ async def test_schema_branch_validate_check_missing(
                 },
             },
         ],
-        "errors": [
-            {
-                "path": {
-                    "field_name": "name",
-                    "path_type": SchemaPathType.ATTRIBUTE,
-                    "property_name": "unique",
-                    "schema_id": None,
-                    "schema_kind": "BuiltinCriticality",
-                },
-                "error": UpdateValidationErrorType.VALIDATOR_NOT_AVAILABLE,
-                "message": "Validator 'attribute.unique.update' is not available yet",
-            },
-        ],
+        "errors": [],
         "migrations": [],
     }
 
@@ -1752,7 +1739,47 @@ async def test_get_constraints_per_model_valid(schema_criticality_tag):
     constraints = await schema_branch.get_constraints_per_model(name="BuiltinCriticality")
 
     dumped_constraints = [constraint.model_dump() for constraint in constraints]
-    assert len(dumped_constraints) == 6
+    assert len(dumped_constraints) == 10
+    assert {
+        "constraint_name": "attribute.unique.update",
+        "path": {
+            "field_name": "name",
+            "path_type": SchemaPathType.ATTRIBUTE,
+            "property_name": "unique",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "attribute.unique.update",
+        "path": {
+            "field_name": "level",
+            "path_type": SchemaPathType.ATTRIBUTE,
+            "property_name": "unique",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "attribute.unique.update",
+        "path": {
+            "field_name": "color",
+            "path_type": SchemaPathType.ATTRIBUTE,
+            "property_name": "unique",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "attribute.unique.update",
+        "path": {
+            "field_name": "description",
+            "path_type": SchemaPathType.ATTRIBUTE,
+            "property_name": "unique",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
+        },
+    } in dumped_constraints
     assert {
         "constraint_name": "attribute.optional.update",
         "path": {

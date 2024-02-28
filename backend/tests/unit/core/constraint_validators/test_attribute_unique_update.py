@@ -11,7 +11,31 @@ from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
 
 
-async def test_query(
+async def test_query_no_violations(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
+    car_volt_main: Node,
+):
+    car_schema = registry.schema.get(name="TestCar")
+    seats_attr = car_schema.get_attribute(name="nbr_seats")
+    seats_attr.unique = True
+
+    node_schema = car_schema
+    schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="name")
+    query = await AttributeUniqueUpdateValidatorQuery.init(
+        db=db, branch=default_branch, node_schema=node_schema, schema_path=schema_path
+    )
+
+    await query.execute(db=db)
+
+    grouped_paths = await query.get_paths()
+    assert len(grouped_paths.get_all_data_paths()) == 0
+
+
+async def test_query_with_violations(
     db: InfrahubDatabase,
     branch: Branch,
     default_branch: Branch,
@@ -67,6 +91,73 @@ async def test_query(
     ) in grouped_paths.get_data_paths("5")
     assert len(grouped_paths.get_data_paths("4")) == 2
     assert {dp.node_id for dp in grouped_paths.get_data_paths("4")} == {car_yaris_main.id, car_volt_main.id}
+
+
+async def test_query_no_violations_update_in_branch(
+    db: InfrahubDatabase,
+    branch: Branch,
+    default_branch: Branch,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
+    car_volt_main: Node,
+    person_john_main,
+):
+    car_accord_main.name.value = "New Accord"
+    await car_accord_main.save(db=db)
+
+    await branch.rebase(db=db)
+    car = await Node.init(db=db, schema="TestCar", branch=branch)
+    await car.new(db=db, name="New Accord", nbr_seats=5, is_electric=False, owner=person_john_main.id)
+    await car.save(db=db)
+    car.name.value = "Newest Accord"
+    await car.save(db=db)
+
+    car_schema = registry.schema.get(name="TestCar")
+
+    node_schema = car_schema
+    schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="name")
+    query = await AttributeUniqueUpdateValidatorQuery.init(
+        db=db, branch=branch, node_schema=node_schema, schema_path=schema_path
+    )
+
+    await query.execute(db=db)
+
+    grouped_paths = await query.get_paths()
+    assert len(grouped_paths.get_all_data_paths()) == 0
+
+
+async def test_query_no_violations_deleted_node(
+    db: InfrahubDatabase,
+    branch: Branch,
+    default_branch: Branch,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
+    car_volt_main: Node,
+    person_john_main,
+):
+    car_accord_main.name.value = "New Accord"
+    await car_accord_main.save(db=db)
+
+    await branch.rebase(db=db)
+    car = await Node.init(db=db, schema="TestCar", branch=branch)
+    await car.new(db=db, name="New Accord", nbr_seats=5, is_electric=False, owner=person_john_main.id)
+    await car.save(db=db)
+    await car.delete(db=db)
+
+    car_schema = registry.schema.get(name="TestCar")
+
+    node_schema = car_schema
+    schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="name")
+    query = await AttributeUniqueUpdateValidatorQuery.init(
+        db=db, branch=branch, node_schema=node_schema, schema_path=schema_path
+    )
+
+    await query.execute(db=db)
+
+    grouped_paths = await query.get_paths()
+    assert len(grouped_paths.get_all_data_paths()) == 0
 
 
 async def test_validator(

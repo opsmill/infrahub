@@ -1,6 +1,7 @@
 from infrahub.core.validators.aggregated_checker import AggregatedConstraintChecker
 
 from ....interface import DependencyBuilder, DependencyBuilderContext
+from .attribute_choices import SchemaAttributeChoicesConstraintDependency
 from .attribute_optional import SchemaAttributeOptionalConstraintDependency
 from .attribute_regex import SchemaAttributeRegexConstraintDependency
 from .attribute_uniqueness import SchemaAttributeUniqueConstraintDependency
@@ -18,6 +19,7 @@ class AggregatedSchemaConstraintsDependency(DependencyBuilder[AggregatedConstrai
                 SchemaAttributeRegexConstraintDependency.build(context=context),
                 SchemaAttributeUniqueConstraintDependency.build(context=context),
                 SchemaAttributeOptionalConstraintDependency.build(context=context),
+                SchemaAttributeChoicesConstraintDependency.build(context=context),
             ],
             db=context.db,
             branch=context.branch,

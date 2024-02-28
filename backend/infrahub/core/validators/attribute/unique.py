@@ -27,40 +27,51 @@ class AttributeUniqueUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
         from_times = db.render_list_comprehension(items="relationships(potential_path)", item_name="from")
 
+        # ruff: noqa: E501
         query = """
         MATCH (potential_node:Node)
         WHERE $node_kind IN LABELS(potential_node)
         CALL {
             WITH potential_node
-            MATCH potential_path = (potential_node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name })-[:HAS_VALUE]-(potential_value:AttributeValue)
+            MATCH potential_path = (potential_node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name })-[potential_value_relationship:HAS_VALUE]-(potential_value:AttributeValue)
             WHERE all(r IN relationships(potential_path) WHERE (%(branch_filter)s))
             WITH
                 potential_node,
                 potential_value,
+                potential_value_relationship,
                 potential_path,
                 reduce(br_lvl = 0, r in relationships(potential_path) | br_lvl + r.branch_level) AS branch_level,
                 %(from_times)s AS from_times
-            RETURN potential_node as node, potential_value as attribute_value, potential_path as path
+            RETURN potential_node as node, potential_value as attribute_value, potential_path as path, potential_value_relationship as value_relationship
             ORDER BY branch_level DESC, from_times[-1] DESC, from_times[-2] DESC
             LIMIT 1
         }
-        WITH node, attribute_value, path
+        WITH node, attribute_value, path, value_relationship
         WHERE all(r IN relationships(path) WHERE (r.status = "active"))
-        WITH count(*) as node_count, attribute_value, node, path
+        WITH
+            collect([node, value_relationship]) as nodes_and_value_relationships,
+            count(*) as node_count,
+            attribute_value
         ORDER BY attribute_value.value
+        UNWIND nodes_and_value_relationships as node_and_value_relationship
         """ % {"branch_filter": branch_filter, "from_times": from_times}
 
         self.add_to_query(query)
         self.return_labels = [
             "node_count",
             "attribute_value.value as value",
-            "node",
-            "relationships(path)[-1] as value_relationship",
+            "node_and_value_relationship[0] as node",
+            "node_and_value_relationship[1] as value_relationship",
         ]
 
     async def get_paths(self) -> GroupedDataPaths:
         grouped_data_paths = GroupedDataPaths()
         for result in self.results:
+            try:
+                if int(result.get("node_count")) <= 1:  # type: ignore
+                    continue
+            except (ValueError, TypeError):
+                continue
             value = str(result.get("value"))
             grouped_data_paths.add_data_path(
                 DataPath(
@@ -89,7 +100,7 @@ class AttributeUniquenessChecker(ConstraintCheckerInterface):
         return "attribute.unique.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name == "attribute.unique.update"
+        return request.constraint_name == self.name
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
         grouped_data_paths_list = []

@@ -15,16 +15,19 @@ if TYPE_CHECKING:
     from ..model import SchemaConstraintValidatorRequest
 
 
-class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
-    name: str = "attribute_constraints_regex_validator"
+class AttributeChoicesUpdateValidatorQuery(AttributeSchemaValidatorQuery):
+    name: str = "attribute_constraints_choices_validator"
 
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
+        if self.attribute_schema.choices is None:
+            return
+
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
         self.params["node_kind"] = self.node_schema.kind
         self.params["attr_name"] = self.attribute_schema.name
-        self.params["attr_value_regex"] = self.attribute_schema.regex
+        self.params["allowed_values"] = [choice.name for choice in self.attribute_schema.choices]
 
         query = """
         MATCH p = (n:Node)
@@ -43,7 +46,9 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         WITH full_path, node, attribute_value, value_relationship
         WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
-        AND NOT attribute_value =~ $attr_value_regex
+        AND attribute_value IS NOT NULL
+        AND attribute_value <> "NULL"
+        AND NOT (attribute_value IN $allowed_values)
         """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
@@ -68,8 +73,8 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         return grouped_data_paths
 
 
-class AttributeRegexChecker(ConstraintCheckerInterface):
-    query_classes = [AttributeRegexUpdateValidatorQuery]
+class AttributeChoicesChecker(ConstraintCheckerInterface):
+    query_classes = [AttributeChoicesUpdateValidatorQuery]
 
     def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
         self.db = db
@@ -77,13 +82,17 @@ class AttributeRegexChecker(ConstraintCheckerInterface):
 
     @property
     def name(self) -> str:
-        return "attribute.regex.update"
+        return "attribute.choices.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name == self.name
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
-        grouped_data_paths_list = []
+        grouped_data_paths_list: List[GroupedDataPaths] = []
+        attribute_schema = request.node_schema.get_attribute(name=request.schema_path.field_name)
+        if attribute_schema.choices is None:
+            return grouped_data_paths_list
+
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
