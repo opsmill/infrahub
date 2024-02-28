@@ -182,21 +182,6 @@ export const Conflict = (props: any) => {
                   </div>
                 </div>
               </div>
-
-              {/* <Tooltip
-                message={isSelected ? "Cancel this change" : "Accept this change"}
-                position={TooltipPosition.LEFT}>
-                <Button
-                  buttonType={BUTTON_TYPES.INVISIBLE}
-                  onClick={() => handleAccept(branch)}
-                  isLoading={isLoading}>
-                  {isSelected ? (
-                    <XMarkIcon className="h-4 w-4" />
-                  ) : (
-                    <CheckIcon className="h-4 w-4" />
-                  )}
-                </Button>
-              </Tooltip> */}
             </div>
           );
         })}

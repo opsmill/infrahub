@@ -5,10 +5,13 @@ import {
   ExclamationCircleIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
-import { StringParam, useQueryParam } from "use-query-params";
+import { MoreButton } from "../../../components/buttons/more-buton";
+import Accordion from "../../../components/display/accordion";
 import { DateDisplay } from "../../../components/display/date-display";
-import { QSP } from "../../../config/qsp";
-import { ValidatorChecksProgress } from "./validator-checks-progress";
+import { DurationDisplay } from "../../../components/display/duration-display";
+import { PopOver } from "../../../components/display/popover";
+import { List } from "../../../components/table/list";
+import { ValidatorDetails } from "./validator-details";
 
 type tValidatorProps = {
   validator: any;
@@ -42,36 +45,69 @@ const getValidatorState = (state?: string, conclusion?: string) => {
 export const Validator = (props: tValidatorProps) => {
   const { validator } = props;
 
-  const [, setQsp] = useQueryParam(QSP.VALIDATOR_DETAILS, StringParam);
+  const { id, display_label, started_at, completed_at, conclusion, state } = validator;
 
-  const { display_label, started_at, completed_at, conclusion, checks, state } = validator;
+  const columns = [
+    {
+      name: "id",
+      label: "ID",
+    },
+    {
+      name: "display_label",
+      label: "Name",
+    },
+    {
+      name: "started_at",
+      label: "Started at",
+    },
+    {
+      name: "completed_at",
+      label: "Completed at",
+    },
+    {
+      name: "conclusion",
+      label: "Conclusion",
+    },
+    {
+      name: "state",
+      label: "State",
+    },
+  ];
 
-  const checksData = checks?.edges?.map((edge: any) => edge?.node);
+  const row = {
+    values: {
+      id: id.value,
+      display_label: display_label.value,
+      started_at: <DateDisplay date={started_at.value} />,
+      completed_at: <DateDisplay date={completed_at.value} />,
+      conclusion: conclusion.value,
+      state: state.value,
+    },
+  };
+
+  const title = (
+    <div className="flex items-center">
+      <div className="mr-2">{getValidatorState(state?.value, conclusion?.value)}</div>
+
+      <span>{display_label}</span>
+
+      <span className="mx-2 font-normal">-</span>
+
+      <DurationDisplay date={started_at.value} endDate={completed_at.value} />
+
+      <div className="flex flex-1 justify-end">
+        <PopOver buttonComponent={MoreButton}>
+          <List columns={columns} row={row} />
+        </PopOver>
+      </div>
+    </div>
+  );
 
   return (
-    <div
-      onClick={() => setQsp(validator.id)}
-      className={"flex flex-col rounded-lg shadow p-2 cursor-pointer bg-custom-white"}>
-      <div className="flex items-center mt-2">
-        <div className="mr-2">{getValidatorState(state?.value, conclusion?.value)}</div>
-
-        <span>{display_label}</span>
-      </div>
-
-      <div className="mt-2 flex-1 flex justify-between">
-        <span className="mr-1 font-semibold">Started:</span>
-        <DateDisplay date={started_at.value} hideDefault />
-      </div>
-
-      <div className="mt-2 flex-1 flex justify-between">
-        <span className="mr-1 font-semibold">Completed:</span>
-        <DateDisplay date={completed_at.value} hideDefault />
-      </div>
-
-      <div className="mt-2 flex-1 flex justify-between items-center">
-        <span className="flex-1 font-semibold">Checks: </span>
-        <ValidatorChecksProgress checks={checksData} />
-      </div>
+    <div className="bg-custom-white rounded-md p-2">
+      <Accordion title={title}>
+        <ValidatorDetails id={id} />
+      </Accordion>
     </div>
   );
 };

@@ -12,7 +12,7 @@ import { BUTTON_TYPES, Button } from "../buttons/button";
 import { ALERT_TYPES, Alert } from "../utils/alert";
 
 export const CodeEditor = (props: any) => {
-  const { onChange, enableCopy, ...propsToPass } = props;
+  const { value, onChange, enableCopy, ...propsToPass } = props;
 
   const [isCopied, setIsCopied] = useState(false);
 
@@ -43,7 +43,7 @@ export const CodeEditor = (props: any) => {
 
       <Editor
         {...propsToPass}
-        // value={code}
+        value={value ?? ""}
         onValueChange={(code) => onChange(code)}
         highlight={(code) => Prism.highlight(code, Prism.languages.json, "json")}
         padding={10}
@@ -54,7 +54,7 @@ export const CodeEditor = (props: any) => {
         }}
         preClassName="!break-all"
         textareaClassName="!break-all"
-        className="rounded-md shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 border-gray-300 bg-custom-white sm:text-sm sm:leading-6 disabled:cursor-not-allowed disabled:bg-gray-100 focus:ring-2 focus:ring-inset focus:ring-custom-blue-600 focus:border-custom-blue-600 focus:outline-none"
+        className="rounded-md shadow-sm ring-1 ring-inset ring-gray-300 text-gray-300 placeholder:text-gray-400 border-gray-300 bg-gray-800 text-sm disabled:cursor-not-allowed disabled:bg-gray-300 focus:ring-2 focus:ring-inset focus:ring-custom-blue-600 focus:border-custom-blue-600 focus:outline-none"
       />
     </div>
   );
