@@ -79,7 +79,7 @@ async def execute_message(routing_key: str, message_body: bytes, service: Infrah
             await service.reply(message=response, initiator=message)
             return
         if message.reached_max_retries:
-            service.log.error("Message failed after maximum number of retries", error=str(exc))
+            service.log.exception("Message failed after maximum number of retries", error=exc)
             await set_check_status(message, conclusion="failure", service=service)
             return
         message.increase_retry_count()
