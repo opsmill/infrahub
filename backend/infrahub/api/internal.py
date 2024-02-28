@@ -41,34 +41,13 @@ async def get_info() -> InfoAPI:
     return InfoAPI(deployment_id=str(registry.id), version=__version__)
 
 
-class TitleDocument(BaseModel):
-    i: str
-    t: str
-    u: str
-    b: List[str]
-
-
-class HeadingDocument(BaseModel):
-    i: str
-    t: str
-    u: str
-    h: str
-    p: str
-
-
-class SearchResultAPI(BaseModel):
-    title: str
-    url: str
-    breadcrumb: List[str]
-
-
 class SearchDocs:
-    def __init__(self):
-        self._title_documents: Optional[List[TitleDocument]] = None
-        self._heading_documents: Optional[List[HeadingDocument]] = None
+    def __init__(self) -> None:
+        self._title_documents: List[dict] = []
+        self._heading_documents: List[dict] = []
         self._heading_index: Optional[Index] = None
 
-    def _load_json(self):
+    def _load_json(self) -> None:
         """
         The structure of search-index.json is organized into an array of 3 arrays representing indexes for:
         [titleDocuments, headingDocuments, contentDocuments]
@@ -116,21 +95,21 @@ class SearchDocs:
             ) from e
 
     @property
-    def heading_index(self):
+    def heading_index(self) -> Index:
         if not self._heading_index:
             self._load_json()
 
         return self._heading_index
 
     @property
-    def title_documents(self):
+    def title_documents(self) -> List[dict]:
         if not self._title_documents:
             self._load_json()
 
         return self._title_documents
 
     @property
-    def heading_documents(self):
+    def heading_documents(self) -> List[dict]:
         if not self._heading_documents:
             self._load_json()
 
@@ -152,6 +131,12 @@ def smart_queries(query: str) -> str:
     term_required_and_wildcard = [f"{term}*" for term in tokens]
 
     return " ".join(term_required_and_wildcard)
+
+
+class SearchResultAPI(BaseModel):
+    title: str
+    url: str
+    breadcrumb: List[str]
 
 
 @router.get("/search/docs", include_in_schema=False)

@@ -9,7 +9,7 @@ from tests.helpers.fixtures import get_fixtures_dir
 @pytest.fixture
 def override_search_index_path():
     old_search_index_path = config.SETTINGS.main.docs_index_path
-    config.SETTINGS.main.docs_index_path = os.path.join(get_fixtures_dir(), "/docs/search-index.json")
+    config.SETTINGS.main.docs_index_path = os.path.join(get_fixtures_dir(), "docs/search-index.json")
     yield
     config.SETTINGS.main.docs_index_path = old_search_index_path
 
@@ -17,7 +17,7 @@ def override_search_index_path():
 @pytest.fixture
 def no_search_index_path():
     old_search_index_path = config.SETTINGS.main.docs_index_path
-    config.SETTINGS.main.docs_index_path = os.path.join(get_fixtures_dir(), "/docs/no-index.json")
+    config.SETTINGS.main.docs_index_path = os.path.join(get_fixtures_dir(), "docs/no-index.json")
     yield
     config.SETTINGS.main.docs_index_path = old_search_index_path
 
