@@ -122,10 +122,18 @@ async def get_schema_by_kind(
 
     schema = registry.schema.get(name=schema_kind, branch=branch)
 
+    api_schema: dict[str, type[Union[APINodeSchema, APIGenericSchema]]] = {
+        "node": APINodeSchema,
+        "generic": APIGenericSchema,
+    }
+    key = ""
+
     if isinstance(schema, NodeSchema):
-        return APINodeSchema.from_schema(schema=schema)
+        key = "node"
     if isinstance(schema, GenericSchema):
-        return APIGenericSchema.from_schema(schema=schema)
+        key = "generic"
+
+    return api_schema[key].from_schema(schema=schema)
 
 
 @router.post("/load")
@@ -135,7 +143,7 @@ async def load_schema(  # noqa: PLR0911 pylint: disable=R0911,too-many-branches,
     background_tasks: BackgroundTasks,
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
-    _: str = Depends(get_current_user),
+    _: Union[str, list] = Depends(get_current_user),
 ) -> JSONResponse:
     service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)
@@ -192,7 +200,7 @@ async def load_schema(  # noqa: PLR0911 pylint: disable=R0911,too-many-branches,
                 schema=candidate_schema, db=dbt, branch=branch.name, limit=result.diff.all, update_db=True
             )
             branch.update_schema_hash()
-            log.info("Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
+            log.info("Schema has been updated", branch=branch.name, hash=branch.active_schema_hash.main)
             await branch.save(db=dbt)
 
         # ----------------------------------------------------------
