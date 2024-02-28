@@ -23,6 +23,7 @@ import {
   DEFAULT_BRANCH_NAME,
   MENU_EXCLUDELIST,
   TASK_OBJECT,
+  TASK_TAB,
   TASK_TARGET,
 } from "../../config/constants";
 import { QSP } from "../../config/qsp";
@@ -165,10 +166,10 @@ export default function ObjectItemDetails(props: any) {
     // Includes the task tab only for specific objects
     schema?.inherit_from?.includes(TASK_TARGET) && {
       label: "Tasks",
-      name: "tasks",
+      name: TASK_TAB,
       count: data[TASK_OBJECT]?.count ?? 0,
       onClick: () => {
-        setQspTab("tasks");
+        setQspTab(TASK_TAB);
         setQspTaskId(undefined);
       },
     },
@@ -350,7 +351,7 @@ export default function ObjectItemDetails(props: any) {
         )}
       </div>
 
-      {qspTab && qspTab !== "tasks" && (
+      {qspTab && qspTab !== TASK_TAB && (
         <RelationshipsDetails
           parentNode={objectDetailsData}
           parentSchema={schemaData}
@@ -359,14 +360,14 @@ export default function ObjectItemDetails(props: any) {
         />
       )}
 
-      {qspTab && qspTab === "tasks" && !qspTaskId && <TaskItems ref={refetchRef} />}
+      {qspTab && qspTab === TASK_TAB && !qspTaskId && <TaskItems ref={refetchRef} />}
 
-      {qspTab && qspTab === "tasks" && qspTaskId && (
+      {qspTab && qspTab === TASK_TAB && qspTaskId && (
         <div>
           <div className="flex bg-custom-white text-sm">
             <Link
               to={constructPath(pathname, [
-                { name: QSP.TAB, value: "tasks" },
+                { name: QSP.TAB, value: TASK_TAB },
                 { name: QSP.TASK_ID, exclude: true },
               ])}
               className="flex items-center p-2 ">
