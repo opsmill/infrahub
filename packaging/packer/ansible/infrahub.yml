@@ -1,0 +1,7 @@
+---
+# yamllint disable rule:truthy
+- hosts: all
+  become: yes
+  roles:
+    - role: geerlingguy.docker
+    - role: opsmill.infrahub.install

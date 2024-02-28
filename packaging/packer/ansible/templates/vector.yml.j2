@@ -1,0 +1,50 @@
+---
+api:
+  enabled: false
+  address: 0.0.0.0:8686
+sources:
+  docker:
+    type: docker_logs
+    include_containers:
+      - infrahub
+transforms:
+  parse:
+    type: remap
+    inputs:
+      - docker
+    source: |
+      # Remove color codes
+      .message = strip_ansi_escape_codes!(.message)
+
+      # Parsing Infrahub logs when INFRAHUB_PRODUCTION=true
+      if is_json(.message, variant: "object") {
+        parsed, err = parse_json(.message)
+        if err == null {
+          . = merge!(., parsed)
+        }
+      }
+
+      # Parsing Infrahub logs when INFRAHUB_PRODUCTION=false
+      parsed, err = parse_regex(.message, r'(?P<time>\S+?) \[(?P<level>[a-z]+)\s+\]\s+(?P<event>[^\s]+)\s+\[(?P<logger>.+)\]\s*(?P<tmp_msg>.*)$')
+      if err == null {
+        . |= parsed
+        . |= parse_key_value!(.tmp_msg)
+      }
+sinks:
+  vlogs:
+    inputs:
+      - parse
+    type: elasticsearch
+    endpoints:
+      - http://victorialogs:9428/vlogs/insert/elasticsearch/
+    mode: bulk
+    api_version: v8
+    healthcheck:
+      enabled: false
+    compression: gzip
+    query:
+      _msg_field: "message"
+      _time_field: "timestamp"
+      _stream_fields: "host,container_name,event,level,app,request_id,branch,trace_id"
+    batch:
+      max_events: 1000

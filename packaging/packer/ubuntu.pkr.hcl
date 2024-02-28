@@ -1,5 +1,5 @@
 locals {
-  infrahub_version = var.infrahub_version == "" ? "0.11" : var.infrahub_version
+  infrahub_version = var.infrahub_version == "" ? "0.12" : var.infrahub_version
   vm_template_name = var.vm_template_name == "" ? "infrahub-${local.infrahub_version}-ubuntu-22.04.qcow2" : var.vm_template_name
 }
 
@@ -63,45 +63,46 @@ build {
 
   provisioner "ansible" {
     user          = build.User
-    playbook_file = "${path.cwd}/ansible/bootstrap_infra.yml"
+    playbook_file = "${path.cwd}/ansible/infrahub.yml"
     command       = "./ansible-playbook.sh"
     ansible_env_vars = [
       "ANSIBLE_HOST_KEY_CHECKING=False"
     ]
 
     extra_arguments = [
-      "-e", "infrahub_dir=/opt/infrahub",
-      "-e", "expose_database_ports=false",
-      "-e", "expose_message_queue_ports=false",
-      "-e", "NEO4J_PASSWORD=admin",
-      "-e", "RABBITMQ_PASSWORD=admin",
-      "-e", "INFRAHUB_CONTAINER_REGISTRY=9r2s1098.c1.gra9.container-registry.ovh.net",
-      "-e", "INFRAHUB_VERSION=${local.infrahub_version}",
-      "-e", "INFRAHUB_PRODUCTION=false",
-      "-e", "INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN=1b93a1e6-b14a-4c5b-b16e-e154d6ed05f4",
-      "-e", "INFRAHUB_SECURITY_SECRET_KEY=1b93a1e6-b14a-4c5b-b16e-e154d6ed05f4",
+      "-e", "infrahub_version=${local.infrahub_version}",
+      "-e", "infrahub_url_username=admin",
+      "-e", "infrahub_url_password=infrahub",
+      "-e", "infrahub_systemd_service_state=stopped",
+      "-e", "'${jsonencode({ "infrahub_config" = {
+        "INFRAHUB_PRODUCTION"                   = "false",
+        "INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN" = "1b93a1e6-b14a-4c5b-b16e-e154d6ed05f4",
+        "INFRAHUB_SECURITY_SECRET_KEY"          = "1b93a1e6-b14a-4c5b-b16e-e154d6ed05f4",
+        "INFRAHUB_ADDRESS"                      = "http://infrahub-server:8000",
+        "INFRAHUB_INTERNAL_ADDRESS"             = "http://infrahub-server:8000",
+        "INFRAHUB_BROKER_USERNAME"              = "infrahub",
+        "INFRAHUB_BROKER_PASSWORD"              = "infrahub",
+      } })}'"
     ]
 
 
-    galaxy_command = "./ansible-galaxy.sh"
-    galaxy_file    = "${path.cwd}/ansible/requirements.yml"
+    galaxy_command       = "./ansible-galaxy.sh"
+    galaxy_file          = "${path.cwd}/ansible/requirements.yml"
+    galaxy_force_install = true
   }
 
   provisioner "ansible" {
     user          = build.User
-    playbook_file = "${path.cwd}/ansible/bootstrap_monitoring_stack.yml"
+    playbook_file = "${path.cwd}/ansible/monitoring.yml"
     command       = "./ansible-playbook.sh"
     ansible_env_vars = [
       "ANSIBLE_HOST_KEY_CHECKING=False"
     ]
 
     extra_arguments = [
-      "-e", "node_exporter_web_listen_address=127.0.0.1:9100",
-      "-e", "install_vector=true",
-      "-e", "monitor_infrahub=true",
-      "-e", "GRAFANA_ROOT_URL=''",
+      "-e", "GRAFANA_LOGIN=admin",
+      "-e", "GRAFANA_PASSWORD=admin",
     ]
-
 
     galaxy_command = "./ansible-galaxy.sh"
     galaxy_file    = "${path.cwd}/ansible/requirements.yml"

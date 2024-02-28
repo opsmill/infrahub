@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "infrahub-ansible"
+version = "0.1.0"
+description = ""
+authors = ["Infrahub OpsMill <infrahub@opsmill.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+ansible-core = "^2.16.6"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

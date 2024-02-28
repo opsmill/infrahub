@@ -1,0 +1,7 @@
+---
+collections:
+  - name: prometheus.prometheus
+  - name: opsmill.infrahub
+roles:
+  - name: geerlingguy.docker
+    version: "7.0.2"

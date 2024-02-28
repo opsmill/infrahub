@@ -1,0 +1,30 @@
+---
+apiVersion: 1
+
+datasources:
+  - name: Prometheus (Local)
+    type: prometheus
+    uid: localprometheus
+    access: proxy
+    orgId: 1
+    url: http://victoriametrics:8428
+    basicAuth: false
+    editable: true
+
+  - name: Loki (Local)
+    type: loki
+    uid: localloki
+    url: http://loki:3100
+    editable: true
+    jsonData:
+      derivedFields:
+        - name: TraceID
+          matcherRegex: 'TraceID=0x(\w+)'
+          url: '$${__value.raw}'
+          urlDisplayLabel: "View Trace via TraceID (in Tempo)"
+          datasourceUid: 'localtempo'
+        - name: RequestID
+          matcherRegex: 'RequestID=(\w+)'
+          url: '{name=~".*$${__value.raw}.*"}'
+          urlDisplayLabel: "View Trace via RequestID (in Tempo)"
+          datasourceUid: 'localtempo'

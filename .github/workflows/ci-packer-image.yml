@@ -1,0 +1,89 @@
+---
+# yamllint disable rule:truthy
+name: Build Packer image
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        type: boolean
+        description: Whether to publish the image as artifact
+        required: false
+        default: true
+      ref:
+        type: string
+        required: true
+        description: The GIT ref from which the image will be build
+        default: stable
+      infrahub_version:
+        type: string
+        default: "0.12"
+        description: Infrahub version to use in the image
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  INFRAHUB_VERSION: ${{ inputs.infrahub_version == '' && '0.12' || inputs.infrahub_version }}
+
+jobs:
+  build:
+    runs-on:
+      group: huge-runners
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: "Setup environment"
+        run: |
+          pipx install poetry
+          poetry config virtualenvs.prefer-active-python true
+
+      - name: Setup packer
+        uses: hashicorp/setup-packer@v3.0.0
+        id: setup
+        with:
+          version: "1.10.1"
+
+      - name: Packer init
+        working-directory: packaging/packer
+        run: packer init .
+
+      - name: Packer build
+        working-directory: packaging/packer
+        run: packer build -var infrahub_version=$INFRAHUB_VERSION .
+
+      # Disabled because GH artifacts are slow to download
+      # - name: Upload
+      #   if: ${{ inputs.publish == 'true' }}
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: image.qcow2
+      #     compression-level: 0
+      #     path: packaging/packer/output/*
+
+      - name: Set up S3cmd cli tool
+        if: ${{ inputs.publish == 'true' }}
+        uses: s3-actions/s3cmd@v1.5.0
+        with:
+          provider: scaleway
+          region: 'gra'
+          access_key: ${{ secrets.ARTIFACTS_S3_ACCESS_KEY }}
+          secret_key: ${{ secrets.ARTIFACTS_S3_SECRET_KEY }}
+
+      - name: Upload to S3
+        if: ${{ inputs.publish == 'true' }}
+        # yamllint disable-line rule:line-length
+        run: s3cmd sync --host https://s3.gra.io.cloud.ovh.net --host-bucket "" --recursive --acl-public packaging/packer/output/ s3://infrahub-artifacts/${{ github.run_id }}/
+
+      - name: Print download URL
+        # yamllint disable-line rule:line-length
+        run: "echo Image available at https://infrahub-artifacts.s3.gra.io.cloud.ovh.net/${{ github.run_id }}/infrahub-${INFRAHUB_VERSION}-ubuntu-22.04.qcow2"

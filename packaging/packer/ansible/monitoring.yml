@@ -1,0 +1,44 @@
+---
+# yamllint disable rule:truthy
+- hosts: all
+  become: yes
+  tasks:
+    - name: Ensure /opt/monitoring directory exists
+      ansible.builtin.file:
+        path: /opt/monitoring
+        state: directory
+        mode: 0700
+
+    - name: Install configuration files
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "/opt/monitoring/{{ item }}"
+        mode: 0644
+      with_items:
+        - docker-compose.yml
+        - vmagent.yml
+        - vector.yml
+
+    - name: Install configuration
+      ansible.builtin.copy:
+        src: grafana
+        dest: /opt/monitoring/
+        mode: 0644
+
+    - name: Install node exporter
+      ansible.builtin.import_role:
+        name: prometheus.prometheus.node_exporter
+      vars:
+        node_exporter_web_listen_address: "127.0.0.1:9100"
+        node_exporter_version: 1.7.0
+
+    - name: Install cadvisor
+      ansible.builtin.import_role:
+        name: prometheus.prometheus.cadvisor
+      vars:
+        cadvisor_listen_ip: "127.0.0.1"
+        cadvisor_port: "9888"
+        cadvisor_version: "0.47.2"
+
+    - name: Run docker-compose
+      ansible.builtin.command: docker compose -f /opt/monitoring/docker-compose.yml up -d

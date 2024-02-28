@@ -1,0 +1,68 @@
+---
+version: "3.4"
+name: monitoring
+services:
+  grafana:
+    image: grafana/grafana:10.3.1
+    restart: unless-stopped
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-storage:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER={{ GRAFANA_LOGIN }}
+      - GF_SECURITY_ADMIN_PASSWORD={{ GRAFANA_PASSWORD }}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_PANELS_DISABLE_SANITIZE_HTML=true
+    ports:
+      - "3000:3000"
+
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.99.0
+    restart: unless-stopped
+    volumes:
+      - vmdata:/storage
+    command:
+      - "--storageDataPath=/storage"
+      - "--graphiteListenAddr=:2003"
+      - "--opentsdbListenAddr=:4242"
+      - "--httpListenAddr=:8428"
+      - "--influxListenAddr=:8089"
+    ports:
+      - "8428:8428"
+
+  vector:
+    image: timberio/vector:0.35.0-alpine
+    restart: unless-stopped
+    volumes:
+      - ./vector.yml:/etc/vector/vector.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/hosts:/etc/hosts:ro
+
+  victorialogs:
+    image: victoriametrics/victoria-logs:v0.5.2-victorialogs
+    restart: unless-stopped
+    command:
+      - "--storageDataPath=/vlogs"
+      - "--httpListenAddr=:9428"
+      - "--http.pathPrefix=/vlogs"
+    volumes:
+      - vlogs:/vlogs
+
+  vmagent:
+    image: victoriametrics/vmagent:v1.99.0
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - vmagentdata:/vmagentdata
+      - ./vmagent.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--promscrape.config=/etc/prometheus/prometheus.yml"
+      - "--remoteWrite.sendTimeout=0s"
+      - "--remoteWrite.url=http://localhost:8428/api/v1/write"
+
+volumes:
+  vmagentdata:
+  grafana-storage:
+  vmdata:
+  vlogs:
