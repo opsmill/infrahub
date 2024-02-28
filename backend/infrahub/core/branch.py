@@ -49,7 +49,7 @@ class Branch(StandardNode):
 
     @field_validator("name", mode="before")
     @classmethod
-    def validate_branch_name(cls, value):
+    def validate_branch_name(cls, value: str) -> str:
         checks = [
             (r".*/\.", "/."),
             (r"\.\.", ".."),
@@ -80,12 +80,12 @@ class Branch(StandardNode):
 
     @field_validator("branched_from", mode="before")
     @classmethod
-    def set_branched_from(cls, value):
+    def set_branched_from(cls, value: str) -> str:
         return Timestamp(value).to_string()
 
     @field_validator("created_at", mode="before")
     @classmethod
-    def set_created_at(cls, value):
+    def set_created_at(cls, value: str) -> str:
         return Timestamp(value).to_string()
 
     @property
@@ -237,7 +237,7 @@ class Branch(StandardNode):
         """
 
         filters = []
-        params = {}
+        params: dict[str, Any] = {}
 
         if not isinstance(rel_labels, list):
             raise TypeError(f"rel_labels must be a list, not a {type(rel_labels)}")
@@ -283,7 +283,7 @@ class Branch(StandardNode):
         at = Timestamp(at)
         branches_times = self.get_branches_and_times_to_query_global(at=at.to_string(), is_isolated=is_isolated)
 
-        params = {}
+        params: dict[str, Any] = {}
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
             params[f"branch{idx}"] = list(branch_name)
             params[f"time{idx}"] = time_to_query
@@ -415,7 +415,7 @@ class Branch(StandardNode):
 
         return filters, params
 
-    async def rebase(self, db: InfrahubDatabase, at: Optional[Union[str, Timestamp]] = None):
+    async def rebase(self, db: InfrahubDatabase, at: Optional[Union[str, Timestamp]] = None) -> None:
         """Rebase the current Branch with its origin branch"""
 
         at = Timestamp(at)
@@ -435,7 +435,7 @@ class Branch(StandardNode):
         # Update the branch in the registry after the rebase
         registry.branch[self.name] = self
 
-    async def rebase_graph(self, db: InfrahubDatabase, at: Optional[Timestamp] = None):
+    async def rebase_graph(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
 
         query = await GetAllBranchInternalRelationshipQuery.init(db=db, branch=self)
