@@ -12,6 +12,7 @@ type SearchProps = {
 export const SearchDocs = ({ query }: SearchProps) => {
   const queryDebounced = useDebounce(query, 300);
   const [results, setResults] = useState([]);
+  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,11 +20,17 @@ export const SearchDocs = ({ query }: SearchProps) => {
     setLoading(true);
     const cleanedValue = queryDebounced.trim();
 
-    fetchUrl(CONFIG.SEARCH_URL(cleanedValue)).then((data) => {
-      if (ignore) return;
-      setLoading(false);
-      setResults(data);
-    });
+    fetchUrl(CONFIG.SEARCH_URL(cleanedValue))
+      .then((data) => {
+        if (ignore) return;
+        setLoading(false);
+        setResults(data);
+        setError(null);
+      })
+      .catch((error) => {
+        setLoading(false);
+        setError(error);
+      });
 
     return () => {
       ignore = true;
@@ -37,6 +44,8 @@ export const SearchDocs = ({ query }: SearchProps) => {
       </div>
     );
   }
+
+  if (error) return null;
 
   if (results.length === 0)
     return (
