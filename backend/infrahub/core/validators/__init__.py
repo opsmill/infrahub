@@ -1,5 +1,6 @@
 from typing import Dict, Optional, Type
 
+from .attribute.optional import AttributeOptionalChecker
 from .attribute.regex import AttributeRegexChecker
 from .interface import ConstraintCheckerInterface
 from .relationship.optional import RelationshipOptionalChecker
@@ -11,7 +12,7 @@ CONSTRAINT_VALIDATOR_MAP: Dict[str, Optional[Type[ConstraintCheckerInterface]]] 
     "attribute.min_length.update": None,
     "attribute.max_length.update": None,
     "attribute.unique.update": None,
-    "attribute.optional.update": None,
+    "attribute.optional.update": AttributeOptionalChecker,
     "attribute.choices.update": None,
     "relationship.peer.update": None,
     "relationship.cardinality.update": None,
