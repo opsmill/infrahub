@@ -56,15 +56,24 @@ spec:
               name: database-logs
       restartPolicy: Always
       volumes:
-        - hostPath:
-            path: /tmp/plugins
-          name: database-hostpath0
-        - hostPath:
-            path: /tmp/infrahub-helm
-          name: database-data
-        - hostPath:
-            path: /tmp/infrahub-helm
-          name: database-logs
+        - name: database-hostpath0
+          emptyDir: {}
+        {{- if and .Values.database.persistence.data.enabled }}
+        - name: database-data
+          persistentVolumeClaim:
+            claimName: {{ tpl (.Values.database.persistence.data.existingClaim | default (printf "%s-%s" (include "infrahub-helm.fullname" .) "database-data")) . }}
+        {{- else }}
+        - name: database-data
+          emptyDir: {}
+        {{- end }}
+        {{- if and .Values.database.persistence.logs.enabled }}
+        - name: database-logs
+          persistentVolumeClaim:
+            claimName: {{ tpl (.Values.database.persistence.logs.existingClaim | default (printf "%s-%s" (include "infrahub-helm.fullname" .) "database-logs")) . }}
+        {{- else }}
+        - name: database-logs
+          emptyDir: {}
+        {{- end }}
 
 ---
 apiVersion: v1
@@ -82,6 +91,7 @@ spec:
   ports:
 	  {{- .Values.database.ports | toYaml | nindent 4 }}
 
+{{- if and .Values.database.persistence.data.enabled (not .Values.database.persistence.data.existingClaim) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -95,8 +105,12 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: {{ .Values.pvc.databaseData.storageRequest | quote }}
-
+      storage: {{ .Values.database.persistence.data.size | quote }}
+  {{- with .Values.database.persistence.data.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}
+{{- if and .Values.database.persistence.logs.enabled (not .Values.database.persistence.logs.existingClaim) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -110,4 +124,8 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: {{ .Values.pvc.databaseLogs.storageRequest | quote }}
+      storage: {{ .Values.database.persistence.logs.size | quote }}
+  {{- with .Values.database.persistence.logs.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}

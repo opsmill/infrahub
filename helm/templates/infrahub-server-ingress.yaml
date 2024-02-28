@@ -5,9 +5,18 @@ metadata:
   name: {{ include "infrahub-helm.fullname" . }}-infrahub-server-ingress
   labels:
     {{- include "infrahub-helm.labels" . | nindent 4 }}
+  {{- with .Values.infrahubServer.ingress.annotations }}
+  annotations:
+    {{- range $key, $value := . }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
 spec:
+  {{- with .Values.infrahubServer.ingress.ingressClassName }}
+  ingressClassName: {{ . }}
+  {{- end }}
   rules:
-    - host: infrahub-{{ .Values.global.kubernetesClusterDomain }}
+    - host: {{ .Values.infrahubServer.ingress.hostname }}
       http:
         paths:
           - path: /
@@ -17,3 +26,19 @@ spec:
                 name: {{ include "infrahub-helm.fullname" . }}-infrahub-server
                 port:
                   number: {{ (index .Values.infrahubServer.ports 0).port }}
+  {{- if or .Values.infrahubServer.ingress.tls .Values.infrahubServer.ingress.extraTls }}
+  tls:
+    {{- if .Values.infrahubServer.ingress.tls }}
+    - hosts:
+      - {{ .Values.infrahubServer.ingress.hostname }}
+      {{- range .Values.infrahubServer.ingress.extraHosts }}
+        {{- if .name }}
+      -  {{ .name }}
+        {{- end }}
+      {{- end }}
+      secretName: infrahub-server-tls
+    {{- end }}
+    {{- with .Values.infrahubServer.ingress.extraTls }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
