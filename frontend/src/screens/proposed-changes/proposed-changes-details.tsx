@@ -1,11 +1,13 @@
 import { gql } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Retry } from "../../components/buttons/retry";
 import { Tabs } from "../../components/tabs";
+import { Link } from "../../components/utils/link";
 import { PROPOSED_CHANGES_OBJECT, TASK_OBJECT, TASK_TAB } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
@@ -23,6 +25,7 @@ import { FilesDiff } from "../diff/file-diff/files-diff";
 import { SchemaDiff } from "../diff/schema-diff";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
+import { TaskItemDetails } from "../tasks/task-item-details";
 import { TaskItems } from "../tasks/task-items";
 import { Conversations } from "./conversations";
 import { ProposedChangesChecksTab } from "./proposed-changes-checks-tab";
@@ -31,30 +34,12 @@ export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
 };
 
-const renderContent = (tab: string | null | undefined, refetch: any, ref: any) => {
-  switch (tab) {
-    case DIFF_TABS.FILES:
-      return <FilesDiff ref={ref} />;
-    case DIFF_TABS.ARTIFACTS:
-      return <ArtifactsDiff ref={ref} />;
-    case DIFF_TABS.SCHEMA:
-      return <SchemaDiff ref={ref} />;
-    case DIFF_TABS.DATA:
-      return <DataDiff ref={ref} />;
-    case DIFF_TABS.CHECKS:
-      return <Checks ref={ref} />;
-    case TASK_TAB:
-      return <TaskItems ref={ref} />;
-    default: {
-      return <Conversations refetch={refetch} ref={ref} />;
-    }
-  }
-};
-
 export const ProposedChangesDetails = () => {
   const { proposedchange } = useParams();
+  const location = useLocation();
+  const { pathname } = location;
   const [qspTab, setQspTab] = useQueryParam(QSP.PROPOSED_CHANGES_TAB, StringParam);
-  const [, setQspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
+  const [qspTaskId, setQspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
   const [, setValidatorQsp] = useQueryParam(QSP.VALIDATOR_DETAILS, StringParam);
   const [schemaList] = useAtom(schemaState);
   const [proposedChange, setProposedChange] = useAtom(proposedChangedState);
@@ -152,6 +137,44 @@ export const ProposedChangesDetails = () => {
     },
   ];
 
+  const renderContent = () => {
+    switch (qspTab) {
+      case DIFF_TABS.FILES:
+        return <FilesDiff ref={refetchRef} />;
+      case DIFF_TABS.ARTIFACTS:
+        return <ArtifactsDiff ref={refetchRef} />;
+      case DIFF_TABS.SCHEMA:
+        return <SchemaDiff ref={refetchRef} />;
+      case DIFF_TABS.DATA:
+        return <DataDiff ref={refetchRef} />;
+      case DIFF_TABS.CHECKS:
+        return <Checks ref={refetchRef} />;
+      case TASK_TAB:
+        if (!qspTaskId) return <TaskItems ref={refetchRef} />;
+
+        return (
+          <div>
+            <div className="flex bg-custom-white text-sm">
+              <Link
+                to={constructPath(pathname, [
+                  { name: QSP.PROPOSED_CHANGES_TAB, value: TASK_TAB },
+                  { name: QSP.TASK_ID, exclude: true },
+                ])}
+                className="flex items-center p-2 ">
+                <Icon icon={"mdi:chevron-left"} />
+                All tasks
+              </Link>
+            </div>
+
+            <TaskItemDetails ref={refetchRef} />
+          </div>
+        );
+      default: {
+        return <Conversations refetch={refetch} ref={refetchRef} />;
+      }
+    }
+  };
+
   return (
     <>
       <div className="bg-custom-white px-4 py-5 pb-0 sm:px-6 flex items-center">
@@ -175,7 +198,7 @@ export const ProposedChangesDetails = () => {
 
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
-      {renderContent(qspTab, refetch, refetchRef)}
+      {renderContent()}
     </>
   );
 };

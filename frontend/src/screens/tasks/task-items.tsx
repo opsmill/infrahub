@@ -87,10 +87,12 @@ export const TaskItems = forwardRef((props, ref) => {
       return constructPath(`/tasks/${id}`);
     }
 
-    return constructPath(pathname, [
-      { name: QSP.TAB, value: TASK_TAB },
+    const url = constructPath(pathname, [
+      { name: proposedchange ? QSP.PROPOSED_CHANGES_TAB : QSP.TAB, value: TASK_TAB },
       { name: QSP.TASK_ID, value: id },
     ]);
+
+    return url;
   };
 
   const rows = edges.map((edge: any) => ({
