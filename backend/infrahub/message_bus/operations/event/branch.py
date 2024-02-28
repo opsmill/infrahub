@@ -43,3 +43,15 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
     for event in events:
         event.assign_meta(parent=message)
         await service.send(message=event)
+
+
+async def rebased(message: messages.EventBranchRebased, service: InfrahubServices) -> None:
+    log.info("Branch rebased", branch=message.branch)
+
+    events: List[InfrahubMessage] = [
+        messages.RefreshRegistryRebasedBranch(branch=message.branch),
+    ]
+
+    for event in events:
+        event.assign_meta(parent=message)
+        await service.send(message=event)
