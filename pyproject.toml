@@ -352,10 +352,6 @@ module = "infrahub.lock"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.message_bus"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.message_bus.operations.*"
 ignore_errors = true
 
