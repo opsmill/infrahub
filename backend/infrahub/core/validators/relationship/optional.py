@@ -29,7 +29,7 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
 
         query = """
         // Query all Active Nodes of type
-        // and store their UUID in uuids_with_rel
+        // and store their UUID in uuids_active_node
         MATCH (n:Node)
         WHERE $node_kind IN LABELS(n)
         CALL {
