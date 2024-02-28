@@ -33,5 +33,5 @@ The following settings can be defined in the Config class
 **Type**: `{{ property.type }}`  
 **Default value**: {{ property.default }}  
 **Choices**: {{ property.choices | join(",") }}  
-**Environment variable**: {{ property.env_vars | join(",") }}  
+**Environment variable**: {{ property.env_vars | join(",") | upper }}  
 {% endfor -%}
