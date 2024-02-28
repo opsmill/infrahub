@@ -20,6 +20,80 @@ It's also possible to execute a GraphQL query directly with `client.execute_grap
 
 :::
 
+## Query a single object
+
+The `get` method allows you to retrieve a single object of a given kind from Infrahub, based on some [filters](#query-filters).
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+    ```python
+    from infrahub_sdk import InfrahubClient
+
+    client = await InfrahubClient.init(address="http://localhost:8000")
+    accounts = await client.get(kind="CoreAccount", id="17b7af01-8cc0-0498-3dd5-1df55d821024")
+	```
+  </TabItem>
+  <TabItem value="Sync">
+    ```python
+    from infrahub_sdk import InfrahubClientSync
+
+    client = InfrahubClient.init(address="http://localhost:8000")
+    accounts = client.get(kind="CoreAccount", id="17b7af01-8cc0-0498-3dd5-1df55d821024")
+	```
+  </TabItem>
+</Tabs>
+
+`IndexError` exception will be raised, if the query would return multiple Nodes. 
+
+`infrahub_sdk.exceptions.NodeNotFound` exception will be raised if the query returns no results.
+
+## Query multiple objects
+
+The `filters` method allows you to retrieve multiple objects of a given kind from Infrahub, based on some [filters](#query-filters).
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+    ```python
+    from infrahub_sdk import InfrahubClient
+
+    client = await InfrahubClient.init(address="http://localhost:8000")
+    accounts = await client.filters(kind="CoreAccount", type__value="User")
+	```
+  </TabItem>
+  <TabItem value="Sync">
+    ```python
+    from infrahub_sdk import InfrahubClientSync
+
+    client = InfrahubClientSync.init(address="http://localhost:8000")
+    accounts = client.filters(kind="CoreAccount", type__value="User")
+	```
+  </TabItem>
+</Tabs>
+
+## Query all objects of a given kind
+
+The `all` method allows you to retrieve all objects of a given kind from Infrahub.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+    ```python
+    from infrahub_sdk import InfrahubClient
+
+    client = await InfrahubClient.init(address="http://localhost:8000")
+    accounts = await client.all(kind="CoreAccount")
+    ```
+  </TabItem>
+  <TabItem value="Sync">
+    ```python
+    from infrahub_sdk import InfrahubClientSync
+
+    client = InfrahubClientSync.init(address="http://localhost:8000")
+    accounts = client.all(kind="CoreAccount")
+    ```
+  </TabItem>
+</Tabs>
+
 ## Query filters
 
 The `get` and `filters` method allow you to query using specific filters. The available filters depend on the schema of the node you will be
@@ -77,81 +151,6 @@ Additionally the `id` filter is available for every kind of Node. This filter ca
   ```
   </TabItem>
 </Tabs>
-
-## Query a single object
-
-The `get` method allows you to retrieve a single object of a given kind from Infrahub, based on some filters.
-
-<Tabs groupId="async-sync">
-  <TabItem value="Async" default>
-    ```python
-    from infrahub_sdk import InfrahubClient
-
-    client = await InfrahubClient.init(address="http://localhost:8000")
-    accounts = await client.get(kind="CoreAccount", id="17b7af01-8cc0-0498-3dd5-1df55d821024")
-	```
-  </TabItem>
-  <TabItem value="Sync">
-    ```python
-    from infrahub_sdk import InfrahubClientSync
-
-    client = InfrahubClient.init(address="http://localhost:8000")
-    accounts = client.get(kind="CoreAccount", id="17b7af01-8cc0-0498-3dd5-1df55d821024")
-	```
-  </TabItem>
-</Tabs>
-
-`IndexError` exception will be raised, if the query would return multiple Nodes. 
-
-`infrahub_sdk.exceptions.NodeNotFound` exception will be raised if the query returns no results.
-
-## Query multiple objects
-
-The `filters` method allows you to retrieve multiple objects of a given kind from Infrahub, based on some filters.
-
-<Tabs groupId="async-sync">
-  <TabItem value="Async" default>
-    ```python
-    from infrahub_sdk import InfrahubClient
-
-    client = await InfrahubClient.init(address="http://localhost:8000")
-    accounts = await client.filters(kind="CoreAccount", type__value="User")
-	```
-  </TabItem>
-  <TabItem value="Sync">
-    ```python
-    from infrahub_sdk import InfrahubClientSync
-
-    client = InfrahubClientSync.init(address="http://localhost:8000")
-    accounts = client.filters(kind="CoreAccount", type__value="User")
-	```
-  </TabItem>
-</Tabs>
-
-## Query all objects of a given kind
-
-The `all` method allows you to retrieve all objects of a given kind from Infrahub.
-
-<Tabs groupId="async-sync">
-  <TabItem value="Async" default>
-
-    ```python
-    from infrahub_sdk import InfrahubClient
-
-    client = await InfrahubClient.init(address="http://localhost:8000")
-    accounts = await client.all(kind="CoreAccount")
-    ```
-  </TabItem>
-  <TabItem value="Sync">
-    ```python
-    from infrahub_sdk import InfrahubClientSync
-
-    client = InfrahubClientSync.init(address="http://localhost:8000")
-    accounts = client.all(kind="CoreAccount")
-    ```
-  </TabItem>
-</Tabs>
-
 
 ## Control what will be queried
 
