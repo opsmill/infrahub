@@ -61,7 +61,7 @@ export const Table = (props: tTableProps) => {
                   )}
 
                   {!row.link && (
-                    <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center whitespace-pre">
+                    <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center">
                       {row.values[column.name]}
                     </div>
                   )}
