@@ -52,6 +52,11 @@ class ProposedChangeRepository(BaseModel):
             return InfrahubKind.READONLYREPOSITORY
         return InfrahubKind.REPOSITORY
 
+    @property
+    def has_modifications(self) -> bool:
+        """Indicates if any of the files in the repository has been modified."""
+        return bool(self.files_added + self.files_changed + self.files_removed)
+
 
 class ProposedChangeSubscriber(BaseModel):
     subscriber_id: str
@@ -109,6 +114,11 @@ class ProposedChangeBranchDiff(BaseModel):
     def has_data_changes(self, branch: str) -> bool:
         """Indicates if there are node or schema changes within the branch."""
         return bool([entry for entry in self.diff_summary if entry["branch"] == branch])
+
+    @property
+    def has_file_modifications(self) -> bool:
+        """Indicates modifications to any of the files in the Git repositories."""
+        return any(repository.has_modifications for repository in self.repositories)
 
     def modified_nodes(self, branch: str) -> list[str]:
         """Return a list of non schema nodes that have been modified on the branch"""
