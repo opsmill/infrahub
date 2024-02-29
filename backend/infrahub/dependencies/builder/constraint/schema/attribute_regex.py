@@ -1,6 +1,5 @@
 from infrahub.core.validators.attribute.regex import AttributeRegexChecker
-
-from ....interface import DependencyBuilder, DependencyBuilderContext
+from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilderContext
 
 
 class SchemaAttributeRegexConstraintDependency(DependencyBuilder[AttributeRegexChecker]):

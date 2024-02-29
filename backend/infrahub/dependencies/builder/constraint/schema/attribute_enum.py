@@ -1,6 +1,5 @@
 from infrahub.core.validators.attribute.enum import AttributeEnumChecker
-
-from ....interface import DependencyBuilder, DependencyBuilderContext
+from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilderContext
 
 
 class SchemaAttributeEnumConstraintDependency(DependencyBuilder[AttributeEnumChecker]):

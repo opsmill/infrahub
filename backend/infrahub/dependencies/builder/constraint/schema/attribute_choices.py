@@ -1,6 +1,5 @@
 from infrahub.core.validators.attribute.choices import AttributeChoicesChecker
-
-from ....interface import DependencyBuilder, DependencyBuilderContext
+from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilderContext
 
 
 class SchemaAttributeChoicesConstraintDependency(DependencyBuilder[AttributeChoicesChecker]):
