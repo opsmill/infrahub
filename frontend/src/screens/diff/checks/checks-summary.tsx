@@ -132,7 +132,9 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
                   )}
                 </div>
 
-                <span className="text-xs">{schemaKindLabel[kind]}</span>
+                <span className="text-xs">
+                  {schemaKindLabel[kind].replace("Validator", "").trim()}
+                </span>
               </div>
             </div>
           </div>
