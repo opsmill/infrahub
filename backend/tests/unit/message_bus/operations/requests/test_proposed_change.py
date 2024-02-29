@@ -97,7 +97,7 @@ async def test_get_proposed_change_schema_integrity_constraints(
     constraints = await proposed_change._get_proposed_change_schema_integrity_constraints(
         message=schema_integrity_01, schema=schema
     )
-    assert len(constraints) == 5
+    assert len(constraints) == 6
     dumped_constraints = [c.model_dump() for c in constraints]
     assert {
         "constraint_name": "relationship.optional.update",
@@ -105,6 +105,16 @@ async def test_get_proposed_change_schema_integrity_constraints(
             "field_name": "cars",
             "path_type": SchemaPathType.RELATIONSHIP,
             "property_name": "optional",
+            "schema_id": None,
+            "schema_kind": "TestPerson",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "relationship.peer.update",
+        "path": {
+            "field_name": "cars",
+            "path_type": SchemaPathType.RELATIONSHIP,
+            "property_name": "peer",
             "schema_id": None,
             "schema_kind": "TestPerson",
         },
