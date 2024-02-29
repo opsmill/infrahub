@@ -4,7 +4,6 @@ import { useParams } from "react-router-dom";
 import { getValidators } from "../../../graphql/queries/diff/getValidators";
 import useQuery from "../../../hooks/useQuery";
 import ErrorScreen from "../../error-screen/error-screen";
-import LoadingScreen from "../../loading-screen/loading-screen";
 import { ChecksSummary } from "./checks-summary";
 import { Validator } from "./validator";
 
@@ -19,16 +18,12 @@ export const Checks = forwardRef((props, ref) => {
     ${queryString}
   `;
 
-  const { loading, error, data, refetch } = useQuery(query);
+  const { error, data, refetch } = useQuery(query, { notifyOnNetworkStatusChange: true });
 
   // Provide refetch function to parent
   useImperativeHandle(ref, () => ({ refetch }));
 
   const validators = data?.CoreValidator?.edges?.map((edge: any) => edge.node) ?? [];
-
-  if (loading) {
-    return <LoadingScreen />;
-  }
 
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching the checks list." />;
