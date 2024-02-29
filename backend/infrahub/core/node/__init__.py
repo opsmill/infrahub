@@ -514,6 +514,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             display_elements.append(str(getattr(attr, item_elements[1])))
 
         display_label = " ".join(display_elements)
-        if display_label.strip() == "":
+        if not display_label.strip():
             return repr(self)
         return display_label.strip()
