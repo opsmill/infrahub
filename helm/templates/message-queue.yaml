@@ -7,7 +7,7 @@ metadata:
     service: message-queue
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
-  rreplicas: {{ .Values.messageQueue.replicas | default 1 }}
+  replicas: {{ .Values.messageQueue.replicas | default 1 }}
   selector:
     matchLabels:
       service: message-queue
