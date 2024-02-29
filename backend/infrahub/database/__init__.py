@@ -261,7 +261,6 @@ async def validate_database(
         retry (int, optional): Number of retry before raising an exception. Defaults to 0.
         retry_interval (int, optional): Time between retries in second. Defaults to 1.
     """
-    global validated_database  # pylint: disable=global-variable-not-assigned
 
     try:
         session = driver.session(database=database_name)
