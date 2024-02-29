@@ -6,6 +6,8 @@ from pathlib import Path  # noqa: TCH003
 from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Tuple, TypedDict, TypeVar, Union
 from urllib.parse import urlencode
 
+import httpx
+
 try:
     from pydantic import v1 as pydantic  # type: ignore[attr-defined]
 except ImportError:
@@ -463,10 +465,10 @@ class InfrahubSchema(InfrahubSchemaBase):
             url=url, timeout=max(120, self.client.default_timeout), payload={"schemas": schemas}
         )
 
-        if response.status_code == 202:
+        if response.status_code == httpx.codes.ACCEPTED:
             return True, None
 
-        if response.status_code == 422:
+        if response.status_code == httpx.codes.UNPROCESSABLE_ENTITY:
             return False, response.json()
 
         response.raise_for_status()
@@ -819,10 +821,10 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
             url=url, timeout=max(60, self.client.default_timeout), payload={"schemas": schemas}
         )
 
-        if response.status_code == 202:
+        if response.status_code == httpx.codes.ACCEPTED:
             return True, None
 
-        if response.status_code == 422:
+        if response.status_code == httpx.codes.UNPROCESSABLE_ENTITY:
             return False, response.json()
 
         response.raise_for_status()
