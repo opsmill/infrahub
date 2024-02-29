@@ -513,26 +513,25 @@ class NodeManager:
             # Attributes
             # --------------------------------------------------------
             for attr_name, attr in node_attributes.get(node_id, {}).get("attrs", {}).items():
-                if "AttributeLocal" in attr.attr_labels:
-                    attrs[attr_name] = {
-                        "db_id": attr.attr_id,
-                        "id": attr.attr_uuid,
-                        "name": attr_name,
-                        "value": attr.value,
-                        "updated_at": attr.updated_at,
-                    }
+                attrs[attr_name] = {
+                    "db_id": attr.attr_id,
+                    "id": attr.attr_uuid,
+                    "name": attr_name,
+                    "value": attr.value,
+                    "updated_at": attr.updated_at,
+                }
 
-                    if attr.is_protected is not None:
-                        attrs[attr_name]["is_protected"] = attr.is_protected
+                if attr.is_protected is not None:
+                    attrs[attr_name]["is_protected"] = attr.is_protected
 
-                    if attr.is_visible is not None:
-                        attrs[attr_name]["is_visible"] = attr.is_visible
+                if attr.is_visible is not None:
+                    attrs[attr_name]["is_visible"] = attr.is_visible
 
-                    if attr.source_uuid:
-                        attrs[attr_name]["source"] = attr.source_uuid
+                if attr.source_uuid:
+                    attrs[attr_name]["source"] = attr.source_uuid
 
-                    if attr.owner_uuid:
-                        attrs[attr_name]["owner"] = attr.owner_uuid
+                if attr.owner_uuid:
+                    attrs[attr_name]["owner"] = attr.owner_uuid
 
             # --------------------------------------------------------
             # Relationships
