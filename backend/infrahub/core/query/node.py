@@ -154,9 +154,9 @@ class NodeCreateAllQuery(NodeQuery):
         CREATE (n)-[r:IS_PART_OF $node_branch_prop ]->(root)
         WITH distinct n
         FOREACH ( attr IN $attrs |
-            CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, type: attr.type, branch_support: attr.branch_support })
+            CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(a)
-            MERGE (av:AttributeValue { type: attr.type, value: attr.value })
+            MERGE (av:AttributeValue { value: attr.value })
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
             MERGE (iv:Boolean { value: attr.is_visible })
