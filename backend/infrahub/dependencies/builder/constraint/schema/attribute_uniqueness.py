@@ -1,6 +1,5 @@
 from infrahub.core.validators.attribute.unique import AttributeUniquenessChecker
-
-from ....interface import DependencyBuilder, DependencyBuilderContext
+from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilderContext
 
 
 class SchemaAttributeUniqueConstraintDependency(DependencyBuilder[AttributeUniquenessChecker]):

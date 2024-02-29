@@ -1,6 +1,5 @@
 from infrahub.core.validators.attribute.optional import AttributeOptionalChecker
-
-from ....interface import DependencyBuilder, DependencyBuilderContext
+from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilderContext
 
 
 class SchemaAttributeOptionalConstraintDependency(DependencyBuilder[AttributeOptionalChecker]):

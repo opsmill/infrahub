@@ -1,6 +1,5 @@
 from infrahub.core.relationship.constraints.count import RelationshipCountConstraint
-
-from ....interface import DependencyBuilder, DependencyBuilderContext
+from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilderContext
 
 
 class RelationshipCountConstraintDependency(DependencyBuilder[RelationshipCountConstraint]):

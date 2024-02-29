@@ -1,6 +1,5 @@
 from infrahub.core.validators.relationship.optional import RelationshipOptionalChecker
-
-from ....interface import DependencyBuilder, DependencyBuilderContext
+from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilderContext
 
 
 class SchemaRelationshipOptionalConstraintDependency(DependencyBuilder[RelationshipOptionalChecker]):

@@ -1,6 +1,6 @@
 from infrahub.core.validators.aggregated_checker import AggregatedConstraintChecker
+from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilderContext
 
-from ....interface import DependencyBuilder, DependencyBuilderContext
 from .attribute_choices import SchemaAttributeChoicesConstraintDependency
 from .attribute_enum import SchemaAttributeEnumConstraintDependency
 from .attribute_length import SchemaAttributLengthConstraintDependency

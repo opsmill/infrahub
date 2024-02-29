@@ -1,6 +1,5 @@
 from infrahub.core.validators.attribute.length import AttributeLengthChecker
-
-from ....interface import DependencyBuilder, DependencyBuilderContext
+from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilderContext
 
 
 class SchemaAttributLengthConstraintDependency(DependencyBuilder[AttributeLengthChecker]):
