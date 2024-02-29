@@ -48,6 +48,50 @@ async def test_query(
     ]
 
 
+async def test_query_NULL_allowed(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, person_john_main
+):
+    car_schema = registry.schema.get(name="TestCar")
+    color_attr = car_schema.get_attribute(name="color")
+    color_attr.optional = True
+    registry.schema.set(name="TestCar", schema=car_schema)
+
+    no_color_car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await no_color_car.new(db=db, name="NoColor", color="NULL", nbr_seats=3, is_electric=False, owner=person_john_main)
+    await no_color_car.save(db=db)
+    upper_color_car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await upper_color_car.new(
+        db=db, name="BIGCAR", color="#ABCDEE", nbr_seats=4, is_electric=True, owner=person_john_main
+    )
+    await upper_color_car.save(db=db)
+
+    car_schema = registry.schema.get(name="TestCar")
+    color_attr = car_schema.get_attribute(name="color")
+    color_attr.regex = r"^#[a-z0-9]+$"
+
+    schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color")
+
+    query = await AttributeRegexUpdateValidatorQuery.init(
+        db=db, branch=default_branch, node_schema=car_schema, schema_path=schema_path
+    )
+
+    await query.execute(db=db)
+
+    grouped_paths = await query.get_paths()
+    all_data_paths = grouped_paths.get_all_data_paths()
+    assert len(all_data_paths) == 1
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.ATTRIBUTE,
+            node_id=upper_color_car.id,
+            kind="TestCar",
+            field_name="color",
+            value="#ABCDEE",
+        )
+    ) in all_data_paths
+
+
 async def test_query_update_on_branch(
     db: InfrahubDatabase, branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
 ):

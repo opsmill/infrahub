@@ -43,6 +43,7 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         WITH full_path, node, attribute_value, value_relationship
         WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
+        AND attribute_value <> "NULL"
         AND NOT attribute_value =~ $attr_value_regex
         """ % {"branch_filter": branch_filter}
 
@@ -83,7 +84,11 @@ class AttributeRegexChecker(ConstraintCheckerInterface):
         return request.constraint_name == self.name
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
-        grouped_data_paths_list = []
+        grouped_data_paths_list: List[GroupedDataPaths] = []
+        attribute_schema = request.node_schema.get_attribute(name=request.schema_path.field_name)
+        if not attribute_schema.regex:
+            return grouped_data_paths_list
+
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
