@@ -70,7 +70,7 @@ class NodeAttributeAddMigrationQuery01(Query):
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
         MERGE (is_visible_value:Boolean { value: $is_visible_default })
         WITH n, av, is_protected_value, is_visible_value
-        CREATE (a:Attribute:AttributeLocal { name: $attr_name, type: $attr_type, branch_support: $branch_support })
+        CREATE (a:Attribute { name: $attr_name, type: $attr_type, branch_support: $branch_support })
         CREATE (n)-[:HAS_ATTRIBUTE $rel_props ]->(a)
         CREATE (a)-[:HAS_VALUE $rel_props ]->(av)
         CREATE (a)-[:IS_PROTECTED $rel_props]->(is_protected_value)
