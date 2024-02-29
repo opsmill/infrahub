@@ -47,12 +47,10 @@ export const ValidatorDetails = (props: tValidatorDetails) => {
 
   return (
     <div className="flex-1 overflow-auto flex flex-col">
-      <div className="flex-1">
-        <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 p-2">
-          {validator?.checks?.edges?.map((check: any, index: number) => (
-            <Check key={index} id={check?.node?.id} />
-          ))}
-        </div>
+      <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 p-2">
+        {validator?.checks?.edges?.map((check: any, index: number) => (
+          <Check key={index} id={check?.node?.id} />
+        ))}
       </div>
 
       <Pagination count={validator?.checks?.count} />
