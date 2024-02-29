@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import asyncio
+from enum import IntFlag
 from pathlib import Path
-from typing import List, Union
+from typing import TYPE_CHECKING, List, Union
 
 import pytest
-from infrahub_sdk.node import InfrahubNode
 from pydantic import BaseModel
 
 from infrahub import config, lock
@@ -15,7 +17,6 @@ from infrahub.core.constants import (
 from infrahub.core.diff import BranchDiffer, SchemaConflict
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.registry import registry
-from infrahub.core.schema_manager import SchemaBranch, SchemaUpdateConstraintInfo
 from infrahub.core.validators.checker import schema_validators_checker
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
@@ -27,9 +28,41 @@ from infrahub.message_bus.types import (
     ProposedChangeSubscriber,
 )
 from infrahub.pytest_plugin import InfrahubBackendPlugin
-from infrahub.services import InfrahubServices
+
+if TYPE_CHECKING:
+    from infrahub_sdk.node import InfrahubNode
+
+    from infrahub.core.schema_manager import SchemaBranch, SchemaUpdateConstraintInfo
+    from infrahub.services import InfrahubServices
+
 
 log = get_logger()
+
+
+class ArtifactSelect(IntFlag):
+    NONE = 0
+    MODIFIED_KINDS = 1
+    FILE_CHANGES = 2
+
+    @staticmethod
+    def add_flag(current: ArtifactSelect, flag: ArtifactSelect, condition: bool):
+        if condition:
+            return current | flag
+        return current
+
+    @property
+    def log_line(self) -> str:
+        change_types = []
+        if ArtifactSelect.MODIFIED_KINDS in self:
+            change_types.append("data changes within relevant object kinds")
+
+        if ArtifactSelect.FILE_CHANGES in self:
+            change_types.append("file modifications in Git repositories")
+
+        if self:
+            return f"Requesting Artifact Definition generation due to {' and '.join(change_types)}"
+
+        return "Artifact Definition doesn't require changes due to no relevant modified kinds or file changes in Git"
 
 
 async def cancel(message: messages.RequestProposedChangeCancel, service: InfrahubServices) -> None:
@@ -274,7 +307,7 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
     async with service.task_report(
         related_node=message.proposed_change,
         title="Evaluating Artifact Checks",
-    ):
+    ) as task_report:
         log.info(f"Refreshing artifacts for change_proposal={message.proposed_change}")
         definition_information = await service.client.execute_graphql(
             query=GATHER_ARTIFACT_DEFINITIONS,
@@ -284,14 +317,35 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
             definitions=definition_information["CoreArtifactDefinition"]["edges"]
         )
 
+        await task_report.info(
+            f"Available artifact definitions: {', '.join(sorted([artdef.definition_name for artdef in artifact_definitions]))}",
+            proposed_change=message.proposed_change,
+        )
+
         for artifact_definition in artifact_definitions:
-            # Request artifact definition checks if the source branch is managed so it could contain
-            # changes to the transforms in code, alternatively if the queries used touches models
-            # that have been modified in the path
-            requires_validation = not message.source_branch_data_only
+            # Request artifact definition checks if the source branch that is managed in combination
+            # to the Git repository containing modifications which could indicate changes to the transforms
+            # in code
+            # Alternatively if the queries used touches models that have been modified in the path
+            # impacted artifact definitions will be included for consideration
+
+            select = ArtifactSelect.NONE
+            select = select.add_flag(
+                current=select,
+                flag=ArtifactSelect.FILE_CHANGES,
+                condition=not message.source_branch_data_only and message.branch_diff.has_file_modifications,
+            )
+
             for changed_model in message.branch_diff.modified_kinds(branch=message.source_branch):
-                requires_validation |= changed_model in artifact_definition.query_models
-            if requires_validation:
+                select = select.add_flag(
+                    current=select,
+                    flag=ArtifactSelect.MODIFIED_KINDS,
+                    condition=changed_model in artifact_definition.query_models,
+                )
+
+            await task_report.info(f"{select.log_line}: {artifact_definition.definition_name}")
+
+            if select:
                 msg = messages.RequestArtifactDefinitionCheck(
                     artifact_definition=artifact_definition,
                     branch_diff=message.branch_diff,

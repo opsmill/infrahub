@@ -144,7 +144,7 @@ class GraphAttributeRelationships(BaseModel):
 
 
 class GraphAttributeNode(BaseModel):
-    default_label: str = "Attribute"  # We are also using "AttributeLocal" today but we should probably remove it
+    default_label: str = "Attribute"
     properties: GraphAttributeProperties
     relationships: GraphAttributeRelationships
 
