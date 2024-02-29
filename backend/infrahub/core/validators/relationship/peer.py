@@ -72,7 +72,7 @@ class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
             start_node,
             peer_node
         CALL {
-            WITH enriched_paths
+            WITH enriched_paths, peer_node
             UNWIND enriched_paths as path_to_check
             RETURN path_to_check[3] as current_path, path_to_check[4] as branch_name, peer_node as current_peer
             ORDER BY
