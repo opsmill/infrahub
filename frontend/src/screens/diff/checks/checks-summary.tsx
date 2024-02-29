@@ -13,7 +13,7 @@ import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { runCheck } from "../../../graphql/mutations/diff/runCheck";
 import { useAuth } from "../../../hooks/useAuth";
 import { genericsState } from "../../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
+import { schemaKindLabelState } from "../../../state/atoms/schemaKindLabel.atom";
 import { getValidatorsStats } from "../../../utils/checks";
 import { classNames } from "../../../utils/common";
 
@@ -27,7 +27,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
   const { isLoading, validators, refetch } = props;
 
   const { proposedchange } = useParams();
-  const schemaKindName = useAtomValue(schemaKindNameState);
+  const schemaKindLabel = useAtomValue(schemaKindLabelState);
   const schemaList = useAtomValue(genericsState);
   const auth = useAuth();
 
@@ -132,7 +132,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
                   )}
                 </div>
 
-                <span className="text-xs">{schemaKindName[kind]}</span>
+                <span className="text-xs">{schemaKindLabel[kind]}</span>
               </div>
             </div>
           </div>
