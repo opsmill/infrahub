@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import LoadingScreen from "../../screens/loading-screen/loading-screen";
 import { fetchUrl } from "../../utils/fetch";
 import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-modal";
 import { CONFIG, INFRAHUB_API_SERVER_URL } from "../../config/config";
@@ -13,22 +12,18 @@ export const SearchDocs = ({ query }: SearchProps) => {
   const queryDebounced = useDebounce(query, 300);
   const [results, setResults] = useState([]);
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let ignore = false;
-    setLoading(true);
     const cleanedValue = queryDebounced.trim();
 
     fetchUrl(CONFIG.SEARCH_URL(cleanedValue))
       .then((data) => {
         if (ignore) return;
-        setLoading(false);
         setResults(data);
         setError(null);
       })
       .catch((error) => {
-        setLoading(false);
         setError(error);
       });
 
@@ -37,17 +32,7 @@ export const SearchDocs = ({ query }: SearchProps) => {
     };
   }, [queryDebounced]);
 
-  if (loading) {
-    return (
-      <div className="h-52 flex items-center justify-center">
-        <LoadingScreen hideText />
-      </div>
-    );
-  }
-
-  if (error) return null;
-
-  if (results.length === 0)
+  if (error || results.length === 0)
     return (
       <SearchGroup>
         <SearchResultItem to={`${INFRAHUB_API_SERVER_URL}/docs/search?q=${query}`} target="_blank">
