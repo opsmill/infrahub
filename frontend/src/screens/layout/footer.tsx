@@ -1,5 +1,6 @@
 import { DocumentTextIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
+import { components } from "../../infraops";
 import {
   CONFIG,
   INFRAHUB_API_SERVER_URL,
@@ -31,10 +32,31 @@ const ICONS = [
 ];
 
 export const Footer = () => {
-  const [info, setInfo] = useState<any>({});
+  return (
+    <div className="bg-custom-white flex items-center p-3">
+      <div className="flex space-x-2">
+        {ICONS.map((item: any, index: number) => (
+          <a
+            key={index}
+            href={item.link}
+            target="_blank"
+            rel="noreferrer"
+            className="cursor-pointer">
+            {item.component}
+          </a>
+        ))}
+      </div>
+
+      <AppVersionInfo />
+    </div>
+  );
+};
+
+const AppVersionInfo = () => {
+  const [info, setInfo] = useState<components["schemas"]["InfoAPI"] | null>(null);
 
   const fetchInfo = async () => {
-    const result = await fetchUrl(CONFIG.INFO_URL);
+    const result: components["schemas"]["InfoAPI"] = await fetchUrl(CONFIG.INFO_URL);
 
     setInfo(result);
   };
@@ -43,23 +65,6 @@ export const Footer = () => {
     fetchInfo();
   }, []);
 
-  return (
-    <div className="flex items-center">
-      <div className="bg-custom-white p-2 flex">
-        {ICONS.map((item: any, index: number) => (
-          <a
-            key={index}
-            href={item.link}
-            target="_blank"
-            rel="noreferrer"
-            className="cursor-pointer p-1">
-            {item.component}
-          </a>
-        ))}
-      </div>
-      <div className="flex-1 text-center text-xs italic text-gray-400 mr-2">
-        Version: {info.version}
-      </div>
-    </div>
-  );
+  if (!info) return null;
+  return <div className="flex-grow text-right text-xs text-gray-400">version {info.version}</div>;
 };

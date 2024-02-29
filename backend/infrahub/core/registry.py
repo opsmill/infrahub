@@ -46,7 +46,7 @@ class Registry:
     account_id: dict = field(default_factory=dict)
     node_group: dict = field(default_factory=dict)
     attr_group: dict = field(default_factory=dict)
-    branch_object: Optional[Brancher] = None
+    branch_object: Optional[Type[Brancher]] = None
     _manager: Optional[Type[NodeManager]] = None
     _storage: Optional[InfrahubObjectStorage] = None
 

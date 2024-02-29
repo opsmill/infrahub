@@ -34,121 +34,146 @@ log = get_logger()
 
 async def cancel(message: messages.RequestProposedChangeCancel, service: InfrahubServices) -> None:
     """Cancel a proposed change."""
-    log.info("Cancelling proposed change", id=message.proposed_change)
-    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
-    proposed_change.state.value = ProposedChangeState.CANCELED.value
-    await proposed_change.save()
+    async with service.task_report(
+        related_node=message.proposed_change,
+        title="Canceling proposed change",
+    ) as task_report:
+        await task_report.log.info(
+            "Canceling proposed change as the source branch was deleted", id=message.proposed_change
+        )
+        proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
+        proposed_change.state.value = ProposedChangeState.CANCELED.value
+        await proposed_change.save()
 
 
 async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, service: InfrahubServices) -> None:
     """Triggers a data integrity validation check on the provided proposed change to start."""
-    log.info(f"Got a request to process data integrity defined in proposed_change: {message.proposed_change}")
+    async with service.task_report(
+        related_node=message.proposed_change,
+        title="Data Integrity",
+    ):
+        log.info(f"Got a request to process data integrity defined in proposed_change: {message.proposed_change}")
 
-    source_branch = await registry.get_branch(db=service.database, branch=message.source_branch)
-    diff = await BranchDiffer.init(db=service.database, branch=source_branch, branch_only=False)
-    conflicts = await diff.get_conflicts_graph()
+        source_branch = await registry.get_branch(db=service.database, branch=message.source_branch)
+        diff = await BranchDiffer.init(db=service.database, branch=source_branch, branch_only=False)
+        conflicts = await diff.get_conflicts_graph()
 
-    async with service.database.start_transaction() as db:
-        object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
-            db=db,
-            validator_kind=InfrahubKind.DATAVALIDATOR,
-            validator_label="Data Integrity",
-            check_schema_kind=InfrahubKind.DATACHECK,
-        )
-        await object_conflict_validator_recorder.record_conflicts(message.proposed_change, conflicts)
+        async with service.database.start_transaction() as db:
+            object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
+                db=db,
+                validator_kind=InfrahubKind.DATAVALIDATOR,
+                validator_label="Data Integrity",
+                check_schema_kind=InfrahubKind.DATACHECK,
+            )
+            await object_conflict_validator_recorder.record_conflicts(message.proposed_change, conflicts)
 
 
 async def pipeline(message: messages.RequestProposedChangePipeline, service: InfrahubServices) -> None:
-    service.log.info("Starting pipeline", proposed_change=message.proposed_change)
-    events: list[InfrahubMessage] = []
+    async with service.task_report(
+        related_node=message.proposed_change,
+        title="Starting pipeline",
+    ) as task_report:
+        await task_report.info("Initiating pipeline", proposed_change=message.proposed_change)
+        events: list[InfrahubMessage] = []
 
-    repositories = await _get_proposed_change_repositories(message=message, service=service)
+        repositories = await _get_proposed_change_repositories(message=message, service=service)
+        await task_report.info(
+            f"Identified {len(repositories)} repositories connected to the proposed change",
+            proposed_change=message.proposed_change,
+        )
 
-    if not message.source_branch_data_only and await _validate_repository_merge_conflicts(repositories=repositories):
-        for repo in repositories:
-            if not repo.read_only:
-                events.append(
-                    messages.RequestRepositoryChecks(
-                        proposed_change=message.proposed_change,
-                        repository=repo.repository_id,
-                        source_branch=repo.source_branch,
-                        target_branch=repo.destination_branch,
+        if not message.source_branch_data_only and await _validate_repository_merge_conflicts(
+            repositories=repositories
+        ):
+            for repo in repositories:
+                if not repo.read_only:
+                    events.append(
+                        messages.RequestRepositoryChecks(
+                            proposed_change=message.proposed_change,
+                            repository=repo.repository_id,
+                            source_branch=repo.source_branch,
+                            target_branch=repo.destination_branch,
+                        )
                     )
+            for event in events:
+                event.assign_meta(parent=message)
+                await service.send(message=event)
+            await task_report.error("Pipeline aborted due to merge conflicts", proposed_change=message.proposed_change)
+            return
+
+        await _gather_repository_repository_diffs(repositories=repositories)
+
+        diff_summary = await service.client.get_diff_summary(branch=message.source_branch)
+        branch_diff = ProposedChangeBranchDiff(diff_summary=diff_summary, repositories=repositories)
+        await _populate_subscribers(branch_diff=branch_diff, service=service, branch=message.source_branch)
+
+        if message.check_type in [CheckType.ALL, CheckType.ARTIFACT]:
+            await task_report.info("Adding Refresh Artifact job", proposed_change=message.proposed_change)
+            events.append(
+                messages.RequestProposedChangeRefreshArtifacts(
+                    proposed_change=message.proposed_change,
+                    source_branch=message.source_branch,
+                    source_branch_data_only=message.source_branch_data_only,
+                    destination_branch=message.destination_branch,
+                    branch_diff=branch_diff,
                 )
+            )
+
+        if message.check_type in [CheckType.ALL, CheckType.DATA] and branch_diff.has_node_changes(
+            branch=message.source_branch
+        ):
+            await task_report.info("Adding Data Integrity job", proposed_change=message.proposed_change)
+            events.append(
+                messages.RequestProposedChangeDataIntegrity(
+                    proposed_change=message.proposed_change,
+                    source_branch=message.source_branch,
+                    source_branch_data_only=message.source_branch_data_only,
+                    destination_branch=message.destination_branch,
+                    branch_diff=branch_diff,
+                )
+            )
+
+        if message.check_type in [CheckType.ALL, CheckType.REPOSITORY, CheckType.USER]:
+            await task_report.info("Adding Repository Check job", proposed_change=message.proposed_change)
+            events.append(
+                messages.RequestProposedChangeRepositoryChecks(
+                    proposed_change=message.proposed_change,
+                    source_branch=message.source_branch,
+                    source_branch_data_only=message.source_branch_data_only,
+                    destination_branch=message.destination_branch,
+                    branch_diff=branch_diff,
+                )
+            )
+
+        if message.check_type in [CheckType.ALL, CheckType.SCHEMA] and branch_diff.has_data_changes(
+            branch=message.source_branch
+        ):
+            await task_report.info("Adding Schema Integrity job", proposed_change=message.proposed_change)
+            events.append(
+                messages.RequestProposedChangeSchemaIntegrity(
+                    proposed_change=message.proposed_change,
+                    source_branch=message.source_branch,
+                    source_branch_data_only=message.source_branch_data_only,
+                    destination_branch=message.destination_branch,
+                    branch_diff=branch_diff,
+                )
+            )
+
+        if message.check_type in [CheckType.ALL, CheckType.TEST]:
+            await task_report.info("Adding Repository Test job", proposed_change=message.proposed_change)
+            events.append(
+                messages.RequestProposedChangeRunTests(
+                    proposed_change=message.proposed_change,
+                    source_branch=message.source_branch,
+                    source_branch_data_only=message.source_branch_data_only,
+                    destination_branch=message.destination_branch,
+                    branch_diff=branch_diff,
+                )
+            )
+
         for event in events:
             event.assign_meta(parent=message)
             await service.send(message=event)
-        service.log.info("Pipeline aborted due to merge conflicts", proposed_change=message.proposed_change)
-        return
-
-    await _gather_repository_repository_diffs(repositories=repositories)
-
-    diff_summary = await service.client.get_diff_summary(branch=message.source_branch)
-    branch_diff = ProposedChangeBranchDiff(diff_summary=diff_summary, repositories=repositories)
-    await _populate_subscribers(branch_diff=branch_diff, service=service, branch=message.source_branch)
-
-    if message.check_type in [CheckType.ALL, CheckType.ARTIFACT]:
-        events.append(
-            messages.RequestProposedChangeRefreshArtifacts(
-                proposed_change=message.proposed_change,
-                source_branch=message.source_branch,
-                source_branch_data_only=message.source_branch_data_only,
-                destination_branch=message.destination_branch,
-                branch_diff=branch_diff,
-            )
-        )
-
-    if message.check_type in [CheckType.ALL, CheckType.DATA] and branch_diff.has_node_changes(
-        branch=message.source_branch
-    ):
-        events.append(
-            messages.RequestProposedChangeDataIntegrity(
-                proposed_change=message.proposed_change,
-                source_branch=message.source_branch,
-                source_branch_data_only=message.source_branch_data_only,
-                destination_branch=message.destination_branch,
-                branch_diff=branch_diff,
-            )
-        )
-
-    if message.check_type in [CheckType.ALL, CheckType.REPOSITORY, CheckType.USER]:
-        events.append(
-            messages.RequestProposedChangeRepositoryChecks(
-                proposed_change=message.proposed_change,
-                source_branch=message.source_branch,
-                source_branch_data_only=message.source_branch_data_only,
-                destination_branch=message.destination_branch,
-                branch_diff=branch_diff,
-            )
-        )
-
-    if message.check_type in [CheckType.ALL, CheckType.SCHEMA] and branch_diff.has_data_changes(
-        branch=message.source_branch
-    ):
-        events.append(
-            messages.RequestProposedChangeSchemaIntegrity(
-                proposed_change=message.proposed_change,
-                source_branch=message.source_branch,
-                source_branch_data_only=message.source_branch_data_only,
-                destination_branch=message.destination_branch,
-                branch_diff=branch_diff,
-            )
-        )
-
-    if message.check_type in [CheckType.ALL, CheckType.TEST]:
-        events.append(
-            messages.RequestProposedChangeRunTests(
-                proposed_change=message.proposed_change,
-                source_branch=message.source_branch,
-                source_branch_data_only=message.source_branch_data_only,
-                destination_branch=message.destination_branch,
-                branch_diff=branch_diff,
-            )
-        )
-
-    for event in events:
-        event.assign_meta(parent=message)
-        await service.send(message=event)
 
 
 async def schema_integrity(
@@ -216,60 +241,68 @@ async def schema_integrity(
 
 
 async def repository_checks(message: messages.RequestProposedChangeRepositoryChecks, service: InfrahubServices) -> None:
-    log.info(f"Got a request to process checks defined in proposed_change: {message.proposed_change}")
-    events: List[InfrahubMessage] = []
-    for repository in message.branch_diff.repositories:
-        if not message.source_branch_data_only and not repository.read_only:
+    async with service.task_report(
+        related_node=message.proposed_change,
+        title="Evaluating Repository Checks",
+    ):
+        log.info(f"Got a request to process checks defined in proposed_change: {message.proposed_change}")
+        events: List[InfrahubMessage] = []
+        for repository in message.branch_diff.repositories:
+            if not message.source_branch_data_only and not repository.read_only:
+                events.append(
+                    messages.RequestRepositoryChecks(
+                        proposed_change=message.proposed_change,
+                        repository=repository.repository_id,
+                        source_branch=message.source_branch,
+                        target_branch=message.destination_branch,
+                    )
+                )
             events.append(
-                messages.RequestRepositoryChecks(
+                messages.RequestRepositoryUserChecks(
                     proposed_change=message.proposed_change,
                     repository=repository.repository_id,
                     source_branch=message.source_branch,
                     target_branch=message.destination_branch,
                 )
             )
-        events.append(
-            messages.RequestRepositoryUserChecks(
-                proposed_change=message.proposed_change,
-                repository=repository.repository_id,
-                source_branch=message.source_branch,
-                target_branch=message.destination_branch,
-            )
-        )
-    for event in events:
-        event.assign_meta(parent=message)
-        await service.send(message=event)
+        for event in events:
+            event.assign_meta(parent=message)
+            await service.send(message=event)
 
 
 async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifacts, service: InfrahubServices) -> None:
-    log.info(f"Refreshing artifacts for change_proposal={message.proposed_change}")
-    definition_information = await service.client.execute_graphql(
-        query=GATHER_ARTIFACT_DEFINITIONS,
-        branch_name=message.source_branch,
-    )
-    artifact_definitions = _parse_artifact_definitions(
-        definitions=definition_information["CoreArtifactDefinition"]["edges"]
-    )
+    async with service.task_report(
+        related_node=message.proposed_change,
+        title="Evaluating Artifact Checks",
+    ):
+        log.info(f"Refreshing artifacts for change_proposal={message.proposed_change}")
+        definition_information = await service.client.execute_graphql(
+            query=GATHER_ARTIFACT_DEFINITIONS,
+            branch_name=message.source_branch,
+        )
+        artifact_definitions = _parse_artifact_definitions(
+            definitions=definition_information["CoreArtifactDefinition"]["edges"]
+        )
 
-    for artifact_definition in artifact_definitions:
-        # Request artifact definition checks if the source branch is managed so it could contain
-        # changes to the transforms in code, alternatively if the queries used touches models
-        # that have been modified in the path
-        requires_validation = not message.source_branch_data_only
-        for changed_model in message.branch_diff.modified_kinds(branch=message.source_branch):
-            requires_validation |= changed_model in artifact_definition.query_models
-        if requires_validation:
-            msg = messages.RequestArtifactDefinitionCheck(
-                artifact_definition=artifact_definition,
-                branch_diff=message.branch_diff,
-                proposed_change=message.proposed_change,
-                source_branch=message.source_branch,
-                source_branch_data_only=message.source_branch_data_only,
-                destination_branch=message.destination_branch,
-            )
+        for artifact_definition in artifact_definitions:
+            # Request artifact definition checks if the source branch is managed so it could contain
+            # changes to the transforms in code, alternatively if the queries used touches models
+            # that have been modified in the path
+            requires_validation = not message.source_branch_data_only
+            for changed_model in message.branch_diff.modified_kinds(branch=message.source_branch):
+                requires_validation |= changed_model in artifact_definition.query_models
+            if requires_validation:
+                msg = messages.RequestArtifactDefinitionCheck(
+                    artifact_definition=artifact_definition,
+                    branch_diff=message.branch_diff,
+                    proposed_change=message.proposed_change,
+                    source_branch=message.source_branch,
+                    source_branch_data_only=message.source_branch_data_only,
+                    destination_branch=message.destination_branch,
+                )
 
-            msg.assign_meta(parent=message)
-            await service.send(message=msg)
+                msg.assign_meta(parent=message)
+                await service.send(message=msg)
 
 
 GATHER_ARTIFACT_DEFINITIONS = """
@@ -350,43 +383,47 @@ query GatherGraphQLQuerySubscribers($members: [ID!]) {
 
 
 async def run_tests(message: messages.RequestProposedChangeRunTests, service: InfrahubServices) -> None:
-    log.info("running_repository_tests", proposed_change=message.proposed_change)
-    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
+    async with service.task_report(
+        related_node=message.proposed_change,
+        title="Running repository tests",
+    ):
+        log.info("running_repository_tests", proposed_change=message.proposed_change)
+        proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
 
-    def _execute(
-        directory: Path, repository: ProposedChangeRepository, proposed_change: InfrahubNode
-    ) -> Union[int, pytest.ExitCode]:
-        config_file = str(directory / ".infrahub.yml")
-        return pytest.main(
-            [
-                str(directory),
-                f"--infrahub-repo-config={config_file}",
-                f"--infrahub-address={config.SETTINGS.main.internal_address}",
-                "--continue-on-collection-errors",  # FIXME: Non-Infrahub tests should be ignored
-                "-qqqq",
-                "-s",
-            ],
-            plugins=[InfrahubBackendPlugin(service.client.config, repository.repository_id, proposed_change.id)],
-        )
-
-    for repository in message.branch_diff.repositories:
-        if not message.source_branch_data_only:
-            repo = await get_initialized_repo(
-                repository_id=repository.repository_id,
-                name=repository.repository_name,
-                service=service,
-                repository_kind=repository.kind,
+        def _execute(
+            directory: Path, repository: ProposedChangeRepository, proposed_change: InfrahubNode
+        ) -> Union[int, pytest.ExitCode]:
+            config_file = str(directory / ".infrahub.yml")
+            return pytest.main(
+                [
+                    str(directory),
+                    f"--infrahub-repo-config={config_file}",
+                    f"--infrahub-address={config.SETTINGS.main.internal_address}",
+                    "--continue-on-collection-errors",  # FIXME: Non-Infrahub tests should be ignored
+                    "-qqqq",
+                    "-s",
+                ],
+                plugins=[InfrahubBackendPlugin(service.client.config, repository.repository_id, proposed_change.id)],
             )
-            commit = repo.get_commit_value(proposed_change.source_branch.value)
-            worktree_directory = Path(repo.get_commit_worktree(commit=commit).directory)
 
-            return_code = await asyncio.to_thread(_execute, worktree_directory, repository, proposed_change)
-            log.info(
-                "repository_tests_completed",
-                proposed_change=message.proposed_change,
-                repository=repository.repository_name,
-                return_code=return_code,
-            )
+        for repository in message.branch_diff.repositories:
+            if not message.source_branch_data_only:
+                repo = await get_initialized_repo(
+                    repository_id=repository.repository_id,
+                    name=repository.repository_name,
+                    service=service,
+                    repository_kind=repository.kind,
+                )
+                commit = repo.get_commit_value(proposed_change.source_branch.value)
+                worktree_directory = Path(repo.get_commit_worktree(commit=commit).directory)
+
+                return_code = await asyncio.to_thread(_execute, worktree_directory, repository, proposed_change)
+                log.info(
+                    "repository_tests_completed",
+                    proposed_change=message.proposed_change,
+                    repository=repository.repository_name,
+                    return_code=return_code,
+                )
 
 
 DESTINATION_ALLREPOSITORIES = """

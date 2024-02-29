@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { Table } from "../../components/table/table";
 import { Pagination } from "../../components/utils/pagination";
-import { TASK_OBJECT } from "../../config/constants";
+import { TASK_OBJECT, TASK_TAB } from "../../config/constants";
 import useQuery from "../../hooks/useQuery";
 
 import { forwardRef, useImperativeHandle } from "react";
@@ -11,20 +11,31 @@ import { DurationDisplay } from "../../components/display/duration-display";
 import { Id } from "../../components/utils/id";
 import { QSP } from "../../config/qsp";
 import { getTasksItems } from "../../graphql/queries/tasks/getTasksItems";
+import usePagination from "../../hooks/usePagination";
 import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getConclusionBadge } from "./task-item-details";
 
 export const TaskItems = forwardRef((props, ref) => {
-  const { objectid } = useParams();
+  const { objectid, proposedchange } = useParams();
   const location = useLocation();
+  const [pagination] = usePagination();
 
   const { pathname } = location;
 
+  const filtersString = [
+    // Add pagination filters
+    ...[
+      { name: "offset", value: pagination?.offset },
+      { name: "limit", value: pagination?.limit },
+    ].map((row: any) => `${row.name}: ${row.value}`),
+  ].join(",");
+
   const queryString = getTasksItems({
     kind: TASK_OBJECT,
-    relatedNode: objectid,
+    relatedNode: objectid || proposedchange,
+    filters: filtersString,
   });
 
   const query = gql`
@@ -72,14 +83,16 @@ export const TaskItems = forwardRef((props, ref) => {
   ];
 
   const getUrl = (id: string) => {
-    if (!objectid) {
+    if (!objectid && !proposedchange) {
       return constructPath(`/tasks/${id}`);
     }
 
-    return constructPath(pathname, [
-      { name: QSP.TAB, value: "tasks" },
+    const url = constructPath(pathname, [
+      { name: proposedchange ? QSP.PROPOSED_CHANGES_TAB : QSP.TAB, value: TASK_TAB },
       { name: QSP.TASK_ID, value: id },
     ]);
+
+    return url;
   };
 
   const rows = edges.map((edge: any) => ({

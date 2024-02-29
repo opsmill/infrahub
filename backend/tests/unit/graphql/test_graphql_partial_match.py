@@ -1,11 +1,10 @@
 import pytest
 from deepdiff import DeepDiff
-from graphql import graphql
 
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import prepare_graphql_params
+from tests.helpers.graphql import graphql_query
 
 
 @pytest.mark.parametrize("filter_value", ["l", "o", "w", "low"])
@@ -35,19 +34,77 @@ async def test_query_filter_local_attrs_partial_match(
     """
         % filter_value
     )
-    gql_params = prepare_graphql_params(
-        branch=default_branch, db=db, include_mutation=False, include_subscription=False
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
+    result = await graphql_query(query=query, db=db, branch=default_branch)
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["TestCriticality"]["edges"]) == 1
+    assert result.data["TestCriticality"]["edges"][0]["node"]["name"]["value"] == "low"
+
+
+async def test_query_filter_local_int_attr_partial_match(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+):
+    obj1 = await Node.init(db=db, schema=criticality_schema)
+    await obj1.new(db=db, name="low", level=4)
+    await obj1.save(db=db)
+    obj2 = await Node.init(db=db, schema=criticality_schema)
+    await obj2.new(db=db, name="medium", level=3, description="My desc", color="#333333")
+    await obj2.save(db=db)
+
+    query = """
+    query {
+        TestCriticality(level__value: 4, partial_match: true) {
+            count
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+    result = await graphql_query(query=query, db=db, branch=default_branch)
+
+    assert result.errors is None
+    assert result.data
+    assert len(result.data["TestCriticality"]["edges"]) == 1
+    assert result.data["TestCriticality"]["count"] == 1
+    assert result.data["TestCriticality"]["edges"][0]["node"]["name"]["value"] == "low"
+
+
+async def test_query_filter_local_bool_attr_partial_match(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+):
+    obj1 = await Node.init(db=db, schema=criticality_schema)
+    await obj1.new(db=db, name="low", level=4, is_false=True)
+    await obj1.save(db=db)
+    obj2 = await Node.init(db=db, schema=criticality_schema)
+    await obj2.new(db=db, name="medium", level=3, description="My desc", color="#333333")
+    await obj2.save(db=db)
+
+    query = """
+    query {
+        TestCriticality(is_false__value: true, partial_match: true) {
+            count
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+    result = await graphql_query(query=query, db=db, branch=default_branch)
+
+    assert result.errors is None
+    assert result.data
+    assert len(result.data["TestCriticality"]["edges"]) == 1
+    assert result.data["TestCriticality"]["count"] == 1
     assert result.data["TestCriticality"]["edges"][0]["node"]["name"]["value"] == "low"
 
 
@@ -77,19 +134,10 @@ async def test_query_filter_relationships_with_generic_filter_partial_match(
         }
     }
     """
-    gql_params = prepare_graphql_params(
-        db=db, branch=default_branch, include_mutation=False, include_subscription=False
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
+    result = await graphql_query(query=query, db=db, branch=default_branch)
 
     assert result.errors is None
-
+    assert result.data
     expected_results = [
         {
             "node": {
@@ -125,17 +173,9 @@ async def test_query_filter_relationships_with_generic_filter_mutliple_partial_m
         }
     }
     """
-    gql_params = prepare_graphql_params(
-        db=db, branch=default_branch, include_mutation=False, include_subscription=False
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
+    result = await graphql_query(query=query, db=db, branch=default_branch)
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["TestCar"]["edges"]) == 1
     assert result.data["TestCar"]["edges"][0]["node"]["id"] == smolt_car.id

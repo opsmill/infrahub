@@ -324,6 +324,8 @@ ATTRIBUTE_TYPES: Dict[str, Type[InfrahubDataType]] = {
     "Boolean": Boolean,
 }
 
+ATTRIBUTE_KIND_LABELS = list(ATTRIBUTE_TYPES.keys())
+
 
 def get_attribute_type(kind: str = "Default") -> Type[InfrahubDataType]:
     """Return an InfrahubDataType object for a given kind

@@ -1,6 +1,7 @@
 import os
 import platform
 import re
+import sys
 from enum import Enum
 from typing import Any, Union
 
@@ -188,7 +189,7 @@ def get_env_vars(context: Context) -> str:
 
 def build_compose_files_cmd(database: str) -> str:
     if database not in SUPPORTED_DATABASES:
-        exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
+        sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
     if database == DatabaseType.MEMGRAPH.value:
         COMPOSE_FILES = COMPOSE_FILES_MEMGRAPH
@@ -206,7 +207,7 @@ def build_compose_files_cmd(database: str) -> str:
 
 def build_dev_compose_files_cmd(database: str) -> str:
     if database not in SUPPORTED_DATABASES:
-        exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
+        sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
     if database == DatabaseType.MEMGRAPH.value:
         DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_MEMGRAPH
@@ -227,7 +228,7 @@ def build_test_compose_files_cmd(
         return f"-f {TEST_COMPOSE_FILE}"
 
     if database not in SUPPORTED_DATABASES:
-        exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
+        sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
     if database == DatabaseType.MEMGRAPH.value:
         DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_MEMGRAPH
@@ -245,7 +246,7 @@ def build_test_scale_compose_files_cmd(
     database: str = DatabaseType.NEO4J.value,
 ) -> str:
     if database not in SUPPORTED_DATABASES:
-        exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
+        sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
     if database == DatabaseType.MEMGRAPH.value:
         TEST_SCALE_COMPOSE_FILES = TEST_SCALE_COMPOSE_FILES_MEMGRAPH

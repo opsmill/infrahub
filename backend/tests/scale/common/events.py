@@ -95,6 +95,6 @@ def request_event_handler(
         "rels_amount": config.rels_amount,
     }
 
-    with open("metrics.csv", "a") as file:
+    with open("metrics.csv", "a", encoding="utf-8") as file:
         writer = DictWriter(file, fieldnames=METRICS_FIELD_NAMES)
         writer.writerow(result_metric)
