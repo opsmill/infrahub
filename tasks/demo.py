@@ -1,5 +1,6 @@
 """Replacement for Makefile."""
 import re
+import sys
 from time import sleep
 
 from invoke import Context, task
@@ -49,7 +50,7 @@ def build(
     print("Building images")
 
     if service and service not in AVAILABLE_SERVICES:
-        exit(f"{service} is not a valid service ({AVAILABLE_SERVICES})")
+        sys.exit(f"{service} is not a valid service ({AVAILABLE_SERVICES})")
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
