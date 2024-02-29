@@ -83,16 +83,14 @@ class BranchCreate(Mutation):
         ok = True
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
-
-        # Generate Event in message bus
-        if config.SETTINGS.broker.enable and context.background:
+        if context.service:
             message = messages.EventBranchCreate(
                 branch=obj.name,
                 branch_id=str(obj.id),
                 data_only=obj.is_data_only,
                 meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
-            context.background.add_task(services.send, message)
+            await context.service.send(message=message)
 
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 
@@ -116,10 +114,10 @@ class BranchDelete(Mutation):
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
-        obj = await Branch.get_by_name(db=context.db, name=data["name"])
+        obj = await Branch.get_by_name(db=context.db, name=str(data.name))
         await obj.delete(db=context.db)
 
-        if config.SETTINGS.broker.enable and context.background:
+        if context.service:
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
             message = messages.EventBranchDelete(
@@ -128,7 +126,7 @@ class BranchDelete(Mutation):
                 data_only=obj.is_data_only,
                 meta=Meta(request_id=request_id),
             )
-            context.background.add_task(services.send, message)
+            await context.service.send(message=message)
 
         return cls(ok=True)
 
