@@ -1,10 +1,12 @@
 import { ReactElement } from "react";
+import LoadingScreen from "../../screens/loading-screen/loading-screen";
 import { classNames } from "../../utils/common";
 
 type tPill = {
   type?: PILL_TYPES;
   className?: string;
   children?: ReactElement | string | ReactElement[] | string[];
+  isLoading?: boolean;
 };
 
 export enum PILL_TYPES {
@@ -38,13 +40,14 @@ const getClassName = (type?: PILL_TYPES) => {
 };
 
 export const Pill = (props: tPill) => {
-  const { type, className = "", children } = props;
+  const { type, className = "", children, isLoading } = props;
 
   const customClassName = getClassName(type);
 
   return (
     <span className={classNames(DEFAULT_CLASS(className), customClassName, className)}>
-      {children}
+      {isLoading && <LoadingScreen size={8} hideText />}
+      {!isLoading && children}
     </span>
   );
 };

@@ -18,7 +18,7 @@ export const Checks = forwardRef((props, ref) => {
     ${queryString}
   `;
 
-  const { error, data, refetch } = useQuery(query, { notifyOnNetworkStatusChange: true });
+  const { loading, error, data, refetch } = useQuery(query, { notifyOnNetworkStatusChange: true });
 
   // Provide refetch function to parent
   useImperativeHandle(ref, () => ({ refetch }));
@@ -32,7 +32,7 @@ export const Checks = forwardRef((props, ref) => {
   return (
     <div>
       <div>
-        <ChecksSummary validators={validators} refetch={refetch} />
+        <ChecksSummary isLoading={loading} validators={validators} refetch={refetch} />
       </div>
 
       <div className="p-4">

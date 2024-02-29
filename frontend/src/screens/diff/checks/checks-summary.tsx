@@ -19,11 +19,12 @@ import { classNames } from "../../../utils/common";
 
 type tChecksSummaryProps = {
   validators: any[];
+  isLoading: boolean;
   refetch: Function;
 };
 
 export const ChecksSummary = (props: tChecksSummaryProps) => {
-  const { validators, refetch } = props;
+  const { isLoading, validators, refetch } = props;
 
   const { proposedchange } = useParams();
   const schemaKindName = useAtomValue(schemaKindNameState);
@@ -92,7 +93,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
 
         <Retry
           onClick={() => handleRetry("all")}
-          isLoading={!!validatorsInProgress.length}
+          isLoading={isLoading || !!validatorsInProgress.length}
           isDisabled={!auth?.permissions?.write}
         />
       </div>
@@ -123,7 +124,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
                   {canRetry(stats) && (
                     <div className="absolute invisible group-hover:visible">
                       <Retry
-                        isLoading={!!stats.inProgress}
+                        isLoading={isLoading || !!stats.inProgress}
                         isDisabled={!canRetry(stats)}
                         className="!hover:bg-transparent"
                       />
