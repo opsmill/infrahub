@@ -15,10 +15,8 @@ export const ToggleButtons = (props: TabsProps) => {
   const { tabs, isLoading } = props;
 
   return (
-    <div className="bg-custom-white flex items-center">
+    <div className="flex items-center">
       <div className="isolate inline-flex rounded-md shadow-sm border border-gray-300 m-4 overflow-hidden">
-        {/* {isLoading && <LoadingScreen hideText size={16} className="px-8 py-2 bg-gray-100" />} */}
-
         {tabs.map((tab: Tab) => (
           <Button
             key={tab.label}
