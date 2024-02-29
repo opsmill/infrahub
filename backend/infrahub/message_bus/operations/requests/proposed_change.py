@@ -180,64 +180,68 @@ async def schema_integrity(
     message: messages.RequestProposedChangeSchemaIntegrity,
     service: InfrahubServices,  # pylint: disable=unused-argument
 ) -> None:
-    log.info(f"Got a request to process schema integrity defined in proposed_change: {message.proposed_change}")
+    async with service.task_report(
+        related_node=message.proposed_change,
+        title="Schema Integrity",
+    ):
+        log.info(f"Got a request to process schema integrity defined in proposed_change: {message.proposed_change}")
 
-    # For now, we retrieve the latest schema for each branch from the registry
-    # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff
-    source_schema = registry.schema.get_schema_branch(name=message.source_branch).duplicate()
-    dest_schema = registry.schema.get_schema_branch(name=message.destination_branch).duplicate()
+        # For now, we retrieve the latest schema for each branch from the registry
+        # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff
+        source_schema = registry.schema.get_schema_branch(name=message.source_branch).duplicate()
+        dest_schema = registry.schema.get_schema_branch(name=message.destination_branch).duplicate()
 
-    candidate_schema = dest_schema.duplicate()
-    candidate_schema.update(schema=source_schema)
-    validation_result = dest_schema.validate_update(other=candidate_schema)
+        candidate_schema = dest_schema.duplicate()
+        candidate_schema.update(schema=source_schema)
+        validation_result = dest_schema.validate_update(other=candidate_schema)
 
-    constraints_from_data_diff = await _get_proposed_change_schema_integrity_constraints(
-        message=message, schema=candidate_schema
-    )
-    constraints_from_schema_diff = validation_result.constraints
-    constraints = set(constraints_from_data_diff + constraints_from_schema_diff)
+        constraints_from_data_diff = await _get_proposed_change_schema_integrity_constraints(
+            message=message, schema=candidate_schema
+        )
+        constraints_from_schema_diff = validation_result.constraints
+        constraints = set(constraints_from_data_diff + constraints_from_schema_diff)
 
-    if not constraints:
-        return
+        if not constraints:
+            return
 
-    # ----------------------------------------------------------
-    # Validate if the new schema is valid with the content of the database
-    # ----------------------------------------------------------
-    source_branch = registry.get_branch_from_registry(branch=message.source_branch)
-    source_branch.ephemeral_rebase = True
-    _, responses = await schema_validators_checker(
-        branch=source_branch, schema=candidate_schema, constraints=constraints, service=service
-    )
+        # ----------------------------------------------------------
+        # Validate if the new schema is valid with the content of the database
+        # ----------------------------------------------------------
+        source_branch = registry.get_branch_from_registry(branch=message.source_branch)
+        source_branch.ephemeral_rebase = True
+        _, responses = await schema_validators_checker(
+            branch=source_branch, schema=candidate_schema, constraints=constraints, service=service
+        )
 
-    # TODO we need to report a failure if an error happened during the execution of a validator
-    conflicts: List[SchemaConflict] = []
-    for response in responses:
-        for violation in response.data.violations:
-            conflicts.append(
-                SchemaConflict(
-                    name=response.data.schema_path.get_path(),
-                    type=response.data.constraint_name,
-                    kind=violation.node_kind,
-                    id=violation.node_id,
-                    path=response.data.schema_path.get_path(),
-                    value="NA",
-                    branch="placeholder",
+        # TODO we need to report a failure if an error happened during the execution of a validator
+        conflicts: List[SchemaConflict] = []
+        for response in responses:
+            for violation in response.data.violations:
+                conflicts.append(
+                    SchemaConflict(
+                        name=response.data.schema_path.get_path(),
+                        type=response.data.constraint_name,
+                        kind=violation.node_kind,
+                        id=violation.node_id,
+                        path=response.data.schema_path.get_path(),
+                        value="NA",
+                        branch="placeholder",
+                    )
                 )
+
+        if not conflicts:
+            return
+
+        async with service.database.start_transaction() as db:
+            object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
+                db=db,
+                validator_kind=InfrahubKind.SCHEMAVALIDATOR,
+                validator_label="Schema Integrity",
+                check_schema_kind=InfrahubKind.SCHEMACHECK,
             )
-
-    if not conflicts:
-        return
-
-    async with service.database.start_transaction() as db:
-        object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
-            db=db,
-            validator_kind=InfrahubKind.SCHEMAVALIDATOR,
-            validator_label="Schema Integrity",
-            check_schema_kind=InfrahubKind.SCHEMACHECK,
-        )
-        await object_conflict_validator_recorder.record_conflicts(
-            proposed_change_id=message.proposed_change, conflicts=conflicts
-        )
+            await object_conflict_validator_recorder.record_conflicts(
+                proposed_change_id=message.proposed_change, conflicts=conflicts
+            )
 
 
 async def repository_checks(message: messages.RequestProposedChangeRepositoryChecks, service: InfrahubServices) -> None:
