@@ -66,11 +66,11 @@ class NodeAttributeAddMigrationQuery01(Query):
         }
         WITH n1 as n, r1 as rb
         WHERE rb.status = "active"
-        MERGE (av:AttributeValue { type: $attr_type, value: $attr_value })
+        MERGE (av:AttributeValue { value: $attr_value })
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
         MERGE (is_visible_value:Boolean { value: $is_visible_default })
         WITH n, av, is_protected_value, is_visible_value
-        CREATE (a:Attribute { name: $attr_name, type: $attr_type, branch_support: $branch_support })
+        CREATE (a:Attribute { name: $attr_name, branch_support: $branch_support })
         CREATE (n)-[:HAS_ATTRIBUTE $rel_props ]->(a)
         CREATE (a)-[:HAS_VALUE $rel_props ]->(av)
         CREATE (a)-[:IS_PROTECTED $rel_props]->(is_protected_value)
