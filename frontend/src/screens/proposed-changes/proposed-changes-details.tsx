@@ -123,7 +123,7 @@ export const ProposedChangesDetails = () => {
     {
       label: "Tasks",
       name: TASK_TAB,
-      count: data[TASK_OBJECT]?.count ?? 0,
+      count: (data && data[TASK_OBJECT]?.count) ?? 0,
       onClick: () => {
         setQspTab(TASK_TAB);
         setQspTaskId(undefined);

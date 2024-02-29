@@ -25,12 +25,12 @@ import {
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
   PROPOSED_CHANGES_THREAD_OBJECT,
 } from "../../config/constants";
-import { useAuth } from "../../hooks/useAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { getProposedChangesThreads } from "../../graphql/queries/proposed-changes/getProposedChangesThreads";
+import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
@@ -443,7 +443,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
                 <Button
                   disabled={
                     !auth?.permissions?.write ||
-                    !PROPOSED_CHANGES_EDITABLE_STATE.includes(proposedChangesDetails.state.value)
+                    !PROPOSED_CHANGES_EDITABLE_STATE.includes(proposedChangesDetails?.state?.value)
                   }
                   onClick={() => setShowEditDrawer(true)}
                   className="mr-4">
@@ -463,7 +463,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
 
               <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
                 <dt className="text-sm font-medium text-gray-500">Name</dt>
-                <dd className="flex text-gray-900">{proposedChangesDetails?.name.value}</dd>
+                <dd className="flex text-gray-900">{proposedChangesDetails?.name?.value}</dd>
               </div>
 
               <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
@@ -476,14 +476,14 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
               <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
                 <dt className="text-sm font-medium text-gray-500">Source branch</dt>
                 <dd className="flex text-gray-900">
-                  <Badge>{proposedChangesDetails?.source_branch.value}</Badge>
+                  <Badge>{proposedChangesDetails?.source_branch?.value}</Badge>
                 </dd>
               </div>
 
               <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
                 <dt className="text-sm font-medium text-gray-500">Destination branch</dt>
                 <dd className="flex text-gray-900">
-                  <Badge>{proposedChangesDetails?.destination_branch.value}</Badge>
+                  <Badge>{proposedChangesDetails?.destination_branch?.value}</Badge>
                 </dd>
               </div>
 
