@@ -1,6 +1,5 @@
 """Replacement for Makefile."""
 import re
-import sys
 from time import sleep
 
 from invoke import Context, task
@@ -31,6 +30,20 @@ mutation($name: String!, $location: String!){
 }
 """
 
+ADD_PROPOSEDCHANGE_QUERY = """
+mutation($name: String!, $source_branch: String!, $destination_branch: String!){
+  CoreProposedChangeCreate(
+    data: {
+      name: { value: $name }
+      source_branch: { value: $source_branch }
+      destination_branch: { value: $destination_branch }
+    }
+  ) {
+    ok
+  }
+}
+"""
+
 
 @task(optional=["database"])
 def build(
@@ -50,7 +63,7 @@ def build(
     print("Building images")
 
     if service and service not in AVAILABLE_SERVICES:
-        sys.exit(f"{service} is not a valid service ({AVAILABLE_SERVICES})")
+        exit(f"{service} is not a valid service ({AVAILABLE_SERVICES})")
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
@@ -234,6 +247,51 @@ def infra_git_create(
     -d '{"query":"%s", "variables": {"name": "%s", "location": "%s"}}' \
     %s/graphql
     """ % (clean_query, name, location, INFRAHUB_ADDRESS)
+    execute_command(context=context, command=exec_cmd, print_cmd=True)
+
+
+@task(optional=["database"])
+def infra_proposedchange(context: Context, database: str = INFRAHUB_DATABASE, name="demo-edge"):
+    REPO_NAME = "infrahub-demo-edge"
+    with context.cd(ESCAPED_REPO_PATH):
+        compose_files_cmd = build_compose_files_cmd(database=database)
+        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
+
+        execute_command(
+            context=context,
+            command=f"{base_cmd} exec --workdir /remote/{REPO_NAME} infrahub-git git branch proposed-change-example",
+        )
+        execute_command(
+            context=context,
+            command=f"{base_cmd} exec --workdir /remote/{REPO_NAME} infrahub-git git switch proposed-change-example",
+        )
+        execute_command(
+            context=context,
+            command=f"{base_cmd} exec --workdir /remote/{REPO_NAME} infrahub-git sed -i 's/FAIL/PASS/g' tests/test_all.yml",
+        )
+        execute_command(
+            context=context,
+            command=f"{base_cmd} exec --workdir /remote/{REPO_NAME} infrahub-git git add .",
+        )
+        execute_command(
+            context=context,
+            command=f"{base_cmd} exec --workdir /remote/{REPO_NAME} infrahub-git git commit -m change-test-outcome",
+        )
+        # TODO: make some changes in the branch
+
+    waiting_time = 30
+    print(f"Wait {waiting_time} seconds for git agent to pick up changes")
+    sleep(waiting_time)
+
+    clean_query = re.sub(r"\n\s*", "", ADD_PROPOSEDCHANGE_QUERY)
+    exec_cmd = """
+    curl -g \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -H "X-INFRAHUB-KEY: 06438eb2-8019-4776-878c-0941b1f1d1ec" \
+    -d '{"query":"%s", "variables": {"name": "%s", "source_branch": "%s", "destination_branch": "%s"}}' \
+    %s/graphql
+    """ % (clean_query, name, "proposed-change-example", "main", INFRAHUB_ADDRESS)
     execute_command(context=context, command=exec_cmd, print_cmd=True)
 
 
