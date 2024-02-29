@@ -171,6 +171,7 @@ async def test_schema_integrity(
     car_accord_main: Node,
     car_volt_main: Node,
     person_john_main,
+    httpx_mock: HTTPXMock,
 ):
     branch2 = await create_branch(branch_name=SOURCE_BRANCH_A, db=db)
 
@@ -184,6 +185,8 @@ async def test_schema_integrity(
     name_attr.regex = r"^[A-Z]+$"
     branch2_schema.set(name="TestPerson", schema=person_schema)
 
+    # Ignore creation of Task Report response
+    httpx_mock.add_response(method="POST", url="http://mock/graphql", json={"data": {}})
     await proposed_change.schema_integrity(message=schema_integrity_01, service=service_all)
 
     checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
