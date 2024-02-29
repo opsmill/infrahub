@@ -1,7 +1,6 @@
 import useQuery, { useLazyQuery } from "../../hooks/useQuery";
 import { SEARCH } from "../../graphql/queries/objects/search";
 import { ReactElement, useEffect } from "react";
-import LoadingScreen from "../../screens/loading-screen/loading-screen";
 import { Icon } from "@iconify-icon/react";
 import { NODE_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "../../config/constants";
 import { useAtomValue } from "jotai/index";
@@ -21,31 +20,23 @@ type SearchProps = {
 };
 export const SearchNodes = ({ query }: SearchProps) => {
   const queryDebounced = useDebounce(query, 300);
-  const [fetchSearchNodes, { data, error, loading }] = useLazyQuery(SEARCH);
+  const [fetchSearchNodes, { data, previousData, error }] = useLazyQuery(SEARCH);
 
   useEffect(() => {
     const cleanedValue = queryDebounced.trim();
     fetchSearchNodes({ variables: { search: cleanedValue } });
   }, [queryDebounced]);
 
-  if (loading) {
-    return (
-      <div className="h-52 flex items-center justify-center">
-        <LoadingScreen hideText />
-      </div>
-    );
-  }
-
   if (error) {
     return (
-      <div className="h-52 flex flex-col items-center justify-center">
+      <div className="flex flex-col items-center justify-center">
         <Icon icon="mdi:error" className="text-2xl px-2 py-0.5" />
         <p className="text-sm">{error.message}</p>
       </div>
     );
   }
 
-  const results = data?.[NODE_OBJECT];
+  const results = (data || previousData)?.[NODE_OBJECT];
 
   if (!results || results?.count === 0) return null;
 
@@ -192,16 +183,18 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
 
 export const SearchResultNodeSkeleton = () => {
   return (
-    <div className="flex py-3 w-full">
+    <div className="flex py-2 w-full">
       <Skeleton className="h-6 w-6 rounded mx-1 mr-2" />
 
       <div className="space-y-2 flex-grow">
         <div className="flex space-x-2">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-3 w-40" />
+          <Skeleton className="h-3 w-20" />
         </div>
-        <Skeleton className="h-4 max-w-xl" />
-        <Skeleton className="h-4 max-w-xl" />
+        <div className="space-y-1">
+          <Skeleton className="h-3 max-w-xl" />
+          <Skeleton className="h-3 max-w-xl" />
+        </div>
       </div>
     </div>
   );
