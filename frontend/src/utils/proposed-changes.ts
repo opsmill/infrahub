@@ -1,6 +1,6 @@
 import { BADGE_TYPES } from "../components/display/badge";
 
-export const getProposedChangesStateBadgeType = (state: string) => {
+export const getProposedChangesStateBadgeType = (state: string): BADGE_TYPES | undefined => {
   switch (state) {
     case "open": {
       return BADGE_TYPES.VALIDATE;
@@ -15,7 +15,7 @@ export const getProposedChangesStateBadgeType = (state: string) => {
       return BADGE_TYPES.DISABLED;
     }
     default: {
-      return "";
+      return undefined;
     }
   }
 };
