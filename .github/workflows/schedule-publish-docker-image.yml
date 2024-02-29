@@ -1,0 +1,106 @@
+---
+# yamllint disable rule:truthy
+name: Scheduled publish development and stable docker image
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  meta_data:
+    runs-on: ubuntu-22.04
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
+      labels: ${{ steps.meta.outputs.labels }}
+      ref: ${{ steps.ref.outputs.ref }}
+      short_ref: ${{ steps.short_ref.outputs.short_ref }}
+      date: ${{ steps.date.outputs.date }}
+    steps:
+      - name: Checkout development branch
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Set GIT ref
+        run: echo "ref=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+        id: ref
+      - name: Set GIT short ref
+        run: echo "short_ref=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        id: short_ref
+      - name: Set date
+        run: echo "date=$(date '+%Y%m%d')" >> $GITHUB_OUTPUT
+        id: date
+      - name: Set docker image meta data
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ vars.HARBOR_HOST }}/${{ github.repository }}
+          tags: |
+            type=raw,value=dev-${{ steps.date.outputs.date }}-${{ steps.short_ref.outputs.short_ref }}
+            type=raw,value=develop
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.version=dev-${{ steps.short_ref.outputs.short_ref }}
+          flavor: |
+            latest=false
+
+
+  publish-docker-image:
+    uses: ./.github/workflows/ci-docker-image.yml
+    secrets: inherit
+    needs: meta_data
+    with:
+      publish: true
+      version: dev-${{ needs.meta_data.outputs.date }}-${{ needs.meta_data.outputs.short_ref }}
+      ref: ${{ needs.meta_data.outputs.ref }}
+      tags: ${{needs.meta_data.outputs.tags}}
+      labels: ${{needs.meta_data.outputs.labels}}
+
+  meta_data_stable:
+    runs-on: ubuntu-22.04
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
+      labels: ${{ steps.meta.outputs.labels }}
+      ref: ${{ steps.ref.outputs.ref }}
+      short_ref: ${{ steps.short_ref.outputs.short_ref }}
+      date: ${{ steps.date.outputs.date }}
+    steps:
+      - name: Checkout stable branch
+        uses: actions/checkout@v4
+        with:
+          ref: stable
+      - name: Set GIT ref
+        run: echo "ref=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+        id: ref
+      - name: Set GIT short ref
+        run: echo "short_ref=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        id: short_ref
+      - name: Set date
+        run: echo "date=$(date '+%Y%m%d')" >> $GITHUB_OUTPUT
+        id: date
+      - name: Set docker image meta data
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ vars.HARBOR_HOST }}/${{ github.repository }}
+          tags: |
+            type=raw,value=stable-${{ steps.date.outputs.date }}-${{ steps.short_ref.outputs.short_ref }}
+            type=raw,value=stable
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.version=stable-${{ steps.short_ref.outputs.short_ref }}
+          flavor: |
+            latest=false
+
+
+  publish-docker-image-stable:
+    uses: ./.github/workflows/ci-docker-image.yml
+    secrets: inherit
+    needs: meta_data_stable
+    with:
+      publish: true
+      version: stable-${{ needs.meta_data_stable.outputs.date }}-${{ needs.meta_data_stable.outputs.short_ref }}
+      ref: ${{ needs.meta_data_stable.outputs.ref }}
+      tags: ${{needs.meta_data_stable.outputs.tags}}
+      labels: ${{needs.meta_data_stable.outputs.labels}}

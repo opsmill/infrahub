@@ -15,6 +15,11 @@ on:
         description: commit sha or branch name
         default: ''
         required: false
+      tag:
+        type: string
+        description: additional image tag
+        default: ''
+        required: false
 
 jobs:
   meta_data:
@@ -39,6 +44,7 @@ jobs:
             ${{ vars.HARBOR_HOST }}/${{ github.repository }}
           tags: |
             type=raw,value=dev-${{ steps.short_ref.outputs.short_ref }}
+            type=raw,value=${{ inputs.tag }}
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
             org.opencontainers.image.version=dev-${{ steps.short_ref.outputs.short_ref }}
