@@ -81,7 +81,7 @@ async def test_branch_create(
     assert result.data["BranchCreate"]["ok"] is True
     assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # lenght of an UUID
     assert result.data["BranchCreate"]["object"]["name"] == "branch2"
-    assert result.data["BranchCreate"]["object"]["description"] == ""
+    assert not result.data["BranchCreate"]["object"]["description"]
     assert result.data["BranchCreate"]["object"]["is_data_only"] is True
     assert result.data["BranchCreate"]["object"]["is_default"] is False
     assert result.data["BranchCreate"]["object"]["branched_from"] is not None

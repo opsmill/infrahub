@@ -676,16 +676,14 @@ class SchemaBranch:
             if node.parent is None:
                 node.parent = node.hierarchy
                 changed = True
-            elif node.parent != "":
-                if node.parent not in list(self.nodes.keys()) + list(self.generics.keys()):
-                    raise ValueError(f"{node.kind} Unable to find the node {node.parent!r} provided in 'parent'.")
+            elif node.parent and node.parent not in list(self.nodes.keys()) + list(self.generics.keys()):
+                raise ValueError(f"{node.kind} Unable to find the node {node.parent!r} provided in 'parent'.")
 
             if node.children is None:
                 node.children = node.hierarchy
                 changed = True
-            elif node.children != "":
-                if node.children not in list(self.nodes.keys()) + list(self.generics.keys()):
-                    raise ValueError(f"{node.kind} Unable to find the node {node.children!r} provided in 'children'.")
+            elif node.children and node.children not in list(self.nodes.keys()) + list(self.generics.keys()):
+                raise ValueError(f"{node.kind} Unable to find the node {node.children!r} provided in 'children'.")
 
             if changed:
                 self.set(name=name, schema=node)
