@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { MoreButton } from "../../components/buttons/more-buton";
+import { MoreButton } from "../../components/buttons/more-button";
 import { POPOVER_SIZE, PopOver } from "../../components/display/popover";
 import { Id } from "../../components/utils/id";
 import { reduceArrays } from "../../utils/array";

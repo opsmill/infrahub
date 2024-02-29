@@ -5,7 +5,7 @@ import {
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import { MoreButton } from "../../../components/buttons/more-buton";
+import { MoreButton } from "../../../components/buttons/more-button";
 import Accordion from "../../../components/display/accordion";
 import { Badge } from "../../../components/display/badge";
 import { DateDisplay } from "../../../components/display/date-display";
