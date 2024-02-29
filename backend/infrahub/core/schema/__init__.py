@@ -43,6 +43,7 @@ from .definitions.internal import internal_schema
 if TYPE_CHECKING:
     from typing_extensions import Self
 
+    from infrahub.core.attribute import BaseAttribute
     from infrahub.core.branch import Branch
     from infrahub.core.query import QueryElement
     from infrahub.database import InfrahubDatabase
@@ -126,7 +127,7 @@ class AttributeSchema(HashableModel):
 
     @field_validator("kind")
     @classmethod
-    def kind_options(cls, v):
+    def kind_options(cls, v: str) -> str:
         if v not in ATTRIBUTE_KIND_LABELS:
             raise ValueError(f"Only valid Attribute Kind are : {ATTRIBUTE_KIND_LABELS} ")
         return v
@@ -143,7 +144,7 @@ class AttributeSchema(HashableModel):
 
         return values
 
-    def get_class(self):
+    def get_class(self) -> type[BaseAttribute]:
         return ATTRIBUTE_TYPES[self.kind].get_infrahub_class()
 
     @property
@@ -279,12 +280,12 @@ class BaseNodeSchema(HashableModel):  # pylint: disable=too-many-public-methods
     def menu_title(self) -> str:
         return self.label or self.name
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Return a hash of the object.
         Be careful hash generated from hash() have a salt by default and they will not be the same across run"""
         return hash(self.get_hash())
 
-    def get_hash(self, display_values: bool = False):
+    def get_hash(self, display_values: bool = False) -> str:
         """Extend the Hash Calculation to account for attributes and relationships."""
 
         md5hash = hashlib.md5()
@@ -346,7 +347,7 @@ class BaseNodeSchema(HashableModel):  # pylint: disable=too-many-public-methods
         ]
         return duplicate
 
-    def get_field(self, name, raise_on_error=True) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
+    def get_field(self, name: str, raise_on_error: bool = True) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
         if field := self.get_attribute(name, raise_on_error=False):
             return field
 
@@ -358,7 +359,7 @@ class BaseNodeSchema(HashableModel):  # pylint: disable=too-many-public-methods
 
         raise ValueError(f"Unable to find the field {name}")
 
-    def get_attribute(self, name, raise_on_error=True) -> AttributeSchema:
+    def get_attribute(self, name, raise_on_error: bool = True) -> AttributeSchema:
         for item in self.attributes:
             if item.name == name:
                 return item
@@ -368,7 +369,7 @@ class BaseNodeSchema(HashableModel):  # pylint: disable=too-many-public-methods
 
         raise ValueError(f"Unable to find the attribute {name}")
 
-    def get_relationship(self, name, raise_on_error=True) -> RelationshipSchema:
+    def get_relationship(self, name, raise_on_error: bool = True) -> RelationshipSchema:
         for item in self.relationships:
             if item.name == name:
                 return item
@@ -378,7 +379,7 @@ class BaseNodeSchema(HashableModel):  # pylint: disable=too-many-public-methods
 
         raise ValueError(f"Unable to find the relationship {name}")
 
-    def get_relationship_by_identifier(self, id: str, raise_on_error=True) -> RelationshipSchema:
+    def get_relationship_by_identifier(self, id: str, raise_on_error: bool = True) -> RelationshipSchema:
         for item in self.relationships:
             if item.identifier == id:
                 return item
@@ -443,7 +444,7 @@ class BaseNodeSchema(HashableModel):  # pylint: disable=too-many-public-methods
         if not hasattr(self, "display_labels") or not isinstance(self.display_labels, list):
             return None
 
-        fields = {}
+        fields: dict[str, Union[str, None, dict[str, None]]] = {}
         for item in self.display_labels:
             elements = item.split("__")
             if len(elements) == 1:
@@ -593,10 +594,10 @@ class RelationshipSchema(HashableModel):
     def is_relationship(self) -> bool:
         return True
 
-    def get_class(self):
+    def get_class(self) -> type[Relationship]:
         return Relationship
 
-    def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None):
+    def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None) -> Union[NodeSchema, GenericSchema]:
         return registry.schema.get(name=self.peer, branch=branch, duplicate=False)
 
     @property
@@ -831,7 +832,7 @@ class SchemaRoot(BaseModel):
     extensions: SchemaExtension = SchemaExtension()
 
     @classmethod
-    def has_schema(cls, values, name: str) -> bool:
+    def has_schema(cls, values: dict[str, Any], name: str) -> bool:
         """Check if a schema exist locally as a node or as a generic."""
 
         available_schemas = [item.kind for item in values.get("nodes", []) + values.get("generics", [])]
