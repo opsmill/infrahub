@@ -17,7 +17,7 @@ export const List = (props: tDetailsProps) => {
 
   return (
     <div className="flex-1">
-      <dl className="divide-y divide-gray-200 border-y border-gray-200">
+      <dl className="divide-y divide-gray-200">
         {columns?.map((column, index) => {
           if (!row.values[column.name]) {
             return null;
