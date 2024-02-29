@@ -54,7 +54,7 @@ async def test_new_empty_dir(git_upstream_repo_01, git_repos_dir):
 async def test_new_existing_directory(git_upstream_repo_01, git_repos_dir):
     # Create a directory and a file where the repository will be created
     os.mkdir(os.path.join(git_repos_dir, git_upstream_repo_01["name"]))
-    open(os.path.join(git_repos_dir, git_upstream_repo_01["name"], "file1.txt"), mode="w").close()
+    open(os.path.join(git_repos_dir, git_upstream_repo_01["name"], "file1.txt"), mode="w", encoding="utf-8").close()
 
     repo = await InfrahubRepository.new(
         id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
@@ -69,7 +69,7 @@ async def test_new_existing_directory(git_upstream_repo_01, git_repos_dir):
 
 async def test_new_existing_file(git_upstream_repo_01, git_repos_dir):
     # Create a file where the repository will be created
-    open(os.path.join(git_repos_dir, git_upstream_repo_01["name"]), mode="w").close()
+    open(os.path.join(git_repos_dir, git_upstream_repo_01["name"]), mode="w", encoding="utf-8").close()
 
     repo = await InfrahubRepository.new(
         id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
@@ -126,7 +126,7 @@ async def test_create_commit_worktree(git_repo_01: InfrahubRepository):
 
     # Modify the first file in the main branch to create a new commit
     first_file = find_first_file_in_directory(repo.directory_default)
-    with open(os.path.join(repo.directory_default, first_file), "a") as file:
+    with open(os.path.join(repo.directory_default, first_file), "a", encoding="utf-8") as file:
         file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
@@ -174,7 +174,7 @@ async def test_get_commit_worktree(git_repo_01: InfrahubRepository):
 
     # Modify the first file in the main branch to create a new commit
     first_file = find_first_file_in_directory(repo.directory_default)
-    with open(os.path.join(repo.directory_default, first_file), "a") as file:
+    with open(os.path.join(repo.directory_default, first_file), "a", encoding="utf-8") as file:
         file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
@@ -343,7 +343,7 @@ async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData):
     # Add a new commit in the main branch to have something to rebase.
     git_repo = repo.get_git_repo_main()
     first_file = find_first_file_in_directory(repo.directory_default)
-    with open(os.path.join(repo.directory_default, first_file), "a") as file:
+    with open(os.path.join(repo.directory_default, first_file), "a", encoding="utf-8") as file:
         file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
@@ -707,7 +707,7 @@ async def test_calculate_diff_between_commits(
 
     # Add a file
     new_file = "mynewfile.txt"
-    with open(os.path.join(worktree.directory, new_file), "w") as file:
+    with open(os.path.join(worktree.directory, new_file), "w", encoding="utf-8") as file:
         file.writelines(["this is a new file\n"])
 
     # Remove a file

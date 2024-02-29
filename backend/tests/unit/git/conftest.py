@@ -215,7 +215,7 @@ async def git_repo_04(client, git_upstream_repo_03, git_repos_dir, branch01: Bra
     upstream.git.checkout("branch01")
 
     first_file = find_first_file_in_directory(git_upstream_repo_03["path"])
-    with open(os.path.join(git_upstream_repo_03["path"], first_file), "a") as file:
+    with open(os.path.join(git_upstream_repo_03["path"], first_file), "a", encoding="utf-8") as file:
         file.write("new line\n")
     upstream.index.add([first_file])
     upstream.index.commit("Change first file")
@@ -244,7 +244,7 @@ async def git_repo_05(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
     # Update the first file at the top level and commit the change in the branch
     upstream = Repo(git_upstream_repo_01["path"])
     first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
-    with open(os.path.join(git_upstream_repo_01["path"], first_file), "a") as file:
+    with open(os.path.join(git_upstream_repo_01["path"], first_file), "a", encoding="utf-8") as file:
         file.write("new line\n")
     upstream.index.add([first_file])
     upstream.index.commit("Change first file")
@@ -275,7 +275,7 @@ async def git_repo_06(client, git_upstream_repo_01, git_repos_dir, branch01: Bra
     upstream.git.checkout(branch01.name)
 
     first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
-    with open(os.path.join(git_upstream_repo_01["path"], first_file), "a") as file:
+    with open(os.path.join(git_upstream_repo_01["path"], first_file), "a", encoding="utf-8") as file:
         file.write("new line\n")
     upstream.index.add([first_file])
     upstream.index.commit("Change first file")
@@ -286,7 +286,7 @@ async def git_repo_06(client, git_upstream_repo_01, git_repos_dir, branch01: Bra
     branch_wt = repo.get_worktree(identifier=branch01.name)
     branch_repo = Repo(branch_wt.directory)
     first_file_in_repo = os.path.join(branch_wt.directory, first_file)
-    with open(first_file_in_repo, "a") as file:
+    with open(first_file_in_repo, "a", encoding="utf-8") as file:
         file.write("not the same line\n")
     branch_repo.index.add([first_file])
     branch_repo.index.commit("Change first file in main")
@@ -329,7 +329,7 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir, branch01: 
 
     for file_to_add in files_to_add:
         file_path = os.path.join(git_upstream_repo_02["path"], file_to_add["name"])
-        with open(file_path, "w") as file:
+        with open(file_path, "w", encoding="utf-8") as file:
             file.write(file_to_add["content"])
 
         upstream.index.add(file_to_add["name"])
@@ -347,7 +347,7 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir, branch01: 
  - {{ item }} -
 {% endfor %}
 """
-    with open(file_path, "w") as file:
+    with open(file_path, "w", encoding="utf-8") as file:
         file.write(new_content)
     upstream.index.add(file_to_add["name"])
     upstream.index.commit("Update the first jinja template in the branch")
