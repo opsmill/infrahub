@@ -70,7 +70,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
     // Can't retry if there is no check
     if (!stats.total) return false;
 
-    // Can retry if there is a failure to re run
+    // Can retry if there is a failure to re-run
     if (stats.failure && !stats.inProgress) return true;
 
     return false;
@@ -101,41 +101,39 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
 
         {Object.entries(validatorsCount).map(([kind, stats]: [string, any]) => (
           <div key={kind} className="flex items-center justify-center gap-2 p-2">
-            <div className="flex items-center">
+            <div
+              className={classNames(
+                "flex flex-col items-center group relative",
+                canRetry(stats) ? "cursor-pointer" : ""
+              )}
+              onClick={() => handleRetry(kind)}>
               <div
                 className={classNames(
-                  "flex flex-col items-center group relative",
-                  canRetry(stats) ? "cursor-pointer" : ""
-                )}
-                onClick={() => handleRetry(kind)}>
-                <div
+                  "flex items-center justify-center w-16 h-16  rounded-full",
+                  getBgColor(stats)
+                )}>
+                <span
                   className={classNames(
-                    "flex items-center justify-center w-16 h-16  rounded-full",
-                    getBgColor(stats)
+                    "absolute",
+                    canRetry(stats) ? "group-hover:invisible" : ""
                   )}>
-                  <span
-                    className={classNames(
-                      "absolute",
-                      canRetry(stats) ? "group-hover:invisible" : ""
-                    )}>
-                    {JSON.stringify(stats.success)}/{JSON.stringify(stats.total)}
-                  </span>
-
-                  {canRetry(stats) && (
-                    <div className="absolute invisible group-hover:visible">
-                      <Retry
-                        isLoading={isLoading || !!stats.inProgress}
-                        isDisabled={!canRetry(stats)}
-                        className="!hover:bg-transparent"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <span className="text-xs">
-                  {schemaKindLabel[kind].replace("Validator", "").trim()}
+                  {JSON.stringify(stats.success)}/{JSON.stringify(stats.total)}
                 </span>
+
+                {canRetry(stats) && (
+                  <div className="absolute invisible group-hover:visible">
+                    <Retry
+                      isLoading={isLoading || !!stats.inProgress}
+                      isDisabled={!canRetry(stats)}
+                      className="!hover:bg-transparent"
+                    />
+                  </div>
+                )}
               </div>
+
+              <span className="text-xs">
+                {schemaKindLabel[kind].replace("Validator", "").trim()}
+              </span>
             </div>
           </div>
         ))}
