@@ -38,7 +38,6 @@ class NodeToProcess:
 @dataclass
 class AttrToProcess:
     name: str
-    type: str
 
     attr_labels: List[str]
     attr_id: int
@@ -422,7 +421,6 @@ class NodeListGetAttributeQuery(Query):
             attr_name = result.get("a").get("name")
             attr = AttrToProcess(
                 name=attr_name,
-                type=result.get("a").get("type"),
                 attr_labels=result.get("a").labels,
                 attr_id=result.get("a").element_id,
                 attr_uuid=result.get("a").get("uuid"),
