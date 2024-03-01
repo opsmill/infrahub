@@ -37,8 +37,12 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
 
         self.params["node_kind"] = self.node_schema.kind
         self.params["relationship_id"] = self.relationship_schema.identifier
-        self.params["min_count"] = self.min_count_override or self.relationship_schema.min_count
-        self.params["max_count"] = self.max_count_override or self.relationship_schema.max_count
+        self.params["min_count"] = (
+            self.min_count_override if self.min_count_override is not None else self.relationship_schema.min_count
+        )
+        self.params["max_count"] = (
+            self.max_count_override if self.max_count_override is not None else self.relationship_schema.max_count
+        )
 
         # ruff: noqa: E501
         query = """
@@ -161,7 +165,7 @@ class RelationshipCountChecker(ConstraintCheckerInterface):
     async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
         grouped_data_paths_list: List[GroupedDataPaths] = []
         relationship_schema = request.node_schema.get_relationship(name=request.schema_path.field_name)
-        min_count_override, max_count_override = 0, 0
+        min_count_override, max_count_override = None, None
         if request.constraint_name == "relationship.cardinality.update":
             if relationship_schema.cardinality == RelationshipCardinality.ONE:
                 max_count_override = 1
