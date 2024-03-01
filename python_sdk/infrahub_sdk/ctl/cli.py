@@ -10,14 +10,16 @@ from typing import Any, Callable, Dict, List, Optional
 
 import jinja2
 import typer
+from httpx import HTTPError
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.traceback import Traceback
 
+from infrahub_sdk import __version__ as sdk_version
 from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.branch import app as branch_app
 from infrahub_sdk.ctl.check import app as check_app
-from infrahub_sdk.ctl.client import initialize_client
+from infrahub_sdk.ctl.client import initialize_client, initialize_client_sync
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
 from infrahub_sdk.ctl.repository import get_repository_config
 from infrahub_sdk.ctl.schema import app as schema
@@ -27,8 +29,14 @@ from infrahub_sdk.ctl.utils import (
     parse_cli_vars,
 )
 from infrahub_sdk.ctl.validate import app as validate_app
-from infrahub_sdk.exceptions import GraphQLError, InfrahubTransformNotFoundError
+from infrahub_sdk.exceptions import (
+    GraphQLError,
+    InfrahubTransformNotFoundError,
+    ServerNotReacheableError,
+    ServerNotResponsiveError,
+)
 from infrahub_sdk.transforms import get_transform_class_instance
+from infrahub_sdk.types import HTTPMethod
 from infrahub_sdk.utils import get_branch, identify_faulty_jinja_code, write_to_file
 
 from .exporter import dump
@@ -262,3 +270,22 @@ def run(
             variables=variables_dict,
         )
     )
+
+
+@app.command(name="version")
+def version(config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE)):
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
+    client = initialize_client_sync()
+
+    try:
+        response = client._request(
+            url=f"{client.address}/api/info", method=HTTPMethod.GET, headers=client.headers, timeout=2
+        )
+        response.raise_for_status()
+    except (ServerNotReacheableError, ServerNotResponsiveError, HTTPError) as exc:
+        console.print("Unable to gather infrahub version")
+        raise typer.Exit(1) from exc
+
+    infrahub_version = response.json().get("version", "")
+    console.print(f"Infrahub: v{infrahub_version}\nSDK: v{sdk_version}")
