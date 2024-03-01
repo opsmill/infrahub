@@ -40,12 +40,11 @@ export const SearchNodes = ({ query }: SearchProps) => {
 
   if (!results || results?.count === 0) return null;
 
-  const firstFourMatches = results.edges.slice(0, 4);
   return (
     <SearchGroup>
       <SearchGroupTitle>Search results for &quot;{query}&quot;</SearchGroupTitle>
 
-      {firstFourMatches.map(({ node }: NodesOptionsProps) => (
+      {results.edges.map(({ node }: NodesOptionsProps) => (
         <NodesOptions key={node.id} node={node} />
       ))}
     </SearchGroup>
