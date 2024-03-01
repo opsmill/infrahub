@@ -7,6 +7,7 @@ from .attribute.optional import AttributeOptionalChecker
 from .attribute.regex import AttributeRegexChecker
 from .attribute.unique import AttributeUniquenessChecker
 from .interface import ConstraintCheckerInterface
+from .relationship.count import RelationshipCountChecker
 from .relationship.optional import RelationshipOptionalChecker
 from .relationship.peer import RelationshipPeerChecker
 from .uniqueness.checker import UniquenessChecker
@@ -20,10 +21,10 @@ CONSTRAINT_VALIDATOR_MAP: Dict[str, Optional[Type[ConstraintCheckerInterface]]] 
     "attribute.optional.update": AttributeOptionalChecker,
     "attribute.choices.update": AttributeChoicesChecker,
     "relationship.peer.update": RelationshipPeerChecker,
-    "relationship.cardinality.update": None,
+    "relationship.cardinality.update": RelationshipCountChecker,
     "relationship.optional.update": RelationshipOptionalChecker,
-    "relationship.min_count.update": None,
-    "relationship.max_count.update": None,
+    "relationship.min_count.update": RelationshipCountChecker,
+    "relationship.max_count.update": RelationshipCountChecker,
     "node.uniqueness_constraints.update": UniquenessChecker,
     "node.hierarchical.update": None,  # Generic
     "node.hierarchy.update": None,
