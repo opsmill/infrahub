@@ -54,6 +54,15 @@ async def create_checks(
                     "origin": RSF.get_one(),
                     "created_at": created_at,
                 }
+            elif check_kind == "CoreSchemaCheck":
+                check_data = {
+                    "name": f"{validator.display_label} - {RSF.get_one()}",
+                    "validator": validator,
+                    "kind": RSF.get_one(),
+                    "origin": RSF.get_one(),
+                    "created_at": created_at,
+                    "conflicts": [],
+                }
             if check_data:
                 check_data.update(
                     {
@@ -78,13 +87,13 @@ async def create_validators(
 ) -> None:
     started_at = Timestamp()
     validators: dict[str, dict[str, Any]] = {
-        # "CoreArtifactValidator": ["CoreArtifactCheck"],
+        # "CoreArtifactValidator": {"checks": ["CoreArtifactCheck"], "data": {}},
         "CoreDataValidator": {"checks": ["CoreDataCheck"], "data": {}},
         "CoreRepositoryValidator": {
             "checks": ["CoreFileCheck", "CoreStandardCheck"],
             "data": {"repository": repository},
         },
-        # "CoreSchemaValidator": ["CoreSchemaCheck"],
+        "CoreSchemaValidator": {"checks": ["CoreSchemaCheck"], "data": {}},
         # "CoreUserValidator": {"checks": [], "data": {"repository": repository}},
     }
 
