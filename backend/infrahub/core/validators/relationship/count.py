@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from infrahub.core.constants import PathType
+from infrahub.core.constants import PathType, RelationshipCardinality
 from infrahub.core.path import DataPath, GroupedDataPaths
 
 from ..interface import ConstraintCheckerInterface
@@ -20,14 +20,25 @@ if TYPE_CHECKING:
 class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
     name = "relationship_constraints_count_validator"
 
+    def __init__(
+        self,
+        *args: Any,
+        min_count_override: Optional[int] = None,
+        max_count_override: Optional[int] = None,
+        **kwargs: Any,
+    ):
+        self.min_count_override = min_count_override
+        self.max_count_override = max_count_override
+        super().__init__(*args, **kwargs)
+
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
         self.params["node_kind"] = self.node_schema.kind
         self.params["relationship_id"] = self.relationship_schema.identifier
-        self.params["min_count"] = self.relationship_schema.min_count
-        self.params["max_count"] = self.relationship_schema.max_count
+        self.params["min_count"] = self.min_count_override or self.relationship_schema.min_count
+        self.params["max_count"] = self.max_count_override or self.relationship_schema.max_count
 
         # ruff: noqa: E501
         query = """
@@ -141,18 +152,35 @@ class RelationshipCountChecker(ConstraintCheckerInterface):
         return "relationship.count.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name in ("relationship.min_count.update", "relationship.max_count.update")
+        return request.constraint_name in (
+            "relationship.min_count.update",
+            "relationship.max_count.update",
+            "relationship.cardinality.update",
+        )
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
         grouped_data_paths_list: List[GroupedDataPaths] = []
         relationship_schema = request.node_schema.get_relationship(name=request.schema_path.field_name)
-        if not (relationship_schema.min_count or relationship_schema.max_count):
+        min_count_override, max_count_override = 0, 0
+        if request.constraint_name == "relationship.cardinality.update":
+            if relationship_schema.cardinality == RelationshipCardinality.ONE:
+                max_count_override = 1
+                min_count_override = 0 if relationship_schema.optional else 1
+            else:
+                return grouped_data_paths_list
+
+        elif not (relationship_schema.min_count or relationship_schema.max_count):
             return grouped_data_paths_list
 
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
-                db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
+                db=self.db,
+                branch=self.branch,
+                node_schema=request.node_schema,
+                schema_path=request.schema_path,
+                min_count_override=min_count_override,
+                max_count_override=max_count_override,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())
