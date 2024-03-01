@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from enum import IntFlag
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 import pytest
 from pydantic import BaseModel
@@ -229,7 +229,7 @@ async def schema_integrity(
         validation_result = dest_schema.validate_update(other=candidate_schema)
 
         constraints_from_data_diff = await _get_proposed_change_schema_integrity_constraints(
-            message=message, schema=candidate_schema
+            message=message, dest_schema=candidate_schema
         )
         constraints_from_schema_diff = validation_result.constraints
         constraints = set(constraints_from_data_diff + constraints_from_schema_diff)
@@ -710,7 +710,9 @@ async def _populate_subscribers(branch_diff: ProposedChangeBranchDiff, service: 
 
 
 async def _get_proposed_change_schema_integrity_constraints(
-    message: messages.RequestProposedChangeSchemaIntegrity, schema: SchemaBranch
+    message: messages.RequestProposedChangeSchemaIntegrity,
+    dest_schema: SchemaBranch,
+    source_schema: Optional[SchemaBranch] = None,
 ) -> List[SchemaUpdateConstraintInfo]:
     # For now we run the constraints for all models that have changed in the source branch or the destination branch
     # We need to revisit that to properly calculate which constraints we should validate
@@ -718,6 +720,6 @@ async def _get_proposed_change_schema_integrity_constraints(
 
     constraints: List[SchemaUpdateConstraintInfo] = []
     for kind in modified_kinds:
-        constraints.extend(await schema.get_constraints_per_model(name=kind))
+        constraints.extend(await dest_schema.get_constraints_per_model(name=kind, source_schema_branch=source_schema))
 
     return constraints

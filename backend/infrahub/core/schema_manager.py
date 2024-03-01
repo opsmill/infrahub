@@ -978,11 +978,39 @@ class SchemaBranch:
         return filters
 
     async def get_constraints_per_model(  # pylint: disable=too-many-branches
-        self, name: str, filter_invalid: bool = True
+        self,
+        name: str,
+        source_schema_branch: Optional[SchemaBranch] = None,
+        filter_invalid: bool = True,
     ) -> List[SchemaUpdateConstraintInfo]:
         schema = self.get(name=name, duplicate=False)
-        constraints: List[SchemaUpdateConstraintInfo] = []
+        if source_schema_branch:
+            source_schema: Optional[SchemaBranch] = source_schema_branch.get(name=name, duplicate=False)
+        else:
+            source_schema = None
+        constraints = await self._get_schema_constraints_per_model(schema=schema, source_schema=source_schema)
+        constraints.extend(await self._get_attribute_constraints_per_model(schema=schema, source_schema=source_schema))
 
+        if not filter_invalid:
+            return constraints
+
+        validated_constraints: List[SchemaUpdateConstraintInfo] = []
+        for constraint in constraints:
+            if CONSTRAINT_VALIDATOR_MAP.get(constraint.constraint_name, None):
+                validated_constraints.append(constraint)
+            else:
+                log.warning(
+                    f"Unable to validate: {constraint.constraint_name!r} for {constraint.path.get_path()!r}, validator not available",
+                    constraint_name=constraint.constraint_name,
+                    path=constraint.path.get_path(),
+                )
+
+        return validated_constraints
+
+    async def _get_schema_constraints_per_model(
+        self, schema: Union[NodeSchema, GenericSchema], source_schema: Optional[Union[NodeSchema, GenericSchema]] = None
+    ) -> List[SchemaUpdateConstraintInfo]:
+        constraints: List[SchemaUpdateConstraintInfo] = []
         for prop_name, prop_field_info in schema.model_fields.items():
             if prop_name in ["attributes", "relationships"] or not prop_field_info.json_schema_extra:
                 continue
@@ -991,8 +1019,13 @@ class SchemaBranch:
             if prop_field_update != UpdateSupport.VALIDATE_CONSTRAINT.value:
                 continue
 
-            if getattr(schema, prop_name) is None:
+            dest_schema_prop = getattr(schema, prop_name)
+            if dest_schema_prop is None:
                 continue
+            if source_schema:
+                source_schema_prop = getattr(source_schema, prop_name, None)
+                if source_schema_prop is None or source_schema_prop == dest_schema_prop:
+                    continue
 
             schema_path = SchemaPath(
                 schema_kind=schema.kind,
@@ -1003,13 +1036,24 @@ class SchemaBranch:
             constraint_name = f"node.{prop_name}.update"
 
             constraints.append(SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path))
+        return constraints
 
+    async def _get_attribute_constraints_per_model(
+        self, schema: Union[NodeSchema, GenericSchema], source_schema: Optional[Union[NodeSchema, GenericSchema]] = None
+    ) -> List[SchemaUpdateConstraintInfo]:
+        constraints: List[SchemaUpdateConstraintInfo] = []
         for field_name in schema.attribute_names + schema.relationship_names:
             field: Union[AttributeSchema, RelationshipSchema]
             if field_name in schema.attribute_names:
                 field = schema.get_attribute(name=field_name)
+                source_field = (
+                    source_schema.get_attribute(name=field_name, raise_on_error=False) if source_schema else None
+                )
             else:
                 field = schema.get_relationship(name=field_name)
+                source_field = (
+                    source_schema.get_relationship(name=field_name, raise_on_error=False) if source_schema else None
+                )
 
             for prop_name, prop_field_info in field.model_fields.items():
                 if not prop_field_info.json_schema_extra:
@@ -1019,8 +1063,13 @@ class SchemaBranch:
                 if prop_field_update != UpdateSupport.VALIDATE_CONSTRAINT.value:
                     continue
 
-                if getattr(field, prop_name) is None:
+                dest_field_prop = getattr(field, prop_name)
+                if dest_field_prop is None:
                     continue
+                if source_schema:
+                    source_field_prop = getattr(source_field, prop_name, None)
+                    if source_field_prop is None or source_field_prop == dest_field_prop:
+                        continue
 
                 path_type = SchemaPathType.ATTRIBUTE
                 constraint_name = f"attribute.{prop_name}.update"
@@ -1038,22 +1087,7 @@ class SchemaBranch:
                 )
 
                 constraints.append(SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path))
-
-        if not filter_invalid:
-            return constraints
-
-        validated_constraints: List[SchemaUpdateConstraintInfo] = []
-        for constraint in constraints:
-            if CONSTRAINT_VALIDATOR_MAP.get(constraint.constraint_name, None):
-                validated_constraints.append(constraint)
-            else:
-                log.warning(
-                    f"Unable to validate: {constraint.constraint_name!r} for {constraint.path.get_path()!r}, validator not available",
-                    constraint_name=constraint.constraint_name,
-                    path=constraint.path.get_path(),
-                )
-
-        return validated_constraints
+        return constraints
 
 
 # pylint: disable=too-many-public-methods

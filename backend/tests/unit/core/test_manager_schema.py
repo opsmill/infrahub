@@ -1705,6 +1705,7 @@ async def test_get_constraints_per_model_all(schema_criticality_tag):
     schema_criticality_tag["nodes"][0]["uniqueness_constraints"] = [["name__value"]]
     schema_branch.load_schema(schema=SchemaRoot(**schema_criticality_tag))
     schema_branch.process()
+
     constraints = await schema_branch.get_constraints_per_model(name="BuiltinCriticality", filter_invalid=False)
 
     constraint_names = sorted([(constraint.path.get_path(), constraint.constraint_name) for constraint in constraints])
