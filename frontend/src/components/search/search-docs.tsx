@@ -42,12 +42,11 @@ export const SearchDocs = ({ query }: SearchProps) => {
       </SearchGroup>
     );
 
-  const firstThreeMatches = results.slice(0, 3);
   return (
     <SearchGroup>
       <SearchGroupTitle>Documentation</SearchGroupTitle>
 
-      {firstThreeMatches.map((doc: SearchDocsResultProps) => (
+      {results.map((doc: SearchDocsResultProps) => (
         <DocsResults key={doc.url} breadcrumb={doc.breadcrumb} title={doc.title} url={doc.url} />
       ))}
     </SearchGroup>

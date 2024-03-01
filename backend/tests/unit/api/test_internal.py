@@ -39,6 +39,16 @@ async def test_search_docs(client, override_search_index_path):
     assert response_json[0]["title"] == "Guides"
 
 
+async def test_search_docs_limit(client, override_search_index_path):
+    response = client.get("/api/search/docs?query=a&limit=1")
+
+    assert response.status_code == 200
+    assert response.json() is not None
+    response_json = response.json()
+    assert isinstance(response_json, list)
+    assert len(response_json) == 1
+
+
 async def test_no_search_docs(client, no_search_index_path):
     response = client.get("/api/search/docs?query=guid")
 

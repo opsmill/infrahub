@@ -140,13 +140,16 @@ class SearchResultAPI(BaseModel):
 
 
 @router.get("/search/docs", include_in_schema=False)
-async def search_docs(query: str) -> List[SearchResultAPI]:
+async def search_docs(query: str, limit: Optional[int] = None) -> List[SearchResultAPI]:
     smart_query = smart_queries(query)
     search_results = search_docs_loader.heading_index.search(smart_query)
     heading_results = [
         next(doc for doc in search_docs_loader.heading_documents if doc["i"] == int(result["ref"]))
         for result in search_results
     ]
+
+    if limit is not None:
+        heading_results = heading_results[:limit]
 
     response_list: List[SearchResultAPI] = [
         SearchResultAPI(
