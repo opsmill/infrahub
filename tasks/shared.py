@@ -3,9 +3,10 @@ import platform
 import re
 import sys
 from enum import Enum
-from typing import Any, Union
+from typing import Optional, Union
 
 from invoke import Context, UnexpectedExit
+from invoke.runners import Result
 
 from .utils import project_ver, str_to_bool
 
@@ -164,7 +165,7 @@ def check_environment(context: Context) -> dict:
     return params
 
 
-def execute_command(context: Context, command: str, print_cmd: bool = False) -> Any:
+def execute_command(context: Context, command: str, print_cmd: bool = False) -> Optional[Result]:
     params = check_environment(context=context)
 
     if params["sudo"]:
