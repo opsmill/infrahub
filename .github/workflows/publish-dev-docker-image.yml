@@ -15,6 +15,10 @@ on:
         description: commit sha or branch name
         default: ''
         required: false
+      platforms:
+        type: string
+        description: Comma separated platform list to build the image for
+        default: "linux/amd64,linux/arm64"
       tag:
         type: string
         description: additional image tag
@@ -63,3 +67,4 @@ jobs:
       ref: ${{ needs.meta_data.outputs.ref }}
       tags: ${{needs.meta_data.outputs.tags}}
       labels: ${{needs.meta_data.outputs.labels}}
+      platforms: ${{ inputs.platforms }}
