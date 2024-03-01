@@ -8,11 +8,12 @@ import "prismjs/themes/prism.css"; //Example style, you can use another
 import { useState } from "react";
 import Editor from "react-simple-code-editor";
 import { toast } from "react-toastify";
+import { classNames } from "../../utils/common";
 import { BUTTON_TYPES, Button } from "../buttons/button";
 import { ALERT_TYPES, Alert } from "../utils/alert";
 
 export const CodeEditor = (props: any) => {
-  const { value, onChange, enableCopy, ...propsToPass } = props;
+  const { value, onChange, enableCopy, dark, ...propsToPass } = props;
 
   const [isCopied, setIsCopied] = useState(false);
 
@@ -54,7 +55,10 @@ export const CodeEditor = (props: any) => {
         }}
         preClassName="!break-all"
         textareaClassName="!break-all"
-        className="rounded-md shadow-sm ring-1 ring-inset ring-gray-300 text-gray-300 placeholder:text-gray-400 border-gray-300 bg-gray-800 text-sm disabled:cursor-not-allowed disabled:bg-gray-300 focus:ring-2 focus:ring-inset focus:ring-custom-blue-600 focus:border-custom-blue-600 focus:outline-none"
+        className={classNames(
+          "rounded-md shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 border-gray-300 text-sm disabled:cursor-not-allowed disabled:bg-gray-300 focus:ring-2 focus:ring-inset focus:ring-custom-blue-600 focus:border-custom-blue-600 focus:outline-none",
+          dark ? "text-gray-300 bg-gray-800" : "bg-custom-white"
+        )}
       />
     </div>
   );
