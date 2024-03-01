@@ -30,13 +30,13 @@ from infrahub_sdk.ctl.utils import (
 )
 from infrahub_sdk.ctl.validate import app as validate_app
 from infrahub_sdk.exceptions import (
+    AuthenticationError,
     GraphQLError,
     InfrahubTransformNotFoundError,
     ServerNotReacheableError,
     ServerNotResponsiveError,
 )
 from infrahub_sdk.transforms import get_transform_class_instance
-from infrahub_sdk.types import HTTPMethod
 from infrahub_sdk.utils import get_branch, identify_faulty_jinja_code, write_to_file
 
 from .exporter import dump
@@ -278,14 +278,12 @@ def version(config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=c
         config.load_and_exit(config_file=config_file)
     client = initialize_client_sync()
 
+    query = "query { InfrahubInfo { version }}"
     try:
-        response = client._request(
-            url=f"{client.address}/api/info", method=HTTPMethod.GET, headers=client.headers, timeout=2
-        )
-        response.raise_for_status()
-    except (ServerNotReacheableError, ServerNotResponsiveError, HTTPError) as exc:
+        response = client.execute_graphql(query=query, raise_for_error=True)
+    except (AuthenticationError, GraphQLError, HTTPError, ServerNotReacheableError, ServerNotResponsiveError) as exc:
         console.print("Unable to gather infrahub version")
         raise typer.Exit(1) from exc
 
-    infrahub_version = response.json().get("version", "")
+    infrahub_version = response["InfrahubInfo"]["version"]
     console.print(f"Infrahub: v{infrahub_version}\nSDK: v{sdk_version}")
