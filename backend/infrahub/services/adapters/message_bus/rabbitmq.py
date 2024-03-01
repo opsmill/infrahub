@@ -186,27 +186,18 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         data = json.loads(response.body)
         return response_class(**data)
 
-    async def subscribe(self) -> None:
-        queue = await self.channel.get_queue(f"{self.settings.namespace}.rpcs")
-        self.service.log.info("Waiting for RPC instructions to execute .. ")
-        async with queue.iterator() as qiterator:
-            async for message in qiterator:
-                try:
-                    async with message.process(requeue=False):
-                        clear_log_context()
-                        if message.routing_key in messages.MESSAGE_MAP:
-                            await execute_message(
-                                routing_key=message.routing_key, message_body=message.body, service=self.service
-                            )
-                        else:
-                            self.service.log.error(
-                                "Unhandled routing key for message",
-                                routing_key=message.routing_key,
-                                message=message.body,
-                            )
+    async def on_message(self, message: AbstractIncomingMessage) -> None:
+        clear_log_context()
+        if message.routing_key in messages.MESSAGE_MAP:
+            await execute_message(routing_key=message.routing_key, message_body=message.body, service=self.service)
+        else:
+            self.service.log.error("Invalid message received", message=f"{message!r}")
 
-                except Exception:  # pylint: disable=broad-except
-                    self.service.log.exception("Processing error for message %r" % message)
+    async def subscribe(self) -> None:
+        self.service.log.info("Waiting for RPC instructions to execute .. ")
+        queue = await self.channel.get_queue(f"{self.settings.namespace}.rpcs")
+        await queue.consume(callback=self.on_message, no_ack=True)
+        await asyncio.Future()
 
     @staticmethod
     def format_message(message: InfrahubMessage) -> aio_pika.Message:
