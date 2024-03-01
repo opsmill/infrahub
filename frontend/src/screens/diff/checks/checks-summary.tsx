@@ -87,21 +87,21 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
   };
 
   return (
-    <div className="flex p-4 pb-0 gap-2">
-      <div className="flex items-center justify-between p-2 rounded-md ">
-        <span className="mr-1">Retry all:</span>
+    <div className="flex justify-center  p-4 pb-0">
+      <div className="flex relative">
+        <div className="absolute top-1/2 -left-28 transform -translate-y-1/2 flex items-center justify-between p-2">
+          <span className="mr-1">Retry all:</span>
 
-        <Retry
-          onClick={() => handleRetry("all")}
-          isLoading={isLoading || !!validatorsInProgress.length}
-          isDisabled={!auth?.permissions?.write}
-        />
-      </div>
+          <Retry
+            onClick={() => handleRetry("all")}
+            isLoading={isLoading || !!validatorsInProgress.length}
+            isDisabled={!auth?.permissions?.write}
+          />
+        </div>
 
-      <div className="flex-1 flex flex-wrap gap-2">
         {Object.entries(validatorsCount).map(([kind, stats]: [string, any]) => (
-          <div key={kind} className="flex-1 flex items-center justify-center gap-2 p-2">
-            <div className="flex items-center gap-2">
+          <div key={kind} className="flex items-center justify-center gap-2 p-2">
+            <div className="flex items-center">
               <div
                 className={classNames(
                   "flex flex-col items-center group relative",
