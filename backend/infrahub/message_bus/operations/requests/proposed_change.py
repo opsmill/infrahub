@@ -278,11 +278,12 @@ async def schema_integrity(
 async def repository_checks(message: messages.RequestProposedChangeRepositoryChecks, service: InfrahubServices) -> None:
     async with service.task_report(
         related_node=message.proposed_change,
-        title="Evaluating Repository Checks",
-    ):
+        title=f"Evaluating Repository Checks {len(message.branch_diff.repositories)} repositories",
+    ) as task_report:
         log.info(f"Got a request to process checks defined in proposed_change: {message.proposed_change}")
         events: List[InfrahubMessage] = []
         for repository in message.branch_diff.repositories:
+            log_line = "Skipping merge conflict checks for data only branch"
             if not message.source_branch_data_only and not repository.read_only:
                 events.append(
                     messages.RequestRepositoryChecks(
@@ -292,6 +293,8 @@ async def repository_checks(message: messages.RequestProposedChangeRepositoryChe
                         target_branch=message.destination_branch,
                     )
                 )
+                log_line = "Requesting merge conflict checks"
+            await task_report.info(f"{repository.repository_name}: {log_line}")
             events.append(
                 messages.RequestRepositoryUserChecks(
                     proposed_change=message.proposed_change,
@@ -300,6 +303,7 @@ async def repository_checks(message: messages.RequestProposedChangeRepositoryChe
                     target_branch=message.destination_branch,
                 )
             )
+            await task_report.info(f"{repository.repository_name}: Requesting user checks")
         for event in events:
             event.assign_meta(parent=message)
             await service.send(message=event)
@@ -441,8 +445,8 @@ query GatherGraphQLQuerySubscribers($members: [ID!]) {
 async def run_tests(message: messages.RequestProposedChangeRunTests, service: InfrahubServices) -> None:
     async with service.task_report(
         related_node=message.proposed_change,
-        title="Running repository tests",
-    ):
+        title=f"Running repository tests ({len(message.branch_diff.repositories)} repositories)",
+    ) as task_report:
         log.info("running_repository_tests", proposed_change=message.proposed_change)
         proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
 
@@ -463,7 +467,9 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
             )
 
         for repository in message.branch_diff.repositories:
+            log_line = "Skipping tests for data only branch"
             if not message.source_branch_data_only:
+                log_line = "Running tests"
                 repo = await get_initialized_repo(
                     repository_id=repository.repository_id,
                     name=repository.repository_name,
@@ -480,6 +486,7 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
                     repository=repository.repository_name,
                     return_code=return_code,
                 )
+            await task_report.info(f"{repository.repository_name}: {log_line}")
 
 
 DESTINATION_ALLREPOSITORIES = """
