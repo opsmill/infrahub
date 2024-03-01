@@ -19,6 +19,7 @@ pydantic = "^2.5"
 pydantic-settings = "^2.1"
 fastapi-storages = "~0.2"
 pytest = "*"
+lunr = "^0.7.0.post1"
 
 [tool.poetry.group.server.dependencies]
 fastapi = "~0.108"

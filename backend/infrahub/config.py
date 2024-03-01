@@ -48,7 +48,10 @@ class MainSettings(BaseSettings):
     default_branch: str = "main"
     # default_account: str = "default"
     # default_account_perm: str = "CAN_READ"
-
+    docs_index_path: str = Field(
+        default="/opt/infrahub/docs/build/search-index.json",
+        description="Full path of saved json containing pre-indexed documentation",
+    )
     internal_address: str = "http://localhost:8000"
     allow_anonymous_access: bool = Field(
         default=True, description="Indicates if the system allows anonymous read access"
