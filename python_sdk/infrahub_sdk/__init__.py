@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import importlib.metadata
+
 from infrahub_sdk.analyzer import GraphQLOperation, GraphQLQueryAnalyzer, GraphQLQueryVariable
 from infrahub_sdk.batch import InfrahubBatch
 from infrahub_sdk.branch import InfrahubBranchManager, InfrahubBranchManagerSync
@@ -67,3 +69,5 @@ __all__ = [
     "UUIDT",
     "ValidationError",
 ]
+
+__version__ = importlib.metadata.version("infrahub-sdk")
