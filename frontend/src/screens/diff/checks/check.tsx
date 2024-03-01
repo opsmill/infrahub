@@ -178,7 +178,7 @@ export const Check = (props: tCheckProps) => {
           {message?.value && (
             <div className="mt-2">
               <Accordion title={"Message"}>
-                <CodeEditor value={message?.value} disabled />
+                <CodeEditor value={message?.value} disabled dark />
               </Accordion>
             </div>
           )}
