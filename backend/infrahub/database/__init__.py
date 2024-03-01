@@ -31,55 +31,6 @@ validated_database = {}
 log = get_logger()
 
 
-class InfrahubDriver:
-    def __init__(self, driver):
-        self.driver = driver
-
-    async def __aenter__(self):
-        raise NotImplementedError
-
-    async def __aexit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ):
-        raise NotImplementedError
-
-
-class InfrahubSession:
-    def __init__(self, driver: InfrahubDriver):
-        self.driver = driver
-
-    async def __aenter__(self):
-        raise NotImplementedError
-
-    async def __aexit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ):
-        raise NotImplementedError
-
-
-class InfrahubTransaction:
-    def __init__(self, driver: InfrahubDriver, session: InfrahubSession):
-        self.driver = driver
-        self.session = session
-
-    async def __aenter__(self):
-        raise NotImplementedError
-
-    async def __aexit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ):
-        raise NotImplementedError
-
-
 class InfrahubDatabaseMode(InfrahubStringEnum):
     DRIVER = "driver"
     SESSION = "session"
@@ -290,34 +241,3 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         )
 
     return driver
-
-
-async def execute_read_query_async(
-    db: InfrahubDatabase,
-    query: str,
-    params: Optional[Dict[str, Any]] = None,
-    name: Optional[str] = "undefined",
-) -> List[Record]:
-    with QUERY_EXECUTION_METRICS.labels("read", name).time():
-        if db.is_transaction:
-            tx = await db.transaction()
-            response = await tx.run(query=query, parameters=params or {})
-            return [item async for item in response]
-
-        session = await db.session()
-        response = await session.run(query=query, parameters=params or {})
-        return [item async for item in response]
-
-
-async def execute_write_query_async(
-    query: str, db: InfrahubDatabase, params: Optional[Dict[str, Any]] = None, name: Optional[str] = "undefined"
-) -> List[Record]:
-    with QUERY_EXECUTION_METRICS.labels("write", name).time():
-        if db.is_transaction:
-            tx = await db.transaction()
-            response = await tx.run(query=query, parameters=params or {})
-            return [item async for item in response]
-
-        session = await db.session()
-        response = await session.run(query=query, parameters=params or {})
-        return [item async for item in response]
