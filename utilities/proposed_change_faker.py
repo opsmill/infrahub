@@ -17,6 +17,7 @@ from infrahub_sdk.timestamp import Timestamp
 
 VALIDATOR_STATES = ["queued", "in_progress", "completed"]
 CONCLUSIONS = ["unknown", "failure", "success"]
+CONCLUSION_TO_SEVERITY = {"unknown": "warning", "failure": "error", "success": "success"}
 
 
 def is_final_state(state: str) -> bool:
@@ -53,8 +54,14 @@ async def create_checks(
                     "origin": RSF.get_one(),
                     "created_at": created_at,
                 }
-            if check_data and conclusion:
-                check_data.update({"conclusion": conclusion, "message": RSF.get_one(length=2500)})
+            if check_data:
+                check_data.update(
+                    {
+                        "conclusion": conclusion,
+                        "severity": CONCLUSION_TO_SEVERITY[conclusion],
+                        "message": RSF.get_one(length=2500),
+                    }
+                )
 
             if check_data:
                 try:
