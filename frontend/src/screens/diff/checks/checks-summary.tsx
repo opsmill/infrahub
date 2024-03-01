@@ -3,6 +3,7 @@ import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Retry } from "../../../components/buttons/retry";
+import { RadialProgress } from "../../../components/display/radial-progress";
 import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
 import {
   PROPOSED_CHANGES_VALIDATOR_OBJECT,
@@ -76,14 +77,43 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
     return false;
   };
 
-  const getBgColor = (stats: any) => {
-    if (!stats.total) return "bg-gray-200";
+  const getProgressColor = (stats: any) => {
+    if (!stats.total)
+      return {
+        bg: "text-gray-200",
+        fg: "text-gray-200",
+      };
 
-    if (stats.failure) return "bg-red-400";
+    if (stats.failure)
+      return {
+        bg: "text-red-100",
+        fg: "text-red-400",
+      };
 
-    if (stats.inProgress) return "bg-orange-400";
+    if (stats.inProgress)
+      return {
+        bg: "text-orange-100",
+        fg: "text-orange-400",
+      };
 
-    return "bg-green-400";
+    return {
+      bg: "text-green-400",
+      fg: "text-green-400",
+    };
+  };
+
+  const getProgressStat = (stats: any) => {
+    if (!stats.total) return 0;
+
+    if (stats.inProgress) {
+      return (stats.inProgress ?? 0) / stats.total;
+    }
+
+    return stats.success / stats.total;
+  };
+
+  const getProgressText = (stats: any) => {
+    return `${stats.success ?? stats.inProgress ?? 0} / ${stats.total ?? 0}`;
   };
 
   return (
@@ -107,17 +137,16 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
                 canRetry(stats) ? "cursor-pointer" : ""
               )}
               onClick={() => handleRetry(kind)}>
-              <div
-                className={classNames(
-                  "flex items-center justify-center w-16 h-16  rounded-full",
-                  getBgColor(stats)
-                )}>
+              <RadialProgress
+                percent={getProgressStat(stats)}
+                bgColor={getProgressColor(stats).bg}
+                color={getProgressColor(stats).fg}>
                 <span
                   className={classNames(
                     "absolute",
                     canRetry(stats) ? "group-hover:invisible" : ""
                   )}>
-                  {JSON.stringify(stats.success)}/{JSON.stringify(stats.total)}
+                  {getProgressText(stats)}
                 </span>
 
                 {canRetry(stats) && (
@@ -129,7 +158,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
                     />
                   </div>
                 )}
-              </div>
+              </RadialProgress>
 
               <span className="text-xs">
                 {schemaKindLabel[kind].replace("Validator", "").trim()}
