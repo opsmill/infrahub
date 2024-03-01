@@ -30,14 +30,18 @@ on:
         type: string
         required: true
         description: The labels for the docker image
+      platforms:
+        type: string
+        required: false
+        description: Comma separated platform list to build the image for
+        default: "linux/amd64,linux/arm64"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ inputs.ref }}
   cancel-in-progress: true
 
 env:
   DOCKERFILE: "development/Dockerfile"
-  PLATFORMS: "linux/amd64,linux/arm64"
 
 jobs:
   build:
@@ -72,7 +76,7 @@ jobs:
           provenance: false   # To avoid cross platform "unknown"
           push: ${{ inputs.publish }}
           target: "backend"
-          platforms: ${{ env.PLATFORMS }}
+          platforms: ${{ inputs.platforms }}
           tags: ${{ inputs.tags }}
           labels: ${{ inputs.labels }}
           cache-from: type=gha
