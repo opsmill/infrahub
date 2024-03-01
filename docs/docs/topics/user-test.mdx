@@ -33,6 +33,64 @@ The `version: "1.0"` line defines the version of the test declaration file. The 
 
 All Jinja2 transforms, Python transforms, checks and GraphQL queries declared in a repository [configuration file](/reference/dotinfrahub) can be tested.
 
+Tests are declared using a two level hierarchy, they are grouped by resources like:
+
+```yaml
+infrahub_tests:
+  - resource: TypeOfResource
+    resource_name: NameOfTheResourceToTest
+    tests:
+      - name: NameOfTheTest
+        spec:
+          kind: TypeOfTest
+```
+
+Values for the `resource` key can be one of `Check`, `GraphQLQuery`, `Jinja2Transform` or `PythonTransform` and are case sensitive. They define the type of the resource to test.
+
+Values for the `kind` key must be one of the following:
+
+* `check-smoke`
+* `check-unit-process`
+* `check-integration`
+* `graphql-query-smoke`
+* `graphql-query-integration`
+* `jinja2-transform-smoke`
+* `jinja2-transform-unit-render`
+* `jinja2-transform-integration`
+* `python-transform-smoke`
+* `python-transform-unit-process`
+* `python-transform-integration`
+
+They define the type of test to apply to a given resource. While smoke tests do not take any other parameters, unit tests and integration tests do. Parameters must be set within the value of the `spec` key for each tests.
+
+The unit tests behaviour can be changed by defining the following keys:
+
+* `directory` which corresponds to the path to the directory where the input and expected output files are located, it can be a relative or absolite path and defaults to the current directory
+* `input` which corresponds to the path to the file with the input data for the test, it defaults to `input.json` and is looked up from the value of `directory`
+* `output` which corresponds to the path to the file with the expected output for the test, if omitted the output of the test won't be compared to an expected one
+
+Both input and output files can be JSON (with the `.json` suffix), YAML (with the `.yaml` or `.yml` suffixes) or plain text.
+
+Here is what a test can look like with all the keys set:
+
+```yaml
+infrahub_tests:
+  - resource: TypeOfResource
+    resource_name: NameOfTheResourceToTest
+    tests:
+      - name: NameOfTheTest
+        spec:
+          kind: TypeOfTest
+          directory: /path/to/directory
+          input: input.yml
+          output: output.yml
+```
+
+Integration tests can be configured with the same properties as the unit tests. They have two more keys:
+
+* `variables` which corresponds to the path to a JSON or YAML file defining the variables to use while running queries, Python transforms or while rendering Jinja2 transforms
+* `rebase` which tells if the branch must be rebased before running a GraphQL query
+
 ## Real life example
 
 In this section, we will take a look at what test definitions look like for a given Infrahub repository configuration. In the following configuration, we declare a schema, a Jinja2 transform to render the base configuration of devices, a check to verify that a MPLS RSVP configuration is complete and a Python transform giving details about layer 2 circuit services.
@@ -97,7 +155,7 @@ pytest tests # tests is the directory containing the files
 
 If all the resources are properly defined and are syntax error free, the output of the command should look like:
 
-```
+```text
 =============================================================================== test session starts ===============================================================================
 platform linux -- Python 3.11.8, pytest-7.4.4, pluggy-1.4.0 -- /path/to/python
 codspeed: 2.2.0 (callgraph: not supported)
