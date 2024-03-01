@@ -177,9 +177,6 @@ def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE):
         command = f"{base_cmd} run infrahub-git infrahubctl schema load models/infrastructure_base.yml"
         execute_command(context=context, command=command)
 
-        command = f"{base_cmd} restart infrahub-server"
-        execute_command(context=context, command=command)
-
 
 @task(optional=["database"])
 def load_infra_data(context: Context, database: str = INFRAHUB_DATABASE):
