@@ -19,13 +19,17 @@ VALIDATOR_STATES = ["queued", "in_progress", "completed"]
 CONCLUSIONS = ["unknown", "failure", "success"]
 
 
+def is_final_state(state: str) -> bool:
+    return state in ("completed",)
+
+
 class RandomStringFactory:
     def __init__(self, seed: Any = None) -> None:
         self.random = random.SystemRandom(x=seed)
 
     def get_one(self, length: int = 10) -> str:
         """Return a random string of length always starting with an upper case letter."""
-        f = "".join(self.random.choices(string.ascii_uppercase))
+        f = "".join(self.random.choices(string.ascii_uppercase))  # Some nodes needs an uppercased first letter
         r = "".join(self.random.choice(string.ascii_letters + string.digits) for _ in range(length - 1))
         return f + r
 
@@ -33,18 +37,10 @@ class RandomStringFactory:
 RSF = RandomStringFactory()
 
 
-def is_final_state(state: str) -> bool:
-    return state in ("completed",)
-
-
 async def create_checks(
-    client: InfrahubClient,
-    log: logging.Logger,
-    validator: InfrahubNode,
-    repository: InfrahubNode,
-    check_kinds: list[str],
+    client: InfrahubClient, log: logging.Logger, validator: InfrahubNode, check_kinds: list[str]
 ) -> None:
-    started_at = Timestamp()
+    created_at = Timestamp().to_string()
 
     for check_kind in check_kinds:
         for conclusion in CONCLUSIONS:
@@ -55,7 +51,7 @@ async def create_checks(
                     "validator": validator,
                     "kind": RSF.get_one(),
                     "origin": RSF.get_one(),
-                    "created_at": started_at.to_string(),
+                    "created_at": created_at,
                 }
             if check_data and conclusion:
                 check_data.update({"conclusion": conclusion, "message": RSF.get_one(length=2500)})
@@ -67,7 +63,7 @@ async def create_checks(
                 except NodeNotFound:
                     c = await client.create(check_kind, data=check_data)
                     await c.save()
-                    log.info(f"- Created check: {c!r}")
+                    log.info(f"- Created check: {c!r} with conclusion {conclusion}")
 
 
 async def create_validators(
@@ -110,7 +106,7 @@ async def create_validators(
                 await v.save()
                 log.info(f"- Created validator: {v!r} with state {state}")
 
-        await create_checks(client, log, v, repository, details["checks"])
+            await create_checks(client, log, v, details["checks"])
 
 
 async def create_repository(client: InfrahubClient, log: logging.Logger) -> InfrahubNode:
