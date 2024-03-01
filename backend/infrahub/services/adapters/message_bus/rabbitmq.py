@@ -152,6 +152,10 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.delayed_exchange = await self.channel.get_exchange(name=f"{self.settings.namespace}.delayed")
 
         await events_queue.consume(callback=self.on_callback, no_ack=True)
+        self.callback_queue = await self.channel.declare_queue(
+            name=f"worker-callback-{WORKER_IDENTITY}", exclusive=True
+        )
+        await self.callback_queue.consume(self.on_callback, no_ack=True)
 
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
         for enricher in self.message_enrichers:
