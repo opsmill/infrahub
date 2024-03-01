@@ -1,7 +1,7 @@
 """
 This script creates all required objects to fake a proposed change with all kind of validators, checks in all possible states.
 
-It tries to be as indempotent as possible to avoid re-creating objects on re-run.
+It tries to be as idempotent as possible to avoid re-creating objects on re-run.
 """
 
 import logging
@@ -64,9 +64,6 @@ async def create_checks(
                 try:
                     c = await client.get(check_kind, validator__ids=validator.id, conclusion__value=conclusion)
                     log.info(f"- Found check: {c!r} with conclusion {conclusion}")
-                except IndexError:
-                    c = await client.filters(check_kind, validator__ids=validator.id, conclusion__value=conclusion)
-                    print(c)
                 except NodeNotFound:
                     c = await client.create(check_kind, data=check_data)
                     await c.save()
