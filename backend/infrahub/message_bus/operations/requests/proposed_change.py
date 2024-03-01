@@ -60,9 +60,9 @@ class ArtifactSelect(IntFlag):
             change_types.append("file modifications in Git repositories")
 
         if self:
-            return f"Requesting Artifact Definition generation due to {' and '.join(change_types)}"
+            return f"Requesting generation due to {' and '.join(change_types)}"
 
-        return "Artifact Definition doesn't require changes due to no relevant modified kinds or file changes in Git"
+        return "Doesn't require changes due to no relevant modified kinds or file changes in Git"
 
 
 async def cancel(message: messages.RequestProposedChangeCancel, service: InfrahubServices) -> None:
@@ -345,7 +345,7 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
                     condition=changed_model in artifact_definition.query_models,
                 )
 
-            await task_report.info(f"{select.log_line}: {artifact_definition.definition_name}")
+            await task_report.info(f"{artifact_definition.definition_name}: {select.log_line}")
 
             if select:
                 msg = messages.RequestArtifactDefinitionCheck(
