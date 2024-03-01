@@ -1739,7 +1739,7 @@ async def test_get_constraints_per_model_valid(schema_criticality_tag):
     constraints = await schema_branch.get_constraints_per_model(name="BuiltinCriticality")
 
     dumped_constraints = [constraint.model_dump() for constraint in constraints]
-    assert len(dumped_constraints) == 12
+    assert len(dumped_constraints) == 18
     assert {
         "constraint_name": "attribute.unique.update",
         "path": {
@@ -1831,16 +1831,6 @@ async def test_get_constraints_per_model_valid(schema_criticality_tag):
         },
     } in dumped_constraints
     assert {
-        "constraint_name": "relationship.optional.update",
-        "path": {
-            "field_name": "primary_tag",
-            "path_type": SchemaPathType.RELATIONSHIP,
-            "property_name": "optional",
-            "schema_id": None,
-            "schema_kind": "BuiltinCriticality",
-        },
-    } in dumped_constraints
-    assert {
         "constraint_name": "relationship.peer.update",
         "path": {
             "field_name": "tags",
@@ -1851,11 +1841,81 @@ async def test_get_constraints_per_model_valid(schema_criticality_tag):
         },
     } in dumped_constraints
     assert {
+        "constraint_name": "relationship.cardinality.update",
+        "path": {
+            "field_name": "tags",
+            "path_type": SchemaPathType.RELATIONSHIP,
+            "property_name": "cardinality",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "relationship.min_count.update",
+        "path": {
+            "field_name": "tags",
+            "path_type": SchemaPathType.RELATIONSHIP,
+            "property_name": "min_count",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "relationship.max_count.update",
+        "path": {
+            "field_name": "tags",
+            "path_type": SchemaPathType.RELATIONSHIP,
+            "property_name": "max_count",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "relationship.optional.update",
+        "path": {
+            "field_name": "primary_tag",
+            "path_type": SchemaPathType.RELATIONSHIP,
+            "property_name": "optional",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "relationship.cardinality.update",
+        "path": {
+            "field_name": "primary_tag",
+            "path_type": SchemaPathType.RELATIONSHIP,
+            "property_name": "cardinality",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
+        },
+    } in dumped_constraints
+    assert {
         "constraint_name": "relationship.peer.update",
         "path": {
             "field_name": "primary_tag",
             "path_type": SchemaPathType.RELATIONSHIP,
             "property_name": "peer",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "relationship.min_count.update",
+        "path": {
+            "field_name": "primary_tag",
+            "path_type": SchemaPathType.RELATIONSHIP,
+            "property_name": "min_count",
+            "schema_id": None,
+            "schema_kind": "BuiltinCriticality",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "relationship.max_count.update",
+        "path": {
+            "field_name": "primary_tag",
+            "path_type": SchemaPathType.RELATIONSHIP,
+            "property_name": "max_count",
             "schema_id": None,
             "schema_kind": "BuiltinCriticality",
         },
