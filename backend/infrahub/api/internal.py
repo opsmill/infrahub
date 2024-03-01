@@ -87,12 +87,12 @@ class SearchDocs:
                 heading_json = search_index[1]
                 self._heading_documents = heading_json["documents"]
                 self._heading_index = Index.load(heading_json["index"])
-        except FileNotFoundError as e:
+        except FileNotFoundError as exc:
             raise NodeNotFound(
                 identifier=config.SETTINGS.main.docs_index_path,
                 message="documentation index not found",
                 node_type="file",
-            ) from e
+            ) from exc
 
     @property
     def heading_index(self) -> Index:
