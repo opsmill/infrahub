@@ -71,9 +71,7 @@ async def cancel(message: messages.RequestProposedChangeCancel, service: Infrahu
         related_node=message.proposed_change,
         title="Canceling proposed change",
     ) as task_report:
-        await task_report.log.info(
-            "Canceling proposed change as the source branch was deleted", id=message.proposed_change
-        )
+        await task_report.info("Canceling proposed change as the source branch was deleted", id=message.proposed_change)
         proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
         proposed_change.state.value = ProposedChangeState.CANCELED.value
         await proposed_change.save()
