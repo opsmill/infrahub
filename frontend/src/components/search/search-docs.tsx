@@ -32,7 +32,7 @@ export const SearchDocs = ({ query }: SearchProps) => {
     };
   }, [queryDebounced]);
 
-  if (error || results.length === 0)
+  if (error || !results.length || results.length === 0)
     return (
       <SearchGroup>
         <SearchResultItem to={`${INFRAHUB_API_SERVER_URL}/docs/search?q=${query}`} target="_blank">
@@ -47,7 +47,12 @@ export const SearchDocs = ({ query }: SearchProps) => {
       <SearchGroupTitle>Documentation</SearchGroupTitle>
 
       {results.map((doc: SearchDocsResultProps) => (
-        <DocsResults key={doc.url} breadcrumb={doc.breadcrumb} title={doc.title} url={doc.url} />
+        <DocsResults
+          key={doc.title + doc.url}
+          breadcrumb={doc.breadcrumb}
+          title={doc.title}
+          url={doc.url}
+        />
       ))}
     </SearchGroup>
   );
