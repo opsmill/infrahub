@@ -551,6 +551,7 @@ core_models: dict[str, Any] = {
             "inherit_from": [InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "name", "kind": "Text", "optional": False},
+                {"name": "description", "kind": "TextArea", "optional": True},
                 {"name": "source_branch", "kind": "Text", "optional": False},
                 {"name": "destination_branch", "kind": "Text", "optional": False},
                 {
