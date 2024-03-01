@@ -29,8 +29,8 @@ class RandomStringFactory:
 
     def get_one(self, length: int = 10) -> str:
         """Return a random string of length always starting with an upper case letter."""
-        f = "".join(self.random.choices(string.ascii_uppercase))  # Some nodes needs an uppercased first letter
-        r = "".join(self.random.choice(string.ascii_letters + string.digits) for _ in range(length - 1))
+        f = self.random.choice(string.ascii_uppercase)  # Some nodes needs an uppercased first letter
+        r = "".join(self.random.choices(string.ascii_letters + string.digits, k=length - 1))
         return f + r
 
 
