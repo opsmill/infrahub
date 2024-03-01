@@ -1,5 +1,6 @@
 @import "./Alert.css";
 @import "./DiffView.css";
+@import "./RadialProgress.css";
 
 @tailwind base;
 @tailwind components;

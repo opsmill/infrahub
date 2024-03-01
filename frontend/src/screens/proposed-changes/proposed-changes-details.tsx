@@ -24,7 +24,6 @@ import { DIFF_TABS } from "../diff/diff";
 import { FilesDiff } from "../diff/file-diff/files-diff";
 import { SchemaDiff } from "../diff/schema-diff";
 import ErrorScreen from "../error-screen/error-screen";
-import LoadingScreen from "../loading-screen/loading-screen";
 import { TaskItemDetails } from "../tasks/task-item-details";
 import { TaskItems } from "../tasks/task-items";
 import { Conversations } from "./conversations";
@@ -70,7 +69,10 @@ export const ProposedChangesDetails = () => {
     ${queryString}
   `;
 
-  const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
+  const { loading, error, data, refetch } = useQuery(query, {
+    skip: !schemaData,
+    notifyOnNetworkStatusChange: true,
+  });
 
   // TODO: refactor to not need the ref to refetch child query
   const handleRefetch = () => {
@@ -80,23 +82,15 @@ export const ProposedChangesDetails = () => {
     }
   };
 
-  if (!schemaData || loading) {
-    return <LoadingScreen />;
-  }
-
   if (error) {
     return (
       <ErrorScreen message="Something went wrong when fetching the proposed changes details." />
     );
   }
 
-  const result = data ? data[schemaData?.kind]?.edges[0]?.node : {};
+  const result = data && data[schemaData?.kind]?.edges[0]?.node;
 
-  if (!result) {
-    navigate(constructPath("/proposed-changes"));
-  }
-
-  setProposedChange(result);
+  if (result) setProposedChange(result);
 
   const tabs = [
     {
@@ -129,7 +123,7 @@ export const ProposedChangesDetails = () => {
     {
       label: "Tasks",
       name: TASK_TAB,
-      count: data[TASK_OBJECT]?.count ?? 0,
+      count: (data && data[TASK_OBJECT]?.count) ?? 0,
       onClick: () => {
         setQspTab(TASK_TAB);
         setQspTaskId(undefined);

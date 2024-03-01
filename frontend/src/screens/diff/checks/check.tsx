@@ -4,16 +4,16 @@ import {
   ExclamationCircleIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
-import { useAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { MoreButton } from "../../../components/buttons/more-button";
 import Accordion from "../../../components/display/accordion";
-import { Badge } from "../../../components/display/badge";
 import { DateDisplay } from "../../../components/display/date-display";
 import { PopOver } from "../../../components/display/popover";
 import { CodeEditor } from "../../../components/editor/code-editor";
+import { List } from "../../../components/table/list";
 import { getCheckDetails } from "../../../graphql/queries/diff/getCheckDetails";
 import useQuery from "../../../hooks/useQuery";
-import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
+import { schemaKindLabelState } from "../../../state/atoms/schemaKindLabel.atom";
 import { classNames } from "../../../utils/common";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
@@ -86,7 +86,7 @@ const getCheckData = (check: any, refetch: Function) => {
 export const Check = (props: tCheckProps) => {
   const { id } = props;
 
-  const [schemaKindName] = useAtom(schemaKindNameState);
+  const schemaKindLabel = useAtomValue(schemaKindLabelState);
 
   const queryString = getCheckDetails({
     id,
@@ -112,30 +112,6 @@ export const Check = (props: tCheckProps) => {
     conclusion,
   } = check;
 
-  const renderContent = () => {
-    return (
-      <div>
-        <div className="flex mb-1">
-          <span className="flex-1">Type:</span>
-
-          <Badge className="flex-1">{schemaKindName[__typename]}</Badge>
-        </div>
-
-        <div className="flex mb-1">
-          <span className="flex-1">Kind:</span>
-
-          <Badge className="flex-1">{kind?.value}</Badge>
-        </div>
-
-        <div className="flex">
-          <span className="flex-1">Origin:</span>
-
-          <Badge className="flex-1">{origin?.value}</Badge>
-        </div>
-      </div>
-    );
-  };
-
   if (loading) {
     return (
       <div className={"flex flex-col rounded-md p-2 bg-custom-white border-l-4"}>
@@ -154,6 +130,29 @@ export const Check = (props: tCheckProps) => {
 
   const content = getCheckData(check, refetch);
 
+  const columns = [
+    {
+      name: "type",
+      label: "Type",
+    },
+    {
+      name: "kind",
+      label: "Kind",
+    },
+    {
+      name: "origin",
+      label: "Origin",
+    },
+  ];
+
+  const row = {
+    values: {
+      type: schemaKindLabel[__typename],
+      kind: kind?.value,
+      origin: origin?.value,
+    },
+  };
+
   return (
     <div
       className={classNames(
@@ -170,7 +169,9 @@ export const Check = (props: tCheckProps) => {
             <div className="flex-1 flex justify-end">
               <DateDisplay date={created_at?.value} />
 
-              <PopOver buttonComponent={MoreButton}>{renderContent}</PopOver>
+              <PopOver buttonComponent={MoreButton}>
+                <List columns={columns} row={row} />
+              </PopOver>
             </div>
           </div>
 
