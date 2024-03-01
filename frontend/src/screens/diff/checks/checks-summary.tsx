@@ -117,7 +117,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
   };
 
   return (
-    <div className="flex justify-center  p-4 pb-0">
+    <div className="flex justify-center">
       <div className="flex relative">
         <div className="absolute top-1/2 -left-28 transform -translate-y-1/2 flex items-center justify-between p-2">
           <span className="mr-1">Retry all:</span>
