@@ -59,7 +59,7 @@ const sidebars: SidebarsConfig = {
 
         'topics/artifact',
         'topics/check',
-	'topics/hardware-requirements',
+	      'topics/hardware-requirements',
         'topics/local-demo-environment',
         'topics/graphql',
         'topics/object-storage',
@@ -70,6 +70,7 @@ const sidebars: SidebarsConfig = {
         'topics/transformation',
         'topics/auth',
         'topics/database-backup',
+        'topics/user-test',
       ],
     },
     {
