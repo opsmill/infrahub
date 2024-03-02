@@ -24,10 +24,16 @@ on:
         description: additional image tag
         default: ''
         required: false
+  pull_request:
+    types:
+      - labeled
+      - synchronize
 
 jobs:
   meta_data:
-    runs-on: ubuntu-22.04
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'cd/preview')
+    runs-on:
+      group: huge-runners
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
       labels: ${{ steps.meta.outputs.labels }}
@@ -58,11 +64,12 @@ jobs:
 
 
   publish-docker-image:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'cd/preview')
     uses: ./.github/workflows/ci-docker-image.yml
     needs: meta_data
     secrets: inherit
     with:
-      publish: ${{ inputs.publish }}
+      publish: ${{ inputs.publish == '' && true }}
       version: dev-${{ needs.meta_data.outputs.short_ref }}
       ref: ${{ needs.meta_data.outputs.ref }}
       tags: ${{needs.meta_data.outputs.tags}}
