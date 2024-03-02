@@ -177,22 +177,28 @@ task-tags = [
 preview = true
 
 select = [
-    "C90",  # mccabe complexity
-    "DJ",   # flake8-django
-    "DTZ",  # flake8-datetimez
-    "E",    # pycodestyle errors
-    "EXE",  # flake8-executable
-    "F",    # pyflakes
-    "I",    # isort-like checks
-    "ICN",  # flake8-import-conventions
-    "PL",   # pylint
-    "PYI",  # flake8-pyi
-    "Q",    # flake8-quotes
-    "TCH",  # flake8-type-checking
-    "TRIO", # flake8-trio
-    "T10",  # flake8-debugger
-    "W",    # pycodestyle warnings
-    "YTT",  # flake8-2020
+    "ASYNC", # flake8-async
+    "B",     # flake8-bugbear
+    "C4",    # flake8-comprehensions
+    "C90",   # mccabe complexity
+    "DJ",    # flake8-django
+    "DTZ",   # flake8-datetimez
+    "E",     # pycodestyle errors
+    "EXE",   # flake8-executable
+    "F",     # pyflakes
+    "I",     # isort-like checks
+    "ICN",   # flake8-import-conventions
+    "INP",   # flake8-no-pep420
+    "PIE",   # flake8-pie
+    "PL",    # pylint
+    "PYI",   # flake8-pyi
+    "Q",     # flake8-quotes
+    "RET",   # flake8-return
+    "TCH",   # flake8-type-checking
+    "TRIO",  # flake8-trio
+    "T10",   # flake8-debugger
+    "W",     # pycodestyle warnings
+    "YTT",   # flake8-2020
 ]
 
 ignore = [
@@ -202,6 +208,14 @@ ignore = [
 # like this so that we can reactivate them one by one. Alternatively ignored after further       #
 # investigation if they are deemed to not make sense.                                            #
 ##################################################################################################
+    "B007",    # Loop control variable `result` not used within loop body
+    "B008",    #  Do not perform function call `typer.Option` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+    "B904",    # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    "B018",    # Found useless attribute access. Either assign it to a variable or remove it.
+    "C408",    # Unnecessary `dict` call (rewrite as a literal)
+    "C414",    # Unnecessary `list` call within `sorted()`
+    "INP001",  # File is part of an implicit namespace package. Add an `__init__.py`.
+    "PIE808",  # [*] Unnecessary `start` argument in `range`
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments in function definition
     "PLR0917", # Too many positional arguments
@@ -209,6 +223,7 @@ ignore = [
     "PLR6301", # Method could be a function, class method, or static method
     "PLW0603", # Using the global statement to update `SETTINGS` is discouraged
     "PLW1641", # Object does not implement `__hash__` method
+    "RET504",  # Unnecessary assignment to `data` before `return` statement
 ]
 
 
