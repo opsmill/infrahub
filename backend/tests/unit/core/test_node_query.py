@@ -349,6 +349,8 @@ async def test_query_NodeGetHierarchyQuery_ancestors(
     paris = hierarchical_location_data["paris"]
     paris_r1 = hierarchical_location_data["paris-r1"]
 
+    breakpoint()
+
     query = await NodeGetHierarchyQuery.init(
         db=db,
         direction=RelationshipHierarchyDirection.ANCESTORS,

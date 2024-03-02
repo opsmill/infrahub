@@ -1905,8 +1905,8 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
 
 
 @pytest.fixture
-async def hierarchical_location_schema(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+async def hierarchical_location_schema_simple(
+    db: InfrahubDatabase, default_branch: Branch
 ) -> None:
     SCHEMA: dict[str, Any] = {
         "generics": [
@@ -1939,7 +1939,7 @@ async def hierarchical_location_schema(
                 "default_filter": "name__value",
                 "inherit_from": ["LocationGeneric"],
                 "parent": "LocationRegion",
-                "children": "LocationSite",
+                "children": "LocationRack",
             },
             {
                 "name": "Rack",
@@ -1966,10 +1966,29 @@ async def hierarchical_location_schema(
     schema = SchemaRoot(**SCHEMA)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
+@pytest.fixture
+async def hierarchical_location_schema(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple, register_core_models_schema
+) -> None:
+    ...
+
+
+@pytest.fixture
+async def hierarchical_location_data_simple(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple
+) -> Dict[str, Node]:
+    return await _build_hierarchical_location_data(db=db)
+
 
 @pytest.fixture
 async def hierarchical_location_data(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema
+) -> Dict[str, Node]:
+    return await _build_hierarchical_location_data(db=db)
+
+
+async def _build_hierarchical_location_data(
+    db: InfrahubDatabase
 ) -> Dict[str, Node]:
     REGIONS = (
         ("north-america",),
