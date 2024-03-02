@@ -1,11 +1,12 @@
 import json
 import sys
-from asyncio import run as aiorun
 from pathlib import Path
 from typing import List, Optional
 
 import typer
 import yaml
+
+from infrahub_sdk.async_typer import AsyncTyper
 
 try:
     from pydantic import v1 as pydantic  # type: ignore[attr-defined]
@@ -22,7 +23,7 @@ from infrahub_sdk.ctl.utils import find_graphql_query, parse_cli_vars
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.utils import get_branch, write_to_file
 
-app = typer.Typer()
+app = AsyncTyper()
 
 
 @app.callback()
@@ -32,7 +33,16 @@ def callback() -> None:
     """
 
 
-async def _schema(schema: Path) -> None:
+@app.command(name="schema")
+async def validate_schema(
+    schema: Path,
+    config_file: Path = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
+) -> None:
+    """Validate the format of a schema file either in JSON or YAML"""
+
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
+
     console = Console()
 
     try:
@@ -53,19 +63,6 @@ async def _schema(schema: Path) -> None:
         raise typer.Exit(2)
 
     console.print("[green]Schema is valid !!")
-
-
-@app.command(name="schema")
-def validate_schema(
-    schema: Path,
-    config_file: Path = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
-) -> None:
-    """Validate the format of a schema file either in JSON or YAML"""
-
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
-
-    aiorun(_schema(schema=schema))
 
 
 @app.command(name="graphql-query")
