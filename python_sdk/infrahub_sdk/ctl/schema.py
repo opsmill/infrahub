@@ -6,8 +6,6 @@ from typing import List, Optional
 import typer
 import yaml
 
-from infrahub_sdk.async_typer import AsyncTyper
-
 try:
     from pydantic import v1 as pydantic  # type: ignore[attr-defined]
 except ImportError:
@@ -16,6 +14,7 @@ except ImportError:
 from rich.console import Console
 from rich.logging import RichHandler
 
+from infrahub_sdk.async_typer import AsyncTyper
 from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.utils import find_files
