@@ -4,15 +4,14 @@ import { useState } from "react";
 type AccordionProps = {
   title?: any;
   children?: any;
+  className?: string;
 };
 
-export default function Accordion(props: AccordionProps) {
-  const { title, children } = props;
-
+export default function Accordion({ title, children, className }: AccordionProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div>
+    <div className={className}>
       <div className="flex">
         <div
           className="flex flex-1 w-full items-center cursor-pointer"
