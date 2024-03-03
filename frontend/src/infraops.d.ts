@@ -60,8 +60,10 @@ export interface paths {
     get: operations["get_menu_api_menu_get"];
   };
   "/api/query/{query_id}": {
-    /** Graphql Query */
-    get: operations["graphql_query_api_query__query_id__get"];
+    /** Graphql Query Get */
+    get: operations["graphql_query_get_api_query__query_id__get"];
+    /** Graphql Query Post */
+    post: operations["graphql_query_post_api_query__query_id__post"];
   };
   "/api/schema/": {
     /** Get Schema */
@@ -95,13 +97,13 @@ export interface paths {
     /** Upload File */
     post: operations["upload_file_api_storage_upload_file_post"];
   };
-  "/api/transform/{transform_url}": {
+  "/api/transform/python/{transform_id}": {
     /** Transform Python */
-    get: operations["transform_python_api_transform__transform_url__get"];
+    get: operations["transform_python_api_transform_python__transform_id__get"];
   };
-  "/api/rfile/{rfile_id}": {
-    /** Generate Rfile */
-    get: operations["generate_rfile_api_rfile__rfile_id__get"];
+  "/api/transform/jinja2/{transform_id}": {
+    /** Transform Jinja2 */
+    get: operations["transform_jinja2_api_transform_jinja2__transform_id__get"];
   };
 }
 
@@ -109,86 +111,96 @@ export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
-    /**
-     * APIGenericSchema
-     * @description A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined.
-     */
+    /** APIGenericSchema */
     APIGenericSchema: {
       /** Id */
-      id?: string;
+      id?: string | null;
       /** Name */
       name: string;
       /** Namespace */
       namespace: string;
       /** Description */
-      description?: string;
+      description?: string | null;
       /** Default Filter */
-      default_filter?: string;
+      default_filter?: string | null;
       /** @default aware */
       branch?: components["schemas"]["BranchSupportType"];
       /** Order By */
-      order_by?: string[];
+      order_by?: string[] | null;
       /** Display Labels */
-      display_labels?: string[];
+      display_labels?: string[] | null;
       /** Attributes */
       attributes?: components["schemas"]["AttributeSchema"][];
       /** Relationships */
-      relationships?: components["schemas"]["RelationshipSchema"][];
+      relationships?: components["schemas"]["RelationshipSchema-Output"][];
       /** Filters */
       filters?: components["schemas"]["FilterSchema"][];
       /** Include In Menu */
-      include_in_menu?: boolean;
+      include_in_menu?: boolean | null;
       /** Menu Placement */
-      menu_placement?: string;
+      menu_placement?: string | null;
       /** Icon */
-      icon?: string;
+      icon?: string | null;
       /** Label */
-      label?: string;
+      label?: string | null;
+      /** Uniqueness Constraints */
+      uniqueness_constraints?: string[][] | null;
+      /**
+       * Hierarchical
+       * @default false
+       */
+      hierarchical?: boolean;
       /** Used By */
       used_by?: string[];
       /** Kind */
-      kind?: string;
+      kind?: string | null;
       /** Hash */
       hash: string;
     };
     /** APINodeSchema */
     APINodeSchema: {
       /** Id */
-      id?: string;
+      id?: string | null;
       /** Name */
       name: string;
       /** Namespace */
       namespace: string;
       /** Description */
-      description?: string;
+      description?: string | null;
       /** Default Filter */
-      default_filter?: string;
+      default_filter?: string | null;
       /** @default aware */
       branch?: components["schemas"]["BranchSupportType"];
       /** Order By */
-      order_by?: string[];
+      order_by?: string[] | null;
       /** Display Labels */
-      display_labels?: string[];
+      display_labels?: string[] | null;
       /** Attributes */
       attributes?: components["schemas"]["AttributeSchema"][];
       /** Relationships */
-      relationships?: components["schemas"]["RelationshipSchema"][];
+      relationships?: components["schemas"]["RelationshipSchema-Output"][];
       /** Filters */
       filters?: components["schemas"]["FilterSchema"][];
       /** Include In Menu */
-      include_in_menu?: boolean;
+      include_in_menu?: boolean | null;
       /** Menu Placement */
-      menu_placement?: string;
+      menu_placement?: string | null;
       /** Icon */
-      icon?: string;
+      icon?: string | null;
       /** Label */
-      label?: string;
+      label?: string | null;
+      /** Uniqueness Constraints */
+      uniqueness_constraints?: string[][] | null;
       /** Inherit From */
       inherit_from?: string[];
-      /** Groups */
-      groups?: string[];
+      /** Hierarchy */
+      hierarchy?: string | null;
+      /** Parent */
+      parent?: string | null;
+      /** Children */
+      children?: string | null;
       /** Kind */
-      kind?: string;
+      kind?: string | null;
       /** Hash */
       hash: string;
     };
@@ -200,13 +212,7 @@ export interface components {
        */
       access_token: string;
     };
-    /**
-     * AnalyticsSettings
-     * @description Base class for settings, allowing values to be overridden by environment variables.
-     *
-     * This is useful in production for secrets you do not wish to save in code, it plays nicely with docker(-compose),
-     * Heroku and any 12 factor app design.
-     */
+    /** AnalyticsSettings */
     AnalyticsSettings: {
       /**
        * Enable
@@ -214,9 +220,9 @@ export interface components {
        */
       enable?: boolean;
       /** Address */
-      address?: string;
+      address?: string | null;
       /** Api Key */
-      api_key?: string;
+      api_key?: string | null;
     };
     /** ArtifactGeneratePayload */
     ArtifactGeneratePayload: {
@@ -230,30 +236,30 @@ export interface components {
       /** Kind */
       kind: string;
       /** Display Label */
-      display_label?: string;
+      display_label?: string | null;
     };
     /** AttributeSchema */
     AttributeSchema: {
       /** Id */
-      id?: string;
+      id?: string | null;
       /** Name */
       name: string;
       /** Kind */
       kind: string;
       /** Label */
-      label?: string;
+      label?: string | null;
       /** Description */
-      description?: string;
+      description?: string | null;
       /** Default Value */
       default_value?: unknown;
       /** Enum */
-      enum?: unknown[];
+      enum?: unknown[] | null;
       /** Regex */
-      regex?: string;
+      regex?: string | null;
       /** Max Length */
-      max_length?: number;
+      max_length?: number | null;
       /** Min Length */
-      min_length?: number;
+      min_length?: number | null;
       /**
        * Read Only
        * @default false
@@ -269,19 +275,19 @@ export interface components {
        * @default false
        */
       unique?: boolean;
-      branch?: components["schemas"]["BranchSupportType"];
+      branch?: components["schemas"]["BranchSupportType"] | null;
       /**
        * Optional
        * @default false
        */
       optional?: boolean;
       /** Order Weight */
-      order_weight?: number;
+      order_weight?: number | null;
       /**
        * Choices
        * @description The available choices if the kind is Dropdown.
        */
-      choices?: components["schemas"]["DropdownChoice"][];
+      choices?: components["schemas"]["DropdownChoice"][] | null;
     };
     /** Body_upload_file_api_storage_upload_file_post */
     Body_upload_file_api_storage_upload_file_post: {
@@ -303,11 +309,11 @@ export interface components {
       /** Id */
       id: string;
       /** Display Label */
-      display_label?: string;
+      display_label?: string | null;
       action: components["schemas"]["DiffAction"];
-      target?: components["schemas"]["ArtifactTarget"];
-      item_new?: components["schemas"]["BranchDiffArtifactStorage"];
-      item_previous?: components["schemas"]["BranchDiffArtifactStorage"];
+      target?: components["schemas"]["ArtifactTarget"] | null;
+      item_new?: components["schemas"]["BranchDiffArtifactStorage"] | null;
+      item_previous?: components["schemas"]["BranchDiffArtifactStorage"] | null;
     };
     /** BranchDiffArtifactStorage */
     BranchDiffArtifactStorage: {
@@ -341,7 +347,6 @@ export interface components {
        */
       id?: string;
       /**
-       * Summary
        * @default {
        *   "added": 0,
        *   "removed": 0,
@@ -351,7 +356,7 @@ export interface components {
       summary?: components["schemas"]["DiffSummary"];
       /** @default unchanged */
       action?: components["schemas"]["DiffAction"];
-      value?: components["schemas"]["BranchDiffPropertyCollection"];
+      value?: components["schemas"]["BranchDiffPropertyCollection"] | null;
       /** Properties */
       properties?: {
         [key: string]: components["schemas"]["BranchDiffPropertyCollection"];
@@ -369,7 +374,6 @@ export interface components {
       /** Branches */
       branches?: string[];
       /**
-       * Summary
        * @default {
        *   "added": 0,
        *   "removed": 0,
@@ -394,7 +398,8 @@ export interface components {
         [key: string]: components["schemas"]["BranchDiffPropertyCollection"];
       };
       /** Changed At */
-      changed_at?: string;
+      changed_at?: string | null;
+      /** Action */
       action?: {
         [key: string]: components["schemas"]["DiffAction"];
       };
@@ -416,7 +421,6 @@ export interface components {
       /** Branches */
       branches?: string[];
       /**
-       * Summary
        * @default {
        *   "added": 0,
        *   "removed": 0,
@@ -424,13 +428,14 @@ export interface components {
        * }
        */
       summary?: components["schemas"]["DiffSummary"];
-      peer?: components["schemas"]["BranchDiffRelationshipOnePeerCollection"];
+      peer?: components["schemas"]["BranchDiffRelationshipOnePeerCollection"] | null;
       /** Properties */
       properties?: {
         [key: string]: components["schemas"]["BranchDiffPropertyCollection"];
       };
       /** Changed At */
-      changed_at?: string;
+      changed_at?: string | null;
+      /** Action */
       action?: {
         [key: string]: components["schemas"]["DiffAction"];
       };
@@ -448,7 +453,6 @@ export interface components {
         [key: string]: components["schemas"]["BranchDiffElement"];
       };
       /**
-       * Summary
        * @default {
        *   "added": 0,
        *   "removed": 0,
@@ -456,6 +460,7 @@ export interface components {
        * }
        */
       summary?: components["schemas"]["DiffSummary"];
+      /** Action */
       action?: {
         [key: string]: components["schemas"]["DiffAction"];
       };
@@ -479,7 +484,7 @@ export interface components {
       /** Type */
       type: string;
       /** Changed At */
-      changed_at?: string;
+      changed_at?: string | null;
       action: components["schemas"]["DiffAction"];
       value: components["schemas"]["BranchDiffPropertyValue"];
     };
@@ -501,8 +506,8 @@ export interface components {
     BranchDiffRelationshipOnePeer: {
       /** Branch */
       branch: string;
-      new?: components["schemas"]["BranchDiffRelationshipPeerNode"];
-      previous?: components["schemas"]["BranchDiffRelationshipPeerNode"];
+      new?: components["schemas"]["BranchDiffRelationshipPeerNode"] | null;
+      previous?: components["schemas"]["BranchDiffRelationshipPeerNode"] | null;
     };
     /** BranchDiffRelationshipOnePeerCollection */
     BranchDiffRelationshipOnePeerCollection: {
@@ -518,7 +523,7 @@ export interface components {
       /** Kind */
       kind: string;
       /** Display Label */
-      display_label?: string;
+      display_label?: string | null;
     };
     /** BranchDiffRepository */
     BranchDiffRepository: {
@@ -527,7 +532,7 @@ export interface components {
       /** Id */
       id: string;
       /** Display Name */
-      display_name?: string;
+      display_name?: string | null;
       /** Commit From */
       commit_from: string;
       /** Commit To */
@@ -537,7 +542,6 @@ export interface components {
     };
     /**
      * BranchSupportType
-     * @description An enumeration.
      * @enum {string}
      */
     BranchSupportType: "aware" | "agnostic" | "local";
@@ -550,13 +554,11 @@ export interface components {
     };
     /**
      * DiffAction
-     * @description An enumeration.
      * @enum {string}
      */
     DiffAction: "added" | "removed" | "updated" | "unchanged";
     /**
      * DiffElementType
-     * @description An enumeration.
      * @enum {string}
      */
     DiffElementType: "Attribute" | "RelationshipOne" | "RelationshipMany";
@@ -582,35 +584,25 @@ export interface components {
     DropdownChoice: {
       /** Name */
       name: string;
-      /**
-       * Description
-       * @default
-       */
-      description?: string;
-      /**
-       * Color
-       * @default
-       */
-      color?: string;
-      /**
-       * Label
-       * @default
-       */
-      label?: string;
+      /** Description */
+      description?: string | null;
+      /** Color */
+      color?: string | null;
+      /** Label */
+      label?: string | null;
     };
-    /**
-     * ExperimentalFeaturesSettings
-     * @description Base class for settings, allowing values to be overridden by environment variables.
-     *
-     * This is useful in production for secrets you do not wish to save in code, it plays nicely with docker(-compose),
-     * Heroku and any 12 factor app design.
-     */
+    /** ExperimentalFeaturesSettings */
     ExperimentalFeaturesSettings: {
       /**
        * Pull Request
        * @default false
        */
       pull_request?: boolean;
+      /**
+       * Graphql Enums
+       * @default false
+       */
+      graphql_enums?: boolean;
     };
     /** FilterSchema */
     FilterSchema: {
@@ -618,15 +610,14 @@ export interface components {
       name: string;
       kind: components["schemas"]["FilterSchemaKind"];
       /** Enum */
-      enum?: unknown[];
+      enum?: unknown[] | null;
       /** Object Kind */
-      object_kind?: string;
+      object_kind?: string | null;
       /** Description */
-      description?: string;
+      description?: string | null;
     };
     /**
      * FilterSchemaKind
-     * @description An enumeration.
      * @enum {string}
      */
     FilterSchemaKind: "Text" | "Number" | "Boolean" | "Object" | "MultiObject" | "Enum";
@@ -636,48 +627,44 @@ export interface components {
      */
     GenericSchema: {
       /** Id */
-      id?: string;
+      id?: string | null;
       /** Name */
       name: string;
       /** Namespace */
       namespace: string;
       /** Description */
-      description?: string;
+      description?: string | null;
       /** Default Filter */
-      default_filter?: string;
+      default_filter?: string | null;
       /** @default aware */
       branch?: components["schemas"]["BranchSupportType"];
       /** Order By */
-      order_by?: string[];
+      order_by?: string[] | null;
       /** Display Labels */
-      display_labels?: string[];
+      display_labels?: string[] | null;
       /** Attributes */
       attributes?: components["schemas"]["AttributeSchema"][];
       /** Relationships */
-      relationships?: components["schemas"]["RelationshipSchema"][];
+      relationships?: components["schemas"]["RelationshipSchema-Input"][];
       /** Filters */
       filters?: components["schemas"]["FilterSchema"][];
       /** Include In Menu */
-      include_in_menu?: boolean;
+      include_in_menu?: boolean | null;
       /** Menu Placement */
-      menu_placement?: string;
+      menu_placement?: string | null;
       /** Icon */
-      icon?: string;
+      icon?: string | null;
       /** Label */
-      label?: string;
+      label?: string | null;
+      /** Uniqueness Constraints */
+      uniqueness_constraints?: string[][] | null;
+      /**
+       * Hierarchical
+       * @default false
+       */
+      hierarchical?: boolean;
       /** Used By */
       used_by?: string[];
-    };
-    /** GroupSchema */
-    GroupSchema: {
-      /** Id */
-      id?: string;
-      /** Name */
-      name: string;
-      /** Kind */
-      kind: string;
-      /** Description */
-      description?: string;
     };
     /** HTTPValidationError */
     HTTPValidationError: {
@@ -721,35 +708,28 @@ export interface components {
        */
       kind?: string;
     };
-    /**
-     * LoggingSettings
-     * @description Base class for settings, allowing values to be overridden by environment variables.
-     *
-     * This is useful in production for secrets you do not wish to save in code, it plays nicely with docker(-compose),
-     * Heroku and any 12 factor app design.
-     */
+    /** LoggingSettings */
     LoggingSettings: {
       /**
-       * Remote
        * @default {
        *   "enable": false
        * }
        */
       remote?: components["schemas"]["RemoteLoggingSettings"];
     };
-    /**
-     * MainSettings
-     * @description Base class for settings, allowing values to be overridden by environment variables.
-     *
-     * This is useful in production for secrets you do not wish to save in code, it plays nicely with docker(-compose),
-     * Heroku and any 12 factor app design.
-     */
+    /** MainSettings */
     MainSettings: {
       /**
        * Default Branch
        * @default main
        */
       default_branch?: string;
+      /**
+       * Docs Index Path
+       * @description Full path of saved json containing pre-indexed documentation
+       * @default /opt/infrahub/docs/build/search-index.json
+       */
+      docs_index_path?: string;
       /**
        * Internal Address
        * @default http://localhost:8000
@@ -769,44 +749,50 @@ export interface components {
       /** Attributes */
       attributes?: components["schemas"]["AttributeSchema"][];
       /** Relationships */
-      relationships?: components["schemas"]["RelationshipSchema"][];
+      relationships?: components["schemas"]["RelationshipSchema-Input"][];
     };
     /** NodeSchema */
     NodeSchema: {
       /** Id */
-      id?: string;
+      id?: string | null;
       /** Name */
       name: string;
       /** Namespace */
       namespace: string;
       /** Description */
-      description?: string;
+      description?: string | null;
       /** Default Filter */
-      default_filter?: string;
+      default_filter?: string | null;
       /** @default aware */
       branch?: components["schemas"]["BranchSupportType"];
       /** Order By */
-      order_by?: string[];
+      order_by?: string[] | null;
       /** Display Labels */
-      display_labels?: string[];
+      display_labels?: string[] | null;
       /** Attributes */
       attributes?: components["schemas"]["AttributeSchema"][];
       /** Relationships */
-      relationships?: components["schemas"]["RelationshipSchema"][];
+      relationships?: components["schemas"]["RelationshipSchema-Input"][];
       /** Filters */
       filters?: components["schemas"]["FilterSchema"][];
       /** Include In Menu */
-      include_in_menu?: boolean;
+      include_in_menu?: boolean | null;
       /** Menu Placement */
-      menu_placement?: string;
+      menu_placement?: string | null;
       /** Icon */
-      icon?: string;
+      icon?: string | null;
       /** Label */
-      label?: string;
+      label?: string | null;
+      /** Uniqueness Constraints */
+      uniqueness_constraints?: string[][] | null;
       /** Inherit From */
       inherit_from?: string[];
-      /** Groups */
-      groups?: string[];
+      /** Hierarchy */
+      hierarchy?: string | null;
+      /** Parent */
+      parent?: string | null;
+      /** Children */
+      children?: string | null;
     };
     /** PasswordCredential */
     PasswordCredential: {
@@ -821,28 +807,32 @@ export interface components {
        */
       password: string;
     };
+    /** QueryPayload */
+    QueryPayload: {
+      /** Variables */
+      variables?: {
+        [key: string]: string;
+      };
+    };
     /**
      * RelationshipCardinality
-     * @description An enumeration.
      * @enum {string}
      */
     RelationshipCardinality: "one" | "many";
     /**
      * RelationshipDirection
-     * @description An enumeration.
      * @enum {string}
      */
     RelationshipDirection: "bidirectional" | "outbound" | "inbound";
     /**
      * RelationshipKind
-     * @description An enumeration.
      * @enum {string}
      */
-    RelationshipKind: "Generic" | "Attribute" | "Component" | "Parent" | "Group";
+    RelationshipKind: "Generic" | "Attribute" | "Component" | "Parent" | "Group" | "Hierarchy";
     /** RelationshipSchema */
-    RelationshipSchema: {
+    "RelationshipSchema-Input": {
       /** Id */
-      id?: string;
+      id?: string | null;
       /** Name */
       name: string;
       /** Peer */
@@ -852,11 +842,11 @@ export interface components {
       /** @default bidirectional */
       direction?: components["schemas"]["RelationshipDirection"];
       /** Label */
-      label?: string;
+      label?: string | null;
       /** Description */
-      description?: string;
+      description?: string | null;
       /** Identifier */
-      identifier?: string;
+      identifier?: string | null;
       /**
        * Inherited
        * @default false
@@ -864,24 +854,78 @@ export interface components {
       inherited?: boolean;
       /** @default many */
       cardinality?: components["schemas"]["RelationshipCardinality"];
-      branch?: components["schemas"]["BranchSupportType"];
+      branch?: components["schemas"]["BranchSupportType"] | null;
       /**
        * Optional
        * @default true
        */
       optional?: boolean;
+      /** Hierarchical */
+      hierarchical?: string | null;
       /** Filters */
       filters?: components["schemas"]["FilterSchema"][];
       /** Order Weight */
-      order_weight?: number;
+      order_weight?: number | null;
+      /**
+       * Min Count
+       * @default 0
+       */
+      min_count?: number;
+      /**
+       * Max Count
+       * @default 0
+       */
+      max_count?: number;
     };
-    /**
-     * RemoteLoggingSettings
-     * @description Base class for settings, allowing values to be overridden by environment variables.
-     *
-     * This is useful in production for secrets you do not wish to save in code, it plays nicely with docker(-compose),
-     * Heroku and any 12 factor app design.
-     */
+    /** RelationshipSchema */
+    "RelationshipSchema-Output": {
+      /** Id */
+      id?: string | null;
+      /** Name */
+      name: string;
+      /** Peer */
+      peer: string;
+      /** @default Generic */
+      kind?: components["schemas"]["RelationshipKind"];
+      /** @default bidirectional */
+      direction?: components["schemas"]["RelationshipDirection"];
+      /** Label */
+      label?: string | null;
+      /** Description */
+      description?: string | null;
+      /** Identifier */
+      identifier?: string | null;
+      /**
+       * Inherited
+       * @default false
+       */
+      inherited?: boolean;
+      /** @default many */
+      cardinality?: components["schemas"]["RelationshipCardinality"];
+      branch?: components["schemas"]["BranchSupportType"] | null;
+      /**
+       * Optional
+       * @default true
+       */
+      optional?: boolean;
+      /** Hierarchical */
+      hierarchical?: string | null;
+      /** Filters */
+      filters?: components["schemas"]["FilterSchema"][];
+      /** Order Weight */
+      order_weight?: number | null;
+      /**
+       * Min Count
+       * @default 0
+       */
+      min_count?: number;
+      /**
+       * Max Count
+       * @default 0
+       */
+      max_count?: number;
+    };
+    /** RemoteLoggingSettings */
     RemoteLoggingSettings: {
       /**
        * Enable
@@ -889,11 +933,11 @@ export interface components {
        */
       enable?: boolean;
       /** Frontend Dsn */
-      frontend_dsn?: string;
+      frontend_dsn?: string | null;
       /** Api Server Dsn */
-      api_server_dsn?: string;
+      api_server_dsn?: string | null;
       /** Git Agent Dsn */
-      git_agent_dsn?: string;
+      git_agent_dsn?: string | null;
     };
     /** SchemaBranchHash */
     SchemaBranchHash: {
@@ -905,10 +949,6 @@ export interface components {
       };
       /** Generics */
       generics?: {
-        [key: string]: string;
-      };
-      /** Groups */
-      groups?: {
         [key: string]: string;
       };
     };
@@ -925,10 +965,7 @@ export interface components {
       generics?: components["schemas"]["GenericSchema"][];
       /** Nodes */
       nodes?: components["schemas"]["NodeSchema"][];
-      /** Groups */
-      groups?: components["schemas"]["GroupSchema"][];
       /**
-       * Extensions
        * @default {
        *   "nodes": []
        * }
@@ -959,15 +996,12 @@ export interface components {
     /** SchemasLoadAPI */
     SchemasLoadAPI: {
       /** Version */
-      version?: string;
+      version?: string | null;
       /** Generics */
       generics?: components["schemas"]["GenericSchema"][];
       /** Nodes */
       nodes?: components["schemas"]["NodeSchema"][];
-      /** Groups */
-      groups?: components["schemas"]["GroupSchema"][];
       /**
-       * Extensions
        * @default {
        *   "nodes": []
        * }
@@ -1028,9 +1062,9 @@ export interface operations {
     parameters: {
       query?: {
         /** @description Name of the branch to use for the query */
-        branch?: string;
+        branch?: string | null;
         /** @description Time to use for the query, in absolute or relative format */
-        at?: string;
+        at?: string | null;
         /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
         rebase?: boolean;
       };
@@ -1058,9 +1092,9 @@ export interface operations {
     parameters: {
       query?: {
         /** @description Name of the branch to use for the query */
-        branch?: string;
+        branch?: string | null;
         /** @description Time to use for the query, in absolute or relative format */
-        at?: string;
+        at?: string | null;
         /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
         rebase?: boolean;
       };
@@ -1136,11 +1170,11 @@ export interface operations {
   get_diff_data_api_diff_data_get: {
     parameters: {
       query?: {
-        time_from?: string;
-        time_to?: string;
+        time_from?: string | null;
+        time_to?: string | null;
         branch_only?: boolean;
         /** @description Name of the branch to use for the query */
-        branch?: string;
+        branch?: string | null;
       };
     };
     responses: {
@@ -1162,11 +1196,11 @@ export interface operations {
   get_diff_schema_api_diff_schema_get: {
     parameters: {
       query?: {
-        time_from?: string;
-        time_to?: string;
+        time_from?: string | null;
+        time_to?: string | null;
         branch_only?: boolean;
         /** @description Name of the branch to use for the query */
-        branch?: string;
+        branch?: string | null;
       };
     };
     responses: {
@@ -1188,11 +1222,11 @@ export interface operations {
   get_diff_files_api_diff_files_get: {
     parameters: {
       query?: {
-        time_from?: string;
-        time_to?: string;
+        time_from?: string | null;
+        time_to?: string | null;
         branch_only?: boolean;
         /** @description Name of the branch to use for the query */
-        branch?: string;
+        branch?: string | null;
       };
     };
     responses: {
@@ -1218,11 +1252,11 @@ export interface operations {
   get_diff_artifacts_api_diff_artifacts_get: {
     parameters: {
       query?: {
-        time_from?: string;
-        time_to?: string;
+        time_from?: string | null;
+        time_to?: string | null;
         branch_only?: boolean;
         /** @description Name of the branch to use for the query */
-        branch?: string;
+        branch?: string | null;
       };
     };
     responses: {
@@ -1249,11 +1283,11 @@ export interface operations {
   get_file_api_file__repository_id___file_path__get: {
     parameters: {
       query?: {
-        commit?: string;
+        commit?: string | null;
         /** @description Name of the branch to use for the query */
-        branch?: string;
+        branch?: string | null;
         /** @description Time to use for the query, in absolute or relative format */
-        at?: string;
+        at?: string | null;
         /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
         rebase?: boolean;
       };
@@ -1304,7 +1338,7 @@ export interface operations {
     parameters: {
       query?: {
         /** @description Name of the branch to use for the query */
-        branch?: string;
+        branch?: string | null;
       };
     };
     responses: {
@@ -1322,14 +1356,18 @@ export interface operations {
       };
     };
   };
-  /** Graphql Query */
-  graphql_query_api_query__query_id__get: {
+  /** Graphql Query Get */
+  graphql_query_get_api_query__query_id__get: {
     parameters: {
       query?: {
+        /** @description List of subscribers to attach to the CoreGraphQLQueryGroup */
+        subscribers?: string[];
+        /** @description When True create or update a CoreGraphQLQueryGroup with all nodes related to this query. */
+        update_group?: boolean;
         /** @description Name of the branch to use for the query */
-        branch?: string;
+        branch?: string | null;
         /** @description Time to use for the query, in absolute or relative format */
-        at?: string;
+        at?: string | null;
         /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
         rebase?: boolean;
       };
@@ -1342,7 +1380,47 @@ export interface operations {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": unknown;
+          "application/json": Record<string, never>;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Graphql Query Post */
+  graphql_query_post_api_query__query_id__post: {
+    parameters: {
+      query?: {
+        /** @description List of subscribers to attach to the CoreGraphQLQueryGroup */
+        subscribers?: string[];
+        /** @description When True create or update a CoreGraphQLQueryGroup with all nodes related to this query. */
+        update_group?: boolean;
+        /** @description Name of the branch to use for the query */
+        branch?: string | null;
+        /** @description Time to use for the query, in absolute or relative format */
+        at?: string | null;
+        /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
+        rebase?: boolean;
+      };
+      path: {
+        /** @description ID or Name of the GraphQL query to execute */
+        query_id: string;
+      };
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["QueryPayload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": Record<string, never>;
         };
       };
       /** @description Validation Error */
@@ -1357,8 +1435,9 @@ export interface operations {
   get_schema_api_schema__get: {
     parameters: {
       query?: {
+        namespaces?: string[] | null;
         /** @description Name of the branch to use for the query */
-        branch?: string;
+        branch?: string | null;
       };
     };
     responses: {
@@ -1380,8 +1459,9 @@ export interface operations {
   get_schema_api_schema_get: {
     parameters: {
       query?: {
+        namespaces?: string[] | null;
         /** @description Name of the branch to use for the query */
-        branch?: string;
+        branch?: string | null;
       };
     };
     responses: {
@@ -1404,7 +1484,7 @@ export interface operations {
     parameters: {
       query?: {
         /** @description Name of the branch to use for the query */
-        branch?: string;
+        branch?: string | null;
       };
     };
     responses: {
@@ -1427,7 +1507,7 @@ export interface operations {
     parameters: {
       query?: {
         /** @description Name of the branch to use for the query */
-        branch?: string;
+        branch?: string | null;
       };
       path: {
         schema_kind: string;
@@ -1455,7 +1535,7 @@ export interface operations {
     parameters: {
       query?: {
         /** @description Name of the branch to use for the query */
-        branch?: string;
+        branch?: string | null;
       };
     };
     requestBody: {
@@ -1545,18 +1625,18 @@ export interface operations {
     };
   };
   /** Transform Python */
-  transform_python_api_transform__transform_url__get: {
+  transform_python_api_transform_python__transform_id__get: {
     parameters: {
       query?: {
         /** @description Name of the branch to use for the query */
-        branch?: string;
+        branch?: string | null;
         /** @description Time to use for the query, in absolute or relative format */
-        at?: string;
+        at?: string | null;
         /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
         rebase?: boolean;
       };
       path: {
-        transform_url: string;
+        transform_id: string;
       };
     };
     responses: {
@@ -1574,20 +1654,20 @@ export interface operations {
       };
     };
   };
-  /** Generate Rfile */
-  generate_rfile_api_rfile__rfile_id__get: {
+  /** Transform Jinja2 */
+  transform_jinja2_api_transform_jinja2__transform_id__get: {
     parameters: {
       query?: {
         /** @description Name of the branch to use for the query */
-        branch?: string;
+        branch?: string | null;
         /** @description Time to use for the query, in absolute or relative format */
-        at?: string;
+        at?: string | null;
         /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
         rebase?: boolean;
       };
       path: {
-        /** @description ID or Name of the RFile to render */
-        rfile_id: string;
+        /** @description ID or Name of the Jinja2 Transform to render */
+        transform_id: string;
       };
     };
     responses: {
