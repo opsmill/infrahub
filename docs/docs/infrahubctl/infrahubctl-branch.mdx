@@ -33,17 +33,18 @@ Create a new branch.
 **Usage**:
 
 ```console
-$ infrahubctl branch create [OPTIONS] BRANCH_NAME [DESCRIPTION]
+$ infrahubctl branch create [OPTIONS] BRANCH_NAME
 ```
 
 **Arguments**:
 
-* `BRANCH_NAME`: [required]
-* `[DESCRIPTION]`
+* `BRANCH_NAME`: Name of the branch to create  [required]
 
 **Options**:
 
-* `--data-only / --no-data-only`: [default: data-only]
+* `--description TEXT`: Description of the branch
+* `--data-only / --no-data-only`: if not data only, the branch will be extended to all Read-Write Git repository  [default: data-only]
+* `--isolated / --no-isolated`: Set the branch to isolated mode  [default: no-isolated]
 * `--config-file PATH`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--help`: Show this message and exit.
 
