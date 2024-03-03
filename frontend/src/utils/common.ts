@@ -81,3 +81,7 @@ export const getTextColor = (background?: string) => {
 
   return isDarkBackground ? "white" : "black";
 };
+
+export const pluralize = (count: number, singular: string, suffix: string = "s") => {
+  return `${count} ${singular}${count > 1 ? suffix : ""}`;
+};
