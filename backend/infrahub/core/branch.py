@@ -41,6 +41,7 @@ class Branch(StandardNode):
     is_protected: bool = False
     is_data_only: bool = False
     is_isolated: bool = False
+    has_schema_changes: bool = False
     schema_changed_at: Optional[str] = None
     schema_hash: Optional[SchemaBranchHash] = None
 

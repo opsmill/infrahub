@@ -164,7 +164,7 @@ async def create_global_branch(db: InfrahubDatabase) -> Branch:
 
 
 async def create_branch(
-    branch_name: str, db: InfrahubDatabase, description: str = "", at: Optional[str] = None
+    branch_name: str, db: InfrahubDatabase, description: str = "", isolated: bool = False, at: Optional[str] = None
 ) -> Branch:
     """Create a new Branch, currently all the branches are based on Main
 
@@ -178,6 +178,7 @@ async def create_branch(
         is_default=False,
         created_at=at,
         branched_from=at,
+        is_isolated=isolated,
     )
 
     origin_schema = registry.schema.get_schema_branch(name=branch.origin_branch)

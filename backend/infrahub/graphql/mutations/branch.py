@@ -36,6 +36,7 @@ class BranchCreateInput(InputObjectType):
     origin_branch = String(required=False)
     branched_from = String(required=False)
     is_data_only = Boolean(required=False)
+    is_isolated = Boolean(required=False)
 
 
 class BranchCreate(Mutation):
@@ -101,7 +102,8 @@ class BranchNameInput(InputObjectType):
 
 class BranchUpdateInput(InputObjectType):
     name = String(required=True)
-    description = String(required=True)
+    description = String(required=False)
+    is_isolated = Boolean(required=False)
 
 
 class BranchDelete(Mutation):
@@ -142,7 +144,21 @@ class BranchUpdate(Mutation):
         context: GraphqlContext = info.context
 
         obj = await Branch.get_by_name(db=context.db, name=data["name"])
-        obj.description = data["description"]
+
+        if (
+            obj.is_isolated is True
+            and "is_isolated" in data
+            and data["is_isolated"] is False
+            and obj.has_schema_changes
+        ):
+            raise ValueError(
+                f"Unsupported: Can't convert {obj.name} to non-isolated mode because it currently has some schema changes."
+            )
+
+        to_extract = ["description", "is_isolated"]
+        for field_name in to_extract:
+            if field_name in data and data.get(field_name) is not None:
+                setattr(obj, field_name, data[field_name])
 
         async with context.db.start_transaction() as db:
             await obj.save(db=db)

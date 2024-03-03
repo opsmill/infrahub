@@ -389,7 +389,7 @@ async def test_branch_validate(db: InfrahubDatabase, base_dataset_02, register_c
     assert result.data["BranchValidate"]["object"]["id"] == str(branch1.uuid)
 
 
-async def test_branch_update(db: InfrahubDatabase, base_dataset_02):
+async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02):
     branch4 = await create_branch(branch_name="branch4", db=db)
 
     query = """
@@ -420,6 +420,85 @@ async def test_branch_update(db: InfrahubDatabase, base_dataset_02):
     branch4_updated = await Branch.get_by_name(db=db, name="branch4")
 
     assert branch4_updated.description == "testing"
+
+
+async def test_branch_update_isolated(db: InfrahubDatabase, base_dataset_02):
+    branch4 = await create_branch(branch_name="branch4", db=db)
+
+    query = """
+    mutation($isolated: Boolean!) {
+        BranchUpdate(
+            data: {
+                name: "branch4",
+                is_isolated: $isolated
+            }
+        ) {
+            ok
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch4)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"isolated": True},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["BranchUpdate"]["ok"] is True
+
+    branch4_updated = await Branch.get_by_name(db=db, name="branch4")
+    assert branch4_updated.is_isolated is True
+
+    # Change it False
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch4)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"isolated": False},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["BranchUpdate"]["ok"] is True
+
+    branch4_updated2 = await Branch.get_by_name(db=db, name="branch4")
+    assert branch4_updated2.is_isolated is False
+
+
+async def test_branch_update_isolated_schema_change(db: InfrahubDatabase, base_dataset_02):
+    branch4 = await create_branch(branch_name="branch4", db=db, isolated=True)
+    branch4.has_schema_changes = True
+    await branch4.save(db=db)
+
+    query = """
+    mutation($isolated: Boolean!) {
+        BranchUpdate(
+            data: {
+                name: "branch4",
+                is_isolated: $isolated
+            }
+        ) {
+            ok
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch4)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"isolated": False},
+    )
+
+    assert len(result.errors) == 1
+    assert "Can't convert branch4 to non-isolated mode" in result.errors[0].message
 
 
 async def test_branch_merge(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
