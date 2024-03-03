@@ -22,6 +22,5 @@ class RequestArtifactGenerate(InfrahubMessage):
     target_name: str = Field(..., description="Name of the artifact target")
     artifact_id: Optional[str] = Field(default=None, description="The id of the artifact if it previously existed")
     query: str = Field(..., description="The name of the query to use when collecting data")
-    rebase: bool = Field(..., description="Indicates if a rebase should be done")
     timeout: int = Field(..., description="Timeout for requests used to generate this artifact")
     variables: dict = Field(..., description="Input variables when generating the artifact")

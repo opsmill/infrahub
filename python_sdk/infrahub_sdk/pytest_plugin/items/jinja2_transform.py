@@ -110,7 +110,6 @@ class InfrahubJinja2TransformIntegrationItem(InfrahubJinja2Item):
         graphql_result = self.session.infrahub_client.query_gql_query(  # type: ignore[attr-defined]
             self.resource_config.query,  # type: ignore[attr-defined]
             variables=self.test.spec.get_variables_data(),  # type: ignore[union-attr]
-            rebase=self.test.spec.rebase,  # type: ignore[union-attr]
         )
         computed = self.render_jinja2_template(graphql_result)
         differences = self.get_result_differences(computed)

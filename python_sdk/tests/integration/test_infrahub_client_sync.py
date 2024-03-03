@@ -80,7 +80,6 @@ class TestInfrahubClientSync:
             class_name="Transform01",
             query=obj1,
             repository=obj2,
-            rebase=False,
         )
         await obj4.save(db=db)
 

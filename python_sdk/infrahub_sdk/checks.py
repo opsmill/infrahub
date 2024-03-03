@@ -37,7 +37,6 @@ class InfrahubCheck:
     name: Optional[str] = None
     query: str = ""
     timeout: int = 10
-    rebase: bool = True
 
     def __init__(
         self,
@@ -138,7 +137,7 @@ class InfrahubCheck:
         """Query the result of the GraphQL Query defined in self.query and return the result"""
 
         return await self.client.query_gql_query(
-            name=self.query, branch_name=self.branch_name, params=self.params, rebase=self.rebase
+            name=self.query, branch_name=self.branch_name, params=self.params
         )
 
     async def run(self, data: Optional[dict] = None) -> bool:

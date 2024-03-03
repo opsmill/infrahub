@@ -20,7 +20,6 @@ class InfrahubGraphQLQueryItem(InfrahubItem):
         return self.session.infrahub_client.query_gql_query(  # type: ignore[attr-defined]
             self.test.spec.query,  # type: ignore[union-attr]
             variables=self.test.spec.get_variables_data(),  # type: ignore[union-attr]
-            rebase=self.test.spec.rebase,  # type: ignore[union-attr]
         )
 
     def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:

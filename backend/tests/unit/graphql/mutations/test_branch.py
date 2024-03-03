@@ -36,7 +36,6 @@ async def repos_and_checks_in_main(db: InfrahubDatabase, register_core_models_sc
         repository=repo01,
         file_path="check01.py",
         class_name="Check01",
-        rebase=True,
     )
     await checkdef01.save(db=db)
 
@@ -48,7 +47,6 @@ async def repos_and_checks_in_main(db: InfrahubDatabase, register_core_models_sc
         repository=repo02,
         file_path="check02.py",
         class_name="Check02",
-        rebase=True,
     )
     await checkdef02.save(db=db)
 

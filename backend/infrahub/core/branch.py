@@ -40,12 +40,11 @@ class Branch(StandardNode):
     is_global: bool = False
     is_protected: bool = False
     is_data_only: bool = False
+    is_isolated: bool = False
     schema_changed_at: Optional[str] = None
     schema_hash: Optional[SchemaBranchHash] = None
 
-    ephemeral_rebase: bool = False
-
-    _exclude_attrs: List[str] = ["id", "uuid", "owner", "ephemeral_rebase"]
+    _exclude_attrs: List[str] = ["id", "uuid", "owner"]
 
     @field_validator("name", mode="before")
     @classmethod
@@ -153,12 +152,11 @@ class Branch(StandardNode):
         if self.is_default:
             return {frozenset([self.name]): at.to_string()}
 
-        time_default_branch = Timestamp(self.branched_from)
+        time_default_branch = at
 
-        # If we are querying before the beginning of the branch
-        # the time for the main branch must be the time of the query
-        if self.ephemeral_rebase or at < time_default_branch:
-            time_default_branch = at
+        # If the branch is isolated, and if the time requested is after the creation of the branch
+        if self.is_isolated and at > Timestamp(self.branched_from):
+            time_default_branch = Timestamp(self.branched_from)
 
         return {
             frozenset([self.origin_branch]): time_default_branch.to_string(),
@@ -177,12 +175,11 @@ class Branch(StandardNode):
         if self.is_default:
             return {frozenset((GLOBAL_BRANCH_NAME, self.name)): at.to_string()}
 
-        time_default_branch = Timestamp(self.branched_from)
+        time_default_branch = at
 
-        # If we are querying before the beginning of the branch
-        # the time for the main branch must be the time of the query
-        if self.ephemeral_rebase or not is_isolated or at < time_default_branch:
-            time_default_branch = at
+        # If the branch is isolated, and if the time requested is after the creation of the branch
+        if self.is_isolated and is_isolated and at > Timestamp(self.branched_from):
+            time_default_branch = Timestamp(self.branched_from)
 
         return {
             frozenset((GLOBAL_BRANCH_NAME, self.origin_branch)): time_default_branch.to_string(),

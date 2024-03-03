@@ -106,7 +106,6 @@ class InfrahubIntegrationTest(InfrahubInputOutputTest):
     variables: Union[Path, Dict[str, Any]] = pydantic.Field(
         Path("variables.json"), description="Variables and corresponding values to pass to the GraphQL query"
     )
-    rebase: bool = pydantic.Field(True, description="Rebase the branch before executing the GraphQL query")
 
     def update_paths(self, base_dir: Path) -> None:
         super().update_paths(base_dir)
