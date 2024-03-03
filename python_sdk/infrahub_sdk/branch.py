@@ -8,8 +8,7 @@ except ImportError:
     import pydantic  # type: ignore[no-redef]
 
 from infrahub_sdk.exceptions import BranchNotFound
-from infrahub_sdk.graphql import Mutation
-from infrahub_sdk.queries import QUERY_ALL_BRANCHES, QUERY_BRANCH
+from infrahub_sdk.graphql import Mutation, Query
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
@@ -21,22 +20,32 @@ class BranchData(pydantic.BaseModel):
     description: Optional[str] = None
     is_data_only: bool
     is_default: bool
+    is_isolated: bool
+    has_schema_changes: bool
     origin_branch: Optional[str] = None
     branched_from: str
 
 
-MUTATION_QUERY_DATA = {
-    "ok": None,
-    "object": {
-        "id": None,
-        "name": None,
-        "description": None,
-        "origin_branch": None,
-        "branched_from": None,
-        "is_default": None,
-        "is_data_only": None,
-    },
+BRANCH_DATA = {
+    "id": None,
+    "name": None,
+    "description": None,
+    "origin_branch": None,
+    "branched_from": None,
+    "is_default": None,
+    "is_data_only": None,
+    "is_isolated": None,
+    "has_schema_changes": None,
 }
+
+BRANCH_DATA_FILTER = {"@filters": {"name": "$branch_name"}}
+
+
+MUTATION_QUERY_DATA = {"ok": None, "object": BRANCH_DATA}
+
+QUERY_ALL_BRANCHES_DATA = {"Branch": BRANCH_DATA}
+
+QUERY_ONE_BRANCH_DATA = {"Branch": {**BRANCH_DATA, **BRANCH_DATA_FILTER}}
 
 
 class InfraHubBranchManagerBase:
@@ -68,6 +77,7 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
         self,
         branch_name: str,
         data_only: bool = False,
+        is_isolated: bool = False,
         description: str = "",
         background_execution: bool = False,
     ) -> BranchData:
@@ -77,6 +87,7 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
                 "name": branch_name,
                 "description": description,
                 "is_data_only": data_only,
+                "is_isolated": is_isolated,
             },
         }
 
@@ -140,15 +151,17 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
         return response["BranchMerge"]["ok"]
 
     async def all(self) -> Dict[str, BranchData]:
-        data = await self.client.execute_graphql(query=QUERY_ALL_BRANCHES, tracker="query-branch-all")
+        query = Query(name="GetAllBranch", query=QUERY_ALL_BRANCHES_DATA)
+        data = await self.client.execute_graphql(query=query.render(), tracker="query-branch-all")
 
         branches = {branch["name"]: BranchData(**branch) for branch in data["Branch"]}
 
         return branches
 
     async def get(self, branch_name: str) -> BranchData:
+        query = Query(name="GetBranch", query=QUERY_ONE_BRANCH_DATA, variables={"branch_name": str})
         data = await self.client.execute_graphql(
-            query=QUERY_BRANCH,
+            query=query.render(),
             variables={"branch_name": branch_name},
             tracker="query-branch",
         )
@@ -180,15 +193,17 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
         self.client = client
 
     def all(self) -> Dict[str, BranchData]:
-        data = self.client.execute_graphql(query=QUERY_ALL_BRANCHES, tracker="query-branch-all")
+        query = Query(name="GetAllBranch", query=QUERY_ALL_BRANCHES_DATA)
+        data = self.client.execute_graphql(query=query.render(), tracker="query-branch-all")
 
         branches = {branch["name"]: BranchData(**branch) for branch in data["Branch"]}
 
         return branches
 
     def get(self, branch_name: str) -> BranchData:
+        query = Query(name="GetBranch", query=QUERY_ONE_BRANCH_DATA, variables={"branch_name": str})
         data = self.client.execute_graphql(
-            query=QUERY_BRANCH,
+            query=query.render(),
             variables={"branch_name": branch_name},
             tracker="query-branch",
         )
@@ -201,6 +216,7 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
         self,
         branch_name: str,
         data_only: bool = False,
+        is_isolated: bool = False,
         description: str = "",
         background_execution: bool = False,
     ) -> BranchData:
@@ -210,6 +226,7 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
                 "name": branch_name,
                 "description": description,
                 "is_data_only": data_only,
+                "is_isolated": is_isolated,
             },
         }
 

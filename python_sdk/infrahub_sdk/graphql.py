@@ -114,7 +114,7 @@ class BaseGraphQLQuery:
         first_line = self.query_type
 
         if self.name:
-            first_line += self.name
+            first_line += " " + self.name
 
         if self.variables:
             first_line += f" ({render_variables_to_string(self.variables)})"

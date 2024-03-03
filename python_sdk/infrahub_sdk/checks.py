@@ -136,9 +136,7 @@ class InfrahubCheck:
     async def collect_data(self) -> Dict:
         """Query the result of the GraphQL Query defined in self.query and return the result"""
 
-        return await self.client.query_gql_query(
-            name=self.query, branch_name=self.branch_name, params=self.params
-        )
+        return await self.client.query_gql_query(name=self.query, branch_name=self.branch_name, params=self.params)
 
     async def run(self, data: Optional[dict] = None) -> bool:
         """Execute the check after collecting the data from the GraphQL query.
