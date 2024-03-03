@@ -1,0 +1,3 @@
+[tool.ariadne-codegen]
+schema_path = "schema/schema.graphql"
+queries_path = "queries/sdk/"

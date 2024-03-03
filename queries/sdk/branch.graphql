@@ -1,0 +1,30 @@
+query GetBranch($branch_name: String!) {
+    Branch(name: $branch_name) {
+        id
+        name
+        description
+        origin_branch
+        branched_from
+        is_default
+        is_data_only
+    }
+}
+
+query GetBranches{
+    Branch {
+        id
+        name
+        description
+        origin_branch
+        branched_from
+        is_default
+        is_data_only
+    }
+}
+
+
+mutation RebaseBranch($name: String!) {
+  BranchRebase(data: {name: $name}) {
+    ok
+  }
+}

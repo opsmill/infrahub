@@ -1,0 +1,41 @@
+
+mutation CreateTask(
+    $conclusion: TaskConclusion!,
+    $title: String!,
+    $task_id: UUID,
+    $related_node: String!,
+    $created_by: String,
+    $logs: [RelatedTaskLogCreateInput]
+    ) {
+    InfrahubTaskCreate(
+        data: {
+            id: $task_id,
+            title: $title,
+            related_node: $related_node,
+            conclusion: $conclusion,
+            created_by: $created_by,
+            logs: $logs
+        }
+    ) {
+        ok
+    }
+}
+
+
+mutation UpdateTask(
+    $conclusion: TaskConclusion,
+    $title: String,
+    $task_id: UUID!,
+    $logs: [RelatedTaskLogCreateInput]
+    ) {
+    InfrahubTaskUpdate(
+        data: {
+            id: $task_id,
+            title: $title,
+            conclusion: $conclusion,
+            logs: $logs
+        }
+    ) {
+        ok
+    }
+}
