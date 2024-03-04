@@ -388,7 +388,7 @@ class BranchDiffer:
         branch_support: Optional[List[BranchSupportType]] = None,
         service: Optional[InfrahubServices] = None,
     ) -> Self:
-        origin_branch = await branch.get_origin_branch(db=db)
+        origin_branch = branch.get_origin_branch()
 
         return cls(
             branch=branch,

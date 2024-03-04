@@ -18,7 +18,7 @@ from infrahub.core.query.branch import (
     RebaseBranchDeleteRelationshipQuery,
     RebaseBranchUpdateRelationshipQuery,
 )
-from infrahub.core.registry import get_branch, registry
+from infrahub.core.registry import get_branch_from_registry, registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound, InitializationError, ValidationError
 
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class Branch(StandardNode):
+class Branch(StandardNode):  # pylint: disable=too-many-public-methods
     name: str = FieldV2(
         max_length=250, min_length=3, description="Name of the branch (git ref standard)", validate_default=True
     )
@@ -41,7 +41,6 @@ class Branch(StandardNode):
     is_protected: bool = False
     is_data_only: bool = False
     is_isolated: bool = False
-    has_schema_changes: bool = False
     schema_changed_at: Optional[str] = None
     schema_hash: Optional[SchemaBranchHash] = None
 
@@ -95,6 +94,20 @@ class Branch(StandardNode):
 
         raise InitializationError("The schema_hash has not been loaded for this branch")
 
+    @property
+    def has_schema_changes(self) -> bool:
+        if not self.schema_hash:
+            return False
+
+        origin_branch = self.get_origin_branch()
+        if not origin_branch or not origin_branch.schema_hash:
+            return False
+
+        if self.schema_hash.main != origin_branch.schema_hash.main:
+            return True
+
+        return False
+
     def update_schema_hash(self, at: Optional[Union[Timestamp, str]] = None) -> bool:
         latest_schema = registry.schema.get_schema_branch(name=self.name)
         self.schema_changed_at = Timestamp(at).to_string()
@@ -126,12 +139,12 @@ class Branch(StandardNode):
     def isinstance(cls, obj: Any) -> bool:
         return isinstance(obj, cls)
 
-    async def get_origin_branch(self, db: InfrahubDatabase) -> Optional[Branch]:
+    def get_origin_branch(self) -> Optional[Branch]:
         """Return the branch Object of the origin_branch."""
         if not self.origin_branch or self.origin_branch == self.name:
             return None
 
-        return await get_branch(branch=self.origin_branch, db=db)
+        return get_branch_from_registry(branch=self.origin_branch)
 
     def get_branches_in_scope(self) -> List[str]:
         """Return the list of all the branches that are constituing this branch.
