@@ -98,23 +98,26 @@ const TabPanelStyled = ({ children }: { children?: ReactElement | ReactElement[]
 const Properties = ({ schema }: SchemaViewerProps) => {
   return (
     <div className="p-2 divide-y">
-      <PropertyRow title="Branch" value={schema.branch} />
+      <div>
+        <PropertyRow title="ID" value={schema.id} />
+        <PropertyRow title="Namespace" value={schema.namespace} />
+        <PropertyRow title="Name" value={schema.name} />
+        <PropertyRow title="Label" value={schema.label} />
+        <PropertyRow title="Description" value={schema.description} />
+      </div>
+      <PropertyRow title="Inherit from" value={schema.inherit_from} />
+      <PropertyRow title="Hierarchy" value={schema.hierarchy} />
+      <PropertyRow title="Parent" value={schema.parent} />
       <PropertyRow title="Children" value={schema.children} />
       <PropertyRow title="Default filter" value={schema.default_filter} />
-      <PropertyRow title="Display labels" value={schema.display_labels} />
-      <PropertyRow title="Hierarchy" value={schema.hierarchy} />
-      <PropertyRow title="Icon" value={schema.icon} />
-      <PropertyRow title="ID" value={schema.id} />
-      <PropertyRow title="Included in menu" value={schema.include_in_menu} />
-      <PropertyRow title="Inherit from" value={schema.inherit_from} />
-      <PropertyRow title="Kind" value={schema.kind} />
-      <PropertyRow title="Label" value={schema.label} />
-      <PropertyRow title="Menu placement" value={schema.menu_placement} />
-      <PropertyRow title="Name" value={schema.name} />
-      <PropertyRow title="Namespace" value={schema.namespace} />
+      <PropertyRow title="Branch" value={schema.branch} />
       <PropertyRow title="Order by" value={schema.order_by} />
-      <PropertyRow title="Parent" value={schema.parent} />
+      <PropertyRow title="Display labels" value={schema.display_labels} />
+      <PropertyRow title="Included in menu" value={schema.include_in_menu} />
+      <PropertyRow title="Menu placement" value={schema.menu_placement} />
+      <PropertyRow title="Icon" value={schema.icon} />
       <PropertyRow title="Uniqueness constraints" value={schema.uniqueness_constraints} />
+      <PropertyRow title="Kind" value={schema.kind} />
     </div>
   );
 };
