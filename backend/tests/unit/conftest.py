@@ -39,8 +39,8 @@ from tests.helpers.file_repo import FileRepo
 async def branch(request, db: InfrahubDatabase, default_branch: Branch):
     if request.param == "main":
         return default_branch
-    else:
-        return await create_branch(branch_name=str(request.param), db=db)
+
+    return await create_branch(branch_name=str(request.param), db=db)
 
 
 @pytest.fixture(scope="session")
