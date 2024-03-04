@@ -58,8 +58,8 @@ QUERY_SPINE1_INTF = """
     """
 
 BRANCH_CREATE = """
-    mutation($branch: String!) {
-        BranchCreate(data: { name: $branch }) {
+    mutation($branch: String!, $isolated: Boolean!) {
+        BranchCreate(data: { name: $branch, is_isolated: $isolated }) {
             ok
             object {
                 id
@@ -229,7 +229,9 @@ class TestUserWorkflow01:
 
         with client:
             response = client.post(
-                "/graphql", json={"query": BRANCH_CREATE, "variables": {"branch": branch1}}, headers=headers
+                "/graphql",
+                json={"query": BRANCH_CREATE, "variables": {"branch": branch1, "isolated": False}},
+                headers=headers,
             )
 
         assert response.status_code == 200
@@ -530,7 +532,9 @@ class TestUserWorkflow01:
 
         with client:
             response = client.post(
-                "/graphql", json={"query": BRANCH_CREATE, "variables": {"branch": branch2}}, headers=headers
+                "/graphql",
+                json={"query": BRANCH_CREATE, "variables": {"branch": branch2, "isolated": True}},
+                headers=headers,
             )
 
         assert response.status_code == 200
