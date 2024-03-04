@@ -536,7 +536,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
   };
 
   return (
-    <div className="flex">
+    <div className="flex flex-col-reverse lg:flex-row">
       <div className="flex-1 p-4 min-w-[500px]">
         <div>
           {threads.map((item: any, index: number) => (
@@ -553,7 +553,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
         </div>
       </div>
 
-      <div className="flex-3">
+      <div className="lg:max-w-[500px]">
         <div className="bg-custom-white flex flex-col justify-start rounded-bl-lg">
           <div className="py-4 px-4">
             <div className="flex items-center">
