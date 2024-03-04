@@ -1,5 +1,6 @@
 from typing import Dict
-from infrahub_sdk import InfrahubClient
+
+import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -7,32 +8,15 @@ from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
-from infrahub.core.validators.node.hierarchy import NodeHierarchyChecker, NodeHierarchyUpdateValidatorQuery
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
+from infrahub.core.validators.node.hierarchy import NodeHierarchyChecker, NodeHierarchyUpdateValidatorQuery
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus.messages import SchemaValidatorPathResponse
-from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPath
-from infrahub.services import InfrahubServices
-import pytest
 
 
 @pytest.fixture
-async def hierarchical_location_data_simple_and_small(db: InfrahubDatabase, hierarchical_location_schema_simple) -> Dict[str, Node]:
-    REGIONS = (
-        ("north-america",),
-        ("europe",),
-        ("asia",),
-    )
-
-    SITES = (
-        ("paris", "europe"),
-        ("london", "europe"),
-        ("chicago", "north-america"),
-        ("seattle", "north-america"),
-        ("beijing", "asia"),
-        ("singapore", "asia"),
-    )
-
+async def hierarchical_location_data_simple_and_small(
+    db: InfrahubDatabase, hierarchical_location_schema_simple
+) -> Dict[str, Node]:
     nodes = {}
 
     r1 = await Node.init(db=db, schema="LocationRegion")
@@ -78,9 +62,8 @@ async def hierarchical_location_data_simple_and_small(db: InfrahubDatabase, hier
 
     return nodes
 
-async def test_query_children_success(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple
-):
+
+async def test_query_children_success(db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple):
     site_schema = registry.schema.get(name="LocationSite")
     schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="children")
 
@@ -94,9 +77,8 @@ async def test_query_children_success(
     all_data_paths = grouped_paths.get_all_data_paths()
     assert len(all_data_paths) == 0
 
-async def test_query_parent_success(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple
-):
+
+async def test_query_parent_success(db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple):
     site_schema = registry.schema.get(name="LocationSite")
     schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent")
 
@@ -110,9 +92,11 @@ async def test_query_parent_success(
     all_data_paths = grouped_paths.get_all_data_paths()
     assert len(all_data_paths) == 0
 
+
 async def test_query_children_failure(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
 ):
+    hldsas = hierarchical_location_data_simple_and_small
     site_schema = registry.schema.get(name="LocationSite")
     site_schema.children = "LocationRegion"
 
@@ -127,8 +111,347 @@ async def test_query_children_failure(
     grouped_paths = await query.get_paths()
     all_data_paths = grouped_paths.get_all_data_paths()
     assert len(all_data_paths) == 4
-    assert DataPath(
-        # TODO
-    ) in all_data_paths
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.NODE,
+            node_id=hldsas["s1r1"].id,
+            kind="LocationSite",
+            property_name="children",
+            peer_id=hldsas["s1r1_rack"].id,
+        )
+        in all_data_paths
+    )
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.NODE,
+            node_id=hldsas["s2r2"].id,
+            kind="LocationSite",
+            property_name="children",
+            peer_id=hldsas["s2r2_rack"].id,
+        )
+        in all_data_paths
+    )
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.NODE,
+            node_id=hldsas["s1r2"].id,
+            kind="LocationSite",
+            property_name="children",
+            peer_id=hldsas["s1r2_rack"].id,
+        )
+        in all_data_paths
+    )
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.NODE,
+            node_id=hldsas["s2r1"].id,
+            kind="LocationSite",
+            property_name="children",
+            peer_id=hldsas["s2r1_rack"].id,
+        )
+        in all_data_paths
+    )
 
-# more tests here
+
+async def test_query_parent_failure(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
+):
+    hldsas = hierarchical_location_data_simple_and_small
+    site_schema = registry.schema.get(name="LocationSite")
+    site_schema.parent = "LocationRack"
+
+    schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent")
+
+    query = await NodeHierarchyUpdateValidatorQuery.init(
+        db=db, branch=default_branch, node_schema=site_schema, schema_path=schema_path, check_parent=True
+    )
+
+    await query.execute(db=db)
+
+    grouped_paths = await query.get_paths()
+    all_data_paths = grouped_paths.get_all_data_paths()
+    assert len(all_data_paths) == 4
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.NODE,
+            node_id=hldsas["s1r1"].id,
+            kind="LocationSite",
+            property_name="parent",
+            peer_id=hldsas["r1"].id,
+        )
+        in all_data_paths
+    )
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.NODE,
+            node_id=hldsas["s2r2"].id,
+            kind="LocationSite",
+            property_name="parent",
+            peer_id=hldsas["r2"].id,
+        )
+        in all_data_paths
+    )
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.NODE,
+            node_id=hldsas["s1r2"].id,
+            kind="LocationSite",
+            property_name="parent",
+            peer_id=hldsas["r2"].id,
+        )
+        in all_data_paths
+    )
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.NODE,
+            node_id=hldsas["s2r1"].id,
+            kind="LocationSite",
+            property_name="parent",
+            peer_id=hldsas["r1"].id,
+        )
+        in all_data_paths
+    )
+
+
+async def test_query_update_on_branch_failure(
+    db: InfrahubDatabase, branch: Branch, default_branch: Branch, hierarchical_location_data_simple_and_small
+):
+    hldsas = hierarchical_location_data_simple_and_small
+    site_schema = registry.schema.get(name="LocationSite")
+    site_schema.children = "LocationRegion"
+
+    s1r1_rack2 = await Node.init(db=db, schema="LocationRack", branch=branch)
+    await s1r1_rack2.new(db=db, name="s1r1_rack2", parent=hldsas["s1r1"], status="online")
+    await s1r1_rack2.save(db=db)
+
+    schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="children")
+
+    query = await NodeHierarchyUpdateValidatorQuery.init(
+        db=db, branch=branch, node_schema=site_schema, schema_path=schema_path, check_children=True
+    )
+
+    await query.execute(db=db)
+
+    grouped_paths = await query.get_paths()
+    all_data_paths = grouped_paths.get_all_data_paths()
+    assert len(all_data_paths) == 5
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.NODE,
+            node_id=hldsas["s1r1"].id,
+            kind="LocationSite",
+            property_name="children",
+            peer_id=hldsas["s1r1_rack"].id,
+        )
+        in all_data_paths
+    )
+    assert (
+        DataPath(
+            branch=branch.name,
+            path_type=PathType.NODE,
+            node_id=hldsas["s1r1"].id,
+            kind="LocationSite",
+            property_name="children",
+            peer_id=s1r1_rack2.id,
+        )
+        in all_data_paths
+    )
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.NODE,
+            node_id=hldsas["s2r2"].id,
+            kind="LocationSite",
+            property_name="children",
+            peer_id=hldsas["s2r2_rack"].id,
+        )
+        in all_data_paths
+    )
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.NODE,
+            node_id=hldsas["s1r2"].id,
+            kind="LocationSite",
+            property_name="children",
+            peer_id=hldsas["s1r2_rack"].id,
+        )
+        in all_data_paths
+    )
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.NODE,
+            node_id=hldsas["s2r1"].id,
+            kind="LocationSite",
+            property_name="children",
+            peer_id=hldsas["s2r1_rack"].id,
+        )
+        in all_data_paths
+    )
+
+
+async def test_query_delete_on_branch_failure(
+    db: InfrahubDatabase, branch: Branch, default_branch: Branch, hierarchical_location_data_simple_and_small
+):
+    hldsas = hierarchical_location_data_simple_and_small
+    site_schema = registry.schema.get(name="LocationSite")
+    site_schema.children = "LocationRegion"
+
+    await branch.rebase(db=db)
+    s1r1_rack1 = await NodeManager.get_one(db=db, id=hldsas["s1r1"].id, branch=branch)
+    await s1r1_rack1.delete(db=db)
+
+    schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="children")
+
+    query = await NodeHierarchyUpdateValidatorQuery.init(
+        db=db, branch=branch, node_schema=site_schema, schema_path=schema_path, check_children=True
+    )
+
+    await query.execute(db=db)
+
+    grouped_paths = await query.get_paths()
+    all_data_paths = grouped_paths.get_all_data_paths()
+    assert len(all_data_paths) == 3
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.NODE,
+            node_id=hldsas["s2r2"].id,
+            kind="LocationSite",
+            property_name="children",
+            peer_id=hldsas["s2r2_rack"].id,
+        )
+        in all_data_paths
+    )
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.NODE,
+            node_id=hldsas["s1r2"].id,
+            kind="LocationSite",
+            property_name="children",
+            peer_id=hldsas["s1r2_rack"].id,
+        )
+        in all_data_paths
+    )
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.NODE,
+            node_id=hldsas["s2r1"].id,
+            kind="LocationSite",
+            property_name="children",
+            peer_id=hldsas["s2r1_rack"].id,
+        )
+        in all_data_paths
+    )
+
+
+async def test_validator_parents_failure(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
+):
+    hldsas = hierarchical_location_data_simple_and_small
+    site_schema = registry.schema.get(name="LocationSite")
+    site_schema.parent = "LocationRack"
+
+    registry.schema.set(name="LocationSite", schema=site_schema, branch=default_branch.name)
+
+    request = SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="node.parent.update",
+        node_schema=site_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent"),
+    )
+
+    constraint_checker = NodeHierarchyChecker(db=db, branch=default_branch)
+    grouped_data_paths = await constraint_checker.check(request)
+
+    assert len(grouped_data_paths) == 1
+    data_paths = grouped_data_paths[0].get_all_data_paths()
+    assert len(data_paths) == 4
+    assert {(dp.node_id, dp.peer_id) for dp in data_paths} == {
+        (hldsas["s1r1"].id, hldsas["r1"].id),
+        (hldsas["s2r1"].id, hldsas["r1"].id),
+        (hldsas["s1r2"].id, hldsas["r2"].id),
+        (hldsas["s2r2"].id, hldsas["r2"].id),
+    }
+
+
+async def test_validator_parents_success(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
+):
+    site_schema = registry.schema.get(name="LocationSite")
+
+    request = SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="node.parent.update",
+        node_schema=site_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent"),
+    )
+
+    constraint_checker = NodeHierarchyChecker(db=db, branch=default_branch)
+    grouped_data_paths = await constraint_checker.check(request)
+
+    assert len(grouped_data_paths) == 1
+    data_paths = grouped_data_paths[0].get_all_data_paths()
+    assert len(data_paths) == 0
+
+
+async def test_validator_children_failure(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
+):
+    hldsas = hierarchical_location_data_simple_and_small
+    site_schema = registry.schema.get(name="LocationSite")
+    site_schema.children = "LocationRegion"
+
+    registry.schema.set(name="LocationSite", schema=site_schema, branch=default_branch.name)
+
+    request = SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="node.children.update",
+        node_schema=site_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="children"),
+    )
+
+    constraint_checker = NodeHierarchyChecker(db=db, branch=default_branch)
+    grouped_data_paths = await constraint_checker.check(request)
+
+    assert len(grouped_data_paths) == 1
+    data_paths = grouped_data_paths[0].get_all_data_paths()
+    assert len(data_paths) == 4
+    assert {(dp.node_id, dp.peer_id) for dp in data_paths} == {
+        (hldsas["s1r1"].id, hldsas["s1r1_rack"].id),
+        (hldsas["s2r1"].id, hldsas["s2r1_rack"].id),
+        (hldsas["s1r2"].id, hldsas["s1r2_rack"].id),
+        (hldsas["s2r2"].id, hldsas["s2r2_rack"].id),
+    }
+
+
+async def test_validator_children_success(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
+):
+    site_schema = registry.schema.get(name="LocationSite")
+
+    request = SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="node.children.update",
+        node_schema=site_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="children"),
+    )
+
+    constraint_checker = NodeHierarchyChecker(db=db, branch=default_branch)
+    grouped_data_paths = await constraint_checker.check(request)
+
+    assert len(grouped_data_paths) == 1
+    data_paths = grouped_data_paths[0].get_all_data_paths()
+    assert len(data_paths) == 0

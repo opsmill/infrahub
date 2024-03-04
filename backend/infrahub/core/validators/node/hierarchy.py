@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from infrahub.core import registry
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
-from infrahub.core.schema import GenericSchema
+from infrahub.core.schema import NodeSchema
 
 from ..interface import ConstraintCheckerInterface
 from ..shared import (
@@ -38,16 +37,27 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
             raise RuntimeError("Cannot check children and parent at same time")
         if self.check_children:
             to_children, to_parent = "<", ""
-            peer_kind = self.node_schema.children
+            peer_kind = getattr(self.node_schema, "children", None)
+            if not peer_kind:
+                raise RuntimeError(
+                    f"Cannot check children for '{self.node_schema.kind}' because no children kind is defined"
+                )
         elif self.check_parent:
             to_children, to_parent = "", ">"
-            peer_kind = self.node_schema.parent
+            peer_kind = getattr(self.node_schema, "parent", None)
+            if not peer_kind:
+                raise RuntimeError(
+                    f"Cannot check parents for '{self.node_schema.kind}' because no parent kind is defined"
+                )
 
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
         self.params["node_kind"] = self.node_schema.kind
-        self.params["hierarchy_kind"] = self.node_schema.hierarchy
+        if hierarchy := getattr(self.node_schema, "hierarchy", None):
+            self.params["hierarchy_kind"] = hierarchy
+        else:
+            raise RuntimeError(f"No 'hierarchy' defined for {self.node_schema.kind}")
         self.params["peer_kind"] = peer_kind
 
         # ruff: noqa: E501
@@ -97,7 +107,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
                 path_to_check[2] DESC
             LIMIT 1
         }
-        WITH 
+        WITH
             start_node,
             current_peer,
             branch_name,
@@ -107,7 +117,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
         AND (
             any(r in relationships(current_path) WHERE r.hierarchy <> $hierarchy_kind)
             OR NOT ($peer_kind IN labels(current_peer))
-        ) 
+        )
         """ % {"branch_filter": branch_filter, "to_children": to_children, "to_parent": to_parent}
 
         self.add_to_query(query)
@@ -121,7 +131,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
                     branch=str(result.get("branch_name")),
                     path_type=PathType.NODE,
                     node_id=str(result.get("start_node.uuid")),
-                    field_name="children" if self.check_children else "parent",
+                    property_name="children" if self.check_children else "parent",
                     peer_id=str(result.get("current_peer.uuid")),
                     kind=self.node_schema.kind,
                 )
@@ -147,9 +157,11 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
     async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
         grouped_data_paths_list: List[GroupedDataPaths] = []
 
-        if request.constraint_name == "node.parent.update" and request.node_schema.parent:
+        if not isinstance(request.node_schema, NodeSchema):
             return grouped_data_paths_list
-        if request.constraint_name == "node.children.update" and request.node_schema.children:
+        if request.constraint_name == "node.parent.update" and not request.node_schema.parent:
+            return grouped_data_paths_list
+        if request.constraint_name == "node.children.update" and not request.node_schema.children:
             return grouped_data_paths_list
 
         for query_class in self.query_classes:
@@ -160,7 +172,7 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
                 node_schema=request.node_schema,
                 schema_path=request.schema_path,
                 check_children=request.constraint_name == "node.children.update",
-                check_parent=request.constraint_name == "node.parent.update"
+                check_parent=request.constraint_name == "node.parent.update",
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())
