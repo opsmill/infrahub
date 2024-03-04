@@ -30,7 +30,6 @@ class LineDelimitedJSONExporter(ExporterInterface):
     async def export(
         self, export_directory: Path, namespaces: List[str], branch: str, exclude: Optional[List[str]] = None
     ) -> None:
-        print(exclude)
         illegal_namespaces = set(ILLEGAL_NAMESPACES)
         node_file = export_directory / Path("nodes.json")
         if node_file.exists():
