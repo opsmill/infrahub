@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Union
+from typing import Any, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel, Field
 
@@ -8,18 +8,36 @@ from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, Rel
 
 class QueryRelationshipAttributePath(BaseModel):
     identifier: str
-    attribute_name: Optional[str]
+    attribute_name: Optional[str] = Field(default=None)
+    value: Optional[Any] = Field(default=None)
+
+    def __hash__(self) -> int:
+        to_hash = self.identifier
+        if self.attribute_name:
+            to_hash += self.attribute_name
+        if self.value:
+            to_hash += str(self.value)
+        return hash(to_hash)
 
 
 class QueryAttributePath(BaseModel):
     attribute_name: str
-    property_name: Optional[str]
+    property_name: Optional[str] = Field(default=None)
+    value: Optional[Any] = Field(default=None)
+
+    def __hash__(self) -> int:
+        to_hash = self.attribute_name
+        if self.property_name:
+            to_hash += self.property_name
+        if self.value:
+            to_hash += str(self.value)
+        return hash(to_hash)
 
 
 class NodeUniquenessQueryRequest(BaseModel):
     kind: str
-    unique_attribute_paths: List[QueryAttributePath] = Field(default_factory=list)
-    relationship_attribute_paths: List[QueryRelationshipAttributePath] = Field(default_factory=list)
+    unique_attribute_paths: Set[QueryAttributePath] = Field(default_factory=set)
+    relationship_attribute_paths: Set[QueryRelationshipAttributePath] = Field(default_factory=set)
 
 
 class NonUniqueRelatedAttribute(BaseModel):

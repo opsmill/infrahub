@@ -19,10 +19,12 @@ class NodeUniqueAttributeConstraintQuery(Query):
     def __init__(
         self,
         query_request: NodeUniquenessQueryRequest,
+        min_count_required: int = 1,
         *args: Any,
         **kwargs: Any,
     ):
         self.query_request = query_request
+        self.min_count_required = min_count_required
         super().__init__(*args, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
@@ -33,7 +35,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
             items="relationships(active_path)", item_names=["branch", "branch_level"]
         )
 
-        attr_paths_param = []
+        attr_paths_param, attr_paths_with_value_param = [], []
         for attr_path in self.query_request.unique_attribute_paths:
             try:
                 property_rel_name = self.attribute_property_map[attr_path.property_name or "value"]
@@ -41,11 +43,20 @@ class NodeUniqueAttributeConstraintQuery(Query):
                 raise ValueError(
                     f"{attr_path.property_name} is not a valid property for a uniqueness constraint"
                 ) from exc
-            attr_paths_param.append((attr_path.attribute_name, property_rel_name))
+            if attr_path.value:
+                attr_paths_with_value_param.append((attr_path.attribute_name, property_rel_name, attr_path.value))
+            else:
+                attr_paths_param.append((attr_path.attribute_name, property_rel_name))
 
-        relationship_attr_paths, relationship_only_attr_paths = [], []
+        relationship_attr_paths = []
+        relationship_only_attr_paths = []
+        relationship_attr_paths_with_value = []
         for rel_path in self.query_request.relationship_attribute_paths:
-            if rel_path.attribute_name:
+            if rel_path.attribute_name and rel_path.value:
+                relationship_attr_paths_with_value.append(
+                    (rel_path.identifier, rel_path.attribute_name, rel_path.value)
+                )
+            elif rel_path.attribute_name:
                 relationship_attr_paths.append((rel_path.identifier, rel_path.attribute_name))
             else:
                 relationship_only_attr_paths.append(rel_path.identifier)
@@ -53,8 +64,11 @@ class NodeUniqueAttributeConstraintQuery(Query):
             {
                 "node_kind": self.query_request.kind,
                 "attr_paths": attr_paths_param,
+                "attr_paths_with_value": attr_paths_with_value_param,
                 "relationship_attr_paths": relationship_attr_paths,
+                "relationship_attr_paths_with_value": relationship_attr_paths_with_value,
                 "relationship_only_attr_paths": relationship_only_attr_paths,
+                "min_count_required": self.min_count_required,
             }
         )
 
@@ -67,12 +81,12 @@ class NodeUniqueAttributeConstraintQuery(Query):
         CALL {
             WITH start_node
             MATCH attr_path = (start_node:Node)-[:HAS_ATTRIBUTE]->(attr:Attribute)-[r:HAS_VALUE]->(attr_value:AttributeValue)
-            WHERE [attr.name, type(r)] in $attr_paths
+            WHERE [attr.name, type(r)] in $attr_paths OR [attr.name, type(r), attr_value.value] in $attr_paths_with_value
             RETURN attr_path as potential_path, NULL as rel_identifier, attr.name as potential_attr, attr_value.value as potential_attr_value
             UNION
             WITH start_node
             MATCH rel_path = (start_node:Node)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)-[:HAS_ATTRIBUTE]->(rel_attr:Attribute)-[:HAS_VALUE]->(rel_attr_value:AttributeValue)
-            WHERE [relationship_node.name, rel_attr.name] in $relationship_attr_paths
+            WHERE [relationship_node.name, rel_attr.name] in $relationship_attr_paths OR [relationship_node.name, rel_attr.name, rel_attr_value.value] in $relationship_attr_paths_with_value
             RETURN rel_path as potential_path, relationship_node.name as rel_identifier, rel_attr.name as potential_attr, rel_attr_value.value as potential_attr_value
             UNION
             WITH start_node
@@ -135,7 +149,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
             potential_attr as attr_name,
             latest_value as attr_value,
             rel_identifier as relationship_identifier
-        WHERE node_count > 1
+        WHERE node_count > $min_count_required
         UNWIND nodes_and_branches as node_and_branch
         RETURN
             node_and_branch[0] as node_id,

@@ -242,7 +242,7 @@ class SchemaBranch:
         To ensure that no-one will ever change an object in the cache,
         by default the function always returns a copy of the object, not the object itself
 
-        If duplicate is set to false, the real objet will be returned.
+        If duplicate is set to false, the real object will be returned.
         """
         key = None
         if name in self.nodes:
@@ -281,11 +281,13 @@ class SchemaBranch:
         except SchemaNotFound:
             return False
 
-    def get_all(self, include_internal: bool = False) -> Dict[str, Union[NodeSchema, GenericSchema]]:
-        """Retrive everything in a single dictionary."""
+    def get_all(
+        self, include_internal: bool = False, duplicate: bool = True
+    ) -> Dict[str, Union[NodeSchema, GenericSchema]]:
+        """Retrieve everything in a single dictionary."""
 
         return {
-            name: self.get(name=name)
+            name: self.get(name=name, duplicate=duplicate)
             for name in list(self.nodes.keys()) + list(self.generics.keys())
             if include_internal or name not in INTERNAL_SCHEMA_NODE_KINDS
         }
@@ -443,6 +445,7 @@ class SchemaBranch:
         path: str,
         schema_map_override: Dict[str, Union[NodeSchema, GenericSchema]],
         relationship_allowed: bool = False,
+        relationship_attribute_allowed: bool = False,
         schema_attribute_name: Optional[str] = None,
     ) -> SchemaAttributePath:
         error_header = f"{node_schema.kind}"
@@ -460,6 +463,10 @@ class SchemaBranch:
                 raise ValueError(
                     f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
                     " relationship must be of cardinality one"
+                )
+            if not relationship_attribute_allowed and schema_attribute_path.attribute_schema:
+                raise ValueError(
+                    f"{error_header}: cannot use attributes of related node in constraint, only the relationship"
                 )
 
         if (
@@ -483,7 +490,11 @@ class SchemaBranch:
             for constraint_paths in node_schema.uniqueness_constraints:
                 for constraint_path in constraint_paths:
                     self._validate_attribute_path(
-                        node_schema, constraint_path, schema_map, schema_attribute_name="uniqueness_constraints"
+                        node_schema,
+                        constraint_path,
+                        schema_map,
+                        schema_attribute_name="uniqueness_constraints",
+                        relationship_allowed=True,
                     )
 
     def validate_display_labels(self) -> None:
@@ -511,7 +522,12 @@ class SchemaBranch:
 
             for order_by_path in node_schema.order_by:
                 self._validate_attribute_path(
-                    node_schema, order_by_path, schema_map, relationship_allowed=True, schema_attribute_name="order_by"
+                    node_schema,
+                    order_by_path,
+                    schema_map,
+                    relationship_allowed=True,
+                    relationship_attribute_allowed=True,
+                    schema_attribute_name="order_by",
                 )
 
     def validate_default_filters(self) -> None:

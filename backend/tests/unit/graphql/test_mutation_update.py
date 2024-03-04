@@ -2,6 +2,7 @@ import pytest
 from graphql import graphql
 
 from infrahub import config
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -925,3 +926,46 @@ async def test_update_relationship_previously_deleted(
     p13 = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=branch)
     tags = await p13.tags.get(db=db)
     assert sorted([tag.peer.name.value for tag in tags]) == ["Black", "Blue"]
+
+
+async def test_update_with_uniqueness_constraint_violation(db: InfrahubDatabase, default_branch, car_person_schema):
+    car_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
+    car_schema.uniqueness_constraints = [["owner", "color"]]
+
+    p1 = await Node.init(db=db, schema="TestPerson")
+    await p1.new(db=db, name="Bruce Wayne", height=180)
+    await p1.save(db=db)
+    c1 = await Node.init(db=db, schema="TestCar")
+    await c1.new(db=db, name="Batmobile", is_electric=False, nbr_seats=3, color="#123456", owner=p1)
+    await c1.save(db=db)
+    c2 = await Node.init(db=db, schema="TestCar")
+    await c2.new(db=db, name="Batcycle", is_electric=True, nbr_seats=1, color="#654321", owner=p1)
+    await c2.save(db=db)
+
+    query = (
+        """
+    mutation {
+        TestCarUpdate(data: {
+            id: "%s",
+            color: { value: "#123456" },
+        }) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+        % c2.id
+    )
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert len(result.errors) == 1
+    assert "Violates uniqueness constraint 'owner-color'" in result.errors[0].message

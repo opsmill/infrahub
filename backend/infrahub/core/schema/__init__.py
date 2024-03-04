@@ -510,6 +510,20 @@ class BaseNodeSchema(HashableModel):  # pylint: disable=too-many-public-methods
             schema_path.attribute_property_name = property_piece
         return schema_path
 
+    def get_unique_constraint_schema_attribute_paths(self) -> List[List[SchemaAttributePath]]:
+        if not self.uniqueness_constraints:
+            return []
+
+        constraint_paths_groups = []
+        for uniqueness_path_group in self.uniqueness_constraints:
+            constraint_paths_groups.append(
+                [
+                    self.parse_attribute_path(attribute_path=uniqueness_path_part)
+                    for uniqueness_path_part in uniqueness_path_group
+                ]
+            )
+        return constraint_paths_groups
+
 
 class QueryArrow(BaseModel):
     start: str
