@@ -3,7 +3,7 @@ import os
 import time
 from contextlib import asynccontextmanager
 from functools import partial
-from typing import Awaitable, Callable
+from typing import AsyncGenerator, Awaitable, Callable
 
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
@@ -73,7 +73,7 @@ async def shutdown(application: FastAPI) -> None:
 
 
 @asynccontextmanager
-async def lifespan(application: FastAPI):
+async def lifespan(application: FastAPI) -> AsyncGenerator:
     await app_initialization(application)
     yield
     await shutdown(application)
@@ -115,7 +115,7 @@ templates = Jinja2Templates(directory=f"{FRONTEND_DIRECTORY}/dist")
 async def logging_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
     clear_log_context()
     request_id = correlation_id.get()
-    with tracer.start_as_current_span("processing request " + request_id):
+    with tracer.start_as_current_span(f"processing request {request_id}"):
         trace_id = get_traceid()
         set_log_data(key="request_id", value=request_id)
         set_log_data(key="app", value="infrahub.api")
