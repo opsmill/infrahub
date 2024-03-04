@@ -1,0 +1,56 @@
+
+# Used to gather artifact definitions related to a proposed change
+query GatherArtifactDefinitions {
+  CoreArtifactDefinition {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+        content_type {
+            value
+        }
+        transformation {
+          node {
+            __typename
+            timeout {
+                value
+            }
+            rebase {
+                value
+            }
+            query {
+              node {
+                models {
+                  value
+                }
+                name {
+                  value
+                }
+              }
+            }
+            ... on CoreTransformJinja2 {
+              template_path {
+                value
+              }
+            }
+            ... on CoreTransformPython {
+              class_name {
+                value
+              }
+              file_path {
+                value
+              }
+            }
+            repository {
+              node {
+                id
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
