@@ -6,7 +6,7 @@ title: User tests
 
 ## Summary
 
-Infrahub allows users to define tests to ensure that [transformations](/topics/transformation) and [checks](/topics/check) are working as intended.
+Infrahub allows users to define tests to ensure that [transformations](/topics/transformation) and [checks](/topics/check) are working as intended. This can be an important step while writing Infrahub related resources as it makes sure that they keep returning the same expected values over time and version bumps.
 
 These tests are based on [pytest](https://docs.pytest.org/) but do not require users to write any Python code. Tests can be run via a command line and the `pytest` executable but they are also integrated within the CI pipelines of [proposed changes](/topics/proposed-change).
 
@@ -174,4 +174,10 @@ tests/test_all.yml::infrahub_python_transform__mpls_l2circuit_report__syntax_che
 ================================================================================ 3 passed in 0.03s ================================================================================
 ```
 
-In this output we can see `infrahub-sdk-0.8.1` which shows that the Infrahub pytest plugin is properly loaded which allows tests to be run. Then we can also notice one line per test which includes where the test has been found, the resource it tests and the outcome of the test. The last line displays a summary of the test sessions.
+In this output we can see `infrahub-sdk-0.8.1` (0.8.1 being the Infrahub SDK version in use) which shows that the Infrahub pytest plugin is properly loaded which allows tests to be run. Then we can also notice one line per test which includes where the test has been found, the resource it tests and the outcome of the test. The last line displays a summary of the test sessions.
+
+## Infrahub CI pipeline integration
+
+Tests can also run as part of the Infrahub CI pipeline. This is a feature which allows to validate the proper behaviour of a proposed change.
+
+This means that the Infrahub Git agent will take care of running the `pytest` process on behalf of users after creating a proposed change or updating it with new changes. User defined tests, if found, will be run as part of the CI pipeline and be logged in checks. One check per test is created which allows to see the outcome of it and an optional message that gives more details in case of failure.
