@@ -116,7 +116,6 @@ class GraphRelationshipNode(BaseModel):
 class GraphAttributeProperties(BaseModel):
     branch_support: BranchSupportType = Field(..., description="Type of branch support for the attribute")
     name: str = Field(..., description="name of the attribute as defined in the schema")
-    type: str = Field(..., description="Kind of the attribute")
     uuid: str = Field(..., description="UUID of the attribute, must be unique")
 
 
@@ -153,7 +152,6 @@ class GraphAttributeNode(BaseModel):
 # AttributeValue
 # -----------------------------------------------------
 class GraphAttributeValueProperties(BaseModel):
-    type: str = Field(..., description="Kind of the attribute")
     value: str = Field(..., description="value of the attribute stored in String format")
 
 
