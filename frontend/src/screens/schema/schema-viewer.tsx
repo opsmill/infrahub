@@ -2,10 +2,11 @@ import { iNodeSchema } from "../../state/atoms/schema.atom";
 import { Badge } from "../../components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { Tab } from "@headlessui/react";
-import { classNames, warnUnexpectedType } from "../../utils/common";
-import Accordion, { AccordionProps } from "../../components/display/accordion";
+import { classNames } from "../../utils/common";
 import { components } from "../../infraops";
 import { ReactElement } from "react";
+import { AccordionStyled, PropertyRow } from "./styled";
+import { RelationshipDisplay } from "./relationship-display";
 
 type SchemaViewerProps = {
   schema: iNodeSchema;
@@ -94,31 +95,6 @@ const TabPanelStyled = ({ children }: { children?: ReactElement | ReactElement[]
   return <Tab.Panel className="space-y-2">{children}</Tab.Panel>;
 };
 
-const PropertyRow = ({
-  title,
-  value,
-}: {
-  title: string;
-  value:
-    | string
-    | string[]
-    | string[][]
-    | components["schemas"]["DropdownChoice"][]
-    | number
-    | boolean
-    | null
-    | undefined;
-}) => {
-  return (
-    value !== undefined && (
-      <dl className="text-gray-500 flex justify-between items-baseline text-sm p-2">
-        <dt>{title}</dt>
-        <dd className="truncate">{value?.toString() || "-"}</dd>
-      </dl>
-    )
-  );
-};
-
 const Properties = ({ schema }: SchemaViewerProps) => {
   return (
     <div className="p-2 divide-y">
@@ -142,49 +118,6 @@ const Properties = ({ schema }: SchemaViewerProps) => {
     </div>
   );
 };
-
-interface AccordionStyleProps extends AccordionProps {
-  title: ReactElement | string;
-  kind: ReactElement | string;
-  description?: string | null;
-  isOptional?: boolean;
-  isUnique?: boolean;
-  isReadOnly?: boolean;
-}
-
-const AccordionStyled = ({
-  children,
-  title,
-  kind,
-  description,
-  isOptional,
-  isUnique,
-  isReadOnly,
-  ...props
-}: AccordionStyleProps) => (
-  <Accordion
-    title={
-      <h4>
-        <div className="flex justify-between gap-4">
-          <div className="text-sm">
-            {title} {kind && <Badge>{kind}</Badge>}
-          </div>
-
-          <div className="space-x-1">
-            {isOptional && <Badge variant="yellow">optional</Badge>}
-            {isUnique && <Badge variant="red">unique</Badge>}
-            {isReadOnly && <Badge variant="blue">read-only</Badge>}
-          </div>
-        </div>
-
-        {description && <p className="text-xs text-gray-600 font-normal">{description}</p>}
-      </h4>
-    }
-    className="bg-custom-white shadow p-2 rounded"
-    {...props}>
-    <article className="divide-y p-2">{children}</article>
-  </Accordion>
-);
 
 const AttributeDisplay = ({
   attribute,
@@ -219,75 +152,3 @@ const AttributeDisplay = ({
     </article>
   </AccordionStyled>
 );
-
-const RelationshipDisplay = ({
-  relationship,
-}: {
-  relationship: components["schemas"]["RelationshipSchema-Output"];
-}) => {
-  const cardinalityLabel = relationship.cardinality
-    ? getLabelForCardinality(relationship.cardinality)
-    : null;
-
-  const directionLabel = relationship.direction
-    ? getLabelForDirection(relationship.direction)
-    : null;
-
-  return (
-    <AccordionStyled
-      title={relationship.label || relationship.name}
-      kind={
-        <>
-          <span className="flex items-center gap-0.5">
-            {cardinalityLabel} {directionLabel} {relationship.peer}
-          </span>
-          <Badge variant="green" className="ml-1 px-1">
-            {relationship.kind}
-          </Badge>
-        </>
-      }
-      description={relationship.description}
-      isOptional={relationship.optional}>
-      <PropertyRow title="Branch" value={relationship.branch} />
-      <PropertyRow title="Cardinality" value={relationship.cardinality} />
-      <PropertyRow title="Direction" value={relationship.direction} />
-      <PropertyRow title="Hierarchical" value={relationship.hierarchical} />
-      <PropertyRow title="ID" value={relationship.id} />
-      <PropertyRow title="Inherited" value={relationship.inherited} />
-      <PropertyRow title="Kind" value={relationship.kind} />
-      <PropertyRow title="Label" value={relationship.label} />
-      <PropertyRow title="Max count" value={relationship.max_count} />
-      <PropertyRow title="Min count" value={relationship.min_count} />
-      <PropertyRow title="Name" value={relationship.name} />
-      <PropertyRow title="Order weight" value={relationship.order_weight} />
-      <PropertyRow title="Peer" value={relationship.peer} />
-      <PropertyRow title="Peer identifier" value={relationship.identifier} />
-    </AccordionStyled>
-  );
-};
-
-function getLabelForCardinality(cardinality: components["schemas"]["RelationshipCardinality"]) {
-  switch (cardinality) {
-    case "many":
-      return "N";
-    case "one":
-      return "1";
-    default:
-      warnUnexpectedType(cardinality);
-      return "";
-  }
-}
-
-function getLabelForDirection(direction: components["schemas"]["RelationshipDirection"]) {
-  switch (direction) {
-    case "bidirectional":
-      return <Icon icon="mdi:arrow-left-right" />;
-    case "inbound":
-      return <Icon icon="mdi:arrow-left" />;
-    case "outbound":
-      return <Icon icon="mdi:arrow-right" />;
-    default:
-      warnUnexpectedType(direction);
-      return "";
-  }
-}
