@@ -64,15 +64,15 @@ async def test_merge_relationship_many(
 
     branch1 = await create_branch(branch_name="branch1", db=db)
 
-    # Update the relationships for ORG1 >> TAGS in MAIN
-    org1_main = await NodeManager.get_one(id=org1.id, db=db)
-    await org1_main.tags.update(data=[blue, yellow], db=db)
-    await org1_main.save(db=db)
-
     # Update the relationships for ORG1 >> TAGS in BRANCH1
     org1_branch = await NodeManager.get_one(id=org1.id, branch=branch1, db=db)
     await org1_branch.tags.update(data=[blue, red], db=db)
     await org1_branch.save(db=db)
+
+    # Update the relationships for ORG1 >> TAGS in MAIN
+    org1_main = await NodeManager.get_one(id=org1.id, db=db)
+    await org1_main.tags.update(data=[blue, yellow], db=db)
+    await org1_main.save(db=db)
 
     await branch1.rebase(db=db)
 

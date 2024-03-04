@@ -33,6 +33,8 @@ def branch01():
         is_data_only=True,
         is_default=False,
         branched_from="main",
+        is_isolated=False,
+        has_schema_changes=False,
     )
 
 
@@ -44,6 +46,8 @@ def branch02():
         is_data_only=True,
         is_default=False,
         branched_from="main",
+        is_isolated=False,
+        has_schema_changes=False,
     )
 
 
@@ -55,6 +59,8 @@ def branch99():
         is_data_only=True,
         is_default=False,
         branched_from="main",
+        is_isolated=False,
+        has_schema_changes=False,
     )
 
 
@@ -461,6 +467,8 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                     "is_default": True,
                     "origin_branch": None,
                     "branched_from": "2023-02-17T09:30:17.811719Z",
+                    "is_isolated": False,
+                    "has_schema_changes": False,
                 },
                 {
                     "id": "7d9f817a-b958-4e76-8528-8afd0c689ada",
@@ -469,6 +477,8 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                     "is_default": False,
                     "origin_branch": "main",
                     "branched_from": "2023-02-17T09:30:17.811719Z",
+                    "is_isolated": False,
+                    "has_schema_changes": False,
                 },
             ]
         }
@@ -533,6 +543,8 @@ async def mock_add_branch01_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                     "is_data_only": False,
                     "description": "",
                     "branched_from": "2023-02-17T09:30:17.811719Z",
+                    "is_isolated": False,
+                    "has_schema_changes": False,
                 },
             }
         }
