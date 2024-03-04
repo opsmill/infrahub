@@ -87,7 +87,7 @@ const TabStyled = ({ children }: { children: ReactElement | string }) => (
   <Tab
     className={({ selected }) =>
       classNames(
-        "px-4 py-1 text-sm hover:bg-gray-100",
+        "px-4 py-1 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100",
         selected ? "border-b-2 border-b-custom-blue-600 font-semibold" : ""
       )
     }>
