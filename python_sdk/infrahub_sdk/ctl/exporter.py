@@ -1,11 +1,10 @@
 from asyncio import run as aiorun
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import typer
 from rich.console import Console
-from typing_extensions import Annotated
 
 from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.client import initialize_client
@@ -31,9 +30,7 @@ def dump(
         envvar="INFRAHUBCTL_CONCURRENT_EXECUTION",
     ),
     timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
-    exclude: Annotated[
-        Optional[List[str]], typer.Option(None, help="Exclude node kind from being exported (e.g. CoreAccount)")
-    ] = None,
+    exclude: List[str] = typer.Option([], help="Prevent node kind(s) from being exported (e.g. CoreAccount)"),
 ) -> None:
     """Export node(s)."""
     console = Console()
