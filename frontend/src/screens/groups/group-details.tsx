@@ -19,8 +19,8 @@ import SlideOver from "../../components/display/slide-over";
 import { Tabs } from "../../components/tabs";
 import { DEFAULT_BRANCH_NAME, GROUP_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { useAuth } from "../../hooks/useAuth";
 import { getGroupDetails } from "../../graphql/queries/groups/getGroupDetails";
+import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
@@ -134,7 +134,7 @@ export default function GroupItemDetails() {
             onClick={() => setShowEditDrawer(true)}
             className="mr-4">
             Edit
-            <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+            <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
           </Button>
         }
       />

@@ -574,7 +574,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
                   onClick={() => setShowEditDrawer(true)}
                   className="mr-4">
                   Edit
-                  <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                  <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             </div>
