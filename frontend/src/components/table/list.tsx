@@ -25,9 +25,9 @@ export const List = (props: tDetailsProps) => {
 
           return (
             <div className="p-2 grid grid-cols-3 gap-4 text-xs" key={index}>
-              <dt className=" font-medium text-gray-500 flex items-center">{column.label}</dt>
+              <dt className="font-medium text-gray-500 flex items-center">{column.label}</dt>
 
-              <div className="flex items-center">
+              <div className="flex col-span-2 items-center">
                 <dd className={"mt-1 text-gray-900"}>{row.values[column.name]}</dd>
               </div>
             </div>
