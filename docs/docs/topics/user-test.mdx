@@ -93,7 +93,9 @@ Integration tests can be configured with the same properties as the unit tests. 
 
 ## Real life example
 
-In this section, we will take a look at what test definitions look like for a given Infrahub repository configuration. In the following configuration, we declare a schema, a Jinja2 transform to render the base configuration of devices, a check to verify that a MPLS RSVP configuration is complete and a Python transform giving details about layer 2 circuit services.
+In this section, we will take a look at what test definitions look like for a given Infrahub repository configuration.
+
+In the following Infrahub repository configuration example, we declare a schema, a Jinja2 transform to render the base configuration of devices, a check to verify that a MPLS RSVP configuration is complete and a Python transform giving details about layer 2 circuit services. These are resources that we defined to run our network operations, though they are not tested, and we cannot know for sure that they work like we would expect them to.
 
 ```yaml
 ---
@@ -117,7 +119,7 @@ python_transforms:
     file_path: transforms/mpls_services.py"
 ```
 
-To tests all of these resources, we will write the following YAML text in a file located at `tests/test_all.yml`. Test file names must start with the `test_` prefix in order to be detected and parsed.
+To tests all of these resources, we will write YAML formatted text in a file located at `tests/test_all.yml`. Test file names must start with the `test_` prefix in order to be detected and parsed.
 
 To make sure that all our resources are properly defined, we will declare smoke tests for each of the resource.
 
@@ -147,7 +149,7 @@ infrahub_tests:
           kind: python-transform-smoke
 ```
 
-To run these tests via a command line, we will simply use `pytest` which is installed with the Infrahub SDK.
+To run these tests via a command line, we will simply use `pytest`, it is installed with the Infrahub SDK.
 
 ```shell
 pytest tests # tests is the directory containing the files
@@ -186,7 +188,7 @@ This means that the Infrahub Git agent will take care of running the `pytest` pr
 
 :::note
 
-This section is intented for an audience with advanced knowledge of testing with pytest. This is not a mandatory to know this to use the testing framework.
+This section is intented for an audience with advanced knowledge of testing with pytest. It is not a mandatory to know this in order to use the testing framework.
 
 :::
 
