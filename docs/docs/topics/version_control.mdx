@@ -6,6 +6,7 @@ title: Immutability and Version Control
 
 Infrahub integrate an immutable database with native support for version control.
 and it was designed around 4 main goals:
+
 - Accessible to everyone
 - Optimized for Infrastructure Management
 - Immutable main branch
@@ -14,6 +15,7 @@ and it was designed around 4 main goals:
 ## Immutability
 
 The internal storage in Infrahub is immutable and has been built on two key principles:
+
 - When something is modified, it's previous value is conserved and remain accessible
 - It's not possible to modify the past version of the database, all modifications always happen in the present (and maybe someday in the future)
 
@@ -44,6 +46,7 @@ Branches in Infrahub are designed to be lightweight, while the recommendation is
 Creating a branch won't create a copy of the database, only the changes applied in the branch will be stored in order to keep track of all changes.
 
 When creating a branch it's possible to provide a description and 2 options are available:
+
 - **Data Only**: When a branch is flagged as Data Only it won't be extended to the Read-Write Repository. By opposition, if a branch isn't Data Only it will be automatically created in all the Read-Write Repository.
 - **Isolated Mode**: When operating in isolated mode, the branch won't automatically keep in sync with the main branch. See the dedicated section if the documentation about the isolated mode for more informatin
 
@@ -77,6 +80,7 @@ A branch can be created via the UI, via GraphQL or via the cli `infrahubctl`.
     }
   }
   ```
+
 </details>
 
 <details>
@@ -90,7 +94,6 @@ A branch can be created via the UI, via GraphQL or via the cli `infrahubctl`.
 
 </details>
 
-
 ### Changes between Branches
 
 To view all the changes in a branch
@@ -103,7 +106,6 @@ To view all the changes in a branch
 3. Select on the Diff button and expand the changes to view the diff between the branch and `main`.
 
 ![Branch diff](../media/tutorial_1_branch_diff.png)
-
 
 :::info
 
@@ -128,8 +130,6 @@ A merge operation must be done via a Proposed Change to garantee that all change
 
 :::
 
-
-
 ### Rebase a Branch
 
 If a branch operates in isolated mode or if it has some conflicts with the main branch, it's possible to rebase it with the latest version of `main`
@@ -142,6 +142,7 @@ The diagram below present how various changes to 2 objects in the Branch A will 
 :::info
 
 If the schemas in the branch is different than the schema in main:
+
 - the schema validations will be executed before the rebase to ensure that all datas is compliant wit the new schema in the branch.
 - the schema migrations will be applied
 
@@ -166,6 +167,3 @@ A user can decide to create a branch in isolated mode or to switch to an isolate
 
 When a new schema is applied to a branch, Infrahub will automatically pass the branch in isolated mode.
 When a new schema is applied in main, all active branches will be validated and all branches that aren't compliant with the new schema will be converted to isolated mode.
-
-
-
