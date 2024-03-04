@@ -85,3 +85,8 @@ export const getTextColor = (background?: string) => {
 export const pluralize = (count: number, singular: string, suffix: string = "s") => {
   return `${count} ${singular}${count > 1 ? suffix : ""}`;
 };
+
+// Raise TS error when not every case is handled
+export function warnUnexpectedType(x: never) {
+  console.warn(`unexpected type ${x}`);
+}

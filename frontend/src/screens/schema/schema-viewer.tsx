@@ -2,7 +2,7 @@ import { iNodeSchema } from "../../state/atoms/schema.atom";
 import { Badge } from "../../components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { Tab } from "@headlessui/react";
-import { classNames } from "../../utils/common";
+import { classNames, warnUnexpectedType } from "../../utils/common";
 import Accordion, { AccordionProps } from "../../components/display/accordion";
 import { components } from "../../infraops";
 import { ReactElement } from "react";
@@ -224,25 +224,61 @@ const RelationshipDisplay = ({
   relationship,
 }: {
   relationship: components["schemas"]["RelationshipSchema-Output"];
-}) => (
-  <AccordionStyled
-    title={relationship.label || relationship.name}
-    kind={relationship.peer}
-    description={relationship.description}
-    isOptional={relationship.optional}>
-    <PropertyRow title="Branch" value={relationship.branch} />
-    <PropertyRow title="Cardinality" value={relationship.cardinality} />
-    <PropertyRow title="Direction" value={relationship.direction} />
-    <PropertyRow title="Hierarchical" value={relationship.hierarchical} />
-    <PropertyRow title="ID" value={relationship.id} />
-    <PropertyRow title="Inherited" value={relationship.inherited} />
-    <PropertyRow title="Kind" value={relationship.kind} />
-    <PropertyRow title="Label" value={relationship.label} />
-    <PropertyRow title="Max count" value={relationship.max_count} />
-    <PropertyRow title="Min count" value={relationship.min_count} />
-    <PropertyRow title="Name" value={relationship.name} />
-    <PropertyRow title="Order weight" value={relationship.order_weight} />
-    <PropertyRow title="Peer" value={relationship.peer} />
-    <PropertyRow title="Peer identifier" value={relationship.identifier} />
-  </AccordionStyled>
-);
+}) => {
+  const cardinalityLabel = relationship.cardinality
+    ? getLabelForCardinality(relationship.cardinality)
+    : null;
+
+  const directionLabel = relationship.direction
+    ? getLabelForDirection(relationship.direction)
+    : null;
+
+  return (
+    <AccordionStyled
+      title={relationship.label || relationship.name}
+      kind={`${cardinalityLabel} ${directionLabel} ${relationship.peer}`}
+      description={relationship.description}
+      isOptional={relationship.optional}>
+      <PropertyRow title="Branch" value={relationship.branch} />
+      <PropertyRow title="Cardinality" value={relationship.cardinality} />
+      <PropertyRow title="Direction" value={relationship.direction} />
+      <PropertyRow title="Hierarchical" value={relationship.hierarchical} />
+      <PropertyRow title="ID" value={relationship.id} />
+      <PropertyRow title="Inherited" value={relationship.inherited} />
+      <PropertyRow title="Kind" value={relationship.kind} />
+      <PropertyRow title="Label" value={relationship.label} />
+      <PropertyRow title="Max count" value={relationship.max_count} />
+      <PropertyRow title="Min count" value={relationship.min_count} />
+      <PropertyRow title="Name" value={relationship.name} />
+      <PropertyRow title="Order weight" value={relationship.order_weight} />
+      <PropertyRow title="Peer" value={relationship.peer} />
+      <PropertyRow title="Peer identifier" value={relationship.identifier} />
+    </AccordionStyled>
+  );
+};
+
+function getLabelForCardinality(cardinality: components["schemas"]["RelationshipCardinality"]) {
+  switch (cardinality) {
+    case "many":
+      return "N";
+    case "one":
+      return "1";
+    default:
+      warnUnexpectedType(cardinality);
+      return "";
+  }
+}
+
+function getLabelForDirection(direction: components["schemas"]["RelationshipDirection"]) {
+  switch (direction) {
+    case "bidirectional":
+      return "<>";
+    case "inbound":
+      return "<";
+    case "outbound":
+      return ">";
+    default:
+      warnUnexpectedType(direction);
+      return "";
+  }
+}
