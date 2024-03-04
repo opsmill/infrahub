@@ -124,8 +124,8 @@ export const ProposedChanges = () => {
       <ul className="grid gap-6 grid-cols-1 p-6">
         {!rows && loading && <LoadingScreen />}
 
-        {rows.map((data: any, index: number) => (
-          <ProposedChange key={index} data={data} refetch={refetch} />
+        {rows.map((row: any, index: number) => (
+          <ProposedChange key={index} row={row} refetch={refetch} />
         ))}
       </ul>
 
