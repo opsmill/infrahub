@@ -1,9 +1,9 @@
 import Accordion, { AccordionProps } from "../../components/display/accordion";
 import { Badge } from "../../components/ui/badge";
 import { ReactElement } from "react";
-import { components } from "../../infraops";
 import { Tab } from "@headlessui/react";
-import { classNames } from "../../utils/common";
+import { classNames, warnUnexpectedType } from "../../utils/common";
+import { Icon } from "@iconify-icon/react";
 
 interface AccordionStyleProps extends AccordionProps {
   title: ReactElement | string;
@@ -53,23 +53,39 @@ export const PropertyRow = ({
   value,
 }: {
   title: string;
-  value:
-    | string
-    | string[]
-    | string[][]
-    | components["schemas"]["DropdownChoice"][]
-    | number
-    | boolean
-    | ReactElement
-    | null
-    | undefined;
+  value: string | string[] | number | boolean | ReactElement | null | undefined;
 }) => {
   if (value === undefined) return null;
+
+  const formatValue = () => {
+    if (value === null || value === undefined) return "-";
+
+    switch (typeof value) {
+      case "string":
+      case "number":
+        return value;
+      case "boolean":
+        return <Icon icon={value ? "mdi:check" : "mdi:remove"} />;
+      case "object":
+        if (Array.isArray(value))
+          return (
+            <ul>
+              {value.map((v) => (
+                <li key={v}>{v}</li>
+              ))}
+            </ul>
+          );
+        return value;
+      default:
+        warnUnexpectedType(value);
+        return value;
+    }
+  };
 
   return (
     <dl className="flex justify-between items-baseline gap-4 text-sm p-2">
       <dt>{title}</dt>
-      <dd className="flex-grow shrink font-medium text-end">{value || "-"}</dd>
+      <dd className="flex-grow shrink font-medium text-end">{formatValue()}</dd>
     </dl>
   );
 };
