@@ -65,15 +65,19 @@ const SchemaViewerDetails = ({ schema }: SchemaViewerProps) => {
           </TabPanelStyled>
 
           <TabPanelStyled>
-            {schema.attributes?.map((attribute) => (
-              <AttributeDisplay key={attribute.id} attribute={attribute} />
-            ))}
+            {schema.attributes && schema.attributes.length > 0
+              ? schema.attributes?.map((attribute) => (
+                  <AttributeDisplay key={attribute.id} attribute={attribute} />
+                ))
+              : "No attribute"}
           </TabPanelStyled>
 
           <TabPanelStyled>
-            {schema.relationships?.map((relationship) => (
-              <RelationshipDisplay key={relationship.id} relationship={relationship} />
-            ))}
+            {schema.relationships && schema.relationships.length > 0
+              ? schema.relationships?.map((relationship) => (
+                  <RelationshipDisplay key={relationship.id} relationship={relationship} />
+                ))
+              : "No relationship"}
           </TabPanelStyled>
         </Tab.Panels>
       </Tab.Group>
