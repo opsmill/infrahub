@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 
 class ExporterInterface(ABC):
@@ -10,5 +10,6 @@ class ExporterInterface(ABC):
         export_directory: Path,
         namespaces: List[str],
         branch: str,
+        exclude: Optional[List[str]] = None,
     ) -> None:
         ...
