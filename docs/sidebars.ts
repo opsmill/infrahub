@@ -70,7 +70,7 @@ const sidebars: SidebarsConfig = {
         'topics/transformation',
         'topics/auth',
         'topics/database-backup',
-        'topics/user-test',
+        'topics/resources-testing-framework',
       ],
     },
     {

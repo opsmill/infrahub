@@ -1,8 +1,8 @@
 ---
-title: User tests
+title: Resources testing framework
 ---
 
-# User defined tests
+# Resources testing framework
 
 ## Summary
 
@@ -86,10 +86,7 @@ infrahub_tests:
           output: output.yml
 ```
 
-Integration tests can be configured with the same properties as the unit tests. They have two more keys:
-
-* `variables` which corresponds to the path to a JSON or YAML file defining the variables to use while running queries, Python transforms or while rendering Jinja2 transforms
-* `rebase` which tells if the branch must be rebased before running a GraphQL query
+Integration tests can be configured with the same properties as the unit tests. They have one more key, `variables` which corresponds to the path to a JSON or YAML file defining the variables to use while running queries, Python transforms or while rendering Jinja2 transforms. It can also take a YAML dictionary as a value instead of a path to a file.
 
 ## Real life example
 
