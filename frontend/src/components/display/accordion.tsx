@@ -1,7 +1,7 @@
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 
-type AccordionProps = {
+export type AccordionProps = {
   title?: any;
   children?: any;
   className?: string;

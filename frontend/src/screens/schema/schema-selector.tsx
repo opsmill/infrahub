@@ -30,7 +30,9 @@ export const SchemaSelector = ({
             `}
             onClick={() => onClick(schema)}>
             <h2 className="flex items-center gap-1">
-              <Badge variant="blue">{schema.namespace}</Badge>
+              <Badge variant="blue" className="self-baseline">
+                {schema.namespace}
+              </Badge>
               {schema.label}
             </h2>
 
