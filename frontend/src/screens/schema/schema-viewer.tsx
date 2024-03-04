@@ -2,10 +2,8 @@ import { iNodeSchema } from "../../state/atoms/schema.atom";
 import { Badge } from "../../components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { Tab } from "@headlessui/react";
-import { classNames } from "../../utils/common";
 import { components } from "../../infraops";
-import { ReactElement } from "react";
-import { AccordionStyled, PropertyRow } from "./styled";
+import { AccordionStyled, PropertyRow, TabPanelStyled, TabStyled } from "./styled";
 import { RelationshipDisplay } from "./relationship-display";
 
 type SchemaViewerProps = {
@@ -81,22 +79,6 @@ const SchemaViewerDetails = ({ schema }: SchemaViewerProps) => {
       </Tab.Group>
     </section>
   );
-};
-
-const TabStyled = ({ children }: { children: ReactElement | string }) => (
-  <Tab
-    className={({ selected }) =>
-      classNames(
-        "px-4 py-1 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100",
-        selected ? "border-b-2 border-b-custom-blue-600 font-semibold" : ""
-      )
-    }>
-    {children}
-  </Tab>
-);
-
-const TabPanelStyled = ({ children }: { children?: ReactElement | ReactElement[] | string }) => {
-  return <Tab.Panel className="space-y-2">{children}</Tab.Panel>;
 };
 
 const Properties = ({ schema }: SchemaViewerProps) => {

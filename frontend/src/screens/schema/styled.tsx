@@ -2,6 +2,8 @@ import Accordion, { AccordionProps } from "../../components/display/accordion";
 import { Badge } from "../../components/ui/badge";
 import { ReactElement } from "react";
 import { components } from "../../infraops";
+import { Tab } from "@headlessui/react";
+import { classNames } from "../../utils/common";
 
 interface AccordionStyleProps extends AccordionProps {
   title: ReactElement | string;
@@ -45,6 +47,7 @@ export const AccordionStyled = ({
     <article className="divide-y px-2 mt-2 bg-gray-100">{children}</article>
   </Accordion>
 );
+
 export const PropertyRow = ({
   title,
   value,
@@ -69,4 +72,24 @@ export const PropertyRow = ({
       <dd className="truncate">{value || "-"}</dd>
     </dl>
   );
+};
+
+export const TabStyled = ({ children }: { children: ReactElement | string }) => (
+  <Tab
+    className={({ selected }) =>
+      classNames(
+        "px-4 py-1 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100",
+        selected ? "border-b-2 border-b-custom-blue-600 font-semibold" : ""
+      )
+    }>
+    {children}
+  </Tab>
+);
+
+export const TabPanelStyled = ({
+  children,
+}: {
+  children?: ReactElement | ReactElement[] | string;
+}) => {
+  return <Tab.Panel className="space-y-2">{children}</Tab.Panel>;
 };
