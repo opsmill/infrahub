@@ -1,13 +1,14 @@
-import { iNodeSchema } from "../../state/atoms/schema.atom";
+import { IModelSchema } from "../../state/atoms/schema.atom";
 import { Badge } from "../../components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { Tab } from "@headlessui/react";
 import { PropertyRow, TabPanelStyled, TabStyled } from "./styled";
 import { RelationshipDisplay } from "./relationship-display";
 import { AttributeDisplay } from "./attribute-display";
+import { isGeneric } from "../../utils/common";
 
 type SchemaViewerProps = {
-  schema: iNodeSchema;
+  schema: IModelSchema;
   onClose?: () => void;
 };
 
@@ -17,7 +18,7 @@ export const SchemaViewer = ({ schema, onClose }: SchemaViewerProps) => {
       <div className="flex justify-between items-start">
         <div className="space-x-1">
           <Badge variant="blue">{schema.namespace}</Badge>
-          <Badge>Node</Badge>
+          <Badge>{isGeneric(schema) ? "Generic" : "Node"}</Badge>
           <span className="text-xs">{schema.id}</span>
         </div>
 
@@ -98,12 +99,20 @@ const Properties = ({ schema }: SchemaViewerProps) => {
         <PropertyRow title="Description" value={schema.description} />
       </div>
 
-      <div>
-        <PropertyRow title="Inherit from" value={schema.inherit_from} />
-        <PropertyRow title="Hierarchy" value={schema.hierarchy} />
-        <PropertyRow title="Parent" value={schema.parent} />
-        <PropertyRow title="Children" value={schema.children} />
-      </div>
+      {"used_by" in schema && (
+        <div>
+          <PropertyRow title="Inherit from" value={schema.used_by} />
+        </div>
+      )}
+
+      {"inherit_from" in schema && (
+        <div>
+          <PropertyRow title="Inherit from" value={schema.inherit_from} />
+          <PropertyRow title="Hierarchy" value={schema.hierarchy} />
+          <PropertyRow title="Parent" value={schema.parent} />
+          <PropertyRow title="Children" value={schema.children} />
+        </div>
+      )}
 
       <div>
         <PropertyRow title="Included in menu" value={schema.include_in_menu} />

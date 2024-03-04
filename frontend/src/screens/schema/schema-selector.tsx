@@ -1,12 +1,12 @@
 import { useAtomValue } from "jotai";
-import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
-import { classNames } from "../../utils/common";
+import { genericsState, IModelSchema, schemaState } from "../../state/atoms/schema.atom";
+import { classNames, isGeneric } from "../../utils/common";
 import { Badge } from "../../components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 
 type SchemaSelectorProps = {
-  selectedSchema?: iNodeSchema;
-  onClick: (node: iNodeSchema) => void;
+  selectedSchema?: IModelSchema;
+  onClick: (node: IModelSchema) => void;
   className?: string;
 };
 export const SchemaSelector = ({
@@ -15,10 +15,11 @@ export const SchemaSelector = ({
   className = "",
 }: SchemaSelectorProps) => {
   const nodeSchemas = useAtomValue(schemaState);
+  const genericSchemas = useAtomValue(genericsState);
 
   return (
     <section className={classNames("space-y-2 max-w-md", className)}>
-      {nodeSchemas.map((schema) => {
+      {[...nodeSchemas, ...genericSchemas].map((schema) => {
         return (
           <div
             key={schema.id}
@@ -43,7 +44,7 @@ export const SchemaSelector = ({
                   </Badge>
                   {schema.label}
                 </div>
-                <Badge className="self-baseline">Node</Badge>
+                <Badge className="self-baseline">{isGeneric(schema) ? "Generic" : "Node"}</Badge>
               </h2>
 
               <p className="pl-1 text-sm text-gray-600">{schema.description}</p>

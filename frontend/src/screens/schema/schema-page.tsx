@@ -1,7 +1,7 @@
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useTitle } from "../../hooks/useTitle";
-import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
+import { IModelSchema, schemaState } from "../../state/atoms/schema.atom";
 import { SchemaPageHeader } from "./schema-page-header";
 import { SchemaSelector } from "./schema-selector";
 import { SchemaViewer } from "./schema-viewer";
@@ -10,7 +10,7 @@ import { Badge } from "../../components/ui/badge";
 export default function SchemaPage() {
   useTitle("Schema");
   const [schema] = useAtom(schemaState);
-  const [selectedSchema, setSelectedSchema] = useState<iNodeSchema>();
+  const [selectedSchema, setSelectedSchema] = useState<IModelSchema>();
 
   return (
     <>

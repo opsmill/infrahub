@@ -7,6 +7,8 @@ export const schemaState = atom<iNodeSchema[]>([]);
 export type iGenericSchema = components["schemas"]["APIGenericSchema"];
 export const genericsState = atom<iGenericSchema[]>([]);
 
+export type IModelSchema = iGenericSchema | iNodeSchema;
+
 export type iNamespace = {
   name: string;
   user_editable: boolean;

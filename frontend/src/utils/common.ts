@@ -1,4 +1,5 @@
 import * as R from "ramda";
+import { IModelSchema } from "../state/atoms/schema.atom";
 
 export const classNames = (...classes: string[]) => {
   // Replcaa tabs and spaces to have multiline in code, but one ligne in output
@@ -89,4 +90,8 @@ export const pluralize = (count: number, singular: string, suffix: string = "s")
 // Raise TS error when not every case is handled
 export function warnUnexpectedType(x: never) {
   console.warn(`unexpected type ${x}`);
+}
+
+export function isGeneric(schema: IModelSchema): boolean {
+  return "used_by" in schema;
 }
