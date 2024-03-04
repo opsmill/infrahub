@@ -121,23 +121,31 @@ const AttributeDisplay = ({
     isUnique={attribute.unique}
     isReadOnly={attribute.read_only}
     className="bg-custom-white shadow py-2 px-2 rounded">
-    <article className="divide-y">
-      <PropertyRow title="Branch" value={attribute.branch} />
-      <PropertyRow title="Choices" value={attribute.choices} />
-      <PropertyRow title="Default value" value={attribute.default_value as any} />
-      <PropertyRow title="Description" value={attribute.description} />
-      <PropertyRow title="Enum" value={attribute.enum as string[]} />
+    <div>
       <PropertyRow title="ID" value={attribute.id} />
-      <PropertyRow title="Inherited" value={attribute.inherited} />
       <PropertyRow title="Kind" value={attribute.kind} />
       <PropertyRow title="Label" value={attribute.label} />
+      <PropertyRow title="Name" value={attribute.name} />
+      <PropertyRow title="Description" value={attribute.description} />
+      <PropertyRow title="Inherited" value={attribute.inherited} />
+    </div>
+
+    <div>
+      <PropertyRow title="Unique" value={attribute.unique} />
+      <PropertyRow title="Optional" value={attribute.optional} />
+      <PropertyRow title="Choices" value={attribute.choices} />
+      <PropertyRow title="Enum" value={attribute.enum as string[]} />
+    </div>
+
+    <div>
+      <PropertyRow title="Default value" value={attribute.default_value as any} />
       <PropertyRow title="Max length" value={attribute.max_length} />
       <PropertyRow title="Min length" value={attribute.min_length} />
-      <PropertyRow title="Name" value={attribute.name} />
-      <PropertyRow title="Optional" value={attribute.optional} />
-      <PropertyRow title="Order weight" value={attribute.order_weight} />
       <PropertyRow title="Regex" value={attribute.regex} />
-      <PropertyRow title="Unique" value={attribute.unique} />
-    </article>
+    </div>
+    <div>
+      <PropertyRow title="Branch" value={attribute.branch} />
+      <PropertyRow title="Order weight" value={attribute.order_weight} />
+    </div>
   </AccordionStyled>
 );
