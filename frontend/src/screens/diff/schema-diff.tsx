@@ -1,5 +1,6 @@
 import { useAtomValue } from "jotai/index";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
+import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Button } from "../../components/buttons/button";
@@ -13,6 +14,7 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import { DataDiffNode } from "./data-diff-node";
 
 export const SchemaDiff = forwardRef((props, ref) => {
+  const { branchname } = useParams();
   const proposedChangesDetails = useAtomValue(proposedChangedState);
   const [diff, setDiff] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +22,7 @@ export const SchemaDiff = forwardRef((props, ref) => {
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
 
-  const branch = proposedChangesDetails?.source_branch?.value;
+  const branch = proposedChangesDetails?.source_branch?.value || branchname; // Used in proposed changes view and branch view
 
   const fetchDiffDetails = useCallback(async () => {
     if (!proposedChangesDetails?.source_branch?.value) return;
