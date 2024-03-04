@@ -61,7 +61,8 @@ export const SchemaDiff = forwardRef((props, ref) => {
       <div className="flex items-center p-4 bg-custom-white">
         <div className="mr-2">
           <Button onClick={() => setBranchOnly(branchOnly !== "false" ? "false" : "true")}>
-            Display main
+            <span className="mr-2">Display main</span>
+
             <Checkbox enabled={branchOnly === "false"} readOnly />
           </Button>
         </div>
