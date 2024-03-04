@@ -5,6 +5,7 @@ import { Tab } from "@headlessui/react";
 import { components } from "../../infraops";
 import { AccordionStyled, PropertyRow, TabPanelStyled, TabStyled } from "./styled";
 import { RelationshipDisplay } from "./relationship-display";
+import Accordion from "../../components/display/accordion";
 
 type SchemaViewerProps = {
   schema: iNodeSchema;
@@ -89,21 +90,62 @@ const Properties = ({ schema }: SchemaViewerProps) => {
         <PropertyRow title="Namespace" value={schema.namespace} />
         <PropertyRow title="Name" value={schema.name} />
         <PropertyRow title="Label" value={schema.label} />
+        <PropertyRow title="Kind" value={schema.kind} />
+        <PropertyRow title="Display labels" value={schema.display_labels} />
         <PropertyRow title="Description" value={schema.description} />
       </div>
-      <PropertyRow title="Inherit from" value={schema.inherit_from} />
-      <PropertyRow title="Hierarchy" value={schema.hierarchy} />
-      <PropertyRow title="Parent" value={schema.parent} />
-      <PropertyRow title="Children" value={schema.children} />
-      <PropertyRow title="Default filter" value={schema.default_filter} />
-      <PropertyRow title="Branch" value={schema.branch} />
-      <PropertyRow title="Order by" value={schema.order_by} />
-      <PropertyRow title="Display labels" value={schema.display_labels} />
-      <PropertyRow title="Included in menu" value={schema.include_in_menu} />
-      <PropertyRow title="Menu placement" value={schema.menu_placement} />
-      <PropertyRow title="Icon" value={schema.icon} />
-      <PropertyRow title="Uniqueness constraints" value={schema.uniqueness_constraints} />
-      <PropertyRow title="Kind" value={schema.kind} />
+
+      <div>
+        <PropertyRow title="Inherit from" value={schema.inherit_from} />
+        <PropertyRow title="Hierarchy" value={schema.hierarchy} />
+        <PropertyRow title="Parent" value={schema.parent} />
+        <PropertyRow title="Children" value={schema.children} />
+      </div>
+
+      <div>
+        <PropertyRow title="Included in menu" value={schema.include_in_menu} />
+        <PropertyRow title="Menu placement" value={schema.menu_placement} />
+      </div>
+
+      <div>
+        <PropertyRow title="Icon" value={schema.icon} />
+        <PropertyRow title="Branch" value={schema.branch} />
+        <PropertyRow title="Default filter" value={schema.default_filter} />
+        <PropertyRow title="Order by" value={schema.order_by} />
+        <PropertyRow title="Uniqueness constraints" value={schema.uniqueness_constraints} />
+      </div>
+    </div>
+  );
+};
+
+const ChoicesRow = ({
+  choices,
+}: {
+  choices: components["schemas"]["DropdownChoice"][] | null | undefined;
+}) => {
+  if (!choices || choices.length === 0) return "-";
+
+  return (
+    <div className="space-y-1 flex-grow">
+      {choices.map((choice) => {
+        const color = choice.color === "" ? "#f1f1f1" : choice.color;
+        return (
+          <Accordion
+            key={choice.name}
+            title={
+              <div className="flex justify-between gap-2 pr-2 font-normal">
+                {choice.label || choice.name} <span>{choice.color}</span>
+              </div>
+            }
+            className="px-1.5 py-0.5 rounded-md flex-grow divide-y divide-gray-600"
+            style={{ backgroundColor: color ?? undefined }}>
+            <PropertyRow title="Name" value={choice.name} />
+            <PropertyRow title="Label" value={choice.label} />
+            <PropertyRow title="Color" value={choice.color} />
+            <PropertyRow title="Description" value={choice.description} />
+          </Accordion>
+        );
+      })}
     </div>
   );
 };
@@ -124,8 +166,8 @@ const AttributeDisplay = ({
     <div>
       <PropertyRow title="ID" value={attribute.id} />
       <PropertyRow title="Kind" value={attribute.kind} />
-      <PropertyRow title="Label" value={attribute.label} />
       <PropertyRow title="Name" value={attribute.name} />
+      <PropertyRow title="Label" value={attribute.label} />
       <PropertyRow title="Description" value={attribute.description} />
       <PropertyRow title="Inherited" value={attribute.inherited} />
     </div>
@@ -133,7 +175,7 @@ const AttributeDisplay = ({
     <div>
       <PropertyRow title="Unique" value={attribute.unique} />
       <PropertyRow title="Optional" value={attribute.optional} />
-      <PropertyRow title="Choices" value={attribute.choices} />
+      <PropertyRow title="Choices" value={<ChoicesRow choices={attribute.choices} />} />
       <PropertyRow title="Enum" value={attribute.enum as string[]} />
     </div>
 

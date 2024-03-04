@@ -67,9 +67,9 @@ export const PropertyRow = ({
   if (value === undefined) return null;
 
   return (
-    <dl className="text-gray-500 flex justify-between items-baseline text-sm p-2">
+    <dl className="flex justify-between items-baseline gap-4 text-sm p-2">
       <dt>{title}</dt>
-      <dd className="truncate">{value || "-"}</dd>
+      <dd className="flex-grow shrink font-medium text-end">{value || "-"}</dd>
     </dl>
   );
 };
