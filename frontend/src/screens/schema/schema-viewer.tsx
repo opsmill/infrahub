@@ -17,7 +17,11 @@ export const SchemaViewer = ({ schema, onClose }: SchemaViewerProps) => {
   return (
     <section className="flex flex-col flex-grow shrink-0 max-w-lg max-h-screen overflow-hidden sticky top-2 right-2 space-y-4 p-4 shadow-lg border border-gray-200 bg-custom-white rounded-md">
       <div className="flex justify-between items-start">
-        <Badge variant="blue">{schema.namespace}</Badge>
+        <div className="space-x-1">
+          <Badge variant="blue">{schema.namespace}</Badge>
+          <Badge>Node</Badge>
+          <span className="text-xs">{schema.id}</span>
+        </div>
 
         <Icon icon="mdi:close" className="text-xl cursor-pointer text-gray-600" onClick={onClose} />
       </div>
