@@ -1,17 +1,17 @@
+import { useAtomValue } from "jotai/index";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { CONFIG } from "../../config/config";
 import { QSP } from "../../config/qsp";
+import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { fetchUrl, getUrlWithQsp } from "../../utils/fetch";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { DataDiffNode } from "./data-diff-node";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 export const SchemaDiff = forwardRef((props, ref) => {
-  const currentBranch = useAtomValue(currentBranchAtom);
+  const proposedChangeDetails = useAtomValue(proposedChangedState);
   const [diff, setDiff] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
@@ -19,11 +19,11 @@ export const SchemaDiff = forwardRef((props, ref) => {
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
 
   const fetchDiffDetails = useCallback(async () => {
-    if (!currentBranch) return;
+    if (!proposedChangeDetails?.source_branch?.value) return;
 
     setIsLoading(true);
 
-    const url = CONFIG.SCHEMA_DIFF_URL(currentBranch.name);
+    const url = CONFIG.SCHEMA_DIFF_URL(proposedChangeDetails?.source_branch?.value);
 
     const options: string[][] = [
       ["branch_only", branchOnly ?? ""],
@@ -43,7 +43,7 @@ export const SchemaDiff = forwardRef((props, ref) => {
     }
 
     setIsLoading(false);
-  }, [currentBranch?.name, branchOnly, timeFrom, timeTo]);
+  }, [proposedChangeDetails?.source_branch?.value, branchOnly, timeFrom, timeTo]);
 
   // Provide refetch function to parent
   useImperativeHandle(ref, () => ({ refetch: fetchDiffDetails }));
