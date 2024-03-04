@@ -144,8 +144,8 @@ const Properties = ({ schema }: SchemaViewerProps) => {
 };
 
 interface AccordionStyleProps extends AccordionProps {
-  title: string;
-  kind: string;
+  title: ReactElement | string;
+  kind: ReactElement | string;
   description?: string | null;
   isOptional?: boolean;
   isUnique?: boolean;
@@ -236,7 +236,16 @@ const RelationshipDisplay = ({
   return (
     <AccordionStyled
       title={relationship.label || relationship.name}
-      kind={`${cardinalityLabel} ${directionLabel} ${relationship.peer}`}
+      kind={
+        <>
+          <span className="flex items-center gap-0.5">
+            {cardinalityLabel} {directionLabel} {relationship.peer}
+          </span>
+          <Badge variant="green" className="ml-1 px-1">
+            {relationship.kind}
+          </Badge>
+        </>
+      }
       description={relationship.description}
       isOptional={relationship.optional}>
       <PropertyRow title="Branch" value={relationship.branch} />
@@ -272,11 +281,11 @@ function getLabelForCardinality(cardinality: components["schemas"]["Relationship
 function getLabelForDirection(direction: components["schemas"]["RelationshipDirection"]) {
   switch (direction) {
     case "bidirectional":
-      return "<>";
+      return <Icon icon="mdi:arrow-left-right" />;
     case "inbound":
-      return "<";
+      return <Icon icon="mdi:arrow-left" />;
     case "outbound":
-      return ">";
+      return <Icon icon="mdi:arrow-right" />;
     default:
       warnUnexpectedType(direction);
       return "";
