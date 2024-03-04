@@ -181,3 +181,17 @@ In this output we can see `infrahub-sdk-0.8.1` (0.8.1 being the Infrahub SDK ver
 Tests can also run as part of the Infrahub CI pipeline. This is a feature which allows to validate the proper behaviour of a proposed change.
 
 This means that the Infrahub Git agent will take care of running the `pytest` process on behalf of users after creating a proposed change or updating it with new changes. User defined tests, if found, will be run as part of the CI pipeline and be logged in checks. One check per test is created which allows to see the outcome of it and an optional message that gives more details in case of failure.
+
+## How testing work
+
+:::note
+
+This section is intented for an audience with advanced knowledge of testing with pytest. This is not a mandatory to know this to use the testing framework.
+
+:::
+
+Infrahub user test framework uses pytest to discover and run tests. In order to avoid people from having to write Python, the Infrahub SDK is bundled with a pytest plugin in charge of discovering tests by parsing YAML files starting with the `test_` prefix. This plugin parses the test files, correlates data with resources provided in the repository and generates test items given the test configuration. Another pytest plugin, bundled with Infrahub backend code, is provided and in charge of reporting test status to the backend and the database when the tests run as part of a proposed change pipeline. It does so by creating a repository validator (or by re-using an existing one) to which checks will be attached to. One check per test item is created and used to record the tested resource, the test outcome and a message giving more details in case of failure.
+
+The backend plugin still run tests using pytest. It starts the pytest main loop in a dedicated thread. Below a visual description of how the pieces are connected to each other.
+
+![Flow representation of pytest plugin connections](../media/topics/user_test_framework_architecture.jpg)
