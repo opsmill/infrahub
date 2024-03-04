@@ -267,7 +267,7 @@ class BaseNodeSchema(HashableModel):  # pylint: disable=too-many-public-methods
         default=None, json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value}
     )
 
-    _exclude_from_hash: List[str] = ["attributes", "relationships"]
+    _exclude_from_hash: List[str] = ["attributes", "relationships", "filters"]
     _sort_by: List[str] = ["name"]
 
     @property
