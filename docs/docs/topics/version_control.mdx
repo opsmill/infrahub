@@ -27,7 +27,7 @@ It's possible to query a previous version of the database by providing a specifi
 
 The implementation of Version Control in Infrahub is inspired by Git but also different in several ways
 
-A branch provide a safe environment to prepare and validate a change before integrating it into the main branch by opening (TODO add LINK)[a Proposed Change].
+A branch provide a safe environment to prepare and validate a change before integrating it into the main branch by opening a [Proposed Change](/topics/proposed-change).
 Branches are meant to be short lived, from a few seconds to a few weeks. Branches in Infrahub are are hierarchical by nature and currently all branches must be created from `main` and be merged into `main.
 
 Unlike Git, by default, a branch in Infrahub will automatically stay in sync with the main branch, unless the branch is currently in isolated mode.
@@ -153,6 +153,7 @@ If the schemas in the branch is different than the schema in main:
 If the same attribute or the same relationship has been modified both in a branch and in main, the conflict will need to be resolved manually before the branch can be merged.
 
 Conflicts in a branch can be resolved in 2 different ways:
+
 - Rebase the branch: A rebase will automatically resolves all conflicts by positioning the changes in the branch as the latest changes.
 - Manual selection as part of a proposed change
 
