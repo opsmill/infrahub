@@ -1,17 +1,18 @@
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import { CSSProperties, useState } from "react";
 
 export type AccordionProps = {
   title?: any;
   children?: any;
   className?: string;
+  style?: CSSProperties;
 };
 
-export default function Accordion({ title, children, className }: AccordionProps) {
+export default function Accordion({ title, children, className, ...props }: AccordionProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className={className}>
+    <div className={className} {...props}>
       <div className="flex">
         <div
           className="flex flex-1 w-full items-center cursor-pointer"
