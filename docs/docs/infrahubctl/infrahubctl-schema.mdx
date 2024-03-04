@@ -17,7 +17,6 @@ $ infrahubctl schema [OPTIONS] COMMAND [ARGS]...
 **Commands**:
 
 * `load`: Load a schema file into Infrahub.
-* `migrate`: Migrate the schema to the latest version.
 
 ## `infrahubctl schema load`
 
@@ -38,18 +37,4 @@ $ infrahubctl schema load [OPTIONS] SCHEMAS...
 * `--debug / --no-debug`: [default: no-debug]
 * `--branch TEXT`: Branch on which to load the schema.  [default: main]
 * `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
-* `--help`: Show this message and exit.
-
-## `infrahubctl schema migrate`
-
-Migrate the schema to the latest version. (Not Implemented Yet)
-
-**Usage**:
-
-```console
-$ infrahubctl schema migrate [OPTIONS]
-```
-
-**Options**:
-
 * `--help`: Show this message and exit.

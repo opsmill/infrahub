@@ -1,6 +1,5 @@
 import logging
 import time
-from asyncio import run as aiorun
 from pathlib import Path
 from typing import List, Optional
 
@@ -15,11 +14,12 @@ except ImportError:
 from rich.console import Console
 from rich.logging import RichHandler
 
+from infrahub_sdk.async_typer import AsyncTyper
 from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.utils import find_files
 
-app = typer.Typer()
+app = AsyncTyper()
 
 
 @app.callback()
@@ -43,8 +43,27 @@ class SchemaFile(pydantic.BaseModel):
             self.valid = False
 
 
-async def _load(schemas: List[Path], branch: str, log: logging.Logger) -> None:  # pylint: disable=unused-argument
+@app.command()
+async def load(  # noqa: C901,PLR0915
     # pylint: disable=too-many-branches
+    schemas: List[Path],
+    debug: bool = False,
+    branch: str = typer.Option("main", help="Branch on which to load the schema."),
+    config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
+) -> None:
+    """Load a schema file into Infrahub."""
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
+
+    logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
+    logging.getLogger("httpx").setLevel(logging.ERROR)
+    logging.getLogger("httpcore").setLevel(logging.ERROR)
+
+    log_level = "DEBUG" if debug else "INFO"
+    FORMAT = "%(message)s"
+    logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
+    logging.getLogger("infrahubctl")
+
     console = Console()
 
     schemas_data: List[SchemaFile] = []
@@ -107,32 +126,3 @@ async def _load(schemas: List[Path], branch: str, log: logging.Logger) -> None: 
     else:
         for schema_file in schemas_data:
             console.print(f"[green] schema '{schema_file.location}' loaded successfully in {loading_time:.3f} sec!")
-
-
-@app.command()
-def load(
-    schemas: List[Path],
-    debug: bool = False,
-    branch: str = typer.Option("main", help="Branch on which to load the schema."),
-    config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
-) -> None:
-    """Load a schema file into Infrahub."""
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
-
-    logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
-    logging.getLogger("httpx").setLevel(logging.ERROR)
-    logging.getLogger("httpcore").setLevel(logging.ERROR)
-
-    log_level = "DEBUG" if debug else "INFO"
-    FORMAT = "%(message)s"
-    logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-    log = logging.getLogger("infrahubctl")
-
-    aiorun(_load(schemas=schemas, branch=branch, log=log))
-
-
-@app.command()
-def migrate() -> None:
-    """Migrate the schema to the latest version. (Not Implemented Yet)"""
-    print("Not implemented yet.")
