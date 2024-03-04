@@ -30,9 +30,11 @@ export const SchemaSelector = ({
               }
             `}
             onClick={() => onClick(schema)}>
-            <div className="absolute left-3">
-              <Icon icon={schema.icon} className="text-xl text-custom-blue-700" />
-            </div>
+            {schema.icon && (
+              <div className="absolute left-3">
+                <Icon icon={schema.icon} className="text-xl text-custom-blue-700" />
+              </div>
+            )}
             <div className="flex-grow">
               <h2 className="flex justify-between items-start">
                 <div className="flex items-center gap-1">
