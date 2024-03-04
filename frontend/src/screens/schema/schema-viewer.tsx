@@ -1,18 +1,26 @@
-import { IModelSchema } from "../../state/atoms/schema.atom";
-import { Badge } from "../../components/ui/badge";
-import { Icon } from "@iconify-icon/react";
 import { Tab } from "@headlessui/react";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { Badge } from "../../components/ui/badge";
 import { PropertyRow, TabPanelStyled, TabStyled } from "./styled";
 import { RelationshipDisplay } from "./relationship-display";
 import { AttributeDisplay } from "./attribute-display";
 import { isGeneric } from "../../utils/common";
+import { genericsState, IModelSchema, schemaState } from "../../state/atoms/schema.atom";
+import { StringParam, useQueryParam } from "use-query-params";
+import { QSP } from "../../config/qsp";
 
-type SchemaViewerProps = {
-  schema: IModelSchema;
-  onClose?: () => void;
-};
+export const SchemaViewer = () => {
+  const [selectedKind, setKind] = useQueryParam(QSP.KIND, StringParam);
+  const nodes = useAtomValue(schemaState);
+  const generics = useAtomValue(genericsState);
+  const schemas = [...nodes, ...generics];
 
-export const SchemaViewer = ({ schema, onClose }: SchemaViewerProps) => {
+  if (!selectedKind) return null;
+
+  const schema = schemas.find(({ kind }) => kind === selectedKind);
+  if (!schema) return null;
+
   return (
     <section className="flex flex-col flex-grow shrink-0 max-w-lg max-h-screen overflow-hidden sticky top-2 right-2 space-y-4 p-4 shadow-lg border border-gray-200 bg-custom-white rounded-md">
       <div className="flex justify-between items-start">
@@ -22,7 +30,11 @@ export const SchemaViewer = ({ schema, onClose }: SchemaViewerProps) => {
           <span className="text-xs">{schema.id}</span>
         </div>
 
-        <Icon icon="mdi:close" className="text-xl cursor-pointer text-gray-600" onClick={onClose} />
+        <Icon
+          icon="mdi:close"
+          className="text-xl cursor-pointer text-gray-600"
+          onClick={() => setKind(undefined)}
+        />
       </div>
 
       <SchemaViewerTitle schema={schema} />
@@ -32,7 +44,7 @@ export const SchemaViewer = ({ schema, onClose }: SchemaViewerProps) => {
   );
 };
 
-const SchemaViewerTitle = ({ schema }: SchemaViewerProps) => {
+const SchemaViewerTitle = ({ schema }: { schema: IModelSchema }) => {
   return (
     <header className="flex gap-2">
       {schema.icon && (
@@ -50,7 +62,7 @@ const SchemaViewerTitle = ({ schema }: SchemaViewerProps) => {
   );
 };
 
-const SchemaViewerDetails = ({ schema }: SchemaViewerProps) => {
+const SchemaViewerDetails = ({ schema }: { schema: IModelSchema }) => {
   return (
     <section className="flex flex-col overflow-hidden">
       <Tab.Group>
@@ -86,7 +98,7 @@ const SchemaViewerDetails = ({ schema }: SchemaViewerProps) => {
   );
 };
 
-const Properties = ({ schema }: SchemaViewerProps) => {
+const Properties = ({ schema }: { schema: IModelSchema }) => {
   return (
     <div className="p-2 divide-y">
       <div>

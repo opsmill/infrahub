@@ -1,36 +1,31 @@
 import { useAtomValue } from "jotai";
-import { genericsState, IModelSchema, schemaState } from "../../state/atoms/schema.atom";
+import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { classNames, isGeneric } from "../../utils/common";
 import { Badge } from "../../components/ui/badge";
 import { Icon } from "@iconify-icon/react";
+import { StringParam, useQueryParam } from "use-query-params";
+import { QSP } from "../../config/qsp";
 
 type SchemaSelectorProps = {
-  selectedSchema?: IModelSchema;
-  onClick: (node: IModelSchema) => void;
   className?: string;
 };
-export const SchemaSelector = ({
-  selectedSchema,
-  onClick,
-  className = "",
-}: SchemaSelectorProps) => {
-  const nodeSchemas = useAtomValue(schemaState);
-  const genericSchemas = useAtomValue(genericsState);
+export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
+  const [selectedKind, setKind] = useQueryParam(QSP.KIND, StringParam);
+  const nodes = useAtomValue(schemaState);
+  const generics = useAtomValue(genericsState);
 
   return (
     <section className={classNames("space-y-2 max-w-md", className)}>
-      {[...nodeSchemas, ...genericSchemas].map((schema) => {
+      {[...nodes, ...generics].map((schema) => {
         return (
           <div
             key={schema.id}
             className={`
               p-4 shadow-lg cursor-pointer flex relative pl-10
               bg-custom-white rounded-md border border-gray-200
-              ring-custom-blue-600 hover:ring-1 ${
-                selectedSchema?.name === schema.name ? "!ring-2 " : ""
-              }
+              ring-custom-blue-600 hover:ring-1 ${selectedKind === schema.kind ? "!ring-2 " : ""}
             `}
-            onClick={() => onClick(schema)}>
+            onClick={() => setKind(schema.kind)}>
             {schema.icon && (
               <div className="absolute left-3">
                 <Icon icon={schema.icon} className="text-xl text-custom-blue-700" />
