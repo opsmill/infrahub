@@ -66,6 +66,7 @@ generics:
     description: "Generic Choice"
     include_in_menu: false
     label: "Choice"
+    default_filter: name__value
     display_labels:
       - name__value
     order_by:
@@ -288,7 +289,7 @@ nodes:
     inherit_from:
       - "InfraEndpoint"
     relationships:
-      - name: site
+      - name: location
         peer: BuiltinLocation
         optional: false
         cardinality: one
@@ -347,7 +348,7 @@ nodes:
         optional: true
         # unique: true
     relationships:
-      - name: site
+      - name: location
         peer: BuiltinLocation
         optional: false
         cardinality: one
@@ -413,6 +414,7 @@ nodes:
     label: "Device Type"
     icon: "mdi:poll"
     menu_placement: "InfraDevice"
+    default_filter: name__value
     display_labels:
       - name__value
     order_by:
@@ -636,7 +638,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: site
+      - name: location
         peer: BuiltinLocation
         optional: true
         cardinality: one
@@ -779,7 +781,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: site
+      - name: location
         peer: BuiltinLocation
         optional: true
         cardinality: one

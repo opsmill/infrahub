@@ -17,7 +17,7 @@ class Potenda:
         config: SyncInstance,
         top_level: List[str],
         partition=None,
-        show_progress: Optional[bool] = True,
+        show_progress: Optional[bool] = False,
     ):
         self.top_level = top_level
 
@@ -48,14 +48,26 @@ class Potenda:
                 self.progress_bar.close()
                 self.progress_bar = None
 
-    def load(self):
+    def source_load(self):
         try:
             print(f"Load: Importing data from {self.source}")
             self.source.load()
+        except Exception as exc:
+            raise ValueError(f"An error occurred while loading {self.source}: {str(exc)}") from exc
+
+    def destination_load(self):
+        try:
             print(f"Load: Importing data from {self.destination}")
             self.destination.load()
-        except Exception as e:
-            raise Exception(f"An error occurred while loading the sync: {e}")
+        except Exception as exc:
+            raise ValueError(f"An error occurred while loading {self.destination}: {str(exc)}") from exc
+
+    def load(self):
+        try:
+            self.source_load()
+            self.destination_load()
+        except Exception as exc:
+            raise ValueError(f"An error occurred while loading the sync: {str(exc)}") from exc
 
     def diff(self) -> Diff:
         print(f"Diff: Comparing data from {self.source} to {self.destination}")

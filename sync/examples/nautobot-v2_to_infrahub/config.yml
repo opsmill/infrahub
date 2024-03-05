@@ -1,5 +1,5 @@
 ---
-name: from-nautobot
+name: from-nautobot-v2
 source:
   name: nautobot
   settings:
@@ -9,6 +9,12 @@ destination:
   name: infrahub
   settings:
     url: "http://localhost:8000"
+
+store:
+  type: redis
+  settings:
+    host: localhost
+    port: 6379
 
 order: [
   "BuiltinTag",

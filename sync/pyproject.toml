@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-sync"
-version = "0.1.0"
+version = "0.2.1"
 description = ""
 authors = ["OpsMill <contact@opsmill.com>"]
 readme = "README.md"
@@ -21,15 +21,10 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.9"
-infrahub-sdk = {path = "../python_sdk", develop=true}
-dagster = "^1.1.19"
-dagit = "^1.1.19"
+python = "^3.8, < 3.12"
+infrahub-sdk = "^0.7.0"
 structlog = "^22.3.0"
-pynetbox = "^7.0.1"
-pynautobot = "^1.5.0"
-diffsync = "^1.8.0"
-
+diffsync = "^1.10.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
@@ -48,7 +43,7 @@ types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
-ruff = "^0.1.5"
+ruff = "^0.1.8"
 pytest-xdist = "^3.3.1"
 types-python-slugify = "^8.0.0.3"
 
@@ -80,6 +75,8 @@ no-docstring-rgx="^(_|test_)"
 [tool.pylint.messages_control]
 # Line length is enforced by Black, so pylint doesn't need to check it.
 # Pylint and Black disagree about how to format multi-line arrays; Black wins.
+# assigning-non-slot,no-member,unsupported-membership-test,unsubscriptable-object,unsupported-assignment-operation,not-an-iterable
+# are disabled because of our move to pydantic 2, pylint does not seem to respect the type hint for pydantic 2 model fields.
 disable = """,
     line-too-long,
     missing-module-docstring,
@@ -97,6 +94,12 @@ disable = """,
     protected-access,
     import-self,
     wrong-import-order,
+    assigning-non-slot,
+    no-member,
+    unsupported-membership-test,
+    unsubscriptable-object,
+    unsupported-assignment-operation,
+    not-an-iterable,
     """
 
 [tool.pylint.miscellaneous]

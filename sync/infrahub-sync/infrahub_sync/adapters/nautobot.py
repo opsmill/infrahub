@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# pylint: disable=R0801
 import os
 from typing import TYPE_CHECKING, Any, Dict
 
@@ -66,16 +67,16 @@ class NautobotAdapter(DiffSyncMixin, DiffSync):
                 raise ValueError(
                     f"Nautobot didn't return the expected number of objects. Got {len(objs)} instead of {count}"
                 )
-            print(f"-> Loading {len(objs)} {resource_name}")
+            print(f"{self.type}: Loading {len(objs)} {resource_name}")
             for obj in objs:
                 data = self.nautobot_obj_to_diffsync(obj=obj, mapping=element, model=model)
                 item = model(**data)
                 self.add(item)
 
-    def nautobot_obj_to_diffsync(self, obj: NautobotRecord, mapping: SchemaMappingModel, model: NautobotModel) -> dict:
+    def nautobot_obj_to_diffsync(self, obj: NautobotRecord, mapping: SchemaMappingModel, model: NautobotModel) -> dict:  # pylint: disable=too-many-branches
         data: Dict[str, Any] = {"local_id": str(obj.id)}
 
-        for field in mapping.fields:
+        for field in mapping.fields:  # pylint: disable=too-many-nested-blocks
             field_is_list = model.is_list(name=field.name)
 
             if field.static:
@@ -91,7 +92,7 @@ class NautobotAdapter(DiffSyncMixin, DiffSync):
 
             elif field.mapping and field.reference:
                 all_nodes_for_reference = self.store.get_all(model=field.reference)
-                nodes = [item for item in all_nodes_for_reference]
+                nodes = [item for item in all_nodes_for_reference]  # pylint: disable=unnecessary-comprehension
                 if not nodes and all_nodes_for_reference:
                     raise IndexError(
                         f"Unable to get '{field.mapping}' with '{field.reference}' reference from store."

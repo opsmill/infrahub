@@ -10,6 +10,12 @@ destination:
   settings:
     url: "http://localhost:8000"
 
+store:
+  type: redis
+  settings:
+    host: localhost
+    port: 6379
+
 order: [
   "BuiltinTag",
   "BuiltinRole",
@@ -201,7 +207,7 @@ schema_mapping:
   # -> The netbox constraint is `dcim_device_unique_name_site_tenant`
   # Reusing device_name + site + Organization as identifiers
   - name: InfraDevice
-    identifiers: ["name", "site", "rack", "organization"]
+    identifiers: ["name", "location", "rack", "organization"]
     mapping: dcim.devices
     fields:
       - name: name
@@ -222,7 +228,7 @@ schema_mapping:
         mapping: role.name
       # - name: status
       #   mapping: status.value
-      - name: site
+      - name: location
         mapping: site
         reference: BuiltinLocation
       - name: rack
@@ -340,7 +346,7 @@ schema_mapping:
         mapping: description
   - name: InfraVLAN
     mapping: ipam.vlans
-    identifiers: ["name", "vlan_id", "site", "vlan_group"]
+    identifiers: ["name", "vlan_id", "location", "vlan_group"]
     fields:
       - name: name
         mapping: name
@@ -351,7 +357,7 @@ schema_mapping:
         reference: CoreOrganization
       - name: description
         mapping: description
-      - name: site
+      - name: location
         mapping: site
         reference: BuiltinLocation
       - name: vlan_group
@@ -374,7 +380,7 @@ schema_mapping:
       - name: vrf
         mapping: vrf
         reference: InfraVRF
-      - name: site
+      - name: location
         mapping: site
         reference: BuiltinLocation
       # - name: status
