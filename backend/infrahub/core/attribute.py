@@ -140,18 +140,20 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     def get_kind(self) -> str:
         return self.schema.kind
 
-    def validate(self, value: Any, name: str, schema: AttributeSchema) -> bool:
+    @classmethod
+    def validate(cls, value: Any, name: str, schema: AttributeSchema) -> bool:
         if value is None and schema.optional is False:
             raise ValidationError({name: f"A value must be provided for {name}"})
         if value is None and schema.optional is True:
             return True
 
-        self.validate_format(value=value, name=name, schema=schema)
-        self.validate_content(value=value, name=name, schema=schema)
+        cls.validate_format(value=value, name=name, schema=schema)
+        cls.validate_content(value=value, name=name, schema=schema)
 
         return True
 
-    def validate_format(self, value: Any, name: str, schema: AttributeSchema) -> None:
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
         """Validate the format of the attribute.
 
         Args:
@@ -163,13 +165,14 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             ValidationError: Format of the attribute value is not valid
         """
         value_to_check = value
-        enum_value = self.schema.convert_to_attribute_enum(value)
+        enum_value = schema.convert_to_attribute_enum(value)
         if isinstance(enum_value, Enum):
             value_to_check = enum_value.value
-        if not isinstance(value_to_check, self.type):  # pylint: disable=isinstance-second-argument-not-valid-type
+        if not isinstance(value_to_check, cls.type):  # pylint: disable=isinstance-second-argument-not-valid-type
             raise ValidationError({name: f"{name} is not of type {schema.kind}"})
 
-    def validate_content(self, value: Any, name: str, schema: AttributeSchema) -> None:
+    @classmethod
+    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
         """Validate the content of the attribute.
 
         Args:
@@ -203,7 +206,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if schema.enum:
             if config.SETTINGS.experimental_features.graphql_enums:
                 try:
-                    self.schema.convert_to_attribute_enum(value)
+                    schema.convert_to_attribute_enum(value)
                 except ValueError as exc:
                     raise ValidationError({name: f"{value} must be one of {schema.enum!r}"}) from exc
             elif value not in schema.enum:
@@ -491,7 +494,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 class AnyAttribute(BaseAttribute):
     type = Any
 
-    def validate_format(self, *args, **kwargs) -> None:
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
         pass
 
 
@@ -551,7 +555,8 @@ class Dropdown(BaseAttribute):
 
         return label
 
-    def validate_content(self, value: Any, name: str, schema: AttributeSchema) -> None:
+    @classmethod
+    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
         """Validate the content of the dropdown."""
         super().validate_content(value=value, name=name, schema=schema)
         values = [choice.name for choice in schema.choices]
@@ -562,7 +567,8 @@ class Dropdown(BaseAttribute):
 class URL(BaseAttribute):
     type = str
 
-    def validate_format(self, value: str, name: str, schema: AttributeSchema) -> None:
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
         super().validate_format(value=value, name=name, schema=schema)
 
         if not is_valid_url(value):
@@ -628,7 +634,8 @@ class IPNetwork(BaseAttribute):
             return None
         return str(ipaddress.ip_network(str(self.value)).with_netmask)
 
-    def validate_format(self, value: Any, name: str, schema: AttributeSchema) -> None:
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
         """Validate the format of the attribute.
 
         Args:
@@ -711,7 +718,8 @@ class IPHost(BaseAttribute):
             return None
         return str(ipaddress.ip_interface(str(self.value)).with_netmask)
 
-    def validate_format(self, value: Any, name: str, schema: AttributeSchema) -> None:
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
         """Validate the format of the attribute.
 
         Args:
