@@ -139,7 +139,7 @@ export const DataDiff = forwardRef((props, ref) => {
     }
 
     setIsLoading(false);
-  }, [branchname, branchOnly, timeFrom, timeTo]);
+  }, [branch, branchOnly, timeFrom, timeTo]);
 
   // Provide refetch function to parent
   useImperativeHandle(ref, () => ({ refetch: fetchDiffDetails }));
