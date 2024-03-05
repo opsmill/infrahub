@@ -13,7 +13,7 @@ test.describe("/proposed-changes diff data", () => {
       await expect(page.getByText("Create Proposed Change")).toBeVisible();
       await page.getByLabel("Name *").fill("pc-data-diff");
       await page
-        .locator("div:below(#Name)")
+        .locator("div:below(#Description)")
         .first()
         .getByTestId("select-open-option-button")
         .click();
