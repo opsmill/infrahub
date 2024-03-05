@@ -81,7 +81,7 @@ export const SchemaDiff = forwardRef((props, ref) => {
       {isLoading && <LoadingScreen />}
 
       {!isLoading && (
-        <div>
+        <div className="text-xs">
           {diff?.map((node: any, index: number) => (
             <DataDiffNode key={index} node={node} />
           ))}
