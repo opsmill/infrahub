@@ -205,3 +205,29 @@ def test_scale(
 def format_and_lint(context: Context):
     format_all(context)
     lint(context)
+
+
+# ----------------------------------------------------------------------------
+# Generate tasks
+# ----------------------------------------------------------------------------
+
+
+@task
+def generate(context: Context):
+    """Generate internal backend models."""
+    from jinja2 import Environment, FileSystemLoader
+
+    from infrahub.core.schema.definitions.internal import attribute_schema
+
+    env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"))
+    template = env.get_template("attribute_schema.j2")
+
+    rendered_models = template.render(node=attribute_schema)
+
+    generated = f"{ESCAPED_REPO_PATH}/backend/infrahub/core/schema/generated"
+    attribute_schema = f"{generated}/attribute_schema.py"
+    with open(attribute_schema, "w", encoding="utf-8") as fobj:
+        fobj.write(rendered_models)
+
+    execute_command(context=context, command=f"ruff format {generated}")
+    execute_command(context=context, command=f"ruff check --fix {generated}")
