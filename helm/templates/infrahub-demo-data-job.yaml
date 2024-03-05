@@ -1,0 +1,39 @@
+{{- if .Values.infrahubDemoData.enabled }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-infrahub-demo-data-job
+  labels:
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  backoffLimit: {{ .Values.infrahubDemoData.backoffLimit }}
+  template:
+    spec:
+      containers:
+        - command:
+            - sh
+            - -c
+            - "infrahubctl schema load models/infrastructure_base.yml && infrahubctl run models/infrastructure_edge.py"
+          env:
+            - name: INFRAHUB_ADDRESS
+              value: http://{{ include "infrahub-helm.fullname" . }}-infrahub-server.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}:8000
+          {{- with .Values.infrahubDemoData.env }}
+            {{- range $key, $value := . }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
+          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.infrahubDemoData.imagePullPolicy }}
+          name: infrahub-demo-data-job
+          resources: {}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+      restartPolicy: Never
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "infrahub-helm.fullname" . }}-infrahub-config
+{{- end }}

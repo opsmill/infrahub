@@ -6,7 +6,7 @@ metadata:
 data:
   infrahub.toml: |
     [main]
-    internal_address = "http://{{ include "infrahub-helm.fullname" . }}-server.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}:8000"
+    internal_address = "http://{{ include "infrahub-helm.fullname" . }}-infrahub-server.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}:8000"
 
     [git]
     repositories_directory = "/opt/infrahub/git"

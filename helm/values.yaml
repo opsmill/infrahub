@@ -64,7 +64,6 @@ infrahubGit:
       - start
       - --debug
     env:
-      INFRAHUB_ADDRESS: http://infrahub-server:8000
       INFRAHUB_CACHE_PORT: 6379
       INFRAHUB_CONFIG: /config/infrahub.toml
       INFRAHUB_DB_TYPE: neo4j
@@ -134,6 +133,11 @@ infrahubServerDbInitJob:
       repository: busybox
       tag: latest
 
+infrahubDemoData:
+  enabled: false
+  backoffLimit: 4
+  env:
+    INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
 
 # ----------- Mesage Queue (Rabbit MQ) -----------
 messageQueue:
