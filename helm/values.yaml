@@ -64,7 +64,6 @@ infrahubGit:
       - start
       - --debug
     env:
-      INFRAHUB_ADDRESS: http://infrahub-server:8000
       INFRAHUB_CACHE_PORT: 6379
       INFRAHUB_CONFIG: /config/infrahub.toml
       INFRAHUB_DB_TYPE: neo4j
