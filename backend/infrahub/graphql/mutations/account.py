@@ -68,7 +68,7 @@ class AccountMixin:
         mutation_map = {"CoreAccountTokenCreate": cls.create_token, "CoreAccountSelfUpdate": cls.update_self}
         response = await mutation_map[cls.__name__](db=context.db, account=account, data=data, info=info)
 
-        # Reset the time of the query to garantee that all resolvers executed after this point will account for the changes
+        # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
         context.at = Timestamp()
 
         return response
