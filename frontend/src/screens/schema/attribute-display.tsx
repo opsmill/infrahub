@@ -1,5 +1,5 @@
 import { components } from "../../infraops";
-import { AccordionStyled, PropertyRow } from "./styled";
+import { AccordionStyled, NullDisplay, PropertyRow } from "./styled";
 import Accordion from "../../components/display/accordion";
 
 export const AttributeDisplay = ({
@@ -13,8 +13,7 @@ export const AttributeDisplay = ({
     description={attribute.description}
     isOptional={attribute.optional}
     isUnique={attribute.unique}
-    isReadOnly={attribute.read_only}
-    className="bg-custom-white shadow py-2 px-2 rounded">
+    isReadOnly={attribute.read_only}>
     <div>
       <PropertyRow title="ID" value={attribute.id} />
       <PropertyRow title="Kind" value={attribute.kind} />
@@ -49,7 +48,9 @@ const ChoicesRow = ({
 }: {
   choices: components["schemas"]["DropdownChoice"][] | null | undefined;
 }) => {
-  if (!choices || choices.length === 0) return "-";
+  if (choices === undefined) return null;
+  if (choices === null) return <NullDisplay />;
+  if (choices.length === 0) return "No choices";
 
   return (
     <div className="space-y-1 flex-grow">

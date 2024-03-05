@@ -78,11 +78,13 @@ const SchemaViewerDetails = ({ schema }: { schema: IModelSchema }) => {
           </TabPanelStyled>
 
           <TabPanelStyled>
-            {schema.attributes && schema.attributes.length > 0
-              ? schema.attributes?.map((attribute) => (
-                  <AttributeDisplay key={attribute.id} attribute={attribute} />
-                ))
-              : "No attribute"}
+            {schema.attributes && schema.attributes.length > 0 ? (
+              schema.attributes?.map((attribute) => (
+                <AttributeDisplay key={attribute.id} attribute={attribute} />
+              ))
+            ) : (
+              <div className="h-32 flex items-center justify-center">No attribute</div>
+            )}
           </TabPanelStyled>
 
           <TabPanelStyled>

@@ -25,7 +25,7 @@ export const RelationshipDisplay = ({
           <span className="flex items-center gap-0.5">
             {cardinalityLabel} {directionLabel} {relationship.peer}
           </span>
-          <Badge variant="green" className="ml-1 px-1">
+          <Badge variant="blue" className="ml-1 px-1">
             {relationship.kind}
           </Badge>
         </>

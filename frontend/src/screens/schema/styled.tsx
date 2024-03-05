@@ -3,7 +3,6 @@ import { Badge } from "../../components/ui/badge";
 import { ReactElement } from "react";
 import { Tab } from "@headlessui/react";
 import { classNames, warnUnexpectedType } from "../../utils/common";
-import { Icon } from "@iconify-icon/react";
 
 interface AccordionStyleProps extends AccordionProps {
   title: ReactElement | string;
@@ -42,9 +41,9 @@ export const AccordionStyled = ({
         {description && <p className="text-xs text-gray-600 font-normal">{description}</p>}
       </h4>
     }
-    className="bg-custom-white shadow p-2 rounded"
+    className="bg-custom-white shadow p-3 rounded"
     {...props}>
-    <article className="divide-y px-2 mt-2 bg-gray-100">{children}</article>
+    <article className="divide-y px-2 mt-3 bg-gray-100 rounded">{children}</article>
   </Accordion>
 );
 
@@ -58,14 +57,22 @@ export const PropertyRow = ({
   if (value === undefined) return null;
 
   const formatValue = () => {
-    if (value === null || value === undefined) return "-";
+    if (value === null) return <NullDisplay />;
 
     switch (typeof value) {
       case "string":
       case "number":
         return value;
       case "boolean":
-        return <Icon icon={value ? "mdi:check" : "mdi:remove"} />;
+        return (
+          <div
+            className={classNames(
+              "text-xs border-2 rounded px-2 py-0.5 font-semibold",
+              value ? "text-green-700 border-green-500" : "text-red-700 border-red-500"
+            )}>
+            {value.toString()}
+          </div>
+        );
       case "object":
         if (Array.isArray(value))
           return (
@@ -83,9 +90,9 @@ export const PropertyRow = ({
   };
 
   return (
-    <dl className="flex justify-between items-baseline gap-4 text-sm p-2">
+    <dl className="flex justify-between items-start gap-4 text-sm p-2 py-3">
       <dt>{title}</dt>
-      <dd className="flex-grow shrink font-medium text-end">{formatValue()}</dd>
+      <dd className="flex-grow shrink font-medium text-end flex justify-end">{formatValue()}</dd>
     </dl>
   );
 };
@@ -94,7 +101,7 @@ export const TabStyled = ({ children }: { children: ReactElement | string }) => 
   <Tab
     className={({ selected }) =>
       classNames(
-        "px-4 py-1 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100",
+        "px-4 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100",
         selected ? "border-b-2 border-b-custom-blue-600 font-semibold" : ""
       )
     }>
@@ -109,3 +116,7 @@ export const TabPanelStyled = ({
 }) => {
   return <Tab.Panel className="space-y-2">{children}</Tab.Panel>;
 };
+
+export const NullDisplay = () => (
+  <div className="text-xs border-2 rounded px-2 py-0.5 text-gray-500 border-gray-300">null</div>
+);
