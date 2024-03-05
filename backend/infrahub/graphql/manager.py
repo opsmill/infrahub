@@ -195,7 +195,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def generate_object_types(self) -> None:  # pylint: disable=too-many-branches,too-many-statements
         """Generate all GraphQL objects for the schema and store them in the internal registry."""
 
-        full_schema = self.schema.get_all()
+        full_schema = self.schema.get_all(duplicate=False)
 
         # Generate all GraphQL Interface  Object first and store them in the registry
         for node_name, node_schema in full_schema.items():
@@ -259,7 +259,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             node_type = self.get_type(name=node_name)
 
             for rel in node_schema.relationships:
-                peer_schema = self.schema.get(name=rel.peer)
+                peer_schema = self.schema.get(name=rel.peer, duplicate=False)
                 if peer_schema.namespace == "Internal":
                     continue
                 peer_filters = self.generate_filters(schema=peer_schema, top_level=False)
@@ -281,7 +281,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                     )
 
             if isinstance(node_schema, NodeSchema) and node_schema.hierarchy:
-                schema = self.schema.get(name=node_schema.hierarchy)
+                schema = self.schema.get(name=node_schema.hierarchy, duplicate=False)
 
                 peer_filters = self.generate_filters(schema=schema, top_level=False)
                 peer_type = self.get_type(name=f"NestedPaginated{node_schema.hierarchy}")
@@ -296,7 +296,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def generate_query_mixin(self) -> Type[object]:
         class_attrs = {}
 
-        full_schema = self.schema.get_all()
+        full_schema = self.schema.get_all(duplicate=False)
 
         # Generate all Graphql objectType and store internally
         self.generate_object_types()
@@ -325,7 +325,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def generate_mutation_mixin(self) -> Type[object]:
         class_attrs: Dict[str, Any] = {}
 
-        full_schema = self.schema.get_all()
+        full_schema = self.schema.get_all(duplicate=False)
 
         for node_schema in full_schema.values():
             if not isinstance(node_schema, NodeSchema):
@@ -647,7 +647,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             return filters
 
         for rel in schema.relationships:
-            peer_schema = self.schema.get(name=rel.peer)
+            peer_schema = self.schema.get(name=rel.peer, duplicate=False)
 
             if peer_schema.namespace == "Internal":
                 continue
