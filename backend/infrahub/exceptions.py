@@ -145,6 +145,14 @@ class NodeNotFound(Error):
         """
 
 
+class ResourceNotFoundError(Error):
+    HTTP_CODE: int = 404
+
+    def __init__(self, message: Optional[str] = None):
+        self.message = message or "The requested resource was not found"
+        super().__init__(self.message)
+
+
 class AuthorizationError(Error):
     HTTP_CODE: int = 401
     message: str = "Access to the requested resource was denied"

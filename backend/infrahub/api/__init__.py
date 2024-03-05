@@ -14,7 +14,7 @@ from infrahub.api import (
     storage,
     transformation,
 )
-from infrahub.exceptions import NodeNotFound
+from infrahub.exceptions import ResourceNotFoundError
 
 router = APIRouter(prefix="/api")
 
@@ -38,8 +38,6 @@ router.include_router(transformation.router)
 )
 async def not_found(rest_of_path: str) -> NoReturn:
     """Used to avoid having the mounting of the React App mask 404 errors."""
-    raise NodeNotFound(
-        node_type="url",
-        identifier=f"/api/{rest_of_path}",
+    raise ResourceNotFoundError(
         message=f"The requested endpoint /api/{rest_of_path} does not exist",
     )
