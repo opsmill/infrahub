@@ -74,7 +74,9 @@ export const PropertyRow = ({
               {value.map((v) => (
                 <li key={v.toString()} className="whitespace-nowrap">
                   {Array.isArray(v) ? (
-                    <Badge variant="red" className="mb-1">{`${v.join(", ")}`}</Badge>
+                    <Badge variant="red" className="mb-1">
+                      {v.join(", ")}
+                    </Badge>
                   ) : (
                     v
                   )}
@@ -118,7 +120,7 @@ export const TabPanelStyled = ({
   return <Tab.Panel className="space-y-2">{children}</Tab.Panel>;
 };
 
-export const NullDisplay = () => <Badge variant="gray-outline">null</Badge>;
+export const NullDisplay = () => <div className="text-xs text-gray-500">null</div>;
 
 export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
   const [, setKind] = useQueryParam(QSP.KIND, StringParam);
