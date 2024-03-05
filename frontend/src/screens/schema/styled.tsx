@@ -28,8 +28,8 @@ export const AccordionStyled = ({
   <Accordion
     title={
       <h4>
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-sm shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="text-sm flex-grow">
             {title} {kind && <Badge>{kind}</Badge>}
           </div>
 

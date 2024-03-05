@@ -5,12 +5,12 @@ import { AttributeDisplay } from "./attribute-display";
 import { Badge } from "../../components/ui/badge";
 import { ModelDisplay, PropertyRow, TabPanelStyled, TabStyled } from "./styled";
 import { RelationshipDisplay } from "./relationship-display";
-import { isGeneric } from "../../utils/common";
+import { classNames, isGeneric } from "../../utils/common";
 import { genericsState, IModelSchema, schemaState } from "../../state/atoms/schema.atom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../config/qsp";
 
-export const SchemaViewer = () => {
+export const SchemaViewer = ({ className = "" }: { className: string }) => {
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
   const schemas = [...nodes, ...generics];
@@ -22,7 +22,11 @@ export const SchemaViewer = () => {
   if (!schema) return null;
 
   return (
-    <section className="flex flex-col flex-grow shrink-0 max-w-lg max-h-screen overflow-hidden sticky top-2 right-2 mt-2 space-y-4 p-4 shadow-lg border border-gray-200 bg-custom-white rounded-md">
+    <section
+      className={classNames(
+        "flex flex-col overflow-hidden space-y-4 p-4 shadow-lg border border-gray-200 bg-custom-white rounded-md",
+        className
+      )}>
       <div className="flex justify-between items-start">
         <div className="space-x-1">
           <Badge variant="blue">{schema.namespace}</Badge>
