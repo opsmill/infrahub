@@ -4,7 +4,7 @@ import { genericsState, IModelSchema, schemaState } from "../../state/atoms/sche
 import { classNames, isGeneric } from "../../utils/common";
 import { Badge } from "../../components/ui/badge";
 import { Icon } from "@iconify-icon/react";
-import { StringParam, useQueryParam } from "use-query-params";
+import { ArrayParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../config/qsp";
 import Accordion from "../../components/display/accordion";
 
@@ -12,7 +12,7 @@ type SchemaSelectorProps = {
   className?: string;
 };
 export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
-  const [selectedKind, setKind] = useQueryParam(QSP.KIND, StringParam);
+  const [selectedKind, setKind] = useQueryParam(QSP.KIND, ArrayParam);
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
   const schemas: IModelSchema[] = [...nodes, ...generics];
@@ -35,12 +35,12 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
                       h-24 overflow-hidden pl-9 pr-2 cursor-pointer flex items-center relative hover:bg-gray-100 mix-blend-multiply
                       hover:rounded
                         ${
-                          selectedKind === schema.kind
+                          selectedKind && schema.kind && selectedKind.includes(schema.kind)
                             ? "shadow-lg ring-1 ring-custom-blue-600 rounded"
                             : ""
                         }
                     `}
-                    onClick={() => setKind(schema.kind)}>
+                    onClick={() => setKind([schema.kind!])}>
                     {schema.icon && (
                       <div className="absolute left-2">
                         <Icon icon={schema.icon} className="text-xl text-custom-blue-700" />

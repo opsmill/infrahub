@@ -7,22 +7,62 @@ import { ModelDisplay, PropertyRow, TabPanelStyled, TabStyled } from "./styled";
 import { RelationshipDisplay } from "./relationship-display";
 import { classNames, isGeneric } from "../../utils/common";
 import { genericsState, IModelSchema, schemaState } from "../../state/atoms/schema.atom";
-import { StringParam, useQueryParam } from "use-query-params";
+import { ArrayParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../config/qsp";
+import { CSSProperties } from "react";
 
-export const SchemaViewer = ({ className = "" }: { className: string }) => {
+export const SchemaViewerStack = ({ className = "" }: { className: string }) => {
+  const [selectedKind, setKinds] = useQueryParam(QSP.KIND, ArrayParam);
+
+  if (!selectedKind) return null;
+
+  return (
+    <div className={classNames("relative h-full", className)}>
+      {selectedKind.map((kind, index) => {
+        const position = selectedKind.length - index - 1;
+
+        return kind ? (
+          <SchemaViewer
+            key={kind + index}
+            className="absolute top-0 w-full max-h-full"
+            selectedKind={kind}
+            onClose={() => {
+              const nextKinds = [...selectedKind];
+              delete nextKinds[index];
+              setKinds(nextKinds);
+            }}
+            style={{
+              transform: `translate(${position * 10}px, ${position * 10}px)`,
+              zIndex: index,
+            }}
+          />
+        ) : null;
+      })}
+    </div>
+  );
+};
+
+export const SchemaViewer = ({
+  className = "",
+  selectedKind,
+  onClose,
+  style,
+}: {
+  className: string;
+  selectedKind: string;
+  onClose: () => void;
+  style?: CSSProperties;
+}) => {
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
   const schemas = [...nodes, ...generics];
-
-  const [selectedKind, setKind] = useQueryParam(QSP.KIND, StringParam);
-  if (!selectedKind) return null;
 
   const schema = schemas.find(({ kind }) => kind === selectedKind);
   if (!schema) return null;
 
   return (
     <section
+      style={style}
       className={classNames(
         "flex flex-col overflow-hidden space-y-4 p-4 shadow-lg border border-gray-200 bg-custom-white rounded-md",
         className
@@ -34,11 +74,7 @@ export const SchemaViewer = ({ className = "" }: { className: string }) => {
           <span className="text-xs">{schema.id}</span>
         </div>
 
-        <Icon
-          icon="mdi:close"
-          className="text-xl cursor-pointer text-gray-600"
-          onClick={() => setKind(undefined)}
-        />
+        <Icon icon="mdi:close" className="text-xl cursor-pointer text-gray-600" onClick={onClose} />
       </div>
 
       <SchemaViewerTitle schema={schema} />

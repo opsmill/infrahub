@@ -3,7 +3,7 @@ import { Badge } from "../../components/ui/badge";
 import { ReactElement } from "react";
 import { Tab } from "@headlessui/react";
 import { classNames, warnUnexpectedType } from "../../utils/common";
-import { StringParam, useQueryParam } from "use-query-params";
+import { ArrayParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../config/qsp";
 
 interface AccordionStyleProps extends AccordionProps {
@@ -123,7 +123,7 @@ export const TabPanelStyled = ({
 export const NullDisplay = () => <div className="text-xs text-gray-500">null</div>;
 
 export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
-  const [, setKind] = useQueryParam(QSP.KIND, StringParam);
+  const [selectedKinds, setKinds] = useQueryParam(QSP.KIND, ArrayParam);
   if (!kinds) return null;
   if (kinds.length === 0) return "empty";
 
@@ -133,7 +133,9 @@ export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
         <Badge
           key={kind}
           className="bg-sky-50 text-sky-800 border-sky-200 hover:bg-sky-100 cursor-pointer"
-          onClick={() => setKind(kind)}>
+          onClick={() =>
+            setKinds(selectedKinds && selectedKinds?.length > 0 ? [...selectedKinds, kind] : [kind])
+          }>
           {kind}
         </Badge>
       ))}
