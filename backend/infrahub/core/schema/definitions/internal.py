@@ -1,4 +1,8 @@
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, NotRequired, Optional
+
+from pydantic import BaseModel, Field
+from typing_extensions import TypedDict
 
 from infrahub.core.constants import (
     DEFAULT_DESCRIPTION_LENGTH,
@@ -15,532 +19,737 @@ from infrahub.core.constants import (
     RelationshipCardinality,
     RelationshipDirection,
     RelationshipKind,
+    UpdateSupport,
 )
+from infrahub.core.schema.dropdown import DropdownChoice
 from infrahub.types import ATTRIBUTE_KIND_LABELS
 
-internal_schema: dict[str, Any] = {
-    "version": None,
-    "nodes": [
+
+class ExtraField(TypedDict):
+    update: Optional[UpdateSupport]
+
+
+class SchemaAttribute(BaseModel):
+    name: str
+    kind: str
+    description: str
+    extra: ExtraField
+    internal_kind: Optional[type[Any]] = None
+    regex: Optional[str] = None
+    unique: Optional[bool] = None
+    optional: Optional[bool] = None
+    min_length: Optional[int] = None
+    max_length: Optional[int] = None
+    enum: Optional[list[str]] = None
+    default_value: Optional[Any] = None
+    override_default_value: Optional[Any] = Field(
+        default=None,
+        description="Currently optional is defined with different defaults for the Pydantic models compared to the internal_schema dictionary",
+    )
+
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump(exclude_none=True, exclude={"extra", "internal_kind", "override_default_value"})
+
+    @property
+    def type_annotation(self) -> str:
+        if self.optional and self.default_value is None:
+            return f"Optional[{self.object_kind}]"
+
+        return self.object_kind
+
+    @property
+    def object_kind(self) -> str:
+        if self.internal_kind and self.kind == "List":
+            return f"list[{self.internal_kind.__name__}]"
+
+        if self.internal_kind:
+            return self.internal_kind.__name__
+
+        kind_map = {
+            "Any": "Any",
+            "Boolean": "bool",
+            "Text": "str",
+            "List": "list",
+            "Number": "int",
+        }
+        return kind_map[self.kind]
+
+    @property
+    def default_definition(self) -> str:
+        if not self.optional and self.default_value is None:
+            return "..."
+
+        if self.override_default_value is not None:
+            return f"default={self.override_default_value}"
+
+        return f"default={self.default_value}"
+
+    @property
+    def pattern(self) -> str:
+        if self.regex:
+            return f"pattern='{self.regex}',"
+        return ""
+
+    @property
+    def min(self) -> str:
+        if self.min_length is not None:
+            return f"min_length={self.min_length},"
+
+        return ""
+
+    @property
+    def max(self) -> str:
+        if self.max_length is not None:
+            return f"max_length={self.max_length},"
+
+        return ""
+
+
+class SchemaRelationship(TypedDict):
+    name: str
+    peer: str
+    description: NotRequired[Optional[str]]
+    kind: NotRequired[Optional[str]]
+    identifier: str
+    cardinality: str
+    branch: str
+    optional: bool
+
+
+class SchemaNode(BaseModel):
+    name: str
+    namespace: str
+    branch: str
+    include_in_menu: bool
+    default_filter: Optional[str]
+    attributes: list[SchemaAttribute]
+    relationships: list[SchemaRelationship]
+    display_labels: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "namespace": self.namespace,
+            "branch": self.branch,
+            "default_filter": self.default_filter,
+            "include_in_menu": self.include_in_menu,
+            "attributes": [attribute.to_dict() for attribute in self.attributes if attribute.name != "id"],
+            "relationships": self.relationships,
+            "display_labels": self.display_labels,
+        }
+
+
+@dataclass
+class InternalSchema:
+    version: Optional[str]
+    nodes: list[SchemaNode]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"version": self.version, "nodes": [node.to_dict() for node in self.nodes]}
+
+
+node_schema = SchemaNode(
+    name="Node",
+    namespace="Schema",
+    branch=BranchSupportType.AWARE.value,
+    include_in_menu=False,
+    default_filter="name__value",
+    display_labels=["label__value"],
+    attributes=[
+        SchemaAttribute(
+            name="name",
+            kind="Text",
+            description="Node name, must be unique within a namespace and must start with an uppercase letter.",
+            unique=True,
+            regex=str(NODE_NAME_REGEX),
+            min_length=DEFAULT_NAME_MIN_LENGTH,
+            max_length=DEFAULT_NAME_MAX_LENGTH,
+            extra={"update": UpdateSupport.NOT_SUPPORTED},
+        ),
+        SchemaAttribute(
+            name="namespace",
+            kind="Text",
+            description="Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
+            regex=str(NAMESPACE_REGEX),
+            min_length=DEFAULT_KIND_MIN_LENGTH,
+            max_length=DEFAULT_KIND_MAX_LENGTH,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="label",
+            kind="Text",
+            description="Human friendly representation of the name/kind",
+            optional=True,
+            max_length=DEFAULT_NAME_MAX_LENGTH,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="description",
+            kind="Text",
+            description="Short description of the model, will be visible in the frontend.",
+            optional=True,
+            max_length=DEFAULT_DESCRIPTION_LENGTH,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="branch",
+            kind="Text",
+            description="Type of branch support for the model.",
+            enum=BranchSupportType.available_types(),
+            default_value=BranchSupportType.AWARE.value,
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="default_filter",
+            kind="Text",
+            regex=str(NAME_REGEX),
+            description="Default filter used to search for a node in addition to its ID.",
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="display_labels",
+            kind="List",
+            description="List of attributes to use to generate the display label",
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="include_in_menu",
+            kind="Boolean",
+            description="Defines if objects of this kind should be included in the menu.",
+            default_value=True,
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="menu_placement",
+            kind="Text",
+            description="Defines where in the menu this object should be placed.",
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="icon",
+            kind="Text",
+            description="Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/",
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="order_by",
+            kind="List",
+            description="List of attributes to use to order the results by default",
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="inherit_from",
+            kind="List",
+            description="List of Generic Kind that this node is inheriting from",
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="hierarchy",
+            kind="Text",
+            description="Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode",
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="parent",
+            kind="Text",
+            description="Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined.",
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="children",
+            kind="Text",
+            description="Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.",
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="uniqueness_constraints",
+            kind="List",
+            description="List of multi-element uniqueness constraints that can combine relationships and attributes",
+            optional=True,
+            extra={"update": None},
+        ),
+    ],
+    relationships=[
         {
-            "name": "Node",
-            "namespace": "Schema",
+            "name": "attributes",
+            "peer": "SchemaAttribute",
+            "kind": "Component",
+            "description": "List of supported Attributes for the Node.",
+            "identifier": "schema__node__attributes",
+            "cardinality": "many",
             "branch": BranchSupportType.AWARE.value,
-            "include_in_menu": False,
-            "default_filter": "name__value",
-            "display_labels": ["label__value"],
-            "attributes": [
-                {
-                    "name": "name",
-                    "kind": "Text",
-                    "description": "Node name, must be unique within a namespace and must start with an uppercase letter.",
-                    "unique": True,
-                    "regex": str(NODE_NAME_REGEX),
-                    "min_length": DEFAULT_NAME_MIN_LENGTH,
-                    "max_length": DEFAULT_NAME_MAX_LENGTH,
-                },
-                {
-                    "name": "namespace",
-                    "kind": "Text",
-                    "description": "Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
-                    "regex": str(NAMESPACE_REGEX),
-                    "min_length": DEFAULT_KIND_MIN_LENGTH,
-                    "max_length": DEFAULT_KIND_MAX_LENGTH,
-                },
-                {
-                    "name": "label",
-                    "kind": "Text",
-                    "description": "Human friendly representation of the name/kind",
-                    "optional": True,
-                    "max_length": DEFAULT_NAME_MAX_LENGTH,
-                },
-                {
-                    "name": "description",
-                    "kind": "Text",
-                    "description": "Short description of the model, will be visible in the frontend.",
-                    "optional": True,
-                    "max_length": DEFAULT_DESCRIPTION_LENGTH,
-                },
-                {
-                    "name": "branch",
-                    "kind": "Text",
-                    "description": "Type of branch support for the model.",
-                    "enum": BranchSupportType.available_types(),
-                    "default_value": BranchSupportType.AWARE.value,
-                    "optional": True,
-                },
-                {
-                    "name": "default_filter",
-                    "kind": "Text",
-                    "regex": str(NAME_REGEX),
-                    "description": "Default filter used to search for a node in addition to its ID.",
-                    "optional": True,
-                },
-                {
-                    "name": "display_labels",
-                    "kind": "List",
-                    "description": "List of attributes to use to generate the display label",
-                    "optional": True,
-                },
-                {
-                    "name": "include_in_menu",
-                    "kind": "Boolean",
-                    "description": "Defines if objects of this kind should be included in the menu.",
-                    "default_value": True,
-                    "optional": True,
-                },
-                {
-                    "name": "menu_placement",
-                    "kind": "Text",
-                    "description": "Defines where in the menu this object should be placed.",
-                    "optional": True,
-                },
-                {
-                    "name": "icon",
-                    "kind": "Text",
-                    "description": "Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/",
-                    "optional": True,
-                },
-                {
-                    "name": "order_by",
-                    "kind": "List",
-                    "description": "List of attributes to use to order the results by default",
-                    "optional": True,
-                },
-                {
-                    "name": "inherit_from",
-                    "kind": "List",
-                    "description": "List of Generic Kind that this node is inheriting from",
-                    "optional": True,
-                },
-                {
-                    "name": "hierarchy",
-                    "kind": "Text",
-                    "description": "Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode",
-                    "optional": True,
-                },
-                {
-                    "name": "parent",
-                    "kind": "Text",
-                    "description": "Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined.",
-                    "optional": True,
-                },
-                {
-                    "name": "children",
-                    "kind": "Text",
-                    "description": "Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.",
-                    "optional": True,
-                },
-                {
-                    "name": "uniqueness_constraints",
-                    "kind": "List",
-                    "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                    "optional": True,
-                },
-            ],
-            "relationships": [
-                {
-                    "name": "attributes",
-                    "peer": "SchemaAttribute",
-                    "kind": "Component",
-                    "description": "List of supported Attributes for the Node.",
-                    "identifier": "schema__node__attributes",
-                    "cardinality": "many",
-                    "branch": BranchSupportType.AWARE.value,
-                    "optional": True,
-                },
-                {
-                    "name": "relationships",
-                    "peer": "SchemaRelationship",
-                    "kind": "Component",
-                    "description": "List of supported Relationships for the Node.",
-                    "identifier": "schema__node__relationships",
-                    "cardinality": "many",
-                    "branch": BranchSupportType.AWARE.value,
-                    "optional": True,
-                },
-            ],
+            "optional": True,
         },
         {
-            "name": "Attribute",
-            "namespace": "Schema",
+            "name": "relationships",
+            "peer": "SchemaRelationship",
+            "kind": "Component",
+            "description": "List of supported Relationships for the Node.",
+            "identifier": "schema__node__relationships",
+            "cardinality": "many",
             "branch": BranchSupportType.AWARE.value,
-            "include_in_menu": False,
-            "default_filter": None,
-            "display_labels": ["name__value"],
-            "attributes": [
-                {
-                    "name": "name",
-                    "description": "Attribute name, must be unique within a model and must be all lowercase.",
-                    "kind": "Text",
-                    "regex": str(NAME_REGEX),
-                    "min_length": DEFAULT_KIND_MIN_LENGTH,
-                    "max_length": DEFAULT_KIND_MAX_LENGTH,
-                },
-                {
-                    "name": "kind",
-                    "kind": "Text",
-                    "description": "Defines the type of the attribute.",
-                    "enum": ATTRIBUTE_KIND_LABELS,
-                },
-                {
-                    "name": "enum",
-                    "kind": "List",
-                    "description": "Define a list of valid values for the attribute.",
-                    "optional": True,
-                },
-                {
-                    "name": "choices",
-                    "kind": "List",
-                    "description": "Define a list of valid choices for a dropdown attribute.",
-                    "optional": True,
-                },
-                {
-                    "name": "regex",
-                    "kind": "Text",
-                    "description": "Regex uses to limit limit the characters allowed in for the attributes.",
-                    "optional": True,
-                },
-                {
-                    "name": "max_length",
-                    "kind": "Number",
-                    "description": "Set a maximum number of characters allowed for a given attribute.",
-                    "optional": True,
-                },
-                {
-                    "name": "min_length",
-                    "kind": "Number",
-                    "description": "Set a minimum number of characters allowed for a given attribute.",
-                    "optional": True,
-                },
-                {
-                    "name": "label",
-                    "kind": "Text",
-                    "optional": True,
-                    "description": "Human friendly representation of the name. Will be autogenerated if not provided",
-                    "max_length": DEFAULT_NAME_MAX_LENGTH,
-                },
-                {
-                    "name": "description",
-                    "kind": "Text",
-                    "optional": True,
-                    "description": "Short description of the attribute.",
-                    "max_length": DEFAULT_DESCRIPTION_LENGTH,
-                },
-                {
-                    "name": "read_only",
-                    "kind": "Boolean",
-                    "description": "Set the attribute as Read-Only, users won't be able to change its value. "
-                    "Mainly relevant for internal object.",
-                    "default_value": False,
-                    "optional": True,
-                },
-                {
-                    "name": "unique",
-                    "kind": "Boolean",
-                    "description": "Indicate if the value of this attribute must be unique in the database for a given model.",
-                    "default_value": False,
-                    "optional": True,
-                },
-                {
-                    "name": "optional",
-                    "kind": "Boolean",
-                    "description": "Indicate if this attribute is mandatory or optional.",
-                    "default_value": True,
-                    "optional": True,
-                },
-                {
-                    "name": "branch",
-                    "kind": "Text",
-                    "description": "Type of branch support for the attribute, if not defined it will be inherited from the node.",
-                    "enum": BranchSupportType.available_types(),
-                    "optional": True,
-                },
-                {
-                    "name": "order_weight",
-                    "kind": "Number",
-                    "description": "Number used to order the attribute in the frontend (table and view).",
-                    "optional": True,
-                },
-                {
-                    "name": "default_value",
-                    "kind": "Any",
-                    "description": "Default value of the attribute.",
-                    "optional": True,
-                },
-                {
-                    "name": "inherited",
-                    "kind": "Boolean",
-                    "default_value": False,
-                    "description": "Internal value to indicate if the attribute was inherited from a Generic node.",
-                    "optional": True,
-                },
-            ],
-            "relationships": [
-                {
-                    "name": "node",
-                    "peer": "SchemaNode",
-                    "kind": "Parent",
-                    "identifier": "schema__node__attributes",
-                    "cardinality": "one",
-                    "branch": BranchSupportType.AWARE.value,
-                    "optional": False,
-                }
-            ],
-        },
-        {
-            "name": "Relationship",
-            "namespace": "Schema",
-            "branch": BranchSupportType.AWARE.value,
-            "include_in_menu": False,
-            "default_filter": None,
-            "display_labels": ["name__value"],
-            "attributes": [
-                {
-                    "name": "name",
-                    "kind": "Text",
-                    "description": "Relationship name, must be unique within a model and must be all lowercase.",
-                    "regex": str(NAME_REGEX),
-                    "min_length": DEFAULT_KIND_MIN_LENGTH,
-                    "max_length": DEFAULT_KIND_MAX_LENGTH,
-                },
-                {
-                    "name": "peer",
-                    "kind": "Text",
-                    "description": "Type (kind) of objects supported on the other end of the relationship.",
-                    "regex": str(NODE_KIND_REGEX),
-                    "min_length": DEFAULT_KIND_MIN_LENGTH,
-                    "max_length": DEFAULT_KIND_MAX_LENGTH,
-                },
-                {
-                    "name": "kind",
-                    "kind": "Text",
-                    "description": "Defines the type of the relationship.",
-                    "enum": RelationshipKind.available_types(),
-                    "default_value": RelationshipKind.GENERIC.value,
-                },
-                {
-                    "name": "label",
-                    "kind": "Text",
-                    "description": "Human friendly representation of the name. Will be autogenerated if not provided",
-                    "optional": True,
-                    "max_length": DEFAULT_NAME_MAX_LENGTH,
-                },
-                {
-                    "name": "description",
-                    "kind": "Text",
-                    "optional": True,
-                    "description": "Short description of the relationship.",
-                    "max_length": DEFAULT_DESCRIPTION_LENGTH,
-                },
-                {
-                    "name": "identifier",
-                    "kind": "Text",
-                    "description": "Unique identifier of the relationship within a model,"
-                    " identifiers must match to traverse a relationship on both direction.",
-                    "regex": str(NAME_REGEX),
-                    "max_length": DEFAULT_REL_IDENTIFIER_LENGTH,
-                    "optional": True,
-                },
-                {
-                    "name": "cardinality",
-                    "kind": "Text",
-                    "description": "Defines how many objects are expected on the other side of the relationship.",
-                    "enum": RelationshipCardinality.available_types(),
-                    "default_value": RelationshipCardinality.MANY.value,
-                    "optional": True,
-                },
-                {
-                    "name": "min_count",
-                    "kind": "Number",
-                    "description": "Defines the minimum objects allowed on the other side of the relationship.",
-                    "default_value": 0,
-                    "optional": True,
-                },
-                {
-                    "name": "max_count",
-                    "kind": "Number",
-                    "description": "Defines the maximum objects allowed on the other side of the relationship.",
-                    "default_value": 0,
-                    "optional": True,
-                },
-                {
-                    "name": "order_weight",
-                    "kind": "Number",
-                    "description": "Number used to order the relationship in the frontend (table and view).",
-                    "optional": True,
-                },
-                {
-                    "name": "optional",
-                    "kind": "Boolean",
-                    "description": "Indicate if this relationship is mandatory or optional.",
-                    "default_value": False,
-                    "optional": True,
-                },
-                {
-                    "name": "branch",
-                    "kind": "Text",
-                    "description": "Type of branch support for the relatioinship, if not defined it will be determine based both peers.",
-                    "enum": BranchSupportType.available_types(),
-                    "optional": True,
-                },
-                {
-                    "name": "inherited",
-                    "kind": "Boolean",
-                    "description": "Internal value to indicate if the relationship was inherited from a Generic node.",
-                    "default_value": False,
-                    "optional": True,
-                },
-                {
-                    "name": "direction",
-                    "kind": "Text",
-                    "description": "Defines the direction of the relationship, "
-                    " Unidirectional relationship are required when the same model is on both side.",
-                    "enum": RelationshipDirection.available_types(),
-                    "default_value": RelationshipDirection.BIDIR.value,
-                    "optional": True,
-                },
-                {
-                    "name": "hierarchical",
-                    "kind": "Text",
-                    "description": "Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind",
-                    "optional": True,
-                },
-            ],
-            "relationships": [
-                {
-                    "name": "node",
-                    "peer": "SchemaNode",
-                    "kind": "Parent",
-                    "identifier": "schema__node__relationships",
-                    "cardinality": "one",
-                    "branch": BranchSupportType.AWARE.value,
-                    "optional": False,
-                }
-            ],
-        },
-        {
-            "name": "Generic",
-            "namespace": "Schema",
-            "branch": BranchSupportType.AWARE.value,
-            "include_in_menu": False,
-            "default_filter": "name__value",
-            "display_labels": ["label__value"],
-            "attributes": [
-                {
-                    "name": "name",
-                    "kind": "Text",
-                    "description": "Generic name, must be unique within a namespace and must start with an uppercase letter.",
-                    "unique": True,
-                    "regex": str(NODE_NAME_REGEX),
-                    "min_length": DEFAULT_NAME_MIN_LENGTH,
-                    "max_length": DEFAULT_NAME_MAX_LENGTH,
-                },
-                {
-                    "name": "namespace",
-                    "kind": "Text",
-                    "description": "Generic Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
-                    "regex": str(NAMESPACE_REGEX),
-                    "min_length": DEFAULT_KIND_MIN_LENGTH,
-                    "max_length": DEFAULT_KIND_MAX_LENGTH,
-                },
-                {
-                    "name": "label",
-                    "kind": "Text",
-                    "description": "Human friendly representation of the name/kind",
-                    "optional": True,
-                    "max_length": 32,
-                },
-                {
-                    "name": "branch",
-                    "kind": "Text",
-                    "description": "Type of branch support for the model.",
-                    "enum": BranchSupportType.available_types(),
-                    "default_value": BranchSupportType.AWARE.value,
-                    "optional": True,
-                },
-                {
-                    "name": "default_filter",
-                    "kind": "Text",
-                    "description": "Default filter used to search for a node in addition to its ID.",
-                    "regex": str(NAME_REGEX),
-                    "optional": True,
-                },
-                {
-                    "name": "order_by",
-                    "kind": "List",
-                    "description": "List of attributes to use to order the results by default",
-                    "optional": True,
-                },
-                {
-                    "name": "display_labels",
-                    "kind": "List",
-                    "description": "List of attributes to use to generate the display label",
-                    "optional": True,
-                },
-                {
-                    "name": "include_in_menu",
-                    "kind": "Boolean",
-                    "description": "Defines if objects of this kind should be included in the menu.",
-                    "default_value": True,
-                    "optional": True,
-                },
-                {
-                    "name": "menu_placement",
-                    "kind": "Text",
-                    "description": "Defines where in the menu this object should be placed.",
-                    "optional": True,
-                },
-                {
-                    "name": "icon",
-                    "kind": "Text",
-                    "description": "Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/",
-                    "optional": True,
-                },
-                {
-                    "name": "description",
-                    "kind": "Text",
-                    "optional": True,
-                    "description": "Short description of the Generic.",
-                    "max_length": DEFAULT_DESCRIPTION_LENGTH,
-                },
-                {
-                    "name": "hierarchical",
-                    "kind": "Boolean",
-                    "description": "Defines if the Generic support the hierarchical mode.",
-                    "optional": True,
-                    "default_value": False,
-                },
-                {
-                    "name": "used_by",
-                    "kind": "List",
-                    "description": "List of Nodes that are referencing this Generic",
-                    "optional": True,
-                },
-                {
-                    "name": "uniqueness_constraints",
-                    "kind": "List",
-                    "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                    "optional": True,
-                },
-            ],
-            "relationships": [
-                {
-                    "name": "attributes",
-                    "peer": "SchemaAttribute",
-                    "identifier": "schema__node__attributes",
-                    "cardinality": "many",
-                    "branch": BranchSupportType.AWARE.value,
-                    "optional": True,
-                },
-                {
-                    "name": "relationships",
-                    "peer": "SchemaRelationship",
-                    "identifier": "schema__node__relationships",
-                    "cardinality": "many",
-                    "branch": BranchSupportType.AWARE.value,
-                    "optional": True,
-                },
-            ],
+            "optional": True,
         },
     ],
-}
+)
+
+attribute_schema = SchemaNode(
+    name="Attribute",
+    namespace="Schema",
+    branch=BranchSupportType.AWARE.value,
+    include_in_menu=False,
+    default_filter=None,
+    display_labels=["name__value"],
+    attributes=[
+        SchemaAttribute(
+            name="id",
+            description="The ID of the attribute",
+            kind="Text",
+            optional=True,
+            extra={"update": UpdateSupport.NOT_APPLICABLE},
+        ),
+        SchemaAttribute(
+            name="name",
+            description="Attribute name, must be unique within a model and must be all lowercase.",
+            kind="Text",
+            regex=str(NAME_REGEX),
+            min_length=DEFAULT_KIND_MIN_LENGTH,
+            max_length=DEFAULT_KIND_MAX_LENGTH,
+            extra={"update": UpdateSupport.NOT_SUPPORTED},
+        ),
+        SchemaAttribute(
+            name="kind",
+            kind="Text",
+            description="Defines the type of the attribute.",
+            enum=ATTRIBUTE_KIND_LABELS,
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
+        ),
+        SchemaAttribute(
+            name="enum",
+            kind="List",
+            description="Define a list of valid values for the attribute.",
+            optional=True,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="choices",
+            kind="List",
+            internal_kind=DropdownChoice,
+            description="Define a list of valid choices for a dropdown attribute.",
+            optional=True,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="regex",
+            kind="Text",
+            description="Regex uses to limit limit the characters allowed in for the attributes.",
+            optional=True,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="max_length",
+            kind="Number",
+            description="Set a maximum number of characters allowed for a given attribute.",
+            optional=True,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="min_length",
+            kind="Number",
+            description="Set a minimum number of characters allowed for a given attribute.",
+            optional=True,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="label",
+            kind="Text",
+            optional=True,
+            description="Human friendly representation of the name. Will be autogenerated if not provided",
+            max_length=DEFAULT_NAME_MAX_LENGTH,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="description",
+            kind="Text",
+            optional=True,
+            description="Short description of the attribute.",
+            max_length=DEFAULT_DESCRIPTION_LENGTH,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="read_only",
+            kind="Boolean",
+            description="Set the attribute as Read-Only, users won't be able to change its value. "
+            "Mainly relevant for internal object.",
+            default_value=False,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="unique",
+            kind="Boolean",
+            description="Indicate if the value of this attribute must be unique in the database for a given model.",
+            default_value=False,
+            optional=True,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="optional",
+            kind="Boolean",
+            description="Indicate if this attribute is mandatory or optional.",
+            default_value=True,
+            override_default_value=False,
+            optional=True,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="branch",
+            kind="Text",
+            internal_kind=BranchSupportType,
+            description="Type of branch support for the attribute, if not defined it will be inherited from the node.",
+            enum=BranchSupportType.available_types(),
+            optional=True,
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
+        ),
+        SchemaAttribute(
+            name="order_weight",
+            kind="Number",
+            description="Number used to order the attribute in the frontend (table and view).",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="default_value",
+            kind="Any",
+            description="Default value of the attribute.",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="inherited",
+            kind="Boolean",
+            default_value=False,
+            description="Internal value to indicate if the attribute was inherited from a Generic node.",
+            optional=True,
+            extra={"update": UpdateSupport.NOT_APPLICABLE},
+        ),
+    ],
+    relationships=[
+        {
+            "name": "node",
+            "peer": "SchemaNode",
+            "kind": "Parent",
+            "identifier": "schema__node__attributes",
+            "cardinality": "one",
+            "branch": BranchSupportType.AWARE.value,
+            "optional": False,
+        }
+    ],
+)
+
+relationship_schema = SchemaNode(
+    name="Relationship",
+    namespace="Schema",
+    branch=BranchSupportType.AWARE.value,
+    include_in_menu=False,
+    default_filter=None,
+    display_labels=["name__value"],
+    attributes=[
+        SchemaAttribute(
+            name="name",
+            kind="Text",
+            description="Relationship name, must be unique within a model and must be all lowercase.",
+            regex=str(NAME_REGEX),
+            min_length=DEFAULT_KIND_MIN_LENGTH,
+            max_length=DEFAULT_KIND_MAX_LENGTH,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="peer",
+            kind="Text",
+            description="Type (kind) of objects supported on the other end of the relationship.",
+            regex=str(NODE_KIND_REGEX),
+            min_length=DEFAULT_KIND_MIN_LENGTH,
+            max_length=DEFAULT_KIND_MAX_LENGTH,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="kind",
+            kind="Text",
+            description="Defines the type of the relationship.",
+            enum=RelationshipKind.available_types(),
+            default_value=RelationshipKind.GENERIC.value,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="label",
+            kind="Text",
+            description="Human friendly representation of the name. Will be autogenerated if not provided",
+            optional=True,
+            max_length=DEFAULT_NAME_MAX_LENGTH,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="description",
+            kind="Text",
+            optional=True,
+            description="Short description of the relationship.",
+            max_length=DEFAULT_DESCRIPTION_LENGTH,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="identifier",
+            kind="Text",
+            description="Unique identifier of the relationship within a model,"
+            " identifiers must match to traverse a relationship on both direction.",
+            regex=str(NAME_REGEX),
+            max_length=DEFAULT_REL_IDENTIFIER_LENGTH,
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="cardinality",
+            kind="Text",
+            description="Defines how many objects are expected on the other side of the relationship.",
+            enum=RelationshipCardinality.available_types(),
+            default_value=RelationshipCardinality.MANY.value,
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="min_count",
+            kind="Number",
+            description="Defines the minimum objects allowed on the other side of the relationship.",
+            default_value=0,
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="max_count",
+            kind="Number",
+            description="Defines the maximum objects allowed on the other side of the relationship.",
+            default_value=0,
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="order_weight",
+            kind="Number",
+            description="Number used to order the relationship in the frontend (table and view).",
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="optional",
+            kind="Boolean",
+            description="Indicate if this relationship is mandatory or optional.",
+            default_value=False,
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="branch",
+            kind="Text",
+            description="Type of branch support for the relatioinship, if not defined it will be determine based both peers.",
+            enum=BranchSupportType.available_types(),
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="inherited",
+            kind="Boolean",
+            description="Internal value to indicate if the relationship was inherited from a Generic node.",
+            default_value=False,
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="direction",
+            kind="Text",
+            description="Defines the direction of the relationship, "
+            " Unidirectional relationship are required when the same model is on both side.",
+            enum=RelationshipDirection.available_types(),
+            default_value=RelationshipDirection.BIDIR.value,
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="hierarchical",
+            kind="Text",
+            description="Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind",
+            optional=True,
+            extra={"update": None},
+        ),
+    ],
+    relationships=[
+        {
+            "name": "node",
+            "peer": "SchemaNode",
+            "kind": "Parent",
+            "identifier": "schema__node__relationships",
+            "cardinality": "one",
+            "branch": BranchSupportType.AWARE.value,
+            "optional": False,
+        }
+    ],
+)
+
+generic_schema = SchemaNode(
+    name="Generic",
+    namespace="Schema",
+    branch=BranchSupportType.AWARE.value,
+    include_in_menu=False,
+    default_filter="name__value",
+    display_labels=["label__value"],
+    attributes=[
+        SchemaAttribute(
+            name="name",
+            kind="Text",
+            description="Generic name, must be unique within a namespace and must start with an uppercase letter.",
+            unique=True,
+            regex=str(NODE_NAME_REGEX),
+            min_length=DEFAULT_NAME_MIN_LENGTH,
+            max_length=DEFAULT_NAME_MAX_LENGTH,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="namespace",
+            kind="Text",
+            description="Generic Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
+            regex=str(NAMESPACE_REGEX),
+            min_length=DEFAULT_KIND_MIN_LENGTH,
+            max_length=DEFAULT_KIND_MAX_LENGTH,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="label",
+            kind="Text",
+            description="Human friendly representation of the name/kind",
+            optional=True,
+            max_length=32,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="branch",
+            kind="Text",
+            description="Type of branch support for the model.",
+            enum=BranchSupportType.available_types(),
+            default_value=BranchSupportType.AWARE.value,
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="default_filter",
+            kind="Text",
+            description="Default filter used to search for a node in addition to its ID.",
+            regex=str(NAME_REGEX),
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="order_by",
+            kind="List",
+            description="List of attributes to use to order the results by default",
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="display_labels",
+            kind="List",
+            description="List of attributes to use to generate the display label",
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="include_in_menu",
+            kind="Boolean",
+            description="Defines if objects of this kind should be included in the menu.",
+            default_value=True,
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="menu_placement",
+            kind="Text",
+            description="Defines where in the menu this object should be placed.",
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="icon",
+            kind="Text",
+            description="Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/",
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="description",
+            kind="Text",
+            optional=True,
+            description="Short description of the Generic.",
+            max_length=DEFAULT_DESCRIPTION_LENGTH,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="hierarchical",
+            kind="Boolean",
+            description="Defines if the Generic support the hierarchical mode.",
+            optional=True,
+            default_value=False,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="used_by",
+            kind="List",
+            description="List of Nodes that are referencing this Generic",
+            optional=True,
+            extra={"update": None},
+        ),
+        SchemaAttribute(
+            name="uniqueness_constraints",
+            kind="List",
+            description="List of multi-element uniqueness constraints that can combine relationships and attributes",
+            optional=True,
+            extra={"update": None},
+        ),
+    ],
+    relationships=[
+        {
+            "name": "attributes",
+            "peer": "SchemaAttribute",
+            "identifier": "schema__node__attributes",
+            "cardinality": "many",
+            "branch": BranchSupportType.AWARE.value,
+            "optional": True,
+        },
+        {
+            "name": "relationships",
+            "peer": "SchemaRelationship",
+            "identifier": "schema__node__relationships",
+            "cardinality": "many",
+            "branch": BranchSupportType.AWARE.value,
+            "optional": True,
+        },
+    ],
+)
+
+internal = InternalSchema(
+    version=None,
+    nodes=[
+        node_schema,
+        attribute_schema,
+        relationship_schema,
+        generic_schema,
+    ],
+)

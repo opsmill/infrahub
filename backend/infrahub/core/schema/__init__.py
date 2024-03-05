@@ -3,7 +3,6 @@ from __future__ import annotations
 import enum
 import hashlib
 import keyword
-import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
@@ -38,7 +37,9 @@ from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_KIND_LABELS, ATTRIBUTE_TYPES
 
 from .definitions.core import core_models
-from .definitions.internal import internal_schema
+from .definitions.internal import internal
+from .dropdown import DropdownChoice
+from .generated.attribute_schema import GeneratedAttributeSchema
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -57,64 +58,8 @@ AttributeKind = enum.Enum("AttributeKind", dict(attribute_dict))
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
-HTML_COLOR = re.compile(r"#[0-9a-fA-F]{6}\b")
 
-
-class DropdownChoice(HashableModel):
-    name: str
-    description: Optional[str] = None
-    color: Optional[str] = None
-    label: Optional[str] = None
-
-    _sort_by: List[str] = ["name"]
-
-    @field_validator("color")
-    @classmethod
-    def kind_options(cls, v: str) -> str:
-        if not v:
-            return v
-        if isinstance(v, str) and HTML_COLOR.match(v):
-            return v.lower()
-
-        raise ValueError("Color must be a valid HTML color code")
-
-
-class AttributeSchema(HashableModel):
-    id: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value})
-    name: str = Field(
-        pattern=NAME_REGEX,
-        min_length=DEFAULT_NAME_MIN_LENGTH,
-        max_length=DEFAULT_NAME_MAX_LENGTH,
-        json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value},
-    )
-    kind: str = Field(json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value})  # AttributeKind
-    label: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
-    description: Optional[str] = Field(
-        default=None, max_length=DEFAULT_DESCRIPTION_LENGTH, json_schema_extra={"update": UpdateSupport.ALLOWED.value}
-    )
-    default_value: Optional[Any] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
-    enum: Optional[List] = Field(default=None, json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value})
-    regex: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value})
-    max_length: Optional[int] = Field(
-        default=None, json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value}
-    )
-    min_length: Optional[int] = Field(
-        default=None, json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value}
-    )
-    read_only: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
-    inherited: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value})
-    unique: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value})
-    branch: Optional[BranchSupportType] = Field(
-        default=None, json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value}
-    )
-    optional: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value})
-    order_weight: Optional[int] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
-    choices: Optional[List[DropdownChoice]] = Field(
-        default=None,
-        description="The available choices if the kind is Dropdown.",
-        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
-    )
-
+class AttributeSchema(GeneratedAttributeSchema):
     _sort_by: List[str] = ["name"]
 
     @property
@@ -864,6 +809,8 @@ class SchemaRoot(BaseModel):
 
         return errors
 
+
+internal_schema = internal.to_dict()
 
 __all__ = [
     "core_models",
