@@ -21,7 +21,7 @@ async def template(message: TransformJinjaTemplate, service: InfrahubServices) -
     )
 
     rendered_template = await repo.render_jinja2_template(
-        commit=message.commit, location=message.template_location, data=message.data
+        commit=message.commit, location=message.template_location, data={"data": message.data}
     )
     if message.reply_requested:
         response = TransformJinjaTemplateResponse(
