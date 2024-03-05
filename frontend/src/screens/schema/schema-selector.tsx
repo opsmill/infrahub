@@ -32,10 +32,11 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
                   <div
                     key={schema.id}
                     className={`
-                      pl-9 pr-2 py-6 cursor-pointer flex relative hover:bg-gray-100 mix-blend-multiply
+                      h-24 overflow-hidden pl-9 pr-2 cursor-pointer flex items-center relative hover:bg-gray-100 mix-blend-multiply
+                      hover:rounded
                         ${
                           selectedKind === schema.kind
-                            ? "shadow-lg ring-1 ring-custom-blue-600 rounded-md"
+                            ? "shadow-lg ring-1 ring-custom-blue-600 rounded"
                             : ""
                         }
                     `}
@@ -58,7 +59,7 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
                         </Badge>
                       </h2>
 
-                      <p className="pl-1 text-sm text-gray-600">{schema.description}</p>
+                      <p className="pl-1 text-xs text-gray-600 mt-1">{schema.description}</p>
                     </div>
                   </div>
                 );
