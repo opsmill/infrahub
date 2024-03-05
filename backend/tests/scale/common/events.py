@@ -78,9 +78,9 @@ def request_event_handler(
         result["db_cpu"] = f"{db_container_stats.cpu_usage:.2f}%"
         result["db_memory"] = f"{db_container_stats.memory_usage}B"
 
-        result["db_size"] =  f"{graphdb_stats.db_size}B",
-        result["db_node_count"] = graphdb_stats.node_count,
-        result["db_rel_count"] = graphdb_stats.rel_count,
+        result["db_size"] = f"{graphdb_stats.db_size}B"
+        result["db_node_count"] = graphdb_stats.node_count
+        result["db_rel_count"] = graphdb_stats.rel_count
 
     output = []
     output = [f"{k}={v}" for k, v in result.items()]
