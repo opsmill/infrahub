@@ -22,7 +22,7 @@ export const SchemaViewer = () => {
   if (!schema) return null;
 
   return (
-    <section className="flex flex-col flex-grow shrink-0 max-w-lg max-h-screen overflow-hidden sticky top-2 right-2 space-y-4 p-4 shadow-lg border border-gray-200 bg-custom-white rounded-md">
+    <section className="flex flex-col flex-grow shrink-0 max-w-lg max-h-screen overflow-hidden sticky top-2 right-2 mt-2 space-y-4 p-4 shadow-lg border border-gray-200 bg-custom-white rounded-md">
       <div className="flex justify-between items-start">
         <div className="space-x-1">
           <Badge variant="blue">{schema.namespace}</Badge>

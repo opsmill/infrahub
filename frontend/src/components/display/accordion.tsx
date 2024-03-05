@@ -5,11 +5,18 @@ export type AccordionProps = {
   title?: any;
   children?: any;
   className?: string;
+  defaultOpen?: boolean;
   style?: CSSProperties;
 };
 
-export default function Accordion({ title, children, className, ...props }: AccordionProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function Accordion({
+  title,
+  defaultOpen = false,
+  children,
+  className,
+  ...props
+}: AccordionProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
     <div className={className} {...props}>

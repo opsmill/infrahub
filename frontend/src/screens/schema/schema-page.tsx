@@ -21,7 +21,7 @@ export default function SchemaPage() {
         }
       />
 
-      <div className="p-2 flex gap-2 items-start relative">
+      <div className="flex gap-2 items-start relative">
         <SchemaSelector className="flex-grow" />
         <SchemaViewer />
       </div>
