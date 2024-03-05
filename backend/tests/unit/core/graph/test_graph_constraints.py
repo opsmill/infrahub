@@ -580,8 +580,6 @@ async def test_constraint_manager_database_neo4j(db: InfrahubDatabase, default_b
         ConstraintInfo(item_name="rel_has_value_status_exist", item_label="HAS_VALUE", property="status"),
         ConstraintInfo(item_name="rel_has_value_status_type", item_label="HAS_VALUE", property="status"),
         ConstraintInfo(item_name="rel_has_value_to_type", item_label="HAS_VALUE", property="to"),
-        ConstraintInfo(item_name="rel_is_part_of_from_type", item_label="IS_PART_OF", property="from"),
-        ConstraintInfo(item_name="rel_is_part_of_to_type", item_label="IS_PART_OF", property="to"),
         ConstraintInfo(item_name="rel_is_protected_branch_exist", item_label="IS_PROTECTED", property="branch"),
         ConstraintInfo(
             item_name="rel_is_protected_branch_level_exist", item_label="IS_PROTECTED", property="branch_level"
