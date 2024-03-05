@@ -16,6 +16,7 @@ from rich.logging import RichHandler
 from rich.traceback import Traceback
 
 from infrahub_sdk import __version__ as sdk_version
+from infrahub_sdk.async_typer import AsyncTyper
 from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.branch import app as branch_app
 from infrahub_sdk.ctl.check import app as check_app
@@ -42,7 +43,7 @@ from infrahub_sdk.utils import get_branch, identify_faulty_jinja_code, write_to_
 from .exporter import dump
 from .importer import load
 
-app = typer.Typer(pretty_exceptions_show_locals=False)
+app = AsyncTyper(pretty_exceptions_show_locals=False)
 
 app.add_typer(branch_app, name="branch")
 app.add_typer(check_app, name="check")
@@ -54,15 +55,39 @@ app.command(name="load")(load)
 console = Console()
 
 
-async def _run(
+@app.command(name="run")
+async def run(
     script: Path,
-    method: str,
-    log: logging.Logger,
-    branch: str,
-    concurrent: int,
-    timeout: int,
-    variables: Optional[dict] = None,
+    method: str = "run",
+    debug: bool = False,
+    config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
+    branch: str = typer.Option("main", help="Branch on which to run the script."),
+    concurrent: int = typer.Option(
+        4,
+        help="Maximum number of requests to execute at the same time.",
+        envvar="INFRAHUBCTL_CONCURRENT_EXECUTION",
+    ),
+    timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
+    variables: Optional[List[str]] = typer.Argument(
+        None, help="Variables to pass along with the query. Format key=value key=value."
+    ),
 ) -> None:
+    """Execute a script."""
+
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
+
+    logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
+    logging.getLogger("httpx").setLevel(logging.ERROR)
+    logging.getLogger("httpcore").setLevel(logging.ERROR)
+
+    log_level = "DEBUG" if debug else "INFO"
+    FORMAT = "%(message)s"
+    logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
+    log = logging.getLogger("infrahubctl")
+
+    variables_dict = parse_cli_vars(variables)
+
     directory_name = os.path.dirname(script)
     filename = os.path.basename(script)
     module_name = os.path.splitext(filename)[0]
@@ -82,7 +107,7 @@ async def _run(
         branch=branch, timeout=timeout, max_concurrent_execution=concurrent, identifier=module_name
     )
     func = getattr(module, method)
-    await func(client=client, log=log, branch=branch, **variables)
+    await func(client=client, log=log, branch=branch, **variables_dict)
 
 
 def render_jinja2_template(template_path: Path, variables: Dict[str, str], data: Dict[str, Any]) -> str:
@@ -224,52 +249,6 @@ def transform(
         write_to_file(Path(out), json_string)
     else:
         console.print(json_string)
-
-
-@app.command(name="run")
-def run(
-    script: Path,
-    method: str = "run",
-    debug: bool = False,
-    config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
-    branch: str = typer.Option("main", help="Branch on which to run the script."),
-    concurrent: int = typer.Option(
-        4,
-        help="Maximum number of requests to execute at the same time.",
-        envvar="INFRAHUBCTL_CONCURRENT_EXECUTION",
-    ),
-    timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
-    variables: Optional[List[str]] = typer.Argument(
-        None, help="Variables to pass along with the query. Format key=value key=value."
-    ),
-) -> None:
-    """Execute a script."""
-
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
-
-    logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
-    logging.getLogger("httpx").setLevel(logging.ERROR)
-    logging.getLogger("httpcore").setLevel(logging.ERROR)
-
-    log_level = "DEBUG" if debug else "INFO"
-    FORMAT = "%(message)s"
-    logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-    log = logging.getLogger("infrahubctl")
-
-    variables_dict = parse_cli_vars(variables)
-
-    asyncio.run(
-        _run(
-            script=script,
-            method=method,
-            log=log,
-            branch=branch,
-            concurrent=concurrent,
-            timeout=timeout,
-            variables=variables_dict,
-        )
-    )
 
 
 @app.command(name="version")

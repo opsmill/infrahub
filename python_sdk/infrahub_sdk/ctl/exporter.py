@@ -30,6 +30,7 @@ def dump(
         envvar="INFRAHUBCTL_CONCURRENT_EXECUTION",
     ),
     timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
+    exclude: List[str] = typer.Option([], help="Prevent node kind(s) from being exported (e.g. CoreAccount)"),
 ) -> None:
     """Export node(s)."""
     console = Console()
@@ -40,13 +41,7 @@ def dump(
     )
     exporter = LineDelimitedJSONExporter(client, console=Console() if not quiet else None)
     try:
-        aiorun(
-            exporter.export(
-                export_directory=directory,
-                namespaces=namespace,
-                branch=branch,
-            )
-        )
+        aiorun(exporter.export(export_directory=directory, namespaces=namespace, branch=branch, exclude=exclude))
     except TransferError as exc:
         console.print(f"[red]{exc}")
         raise typer.Exit(1)

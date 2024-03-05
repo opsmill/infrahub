@@ -29,7 +29,7 @@ spec:
             - name: KUBERNETES_CLUSTER_DOMAIN
               value: {{ quote .Values.global.kubernetesClusterDomain }}
           image: {{ .Values.database.database.image.repository }}:{{ .Values.database.database.image.tag }}
-          imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.messageQueue.messageQueue.imagePullPolicy }}
+          imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.database.database.imagePullPolicy }}
           livenessProbe:
             tcpSocket:
               port: {{ (index .Values.database.ports 1).port }}

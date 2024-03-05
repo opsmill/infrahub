@@ -469,7 +469,6 @@ ignore = [
     "RET502",   # [*] Do not implicitly `return None` in function able to return non-`None` value
     "RET503",   # Missing explicit `return` at the end of function able to return non-`None` value
     "RET504",   # Unnecessary assignment before `return` statement
-    "RET505",   # RET505 Unnecessary `else` after `return` statement
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/

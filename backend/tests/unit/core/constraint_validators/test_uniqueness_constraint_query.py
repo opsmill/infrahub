@@ -440,3 +440,227 @@ async def test_query_relationship_violation_no_attribute(
     for result in query_result.results:
         serial_result = dict(result.data)
         assert serial_result in expected_result_dicts
+
+
+async def test_query_response_min_count_0_attribute_paths(
+    db: InfrahubDatabase, car_accord_main, car_prius_main, branch: Branch, default_branch: Branch
+):
+    expected_result_dicts = [
+        {
+            "attr_name": "nbr_seats",
+            "node_id": car_accord_main.id,
+            "node_count": 2,
+            "attr_value": 5,
+            "relationship_identifier": None,
+            "deepest_branch_name": default_branch.name,
+        },
+        {
+            "attr_name": "nbr_seats",
+            "node_id": car_prius_main.id,
+            "node_count": 2,
+            "attr_value": 5,
+            "relationship_identifier": None,
+            "deepest_branch_name": default_branch.name,
+        },
+        {
+            "attr_name": "name",
+            "node_id": car_accord_main.id,
+            "node_count": 1,
+            "attr_value": car_accord_main.name.value,
+            "relationship_identifier": None,
+            "deepest_branch_name": default_branch.name,
+        },
+        {
+            "attr_name": "name",
+            "node_id": car_prius_main.id,
+            "node_count": 1,
+            "attr_value": car_prius_main.name.value,
+            "relationship_identifier": None,
+            "deepest_branch_name": default_branch.name,
+        },
+    ]
+
+    query = await NodeUniqueAttributeConstraintQuery.init(
+        db=db,
+        branch=branch,
+        query_request=NodeUniquenessQueryRequest(
+            **{
+                "kind": "TestCar",
+                "unique_attribute_paths": [
+                    {"attribute_name": "name", "property_name": "value"},
+                    {"attribute_name": "nbr_seats", "property_name": "value"},
+                ],
+            }
+        ),
+        min_count_required=0,
+    )
+    query_result = await query.execute(db=db)
+
+    assert len(query_result.results) == 4
+    for result in query_result.results:
+        serial_result = dict(result.data)
+        assert serial_result in expected_result_dicts
+
+
+async def test_query_response_min_count_0_relationship_paths(
+    db: InfrahubDatabase, car_camry_main, car_prius_main, branch: Branch, default_branch: Branch
+):
+    expected_result_dicts = [
+        {
+            "attr_name": "name",
+            "node_id": car_camry_main.id,
+            "node_count": 1,
+            "attr_value": "Jane",
+            "relationship_identifier": "testcar__testperson",
+            "deepest_branch_name": default_branch.name,
+        },
+        {
+            "attr_name": "name",
+            "node_id": car_prius_main.id,
+            "node_count": 1,
+            "attr_value": "John",
+            "relationship_identifier": "testcar__testperson",
+            "deepest_branch_name": default_branch.name,
+        },
+        {
+            "attr_name": "height",
+            "node_id": car_camry_main.id,
+            "node_count": 2,
+            "attr_value": 180,
+            "relationship_identifier": "testcar__testperson",
+            "deepest_branch_name": default_branch.name,
+        },
+        {
+            "attr_name": "height",
+            "node_id": car_prius_main.id,
+            "node_count": 2,
+            "attr_value": 180,
+            "relationship_identifier": "testcar__testperson",
+            "deepest_branch_name": default_branch.name,
+        },
+    ]
+
+    query = await NodeUniqueAttributeConstraintQuery.init(
+        db=db,
+        branch=branch,
+        query_request=NodeUniquenessQueryRequest(
+            **{
+                "kind": "TestCar",
+                "relationship_attribute_paths": [
+                    {"identifier": "testcar__testperson", "attribute_name": "height"},
+                    {"identifier": "testcar__testperson", "attribute_name": "name"},
+                ],
+            }
+        ),
+        min_count_required=0,
+    )
+    query_result = await query.execute(db=db)
+
+    assert len(query_result.results) == 4
+    for result in query_result.results:
+        serial_result = dict(result.data)
+        assert serial_result in expected_result_dicts
+
+
+async def test_query_response_min_count_0_attribute_paths_with_value(
+    db: InfrahubDatabase, car_accord_main, car_prius_main, branch: Branch, default_branch: Branch
+):
+    expected_result_dicts = [
+        {
+            "attr_name": "nbr_seats",
+            "node_id": car_accord_main.id,
+            "node_count": 2,
+            "attr_value": 5,
+            "relationship_identifier": None,
+            "deepest_branch_name": default_branch.name,
+        },
+        {
+            "attr_name": "nbr_seats",
+            "node_id": car_prius_main.id,
+            "node_count": 2,
+            "attr_value": 5,
+            "relationship_identifier": None,
+            "deepest_branch_name": default_branch.name,
+        },
+        {
+            "attr_name": "name",
+            "node_id": car_accord_main.id,
+            "node_count": 1,
+            "attr_value": car_accord_main.name.value,
+            "relationship_identifier": None,
+            "deepest_branch_name": default_branch.name,
+        },
+    ]
+
+    query = await NodeUniqueAttributeConstraintQuery.init(
+        db=db,
+        branch=branch,
+        query_request=NodeUniquenessQueryRequest(
+            **{
+                "kind": "TestCar",
+                "unique_attribute_paths": [
+                    {"attribute_name": "name", "property_name": "value", "value": "accord"},
+                    {"attribute_name": "nbr_seats", "property_name": "value"},
+                ],
+            }
+        ),
+        min_count_required=0,
+    )
+    query_result = await query.execute(db=db)
+
+    assert len(query_result.results) == 3
+    for result in query_result.results:
+        serial_result = dict(result.data)
+        assert serial_result in expected_result_dicts
+
+
+async def test_query_response_min_count_0_relationship_paths_with_value(
+    db: InfrahubDatabase, car_camry_main, car_prius_main, branch: Branch, default_branch: Branch
+):
+    expected_result_dicts = [
+        {
+            "attr_name": "name",
+            "node_id": car_camry_main.id,
+            "node_count": 1,
+            "attr_value": "Jane",
+            "relationship_identifier": "testcar__testperson",
+            "deepest_branch_name": default_branch.name,
+        },
+        {
+            "attr_name": "height",
+            "node_id": car_camry_main.id,
+            "node_count": 2,
+            "attr_value": 180,
+            "relationship_identifier": "testcar__testperson",
+            "deepest_branch_name": default_branch.name,
+        },
+        {
+            "attr_name": "height",
+            "node_id": car_prius_main.id,
+            "node_count": 2,
+            "attr_value": 180,
+            "relationship_identifier": "testcar__testperson",
+            "deepest_branch_name": default_branch.name,
+        },
+    ]
+
+    query = await NodeUniqueAttributeConstraintQuery.init(
+        db=db,
+        branch=branch,
+        query_request=NodeUniquenessQueryRequest(
+            **{
+                "kind": "TestCar",
+                "relationship_attribute_paths": [
+                    {"identifier": "testcar__testperson", "attribute_name": "height"},
+                    {"identifier": "testcar__testperson", "attribute_name": "name", "value": "Jane"},
+                ],
+            }
+        ),
+        min_count_required=0,
+    )
+    query_result = await query.execute(db=db)
+
+    assert len(query_result.results) == 3
+    for result in query_result.results:
+        serial_result = dict(result.data)
+        assert serial_result in expected_result_dicts

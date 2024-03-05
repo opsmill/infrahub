@@ -784,7 +784,7 @@ async def test_schema_branch_validate_menu_placement():
     "uniqueness_constraints",
     [
         [["my_generic_name__value"], ["mybool__value"]],
-        [["my_generic_name__value"]],
+        [["my_generic_name__value", "primary_tag"]],
     ],
 )
 async def test_validate_uniqueness_constraints_success(schema_all_in_one, uniqueness_constraints):
@@ -814,19 +814,19 @@ async def test_validate_uniqueness_constraints_success(schema_all_in_one, unique
         ),
         (
             [["badges__name__value"]],
-            "InfraGenericInterface.uniqueness_constraints: this property only supports attributes",
+            "InfraGenericInterface.uniqueness_constraints: cannot use badges relationship, relationship must be of cardinality one",
         ),
         (
             [["mybool", "badges"]],
-            "InfraGenericInterface.uniqueness_constraints: this property only supports attributes, not relationships",
+            "InfraGenericInterface.uniqueness_constraints: cannot use badges relationship, relationship must be of cardinality one",
         ),
         (
             [["primary_tag__name__value"]],
-            "InfraGenericInterface.uniqueness_constraints: this property only supports attributes",
+            "InfraGenericInterface.uniqueness_constraints: cannot use attributes of related node in constraint, only the relationship",
         ),
         (
             [["mybool__value", "status__name__value"]],
-            "InfraGenericInterface.uniqueness_constraints: this property only supports attributes",
+            "InfraGenericInterface.uniqueness_constraints: cannot use attributes of related node in constraint, only the relationship",
         ),
     ],
 )

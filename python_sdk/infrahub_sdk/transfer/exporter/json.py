@@ -28,10 +28,7 @@ class LineDelimitedJSONExporter(ExporterInterface):
             self.console.print(f"{end}")
 
     async def export(
-        self,
-        export_directory: Path,
-        namespaces: List[str],
-        branch: str,
+        self, export_directory: Path, namespaces: List[str], branch: str, exclude: Optional[List[str]] = None
     ) -> None:
         illegal_namespaces = set(ILLEGAL_NAMESPACES)
         node_file = export_directory / Path("nodes.json")
@@ -45,7 +42,9 @@ class LineDelimitedJSONExporter(ExporterInterface):
             node_schema_map = {
                 kind: schema
                 for kind, schema in node_schema_map.items()
-                if isinstance(schema, NodeSchema) and schema.namespace not in illegal_namespaces
+                if isinstance(schema, NodeSchema)
+                and schema.namespace not in illegal_namespaces
+                and (not exclude or kind not in exclude)
             }
             retrieved_namespaces = {node_schema.namespace for node_schema in node_schema_map.values()}
 

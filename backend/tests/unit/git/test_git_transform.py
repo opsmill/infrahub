@@ -15,7 +15,7 @@ async def test_git_transform_jinja2_success(git_repo_jinja: InfrahubRepository, 
         commit=commit,
         branch="main",
         template_location="template01.tpl.j2",
-        data={"data": {"items": ["consilium", "potum", "album", "magnum"]}},
+        data={"items": ["consilium", "potum", "album", "magnum"]},
     )
     expected_response = """
 consilium
