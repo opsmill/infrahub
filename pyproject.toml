@@ -19,7 +19,7 @@ infrahub-sdk = {path = "python_sdk", develop=true}
 pydantic = "~2.6"
 pydantic-settings = "~2.2"
 pytest = "~7.4"
-aio-pika = "~9.3"
+aio-pika = "~9.4"
 structlog = "^22.3.0"
 boto3 = "~1.33.11"
 email-validator = "~2.1"
@@ -37,7 +37,7 @@ fastapi-storages = "~0.3"
 graphene = "~3.3"
 gunicorn = "^21.2"
 lunr = "^0.7.0.post1"
-starlette-exporter = "^0.12.0"
+starlette-exporter = "~0.21"
 python-multipart = "^0.0.6"         # Required by FastAPI to upload large files
 asgi-correlation-id = "4.2.0"       # Middleware for FastAPI to generate ID per request
 bcrypt = "~4.1"                     # Used to hash and validate password
