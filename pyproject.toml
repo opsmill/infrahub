@@ -23,6 +23,7 @@ lunr = "^0.7.0.post1"
 
 [tool.poetry.group.server.dependencies]
 fastapi = "~0.108"
+neo4j = "~5.18"
 starlette-exporter = "^0.12.0"
 python-multipart = "^0.0.6"         # Required by FastAPI to upload large files
 asgi-correlation-id = "4.2.0"       # Middleware for FastAPI to generate ID per request
@@ -31,7 +32,7 @@ pyjwt = "~2.8"                      # Used to manage JWT tokens
 uvicorn = {version = "~0.21", extras = ["standard"]}
 gunicorn = "^20.1"
 graphene = "~3.2"
-neo4j = "~5.15"
+
 aio-pika = "~9.3"
 structlog = "^22.3.0"
 boto3 = "~1.33.11"
