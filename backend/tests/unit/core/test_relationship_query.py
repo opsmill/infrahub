@@ -12,6 +12,7 @@ from infrahub.core.query.relationship import (
     RelationshipCreateQuery,
     RelationshipDataDeleteQuery,
     RelationshipDeleteQuery,
+    RelationshipGetByIdentifierQuery,
     RelationshipGetPeerQuery,
     RelationshipPeerData,
     RelationshipQuery,
@@ -557,3 +558,23 @@ async def test_query_RelationshipCountPerNodeQuery(
         person_jane_main.id: 0,
         albert.id: 0,
     }
+
+
+async def test_query_RelationshipGetByIdentifierQuery(
+    db: InfrahubDatabase,
+    person_john_main,
+    person_jane_main,
+    car_accord_main,
+    car_camry_main,
+    car_volt_main,
+    car_prius_main,
+    car_yaris_main,
+    branch: Branch,
+):
+    query = await RelationshipGetByIdentifierQuery.init(db=db, branch=branch, identifiers=[])
+    await query.execute(db=db)
+    assert await query.count(db=db) == 0
+
+    query = await RelationshipGetByIdentifierQuery.init(db=db, branch=branch, identifiers=["testcar__testperson"])
+    await query.execute(db=db)
+    assert await query.count(db=db) > 0
