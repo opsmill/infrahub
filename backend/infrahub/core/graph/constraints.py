@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, List, Optional, Type
+from typing import Dict, ForwardRef, List, Optional, Type, Union, get_origin
 
 from pydantic import BaseModel
 from typing_extensions import Self
@@ -149,6 +149,8 @@ class ConstraintNodeMemgraph(ConstraintItemMemgraph):
 
 
 TYPE_MAPPING = {
+    "RelationshipStatus": GraphPropertyType.STRING,
+    "BranchSupportType": GraphPropertyType.STRING,
     str: GraphPropertyType.STRING,
     int: GraphPropertyType.INTEGER,
     bool: GraphPropertyType.BOOLEAN,
@@ -177,16 +179,25 @@ class ConstraintManager:
         return self.nodes + self.rels
 
     @classmethod
-    def from_graph_schema(cls, db: InfrahubDatabase, schema: Dict[str, BaseModel]) -> Self:
+    def from_graph_schema(cls, db: InfrahubDatabase, schema: Dict[str, Dict[str, BaseModel]]) -> Self:
         manager = cls(db=db)
 
         # Process the nodes first
-        for _, schema_item in schema.items():
+        for _, schema_item in schema["nodes"].items():
             properties_class: BaseModel = schema_item.model_fields["properties"].annotation  # type: ignore[assignment]
             default_label = str(schema_item.model_fields["default_label"].default)
             for field_name, field in properties_class.model_fields.items():
                 clean_field_name = field.alias or field_name
-                if field.annotation not in TYPE_MAPPING or not manager.constraint_node_class:
+                item_type = None
+                mandatory = True
+                if isinstance(field.annotation, ForwardRef) and field.annotation.__forward_arg__ in TYPE_MAPPING:
+                    item_type = TYPE_MAPPING[field.annotation.__forward_arg__]
+                elif field.annotation in TYPE_MAPPING:
+                    item_type = TYPE_MAPPING[field.annotation]
+                elif get_origin(field.annotation) == Union and field.annotation.__args__[0] in TYPE_MAPPING:  # type: ignore[union-attr]
+                    item_type = TYPE_MAPPING[field.annotation.__args__[0]]  # type: ignore[union-attr]
+                    mandatory = False
+                if not item_type or not manager.constraint_node_class:
                     continue
 
                 manager.nodes.append(
@@ -194,7 +205,34 @@ class ConstraintManager:
                         item_name=default_label.lower(),
                         item_label=default_label,
                         property=clean_field_name,
-                        type=TYPE_MAPPING[field.annotation],
+                        type=item_type,
+                        mandatory=mandatory,
+                    )
+                )
+
+        # Process the relationships
+        for label, schema_item in schema["relationships"].items():
+            for field_name, field in schema_item.model_fields.items():
+                clean_field_name = field.alias or field_name
+                item_type = None
+                mandatory = True
+                if isinstance(field.annotation, ForwardRef) and field.annotation.__forward_arg__ in TYPE_MAPPING:
+                    item_type = TYPE_MAPPING[field.annotation.__forward_arg__]
+                elif field.annotation in TYPE_MAPPING:
+                    item_type = TYPE_MAPPING[field.annotation]
+                elif get_origin(field.annotation) == Union and field.annotation.__args__[0] in TYPE_MAPPING:  # type: ignore[union-attr]
+                    item_type = TYPE_MAPPING[field.annotation.__args__[0]]  # type: ignore[union-attr]
+                    mandatory = False
+                if not item_type or not manager.constraint_rel_class:
+                    continue
+
+                manager.rels.append(
+                    manager.constraint_rel_class(
+                        item_name=label.lower(),
+                        item_label=label,
+                        property=clean_field_name,
+                        type=item_type,
+                        mandatory=mandatory,
                     )
                 )
 
