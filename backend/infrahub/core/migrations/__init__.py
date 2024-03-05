@@ -8,7 +8,6 @@ MIGRATION_MAP: Dict[str, Optional[Type[SchemaMigration]]] = {
     "node.attribute.add": NodeAttributeAddMigration,
     "node.attribute.remove": None,
     "node.relationship.remove": None,
-    "attribute.kind.update": None,
     "attribute.branch.update": None,
     "relationship.branch.update": None,
     "relationship.direction.update": None,

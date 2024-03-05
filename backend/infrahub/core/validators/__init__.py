@@ -2,6 +2,7 @@ from typing import Dict, Optional, Type
 
 from .attribute.choices import AttributeChoicesChecker
 from .attribute.enum import AttributeEnumChecker
+from .attribute.kind import AttributeKindChecker
 from .attribute.length import AttributeLengthChecker
 from .attribute.optional import AttributeOptionalChecker
 from .attribute.regex import AttributeRegexChecker
@@ -15,6 +16,7 @@ from .uniqueness.checker import UniquenessChecker
 CONSTRAINT_VALIDATOR_MAP: Dict[str, Optional[Type[ConstraintCheckerInterface]]] = {
     "attribute.regex.update": AttributeRegexChecker,
     "attribute.enum.update": AttributeEnumChecker,
+    "attribute.kind.update": AttributeKindChecker,
     "attribute.min_length.update": AttributeLengthChecker,
     "attribute.max_length.update": AttributeLengthChecker,
     "attribute.unique.update": AttributeUniquenessChecker,
