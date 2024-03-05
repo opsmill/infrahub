@@ -471,9 +471,12 @@ async def test_branch_update_isolated(db: InfrahubDatabase, base_dataset_02):
     assert branch4_updated2.is_isolated is False
 
 
-async def test_branch_update_isolated_schema_change(db: InfrahubDatabase, base_dataset_02):
+async def test_branch_update_isolated_schema_change(db: InfrahubDatabase, default_branch: Branch, base_dataset_02):
+    default_branch.update_schema_hash()
+
     branch4 = await create_branch(branch_name="branch4", db=db, isolated=True)
-    branch4.has_schema_changes = True
+    # Update the hash to simulate a schema change
+    branch4.schema_hash.main = "f190a8a7f435833e9e15521b8495aaaa"
     await branch4.save(db=db)
 
     query = """
