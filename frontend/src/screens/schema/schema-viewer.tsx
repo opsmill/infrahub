@@ -1,21 +1,21 @@
 import { Tab } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
+import { AttributeDisplay } from "./attribute-display";
 import { Badge } from "../../components/ui/badge";
 import { ModelDisplay, PropertyRow, TabPanelStyled, TabStyled } from "./styled";
 import { RelationshipDisplay } from "./relationship-display";
-import { AttributeDisplay } from "./attribute-display";
 import { isGeneric } from "../../utils/common";
 import { genericsState, IModelSchema, schemaState } from "../../state/atoms/schema.atom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../config/qsp";
 
 export const SchemaViewer = () => {
-  const [selectedKind, setKind] = useQueryParam(QSP.KIND, StringParam);
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
   const schemas = [...nodes, ...generics];
 
+  const [selectedKind, setKind] = useQueryParam(QSP.KIND, StringParam);
   if (!selectedKind) return null;
 
   const schema = schemas.find(({ kind }) => kind === selectedKind);

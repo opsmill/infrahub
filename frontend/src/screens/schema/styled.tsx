@@ -54,7 +54,7 @@ export const PropertyRow = ({
   value,
 }: {
   title: string;
-  value: string | string[] | number | boolean | ReactElement | null | undefined;
+  value: string | string[] | string[][] | number | boolean | ReactElement | null | undefined;
 }) => {
   if (value === undefined) return null;
 
@@ -66,24 +66,23 @@ export const PropertyRow = ({
       case "number":
         return value;
       case "boolean":
-        return (
-          <div
-            className={classNames(
-              "text-xs border-2 rounded px-2 py-0.5 font-semibold",
-              value ? "text-green-700 border-green-500" : "text-red-700 border-red-500"
-            )}>
-            {value.toString()}
-          </div>
-        );
+        return <Badge variant={value ? "green-outline" : "red-outline"}>{value.toString()}</Badge>;
       case "object":
-        if (Array.isArray(value))
+        if (Array.isArray(value)) {
           return (
             <ul>
               {value.map((v) => (
-                <li key={v}>{v}</li>
+                <li key={v.toString()} className="whitespace-nowrap">
+                  {Array.isArray(v) ? (
+                    <Badge variant="red" className="mb-1">{`${v.join(", ")}`}</Badge>
+                  ) : (
+                    v
+                  )}
+                </li>
               ))}
             </ul>
           );
+        }
         return value;
       default:
         warnUnexpectedType(value);
@@ -119,9 +118,7 @@ export const TabPanelStyled = ({
   return <Tab.Panel className="space-y-2">{children}</Tab.Panel>;
 };
 
-export const NullDisplay = () => (
-  <div className="text-xs border-2 rounded px-2 py-0.5 text-gray-500 border-gray-300">null</div>
-);
+export const NullDisplay = () => <Badge variant="gray-outline">null</Badge>;
 
 export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
   const [, setKind] = useQueryParam(QSP.KIND, StringParam);
