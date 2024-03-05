@@ -2,7 +2,7 @@ import { components } from "../../infraops";
 import { Badge } from "../../components/ui/badge";
 import { warnUnexpectedType } from "../../utils/common";
 import { Icon } from "@iconify-icon/react";
-import { AccordionStyled, PropertyRow } from "./styled";
+import { AccordionStyled, ModelDisplay, PropertyRow } from "./styled";
 
 export const RelationshipDisplay = ({
   relationship,
@@ -39,7 +39,7 @@ export const RelationshipDisplay = ({
       </div>
 
       <div>
-        <PropertyRow title="Peer" value={relationship.peer} />
+        <PropertyRow title="Peer" value={<ModelDisplay kinds={[relationship.peer]} />} />
         <PropertyRow title="Peer identifier" value={relationship.identifier} />
         <PropertyRow title="Cardinality" value={relationship.cardinality} />
         <PropertyRow title="Direction" value={relationship.direction} />

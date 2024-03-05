@@ -2,7 +2,7 @@ import { Tab } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { Badge } from "../../components/ui/badge";
-import { PropertyRow, TabPanelStyled, TabStyled } from "./styled";
+import { ModelDisplay, PropertyRow, TabPanelStyled, TabStyled } from "./styled";
 import { RelationshipDisplay } from "./relationship-display";
 import { AttributeDisplay } from "./attribute-display";
 import { isGeneric } from "../../utils/common";
@@ -115,16 +115,27 @@ const Properties = ({ schema }: { schema: IModelSchema }) => {
 
       {"used_by" in schema && (
         <div>
-          <PropertyRow title="Inherit from" value={schema.used_by} />
+          <PropertyRow title="Used by" value={<ModelDisplay kinds={schema.used_by} />} />
         </div>
       )}
 
       {"inherit_from" in schema && (
         <div>
-          <PropertyRow title="Inherit from" value={schema.inherit_from} />
-          <PropertyRow title="Hierarchy" value={schema.hierarchy} />
-          <PropertyRow title="Parent" value={schema.parent} />
-          <PropertyRow title="Children" value={schema.children} />
+          <PropertyRow title="Inherit from" value={<ModelDisplay kinds={schema.inherit_from} />} />
+          <PropertyRow
+            title="Hierarchy"
+            value={
+              schema.hierarchy ? <ModelDisplay kinds={[schema.hierarchy]} /> : schema.hierarchy
+            }
+          />
+          <PropertyRow
+            title="Parent"
+            value={schema.parent ? <ModelDisplay kinds={[schema.parent]} /> : schema.parent}
+          />
+          <PropertyRow
+            title="Children"
+            value={schema.children ? <ModelDisplay kinds={[schema.children]} /> : schema.children}
+          />
         </div>
       )}
 

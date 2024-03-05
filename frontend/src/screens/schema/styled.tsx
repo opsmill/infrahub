@@ -3,6 +3,8 @@ import { Badge } from "../../components/ui/badge";
 import { ReactElement } from "react";
 import { Tab } from "@headlessui/react";
 import { classNames, warnUnexpectedType } from "../../utils/common";
+import { StringParam, useQueryParam } from "use-query-params";
+import { QSP } from "../../config/qsp";
 
 interface AccordionStyleProps extends AccordionProps {
   title: ReactElement | string;
@@ -120,3 +122,22 @@ export const TabPanelStyled = ({
 export const NullDisplay = () => (
   <div className="text-xs border-2 rounded px-2 py-0.5 text-gray-500 border-gray-300">null</div>
 );
+
+export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
+  const [, setKind] = useQueryParam(QSP.KIND, StringParam);
+  if (!kinds) return null;
+  if (kinds.length === 0) return "empty";
+
+  return (
+    <div className="space-y-1 flex flex-col items-end">
+      {kinds.map((kind) => (
+        <Badge
+          key={kind}
+          className="bg-sky-50 text-sky-800 border-sky-200 hover:bg-sky-100 cursor-pointer"
+          onClick={() => setKind(kind)}>
+          {kind}
+        </Badge>
+      ))}
+    </div>
+  );
+};
