@@ -5,6 +5,7 @@ import { DateDisplay } from "../../../components/display/date-display";
 import { DurationDisplay } from "../../../components/display/duration-display";
 import { PopOver } from "../../../components/display/popover";
 import { List } from "../../../components/table/list";
+import { Tooltip } from "../../../components/utils/tooltip";
 import { ValidatorDetails } from "./validator-details";
 
 type tValidatorProps = {
@@ -14,21 +15,41 @@ type tValidatorProps = {
 const getValidatorState = (state?: string, conclusion?: string) => {
   switch (state) {
     case "queued": {
-      return <Icon icon={"mdi:timer-sand-complete"} className="text-yellow-500 mr-2" />;
+      return (
+        <Tooltip message={"Queued"}>
+          <Icon icon={"mdi:timer-sand-complete"} className="text-yellow-500 mr-2" />
+        </Tooltip>
+      );
     }
     case "in_progress": {
-      return <Icon icon={"mdi:clock-time-four-outline"} className="text-yellow-500 mr-2" />;
+      return (
+        <Tooltip message={"In progress"}>
+          <Icon icon={"mdi:clock-time-four-outline"} className="text-yellow-500 mr-2" />
+        </Tooltip>
+      );
     }
     case "completed": {
       if (conclusion === "success") {
-        return <Icon icon={"mdi:check-circle-outline"} className="text-green-500 mr-2" />;
+        return (
+          <Tooltip message={"Success"}>
+            <Icon icon={"mdi:check-circle-outline"} className="text-green-500 mr-2" />
+          </Tooltip>
+        );
       }
 
       if (conclusion === "failure") {
-        return <Icon icon={"mdi:warning"} className="text-red-500 mr-2" />;
+        return (
+          <Tooltip message={"Failure"}>
+            <Icon icon={"mdi:warning"} className="text-red-500 mr-2" />
+          </Tooltip>
+        );
       }
 
-      return <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500 mr-2" />;
+      return (
+        <Tooltip message={"Unkown"}>
+          <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500 mr-2" />
+        </Tooltip>
+      );
     }
     default: {
       return null;
@@ -98,7 +119,7 @@ export const Validator = (props: tValidatorProps) => {
   );
 
   return (
-    <div className="bg-custom-white rounded-md p-2">
+    <div className="bg-custom-white rounded-md p-2 mb-2 last:mb-0">
       <Accordion title={title}>
         <ValidatorDetails id={id} />
       </Accordion>

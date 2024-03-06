@@ -7,6 +7,7 @@ import { DateDisplay } from "../../../components/display/date-display";
 import { PopOver } from "../../../components/display/popover";
 import { CodeEditor } from "../../../components/editor/code-editor";
 import { List } from "../../../components/table/list";
+import { Tooltip } from "../../../components/utils/tooltip";
 import { getCheckDetails } from "../../../graphql/queries/diff/getCheckDetails";
 import useQuery from "../../../hooks/useQuery";
 import { schemaKindLabelState } from "../../../state/atoms/schemaKindLabel.atom";
@@ -22,13 +23,25 @@ type tCheckProps = {
 const getCheckIcon = (conclusion?: string) => {
   switch (conclusion) {
     case "success": {
-      return <Icon icon={"mdi:check-circle-outline"} className="text-green-500 mr-2" />;
+      return (
+        <Tooltip message={"Success"}>
+          <Icon icon={"mdi:check-circle-outline"} className="text-green-500 mr-2" />
+        </Tooltip>
+      );
     }
     case "failure": {
-      return <Icon icon={"mdi:warning"} className="text-red-500 mr-2" />;
+      return (
+        <Tooltip message={"Failure"}>
+          <Icon icon={"mdi:warning"} className="text-red-500 mr-2" />
+        </Tooltip>
+      );
     }
     default: {
-      return <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500 mr-2" />;
+      return (
+        <Tooltip message={"In progress"}>
+          <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500 mr-2" />
+        </Tooltip>
+      );
     }
   }
 };
