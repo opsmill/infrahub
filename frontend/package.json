@@ -50,6 +50,7 @@
     "@uiw/react-color": "^2.0.5",
     "@vitejs/plugin-react": "^4.0.0",
     "autoprefixer": "^10.4.14",
+    "class-variance-authority": "^0.7.0",
     "cm6-theme-basic-light": "^0.2.0",
     "cross-fetch": "^4.0.0",
     "date-fns": "^2.29.3",
