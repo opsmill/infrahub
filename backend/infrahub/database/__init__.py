@@ -13,7 +13,7 @@ from neo4j import (
     AsyncTransaction,
     Record,
 )
-from neo4j.exceptions import ClientError, ServiceUnavailable, TransientError, Neo4jError
+from neo4j.exceptions import ClientError, Neo4jError, ServiceUnavailable, TransientError
 from typing_extensions import Self
 
 from infrahub import config
@@ -260,6 +260,7 @@ async def get_db(retry: int = 0) -> AsyncDriver:
 
     return driver
 
+
 def retry_db_transaction(name: str):
     def func_wrapper(func):
         async def wrapper(*args, **kwargs):
@@ -267,7 +268,10 @@ def retry_db_transaction(name: str):
                 try:
                     return await func(*args, **kwargs)
                 except TransientError as exc:
-                    log.warning(f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}", data=kwargs["data"])
+                    log.warning(
+                        f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}",
+                        data=kwargs["data"],
+                    )
                     log.debug("database transaction failed", message=exc.message)
                     TRANSACTION_RETRIES.labels(name).inc()
                     if attempt == config.SETTINGS.database.retry_limit:
