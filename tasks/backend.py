@@ -215,19 +215,37 @@ def format_and_lint(context: Context):
 @task
 def generate(context: Context):
     """Generate internal backend models."""
+    _generate(context=context)
+
+
+@task
+def validate(context: Context, docker: bool = False):
+    """Validate that the generated documentation is committed to Git."""
+
+    _generate(context=context)
+    exec_cmd = "git diff --exit-code backend/infrahub/core/schema/generated"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+
+def _generate(context: Context):
     from jinja2 import Environment, FileSystemLoader
 
-    from infrahub.core.schema.definitions.internal import attribute_schema
+    from infrahub.core.schema.definitions.internal import attribute_schema, relationship_schema
 
     env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"))
-    template = env.get_template("attribute_schema.j2")
-
-    rendered_models = template.render(node=attribute_schema)
-
     generated = f"{ESCAPED_REPO_PATH}/backend/infrahub/core/schema/generated"
-    attribute_schema = f"{generated}/attribute_schema.py"
-    with open(attribute_schema, "w", encoding="utf-8") as fobj:
-        fobj.write(rendered_models)
+    template = env.get_template("generate_schema.j2")
+
+    attributes_rendered = template.render(schema="AttributeSchema", node=attribute_schema)
+    attribute_schema_output = f"{generated}/attribute_schema.py"
+    with open(attribute_schema_output, "w", encoding="utf-8") as fobj:
+        fobj.write(attributes_rendered)
+
+    relationship_rendered = template.render(schema="RelationshipSchema", node=relationship_schema)
+    relationship_schema_output = f"{generated}/relationship_schema.py"
+    with open(relationship_schema_output, "w", encoding="utf-8") as fobj:
+        fobj.write(relationship_rendered)
 
     execute_command(context=context, command=f"ruff format {generated}")
     execute_command(context=context, command=f"ruff check --fix {generated}")
