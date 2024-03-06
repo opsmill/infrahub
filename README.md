@@ -25,8 +25,6 @@ Leveraging [Codespaces](https://docs.github.com/en/codespaces/overview) from Git
 > [!NOTE]
 > The documentation includes how to get setup and start using Infrahub. The documentation is currently protected by password : `cXsivxXAgL7Hae`
 
-
-
 |  | Branch `stable` | Branch `develop` |
 |---|---|---|
 | Run Default version of Infrahub in Codespaces | [![Start in Codespaces (stable), without data](https://img.shields.io/badge/Start%20stable%20version-0B6581?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable ) | [![Start in Codespaces (develop), without data](https://img.shields.io/badge/Start%20develop%20version-0B6581?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=develop ) |
