@@ -1,8 +1,8 @@
 import pytest
 from deepdiff import DeepDiff
 
-from infrahub.api.diff.diff import get_display_labels, get_display_labels_per_kind
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.diff.payload import get_display_labels, get_display_labels_per_kind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
