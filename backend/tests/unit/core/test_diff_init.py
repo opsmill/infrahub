@@ -40,7 +40,6 @@ class TestDiffInit:
 
         diff = await self.__call_system_under_test(self.branch, diff_to=diff_to_str)
 
-        # self.branch.get_origin_branch.assert_awaited_once_with(db=self.db)
         assert diff.branch == self.branch
         assert diff.origin_branch == self.origin_branch
         assert diff.diff_from == self.created_at_timestamp
