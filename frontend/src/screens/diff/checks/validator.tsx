@@ -1,10 +1,4 @@
-import {
-  ArrowPathIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  ExclamationCircleIcon,
-  ExclamationTriangleIcon,
-} from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { MoreButton } from "../../../components/buttons/more-button";
 import Accordion from "../../../components/display/accordion";
 import { DateDisplay } from "../../../components/display/date-display";
@@ -20,21 +14,21 @@ type tValidatorProps = {
 const getValidatorState = (state?: string, conclusion?: string) => {
   switch (state) {
     case "queued": {
-      return <ClockIcon className="h-6 w-6" />;
+      return <Icon icon={"mdi:timer-sand-complete"} className="text-yellow-500 mr-2" />;
     }
     case "in_progress": {
-      return <ArrowPathIcon className="h-6 w-6 text-orange-500 animate-spin" />;
+      return <Icon icon={"mdi:clock-time-four-outline"} className="text-yellow-500 mr-2" />;
     }
     case "completed": {
       if (conclusion === "success") {
-        return <CheckCircleIcon className="h-6 w-6 text-green-500" />;
+        return <Icon icon={"mdi:check-circle-outline"} className="text-green-500 mr-2" />;
       }
 
       if (conclusion === "failure") {
-        return <ExclamationCircleIcon className="h-6 w-6 text-red-500" />;
+        return <Icon icon={"mdi:warning"} className="text-red-500 mr-2" />;
       }
 
-      return <ExclamationTriangleIcon className="h-6 w-6 text-yellow-500" />;
+      return <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500 mr-2" />;
     }
     default: {
       return null;
@@ -87,7 +81,7 @@ export const Validator = (props: tValidatorProps) => {
 
   const title = (
     <div className="flex items-center">
-      <div className="mr-2">{getValidatorState(state?.value, conclusion?.value)}</div>
+      {getValidatorState(state?.value, conclusion?.value)}
 
       <span>{display_label}</span>
 

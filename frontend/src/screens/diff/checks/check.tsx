@@ -1,9 +1,5 @@
 import { gql } from "@apollo/client";
-import {
-  CheckCircleIcon,
-  ExclamationCircleIcon,
-  ExclamationTriangleIcon,
-} from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { MoreButton } from "../../../components/buttons/more-button";
 import Accordion from "../../../components/display/accordion";
@@ -26,13 +22,13 @@ type tCheckProps = {
 const getCheckIcon = (conclusion?: string) => {
   switch (conclusion) {
     case "success": {
-      return <CheckCircleIcon className="mr-2 h-6 w-6 text-green-500" />;
+      return <Icon icon={"mdi:check-circle-outline"} className="text-green-500 mr-2" />;
     }
     case "failure": {
-      return <ExclamationCircleIcon className="mr-2 h-6 w-6 text-red-500" />;
+      return <Icon icon={"mdi:warning"} className="text-red-500 mr-2" />;
     }
     default: {
-      return <ExclamationTriangleIcon className="mr-2 h-6 w-6 text-yellow-500" />;
+      return <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500 mr-2" />;
     }
   }
 };
