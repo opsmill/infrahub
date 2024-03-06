@@ -27,6 +27,9 @@ class Relationships(ObjectType):
         ids: Optional[List[str]] = None,
         excluded_namespaces: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
+        if not ids:
+            raise ValueError("Relationship identifiers (ids) must be a non-empty list")
+
         context: GraphqlContext = info.context
 
         fields = await extract_fields_first_node(info)
