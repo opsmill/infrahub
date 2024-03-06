@@ -123,9 +123,6 @@ class CheckDefinitionInformation(BaseModel):
     check_class: Any
     """Python Class of the Check"""
 
-    rebase: bool
-    """Flag to indicate if the query need to be rebased."""
-
     timeout: int
     """Timeout for the Check."""
 
@@ -157,9 +154,6 @@ class TransformPythonInformation(BaseModel):
 
     transform_class: Any
     """Python Class of the Transform"""
-
-    rebase: bool
-    """Flag to indicate if the query need to be rebased."""
 
     timeout: int
     """Timeout for the function."""
@@ -1485,7 +1479,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                     file_path=file_path,
                     query=str(graphql_query.id),
                     timeout=check_class.timeout,
-                    rebase=check_class.rebase,
                     parameters=check_definition.parameters,
                     targets=check_definition.targets,
                 )
@@ -1520,7 +1513,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                     file_path=file_path,
                     query=str(graphql_query.id),
                     timeout=transform_class.timeout,
-                    rebase=transform_class.rebase,
                 )
             )
 
@@ -1540,7 +1532,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             "query": check.query,
             "file_path": check.file_path,
             "class_name": check.class_name,
-            "rebase": check.rebase,
             "timeout": check.timeout,
             "parameters": check.parameters,
         }
@@ -1572,9 +1563,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if existing_check.file_path.value != check.file_path:
             existing_check.file_path.value = check.file_path
 
-        if existing_check.rebase.value != check.rebase:
-            existing_check.rebase.value = check.rebase
-
         if existing_check.timeout.value != check.timeout:
             existing_check.timeout.value = check.timeout
 
@@ -1594,7 +1582,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             existing_check.query.id != check.query
             or existing_check.file_path.value != check.file_path
             or existing_check.timeout.value != check.timeout
-            or existing_check.rebase.value != check.rebase
             or existing_check.class_name.value != check.class_name
             or existing_check.parameters.value != check.parameters
         ):
@@ -1609,7 +1596,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             "query": transform.query,
             "file_path": transform.file_path,
             "class_name": transform.class_name,
-            "rebase": transform.rebase,
             "timeout": transform.timeout,
         }
         create_payload = self.client.schema.generate_payload_create(
@@ -1634,9 +1620,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if existing_transform.timeout.value != local_transform.timeout:
             existing_transform.timeout.value = local_transform.timeout
 
-        if existing_transform.rebase.value != local_transform.rebase:
-            existing_transform.rebase.value = local_transform.rebase
-
         await existing_transform.save()
 
     @classmethod
@@ -1647,7 +1630,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             existing_transform.query.id != local_transform.query
             or existing_transform.file_path.value != local_transform.file_path
             or existing_transform.timeout.value != local_transform.timeout
-            or existing_transform.rebase.value != local_transform.rebase
         ):
             return False
         return True
@@ -1876,7 +1858,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             subscribers=[artifact.id],
             tracker="artifact-query-graphql-data",
             branch_name=branch_name,
-            rebase=transformation.rebase.value,
             timeout=transformation.timeout.value,
         )
 
@@ -1926,7 +1907,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             subscribers=[artifact.id],
             tracker="artifact-query-graphql-data",
             branch_name=message.branch_name,
-            rebase=message.rebase,
             timeout=message.timeout,
         )
 

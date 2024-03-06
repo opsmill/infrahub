@@ -239,7 +239,6 @@ async def schema_integrity(
         # Validate if the new schema is valid with the content of the database
         # ----------------------------------------------------------
         source_branch = registry.get_branch_from_registry(branch=message.source_branch)
-        source_branch.ephemeral_rebase = True
         _, responses = await schema_validators_checker(
             branch=source_branch, schema=candidate_schema, constraints=constraints, service=service
         )
@@ -381,9 +380,6 @@ query GatherArtifactDefinitions {
           node {
             __typename
             timeout {
-                value
-            }
-            rebase {
                 value
             }
             query {
@@ -636,7 +632,6 @@ def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeA
             definition_name=definition["node"]["name"]["value"],
             content_type=definition["node"]["content_type"]["value"],
             timeout=definition["node"]["transformation"]["node"]["timeout"]["value"],
-            rebase=definition["node"]["transformation"]["node"]["rebase"]["value"],
             query_name=definition["node"]["transformation"]["node"]["query"]["node"]["name"]["value"],
             query_models=definition["node"]["transformation"]["node"]["query"]["node"]["models"]["value"] or [],
             repository_id=definition["node"]["transformation"]["node"]["repository"]["node"]["id"],
@@ -659,11 +654,9 @@ async def _get_proposed_change_repositories(
     destination_all = await service.client.execute_graphql(
         query=DESTINATION_ALLREPOSITORIES, branch_name=message.destination_branch
     )
-    source_managed = await service.client.execute_graphql(
-        query=SOURCE_REPOSITORIES, branch_name=message.source_branch, rebase=True
-    )
+    source_managed = await service.client.execute_graphql(query=SOURCE_REPOSITORIES, branch_name=message.source_branch)
     source_readonly = await service.client.execute_graphql(
-        query=SOURCE_READONLY_REPOSITORIES, branch_name=message.source_branch, rebase=False
+        query=SOURCE_READONLY_REPOSITORIES, branch_name=message.source_branch
     )
 
     destination_all = destination_all["CoreGenericRepository"]["edges"]

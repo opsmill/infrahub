@@ -76,7 +76,6 @@ class InfrahubCheckIntegrationItem(InfrahubCheckItem):
         input_data = self.session.infrahub_client.query_gql_query(  # type: ignore[attr-defined]
             self.check_instance.query,
             variables=self.test.spec.get_variables_data(),  # type: ignore[union-attr]
-            rebase=self.test.spec.rebase,  # type: ignore[union-attr]
         )
         passed = self.run_check(input_data)
 

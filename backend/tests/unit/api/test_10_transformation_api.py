@@ -26,7 +26,6 @@ async def test_transform_endpoint(
         repository=str(repositories[0].id),
         file_path="transform01.py",
         class_name="Transform01",
-        rebase=False,
     )
     await t1.save(db=db)
 

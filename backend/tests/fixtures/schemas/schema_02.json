@@ -5276,13 +5276,6 @@
                             "enum": null,
                             "object_kind": null,
                             "description": null
-                        },
-                        {
-                            "name": "rebase__value",
-                            "kind": "Boolean",
-                            "enum": null,
-                            "object_kind": null,
-                            "description": null
                         }
                     ],
                     "order_weight": 10000
@@ -5376,13 +5369,6 @@
                             "enum": null,
                             "object_kind": null,
                             "description": null
-                        },
-                        {
-                            "name": "rebase__value",
-                            "kind": "Boolean",
-                            "enum": null,
-                            "object_kind": null,
-                            "description": null
                         }
                     ],
                     "order_weight": 12000
@@ -5451,13 +5437,6 @@
                         {
                             "name": "timeout__value",
                             "kind": "Number",
-                            "enum": null,
-                            "object_kind": null,
-                            "description": null
-                        },
-                        {
-                            "name": "rebase__value",
-                            "kind": "Boolean",
                             "enum": null,
                             "object_kind": null,
                             "description": null
@@ -5728,23 +5707,6 @@
                     "branch": "aware",
                     "optional": false,
                     "order_weight": 5000
-                },
-                {
-                    "name": "rebase",
-                    "kind": "Boolean",
-                    "namespace": "Attribute",
-                    "label": null,
-                    "description": null,
-                    "default_value": false,
-                    "enum": null,
-                    "regex": null,
-                    "max_length": null,
-                    "min_length": null,
-                    "inherited": true,
-                    "unique": false,
-                    "branch": "aware",
-                    "optional": false,
-                    "order_weight": 6000
                 }
             ],
             "relationships": [
@@ -6027,13 +5989,6 @@
                     "description": null
                 },
                 {
-                    "name": "rebase__value",
-                    "kind": "Boolean",
-                    "enum": null,
-                    "object_kind": null,
-                    "description": null
-                },
-                {
                     "name": "repository__id",
                     "kind": "Object",
                     "enum": null,
@@ -6153,23 +6108,6 @@
                     "branch": "aware",
                     "optional": false,
                     "order_weight": 5000
-                },
-                {
-                    "name": "rebase",
-                    "kind": "Boolean",
-                    "namespace": "Attribute",
-                    "label": null,
-                    "description": null,
-                    "default_value": false,
-                    "enum": null,
-                    "regex": null,
-                    "max_length": null,
-                    "min_length": null,
-                    "inherited": false,
-                    "unique": false,
-                    "branch": "aware",
-                    "optional": false,
-                    "order_weight": 6000
                 },
                 {
                     "name": "parameters",
@@ -6455,13 +6393,6 @@
                     "description": null
                 },
                 {
-                    "name": "rebase__value",
-                    "kind": "Boolean",
-                    "enum": null,
-                    "object_kind": null,
-                    "description": null
-                },
-                {
                     "name": "repository__id",
                     "kind": "Object",
                     "enum": null,
@@ -6615,23 +6546,6 @@
                     "branch": "aware",
                     "optional": false,
                     "order_weight": 7000
-                },
-                {
-                    "name": "rebase",
-                    "kind": "Boolean",
-                    "namespace": "Attribute",
-                    "label": null,
-                    "description": null,
-                    "default_value": false,
-                    "enum": null,
-                    "regex": null,
-                    "max_length": null,
-                    "min_length": null,
-                    "inherited": true,
-                    "unique": false,
-                    "branch": "aware",
-                    "optional": false,
-                    "order_weight": 8000
                 }
             ],
             "relationships": [
@@ -6923,13 +6837,6 @@
                 {
                     "name": "timeout__value",
                     "kind": "Number",
-                    "enum": null,
-                    "object_kind": null,
-                    "description": null
-                },
-                {
-                    "name": "rebase__value",
-                    "kind": "Boolean",
                     "enum": null,
                     "object_kind": null,
                     "description": null
@@ -7826,13 +7733,6 @@
                             "enum": null,
                             "object_kind": null,
                             "description": null
-                        },
-                        {
-                            "name": "rebase__value",
-                            "kind": "Boolean",
-                            "enum": null,
-                            "object_kind": null,
-                            "description": null
                         }
                     ],
                     "order_weight": 7000
@@ -8718,23 +8618,6 @@
                     "branch": "aware",
                     "optional": false,
                     "order_weight": 4000
-                },
-                {
-                    "name": "rebase",
-                    "kind": "Boolean",
-                    "namespace": "Attribute",
-                    "label": null,
-                    "description": null,
-                    "default_value": false,
-                    "enum": null,
-                    "regex": null,
-                    "max_length": null,
-                    "min_length": null,
-                    "inherited": false,
-                    "unique": false,
-                    "branch": "aware",
-                    "optional": false,
-                    "order_weight": 5000
                 }
             ],
             "relationships": [

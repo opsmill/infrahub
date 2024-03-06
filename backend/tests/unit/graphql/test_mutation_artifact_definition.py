@@ -33,7 +33,6 @@ async def transformation1(
         repository=str(car_person_data_generic["r1"].id),
         file_path="transform01.py",
         class_name="Transform01",
-        rebase=False,
     )
     await t1.save(db=db)
     return t1

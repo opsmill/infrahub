@@ -5,9 +5,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
 
 
-async def test_branch_query(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema
-):
+async def test_branch_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
     create_branch_query = """
     mutation {
         BranchCreate(data: { name: "branch3", description: "my description" }) {
@@ -29,11 +27,18 @@ async def test_branch_query(
     )
     assert branch3_result.data
     branch3 = branch3_result.data["BranchCreate"]["object"]
+
+    # Query all branches
     query = """
     query {
         Branch {
-            id
             name
+            origin_branch
+            description
+            is_default
+            is_data_only
+            is_isolated
+            has_schema_changes
         }
     }
     """
@@ -45,6 +50,31 @@ async def test_branch_query(
         root_value=None,
         variable_values={},
     )
+    assert all_branches.errors is None
+    assert all_branches.data
+    assert len(all_branches.data["Branch"]) == 2
+    assert all_branches.data["Branch"] == [
+        {
+            "description": "Default Branch",
+            "has_schema_changes": False,
+            "is_data_only": False,
+            "is_default": True,
+            "is_isolated": False,
+            "name": "main",
+            "origin_branch": "main",
+        },
+        {
+            "description": "my description",
+            "has_schema_changes": False,
+            "is_data_only": False,
+            "is_default": False,
+            "is_isolated": False,
+            "name": "branch3",
+            "origin_branch": "main",
+        },
+    ]
+
+    # Query Branch3 by Name
     name_query = """
     query {
         Branch(name: "%s" ) {
@@ -61,6 +91,12 @@ async def test_branch_query(
         root_value=None,
         variable_values={},
     )
+    assert name_response.errors is None
+    assert name_response.data
+    assert len(name_response.data["Branch"]) == 1
+    assert name_response.data["Branch"][0]["name"] == "branch3"
+
+    # Query Branch3 by ID
     id_query = """
     query {
         Branch(ids: %s ) {
@@ -80,11 +116,6 @@ async def test_branch_query(
         variable_values={},
     )
 
-    assert all_branches.data
-    assert name_response.data
     assert id_response.data
-    assert len(all_branches.data["Branch"]) == 2
-    assert len(name_response.data["Branch"]) == 1
-    assert len(id_response.data["Branch"]) == 1
-    assert name_response.data["Branch"][0]["name"] == "branch3"
     assert id_response.data["Branch"][0]["name"] == "branch3"
+    assert len(id_response.data["Branch"]) == 1

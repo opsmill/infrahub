@@ -413,7 +413,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         variables: Optional[dict] = None,
         branch_name: Optional[str] = None,
         at: Optional[Union[str, Timestamp]] = None,
-        rebase: bool = False,
         timeout: Optional[int] = None,
         raise_for_error: bool = True,
         tracker: Optional[str] = None,
@@ -426,7 +425,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             variables (dict, optional): Variables to pass along with the GraphQL query. Defaults to None.
             branch_name (str, optional): Name of the branch on which the query will be executed. Defaults to None.
             at (str, optional): Time when the query should be executed. Defaults to None.
-            rebase (bool, optional): Flag to indicate if the branch should be rebased during the query. Defaults to False.
             timeout (int, optional): Timeout in second for the query. Defaults to None.
             raise_for_error (bool, optional): Flag to indicate that we need to raise an exception if the response has some errors. Defaults to True.
         Raises:
@@ -449,8 +447,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             at = Timestamp(at)
             url_params["at"] = at.to_string()
 
-        if rebase:
-            url_params["rebase"] = "true"
         if url_params:
             url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
@@ -614,7 +610,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         params: Optional[dict] = None,
         branch_name: Optional[str] = None,
         at: Optional[str] = None,
-        rebase: bool = False,
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
@@ -634,7 +629,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         if subscribers:
             url_params["subscribers"] = subscribers
 
-        url_params["rebase"] = str(rebase).lower()
         url_params["update_group"] = str(update_group).lower()
 
         if url_params:
@@ -810,7 +804,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         variables: Optional[dict] = None,
         branch_name: Optional[str] = None,
         at: Optional[Union[str, Timestamp]] = None,
-        rebase: bool = False,
         timeout: Optional[int] = None,
         raise_for_error: bool = True,
         tracker: Optional[str] = None,
@@ -823,7 +816,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             variables (dict, optional): Variables to pass along with the GraphQL query. Defaults to None.
             branch_name (str, optional): Name of the branch on which the query will be executed. Defaults to None.
             at (str, optional): Time when the query should be executed. Defaults to None.
-            rebase (bool, optional): Flag to indicate if the branch should be rebased during the query. Defaults to False.
             timeout (int, optional): Timeout in second for the query. Defaults to None.
             raise_for_error (bool, optional): Flag to indicate that we need to raise an exception if the response has some errors. Defaults to True.
         Raises:
@@ -846,8 +838,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             at = Timestamp(at)
             url_params["at"] = at.to_string()
 
-        if rebase:
-            url_params["rebase"] = "true"
         if url_params:
             url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
@@ -1124,7 +1114,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         params: Optional[dict] = None,
         branch_name: Optional[str] = None,
         at: Optional[str] = None,
-        rebase: bool = False,
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
@@ -1143,7 +1132,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         if subscribers:
             url_params["subscribers"] = subscribers
 
-        url_params["rebase"] = str(rebase).lower()
         url_params["update_group"] = str(update_group).lower()
 
         if url_params:

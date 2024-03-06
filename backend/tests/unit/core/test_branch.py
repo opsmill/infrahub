@@ -165,19 +165,20 @@ async def test_get_branches_and_times_to_query_branch1(db: InfrahubDatabase, bas
 
     branch1 = await get_branch(branch="branch1", db=db)
 
-    results = branch1.get_branches_and_times_to_query(at=Timestamp())
+    t0 = Timestamp()
+    results = branch1.get_branches_and_times_to_query(at=t0)
     assert Timestamp(results[frozenset(["branch1"])]) > now
-    assert results[frozenset(["main"])] == base_dataset_02["time_m45"]
+    assert results[frozenset(["main"])] == t0.to_string()
 
     t1 = Timestamp("2s")
-    results = branch1.get_branches_and_times_to_query(at=t1.to_string())
+    results = branch1.get_branches_and_times_to_query(at=t1)
     assert results[frozenset(["branch1"])] == t1.to_string()
-    assert results[frozenset(["main"])] == base_dataset_02["time_m45"]
+    assert results[frozenset(["main"])] == t1.to_string()
 
-    branch1.ephemeral_rebase = True
+    branch1.is_isolated = True
     results = branch1.get_branches_and_times_to_query(at=Timestamp())
     assert Timestamp(results[frozenset(["branch1"])]) > now
-    assert results[frozenset(("main",))] == results[frozenset(["branch1"])]
+    assert results[frozenset(("main",))] == base_dataset_02["time_m45"]
 
 
 async def test_get_branches_and_times_to_query_global_main(db: InfrahubDatabase, base_dataset_02):
@@ -198,19 +199,20 @@ async def test_get_branches_and_times_to_query_global_branch1(db: InfrahubDataba
 
     branch1 = await get_branch(branch="branch1", db=db)
 
-    results = branch1.get_branches_and_times_to_query_global(at=Timestamp())
+    t0 = Timestamp()
+    results = branch1.get_branches_and_times_to_query_global(at=t0)
     assert Timestamp(results[frozenset((GLOBAL_BRANCH_NAME, "branch1"))]) > now
-    assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == base_dataset_02["time_m45"]
+    assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == t0.to_string()
 
     t1 = Timestamp("2s")
     results = branch1.get_branches_and_times_to_query_global(at=t1.to_string())
     assert results[frozenset((GLOBAL_BRANCH_NAME, "branch1"))] == t1.to_string()
-    assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == base_dataset_02["time_m45"]
+    assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == t1.to_string()
 
-    branch1.ephemeral_rebase = True
+    branch1.is_isolated = True
     results = branch1.get_branches_and_times_to_query_global(at=Timestamp())
     assert Timestamp(frozenset((GLOBAL_BRANCH_NAME, "branch1"))) > now
-    assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == results[frozenset((GLOBAL_BRANCH_NAME, "branch1"))]
+    assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == base_dataset_02["time_m45"]
 
 
 async def test_get_branches_and_times_for_range_main(db: InfrahubDatabase, base_dataset_02):
@@ -278,16 +280,16 @@ async def test_get_branches_and_times_for_range_branch2(db: InfrahubDatabase, ba
     assert start_times["main"] == t10.to_string()
 
 
-async def test_rebase_flag(db: InfrahubDatabase, base_dataset_02):
+async def test_is_isolated(db: InfrahubDatabase, base_dataset_02):
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
+    branch1.is_isolated = True
     cars = sorted(await NodeManager.query(schema="TestCar", branch=branch1, db=db), key=lambda c: c.id)
     assert len(cars) == 2
     assert cars[0].id == "c1"
     assert cars[0].name.value == "accord"
 
-    branch1.ephemeral_rebase = True
-
+    branch1.is_isolated = False
     cars = sorted(await NodeManager.query(schema="TestCar", branch=branch1, db=db), key=lambda c: c.id)
     assert len(cars) == 3
     assert cars[0].id == "c1"

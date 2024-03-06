@@ -803,7 +803,6 @@ async def test_create_python_check_definition(
         file_path="checks/check01/check.py",
         query=str(query.id),
         timeout=check_class.timeout,
-        rebase=check_class.rebase,
     )
     obj = await repo.create_python_check_definition(branch_name="main", check=check)
 
@@ -838,7 +837,6 @@ async def test_compare_python_check(
         file_path="checks/check01/check.py",
         query=str(query_01.id),
         timeout=check_class.timeout,
-        rebase=check_class.rebase,
     )
 
     assert await repo.compare_python_check_definition(existing_check=existing_check, check=check01) is True
@@ -851,7 +849,6 @@ async def test_compare_python_check(
         file_path="checks/check01/newpath.py",
         query=str(query_01.id),
         timeout=check_class.timeout,
-        rebase=check_class.rebase,
     )
 
     assert (
@@ -870,7 +867,6 @@ async def test_compare_python_check(
         file_path="checks/check01/check.py",
         query=str(query_02.id),
         timeout=check_class.timeout,
-        rebase=check_class.rebase,
     )
 
     assert await repo.compare_python_check_definition(check=check03, existing_check=existing_check) is False

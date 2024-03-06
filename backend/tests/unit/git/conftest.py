@@ -33,6 +33,8 @@ def branch01():
         is_data_only=True,
         is_default=False,
         branched_from="main",
+        is_isolated=False,
+        has_schema_changes=False,
     )
 
 
@@ -44,6 +46,8 @@ def branch02():
         is_data_only=True,
         is_default=False,
         branched_from="main",
+        is_isolated=False,
+        has_schema_changes=False,
     )
 
 
@@ -55,6 +59,8 @@ def branch99():
         is_data_only=True,
         is_default=False,
         branched_from="main",
+        is_isolated=False,
+        has_schema_changes=False,
     )
 
 
@@ -461,6 +467,8 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                     "is_default": True,
                     "origin_branch": None,
                     "branched_from": "2023-02-17T09:30:17.811719Z",
+                    "is_isolated": False,
+                    "has_schema_changes": False,
                 },
                 {
                     "id": "7d9f817a-b958-4e76-8528-8afd0c689ada",
@@ -469,6 +477,8 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                     "is_default": False,
                     "origin_branch": "main",
                     "branched_from": "2023-02-17T09:30:17.811719Z",
+                    "is_isolated": False,
+                    "has_schema_changes": False,
                 },
             ]
         }
@@ -533,6 +543,8 @@ async def mock_add_branch01_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                     "is_data_only": False,
                     "description": "",
                     "branched_from": "2023-02-17T09:30:17.811719Z",
+                    "is_isolated": False,
+                    "has_schema_changes": False,
                 },
             }
         }
@@ -563,7 +575,7 @@ async def mock_gql_query_my_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {"data": {"mock": []}}
 
     httpx_mock.add_response(
-        method="POST", json=response, url="http://mock/api/query/my_query?branch=main&rebase=true&update_group=false"
+        method="POST", json=response, url="http://mock/api/query/my_query?branch=main&update_group=false"
     )
     return httpx_mock
 
@@ -693,17 +705,6 @@ async def check_definition_data_01() -> dict:
             },
             "timeout": {
                 "value": 10,
-                "is_protected": True,
-                "is_visible": True,
-                "source": {
-                    "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
-                    "display_label": "infrahub-demo-edge",
-                    "__typename": "Repository",
-                },
-                "owner": None,
-            },
-            "rebase": {
-                "value": True,
                 "is_protected": True,
                 "is_visible": True,
                 "source": {
@@ -1183,15 +1184,6 @@ async def transformation_data_01() -> dict:
             "is_visible": True,
             "is_protected": False,
         },
-        "rebase": {
-            "id": "f557cafd-7da0-4c79-b582-378d9f02767e",
-            "__typename": "Boolean",
-            "value": False,
-            "source": None,
-            "owner": None,
-            "is_visible": True,
-            "is_protected": False,
-        },
         "__typename": "CoreTransformPython",
         "display_label": "transform01",
     }
@@ -1213,9 +1205,8 @@ async def transformation_data_02() -> dict:
         "template_path": {"value": "template01.tpl.j2", "__typename": "TextAttribute"},
         "name": {"value": "mytemplate", "__typename": "TextAttribute"},
         "label": {"value": "My Rendered File", "__typename": "TextAttribute"},
-        "description": {"value": "", "__typename": "TextAttribute"},
+        "description": {"value": "", "__typename": "TextAttri bute"},
         "timeout": {"value": 10, "__typename": "NumberAttribute"},
-        "rebase": {"value": False, "__typename": "CheckboxAttribute"},
         "query": {
             "node": {
                 "id": "47800bff-adf1-450d-8388-b04ef2ffb129",

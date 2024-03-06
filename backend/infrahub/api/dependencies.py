@@ -30,7 +30,6 @@ async def cookie_auth_scheme(request: Request) -> Optional[str]:
 class BranchParams(BaseModel):
     branch: Branch
     at: Timestamp
-    rebase: bool
 
     class Config:
         arbitrary_types_allowed = True
@@ -84,15 +83,11 @@ async def get_branch_params(
     db: InfrahubDatabase = Depends(get_db),
     branch_name: Optional[str] = Query(None, alias="branch", description="Name of the branch to use for the query"),
     at: Optional[str] = Query(None, description="Time to use for the query, in absolute or relative format"),
-    rebase: bool = Query(
-        False, description="Temporarily rebase the current branch with the main branch for the duration of the query"
-    ),
 ) -> BranchParams:
     branch = await get_branch(db=db, branch=branch_name)
-    branch.ephemeral_rebase = rebase
     at = Timestamp(at)
 
-    return BranchParams(branch=branch, at=at, rebase=rebase)
+    return BranchParams(branch=branch, at=at)
 
 
 async def get_branch_dep(

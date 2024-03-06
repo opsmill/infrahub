@@ -1378,41 +1378,6 @@
               "enum": null,
               "object_kind": null,
               "description": null
-            },
-            {
-              "name": "rebase__value",
-              "kind": "Boolean",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "rebase__is_visible",
-              "kind": "Boolean",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "rebase__is_protected",
-              "kind": "Boolean",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "rebase__source__id",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "rebase__owner__id",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
             }
           ],
           "order_weight": 7000
@@ -2114,41 +2079,6 @@
         },
         {
           "name": "transformation__timeout__owner__id",
-          "kind": "Text",
-          "enum": null,
-          "object_kind": null,
-          "description": null
-        },
-        {
-          "name": "transformation__rebase__value",
-          "kind": "Boolean",
-          "enum": null,
-          "object_kind": null,
-          "description": null
-        },
-        {
-          "name": "transformation__rebase__is_visible",
-          "kind": "Boolean",
-          "enum": null,
-          "object_kind": null,
-          "description": null
-        },
-        {
-          "name": "transformation__rebase__is_protected",
-          "kind": "Boolean",
-          "enum": null,
-          "object_kind": null,
-          "description": null
-        },
-        {
-          "name": "transformation__rebase__source__id",
-          "kind": "Text",
-          "enum": null,
-          "object_kind": null,
-          "description": null
-        },
-        {
-          "name": "transformation__rebase__owner__id",
           "kind": "Text",
           "enum": null,
           "object_kind": null,

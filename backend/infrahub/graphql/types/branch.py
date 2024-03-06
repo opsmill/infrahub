@@ -22,6 +22,8 @@ class BranchType(InfrahubObjectType):
     created_at = String(required=False)
     is_data_only = Boolean(required=False)
     is_default = Boolean(required=False)
+    is_isolated = Boolean(required=False)
+    has_schema_changes = Boolean(required=False)
 
     class Meta:
         description = "Branch"

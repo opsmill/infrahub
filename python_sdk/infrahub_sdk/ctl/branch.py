@@ -67,6 +67,8 @@ async def list_branch(
     table.add_column("Origin Branch")
     table.add_column("Branched From")
     table.add_column("Is Data Only")
+    table.add_column("Is Isolated")
+    table.add_column("Has Schema Changes")
     table.add_column("Is Default")
 
     # identify the default branch and always print it first
@@ -77,6 +79,8 @@ async def list_branch(
         default_branch.origin_branch,
         f"{default_branch.branched_from} ({calculate_time_diff(default_branch.branched_from)})",
         "[green]True" if default_branch.is_data_only else "[#FF7F50]False",
+        "[green]True" if default_branch.is_isolated else "[#FF7F50]False",
+        "[green]True" if default_branch.has_schema_changes else "[#FF7F50]False",
         "[green]True" if default_branch.is_default else "[#FF7F50]False",
     )
 
@@ -90,6 +94,8 @@ async def list_branch(
             branch.origin_branch,
             f"{branch.branched_from} ({calculate_time_diff(branch.branched_from)})",
             "[green]True" if branch.is_data_only else "[#FF7F50]False",
+            "[green]True" if default_branch.is_isolated else "[#FF7F50]False",
+            "[green]True" if default_branch.has_schema_changes else "[#FF7F50]False",
             "[green]True" if branch.is_default else "[#FF7F50]False",
         )
 
@@ -98,9 +104,12 @@ async def list_branch(
 
 @app.command()
 async def create(
-    branch_name: str,
-    description: str = typer.Argument(""),
-    data_only: bool = True,
+    branch_name: str = typer.Argument(..., help="Name of the branch to create"),
+    description: Optional[str] = typer.Option("", help="Description of the branch"),
+    data_only: bool = typer.Option(
+        True, help="if not data only, the branch will be extended to all Read-Write Git repository"
+    ),
+    isolated: bool = typer.Option(False, help="Set the branch to isolated mode"),
     config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
 ) -> None:
     """Create a new branch."""
@@ -115,7 +124,9 @@ async def create(
     client = await initialize_client()
 
     try:
-        branch = await client.branch.create(branch_name=branch_name, description=description, data_only=data_only)
+        branch = await client.branch.create(
+            branch_name=branch_name, description=description, data_only=data_only, is_isolated=isolated
+        )
     except GraphQLError as exc:
         print_graphql_errors(console, exc.errors)
         sys.exit(1)
@@ -123,7 +134,7 @@ async def create(
         console.print(f"[red]{exc.message}")
         sys.exit(1)
 
-    console.print(f"Branch '{branch_name}' created successfully ({branch.id}).")
+    console.print(f"Branch {branch_name!r} created successfully ({branch.id}).")
 
 
 @app.command()

@@ -254,7 +254,6 @@ core_models: dict[str, Any] = {
                 {"name": "label", "kind": "Text", "optional": True},
                 {"name": "description", "kind": "Text", "optional": True},
                 {"name": "timeout", "kind": "Number", "default_value": 10},
-                {"name": "rebase", "kind": "Boolean", "default_value": False},
             ],
             "relationships": [
                 {
@@ -955,7 +954,6 @@ core_models: dict[str, Any] = {
                 {"name": "file_path", "kind": "Text"},
                 {"name": "class_name", "kind": "Text"},
                 {"name": "timeout", "kind": "Number", "default_value": 10},
-                {"name": "rebase", "kind": "Boolean", "default_value": False},
                 {"name": "parameters", "kind": "JSON", "optional": True},
             ],
             "relationships": [

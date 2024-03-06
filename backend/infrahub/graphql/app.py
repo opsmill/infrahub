@@ -53,7 +53,6 @@ except ImportError:
 
     GraphQLFormattedError = Dict[str, Any]
 
-from infrahub_sdk.utils import str_to_bool
 
 from infrahub import config
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
@@ -148,7 +147,6 @@ class InfrahubGraphQLApp:
                 try:
                     branch_name = request.path_params.get("branch_name", config.SETTINGS.main.default_branch)
                     branch = await get_branch(db=db, branch=branch_name)
-                    branch.ephemeral_rebase = str_to_bool(request.query_params.get("rebase", False))
                 except BranchNotFound as exc:
                     response = JSONResponse({"errors": [exc.message]}, status_code=404)
 
@@ -174,7 +172,6 @@ class InfrahubGraphQLApp:
             async with db.start_session() as db:
                 branch_name = websocket.path_params.get("branch_name", config.SETTINGS.main.default_branch)
                 branch = await get_branch(db=db, branch=branch_name)
-                branch.ephemeral_rebase = str_to_bool(websocket.path_params.get("rebase", False))
 
                 await self._run_websocket_server(db=db, branch=branch, websocket=websocket)
 
