@@ -33,7 +33,6 @@ class Relationships(ObjectType):
         context: GraphqlContext = info.context
 
         fields = await extract_fields_first_node(info)
-        identifiers = ids or []
         excluded_namespaces = excluded_namespaces or []
 
         response: Dict[str, Any] = {"edges": [], "count": None}
@@ -43,7 +42,7 @@ class Relationships(ObjectType):
                 db=db,
                 branch=context.branch,
                 at=context.at,
-                identifiers=identifiers,
+                identifiers=ids,
                 excluded_namespaces=excluded_namespaces,
                 limit=limit,
                 offset=offset,
