@@ -14,25 +14,12 @@ optional = true
 
 [tool.poetry.dependencies]
 python = "^3.8, < 3.13"
+neo4j = "~5.18"
 infrahub-sdk = {path = "python_sdk", develop=true}
-pydantic = "^2.5"
-pydantic-settings = "^2.1"
-fastapi-storages = "~0.2"
-pytest = "*"
-lunr = "^0.7.0.post1"
-
-[tool.poetry.group.server.dependencies]
-fastapi = "~0.108"
-starlette-exporter = "^0.12.0"
-python-multipart = "^0.0.6"         # Required by FastAPI to upload large files
-asgi-correlation-id = "4.2.0"       # Middleware for FastAPI to generate ID per request
-bcrypt = "~4.1"                     # Used to hash and validate password
-pyjwt = "~2.8"                      # Used to manage JWT tokens
-uvicorn = {version = "~0.21", extras = ["standard"]}
-gunicorn = "^20.1"
-graphene = "~3.2"
-neo4j = "~5.15"
-aio-pika = "~9.3"
+pydantic = "~2.6"
+pydantic-settings = "~2.2"
+pytest = "~7.4"
+aio-pika = "~9.4"
 structlog = "^22.3.0"
 boto3 = "~1.33.11"
 email-validator = "~2.1"
@@ -42,6 +29,20 @@ opentelemetry-sdk = "~1.21"
 opentelemetry-instrumentation-fastapi = "^0.42b0"
 opentelemetry-exporter-otlp-proto-http = "~1.21"
 opentelemetry-exporter-otlp-proto-grpc = "~1.21"
+typer = "~0.7"
+
+# Dependencies specific to the API Server
+fastapi = "~0.110"
+fastapi-storages = "~0.3"
+graphene = "~3.3"
+gunicorn = "^21.2"
+lunr = "^0.7.0.post1"
+starlette-exporter = "~0.21"
+python-multipart = "^0.0.6"         # Required by FastAPI to upload large files
+asgi-correlation-id = "4.2.0"       # Middleware for FastAPI to generate ID per request
+bcrypt = "~4.1"                     # Used to hash and validate password
+pyjwt = "~2.8"                      # Used to manage JWT tokens
+uvicorn = {version = "~0.27", extras = ["standard"]}
 
 [tool.poetry.group.dev.dependencies]
 yamllint = "*"

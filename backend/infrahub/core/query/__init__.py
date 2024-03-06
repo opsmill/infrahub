@@ -254,8 +254,7 @@ class QueryResult:
                 yield item
 
     def __iter__(self):
-        for item in self.data:
-            yield item
+        yield from self.data
 
 
 class Query(ABC):
