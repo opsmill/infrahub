@@ -35,8 +35,10 @@ router = APIRouter(prefix="/schema")
 class APISchemaMixin:
     @classmethod
     def from_schema(cls, schema: Union[NodeSchema, GenericSchema]) -> Self:
-        schema_instance = schema.with_public_relationships()
-        data = schema_instance.model_dump()
+        data = schema.model_dump()
+        data["relationships"] = [
+            relationship.model_dump() for relationship in schema.relationships if not relationship.internal_peer
+        ]
         data["hash"] = schema.get_hash()
         return cls(**data)
 

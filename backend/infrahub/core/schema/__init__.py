@@ -285,13 +285,6 @@ class BaseNodeSchema(HashableModel):  # pylint: disable=too-many-public-methods
 
         return node_diff
 
-    def with_public_relationships(self) -> Self:
-        duplicate = self.duplicate()
-        duplicate.relationships = [
-            relationship for relationship in self.relationships if not relationship.internal_peer
-        ]
-        return duplicate
-
     def get_field(self, name: str, raise_on_error: bool = True) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
         if field := self.get_attribute(name, raise_on_error=False):
             return field
