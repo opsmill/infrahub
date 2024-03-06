@@ -1,4 +1,4 @@
-from prometheus_client import Histogram
+from prometheus_client import Histogram, Counter
 
 METRIC_PREFIX = "infrahub_db"
 
@@ -8,3 +8,10 @@ QUERY_EXECUTION_METRICS = Histogram(
     labelnames=["type", "query"],
     buckets=[0.005, 0.025, 0.1, 0.5, 1],
 )
+
+TRANSACTION_RETRIES = Counter(
+    f"{METRIC_PREFIX}_transaction_retries",
+    "Number of transaction that have been retried due to transcient error",
+    labelnames=["name"],
+)
+

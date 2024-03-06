@@ -13,7 +13,7 @@ from neo4j import (
     AsyncTransaction,
     Record,
 )
-from neo4j.exceptions import ClientError, ServiceUnavailable, TransientError
+from neo4j.exceptions import ClientError, ServiceUnavailable, TransientError, Neo4jError
 from typing_extensions import Self
 
 from infrahub import config
@@ -22,7 +22,7 @@ from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
 from .constants import DatabaseType
-from .metrics import QUERY_EXECUTION_METRICS
+from .metrics import QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -151,7 +151,12 @@ class InfrahubDatabase:
             if exc_type is not None:
                 await self._transaction.rollback()
             else:
-                await self._transaction.commit()
+                try:
+                    await self._transaction.commit()
+                except Neo4jError as exc:
+                    raise exc
+                finally:
+                    await self._transaction.close()
 
             if self._is_session_local:
                 await self._session.close()
@@ -255,15 +260,18 @@ async def get_db(retry: int = 0) -> AsyncDriver:
 
     return driver
 
-def retry_db_transaction(times: int = 3):
+def retry_db_transaction(name: str):
     def func_wrapper(func):
         async def wrapper(*args, **kwargs):
-            for attempt in range(1, times + 1):
+            for attempt in range(1, config.SETTINGS.database.retry_limit + 1):
                 try:
                     return await func(*args, **kwargs)
                 except TransientError as exc:
-                    log.warning(f"Retrying database transaction for {func}, attempt {attempt}/{times}")
+                    log.warning(f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}", data=kwargs["data"])
                     log.debug("database transaction failed", message=exc.message)
+                    TRANSACTION_RETRIES.labels(name).inc()
+                    if attempt == config.SETTINGS.database.retry_limit:
+                        raise
 
         return wrapper
 

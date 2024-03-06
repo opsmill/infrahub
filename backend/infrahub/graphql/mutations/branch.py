@@ -49,7 +49,7 @@ class BranchCreate(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    @retry_db_transaction()
+    @retry_db_transaction(name="branch_create")
     async def mutate(
         cls, root: dict, info: GraphQLResolveInfo, data: BranchCreateInput, background_execution: bool = False
     ) -> Self:
@@ -115,7 +115,7 @@ class BranchDelete(Mutation):
     ok = Boolean()
 
     @classmethod
-    @retry_db_transaction()
+    @retry_db_transaction(name="branch_delete")
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
@@ -143,7 +143,7 @@ class BranchUpdate(Mutation):
     ok = Boolean()
 
     @classmethod
-    @retry_db_transaction()
+    @retry_db_transaction(name="branch_update")
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
@@ -178,7 +178,7 @@ class BranchRebase(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    @retry_db_transaction()
+    @retry_db_transaction(name="branch_rebase")
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
@@ -211,7 +211,7 @@ class BranchValidate(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    @retry_db_transaction()
+    @retry_db_transaction(name="branch_validate")
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
@@ -240,7 +240,7 @@ class BranchMerge(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    @retry_db_transaction()
+    @retry_db_transaction(name="branch_merge")
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
