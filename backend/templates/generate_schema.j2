@@ -2,16 +2,12 @@ from __future__ import annotations
 
 
 from pydantic import BaseModel, Field
-from typing import Optional, Any, TYPE_CHECKING
-
 from infrahub.core.models import HashableModel
-from infrahub.core.schema.dropdown import DropdownChoice  # noqa: TCH001
 
-if TYPE_CHECKING:
-    from infrahub.core.constants import BranchSupportType
+{% include schema|lower + "_imports.j2" %}
 
 
-class GeneratedAttributeSchema(HashableModel):
+class Generated{{ schema }}(HashableModel):
 {%- for attribute in node.attributes %}
     {{ attribute.name }}: {{ attribute.type_annotation }} = Field(
         {{ attribute.default_definition }},
