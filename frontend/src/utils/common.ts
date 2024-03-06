@@ -1,13 +1,10 @@
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 import * as R from "ramda";
 import { IModelSchema } from "../state/atoms/schema.atom";
 
-export const classNames = (...classes: string[]) => {
-  // Replcaa tabs and spaces to have multiline in code, but one ligne in output
-  return classes
-    .filter(Boolean)
-    .join(" ")
-    .replaceAll(/(\t|\s)+/g, " ")
-    .trim();
+export const classNames = (...classes: ClassValue[]) => {
+  return twMerge(clsx(classes));
 };
 
 export const objectToString = (object: any) =>
