@@ -3,9 +3,10 @@ import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Retry } from "../../../components/buttons/retry";
-import { RadialProgress } from "../../../components/display/radial-progress";
+import { PieChart } from "../../../components/display/pie-chart";
 import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
 import {
+  CHECKS_LABEL,
   PROPOSED_CHANGES_VALIDATOR_OBJECT,
   VALIDATIONS_ENUM_MAP,
   VALIDATION_STATES,
@@ -69,58 +70,17 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
 
   const canRetry = (stats: any) => {
     // Can't retry if there is no check
-    if (!stats.total) return false;
+    if (!stats.length) return false;
 
-    // Can retry if there is a failure to re-run
-    if (stats.failure && !stats.inProgress) return true;
-
-    return false;
-  };
-
-  const getProgressColor = (stats: any) => {
-    if (!stats.total)
-      return {
-        bg: "text-gray-200",
-        fg: "text-gray-200",
-      };
-
-    if (stats.failure)
-      return {
-        bg: "text-red-100",
-        fg: "text-red-400",
-      };
-
-    if (stats.inProgress)
-      return {
-        bg: "text-orange-100",
-        fg: "text-orange-400",
-      };
-
-    return {
-      bg: "text-green-400",
-      fg: "text-green-400",
-    };
-  };
-
-  const getProgressStat = (stats: any) => {
-    if (!stats.total) return 0;
-
-    if (stats.inProgress) {
-      return (stats.inProgress ?? 0) / stats.total;
-    }
-
-    return stats.success / stats.total;
-  };
-
-  const getProgressText = (stats: any) => {
-    return `${stats.success ?? stats.inProgress ?? 0} / ${stats.total ?? 0}`;
+    // Can retry if there is no in progress check
+    return !!stats.find((stat: any) => stat.name === CHECKS_LABEL.IN_PROGRESS && !!stat.value);
   };
 
   return (
-    <div className="flex justify-center">
+    <div className="flex justify-center m-4">
       <div className="flex relative">
         <div className="absolute top-1/2 -left-28 transform -translate-y-1/2 flex items-center justify-between p-2">
-          <span className="mr-1">Retry all:</span>
+          <span className="mr-1 text-xs">Retry all:</span>
 
           <Retry
             onClick={() => handleRetry("all")}
@@ -129,39 +89,29 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
           />
         </div>
 
-        {Object.entries(validatorsCount).map(([kind, stats]: [string, any]) => (
+        {Object.entries(validatorsCount).map(([kind, data]: [string, any]) => (
           <div key={kind} className="flex items-center justify-center gap-2 p-2">
             <div
               className={classNames(
+                "fill",
                 "flex flex-col items-center group relative",
-                canRetry(stats) ? "cursor-pointer" : ""
-              )}
-              onClick={() => handleRetry(kind)}>
-              <RadialProgress
-                percent={getProgressStat(stats)}
-                bgColor={getProgressColor(stats).bg}
-                color={getProgressColor(stats).fg}>
-                <span
-                  className={classNames(
-                    "absolute",
-                    canRetry(stats) ? "group-hover:invisible" : ""
-                  )}>
-                  {getProgressText(stats)}
-                </span>
-
-                {canRetry(stats) && (
-                  <div className="absolute invisible group-hover:visible">
+                canRetry(data) ? "cursor-pointer" : ""
+              )}>
+              <PieChart data={data}>
+                {canRetry(data) && (
+                  <div className="absolute invisible group-hover:visible cursor-pointer">
                     <Retry
-                      isLoading={isLoading || !!stats.inProgress}
-                      isDisabled={!canRetry(stats)}
+                      isLoading={isLoading || !!data.inProgress}
+                      isDisabled={!canRetry(data)}
                       className="!hover:bg-transparent"
+                      onClick={() => handleRetry(kind)}
                     />
                   </div>
                 )}
-              </RadialProgress>
+              </PieChart>
 
               <span className="text-xs">
-                {schemaKindLabel[kind].replace("Validator", "").trim()}
+                {schemaKindLabel[kind]?.replace("Validator", "").trim()}
               </span>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import {
+  CHECKS_LABEL,
   CHECK_CONCLUSIONS,
   CHECK_SEVERITY,
   VALIDATION_CONCLUSIONS,
@@ -22,12 +23,32 @@ export const getValidatorsStats = (validators: any[]) => {
       validator.conclusion.value === VALIDATION_CONCLUSIONS.FAILURE
   );
 
-  return {
-    total: validators.length,
-    inProgress: inProgressValidators.length,
-    failure: failedValidators.length,
-    success: successValidators.length,
-  };
+  if (!successValidators.length && !inProgressValidators.length && !failedValidators.length) {
+    return [
+      {
+        name: CHECKS_LABEL.EMPTY,
+        value: 1,
+      },
+    ];
+  }
+
+  return [
+    {
+      name: CHECKS_LABEL.SUCCESS,
+      value: successValidators.length,
+      className: "fill-green-400",
+    },
+    {
+      name: CHECKS_LABEL.IN_PROGRESS,
+      value: inProgressValidators.length,
+      className: "fill-yellow-400",
+    },
+    {
+      name: CHECKS_LABEL.FAILURE,
+      value: failedValidators.length,
+      className: "fill-red-400",
+    },
+  ];
 };
 
 export const getChecksStats = (checks: any[]) => {
