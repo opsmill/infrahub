@@ -67,21 +67,19 @@ function Layout() {
 
   if (isLoadingBranches) {
     return (
-      <div className="w-screen h-screen flex ">
+      <div className="w-screen h-screen flex">
         <LoadingScreen />;
       </div>
     );
   }
   return (
-    <div className="h-screen flex overflow-x-hidden">
+    <div className="h-screen flex">
       <Sidebar />
 
-      <div className="flex flex-1 flex-col bg-gray-100 overflow-y-scroll overflow-x-hidden">
+      <div className="flex flex-1 flex-col bg-gray-100 overflow-hidden">
         <Header />
 
-        <main className="flex flex-col flex-1">
-          <Outlet />
-        </main>
+        <Outlet />
       </div>
     </div>
   );

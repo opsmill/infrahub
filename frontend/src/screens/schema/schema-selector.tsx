@@ -31,7 +31,7 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
   )(schemas);
 
   return (
-    <section className={classNames("space-y-2 p-4 bg-custom-white h-full", className)}>
+    <section className={classNames("space-y-2 p-4 bg-custom-white", className)}>
       {Object.entries(schemasPerNamespace).map(([namespace, schemas]) => {
         return (
           <Accordion key={namespace} title={namespace} defaultOpen>

@@ -17,7 +17,7 @@ export const SchemaViewerStack = ({ className = "" }: { className: string }) => 
   if (!selectedKind) return null;
 
   return (
-    <div className={classNames("relative h-full", className)}>
+    <div className={classNames("relative", className)}>
       {selectedKind.map((kind, index) => {
         const position = selectedKind.length - index - 1;
 

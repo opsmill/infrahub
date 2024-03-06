@@ -41,6 +41,7 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { useAuth } from "../../hooks/useAuth";
+import Content from "../layout/content";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -184,7 +185,7 @@ export default function ObjectItems(props: any) {
   }
 
   return (
-    <div className="bg-custom-white flex-1 flex flex-col">
+    <Content className="bg-custom-white">
       <div className="flex items-center p-4 w-full">
         {schemaData && (
           <div className="sm:flex-auto flex items-center">
@@ -319,6 +320,6 @@ export default function ObjectItems(props: any) {
         setOpen={() => setDeleteModal(false)}
         isLoading={isLoading}
       />
-    </div>
+    </Content>
   );
 }

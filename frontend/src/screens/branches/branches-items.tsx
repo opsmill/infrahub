@@ -11,6 +11,7 @@ import { useLazyQuery } from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { constructPath } from "../../utils/fetch";
+import Content from "../layout/content";
 
 export const BranchesItems = () => {
   const [storedBranches, setBranches] = useAtom(branchesState);
@@ -32,7 +33,7 @@ export const BranchesItems = () => {
   };
 
   return (
-    <div>
+    <Content>
       <div className="flex items-center p-4 bg-custom-white">
         <h1 className="text-base font-semibold">Branches ({branches?.length})</h1>
 
@@ -109,6 +110,6 @@ export const BranchesItems = () => {
           </li>
         ))}
       </ul>
-    </div>
+    </Content>
   );
 };

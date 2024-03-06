@@ -28,6 +28,7 @@ import { TaskItemDetails } from "../tasks/task-item-details";
 import { TaskItems } from "../tasks/task-items";
 import { Conversations } from "./conversations";
 import { ProposedChangesChecksTab } from "./proposed-changes-checks-tab";
+import Content from "../layout/content";
 
 export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
@@ -192,7 +193,7 @@ export const ProposedChangesDetails = () => {
 
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
-      {renderContent()}
+      <Content>{renderContent()}</Content>
     </>
   );
 };
