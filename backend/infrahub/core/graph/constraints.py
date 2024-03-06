@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, ForwardRef, List, Optional, Type, Union, get_origin
+from typing import TYPE_CHECKING, Dict, ForwardRef, List, Optional, Union, get_origin
 
 from pydantic import BaseModel
 from typing_extensions import Self
 
-from infrahub.database import DatabaseType, InfrahubDatabase
+if TYPE_CHECKING:
+    from infrahub.database import InfrahubDatabase
 
 
 class GraphPropertyType(str, Enum):
@@ -158,18 +159,12 @@ TYPE_MAPPING = {
 }
 
 
-class ConstraintManager:
+class ConstraintManagerBase:
+    constraint_node_class: Optional[type[ConstraintItem]] = ConstraintItem
+    constraint_rel_class: Optional[type[ConstraintItem]] = ConstraintItem
+
     def __init__(self, db: InfrahubDatabase):
         self.db = db
-
-        self.constraint_node_class: Optional[Type[ConstraintItem]] = None
-        self.constraint_rel_class: Optional[Type[ConstraintItem]] = None
-
-        if self.db.db_type == DatabaseType.NEO4J:
-            self.constraint_node_class = ConstraintNodeNeo4j
-            self.constraint_rel_class = ConstraintRelNeo4j
-        if self.db.db_type == DatabaseType.MEMGRAPH:
-            self.constraint_node_class = ConstraintNodeMemgraph
 
         self.nodes: List[ConstraintItem] = []
         self.rels: List[ConstraintItem] = []
@@ -239,49 +234,29 @@ class ConstraintManager:
         return manager
 
     async def add(self) -> None:
-        if self.db.db_type == DatabaseType.MEMGRAPH:
+        async with self.db.start_transaction() as dbt:
             for item in self.items:
                 for query in item.get_add_queries():
-                    await self.db.execute_query(query=query, params={}, name="constraint_add")
-
-        else:
-            async with self.db.start_transaction() as dbt:
-                for item in self.items:
-                    for query in item.get_add_queries():
-                        await dbt.execute_query(query=query, params={}, name="constraint_add")
+                    await dbt.execute_query(query=query, params={}, name="constraint_add")
 
     async def drop(self) -> None:
-        if self.db.db_type == DatabaseType.MEMGRAPH:
+        async with self.db.start_transaction() as dbt:
             for item in self.items:
                 for query in item.get_drop_queries():
-                    await self.db.execute_query(query=query, params={}, name="constraint_drop")
-        else:
-            async with self.db.start_transaction() as dbt:
-                for item in self.items:
-                    for query in item.get_drop_queries():
-                        await dbt.execute_query(query=query, params={}, name="constraint_drop")
+                    await dbt.execute_query(query=query, params={}, name="constraint_drop")
 
     async def list(self) -> List[ConstraintInfo]:
-        if self.db.db_type == DatabaseType.NEO4J:
-            return await self._list_neo4j()
-        if self.db.db_type == DatabaseType.MEMGRAPH:
-            return await self._list_memgraph()
-        raise TypeError(f"Unsupported DatabaseType {self.db.db_type}")
+        raise NotImplementedError()
 
-    async def _list_memgraph(self) -> List[ConstraintInfo]:
-        query = "SHOW CONSTRAINT INFO"
-        records = await self.db.execute_query(query=query, params={}, name="constraint_show")
-        results = []
-        for record in records:
-            results.append(ConstraintInfo(item_name="n_a", item_label=record["label"], property=record["properties"]))
 
-        return results
+class ConstraintManagerNeo4j(ConstraintManagerBase):
+    constraint_node_class = ConstraintNodeNeo4j
+    constraint_rel_class = ConstraintRelNeo4j
 
-    async def _list_neo4j(self) -> List[ConstraintInfo]:
+    async def list(self) -> List[ConstraintInfo]:
         query = "SHOW CONSTRAINTS"
         records = await self.db.execute_query(query=query, params={}, name="constraint_show")
         results = []
-        # breakpoint()
         for record in records:
             results.append(
                 ConstraintInfo(
@@ -290,5 +265,29 @@ class ConstraintManager:
                     property=", ".join(record["properties"]),
                 )
             )
+
+        return results
+
+
+class ConstraintManagerMemgraph(ConstraintManagerBase):
+    constraint_node_class = ConstraintNodeMemgraph
+    constraint_rel_class = None
+
+    async def add(self) -> None:
+        for item in self.items:
+            for query in item.get_add_queries():
+                await self.db.execute_query(query=query, params={}, name="constraint_add")
+
+    async def drop(self) -> None:
+        for item in self.items:
+            for query in item.get_drop_queries():
+                await self.db.execute_query(query=query, params={}, name="constraint_drop")
+
+    async def list(self) -> List[ConstraintInfo]:
+        query = "SHOW CONSTRAINT INFO"
+        records = await self.db.execute_query(query=query, params={}, name="constraint_show")
+        results = []
+        for record in records:
+            results.append(ConstraintInfo(item_name="n_a", item_label=record["label"], property=record["properties"]))
 
         return results

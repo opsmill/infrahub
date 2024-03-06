@@ -4,7 +4,8 @@ import pytest
 
 from infrahub.core.graph.constraints import (
     ConstraintInfo,
-    ConstraintManager,
+    ConstraintManagerMemgraph,
+    ConstraintManagerNeo4j,
     ConstraintNodeMemgraph,
     ConstraintNodeNeo4j,
     ConstraintRelNeo4j,
@@ -57,7 +58,7 @@ def test_item_node_memgraph():
     reason="Must use Neo4j to run this test",
 )
 def test_constraint_manager_from_graph_schema_neo4j(db: InfrahubDatabase):
-    gm = ConstraintManager.from_graph_schema(db=db, schema=GRAPH_SCHEMA)
+    gm = ConstraintManagerNeo4j.from_graph_schema(db=db, schema=GRAPH_SCHEMA)
 
     assert gm.nodes == [
         ConstraintNodeNeo4j(
@@ -422,7 +423,7 @@ def test_constraint_manager_from_graph_schema_neo4j(db: InfrahubDatabase):
     reason="Must use Memgraph to run this test",
 )
 def test_constraint_manager_from_graph_schema_memgraph(db: InfrahubDatabase):
-    gm = ConstraintManager.from_graph_schema(db=db, schema=GRAPH_SCHEMA)
+    gm = ConstraintManagerMemgraph.from_graph_schema(db=db, schema=GRAPH_SCHEMA)
 
     assert gm.nodes == [
         ConstraintNodeMemgraph(
@@ -498,7 +499,7 @@ def test_constraint_manager_from_graph_schema_memgraph(db: InfrahubDatabase):
     reason="Must use Neo4j to run this test",
 )
 async def test_constraint_manager_database_neo4j(db: InfrahubDatabase, default_branch):
-    gm = ConstraintManager.from_graph_schema(db=db, schema=GRAPH_SCHEMA)
+    gm = ConstraintManagerNeo4j.from_graph_schema(db=db, schema=GRAPH_SCHEMA)
 
     previous_constraints = await gm.list()
 
@@ -627,7 +628,7 @@ async def test_constraint_manager_database_neo4j(db: InfrahubDatabase, default_b
     reason="Must use Memgraph to run this test",
 )
 async def test_constraint_manager_database_memgraph(db: InfrahubDatabase, default_branch):
-    gm = ConstraintManager.from_graph_schema(db=db, schema=GRAPH_SCHEMA)
+    gm = ConstraintManagerMemgraph.from_graph_schema(db=db, schema=GRAPH_SCHEMA)
 
     previous_constraints = await gm.list()
 

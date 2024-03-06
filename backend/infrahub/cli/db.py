@@ -10,12 +10,12 @@ from rich.table import Table
 
 from infrahub import config
 from infrahub.core.graph import GRAPH_VERSION
-from infrahub.core.graph.constraints import ConstraintManager
+from infrahub.core.graph.constraints import ConstraintManagerMemgraph, ConstraintManagerNeo4j
 from infrahub.core.graph.schema import GRAPH_SCHEMA
 from infrahub.core.initialization import first_time_initialization, get_root_node, initialization
 from infrahub.core.migrations.graph import get_graph_migrations
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import InfrahubDatabase, get_db
+from infrahub.database import DatabaseType, InfrahubDatabase, get_db
 from infrahub.log import get_logger
 
 app = typer.Typer()
@@ -117,7 +117,14 @@ async def _migrate(check: bool) -> None:
 
 async def _constraint(action: ConstraintAction) -> None:
     dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
-    manager = ConstraintManager.from_graph_schema(db=dbdriver, schema=GRAPH_SCHEMA)  # type: ignore[arg-type]
+
+    if dbdriver.db_type == DatabaseType.NEO4J:
+        manager = ConstraintManagerNeo4j.from_graph_schema(db=dbdriver, schema=GRAPH_SCHEMA)  # type: ignore[arg-type,assignment]
+    elif dbdriver.db_type == DatabaseType.MEMGRAPH:
+        manager = ConstraintManagerMemgraph.from_graph_schema(db=dbdriver, schema=GRAPH_SCHEMA)  # type: ignore[arg-type,assignment]
+    else:
+        print(f"Database type not supported : {dbdriver.db_type}")
+        raise typer.Exit(1)
 
     if action == ConstraintAction.ADD:
         await manager.add()
