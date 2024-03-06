@@ -109,6 +109,8 @@ export const CHECK_CONCLUSIONS = {
 
 export const CHECKS_LABEL = {
   EMPTY: "Empty",
+  UNKOWN: "Unkown",
+  QUEUED: "Queued",
   FAILURE: "Failure",
   SUCCESS: "Success",
   IN_PROGRESS: "In progress",

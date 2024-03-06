@@ -23,6 +23,16 @@ export const getValidatorsStats = (validators: any[]) => {
       validator.conclusion.value === VALIDATION_CONCLUSIONS.FAILURE
   );
 
+  const unkownValidators = validators.filter(
+    (validator: any) =>
+      validator.state.value === VALIDATION_STATES.COMPLETED &&
+      validator.conclusion.value === VALIDATION_CONCLUSIONS.UNKNOWN
+  );
+
+  const queuedValidators = validators.filter(
+    (validator: any) => validator.state.value === VALIDATION_STATES.QUEUED
+  );
+
   if (!successValidators.length && !inProgressValidators.length && !failedValidators.length) {
     return [
       {
@@ -41,12 +51,22 @@ export const getValidatorsStats = (validators: any[]) => {
     {
       name: CHECKS_LABEL.IN_PROGRESS,
       value: inProgressValidators.length,
-      className: "fill-yellow-400",
+      className: "fill-orange-400",
     },
     {
       name: CHECKS_LABEL.FAILURE,
       value: failedValidators.length,
       className: "fill-red-400",
+    },
+    {
+      name: CHECKS_LABEL.QUEUED,
+      value: queuedValidators.length,
+      className: "fill-yellow-300",
+    },
+    {
+      name: CHECKS_LABEL.UNKOWN,
+      value: unkownValidators.length,
+      className: "fill-gray-400",
     },
   ];
 };

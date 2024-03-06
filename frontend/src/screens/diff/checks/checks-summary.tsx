@@ -72,8 +72,13 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
     // Can't retry if there is no check
     if (!stats.length) return false;
 
+    // Can't retry if it's empty
+    if (stats.length === 1 && stats.find((stat: any) => stat.name === CHECKS_LABEL.EMPTY)) {
+      return false;
+    }
+
     // Can retry if there is no in progress check
-    return !!stats.find((stat: any) => stat.name === CHECKS_LABEL.IN_PROGRESS && !!stat.value);
+    return !stats.find((stat: any) => stat.name === CHECKS_LABEL.IN_PROGRESS && !!stat.value);
   };
 
   return (
