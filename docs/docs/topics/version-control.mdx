@@ -50,14 +50,14 @@ it present a risk of having the working branch out-of-sync with the main branche
 ### Create a Branch
 
 Branches in Infrahub are designed to be lightweight, while the recommendation is to keep the lifespan of a branch short, it's possible to have 10s of branches open at the same time.
-When creating a branch it's possible to provide a description and 2 options are available:
+When creating a branch it's possible to provide a description as well as these options:
 
 - **Data Only**: When a branch is flagged as **Data Only** it won't be extended to the Read-Write Repositories. By opposition, if a branch isn't **Data Only** it will be automatically created in all the Read-Write repositories.
 - **Isolated Mode**: When operating in isolated mode, the branch won't automatically keep in sync with the main branch.
 
 Branch names are fairly permissive, but must conform to git ref format. For example, slashes (/) are allowed, tildes (~) are not.
 
-A branch can be created via the UI, via GraphQL or via `infrahubctl`.
+A branch can be created via the UI, via GraphQL, via `infrahubctl` or simply by pushing a new branch to a managed Git repository.
 
 :::info
 
@@ -80,7 +80,6 @@ Creating a branch won't create a copy of the database, only the changes applied 
   Use the GraphQL mutation below to create a new branch named `cr1234`
 
   ```graphql
-  # Endpoint : http://127.0.0.1:8000/graphql/main
   mutation {
     BranchCreate(data: { name: "cr1234", is_data_only: false}) {
       ok

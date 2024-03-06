@@ -202,7 +202,7 @@ async def load_schema(  # noqa: PLR0911 pylint: disable=R0911,too-many-branches,
             branch.update_schema_hash()
             log.info("Schema has been updated", branch=branch.name, hash=branch.active_schema_hash.main)
 
-            if not branch.is_default and branch.has_schema_changes:
+            if not branch.is_isolated and not branch.is_default and branch.has_schema_changes:
                 branch.is_isolated = True
                 log.info("Branch converted to isolated mode because the schema has changed", branch=branch.name)
 
