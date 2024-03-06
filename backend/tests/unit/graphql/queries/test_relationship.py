@@ -24,7 +24,7 @@ async def test_relationship(
             count
             edges {
                 node {
-                    id
+                    identifier
                     peers {
                         id
                         kind
@@ -36,6 +36,8 @@ async def test_relationship(
     """
 
     gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+
+    # No identifiers
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -44,11 +46,10 @@ async def test_relationship(
         variable_values={"relationship_identifiers": []},
     )
 
-    assert result.errors is None
-    assert result.data
-    assert result.data["Relationship"]["count"] == 0
+    assert result.errors is not None
+    assert len(result.errors) == 1
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    # One identifier
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -59,4 +60,4 @@ async def test_relationship(
 
     assert result.errors is None
     assert result.data
-    assert result.data["Relationship"]["count"] > 0
+    assert result.data["Relationship"]["count"] == 5

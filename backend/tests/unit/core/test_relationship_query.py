@@ -571,10 +571,14 @@ async def test_query_RelationshipGetByIdentifierQuery(
     car_yaris_main,
     branch: Branch,
 ):
-    query = await RelationshipGetByIdentifierQuery.init(db=db, branch=branch, identifiers=[])
-    await query.execute(db=db)
-    assert await query.count(db=db) == 0
+    with pytest.raises(ValueError) as exc:
+        query = await RelationshipGetByIdentifierQuery.init(
+            db=db, branch=branch, identifiers=[], excluded_namespaces=[]
+        )
+    assert "identifiers cannot be an empty list" in str(exc.value)
 
-    query = await RelationshipGetByIdentifierQuery.init(db=db, branch=branch, identifiers=["testcar__testperson"])
+    query = await RelationshipGetByIdentifierQuery.init(
+        db=db, branch=branch, identifiers=["testcar__testperson"], excluded_namespaces=[]
+    )
     await query.execute(db=db)
-    assert await query.count(db=db) > 0
+    assert await query.count(db=db) == 5

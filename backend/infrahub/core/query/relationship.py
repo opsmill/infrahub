@@ -100,6 +100,7 @@ class RelationshipPeerData:
 
 @dataclass
 class RelationshipPeersData:
+    id: UUID
     identifier: str
     source_id: UUID
     source_kind: str
@@ -731,13 +732,22 @@ class RelationshipGetByIdentifierQuery(Query):
 
     type: QueryType = QueryType.READ
 
-    def __init__(self, identifiers: List[str], *args, **kwargs) -> None:
+    def __init__(self, identifiers: List[str], excluded_namespaces: List[str], *args, **kwargs) -> None:
+        if not identifiers:
+            raise ValueError("identifiers cannot be an empty list")
+
         self.identifiers = identifiers
+        self.excluded_namespaces = excluded_namespaces
+
+        # Always exclude relationships with internal nodes
+        if "Internal" not in self.excluded_namespaces:
+            self.excluded_namespaces.append("Internal")
 
         super().__init__(*args, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
         self.params["identifiers"] = self.identifiers
+        self.params["excluded_namespaces"] = self.excluded_namespaces
         self.params["branch"] = self.branch.name
         self.params["at"] = self.at.to_string()
 
@@ -752,7 +762,7 @@ class RelationshipGetByIdentifierQuery(Query):
         CALL {
             WITH rl
             MATCH (src:Node)-[r1:IS_RELATED]-(rl:Relationship)-[r2:IS_RELATED]-(dst:Node)
-            WHERE %s
+            WHERE NOT src.namespace IN $excluded_namespaces AND NOT dst.namespace IN $excluded_namespaces AND %s
             RETURN src, dst, r1, r2, rl as rl1
             ORDER BY r1.branch_level DESC, r2.branch_level DESC, r1.from DESC, r2.from DESC
             LIMIT 1
@@ -767,6 +777,7 @@ class RelationshipGetByIdentifierQuery(Query):
     def get_peers(self) -> Generator[RelationshipPeersData, None, None]:
         for result in self.get_results():
             data = RelationshipPeersData(
+                id=result.get("rl").get("uuid"),
                 identifier=result.get("rl").get("name"),
                 source_id=result.get("src").get("uuid"),
                 source_kind=result.get("src").get("kind"),

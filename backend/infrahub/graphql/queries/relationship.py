@@ -25,17 +25,25 @@ class Relationships(ObjectType):
         limit: int = 10,
         offset: int = 0,
         ids: Optional[List[str]] = None,
+        excluded_namespaces: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         context: GraphqlContext = info.context
 
         fields = await extract_fields_first_node(info)
         identifiers = ids or []
+        excluded_namespaces = excluded_namespaces or []
 
         response: Dict[str, Any] = {"edges": [], "count": None}
 
         async with context.db.start_session() as db:
             query = await RelationshipGetByIdentifierQuery.init(
-                db=db, branch=context.branch, at=context.at, identifiers=identifiers, limit=limit, offset=offset
+                db=db,
+                branch=context.branch,
+                at=context.at,
+                identifiers=identifiers,
+                excluded_namespaces=excluded_namespaces,
+                limit=limit,
+                offset=offset,
             )
 
             if "count" in fields:
@@ -51,6 +59,7 @@ class Relationships(ObjectType):
                 nodes.append(
                     {
                         "node": {
+                            "id": peers.id,
                             "identifier": peers.identifier,
                             "peers": [
                                 {"id": peers.source_id, "kind": peers.source_kind},
@@ -70,4 +79,5 @@ Relationship = Field(
     limit=Int(required=False),
     offset=Int(required=False),
     ids=List(String),
+    excluded_namespaces=List(String),
 )
