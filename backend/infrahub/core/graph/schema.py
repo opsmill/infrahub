@@ -143,7 +143,7 @@ class GraphAttributeNode(BaseModel):
 # AttributeValue
 # -----------------------------------------------------
 class GraphAttributeValueProperties(BaseModel):
-    value: Any = Field(..., description="value of the attribute stored in String format")
+    value: Any = Field(..., description="value of the attribute")
 
 
 class GraphAttributeValueRelationships(BaseModel):
