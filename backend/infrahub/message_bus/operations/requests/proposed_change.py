@@ -14,7 +14,8 @@ from infrahub.core.constants import (
     InfrahubKind,
     ProposedChangeState,
 )
-from infrahub.core.diff import BranchDiffer, SchemaConflict
+from infrahub.core.diff.branch_differ import BranchDiffer
+from infrahub.core.diff.model import SchemaConflict
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.registry import registry
 from infrahub.core.validators.checker import schema_validators_checker

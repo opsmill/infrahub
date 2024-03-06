@@ -8,7 +8,8 @@ from pydantic.v1 import Field
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, InfrahubKind
-from infrahub.core.diff import BaseDiffElement, BranchDiffer
+from infrahub.core.diff.branch_differ import BranchDiffer
+from infrahub.core.diff.model import BaseDiffElement
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
