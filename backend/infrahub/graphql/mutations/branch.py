@@ -13,6 +13,7 @@ from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.schema.runner import schema_migrations_runner
 from infrahub.exceptions import BranchNotFoundError
+from infrahub.database import retry_db_transaction
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
@@ -48,6 +49,7 @@ class BranchCreate(Mutation):
     object = Field(BranchType)
 
     @classmethod
+    @retry_db_transaction()
     async def mutate(
         cls, root: dict, info: GraphQLResolveInfo, data: BranchCreateInput, background_execution: bool = False
     ) -> Self:
@@ -113,6 +115,7 @@ class BranchDelete(Mutation):
     ok = Boolean()
 
     @classmethod
+    @retry_db_transaction()
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
@@ -140,6 +143,7 @@ class BranchUpdate(Mutation):
     ok = Boolean()
 
     @classmethod
+    @retry_db_transaction()
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
@@ -174,6 +178,7 @@ class BranchRebase(Mutation):
     object = Field(BranchType)
 
     @classmethod
+    @retry_db_transaction()
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
@@ -206,6 +211,7 @@ class BranchValidate(Mutation):
     object = Field(BranchType)
 
     @classmethod
+    @retry_db_transaction()
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
@@ -234,6 +240,7 @@ class BranchMerge(Mutation):
     object = Field(BranchType)
 
     @classmethod
+    @retry_db_transaction()
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 

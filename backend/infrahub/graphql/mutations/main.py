@@ -19,6 +19,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
+from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.log import get_log_data, get_logger
@@ -115,6 +116,7 @@ class InfrahubMutationMixin:
         return mutation
 
     @classmethod
+    @retry_db_transaction()
     async def mutate_create(
         cls,
         root: dict,
@@ -156,6 +158,7 @@ class InfrahubMutationMixin:
         return obj, cls(**result)
 
     @classmethod
+    @retry_db_transaction()
     async def mutate_update(
         cls,
         root: dict,
@@ -211,6 +214,7 @@ class InfrahubMutationMixin:
         return obj, cls(**result)
 
     @classmethod
+    @retry_db_transaction()
     async def mutate_upsert(
         cls,
         root: dict,
@@ -239,6 +243,7 @@ class InfrahubMutationMixin:
         return created_obj, mutation, True
 
     @classmethod
+    @retry_db_transaction()
     async def mutate_delete(
         cls,
         root,
