@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import enum
-import logging
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
 
@@ -11,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from infrahub.core import get_branch, registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.manager import NodeManager
+from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from .model import NodeDiffElement, RelationshipDiffElement
 
 
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 class DiffElementType(str, enum.Enum):
