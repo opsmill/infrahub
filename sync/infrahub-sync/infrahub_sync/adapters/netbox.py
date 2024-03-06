@@ -5,7 +5,6 @@ import os
 from typing import TYPE_CHECKING, Any, Dict
 
 import pynetbox
-
 from diffsync import DiffSync, DiffSyncModel
 from infrahub_sync import (
     DiffSyncMixin,
@@ -87,7 +86,7 @@ class NetboxAdapter(DiffSyncMixin, DiffSync):
 
             elif field.mapping and field.reference:
                 all_nodes_for_reference = self.store.get_all(model=field.reference)
-                nodes = [item for item in all_nodes_for_reference]  # pylint: disable=unnecessary-comprehension
+                nodes = [item for item in all_nodes_for_reference]  # noqa: C416
                 if not nodes and all_nodes_for_reference:
                     raise IndexError(
                         f"Unable to get '{field.mapping}' with '{field.reference}' reference from store."

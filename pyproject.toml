@@ -126,6 +126,7 @@ disable = """,
     unsupported-assignment-operation,
     not-an-iterable,
     too-many-return-statements,
+    unnecessary-comprehension,
     """
 
 [tool.pylint.miscellaneous]
