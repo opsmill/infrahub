@@ -75,7 +75,6 @@ class ProposedChangeArtifactDefinition(BaseModel):
     content_type: str
     file_path: str = Field(default="")
     timeout: int
-    rebase: bool
 
     @property
     def transform_location(self) -> str:
