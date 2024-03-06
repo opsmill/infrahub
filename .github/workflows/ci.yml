@@ -553,6 +553,17 @@ jobs:
         run: npm install
       - name: "Install Invoke"
         run: "pip install toml invoke"
+
+      - name: Select infrahub port
+        run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
       - name: Build Demo
         run: "invoke demo.build"
       - name: "Pull External Docker Images"
@@ -564,6 +575,10 @@ jobs:
         run: "invoke demo.status"
       - name: Load Data
         run: "invoke demo.load-infra-data"
+
+      - name: Set infrahub address
+        run: echo "INFRAHUB_ADDRESS=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
+
       - name: Git Repository
         run: "invoke demo.infra-git-import demo.infra-git-create"
       - name: Run End to End Tests
