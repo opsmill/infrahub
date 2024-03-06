@@ -8,6 +8,7 @@ from .attribute.optional import AttributeOptionalChecker
 from .attribute.regex import AttributeRegexChecker
 from .attribute.unique import AttributeUniquenessChecker
 from .interface import ConstraintCheckerInterface
+from .node.hierarchy import NodeHierarchyChecker
 from .relationship.count import RelationshipCountChecker
 from .relationship.optional import RelationshipOptionalChecker
 from .relationship.peer import RelationshipPeerChecker
@@ -28,8 +29,6 @@ CONSTRAINT_VALIDATOR_MAP: Dict[str, Optional[Type[ConstraintCheckerInterface]]] 
     "relationship.min_count.update": RelationshipCountChecker,
     "relationship.max_count.update": RelationshipCountChecker,
     "node.uniqueness_constraints.update": UniquenessChecker,
-    "node.hierarchical.update": None,  # Generic
-    "node.hierarchy.update": None,
-    "node.parent.update": None,
-    "node.children.update": None,
+    "node.parent.update": NodeHierarchyChecker,
+    "node.children.update": NodeHierarchyChecker,
 }
