@@ -9,7 +9,7 @@ from typing_extensions import Self
 from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.diff import BranchDiffer
+from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.schema.runner import schema_migrations_runner
 from infrahub.exceptions import BranchNotFound
