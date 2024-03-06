@@ -82,7 +82,9 @@ class S3StorageSettings(BaseSettings):
         validation_alias=AliasChoices("INFRAHUB_STORAGE_ENDPOINT_URL", "AWS_S3_ENDPOINT_URL"),
     )
     use_ssl: bool = Field(
-        default=True, alias="AWS_S3_USE_SSL", validation_alias=AliasChoices("INFRAHUB_STORAGE_USE_SSL", "AWS_S3_USE_SSL")
+        default=True,
+        alias="AWS_S3_USE_SSL",
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_USE_SSL", "AWS_S3_USE_SSL"),
     )
     default_acl: str = Field(
         default="",
