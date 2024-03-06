@@ -11,6 +11,9 @@ on:
         description: commit sha or branch name
         default: ''
         required: false
+  push:
+    branches:
+      - fac-branch-scale-test
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -32,15 +35,22 @@ jobs:
     strategy:
       matrix:
         include:
-          - node-amount: 1000
+          - node-amount: 10000
             attrs-amount: 0
             rels-amount: 0
-          - node-amount: 10
-            attrs-amount: 100
-            rels-amount: 0
-          - node-amount: 10
-            attrs-amount: 0
-            rels-amount: 100
+            stager: stage_infranode
+          # - node-amount: 10
+          #   attrs-amount: 100
+          #   rels-amount: 0
+          #   stager: stage_infranode
+          # - node-amount: 10
+          #   attrs-amount: 0
+          #   rels-amount: 100
+          #   stager: stage_infranode
+          # - node-amount: 600
+          #   attrs-amount: 0
+          #   rels-amount: 0
+          #   stager: stage_branch
     runs-on:
       group: huge-runners
     timeout-minutes: 60
@@ -51,7 +61,7 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
         with:
-          ref: ${{ inputs.commit == '' && 'develop' || inputs.commit }}
+          ref: ${{ inputs.commit == '' && 'fac-branch-scale-test' || inputs.commit }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -86,7 +96,7 @@ jobs:
       - name: "Store start time"
         run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
       - name: "Run test"
-        run: "poetry run invoke backend.test-scale --amount ${{ matrix.node-amount }} --attrs ${{ matrix.attrs-amount }} --rels ${{ matrix.rels-amount }} -s backend/tests/scale/schema.yml --stager stage_infranode"
+        run: "poetry run invoke backend.test-scale --amount ${{ matrix.node-amount }} --attrs ${{ matrix.attrs-amount }} --rels ${{ matrix.rels-amount }} -s backend/tests/scale/schema.yml --stager ${{ matrix.stager }}"
       - name: "Push metrics"
         run: 'curl -v --data-binary @metrics.csv "http://localhost:${VMAGENT_PORT}/api/v1/import/csv?format=1:metric:scale_test_response_time,2:time:unix_ms,3:label:operation_name,4:label:stage,5:label:node_amount,6:label:attrs_amount,7:label:rels_amount"'
       - name: "Wait for vmagent to push metrics"
