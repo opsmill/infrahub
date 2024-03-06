@@ -95,7 +95,7 @@ class LineDelimitedJSONImporter(ImporterInterface):
             return
 
         await self.update_optional_relationships(at=right_now)
-        await self.update_many_to_many_relatonships(file=relationship_file, at=right_now)
+        await self.update_many_to_many_relatonships(file=relationship_file)
 
     async def remove_and_store_optional_relationships(self) -> None:
         for node in self.all_nodes.values():
@@ -143,7 +143,7 @@ class LineDelimitedJSONImporter(ImporterInterface):
             update_batch.add(task=node.update, node=node, at=at)
         await self.execute_batches([update_batch], "Adding optional relationships to nodes")
 
-    async def update_many_to_many_relatonships(self, file: Path, at: datetime) -> None:
+    async def update_many_to_many_relatonships(self, file: Path) -> None:
         relationships = ujson.loads(file.read_text())
         update_batch = await self.client.create_batch(return_exceptions=True)
 

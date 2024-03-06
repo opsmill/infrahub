@@ -90,7 +90,8 @@ class LineDelimitedJSONExporter(ExporterInterface):
 
         return many_relationships
 
-    async def export(
+    # FIXME: Split in smaller functions
+    async def export(  # pylint: disable=too-many-branches
         self, export_directory: Path, namespaces: List[str], branch: str, exclude: Optional[List[str]] = None
     ) -> None:
         illegal_namespaces = set(ILLEGAL_NAMESPACES)
