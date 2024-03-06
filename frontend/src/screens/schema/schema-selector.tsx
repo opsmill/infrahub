@@ -7,6 +7,7 @@ import { Icon } from "@iconify-icon/react";
 import { ArrayParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../config/qsp";
 import Accordion from "../../components/display/accordion";
+import { useEffect, useRef } from "react";
 
 type SchemaSelectorProps = {
   className?: string;
@@ -15,6 +16,14 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
   const [selectedKind, setKind] = useQueryParam(QSP.KIND, ArrayParam);
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!ref.current) return;
+
+    ref.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [selectedKind?.length]);
+
   const schemas: IModelSchema[] = [...nodes, ...generics];
   const schemasPerNamespace = R.pipe(
     R.sortBy<IModelSchema>(R.prop("name")),
@@ -28,17 +37,19 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
           <Accordion key={namespace} title={namespace} defaultOpen>
             <div className="divide-y px-4">
               {schemas.map((schema) => {
+                const isSelected =
+                  selectedKind && schema.kind && selectedKind.includes(schema.kind);
+                const isSelectedLast =
+                  isSelected && selectedKind[selectedKind.length - 1]?.includes(schema.kind!);
+
                 return (
                   <div
+                    {...(isSelectedLast && { ref })}
                     key={schema.id}
                     className={`
                       h-24 overflow-hidden pl-9 pr-2 cursor-pointer flex items-center relative hover:bg-gray-100 mix-blend-multiply
                       hover:rounded
-                        ${
-                          selectedKind && schema.kind && selectedKind.includes(schema.kind)
-                            ? "shadow-lg ring-1 ring-custom-blue-600 rounded"
-                            : ""
-                        }
+                        ${isSelected ? "shadow-lg ring-1 ring-custom-blue-600 rounded" : ""}
                     `}
                     onClick={() => setKind([schema.kind!])}>
                     {schema.icon && (
