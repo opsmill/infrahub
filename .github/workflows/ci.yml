@@ -534,7 +534,8 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
-    runs-on: "runner-ubuntu-8-32"
+    runs-on:
+      group: huge-runners
     timeout-minutes: 40
     env:
       INFRAHUB_DB_TYPE: memgraph
