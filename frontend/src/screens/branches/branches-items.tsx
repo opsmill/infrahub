@@ -57,7 +57,7 @@ export const BranchesItems = () => {
                     {branch.is_default && (
                       <>
                         <Tooltip message={"Default branch"}>
-                          <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                          <ShieldCheckIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                         </Tooltip>
 
                         <div className="text-base font-semibold leading-6 text-gray-900">

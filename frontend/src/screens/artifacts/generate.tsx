@@ -71,7 +71,7 @@ export const Generate = (props: tGenerateProps) => {
       buttonType={BUTTON_TYPES.VALIDATE}>
       {label ?? "Generate"}
       <ArrowPathIcon
-        className={classNames("-mr-0.5 h-4 w-4", isLoading ? "animate-spin" : "")}
+        className={classNames("ml-2 h-4 w-4", isLoading ? "animate-spin" : "")}
         aria-hidden="true"
       />
     </Button>

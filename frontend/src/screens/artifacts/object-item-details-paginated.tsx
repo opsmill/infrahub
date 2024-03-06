@@ -15,8 +15,8 @@ import { Tabs } from "../../components/tabs";
 import { CONFIG } from "../../config/config";
 import { ARTIFACT_OBJECT, DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { useAuth } from "../../hooks/useAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
+import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
@@ -158,7 +158,7 @@ export default function ArtifactsDetails() {
               onClick={() => setShowAddToGroupDrawer(true)}
               className="mr-4">
               Manage groups
-              <RectangleGroupIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+              <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
             </Button>
           </>
         }

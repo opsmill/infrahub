@@ -70,7 +70,7 @@ export const DataDiff = forwardRef((props, ref) => {
   const [diff, setDiff] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const branch = branchname || proposedChangesDetails?.source_branch?.value;
+  const branch = proposedChangesDetails?.source_branch?.value || branchname; // Used in proposed changes view and branch view
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
 
@@ -139,7 +139,7 @@ export const DataDiff = forwardRef((props, ref) => {
     }
 
     setIsLoading(false);
-  }, [branchname, branchOnly, timeFrom, timeTo]);
+  }, [branch, branchOnly, timeFrom, timeTo]);
 
   // Provide refetch function to parent
   useImperativeHandle(ref, () => ({ refetch: fetchDiffDetails }));
@@ -177,7 +177,8 @@ export const DataDiff = forwardRef((props, ref) => {
       <div className="flex items-center p-4 bg-custom-white">
         <div className="mr-2">
           <Button onClick={() => setBranchOnly(branchOnly !== "false" ? "false" : "true")}>
-            Display main
+            <span className="mr-2">Display main</span>
+
             <Checkbox enabled={branchOnly === "false"} readOnly />
           </Button>
         </div>

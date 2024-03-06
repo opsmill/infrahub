@@ -15,13 +15,13 @@ import ModalDelete from "../../components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { useAuth } from "../../hooks/useAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteBranch } from "../../graphql/mutations/branches/deleteBranch";
 import { mergeBranch } from "../../graphql/mutations/branches/mergeBranch";
 import { rebaseBranch } from "../../graphql/mutations/branches/rebaseBranch";
 import { validateBranch } from "../../graphql/mutations/branches/validateBranch";
 import { getBranchDetails } from "../../graphql/queries/branches/getBranchDetails";
+import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -214,7 +214,7 @@ export const BranchDetails = () => {
                   }
                   buttonType={BUTTON_TYPES.VALIDATE}>
                   Merge
-                  <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                  <CheckIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
 
                 <Button
@@ -222,7 +222,7 @@ export const BranchDetails = () => {
                   className="mr-0 md:mr-3"
                   onClick={() => setShowCreateDrawer(true)}>
                   Propose change
-                  <PlusIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                  <PlusIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
 
                 <Button
@@ -239,7 +239,7 @@ export const BranchDetails = () => {
                     })
                   }>
                   Rebase
-                  <ArrowPathIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                  <ArrowPathIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
 
                 <Button
@@ -257,7 +257,7 @@ export const BranchDetails = () => {
                   }
                   buttonType={BUTTON_TYPES.WARNING}>
                   Validate
-                  <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                  <ShieldCheckIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
 
                 <Button
@@ -266,7 +266,7 @@ export const BranchDetails = () => {
                   onClick={() => setDisplayModal(true)}
                   buttonType={BUTTON_TYPES.CANCEL}>
                   Delete
-                  <TrashIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                  <TrashIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             </>

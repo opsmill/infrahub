@@ -214,7 +214,7 @@ export default function ObjectItemDetails(props: any) {
                     onClick={() => setShowEditDrawer(true)}
                     className="mr-4">
                     Edit
-                    <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                    <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                   </Button>
 
                   {!schemaData.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
@@ -223,7 +223,7 @@ export default function ObjectItemDetails(props: any) {
                       onClick={() => setShowAddToGroupDrawer(true)}
                       className="mr-4">
                       Manage groups
-                      <RectangleGroupIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                      <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                     </Button>
                   )}
                 </>

@@ -13,9 +13,9 @@ import ModalDelete from "../../components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { Tooltip } from "../../components/utils/tooltip";
 import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
-import { useAuth } from "../../hooks/useAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
+import { useAuth } from "../../hooks/useAuth";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { constructPath } from "../../utils/fetch";
@@ -85,7 +85,7 @@ export const ProposedChange = (props: any) => {
         <Icon icon="mdi:delete" height="16" width="16" className="text-red-600" />
       </RoundedButton>
 
-      <div className="flex w-full items-center justify-between space-x-6 p-6">
+      <div className="flex w-full items-center justify-between space-x-6 p-3">
         <div className="flex flex-1">
           <div className="flex flex-1 flex-col">
             <div className="flex flex-1 items-center space-x-3 mb-4">
@@ -137,7 +137,7 @@ export const ProposedChange = (props: any) => {
               ))}
             </div>
 
-            <div className="flex flex-1 items-center space-x-3 mb-4">
+            <div className="flex flex-1 items-center space-x-3">
               <div className="mr-2 min-w-[120px]">Approved by:</div>
 
               {approvers.map((approver: any, index: number) => (
