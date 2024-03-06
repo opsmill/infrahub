@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -71,18 +71,9 @@ class GraphNodeNode(BaseModel):
 # Relationship
 # -----------------------------------------------------
 class GraphRelationshipProperties(BaseModel):
-    branch: str = Field(
-        ..., description="name of the branch this relationship is part of, global branch will be -global-"
-    )
-    branch_level: int = Field(
-        ...,
-        description="Indicator of the level of the branch compared to main, currently either 1 or 2 since we only support 1 level",
-        ge=1,
-    )
-    _from: str = Field(..., description="Time from which the relationship is valid", alias="from")
-    _to: str = Field(..., description="Time until which the relationship is valid", alias="to")
-    status: RelationshipStatus = Field(..., description="status of the relationship")
-    hierarchy: str = Field(..., description="Name of the hierarchy this relationship is part of")
+    branch_support: BranchSupportType = Field(..., description="Type of branch support for the relationship")
+    name: str = Field(..., description="identifier of the relationship")
+    uuid: str = Field(..., description="UUID of the relationship")
 
 
 class GraphRelationshipRelationships(BaseModel):
@@ -152,7 +143,7 @@ class GraphAttributeNode(BaseModel):
 # AttributeValue
 # -----------------------------------------------------
 class GraphAttributeValueProperties(BaseModel):
-    value: str = Field(..., description="value of the attribute stored in String format")
+    value: Any = Field(..., description="value of the attribute")
 
 
 class GraphAttributeValueRelationships(BaseModel):
@@ -188,3 +179,46 @@ class GraphBooleanNode(BaseModel):
     default_label: str = "Boolean"
     properties: GraphBooleanProperties
     relationships: GraphBooleanRelationships
+
+
+class GraphRelationshipIsPartOf(BaseModel):
+    from_: str = Field(..., description="Time from which the relationship is valid", alias="from")
+    to_: Optional[str] = Field(None, description="Time until which the relationship is valid", alias="to")
+    status: RelationshipStatus = Field(..., description="status of the relationship")
+
+
+class GraphRelationshipDefault(BaseModel):
+    branch: str = Field(
+        ..., description="name of the branch this relationship is part of, global branch will be -global-"
+    )
+    branch_level: int = Field(
+        ...,
+        description="Indicator of the level of the branch compared to main, currently either 1 or 2 since we only support 1 level",
+        ge=1,
+    )
+    from_: str = Field(..., description="Time from which the relationship is valid", alias="from")
+    to_: Optional[str] = Field(None, description="Time until which the relationship is valid", alias="to")
+    status: RelationshipStatus = Field(..., description="status of the relationship")
+    hierarchy: Optional[str] = Field(None, description="Name of the hierarchy this relationship is part of")
+
+
+GRAPH_SCHEMA: Dict[str, Dict[str, Any]] = {
+    "nodes": {
+        "Node": GraphNodeNode,
+        "Relationship": GraphRelationshipNode,
+        "Attribute": GraphAttributeNode,
+        "AttributeValue": GraphAttributeValueNode,
+        "Boolean": GraphBooleanNode,
+    },
+    "relationships": {
+        # Ignoring IS_PART_OF for now, because there is a bit of cleanup required
+        # "IS_PART_OF": GraphRelationshipIsPartOf,
+        "HAS_VALUE": GraphRelationshipDefault,
+        "HAS_ATTRIBUTE": GraphRelationshipDefault,
+        "IS_RELATED": GraphRelationshipDefault,
+        "HAS_SOURCE": GraphRelationshipDefault,
+        "HAS_OWNER": GraphRelationshipDefault,
+        "IS_VISIBLE": GraphRelationshipDefault,
+        "IS_PROTECTED": GraphRelationshipDefault,
+    },
+}

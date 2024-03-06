@@ -1,21 +1,33 @@
 import importlib
 import logging
 from asyncio import run as aiorun
+from enum import Enum
+from typing import Optional
 
 import typer
+from rich.console import Console
 from rich.logging import RichHandler
+from rich.table import Table
 
 from infrahub import config
 from infrahub.core.graph import GRAPH_VERSION
+from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
+from infrahub.core.graph.schema import GRAPH_SCHEMA
 from infrahub.core.initialization import first_time_initialization, get_root_node, initialization
 from infrahub.core.migrations.graph import get_graph_migrations
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import InfrahubDatabase, get_db
+from infrahub.database import DatabaseType, InfrahubDatabase, get_db
 from infrahub.log import get_logger
 
 app = typer.Typer()
 
 PERMISSIONS_AVAILABLE = ["read", "write", "admin"]
+
+
+class ConstraintAction(str, Enum):
+    SHOW = "show"
+    ADD = "add"
+    DROP = "drop"
 
 
 @app.callback()
@@ -104,6 +116,41 @@ async def _migrate(check: bool) -> None:
     await dbdriver.close()
 
 
+async def _constraint(action: ConstraintAction) -> None:
+    dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
+
+    manager: Optional[ConstraintManagerBase] = None
+    if dbdriver.db_type == DatabaseType.NEO4J:
+        manager = ConstraintManagerNeo4j.from_graph_schema(db=dbdriver, schema=GRAPH_SCHEMA)
+    elif dbdriver.db_type == DatabaseType.MEMGRAPH:
+        manager = ConstraintManagerMemgraph.from_graph_schema(db=dbdriver, schema=GRAPH_SCHEMA)
+    else:
+        print(f"Database type not supported : {dbdriver.db_type}")
+        raise typer.Exit(1)
+
+    if action == ConstraintAction.ADD:
+        await manager.add()
+    elif action == ConstraintAction.DROP:
+        await manager.drop()
+
+    constraints = await manager.list()
+
+    console = Console()
+
+    table = Table(title="Database Constraints")
+
+    table.add_column("Name", justify="right", style="cyan", no_wrap=True)
+    table.add_column("Label")
+    table.add_column("Property")
+
+    for item in constraints:
+        table.add_row(item.item_name, item.item_label, item.property)
+
+    console.print(table)
+
+    await dbdriver.close()
+
+
 @app.command()
 def init(
     config_file: str = typer.Option(
@@ -145,3 +192,15 @@ def migrate(
     config.load_and_exit(config_file_name=config_file)
 
     aiorun(_migrate(check=check))
+
+
+@app.command()
+def constraint(
+    action: ConstraintAction = typer.Argument(ConstraintAction.SHOW),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Manage Database Constraints"""
+
+    config.load_and_exit(config_file_name=config_file)
+
+    aiorun(_constraint(action=action))
