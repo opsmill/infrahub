@@ -95,7 +95,7 @@ class LineDelimitedJSONImporter(ImporterInterface):
             return
 
         await self.update_optional_relationships(at=right_now)
-        await self.update_many_to_many_relatonships(file=relationship_file)
+        await self.update_many_to_many_relationships(file=relationship_file)
 
     async def remove_and_store_optional_relationships(self) -> None:
         for node in self.all_nodes.values():
@@ -133,9 +133,6 @@ class LineDelimitedJSONImporter(ImporterInterface):
                 if relationship_schema.cardinality == "many":
                     for peer_relationship in self.schemas_by_kind[relationship_schema.peer].relationships:
                         if peer_relationship.cardinality == "many" and peer_relationship.peer == node_kind:
-                            self.console.log(
-                                "Ignoring", node_kind, "->", relationship_attr, "->", relationship_schema.peer
-                            )
                             ignore = True
 
                 if not ignore:
@@ -143,7 +140,7 @@ class LineDelimitedJSONImporter(ImporterInterface):
             update_batch.add(task=node.update, node=node, at=at)
         await self.execute_batches([update_batch], "Adding optional relationships to nodes")
 
-    async def update_many_to_many_relatonships(self, file: Path) -> None:
+    async def update_many_to_many_relationships(self, file: Path) -> None:
         relationships = ujson.loads(file.read_text())
         update_batch = await self.client.create_batch(return_exceptions=True)
 
@@ -153,12 +150,13 @@ class LineDelimitedJSONImporter(ImporterInterface):
             dst_node = self.all_nodes[peers[1]["id"]]
 
             src_node_relationship = src_node._schema.get_relationship_by_identifier(relationship["node"]["identifier"])
-            update_batch.add(
-                task=src_node.add_relationships,
-                node=src_node,
-                relation_to_update=src_node_relationship.name,
-                related_nodes=[dst_node.id],
-            )
+            if src_node_relationship:
+                update_batch.add(
+                    task=src_node.add_relationships,  # type: ignore[arg-type]
+                    node=src_node,
+                    relation_to_update=src_node_relationship.name,
+                    related_nodes=[dst_node.id],
+                )
 
         await self.execute_batches([update_batch], "Adding many-to-many relationships to nodes")
 

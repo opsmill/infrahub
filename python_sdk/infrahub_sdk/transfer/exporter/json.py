@@ -42,6 +42,7 @@ class LineDelimitedJSONExporter(ExporterInterface):
                 if (
                     relationship.cardinality != "many"
                     or not relationship.optional
+                    or not relationship.identifier
                     or relationship.peer not in node_schema_map
                 ):
                     continue
