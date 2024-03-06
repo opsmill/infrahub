@@ -229,20 +229,45 @@ def validate(context: Context, docker: bool = False):
 
 
 def _generate(context: Context):
-    from jinja2 import Environment, FileSystemLoader
+    from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
-    from infrahub.core.schema.definitions.internal import attribute_schema, relationship_schema
+    from infrahub.core.schema.definitions.internal import (
+        attribute_schema,
+        base_node_schema,
+        generic_schema,
+        node_schema,
+        relationship_schema,
+    )
 
-    env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"))
+    env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"), undefined=StrictUndefined)
     generated = f"{ESCAPED_REPO_PATH}/backend/infrahub/core/schema/generated"
     template = env.get_template("generate_schema.j2")
 
-    attributes_rendered = template.render(schema="AttributeSchema", node=attribute_schema)
+    attributes_rendered = template.render(schema="AttributeSchema", node=attribute_schema, parent="HashableModel")
     attribute_schema_output = f"{generated}/attribute_schema.py"
     with open(attribute_schema_output, "w", encoding="utf-8") as fobj:
         fobj.write(attributes_rendered)
 
-    relationship_rendered = template.render(schema="RelationshipSchema", node=relationship_schema)
+    base_node_rendered = template.render(schema="BaseNodeSchema", node=base_node_schema, parent="HashableModel")
+    base_node_schema_output = f"{generated}/base_node_schema.py"
+    with open(base_node_schema_output, "w", encoding="utf-8") as fobj:
+        fobj.write(base_node_rendered)
+
+    generic_schema_stripped = generic_schema.without_duplicates(base_node_schema)
+    generic_rendered = template.render(schema="GenericSchema", node=generic_schema_stripped, parent="BaseNodeSchema")
+    generic_schema_output = f"{generated}/genericnode_schema.py"
+    with open(generic_schema_output, "w", encoding="utf-8") as fobj:
+        fobj.write(generic_rendered)
+
+    node_schema_stripped = node_schema.without_duplicates(base_node_schema)
+    node_rendered = template.render(schema="NodeSchema", node=node_schema_stripped, parent="BaseNodeSchema")
+    node_schema_output = f"{generated}/node_schema.py"
+    with open(node_schema_output, "w", encoding="utf-8") as fobj:
+        fobj.write(node_rendered)
+
+    relationship_rendered = template.render(
+        schema="RelationshipSchema", node=relationship_schema, parent="HashableModel"
+    )
     relationship_schema_output = f"{generated}/relationship_schema.py"
     with open(relationship_schema_output, "w", encoding="utf-8") as fobj:
         fobj.write(relationship_rendered)

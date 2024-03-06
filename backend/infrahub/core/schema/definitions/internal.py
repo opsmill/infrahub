@@ -1,8 +1,12 @@
+from __future__ import annotations
+
+from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, NotRequired, Optional
+from types import GenericAlias
+from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import TypedDict
 
 from infrahub.core.constants import (
@@ -22,13 +26,15 @@ from infrahub.core.constants import (
     RelationshipKind,
     UpdateSupport,
 )
+from infrahub.core.schema.attribute_schema import AttributeSchema  # noqa: TCH001
 from infrahub.core.schema.dropdown import DropdownChoice
 from infrahub.core.schema.filter import FilterSchema
+from infrahub.core.schema.relationship_schema import RelationshipSchema  # noqa: TCH001
 from infrahub.types import ATTRIBUTE_KIND_LABELS
 
 
 class ExtraField(TypedDict):
-    update: Optional[UpdateSupport]
+    update: UpdateSupport
 
 
 class SchemaAttribute(BaseModel):
@@ -36,7 +42,7 @@ class SchemaAttribute(BaseModel):
     kind: str
     description: str
     extra: ExtraField
-    internal_kind: Optional[type[Any]] = None
+    internal_kind: Optional[Union[type[Any], GenericAlias]] = None
     regex: Optional[str] = None
     unique: Optional[bool] = None
     optional: Optional[bool] = None
@@ -45,14 +51,18 @@ class SchemaAttribute(BaseModel):
     enum: Optional[list[str]] = None
     default_value: Optional[Any] = None
     default_factory: Optional[str] = None
+    default_to_none: bool = False
     override_default_value: Optional[Any] = Field(
         default=None,
         description="Currently optional is defined with different defaults for the Pydantic models compared to the internal_schema dictionary",
     )
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     def to_dict(self) -> dict[str, Any]:
         model = self.model_dump(
-            exclude_none=True, exclude={"default_factory", "extra", "internal_kind", "override_default_value"}
+            exclude_none=True,
+            exclude={"default_factory", "default_to_none", "extra", "internal_kind", "override_default_value"},
         )
         if self.default_value is not None and isinstance(self.default_value, Enum):
             model["default_value"] = self.default_value.value
@@ -60,14 +70,24 @@ class SchemaAttribute(BaseModel):
         return model
 
     @property
+    def optional_in_model(self) -> bool:
+        if self.optional and self.default_value is None and self.default_factory is None or self.default_to_none:
+            return True
+
+        return False
+
+    @property
     def type_annotation(self) -> str:
-        if self.optional and self.default_value is None and self.default_factory is None:
+        if self.optional_in_model:
             return f"Optional[{self.object_kind}]"
 
         return self.object_kind
 
     @property
     def object_kind(self) -> str:
+        if isinstance(self.internal_kind, GenericAlias):
+            return str(self.internal_kind)
+
         if self.internal_kind and self.kind == "List":
             return f"list[{self.internal_kind.__name__}]"
 
@@ -96,6 +116,8 @@ class SchemaAttribute(BaseModel):
         formatted_default = self.default_value
         if isinstance(self.default_value, str) and not isinstance(self.default_value, Enum):
             formatted_default = f'"{formatted_default}"'
+        elif self.default_to_none:
+            formatted_default = None
 
         return f"default={formatted_default}"
 
@@ -120,15 +142,18 @@ class SchemaAttribute(BaseModel):
         return ""
 
 
-class SchemaRelationship(TypedDict):
+class SchemaRelationship(BaseModel):
     name: str
     peer: str
-    description: NotRequired[Optional[str]]
-    kind: NotRequired[Optional[str]]
+    description: Optional[str] = None
+    kind: Optional[str] = None
     identifier: str
     cardinality: str
     branch: str
     optional: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump(exclude_none=True)
 
 
 class SchemaNode(BaseModel):
@@ -149,11 +174,22 @@ class SchemaNode(BaseModel):
             "default_filter": self.default_filter,
             "include_in_menu": self.include_in_menu,
             "attributes": [
-                attribute.to_dict() for attribute in self.attributes if attribute.name not in ["id", "filters"]
+                attribute.to_dict()
+                for attribute in self.attributes
+                if attribute.name not in ["id", "filters", "attributes", "relationships"]
             ],
-            "relationships": self.relationships,
+            "relationships": [relationship.to_dict() for relationship in self.relationships],
             "display_labels": self.display_labels,
         }
+
+    def without_duplicates(self, other: SchemaNode) -> SchemaNode:
+        schema = deepcopy(self)
+        schema.attributes = []
+        for attribute in self.attributes:
+            if attribute not in other.attributes:
+                schema.attributes.append(attribute)
+
+        return schema
 
 
 @dataclass
@@ -165,14 +201,21 @@ class InternalSchema:
         return {"version": self.version, "nodes": [node.to_dict() for node in self.nodes]}
 
 
-node_schema = SchemaNode(
-    name="Node",
+base_node_schema = SchemaNode(
+    name="BaseNode",
     namespace="Schema",
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
     default_filter="name__value",
     display_labels=["label__value"],
     attributes=[
+        SchemaAttribute(
+            name="id",
+            description="The ID of the node",
+            kind="Text",
+            optional=True,
+            extra={"update": UpdateSupport.NOT_APPLICABLE},
+        ),
         SchemaAttribute(
             name="name",
             kind="Text",
@@ -190,15 +233,7 @@ node_schema = SchemaNode(
             regex=str(NAMESPACE_REGEX),
             min_length=DEFAULT_KIND_MIN_LENGTH,
             max_length=DEFAULT_KIND_MAX_LENGTH,
-            extra={"update": None},
-        ),
-        SchemaAttribute(
-            name="label",
-            kind="Text",
-            description="Human friendly representation of the name/kind",
-            optional=True,
-            max_length=DEFAULT_NAME_MAX_LENGTH,
-            extra={"update": None},
+            extra={"update": UpdateSupport.NOT_SUPPORTED},
         ),
         SchemaAttribute(
             name="description",
@@ -206,16 +241,25 @@ node_schema = SchemaNode(
             description="Short description of the model, will be visible in the frontend.",
             optional=True,
             max_length=DEFAULT_DESCRIPTION_LENGTH,
-            extra={"update": None},
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="label",
+            kind="Text",
+            description="Human friendly representation of the name/kind",
+            optional=True,
+            max_length=DEFAULT_NAME_MAX_LENGTH,
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="branch",
             kind="Text",
+            internal_kind=BranchSupportType,
             description="Type of branch support for the model.",
             enum=BranchSupportType.available_types(),
-            default_value=BranchSupportType.AWARE.value,
+            default_value=BranchSupportType.AWARE,
             optional=True,
-            extra={"update": None},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
         ),
         SchemaAttribute(
             name="default_filter",
@@ -223,101 +267,147 @@ node_schema = SchemaNode(
             regex=str(NAME_REGEX),
             description="Default filter used to search for a node in addition to its ID.",
             optional=True,
-            extra={"update": None},
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="display_labels",
             kind="List",
+            internal_kind=str,
             description="List of attributes to use to generate the display label",
             optional=True,
-            extra={"update": None},
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="include_in_menu",
             kind="Boolean",
             description="Defines if objects of this kind should be included in the menu.",
             default_value=True,
+            default_to_none=True,
             optional=True,
-            extra={"update": None},
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="menu_placement",
             kind="Text",
             description="Defines where in the menu this object should be placed.",
             optional=True,
-            extra={"update": None},
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="icon",
             kind="Text",
             description="Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/",
             optional=True,
-            extra={"update": None},
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="order_by",
             kind="List",
+            internal_kind=str,
             description="List of attributes to use to order the results by default",
             optional=True,
-            extra={"update": None},
+            extra={"update": UpdateSupport.ALLOWED},
         ),
+        SchemaAttribute(
+            name="uniqueness_constraints",
+            kind="List",
+            internal_kind=list[list[str]],
+            description="List of multi-element uniqueness constraints that can combine relationships and attributes",
+            optional=True,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="filters",
+            kind="List",
+            internal_kind=FilterSchema,
+            description="Node filters",
+            default_factory="list",
+            optional=True,
+            extra={"update": UpdateSupport.NOT_APPLICABLE},
+        ),
+        SchemaAttribute(
+            name="attributes",
+            kind="List",
+            internal_kind=AttributeSchema,
+            description="Node attributes",
+            default_factory="list",
+            optional=True,
+            extra={"update": UpdateSupport.NOT_APPLICABLE},
+        ),
+        SchemaAttribute(
+            name="relationships",
+            kind="List",
+            internal_kind=RelationshipSchema,
+            description="Node Relationships",
+            default_factory="list",
+            optional=True,
+            extra={"update": UpdateSupport.NOT_APPLICABLE},
+        ),
+    ],
+    relationships=[],
+)
+
+node_schema = SchemaNode(
+    name="Node",
+    namespace="Schema",
+    branch=BranchSupportType.AWARE.value,
+    include_in_menu=False,
+    default_filter="name__value",
+    display_labels=["label__value"],
+    attributes=base_node_schema.attributes
+    + [
         SchemaAttribute(
             name="inherit_from",
             kind="List",
+            internal_kind=str,
+            default_factory="list",
             description="List of Generic Kind that this node is inheriting from",
             optional=True,
-            extra={"update": None},
+            extra={"update": UpdateSupport.NOT_SUPPORTED},
         ),
         SchemaAttribute(
             name="hierarchy",
             kind="Text",
             description="Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode",
             optional=True,
-            extra={"update": None},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
             name="parent",
             kind="Text",
             description="Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined.",
             optional=True,
-            extra={"update": None},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
             name="children",
             kind="Text",
             description="Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.",
             optional=True,
-            extra={"update": None},
-        ),
-        SchemaAttribute(
-            name="uniqueness_constraints",
-            kind="List",
-            description="List of multi-element uniqueness constraints that can combine relationships and attributes",
-            optional=True,
-            extra={"update": None},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
     ],
     relationships=[
-        {
-            "name": "attributes",
-            "peer": "SchemaAttribute",
-            "kind": "Component",
-            "description": "List of supported Attributes for the Node.",
-            "identifier": "schema__node__attributes",
-            "cardinality": "many",
-            "branch": BranchSupportType.AWARE.value,
-            "optional": True,
-        },
-        {
-            "name": "relationships",
-            "peer": "SchemaRelationship",
-            "kind": "Component",
-            "description": "List of supported Relationships for the Node.",
-            "identifier": "schema__node__relationships",
-            "cardinality": "many",
-            "branch": BranchSupportType.AWARE.value,
-            "optional": True,
-        },
+        SchemaRelationship(
+            name="attributes",
+            peer="SchemaAttribute",
+            kind="Component",
+            description="List of supported Attributes for the Node.",
+            identifier="schema__node__attributes",
+            cardinality="many",
+            branch=BranchSupportType.AWARE.value,
+            optional=True,
+        ),
+        SchemaRelationship(
+            name="relationships",
+            peer="SchemaRelationship",
+            kind="Component",
+            description="List of supported Relationships for the Node.",
+            identifier="schema__node__relationships",
+            cardinality="many",
+            branch=BranchSupportType.AWARE.value,
+            optional=True,
+        ),
     ],
 )
 
@@ -463,15 +553,15 @@ attribute_schema = SchemaNode(
         ),
     ],
     relationships=[
-        {
-            "name": "node",
-            "peer": "SchemaNode",
-            "kind": "Parent",
-            "identifier": "schema__node__attributes",
-            "cardinality": "one",
-            "branch": BranchSupportType.AWARE.value,
-            "optional": False,
-        }
+        SchemaRelationship(
+            name="node",
+            peer="SchemaNode",
+            kind="Parent",
+            identifier="schema__node__attributes",
+            cardinality="one",
+            branch=BranchSupportType.AWARE.value,
+            optional=False,
+        )
     ],
 )
 
@@ -631,15 +721,15 @@ relationship_schema = SchemaNode(
         ),
     ],
     relationships=[
-        {
-            "name": "node",
-            "peer": "SchemaNode",
-            "kind": "Parent",
-            "identifier": "schema__node__relationships",
-            "cardinality": "one",
-            "branch": BranchSupportType.AWARE.value,
-            "optional": False,
-        }
+        SchemaRelationship(
+            name="node",
+            peer="SchemaNode",
+            kind="Parent",
+            identifier="schema__node__relationships",
+            cardinality="one",
+            branch=BranchSupportType.AWARE.value,
+            optional=False,
+        )
     ],
 )
 
@@ -650,135 +740,43 @@ generic_schema = SchemaNode(
     include_in_menu=False,
     default_filter="name__value",
     display_labels=["label__value"],
-    attributes=[
-        SchemaAttribute(
-            name="name",
-            kind="Text",
-            description="Generic name, must be unique within a namespace and must start with an uppercase letter.",
-            unique=True,
-            regex=str(NODE_NAME_REGEX),
-            min_length=DEFAULT_NAME_MIN_LENGTH,
-            max_length=DEFAULT_NAME_MAX_LENGTH,
-            extra={"update": None},
-        ),
-        SchemaAttribute(
-            name="namespace",
-            kind="Text",
-            description="Generic Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
-            regex=str(NAMESPACE_REGEX),
-            min_length=DEFAULT_KIND_MIN_LENGTH,
-            max_length=DEFAULT_KIND_MAX_LENGTH,
-            extra={"update": None},
-        ),
-        SchemaAttribute(
-            name="label",
-            kind="Text",
-            description="Human friendly representation of the name/kind",
-            optional=True,
-            max_length=32,
-            extra={"update": None},
-        ),
-        SchemaAttribute(
-            name="branch",
-            kind="Text",
-            description="Type of branch support for the model.",
-            enum=BranchSupportType.available_types(),
-            default_value=BranchSupportType.AWARE.value,
-            optional=True,
-            extra={"update": None},
-        ),
-        SchemaAttribute(
-            name="default_filter",
-            kind="Text",
-            description="Default filter used to search for a node in addition to its ID.",
-            regex=str(NAME_REGEX),
-            optional=True,
-            extra={"update": None},
-        ),
-        SchemaAttribute(
-            name="order_by",
-            kind="List",
-            description="List of attributes to use to order the results by default",
-            optional=True,
-            extra={"update": None},
-        ),
-        SchemaAttribute(
-            name="display_labels",
-            kind="List",
-            description="List of attributes to use to generate the display label",
-            optional=True,
-            extra={"update": None},
-        ),
-        SchemaAttribute(
-            name="include_in_menu",
-            kind="Boolean",
-            description="Defines if objects of this kind should be included in the menu.",
-            default_value=True,
-            optional=True,
-            extra={"update": None},
-        ),
-        SchemaAttribute(
-            name="menu_placement",
-            kind="Text",
-            description="Defines where in the menu this object should be placed.",
-            optional=True,
-            extra={"update": None},
-        ),
-        SchemaAttribute(
-            name="icon",
-            kind="Text",
-            description="Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/",
-            optional=True,
-            extra={"update": None},
-        ),
-        SchemaAttribute(
-            name="description",
-            kind="Text",
-            optional=True,
-            description="Short description of the Generic.",
-            max_length=DEFAULT_DESCRIPTION_LENGTH,
-            extra={"update": None},
-        ),
+    attributes=base_node_schema.attributes
+    + [
         SchemaAttribute(
             name="hierarchical",
             kind="Boolean",
             description="Defines if the Generic support the hierarchical mode.",
             optional=True,
             default_value=False,
-            extra={"update": None},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
             name="used_by",
             kind="List",
+            internal_kind=str,
+            default_factory="list",
             description="List of Nodes that are referencing this Generic",
             optional=True,
-            extra={"update": None},
-        ),
-        SchemaAttribute(
-            name="uniqueness_constraints",
-            kind="List",
-            description="List of multi-element uniqueness constraints that can combine relationships and attributes",
-            optional=True,
-            extra={"update": None},
+            extra={"update": UpdateSupport.NOT_APPLICABLE},
         ),
     ],
     relationships=[
-        {
-            "name": "attributes",
-            "peer": "SchemaAttribute",
-            "identifier": "schema__node__attributes",
-            "cardinality": "many",
-            "branch": BranchSupportType.AWARE.value,
-            "optional": True,
-        },
-        {
-            "name": "relationships",
-            "peer": "SchemaRelationship",
-            "identifier": "schema__node__relationships",
-            "cardinality": "many",
-            "branch": BranchSupportType.AWARE.value,
-            "optional": True,
-        },
+        SchemaRelationship(
+            name="attributes",
+            peer="SchemaAttribute",
+            identifier="schema__node__attributes",
+            cardinality="many",
+            branch=BranchSupportType.AWARE.value,
+            optional=True,
+        ),
+        SchemaRelationship(
+            name="relationships",
+            peer="SchemaRelationship",
+            identifier="schema__node__relationships",
+            cardinality="many",
+            branch=BranchSupportType.AWARE.value,
+            optional=True,
+        ),
     ],
 )
 
