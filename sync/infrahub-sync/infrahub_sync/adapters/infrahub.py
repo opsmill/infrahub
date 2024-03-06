@@ -8,6 +8,7 @@ from infrahub_sdk import (
     NodeSchema,
     NodeStoreSync,
 )
+from infrahub_sdk.exceptions import NodeNotFound
 from infrahub_sdk.utils import compare_lists
 
 from diffsync import DiffSync, DiffSyncModel
@@ -60,12 +61,11 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
         self.client = InfrahubClientSync(address=adapter.settings["url"], config=sdk_config)
 
         # We need to identify with an account until we have some auth in place
-        # remote_account = config.source.name
-        # try:
-        #     self.account = self.client.get(kind="CoreAccount", name__value=remote_account)
-        # except NodeNotFound:
-        #     self.account = self.client.create(kind="CoreAccount", name=remote_account, password="nopassword")
-        #     self.account.save()
+        remote_account = config.source.name
+        try:
+            self.account = self.client.get(kind="CoreAccount", name__value=remote_account)
+        except NodeNotFound:
+            self.account = None
 
     def model_loader(self, model_name: str, model):
         nodes = self.client.all(kind=model.__name__, populate_store=True)
@@ -152,9 +152,11 @@ class InfrahubModel(DiffSyncModelMixin, DiffSyncModel):
 
         data = diffsync_to_infrahub(ids=ids, attrs=attrs, schema=schema, store=diffsync.client.store)
         unique_id = cls(**ids, **attrs).get_unique_id()
-        source = diffsync.account
+        source_id = None
+        if diffsync.account:
+            source_id = diffsync.account.id
         create_data = diffsync.client.schema.generate_payload_create(
-            schema=schema, data=data, source=source.id, is_protected=True
+            schema=schema, data=data, source=source_id, is_protected=True
         )
         node = diffsync.client.create(kind=cls.__name__, data=create_data)
         node.save(allow_upsert=True)
