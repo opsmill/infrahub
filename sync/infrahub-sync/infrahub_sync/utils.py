@@ -5,10 +5,10 @@ from pathlib import Path
 from typing import List, MutableMapping, Optional, Tuple
 
 import yaml
-from diffsync.store.local import LocalStore
-from diffsync.store.redis import RedisStore
 from infrahub_sdk.schema import GenericSchema, NodeSchema
 
+from diffsync.store.local import LocalStore
+from diffsync.store.redis import RedisStore
 from infrahub_sync import SyncAdapter, SyncConfig, SyncInstance
 from infrahub_sync.generator import render_template
 from potenda import Potenda
