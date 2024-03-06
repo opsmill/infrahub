@@ -178,7 +178,7 @@ class ConstraintManagerBase:
         manager = cls(db=db)
 
         # Process the nodes first
-        for _, schema_item in schema["nodes"].items():
+        for schema_item in schema["nodes"].values():
             properties_class: BaseModel = schema_item.model_fields["properties"].annotation  # type: ignore[assignment]
             default_label = str(schema_item.model_fields["default_label"].default)
             for field_name, field in properties_class.model_fields.items():

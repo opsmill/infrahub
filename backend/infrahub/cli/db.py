@@ -2,6 +2,7 @@ import importlib
 import logging
 from asyncio import run as aiorun
 from enum import Enum
+from typing import Optional
 
 import typer
 from rich.console import Console
@@ -10,7 +11,7 @@ from rich.table import Table
 
 from infrahub import config
 from infrahub.core.graph import GRAPH_VERSION
-from infrahub.core.graph.constraints import ConstraintManagerMemgraph, ConstraintManagerNeo4j
+from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
 from infrahub.core.graph.schema import GRAPH_SCHEMA
 from infrahub.core.initialization import first_time_initialization, get_root_node, initialization
 from infrahub.core.migrations.graph import get_graph_migrations
@@ -118,10 +119,11 @@ async def _migrate(check: bool) -> None:
 async def _constraint(action: ConstraintAction) -> None:
     dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
 
+    manager: Optional[ConstraintManagerBase] = None
     if dbdriver.db_type == DatabaseType.NEO4J:
-        manager = ConstraintManagerNeo4j.from_graph_schema(db=dbdriver, schema=GRAPH_SCHEMA)  # type: ignore[arg-type,assignment]
+        manager = ConstraintManagerNeo4j.from_graph_schema(db=dbdriver, schema=GRAPH_SCHEMA)
     elif dbdriver.db_type == DatabaseType.MEMGRAPH:
-        manager = ConstraintManagerMemgraph.from_graph_schema(db=dbdriver, schema=GRAPH_SCHEMA)  # type: ignore[arg-type,assignment]
+        manager = ConstraintManagerMemgraph.from_graph_schema(db=dbdriver, schema=GRAPH_SCHEMA)
     else:
         print(f"Database type not supported : {dbdriver.db_type}")
         raise typer.Exit(1)
