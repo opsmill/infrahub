@@ -357,7 +357,9 @@ export default function ObjectItemDetails(props: any) {
         />
       )}
 
-      {qspTab && qspTab === TASK_TAB && !qspTaskId && <TaskItems ref={refetchRef} />}
+      {qspTab && qspTab === TASK_TAB && !qspTaskId && (
+        <TaskItems ref={refetchRef} hideRelatedNode />
+      )}
 
       {qspTab && qspTab === TASK_TAB && qspTaskId && (
         <div>
