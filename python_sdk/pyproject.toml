@@ -36,7 +36,6 @@ pendulum = [
 pyyaml = "^6"
 toml = "^0.10"
 gitpython = "^3"
-Jinja2 = "^3"
 rich = "^13"
 typer = "^0"
 ujson = "^5"
@@ -45,7 +44,8 @@ numpy = [
     { version = "^1.24.2", python = ">=3.8,<3.12" },
     { version = "^1.26.2", python = ">=3.12" }
 ]
-pytest = "*"
+Jinja2 = { version = "^3", optional = true }
+pytest = { version = "*", optional = true }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
@@ -67,6 +67,10 @@ typer-cli = "*"
 ruff = "^0.1.5"
 pytest-xdist = "^3.3.1"
 types-python-slugify = "^8.0.0.3"
+
+[tool.poetry.extras]
+ctl = ["Jinja2"]
+tests = ["pytest", "Jinja2"]
 
 [tool.poetry.scripts]
 infrahubctl = "infrahub_sdk.ctl.cli:app"
