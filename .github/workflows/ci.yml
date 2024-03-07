@@ -202,7 +202,7 @@ jobs:
       - name: Set Version of Pydantic
         run: poetry add pydantic@${{ matrix.pydantic-version }}
       - name: "Install Package"
-        run: "poetry install"
+        run: "poetry install --all-extras"
       - name: "Pylint Tests"
         run: "poetry run pylint infrahub_sdk/"
       - name: "Mypy Tests"
