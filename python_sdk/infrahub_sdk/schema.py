@@ -216,7 +216,7 @@ class AttributeSchema(pydantic.BaseModel):
     branch: Optional[BranchSupportType] = None
     optional: bool = False
     read_only: bool = False
-    choices: Optional[List[Dict[str, str]]] = None
+    choices: Optional[List[Dict[str, Any]]] = None
     enum: Optional[List[Union[str, int]]] = None
     max_length: Optional[int] = None
     min_length: Optional[int] = None
@@ -835,11 +835,27 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         branch = branch or self.client.default_branch
         url = f"{self.client.address}/api/schema/load?branch={branch}"
         response = self.client._post(
-            url=url, timeout=max(60, self.client.default_timeout), payload={"schemas": schemas}
+            url=url, timeout=max(120, self.client.default_timeout), payload={"schemas": schemas}
         )
 
         if response.status_code == httpx.codes.ACCEPTED:
             return True, None
+
+        if response.status_code == httpx.codes.UNPROCESSABLE_ENTITY:
+            return False, response.json()
+
+        response.raise_for_status()
+        return False, None
+
+    def check(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
+        branch = branch or self.client.default_branch
+        url = f"{self.client.address}/api/schema/check?branch={branch}"
+        response = self.client._post(
+            url=url, timeout=max(120, self.client.default_timeout), payload={"schemas": schemas}
+        )
+
+        if response.status_code == httpx.codes.ACCEPTED:
+            return True, response.json()
 
         if response.status_code == httpx.codes.UNPROCESSABLE_ENTITY:
             return False, response.json()
