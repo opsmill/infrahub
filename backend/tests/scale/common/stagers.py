@@ -45,6 +45,22 @@ def _stage_node(client: InfrahubClientSync, kind: str, prefix: str, amount: int,
 stage_infranode = partial(_stage_node, kind="InfraNode", prefix="Node")
 
 
+def _stage_node_update(client: InfrahubClientSync, kind: str, prefix: str, amount: int, offset: int = 0):
+    client.schema.get("InfraNode")
+    extra_attributes = prepare_node_attributes(client)
+
+    # Create base node
+    node = client.create(kind=kind, data={"name": f"{prefix}", **extra_attributes})
+    node.save()
+
+    for i in range(offset, offset + amount):
+        node.name.value = f"{prefix}{i}"
+        node.save()
+
+
+stage_infranode_update = partial(_stage_node_update, kind="InfraNode", prefix="Node")
+
+
 def _stage_branch(client: InfrahubClientSync, prefix: str, amount: int, offset: int = 0):
     extra_attributes = prepare_node_attributes(client)
 
