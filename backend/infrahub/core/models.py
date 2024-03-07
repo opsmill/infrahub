@@ -390,6 +390,18 @@ class HashableModel(BaseModel):
         return True
 
     @staticmethod
+    def _organize_sub_items(items: List[HashableModel], shared_ids: List[str]) -> Dict[Tuple[Any], HashableModel]:
+        """Convert a list of HashableModel into a dict with the sorting_id is the key, or the id if it was provided as part of the shared_ids"""
+        sub_items = {}
+        for item in items:
+            if item.id and item.id in shared_ids:
+                sub_items[(item.id,)] = item
+                continue
+            sub_items[item._sorting_id] = item
+
+        return sub_items
+
+    @staticmethod
     def update_list_hashable_model(
         field_name: str, attr_local: List[HashableModel], attr_other: List[HashableModel]
     ) -> List[Any]:
@@ -398,8 +410,14 @@ class HashableModel(BaseModel):
         we need to create a unique id based on the sorting keys
         and if we have 2 sub items with the same key we can merge them recursively with update()
         """
-        local_sub_items = {item._sorting_id: item for item in attr_local if hasattr(item, "_sorting_id")}
-        other_sub_items = {item._sorting_id: item for item in attr_other if hasattr(item, "_sorting_id")}
+
+        # Identify all nodes that are sharing a real IDs
+        local_sub_real_ids = [item.id for item in attr_local if item.id]
+        other_sub_real_ids = [item.id for item in attr_other if item.id]
+        shared_real_ids = intersection(list(local_sub_real_ids), list(other_sub_real_ids))
+
+        local_sub_items = HashableModel._organize_sub_items(items=attr_local, shared_ids=shared_real_ids)
+        other_sub_items = HashableModel._organize_sub_items(items=attr_other, shared_ids=shared_real_ids)
 
         new_list = []
 
