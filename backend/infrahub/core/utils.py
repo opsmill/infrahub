@@ -4,9 +4,9 @@ import re
 from inspect import isclass
 from typing import TYPE_CHECKING, List, Optional, Union
 
-from infrahub import config
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.models import NodeKind
+from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -37,7 +37,7 @@ async def add_relationship(
         "src_node_id": element_id_to_id(src_node_id),
         "dst_node_id": element_id_to_id(dst_node_id),
         "at": at.to_string(),
-        "branch": branch_name or config.SETTINGS.main.default_branch,
+        "branch": branch_name or registry.default_branch,
         "branch_level": branch_level or 1,
         "status": status.value,
     }

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from infrahub_sdk.utils import compare_lists, duplicates
 from pydantic import BaseModel
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.core import get_branch, get_branch_from_registry
 from infrahub.core.constants import (
     RESERVED_ATTR_GEN_NAMES,
@@ -36,6 +36,7 @@ from infrahub.core.models import (
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
+from infrahub.core.registry import registry
 from infrahub.core.schema import (
     AttributePathParsingError,
     AttributeSchema,
@@ -1082,7 +1083,7 @@ class SchemaManager(NodeManager):
         return self._cache[key]
 
     def set(self, name: str, schema: Union[NodeSchema, GenericSchema], branch: Optional[str] = None) -> int:
-        branch = branch or config.SETTINGS.main.default_branch
+        branch = branch or registry.default_branch
 
         if branch not in self._branches:
             self._branches[branch] = SchemaBranch(cache=self._cache, name=branch)
@@ -1110,7 +1111,7 @@ class SchemaManager(NodeManager):
             except SchemaNotFound:
                 pass
 
-        default_branch = config.SETTINGS.main.default_branch
+        default_branch = registry.default_branch
         return self._branches[default_branch].get(name=name, duplicate=duplicate)
 
     def get_node_schema(
@@ -1129,7 +1130,7 @@ class SchemaManager(NodeManager):
         if branch.name in self._branches:
             branch_name = branch.name
         else:
-            branch_name = config.SETTINGS.main.default_branch
+            branch_name = registry.default_branch
 
         return self._branches[branch_name].get_all()
 
@@ -1186,7 +1187,7 @@ class SchemaManager(NodeManager):
     def register_schema(self, schema: SchemaRoot, branch: Optional[str] = None) -> SchemaBranch:
         """Register all nodes, generics & groups from a SchemaRoot object into the registry."""
 
-        branch = branch or config.SETTINGS.main.default_branch
+        branch = branch or registry.default_branch
         schema_branch = self.get_schema_branch(name=branch)
         schema_branch.load_schema(schema=schema)
         schema_branch.process()

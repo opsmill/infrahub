@@ -38,6 +38,7 @@ from pydantic.v1 import BaseModel, Field
 from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.registry import registry
 from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
@@ -337,7 +338,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
     @property
     def default_branch(self) -> str:
-        return self.default_branch_name or config.SETTINGS.main.default_branch
+        return self.default_branch_name or registry.default_branch
 
     @property
     def log(self) -> InfrahubTaskReportLogger:
@@ -358,7 +359,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     @property
     def directory_default(self) -> str:
         """Return the path to the directory of the main branch."""
-        return os.path.join(self.directory_root, config.SETTINGS.main.default_branch)
+        return os.path.join(self.directory_root, registry.default_branch)
 
     @property
     def directory_branches(self) -> str:

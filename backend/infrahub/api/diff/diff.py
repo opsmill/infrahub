@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Dict, Optional, Tuple
 from fastapi import APIRouter, Depends, Request
 from infrahub_sdk.utils import compare_lists
 
-from infrahub import config
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
@@ -129,7 +128,7 @@ async def get_diff_artifacts(
 ) -> Dict[str, BranchDiffArtifact]:
     response = {}
 
-    default_branch_name = config.SETTINGS.main.default_branch
+    default_branch_name = registry.default_branch
     # Query the Diff for all artifacts
     diff = await BranchDiffer.init(
         db=db,
