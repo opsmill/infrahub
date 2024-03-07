@@ -24,7 +24,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { useAuth } from "../../hooks/useAuth";
 import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
-import UnlinkIcon from "../../images/icons/unlink.svg";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -374,7 +373,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             setShowRelationMetaEditModal(true);
                           }}>
                           <MetaDetailsTooltip
-                            position="LEFT"
                             items={[
                               {
                                 label: "Updated at",
@@ -426,7 +424,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             setRelatedRowToDelete(node);
                           }}
                           data-cy="relationship-delete-button">
-                          <img src={UnlinkIcon} className="w-4 h-4" />
+                          <Icon icon="mdi:link-variant-remove" className="text-base text-red-600" />
                         </Button>
                       </td>
                     </tr>

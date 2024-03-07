@@ -27,6 +27,7 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "./conversations";
 import { ProposedChange } from "./proposed-changes-item";
+import Content from "../layout/content";
 
 export const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);
@@ -102,7 +103,7 @@ export const ProposedChanges = () => {
   const formStructure = getFormStructure(branchesOptionsSortedByCreatedAt, reviewersOptions);
 
   return (
-    <div>
+    <Content>
       <div className="bg-white flex items-center justify-between p-4 w-full">
         <div className="flex items-center">
           <h1 className="text-base font-semibold">Proposed changes ({count})</h1>
@@ -168,6 +169,6 @@ export const ProposedChanges = () => {
           customObject={customObject}
         />
       </SlideOver>
-    </div>
+    </Content>
   );
 };
