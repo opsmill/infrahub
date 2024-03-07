@@ -24,7 +24,7 @@ from infrahub.exceptions import (
 )
 from infrahub.message_bus import messages
 
-from .diff import BranchDiffer, DataConflict
+from .diff.branch_differ import BranchDiffer
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -32,6 +32,8 @@ if TYPE_CHECKING:
     from infrahub.core.schema_manager import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
+
+    from .diff.model import DataConflict
 
 
 class BranchMerger:

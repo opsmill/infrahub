@@ -293,7 +293,7 @@ class SchemaBranch:
         }
 
     def get_namespaces(self, include_internal: bool = False) -> List[SchemaNamespace]:
-        all_schemas = self.get_all(include_internal=include_internal)
+        all_schemas = self.get_all(include_internal=include_internal, duplicate=False)
         namespaces: Dict[str, SchemaNamespace] = {}
         for schema in all_schemas.values():
             if schema.namespace in namespaces:
@@ -308,7 +308,7 @@ class SchemaBranch:
         self, namespaces: Optional[List[str]] = None, include_internal: bool = False
     ) -> List[Union[NodeSchema, GenericSchema]]:
         """Retrive everything in a single dictionary."""
-        all_schemas = self.get_all(include_internal=include_internal)
+        all_schemas = self.get_all(include_internal=include_internal, duplicate=False)
         if namespaces:
             return [schema for schema in all_schemas.values() if schema.namespace in namespaces]
         return list(all_schemas.values())

@@ -2,7 +2,7 @@ from typing import List
 
 import infrahub.core.constants.infrahubkind as InfrahubKind
 from infrahub.core.constants import ValidatorConclusion, ValidatorState
-from infrahub.core.diff import ObjectConflict
+from infrahub.core.diff.model import ObjectConflict
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp

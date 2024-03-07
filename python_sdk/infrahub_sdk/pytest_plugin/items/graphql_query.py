@@ -44,7 +44,7 @@ class InfrahubGraphQLQueryItem(InfrahubItem):
 
 class InfrahubGraphQLQuerySmokeItem(InfrahubGraphQLQueryItem):
     def runtest(self) -> None:
-        query = self.test.spec.path.read_text()  # type: ignore[attr-defined,union-attr]
+        query = (self.session.infrahub_config_path.parent / self.test.spec.path).read_text()  # type: ignore[attr-defined,union-attr]
         GraphQLQueryAnalyzer(query)
 
 

@@ -17,16 +17,11 @@ from infrahub.core.constants import (
     DEFAULT_KIND_MIN_LENGTH,
     DEFAULT_NAME_MAX_LENGTH,
     DEFAULT_NAME_MIN_LENGTH,
-    DEFAULT_REL_IDENTIFIER_LENGTH,
-    NAME_REGEX,
     NODE_KIND_REGEX,
     NODE_NAME_REGEX,
     RESTRICTED_NAMESPACES,
     BranchSupportType,
-    FilterSchemaKind,  # noqa: TCH001
-    RelationshipCardinality,
     RelationshipDirection,
-    RelationshipKind,
     UpdateSupport,
 )
 from infrahub.core.enums import generate_python_enum
@@ -39,7 +34,9 @@ from infrahub.types import ATTRIBUTE_KIND_LABELS, ATTRIBUTE_TYPES
 from .definitions.core import core_models
 from .definitions.internal import internal
 from .dropdown import DropdownChoice
+from .filter import FilterSchema
 from .generated.attribute_schema import GeneratedAttributeSchema
+from .generated.relationship_schema import GeneratedRelationshipSchema
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -162,16 +159,6 @@ class AttributePathParsingError(Exception):
     ...
 
 
-class FilterSchema(HashableModel):
-    name: str
-    kind: FilterSchemaKind
-    enum: Optional[List] = None
-    object_kind: Optional[str] = None
-    description: Optional[str] = None
-
-    _sort_by: List[str] = ["name"]
-
-
 class BaseNodeSchema(HashableModel):  # pylint: disable=too-many-public-methods
     id: Optional[str] = None
     name: str = Field(
@@ -284,13 +271,6 @@ class BaseNodeSchema(HashableModel):  # pylint: disable=too-many-public-methods
             node_diff.changed["relationships"] = rels_diff
 
         return node_diff
-
-    def with_public_relationships(self) -> Self:
-        duplicate = self.duplicate()
-        duplicate.relationships = [
-            relationship for relationship in self.relationships if not relationship.internal_peer
-        ]
-        return duplicate
 
     def get_field(self, name: str, raise_on_error: bool = True) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
         if field := self.get_attribute(name, raise_on_error=False):
@@ -495,53 +475,7 @@ class QueryArrows(BaseModel):
     right: QueryArrow
 
 
-class RelationshipSchema(HashableModel):
-    id: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value})
-    name: str = Field(
-        pattern=NAME_REGEX,
-        min_length=DEFAULT_NAME_MIN_LENGTH,
-        max_length=DEFAULT_NAME_MAX_LENGTH,
-        json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value},
-    )
-    peer: str = Field(
-        pattern=NODE_KIND_REGEX,
-        min_length=DEFAULT_KIND_MIN_LENGTH,
-        max_length=DEFAULT_KIND_MAX_LENGTH,
-        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
-    )
-    kind: RelationshipKind = Field(
-        default=RelationshipKind.GENERIC, json_schema_extra={"update": UpdateSupport.ALLOWED.value}
-    )
-    direction: RelationshipDirection = Field(
-        default=RelationshipDirection.BIDIR, json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value}
-    )
-    label: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
-    description: Optional[str] = Field(
-        default=None, max_length=DEFAULT_DESCRIPTION_LENGTH, json_schema_extra={"update": UpdateSupport.ALLOWED.value}
-    )
-    identifier: Optional[str] = Field(
-        default=None,
-        max_length=DEFAULT_REL_IDENTIFIER_LENGTH,
-        json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value},
-    )
-    inherited: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value})
-    cardinality: RelationshipCardinality = Field(
-        default=RelationshipCardinality.MANY, json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value}
-    )
-    branch: Optional[BranchSupportType] = Field(
-        default=None, json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value}
-    )
-    optional: bool = Field(default=True, json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value})
-    hierarchical: Optional[str] = Field(
-        default=None, json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value}
-    )
-    filters: List[FilterSchema] = Field(
-        default_factory=list, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value}
-    )
-    order_weight: Optional[int] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
-    min_count: int = Field(default=0, json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value})
-    max_count: int = Field(default=0, json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value})
-
+class RelationshipSchema(GeneratedRelationshipSchema):
     _exclude_from_hash: List[str] = ["filters"]
     _sort_by: List[str] = ["name"]
 
