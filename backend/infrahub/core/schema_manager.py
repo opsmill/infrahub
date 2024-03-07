@@ -375,22 +375,24 @@ class SchemaBranch:
 
     def generate_identifiers(self) -> None:
         """Generate the identifier for all relationships if it's not already present."""
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name)
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+            rels_missing_identifier = [rel.name for rel in node.relationships if rel.identifier is None]
+            if not rels_missing_identifier:
+                continue
 
+            node = self.get(name=name)
             for rel in node.relationships:
                 if rel.identifier:
                     continue
-
                 rel.identifier = str("__".join(sorted([node.kind, rel.peer]))).lower()
-
             self.set(name=name, schema=node)
 
     def validate_identifiers(self) -> None:
         """Validate that all relationships have a unique identifier for a given model."""
         # Organize all the relationships per identifier and node
         rels_per_identifier: Dict[str, Dict[str, List[RelationshipSchema]]] = defaultdict(lambda: defaultdict(list))
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+        for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
             for rel in node.relationships:
@@ -482,7 +484,7 @@ class SchemaBranch:
     def validate_uniqueness_constraints(self) -> None:
         full_schema_objects = self.to_dict_schema_object()
         schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+        for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.uniqueness_constraints:
@@ -501,7 +503,7 @@ class SchemaBranch:
     def validate_display_labels(self) -> None:
         full_schema_objects = self.to_dict_schema_object()
         schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+        for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.display_labels:
@@ -515,7 +517,7 @@ class SchemaBranch:
     def validate_order_by(self) -> None:
         full_schema_objects = self.to_dict_schema_object()
         schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+        for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.order_by:
@@ -534,7 +536,7 @@ class SchemaBranch:
     def validate_default_filters(self) -> None:
         full_schema_objects = self.to_dict_schema_object()
         schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+        for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.default_filter:
@@ -545,7 +547,7 @@ class SchemaBranch:
             )
 
     def validate_names(self) -> None:
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+        for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
             if names_dup := duplicates(node.attribute_names + node.relationship_names):
@@ -592,7 +594,7 @@ class SchemaBranch:
 
             for generic_kind in node.inherit_from:
                 if self.has(name=generic_kind):
-                    if not isinstance(self.get(name=generic_kind), GenericSchema):
+                    if not isinstance(self.get(name=generic_kind, duplicate=False), GenericSchema):
                         raise ValueError(
                             f"{node.kind}: Only generic model can be used as part of inherit_from, {generic_kind!r} is not a valid entry."
                         ) from None
@@ -611,15 +613,15 @@ class SchemaBranch:
 
     def validate_count_against_cardinality(self) -> None:
         """Validate every RelationshipSchema cardinality against the min_count and max_count."""
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name)
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
 
             for rel in node.relationships:
                 if rel.cardinality == RelationshipCardinality.ONE:
                     if not rel.optional and (rel.min_count != 1 or rel.max_count != 1):
                         raise ValueError(
                             f"{node.kind}: Relationship {rel.name!r} is defined as cardinality.ONE but min_count or max_count are not 1"
-                        ) from None
+                        )
                 elif rel.cardinality == RelationshipCardinality.MANY:
                     if rel.max_count and rel.min_count > rel.max_count:
                         raise ValueError(
@@ -631,12 +633,16 @@ class SchemaBranch:
                         )
 
     def process_dropdowns(self) -> None:
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name)
-
-            changed = False
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
 
             attributes = [attr for attr in node.attributes if attr.kind == "Dropdown"]
+            if not attributes:
+                continue
+
+            node = self.get(name=name)
+            changed = False
+
             for attr in attributes:
                 if not attr.choices:
                     continue
@@ -659,31 +665,37 @@ class SchemaBranch:
                 self.set(name=name, schema=node)
 
     def process_labels(self) -> None:
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+        def check_if_need_to_update_label(node) -> bool:
+            if not node.label:
+                return True
+            for item in node.relationships + node.attributes:
+                if not item.label:
+                    return True
+            return False
+
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            if not check_if_need_to_update_label(node):
+                continue
+
             node = self.get(name=name)
-
-            changed = False
-
             if not node.label:
                 node.label = format_label(node.name)
-                changed = True
 
             for attr in node.attributes:
                 if not attr.label:
                     attr.label = format_label(attr.name)
-                    changed = True
 
             for rel in node.relationships:
                 if not rel.label:
                     rel.label = format_label(rel.name)
-                    changed = True
 
-            if changed:
-                self.set(name=name, schema=node)
+            self.set(name=name, schema=node)
 
     def process_hierarchy(self) -> None:
         for name in self.nodes.keys():
-            node = self.get(name=name)
+            node = self.get(name=name, duplicate=False)
 
             if not node.hierarchy and not node.parent and not node.children:
                 continue
@@ -691,10 +703,12 @@ class SchemaBranch:
             if not node.hierarchy and (node.parent is not None or node.children is not None):
                 raise ValueError(f"{node.kind} Hierarchy must be provided if either parent or children is defined.")
 
-            changed = False
             if node.hierarchy not in self.generics.keys():
                 # TODO add a proper exception for all schema related issue
                 raise ValueError(f"{node.kind} Unable to find the generic {node.hierarchy!r} provided in 'hierarchy'.")
+
+            node = self.get(name=name)
+            changed = False
 
             if node.hierarchy not in node.inherit_from:
                 node.inherit_from.append(node.hierarchy)
@@ -768,7 +782,7 @@ class SchemaBranch:
 
         if either node on a relationship support branch, the relationship must be branch aware.
         """
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+        for name in self.all_names:
             node = self.get(name=name)
 
             for attr in node.attributes:
@@ -793,26 +807,27 @@ class SchemaBranch:
 
     def process_default_values(self) -> None:
         """Ensure that all attributes with a default value are flagged as optional: True."""
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            attrs_to_update = [attr for attr in node.attributes if attr.default_value is not None and not attr.optional]
+            if not attrs_to_update:
+                continue
+
             node = self.get(name=name)
-
-            for attr in node.attributes:
-                if attr.default_value is None:
-                    continue
-
-                if attr.default_value is not None and not attr.optional:
-                    attr.optional = True
+            for attr in attrs_to_update:
+                attr.optional = True
 
             self.set(name=name, schema=node)
 
     def process_filters(self) -> Node:
         # Generate the filters for all nodes and generics, at the NodeSchema and at the relationships level.
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+        for name in self.all_names:
             node = self.get(name=name)
             node.filters = self.generate_filters(schema=node, include_relationships=True)
 
             for rel in node.relationships:
-                peer_schema = self.get(name=rel.peer)
+                peer_schema = self.get(name=rel.peer, duplicate=False)
                 if not peer_schema:
                     continue
 
@@ -822,49 +837,60 @@ class SchemaBranch:
 
     def process_cardinality_counts(self) -> None:
         """Ensure that all relationships with a cardinality of ONE have a min_count and max_count of 1."""
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            rels_to_update = [
+                rel
+                for rel in node.relationships
+                if rel.cardinality == RelationshipCardinality.ONE
+                and (
+                    (rel.optional and (rel.min_count != 0 or rel.max_count != 1))
+                    or (not rel.optional and (rel.min_count == 0 or rel.max_count == 0))
+                )
+            ]
+
+            if not rels_to_update:
+                continue
+
             node = self.get(name=name)
 
-            changed = False
-            for rel in node.relationships:
-                if rel.cardinality == RelationshipCardinality.ONE:
-                    # Handle default values of RelationshipSchema when cardinality is ONE and set to valid values (1)
-                    # RelationshipSchema default values 0 for min_count and max_count
-                    if rel.optional and rel.min_count != 0:
-                        rel.min_count = 0
-                        changed = True
-                    if rel.optional and rel.max_count != 1:
-                        rel.max_count = 1
-                        changed = True
-                    if not rel.optional and rel.min_count == 0:
-                        rel.min_count = 1
-                        changed = True
-                    if not rel.optional and rel.max_count == 0:
-                        rel.max_count = 1
-                        changed = True
+            for rel in rels_to_update:
+                if rel.cardinality != RelationshipCardinality.ONE:
+                    continue
+                # Handle default values of RelationshipSchema when cardinality is ONE and set to valid values (1)
+                # RelationshipSchema default values 0 for min_count and max_count
+                if rel.optional and rel.min_count != 0:
+                    rel.min_count = 0
+                if rel.optional and rel.max_count != 1:
+                    rel.max_count = 1
+                if not rel.optional and rel.min_count == 0:
+                    rel.min_count = 1
+                if not rel.optional and rel.max_count == 0:
+                    rel.max_count = 1
 
-            if changed:
-                self.set(name=name, schema=node)
+            self.set(name=name, schema=node)
 
     def generate_weight(self):
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name)
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+            items_to_update = [item for item in node.attributes + node.relationships if not item.order_weight]
+            if not items_to_update:
+                continue
+
             current_weight = 0
-            changed = False
             for item in node.attributes + node.relationships:
                 current_weight += 1000
                 if not item.order_weight:
                     item.order_weight = current_weight
-                    changed = True
 
-            if changed:
-                self.set(name=name, schema=node)
+            self.set(name=name, schema=node)
 
     def add_groups(self):
         if not self.has(name=InfrahubKind.GENERICGROUP):
             return
 
-        for node_name in list(self.nodes.keys()) + list(self.generics.keys()):
+        for node_name in self.all_names:
             schema: Union[NodeSchema, GenericSchema] = self.get(name=node_name)
 
             if isinstance(schema, NodeSchema) and InfrahubKind.GENERICGROUP in schema.inherit_from:
@@ -901,10 +927,12 @@ class SchemaBranch:
 
     def add_hierarchy(self):
         for node_name in self.nodes.keys():
-            node: NodeSchema = self.get(name=node_name)
+            node: NodeSchema = self.get(name=node_name, duplicate=False)
 
             if node.parent is None and node.children is None:
                 continue
+
+            node: NodeSchema = self.get(name=node_name)
 
             if node.parent and "parent" not in node.relationship_names:
                 node.relationships.append(
