@@ -571,9 +571,12 @@ class SchemaBranch:
             node = self.get(name=name, duplicate=False)
             if node.menu_placement:
                 try:
-                    self.get(name=node.menu_placement, duplicate=False)
+                    placement_node = self.get(name=node.menu_placement, duplicate=False)
                 except SchemaNotFound:
                     raise ValueError(f"{node.kind}: {node.menu_placement} is not a valid menu placement") from None
+
+                if node == placement_node:
+                    raise ValueError(f"{node.kind}: cannot be placed under itself in the menu") from None
 
     def validate_kinds(self) -> None:
         for name in list(self.nodes.keys()):
