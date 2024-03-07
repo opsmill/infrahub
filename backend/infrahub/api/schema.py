@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from pydantic import BaseModel, Field, model_validator
@@ -8,15 +8,16 @@ from starlette.responses import JSONResponse
 
 from infrahub import config, lock
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
+from infrahub.api.exceptions import SchemaNotValid
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.migrations.schema.runner import schema_migrations_runner
 from infrahub.core.models import SchemaBranchHash  # noqa: TCH001
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
-from infrahub.core.schema_manager import SchemaNamespace  # noqa: TCH001
+from infrahub.core.schema_manager import SchemaBranch, SchemaNamespace, SchemaUpdateValidationResult  # noqa: TCH001
 from infrahub.core.validators.checker import schema_validators_checker
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
-from infrahub.exceptions import PermissionDeniedError, SchemaNotFound
+from infrahub.exceptions import PermissionDeniedError
 from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
@@ -80,6 +81,25 @@ class SchemasLoadAPI(SchemaRoot):
     schemas: List[SchemaLoadAPI]
 
 
+def evaluate_candidate_schemas(
+    branch_schema: SchemaBranch, schemas_to_evaluate: SchemasLoadAPI
+) -> Tuple[SchemaBranch, SchemaUpdateValidationResult]:
+    candidate_schema = branch_schema.duplicate()
+    try:
+        for schema in schemas_to_evaluate.schemas:
+            candidate_schema.load_schema(schema=schema)
+        candidate_schema.process()
+    except ValueError as exc:
+        raise SchemaNotValid(message=str(exc)) from exc
+
+    result = branch_schema.validate_update(other=candidate_schema)
+
+    if result.errors:
+        raise SchemaNotValid(message=", ".join([error.to_string() for error in result.errors]))
+
+    return candidate_schema, result
+
+
 @router.get("")
 @router.get("/")
 async def get_schema(
@@ -139,13 +159,13 @@ async def get_schema_by_kind(
 
 
 @router.post("/load")
-async def load_schema(  # noqa: PLR0911 pylint: disable=R0911,too-many-branches,too-many-statements
+async def load_schema(
     request: Request,
     schemas: SchemasLoadAPI,
     background_tasks: BackgroundTasks,
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
-    _: Union[str, list] = Depends(get_current_user),
+    _: Any = Depends(get_current_user),
 ) -> JSONResponse:
     service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)
@@ -160,26 +180,7 @@ async def load_schema(  # noqa: PLR0911 pylint: disable=R0911,too-many-branches,
     async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
 
-        # ----------------------------------------------------------
-        # Validate if the format of the new schema is valid
-        # ----------------------------------------------------------
-        # We create a copy of the existing branch schema to do some validation before loading it.
-        candidate_schema = branch_schema.duplicate()
-        try:
-            for schema in schemas.schemas:
-                candidate_schema.load_schema(schema=schema)
-            candidate_schema.process()
-        except SchemaNotFound as exc:
-            return JSONResponse(status_code=422, content={"error": exc.message})
-        except ValueError as exc:
-            return JSONResponse(status_code=422, content={"error": str(exc)})
-
-        result = branch_schema.validate_update(other=candidate_schema)
-
-        if result.errors:
-            return JSONResponse(
-                status_code=422, content={"error": ", ".join([error.to_string() for error in result.errors])}
-            )
+        candidate_schema, result = evaluate_candidate_schemas(branch_schema=branch_schema, schemas_to_evaluate=schemas)
 
         if not result.diff.all:
             return JSONResponse(status_code=202, content={})
@@ -191,7 +192,7 @@ async def load_schema(  # noqa: PLR0911 pylint: disable=R0911,too-many-branches,
             branch=branch, schema=candidate_schema, constraints=result.constraints, service=service
         )
         if error_messages:
-            return JSONResponse(status_code=422, content={"error": ",\n".join(error_messages)})
+            raise SchemaNotValid(message=",\n".join(error_messages))
 
         # ----------------------------------------------------------
         # Update the schema
@@ -227,3 +228,34 @@ async def load_schema(  # noqa: PLR0911 pylint: disable=R0911,too-many-branches,
             background_tasks.add_task(services.send, message)
 
     return JSONResponse(status_code=202, content={})
+
+
+@router.post("/check")
+async def check_schema(
+    schemas: SchemasLoadAPI,
+    branch: Branch = Depends(get_branch_dep),
+    _: Any = Depends(get_current_user),
+) -> JSONResponse:
+    log.info("schema_check_request", branch=branch.name)
+
+    errors: List[str] = []
+    for schema in schemas.schemas:
+        errors += schema.validate_namespaces()
+
+    if errors:
+        raise PermissionDeniedError(", ".join(errors))
+
+    branch_schema = registry.schema.get_schema_branch(name=branch.name)
+
+    _, result = evaluate_candidate_schemas(branch_schema=branch_schema, schemas_to_evaluate=schemas)
+
+    # ----------------------------------------------------------
+    # Validate if the new schema is valid with the content of the database
+    # ----------------------------------------------------------
+    # error_messages, _ = await schema_validators_checker(
+    #     branch=branch, schema=candidate_schema, constraints=result.constraints, service=service
+    # )
+    # if error_messages:
+    #     raise SchemaNotValid(message=",\n".join(error_messages))
+
+    return JSONResponse(status_code=202, content={"diff": result.diff.model_dump()})
