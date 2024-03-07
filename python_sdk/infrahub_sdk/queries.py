@@ -17,7 +17,7 @@ def get_commit_update_mutation(is_read_only: bool = False) -> str:
 
 
 QUERY_RELATIONSHIPS = """
-    query GetRelationships($relationship_identifiers: [String]) {
+    query GetRelationships($relationship_identifiers: [String!]!) {
         Relationship(ids: $relationship_identifiers) {
             count
             edges {

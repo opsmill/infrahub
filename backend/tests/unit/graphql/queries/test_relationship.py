@@ -18,7 +18,7 @@ async def test_relationship(
 ):
     query = """
     query (
-        $relationship_identifiers: [String]
+        $relationship_identifiers: [String!]!
     ) {
         Relationship(ids: $relationship_identifiers) {
             count
