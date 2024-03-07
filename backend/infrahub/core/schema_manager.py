@@ -567,6 +567,8 @@ class SchemaBranch:
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
 
     def validate_menu_placements(self) -> None:
+        menu_placements: Dict[str, str] = {}
+
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
             node = self.get(name=name, duplicate=False)
             if node.menu_placement:
@@ -577,6 +579,11 @@ class SchemaBranch:
 
                 if node == placement_node:
                     raise ValueError(f"{node.kind}: cannot be placed under itself in the menu") from None
+
+                if menu_placements.get(placement_node.kind) == node.kind:
+                    raise ValueError(f"{node.kind}: cyclic menu placement with {placement_node.kind}") from None
+
+                menu_placements[node.kind] = placement_node.kind
 
     def validate_kinds(self) -> None:
         for name in list(self.nodes.keys()):

@@ -816,6 +816,43 @@ async def test_schema_branch_validate_same_node_menu_placement():
     assert str(exc.value) == "TestSubObject: cannot be placed under itself in the menu"
 
 
+async def test_schema_branch_validate_cyclic_menu_placement():
+    """Validate that menu placements points to objects that exists in the schema."""
+    FULL_SCHEMA = {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Test",
+                "menu_placement": "TestSubObject",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+            },
+            {
+                "name": "SubObject",
+                "namespace": "Test",
+                "menu_placement": "TestCriticality",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+            },
+        ],
+    }
+
+    schema = SchemaBranch(cache={})
+    schema.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_menu_placements()
+
+    assert str(exc.value) == "TestCriticality: cyclic menu placement with TestSubObject"
+
+
 @pytest.mark.parametrize(
     "uniqueness_constraints",
     [
