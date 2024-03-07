@@ -181,7 +181,7 @@ export default function ObjectItemDetails(props: any) {
   }
 
   return (
-    <Content className="bg-custom-white divide-y">
+    <Content>
       {!hideHeaders && (
         <div className="bg-custom-white">
           <div className="px-4 py-5 flex items-center">
@@ -233,7 +233,7 @@ export default function ObjectItemDetails(props: any) {
       )}
 
       {!qspTab && (
-        <>
+        <dl className="bg-custom-white divide-y">
           <ObjectAttributeRow name="ID" value={objectDetailsData.id} />
           {attributes?.map((attribute) => {
             if (
@@ -345,7 +345,7 @@ export default function ObjectItemDetails(props: any) {
               />
             );
           })}
-        </>
+        </dl>
       )}
 
       {qspTab && qspTab !== TASK_TAB && (

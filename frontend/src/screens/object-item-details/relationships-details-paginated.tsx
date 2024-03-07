@@ -131,7 +131,7 @@ export const RelationshipsDetails = forwardRef((props: RelationshipsDetailsProps
   const relationshipsData = data[objectname]?.edges[0]?.node[relationshipTab]?.edges;
 
   return (
-    <div className="border-t border-gray-200 px-4 py-5 sm:p-0 flex flex-col flex-1 overflow-auto">
+    <div>
       <RelationshipDetails
         parentNode={parentNode}
         mode="TABLE"

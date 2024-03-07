@@ -374,7 +374,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             setShowRelationMetaEditModal(true);
                           }}>
                           <MetaDetailsTooltip
-                            position="LEFT"
                             items={[
                               {
                                 label: "Updated at",

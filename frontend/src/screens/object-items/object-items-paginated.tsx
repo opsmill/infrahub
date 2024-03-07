@@ -217,7 +217,7 @@ export default function ObjectItems(props: any) {
       {loading && !rows && <LoadingScreen />}
 
       {rows && (
-        <div>
+        <div className="overflow-auto">
           <table className="table-auto border-spacing-0 w-full">
             <thead className="bg-gray-50 text-left border-b border-gray-300">
               <tr>
