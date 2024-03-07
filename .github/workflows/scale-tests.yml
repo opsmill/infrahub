@@ -35,10 +35,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - node-amount: 10000
-            attrs-amount: 0
-            rels-amount: 0
-            stager: stage_infranode
+          # - node-amount: 10000
+          #   attrs-amount: 0
+          #   rels-amount: 0
+          #   stager: stage_infranode
           # - node-amount: 10
           #   attrs-amount: 100
           #   rels-amount: 0
@@ -47,13 +47,21 @@ jobs:
           #   attrs-amount: 0
           #   rels-amount: 100
           #   stager: stage_infranode
-          # - node-amount: 600
+          # - node-amount: 1000
           #   attrs-amount: 0
           #   rels-amount: 0
           #   stager: stage_branch
+          # - node-amount: 1000
+          #   attrs-amount: 0
+          #   rels-amount: 0
+          #   stager: stage_branch_update
+          - node-amount: 1000
+            attrs-amount: 0
+            rels-amount: 0
+            stager: stage_infranode_update
     runs-on:
       group: huge-runners
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
       INFRAHUB_DB_TYPE: neo4j
       METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
