@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from graphene import Field, Int, List, ObjectType, String
+from graphene import Field, Int, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.core.query.relationship import RelationshipGetByIdentifierQuery
@@ -22,14 +22,11 @@ class Relationships(ObjectType):
     async def resolve(
         root: dict,  # pylint: disable=unused-argument
         info: GraphQLResolveInfo,
+        ids: List[str],
         limit: int = 10,
         offset: int = 0,
-        ids: Optional[List[str]] = None,
         excluded_namespaces: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
-        if not ids:
-            raise ValueError("Relationship identifiers (ids) must be a non-empty list")
-
         context: GraphqlContext = info.context
 
         fields = await extract_fields_first_node(info)
@@ -80,6 +77,6 @@ Relationship = Field(
     resolver=Relationships.resolve,
     limit=Int(required=False),
     offset=Int(required=False),
-    ids=List(String),
+    ids=List(NonNull(String), required=True),
     excluded_namespaces=List(String),
 )
