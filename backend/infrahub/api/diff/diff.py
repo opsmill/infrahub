@@ -31,7 +31,6 @@ from .validation_models import DiffQueryValidated
 if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
 
-# pylint: disable=too-many-branches,too-many-lines
 
 router = APIRouter(prefix="/diff")
 
@@ -117,6 +116,7 @@ async def get_diff_files(
     return response
 
 
+# pylint: disable=too-many-branches
 @router.get("/artifacts")
 async def get_diff_artifacts(
     db: InfrahubDatabase = Depends(get_db),
