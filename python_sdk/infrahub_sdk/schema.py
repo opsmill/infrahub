@@ -206,6 +206,8 @@ class SchemaState(str, Enum):
 
 
 class AttributeSchema(pydantic.BaseModel):
+    id: Optional[str] = None
+    state: SchemaState = SchemaState.PRESENT
     name: str
     kind: str
     label: Optional[str] = None
@@ -225,7 +227,7 @@ class AttributeSchema(pydantic.BaseModel):
 
 class RelationshipSchema(pydantic.BaseModel):
     id: Optional[str] = None
-    state: Optional[SchemaState] = None
+    state: SchemaState = SchemaState.PRESENT
     name: str
     peer: str
     kind: RelationshipKind = RelationshipKind.GENERIC
@@ -241,7 +243,7 @@ class RelationshipSchema(pydantic.BaseModel):
 
 class BaseNodeSchema(pydantic.BaseModel):
     id: Optional[str] = None
-    state: Optional[SchemaState] = None
+    state: SchemaState = SchemaState.PRESENT
     name: str
     label: Optional[str] = None
     namespace: str
