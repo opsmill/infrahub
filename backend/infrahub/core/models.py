@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Self
 
 from infrahub.core.constants import (
+    HashableModelState,
     SchemaPathType,
     UpdateSupport,
     UpdateValidationErrorType,
@@ -276,6 +277,10 @@ class HashableModelDiff(BaseModel):
 
 class HashableModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+    id: Optional[str] = None
+    state: HashableModelState = HashableModelState.PRESENT
+
     _exclude_from_hash: List[str] = []
     _sort_by: List[str] = []
 
@@ -371,7 +376,7 @@ class HashableModel(BaseModel):
         return self.model_copy(deep=True)
 
     @staticmethod
-    def is_list_composed_of_schema_model(items: List[Any]) -> bool:
+    def is_list_composed_of_hashable_model(items: List[Any]) -> bool:
         for item in items:
             if not isinstance(item, HashableModel):
                 return False
@@ -385,9 +390,14 @@ class HashableModel(BaseModel):
         return True
 
     @staticmethod
-    def update_list_schema_model(field_name: str, attr_local: List[Any], attr_other: List[Any]) -> List[Any]:
-        # merging the list is not easy, we need to create a unique id based on the
-        # sorting keys and if we have 2 sub items with the same key we can merge them recursively with update()
+    def update_list_hashable_model(
+        field_name: str, attr_local: List[HashableModel], attr_other: List[HashableModel]
+    ) -> List[Any]:
+        """
+        Merging the list is not easy,
+        we need to create a unique id based on the sorting keys
+        and if we have 2 sub items with the same key we can merge them recursively with update()
+        """
         local_sub_items = {item._sorting_id: item for item in attr_local if hasattr(item, "_sorting_id")}
         other_sub_items = {item._sorting_id: item for item in attr_other if hasattr(item, "_sorting_id")}
 
@@ -404,11 +414,19 @@ class HashableModel(BaseModel):
         other_only_ids = set(list(other_sub_items.keys())) - set(shared_ids)
 
         new_list = [value for key, value in local_sub_items.items() if key in local_only_ids]
-        new_list.extend([value for key, value in other_sub_items.items() if key in other_only_ids])
+        new_list.extend(
+            [
+                value
+                for key, value in other_sub_items.items()
+                if key in other_only_ids and value.state != HashableModelState.ABSENT
+            ]
+        )
 
         for item_id in shared_ids:
             other_item = other_sub_items[item_id]
             local_item = local_sub_items[item_id]
+            if other_item.state == HashableModelState.ABSENT:
+                continue
             new_list.append(local_item.update(other_item))
 
         return new_list
@@ -438,10 +456,10 @@ class HashableModel(BaseModel):
                 continue
 
             if isinstance(attr_local, list) and isinstance(attr_other, list):
-                if self.is_list_composed_of_schema_model(attr_local) and self.is_list_composed_of_schema_model(
+                if self.is_list_composed_of_hashable_model(attr_local) and self.is_list_composed_of_hashable_model(
                     attr_other
                 ):
-                    new_attr = self.update_list_schema_model(
+                    new_attr = self.update_list_hashable_model(
                         field_name=field_name, attr_local=attr_local, attr_other=attr_other
                     )
                     setattr(self, field_name, new_attr)

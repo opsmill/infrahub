@@ -16,6 +16,7 @@ from infrahub.core.constants import (
     RESTRICTED_NAMESPACES,
     BranchSupportType,
     FilterSchemaKind,
+    HashableModelState,
     InfrahubKind,
     RelationshipCardinality,
     RelationshipDirection,
@@ -260,6 +261,16 @@ class SchemaBranch:
             branch_name=self.name, identifier=name, message=f"Unable to find the schema {name!r} in the registry"
         )
 
+    def delete(self, name: str) -> None:
+        if name in self.nodes:
+            del self.nodes[name]
+        elif name in self.generics:
+            del self.generics[name]
+        else:
+            raise SchemaNotFound(
+                branch_name=self.name, identifier=name, message=f"Unable to find the schema {name!r} in the registry"
+            )
+
     def get_by_id(self, id: str, duplicate: bool = True) -> Union[NodeSchema, GenericSchema]:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
@@ -329,6 +340,10 @@ class SchemaBranch:
         In the current implementation, if a schema object present in the SchemaRoot already exist, it will be overwritten.
         """
         for item in schema.nodes + schema.generics:
+            if item.state == HashableModelState.ABSENT and self.has(name=item.kind):
+                self.delete(name=item.kind)
+                continue
+
             try:
                 new_item = self.get(name=item.kind)
                 new_item.update(item)
