@@ -247,15 +247,15 @@ async def check_schema(
 
     branch_schema = registry.schema.get_schema_branch(name=branch.name)
 
-    _, result = evaluate_candidate_schemas(branch_schema=branch_schema, schemas_to_evaluate=schemas)
+    candidate_schema, result = evaluate_candidate_schemas(branch_schema=branch_schema, schemas_to_evaluate=schemas)
 
     # ----------------------------------------------------------
     # Validate if the new schema is valid with the content of the database
     # ----------------------------------------------------------
-    # error_messages, _ = await schema_validators_checker(
-    #     branch=branch, schema=candidate_schema, constraints=result.constraints, service=service
-    # )
-    # if error_messages:
-    #     raise SchemaNotValid(message=",\n".join(error_messages))
+    error_messages, _ = await schema_validators_checker(
+        branch=branch, schema=candidate_schema, constraints=result.constraints, service=service
+    )
+    if error_messages:
+        raise SchemaNotValid(message=",\n".join(error_messages))
 
     return JSONResponse(status_code=202, content={"diff": result.diff.model_dump()})
