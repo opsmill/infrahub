@@ -2,6 +2,11 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("/objects/:objectname", () => {
+  test("should display 'kind' column on when the object is a generic", async ({ page }) => {
+    await page.goto("/objects/CoreGroup");
+    await expect(page.locator("thead")).toContainText("Kind");
+  });
+
   test.describe("when not logged in", () => {
     test("should not be able to create a new object", async ({ page }) => {
       await page.goto("/objects/BuiltinTag");
