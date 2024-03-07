@@ -232,10 +232,12 @@ async def load_schema(
 
 @router.post("/check")
 async def check_schema(
+    request: Request,
     schemas: SchemasLoadAPI,
     branch: Branch = Depends(get_branch_dep),
     _: Any = Depends(get_current_user),
 ) -> JSONResponse:
+    service: InfrahubServices = request.app.state.service
     log.info("schema_check_request", branch=branch.name)
 
     errors: List[str] = []

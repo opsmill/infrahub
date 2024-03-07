@@ -3,9 +3,9 @@ from __future__ import annotations
 import hashlib
 import keyword
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Type, Union
 
-from infrahub_sdk.utils import compare_lists
+from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import field_validator
 
 from infrahub.core.models import HashableModelDiff
@@ -28,7 +28,7 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-public-methods
     _exclude_from_hash: List[str] = ["attributes", "relationships"]
-    _sort_by: List[str] = ["name"]
+    _sort_by: List[str] = ["namespace", "name"]
 
     @property
     def kind(self) -> str:
@@ -64,34 +64,20 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         node_diff = super().diff(other=other)
 
-        attrs_both, attrs_local, attrs_other = compare_lists(list1=self.attribute_names, list2=other.attribute_names)
-
-        attrs_diff = HashableModelDiff()
-        if attrs_local:
-            attrs_diff.added = {attr_name: None for attr_name in attrs_local}
-        if attrs_other:
-            attrs_diff.removed = {attr_name: None for attr_name in attrs_other}
-        if attrs_both:
-            for attr_name in sorted(attrs_both):
-                local_attr = self.get_attribute(name=attr_name)
-                other_attr = other.get_attribute(name=attr_name)
-                attr_diff = local_attr.diff(other_attr)
-                if attr_diff.has_diff:
-                    attrs_diff.changed[attr_name] = attr_diff
-
-        rels_diff = HashableModelDiff()
-        rels_both, rels_local, rels_other = compare_lists(list1=self.relationship_names, list2=other.relationship_names)
-        if rels_local:
-            rels_diff.added = {rel_name: None for rel_name in rels_local}
-        if rels_other:
-            rels_diff.removed = {rel_name: None for rel_name in rels_other}
-        if rels_both:
-            for rel_name in sorted(rels_both):
-                local_rel = self.get_relationship(name=rel_name)
-                other_rel = other.get_relationship(name=rel_name)
-                rel_diff = local_rel.diff(other_rel)
-                if rel_diff.has_diff:
-                    rels_diff.added[rel_name] = rel_diff
+        # Attribute
+        attrs_diff = self._diff_element(
+            other=other,
+            get_func=BaseNodeSchema.get_attribute,
+            get_map_func=BaseNodeSchema.get_attributes_name_id_map,
+            obj_type=AttributeSchema,
+        )
+        # Relationships
+        rels_diff = self._diff_element(
+            other=other,
+            get_func=BaseNodeSchema.get_relationship,
+            get_map_func=BaseNodeSchema.get_relationship_name_id_map,
+            obj_type=RelationshipSchema,
+        )
 
         if attrs_diff.has_diff:
             node_diff.changed["attributes"] = attrs_diff
@@ -99,6 +85,61 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
             node_diff.changed["relationships"] = rels_diff
 
         return node_diff
+
+    def _diff_element(
+        self,
+        other: Self,
+        get_func: Callable,
+        get_map_func: Callable,
+        obj_type: Union[Type[AttributeSchema], Type[RelationshipSchema]],
+    ):
+        """The goal of this function is to reduce the amount of code duplicated between Attribute and Relationship to calculate a diff
+        The logic is the same for both, except that the functions we are using to access these objects are differents
+
+        To map elements from the local and other objects together, we are using a combinasion of ID and name
+        If the same id is present on both we'll use the ID to match the elements on both side
+        If the id is not present on either side, we'll try to match with the name
+
+        """
+        # Build a mapping between name and id for all element as well as the reverse mapping to make it easy to access the data
+        local_map: Dict[str, str] = get_map_func(self)
+        other_map: Dict[str, str] = get_map_func(other)
+
+        reversed_map_local = dict(map(reversed, local_map.items()))
+        reversed_map_other = dict(map(reversed, other_map.items()))
+
+        # Identify which elements are using the same id on both sides
+        clean_local_ids = [id for id in local_map.values() if id is not None]
+        clean_other_ids = [id for id in other_map.values() if id is not None]
+        shared_ids = intersection(list1=clean_local_ids, list2=clean_other_ids)
+
+        # Identify which elements are present on both side based on the name
+        local_names = [name for name, id in local_map.items() if id not in shared_ids]
+        other_names = [name for name, id in other_map.items() if id not in shared_ids]
+        present_both, present_local, present_other = compare_lists(list1=local_names, list2=other_names)
+
+        elements_diff = HashableModelDiff()
+        if present_local:
+            elements_diff.added = {name: None for name in present_local}
+        if present_other:
+            elements_diff.removed = {name: None for name in present_other}
+
+        # Process element b
+        for name in sorted(present_both):
+            local_element: obj_type = get_func(self, name=name)
+            other_element: obj_type = get_func(other, name=name)
+            element_diff = local_element.diff(other_element)
+            if element_diff.has_diff:
+                elements_diff.changed[name] = element_diff
+
+        for element_id in shared_ids:
+            local_element: obj_type = get_func(self, name=reversed_map_local[element_id])
+            other_element: obj_type = get_func(other, name=reversed_map_other[element_id])
+            element_diff = local_element.diff(other_element)
+            if element_diff.has_diff:
+                elements_diff.changed[reversed_map_local[element_id]] = element_diff
+
+        return elements_diff
 
     def get_field(self, name: str, raise_on_error: bool = True) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
         if field := self.get_attribute(name, raise_on_error=False):
@@ -150,6 +191,18 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
                 rels.append(item)
 
         return rels
+
+    def get_attributes_name_id_map(self) -> Dict[str, str]:
+        name_id_map = {}
+        for attr in self.attributes:
+            name_id_map[attr.name] = attr.id
+        return name_id_map
+
+    def get_relationship_name_id_map(self) -> Dict[str, str]:
+        name_id_map = {}
+        for rel in self.relationships:
+            name_id_map[rel.name] = rel.id
+        return name_id_map
 
     @property
     def valid_input_names(self) -> List[str]:
