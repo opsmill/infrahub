@@ -27,7 +27,7 @@ const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
         />
       )}
 
-      {branch.is_isolated && (
+      {branch.has_schema_changes && (
         <Icon
           icon={"mdi:circular-arrows"}
           className={classNames(active ? "text-custom-white" : "text-gray-500")}
@@ -41,9 +41,9 @@ const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
         />
       )}
 
-      {branch.is_data_only && (
+      {!branch.is_data_only && (
         <Icon
-          icon={"mdi:database"}
+          icon={"mdi:git"}
           className={classNames(active ? "text-custom-white" : "text-gray-500")}
         />
       )}

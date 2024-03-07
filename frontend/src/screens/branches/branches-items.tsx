@@ -73,7 +73,7 @@ export const BranchesItems = () => {
                         </Tooltip>
                       )}
 
-                      {branch.is_isolated && (
+                      {branch.has_schema_changes && (
                         <Tooltip message={"Has schema changes"}>
                           <Icon icon={"mdi:circular-arrows"} className="text-gray-400 mr-1" />
                         </Tooltip>
