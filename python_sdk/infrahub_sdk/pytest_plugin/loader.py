@@ -100,5 +100,4 @@ class InfrahubYamlFile(pytest.File):
         content = InfrahubTestFileV1(**raw)
 
         for test_group in content.infrahub_tests:
-            for item in self.collect_group(test_group):
-                yield item
+            yield from self.collect_group(test_group)
