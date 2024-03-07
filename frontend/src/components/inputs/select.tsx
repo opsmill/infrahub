@@ -181,9 +181,11 @@ export const Select = (props: SelectProps) => {
         setOpen(true);
         return;
       }
-      setSelectedOption(newValue);
+
       setOpen(false);
+      setSelectedOption(newValue);
       onChange(newValue.map((item) => item.id));
+
       return;
     }
 
@@ -201,8 +203,8 @@ export const Select = (props: SelectProps) => {
 
     setLocalOptions([...localOptions, newItem]);
 
-    if (multiple && Array.isArray(value)) {
-      handleChange([...value, newItem]);
+    if (multiple) {
+      handleChange([...(selectedOption ?? []), newItem]);
 
       return;
     }

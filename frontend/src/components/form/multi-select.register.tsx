@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
 import { FormFieldError } from "../../screens/edit-form-hook/form";
 import { SelectOption } from "../inputs/select";
@@ -25,14 +24,11 @@ export const OpsMultiSelectRegister = (props: Props) => {
     ...config,
   });
 
-  const [selectedOptions, setSelectedOptions] = useState<SelectOption[]>(value);
-
   return (
     <OpsMultiSelect
       {...propsToPass}
-      value={selectedOptions}
+      value={value}
       onChange={(newValue) => {
-        setSelectedOptions(newValue as SelectOption[]);
         setValue(multiSelectRegister.name, newValue);
       }}
       isProtected={isProtected || props.disabled}
