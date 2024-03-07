@@ -38,13 +38,13 @@ toml = "^0.10"
 gitpython = "^3"
 rich = "^13"
 typer = "^0"
-ujson = "^5"
-pyarrow = "^14"
-numpy = [
-    { version = "^1.24.2", python = ">=3.8,<3.12" },
-    { version = "^1.26.2", python = ">=3.12" }
-]
 Jinja2 = { version = "^3", optional = true }
+numpy = [
+    { version = "^1.24.2", optional = true , python = ">=3.8,<3.12" },
+    { version = "^1.26.2", optional = true , python = ">=3.12" }
+]
+pyarrow = { version = "^14", optional = true }
+ujson = { version = "^5", optional = true }
 pytest = { version = "*", optional = true }
 
 [tool.poetry.group.dev.dependencies]
@@ -69,7 +69,7 @@ pytest-xdist = "^3.3.1"
 types-python-slugify = "^8.0.0.3"
 
 [tool.poetry.extras]
-ctl = ["Jinja2"]
+ctl = ["Jinja2", "numpy", "pyarrow", "ujson"]
 tests = ["pytest", "Jinja2"]
 
 [tool.poetry.scripts]
