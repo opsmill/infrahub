@@ -32,7 +32,7 @@ export const OpsSelect = (props: SelectProps) => {
       <div className="flex items-center">
         {label && (
           <>
-            <label className="block text-sm font-medium leading-6 text-gray-900">
+            <label htmlFor={label} className="block text-sm font-medium leading-6 text-gray-900">
               {getLabel()}
             </label>
             <div className="ml-2">
