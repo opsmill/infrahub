@@ -29,11 +29,12 @@ class BaseDiffElement(BaseModel):
         """
         resp: Dict[str, Any] = {}
         for key, value in self:
+            field_info = self.model_fields[key]
             if isinstance(value, BaseModel):
                 resp[key] = value.to_graphql()  # type: ignore[attr-defined]
             elif isinstance(value, dict):
                 resp[key] = [item.to_graphql() for item in value.values()]
-            elif self.model_fields[key].exclude:
+            elif field_info.exclude or (field_info.default and getattr(field_info.default, "exclude", False)):
                 continue
             elif isinstance(value, Enum):
                 resp[key] = value.value
