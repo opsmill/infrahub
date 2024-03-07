@@ -621,7 +621,7 @@ class SchemaBranch:
                     if not rel.optional and (rel.min_count != 1 or rel.max_count != 1):
                         raise ValueError(
                             f"{node.kind}: Relationship {rel.name!r} is defined as cardinality.ONE but min_count or max_count are not 1"
-                        )
+                        ) from None
                 elif rel.cardinality == RelationshipCardinality.MANY:
                     if rel.max_count and rel.min_count > rel.max_count:
                         raise ValueError(
@@ -838,24 +838,9 @@ class SchemaBranch:
     def process_cardinality_counts(self) -> None:
         """Ensure that all relationships with a cardinality of ONE have a min_count and max_count of 1."""
         for name in self.all_names:
-            node = self.get(name=name, duplicate=False)
-
-            rels_to_update = [
-                rel
-                for rel in node.relationships
-                if rel.cardinality == RelationshipCardinality.ONE
-                and (
-                    (rel.optional and (rel.min_count != 0 or rel.max_count != 1))
-                    or (not rel.optional and (rel.min_count == 0 or rel.max_count == 0))
-                )
-            ]
-
-            if not rels_to_update:
-                continue
-
             node = self.get(name=name)
 
-            for rel in rels_to_update:
+            for rel in node.relationships:
                 if rel.cardinality != RelationshipCardinality.ONE:
                     continue
                 # Handle default values of RelationshipSchema when cardinality is ONE and set to valid values (1)
