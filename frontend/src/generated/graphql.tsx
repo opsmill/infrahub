@@ -397,6 +397,7 @@ export type Branch = {
   id: Scalars["String"];
   is_data_only?: Maybe<Scalars["Boolean"]>;
   is_default?: Maybe<Scalars["Boolean"]>;
+  is_isolated?: Maybe<Scalars["Boolean"]>;
   name: Scalars["String"];
   origin_branch?: Maybe<Scalars["String"]>;
 };

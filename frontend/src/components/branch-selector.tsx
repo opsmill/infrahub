@@ -5,9 +5,9 @@ import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
-import { useAuth } from "../hooks/useAuth";
 import { Branch } from "../generated/graphql";
 import { BRANCH_CREATE } from "../graphql/mutations/branches/createBranch";
+import { useAuth } from "../hooks/useAuth";
 import { DynamicFieldData } from "../screens/edit-form-hook/dynamic-control-types";
 import { Form } from "../screens/edit-form-hook/form";
 import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
@@ -50,6 +50,7 @@ export default function BranchSelector() {
       name: branch.name,
       is_data_only: branch.is_data_only,
       is_default: branch.is_default,
+      is_isolated: branch.is_isolated,
       created_at: branch.created_at,
     }))
     .sort((branch1, branch2) => {
@@ -85,23 +86,34 @@ export default function BranchSelector() {
 
   const renderOption = ({ option, active, selected }: any) => (
     <div className="flex relative flex-col">
-      {option.is_data_only && (
-        <div className="absolute bottom-0 right-0">
-          <Icon
-            icon={"mdi:database"}
-            className={classNames(active ? "text-custom-white" : "text-gray-500")}
-          />
-        </div>
-      )}
+      <div className="flex absolute bottom-0 right-0">
+        {option.is_isolated && (
+          <div className="">
+            <Icon
+              icon={"mdi:shield-check-outline"}
+              className={classNames(active ? "text-custom-white" : "text-gray-500")}
+            />
+          </div>
+        )}
 
-      {option.is_default && (
-        <div className="absolute bottom-0 right-0">
-          <Icon
-            icon={"mdi:shield-check"}
-            className={classNames(active ? "text-custom-white" : "text-gray-500")}
-          />
-        </div>
-      )}
+        {option.is_default && (
+          <div className="">
+            <Icon
+              icon={"mdi:source-branch"}
+              className={classNames(active ? "text-custom-white" : "text-gray-500")}
+            />
+          </div>
+        )}
+
+        {option.is_data_only && (
+          <div className="">
+            <Icon
+              icon={"mdi:database"}
+              className={classNames(active ? "text-custom-white" : "text-gray-500")}
+            />
+          </div>
+        )}
+      </div>
 
       <div className="flex justify-between">
         <p className={selected ? "font-semibold" : "font-normal"}>{option.name}</p>
@@ -123,14 +135,10 @@ export default function BranchSelector() {
   );
 
   const handleSubmit = async (data: any, close: Function) => {
-    const { name, description, is_data_only } = data;
-
     try {
       const { data: response } = await createBranch({
         variables: {
-          name,
-          description,
-          is_data_only,
+          ...data,
         },
       });
 
@@ -194,6 +202,13 @@ export default function BranchSelector() {
       label: "Data only",
       type: "checkbox",
       value: true,
+      isOptional: true,
+    },
+    {
+      name: "is_isolated",
+      label: "Isolated mode",
+      type: "checkbox",
+      value: false,
       isOptional: true,
     },
   ];

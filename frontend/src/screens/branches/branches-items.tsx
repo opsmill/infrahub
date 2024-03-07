@@ -1,4 +1,4 @@
-import { ChevronLeftIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useNavigate } from "react-router-dom";
@@ -58,7 +58,7 @@ export const BranchesItems = () => {
                     {branch.is_default && (
                       <>
                         <Tooltip message={"Default branch"}>
-                          <ShieldCheckIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                          <Icon icon={"mdi:source-branch"} className="text-gray-400" />
                         </Tooltip>
 
                         <div className="text-base font-semibold leading-6 text-gray-900">
@@ -67,16 +67,19 @@ export const BranchesItems = () => {
                       </>
                     )}
 
+                    {branch.is_isolated && (
+                      <Tooltip message={"Isolated mode"}>
+                        <Icon icon={"mdi:shield-check-outline"} className="text-gray-400" />
+                      </Tooltip>
+                    )}
+
                     {!branch.is_default && (
                       <div className="flex items-center">
                         <Tooltip message={"Destination branch"}>
                           <p className="max-w-2xl text-sm text-gray-500">main</p>
                         </Tooltip>
 
-                        <ChevronLeftIcon
-                          className="w-4 h-4 mx-2 flex-shrink-0 text-gray-400"
-                          aria-hidden="true"
-                        />
+                        <Icon icon={"mdi:chevron-left"} className="text-gray-400" />
 
                         <div className="text-base font-semibold leading-6 text-gray-900 mr-2">
                           {branch.name}
