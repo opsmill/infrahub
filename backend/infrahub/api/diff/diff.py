@@ -12,7 +12,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind
 from infrahub.core.diff.branch_differ import BranchDiffer
-from infrahub.core.diff.payload import (
+from infrahub.core.diff.payload_builder import (
     ArtifactTarget,
     BranchDiff,
     BranchDiffArtifact,

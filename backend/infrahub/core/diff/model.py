@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from infrahub.core.constants import (
     DiffAction,
@@ -33,7 +33,7 @@ class BaseDiffElement(BaseModel):
                 resp[key] = value.to_graphql()  # type: ignore[attr-defined]
             elif isinstance(value, dict):
                 resp[key] = [item.to_graphql() for item in value.values()]
-            elif self.__fields__[key].field_info.exclude:
+            elif self.model_fields[key].exclude:
                 continue
             elif isinstance(value, Enum):
                 resp[key] = value.value
@@ -99,7 +99,7 @@ class RelationshipEdgeNodeDiffElement(BaseDiffElement):
 
 
 class RelationshipDiffElement(BaseDiffElement):
-    branch: Optional[str] = None
+    branch: str
     id: str
     db_id: str = Field(exclude=True)
     name: str

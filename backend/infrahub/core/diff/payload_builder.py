@@ -206,7 +206,6 @@ class BranchDiffElementRelationshipMany(BaseModel):
     branches: Set[str] = Field(default_factory=set)
     summary: DiffSummary = DiffSummary()
     peers: Dict[str, BranchDiffElementRelationshipManyPeer] = Field(default_factory=dict)
-    # action: Dict[str, DiffAction] = Field(default_factory=dict)
 
 
 # NEW
@@ -345,7 +344,7 @@ class DiffPayloadBuilder:
 
         self.display_labels = await get_display_labels(nodes=node_ids, db=self.db)
 
-    def _add_node_to_diff(self, node_id: str, kind: str):
+    def _add_node_to_diff(self, node_id: str, kind: str) -> None:
         if node_id not in self.entries:
             self.entries[node_id] = BranchDiffEntry(id=node_id, kind=kind, path=f"data/{node_id}")
 
@@ -363,13 +362,16 @@ class DiffPayloadBuilder:
                 change=BranchDiffElementAttribute(id=element.id, action=element.action),
             )
 
-        diff_element = self.entries[node_id].elements[element.name]
+        diff_element: BranchDiffElement = self.entries[node_id].elements[element.name]
+        change = diff_element.change
+        if not isinstance(change, BranchDiffElementAttribute):
+            return
 
-        diff_element.change.branches.append(branch)
+        change.branches.append(branch)
         if element.value:
-            if not diff_element.change.value:
-                diff_element.change.value = BranchDiffPropertyCollection(path=f"data/{node_id}/{element.name}/value")
-            diff_element.change.value.changes.append(
+            if not change.value:
+                change.value = BranchDiffPropertyCollection(path=f"data/{node_id}/{element.name}/value")
+            change.value.changes.append(
                 BranchDiffProperty(
                     branch=branch,
                     type=element.value.type,
@@ -381,12 +383,12 @@ class DiffPayloadBuilder:
             diff_element.change.summary.inc(element.value.action.value)
 
         for prop in element.properties:
-            if prop.type not in diff_element.change.properties:
-                diff_element.change.properties[prop.type] = BranchDiffPropertyCollection(
+            if prop.type not in change.properties:
+                change.properties[prop.type] = BranchDiffPropertyCollection(
                     path=f"data/{node_id}/{element.name}/property/{prop.type}"
                 )
-            diff_element.change.properties[prop.type].changes.append(prop)
-            diff_element.change.summary.inc(prop.action.value)
+            change.properties[prop.type].changes.append(prop)
+            change.summary.inc(prop.action.value)
 
     def _add_node_element_relationship(
         self,
@@ -421,31 +423,32 @@ class DiffPayloadBuilder:
             )
 
         diff_element = self.entries[node_id].elements[element_name]
+        change = diff_element.change
+        if not isinstance(change, BranchDiffElementRelationshipOne):
+            return
 
-        if branch not in diff_element.change.branches:
-            diff_element.change.branches.append(branch)
+        if branch not in change.branches:
+            change.branches.append(branch)
 
-        diff_element.change.action[branch] = relationship.action
+        change.action[branch] = relationship.action
 
         if relationship.peer.new or relationship.peer.previous:
-            if not diff_element.change.peer:
-                diff_element.change.peer = BranchDiffRelationshipOnePeerCollection(
-                    path=f"data/{node_id}/{element_name}/peer"
-                )
+            if not change.peer:
+                change.peer = BranchDiffRelationshipOnePeerCollection(path=f"data/{node_id}/{element_name}/peer")
 
-            diff_element.change.peer.add_change(
+            change.peer.add_change(
                 BranchDiffRelationshipOnePeer(
                     branch=branch, new=relationship.peer.new, previous=relationship.peer.previous
                 )
             )
 
         for prop in relationship.properties:
-            if prop.type not in diff_element.change.properties:
-                diff_element.change.properties[prop.type] = BranchDiffPropertyCollection(
+            if prop.type not in change.properties:
+                change.properties[prop.type] = BranchDiffPropertyCollection(
                     path=f"data/{node_id}/{element_name}/property/{prop.type}"
                 )
-            if diff_element.change.properties[prop.type].add_change(prop):
-                diff_element.change.summary.inc(prop.action.value)
+            if change.properties[prop.type].add_change(prop):
+                change.summary.inc(prop.action.value)
 
         # Fix: Add summary to element
 
@@ -465,25 +468,28 @@ class DiffPayloadBuilder:
             )
 
         diff_element = self.entries[node_id].elements[element_name]
+        change = diff_element.change
+        if not isinstance(change, BranchDiffElementRelationshipMany):
+            return
 
-        if branch not in diff_element.change.branches:
-            diff_element.change.branches.add(branch)
+        if branch not in change.branches:
+            change.branches.add(branch)
 
         for peer in relationship.peers:
-            if not diff_element.change.identifier:
-                diff_element.change.identifier = peer.identifier
+            if not change.identifier:
+                change.identifier = peer.identifier
 
             # Update Action, Branches and Summary
-            diff_element.change.branches.add(peer.branch)
+            change.branches.add(peer.branch)
             self.entries[node_id].summary.inc(peer.action.value)
 
-            if peer.peer.id not in diff_element.change.peers:
-                diff_element.change.peers[peer.peer.id] = BranchDiffElementRelationshipManyPeer(
+            if peer.peer.id not in change.peers:
+                change.peers[peer.peer.id] = BranchDiffElementRelationshipManyPeer(
                     peer=peer.peer,
                     path=f"data/{node_id}/{element_name}/{peer.peer.id}",
                 )
 
-            peer_element = diff_element.change.peers[peer.peer.id]
+            peer_element = change.peers[peer.peer.id]
 
             peer_element.branches.add(peer.branch)
             peer_element.action[peer.branch] = peer.action
@@ -494,7 +500,7 @@ class DiffPayloadBuilder:
                         path=f"data/{node_id}/{element_name}/{peer.peer.id}/property/{prop.type}"
                     )
                 peer_element.properties[prop.type].changes.append(prop)
-                diff_element.change.summary.inc(prop.action.value)
+                change.summary.inc(prop.action.value)
 
     async def _process_nodes(self) -> None:
         # Generate the Diff per node and associated the appropriate relationships if they are present in the schema
@@ -517,15 +523,17 @@ class DiffPayloadBuilder:
         node_diff_elements = {attr["name"]: attr for attr in node_diff_graphql["attributes"]}
 
         display_label = self._get_node_display_label(branch_name=branch_name, node_id=node_diff.id)
-        node_diff = BranchDiffNode(**node_diff_dict, elements=node_diff_elements, display_label=display_label)
+        branch_diff_node = BranchDiffNode(**node_diff_dict, elements=node_diff_elements, display_label=display_label)
         self._add_node_to_diff(node_id=node_diff_dict["id"], kind=node_diff_dict["kind"])
         self._set_display_label(node_id=node_diff_dict["id"], branch=branch_name, display_label=display_label)
         self._set_node_action(node_id=node_diff_dict["id"], branch=branch_name, action=node_diff_dict["action"])
         schema = registry.schema.get(name=node_diff.kind, branch=node_diff.branch)
 
         # Extract the value from the list of properties
-        for _, element in node_diff.elements.items():
-            node_diff.summary.inc(element.action.value)
+        for element in branch_diff_node.elements.values():
+            if not isinstance(element, BranchDiffAttribute):
+                continue
+            branch_diff_node.summary.inc(element.action.value)
             self._add_node_summary(node_id=node_diff_dict["id"], action=element.action)
 
             for prop in element.properties:
@@ -538,18 +546,18 @@ class DiffPayloadBuilder:
                 element.properties.remove(element.value)
             self._add_node_element_attribute(node_id=node_diff_dict["id"], branch=branch_name, element=element)
 
-        if node_diff.id not in self.rels_per_node[branch_name]:
-            return node_diff
+        if branch_diff_node.id not in self.rels_per_node[branch_name]:
+            return branch_diff_node
 
         branch_display_label_map = self._get_branch_display_label_map(branch_name)
-        for rel_name, rels in self.rels_per_node[branch_name][node_diff.id].items():
+        for rel_name, rels in self.rels_per_node[branch_name][branch_diff_node.id].items():
             rel_schema = schema.get_relationship_by_identifier(id=rel_name, raise_on_error=False)
             if not rel_schema:
                 continue
-            diff_rel = None
+            diff_rel: Optional[Union[BranchDiffRelationshipOne, BranchDiffRelationshipMany]] = None
             if rel_schema.cardinality == RelationshipCardinality.ONE:
                 diff_rel = extract_diff_relationship_one(
-                    node_id=node_diff.id,
+                    node_id=branch_diff_node.id,
                     name=rel_schema.name,
                     identifier=rel_name,
                     rels=rels,
@@ -557,7 +565,7 @@ class DiffPayloadBuilder:
                 )
             elif rel_schema.cardinality == RelationshipCardinality.MANY:
                 diff_rel = extract_diff_relationship_many(
-                    node_id=node_diff.id,
+                    node_id=branch_diff_node.id,
                     name=rel_schema.name,
                     identifier=rel_name,
                     rels=rels,
@@ -566,16 +574,16 @@ class DiffPayloadBuilder:
 
             if not diff_rel:
                 continue
-            node_diff.elements[diff_rel.name] = diff_rel
-            node_diff.summary.inc(diff_rel.action.value)
+            branch_diff_node.elements[diff_rel.name] = diff_rel
+            branch_diff_node.summary.inc(diff_rel.action.value)
             self._add_node_summary(node_id=node_diff_dict["id"], action=diff_rel.action)
             self._add_node_element_relationship(
-                node_id=node_diff.id,
+                node_id=branch_diff_node.id,
                 element_name=diff_rel.name,
                 branch=branch_name,
                 relationship=diff_rel,
             )
-        return node_diff
+        return branch_diff_node
 
     async def _process_relationships(self) -> None:
         # Check if all nodes associated with a relationship have been accounted for
@@ -624,7 +632,7 @@ class DiffPayloadBuilder:
             )
             self._set_node_action(node_id=node_id, branch=branch_name, action=DiffAction.UPDATED)
 
-            diff_rel = None
+            diff_rel: Optional[Union[BranchDiffRelationshipOne, BranchDiffRelationshipMany]] = None
             if rel_schema.cardinality == RelationshipCardinality.ONE:
                 diff_rel = extract_diff_relationship_one(
                     node_id=node_id,
@@ -716,8 +724,8 @@ def extract_diff_relationship_one(
             id=rel.id,
             name=name,
             identifier=identifier,
-            peer=peer_value,
-            properties=[prop.to_graphql() for prop in rel.properties.values()],
+            peer=BranchDiffRelationshipOnePeerValue.model_validate(peer_value),
+            properties=[BranchDiffProperty(**prop.to_graphql()) for prop in rel.properties.values()],
             changed_at=changed_at,
             action=rel.action,
         )
@@ -738,10 +746,10 @@ def extract_diff_relationship_one(
             id=rel_added.id,
             name=name,
             identifier=identifier,
-            peer=peer_value,
-            properties=[prop.to_graphql() for prop in rel_added.properties.values()],
+            peer=BranchDiffRelationshipOnePeerValue.model_validate(peer_value),
+            properties=[BranchDiffProperty(**prop.to_graphql()) for prop in rel_added.properties.values()],
             changed_at=changed_at,
-            action="updated",
+            action=DiffAction.UPDATED,
         )
 
     if len(rels) > 2:
@@ -783,8 +791,8 @@ def extract_diff_relationship_many(
                 branch=rel.branch,
                 id=rel.id,
                 identifier=identifier,
-                peer=peer,
-                properties=[prop.to_graphql() for prop in rel.properties.values()],
+                peer=BranchDiffRelationshipPeerNode(**peer),
+                properties=[BranchDiffProperty(**prop.to_graphql()) for prop in rel.properties.values()],
                 changed_at=changed_at,
                 action=rel.action,
             )
