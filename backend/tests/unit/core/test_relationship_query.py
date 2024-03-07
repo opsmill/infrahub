@@ -12,6 +12,7 @@ from infrahub.core.query.relationship import (
     RelationshipCreateQuery,
     RelationshipDataDeleteQuery,
     RelationshipDeleteQuery,
+    RelationshipGetByIdentifierQuery,
     RelationshipGetPeerQuery,
     RelationshipPeerData,
     RelationshipQuery,
@@ -557,3 +558,27 @@ async def test_query_RelationshipCountPerNodeQuery(
         person_jane_main.id: 0,
         albert.id: 0,
     }
+
+
+async def test_query_RelationshipGetByIdentifierQuery(
+    db: InfrahubDatabase,
+    person_john_main,
+    person_jane_main,
+    car_accord_main,
+    car_camry_main,
+    car_volt_main,
+    car_prius_main,
+    car_yaris_main,
+    branch: Branch,
+):
+    with pytest.raises(ValueError) as exc:
+        query = await RelationshipGetByIdentifierQuery.init(
+            db=db, branch=branch, identifiers=[], excluded_namespaces=[]
+        )
+    assert "identifiers cannot be an empty list" in str(exc.value)
+
+    query = await RelationshipGetByIdentifierQuery.init(
+        db=db, branch=branch, identifiers=["testcar__testperson"], excluded_namespaces=[]
+    )
+    await query.execute(db=db)
+    assert await query.count(db=db) == 5
