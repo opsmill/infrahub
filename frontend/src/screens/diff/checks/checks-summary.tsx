@@ -105,7 +105,6 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
                     <Retry
                       isLoading={isLoading || !!data.inProgress}
                       isDisabled={!canRetry(data)}
-                      className="!hover:bg-transparent"
                     />
                   </div>
                 )}
