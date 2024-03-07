@@ -6,6 +6,7 @@ import Accordion from "../../../components/display/accordion";
 import { DateDisplay } from "../../../components/display/date-display";
 import { PopOver } from "../../../components/display/popover";
 import { CodeEditor } from "../../../components/editor/code-editor";
+import { Skeleton } from "../../../components/skeleton";
 import { List } from "../../../components/table/list";
 import { Tooltip } from "../../../components/utils/tooltip";
 import { getCheckDetails } from "../../../graphql/queries/diff/getCheckDetails";
@@ -13,7 +14,6 @@ import useQuery from "../../../hooks/useQuery";
 import { schemaKindLabelState } from "../../../state/atoms/schemaKindLabel.atom";
 import { classNames } from "../../../utils/common";
 import ErrorScreen from "../../error-screen/error-screen";
-import LoadingScreen from "../../loading-screen/loading-screen";
 import { Conflict } from "./conflict";
 
 type tCheckProps = {
@@ -52,13 +52,13 @@ const getCheckBorderColor = (severity?: string) => {
       return "border-green-400";
     }
     case "info": {
-      return "border-yellow-500";
+      return "border-yellow-400";
     }
     case "warning": {
-      return "border-orange-500";
+      return "border-orange-400";
     }
     case "error": {
-      return "border-red-300";
+      return "border-red-400";
     }
     case "critical": {
       return "border-red-600";
@@ -121,14 +121,6 @@ export const Check = (props: tCheckProps) => {
     conclusion,
   } = check;
 
-  if (loading) {
-    return (
-      <div className={"flex flex-col rounded-md p-2 bg-custom-white border-l-4"}>
-        <LoadingScreen />
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className={"flex flex-col rounded-md p-2 bg-custom-white border-l-4"}>
@@ -171,12 +163,20 @@ export const Check = (props: tCheckProps) => {
       <div className="flex mb-2">
         <div className="flex flex-1 flex-col">
           <div className="flex items-center">
-            {getCheckIcon(conclusion?.value)}
+            {loading ? (
+              <Skeleton className="h-3 w-3 mr-2 rounded" />
+            ) : (
+              getCheckIcon(conclusion?.value)
+            )}
 
-            {name?.value || display_label}
+            {loading ? <Skeleton className="h-3 w-40" /> : name?.value || display_label}
 
-            <div className="flex-1 flex justify-end">
-              <DateDisplay date={created_at?.value} />
+            <div className="flex-1 flex items-center justify-end">
+              {loading ? (
+                <Skeleton className="h-3 w-24" />
+              ) : (
+                <DateDisplay date={created_at?.value} />
+              )}
 
               <PopOver buttonComponent={MoreButton}>
                 <List columns={columns} row={row} />
