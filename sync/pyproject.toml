@@ -21,8 +21,8 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8, < 3.12"
-infrahub-sdk = "^0.7.0"
+python = ">=3.8, <3.12"
+infrahub-sdk = ">=0.7"
 structlog = "^22.3.0"
 diffsync = "^1.10.0"
 
