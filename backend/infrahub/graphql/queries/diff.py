@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Dict, Optional, Union
 
 from graphene import Boolean, Field, List, ObjectType, String
 
-from infrahub.core.diff import BranchDiffer
+from infrahub.core.diff.branch_differ import BranchDiffer
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
