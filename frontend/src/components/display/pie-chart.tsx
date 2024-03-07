@@ -3,6 +3,7 @@ import { Cell, Pie, PieChart as RPieChart, Tooltip } from "recharts";
 type tPieChart = {
   data: any[];
   children?: any;
+  onClick?: Function;
 };
 
 // const RADIAN = Math.PI / 180;
@@ -32,19 +33,30 @@ const renderCustomizedTooltip = (props: any) => {
   }
 
   return (
-    <text className="text-xs bg-custom-white p-2 rounded-md">
+    <span className="text-xs bg-custom-white p-2 rounded-md">
       {data.name}: {data.value}
-    </text>
+    </span>
   );
 };
 
 export const PieChart = (props: tPieChart) => {
-  const { data, children } = props;
+  const { data, children, onClick } = props;
+
+  const handleClick = () => {
+    if (!onClick) return;
+
+    onClick();
+  };
 
   return (
-    <div className="relative">
+    <div className={"relative cursor-pointer"} onClick={handleClick}>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
+        {children}
+      </div>
+
       <RPieChart width={100} height={60}>
         <Tooltip content={renderCustomizedTooltip} />
+
         <Pie
           data={data}
           dataKey="value"
@@ -61,10 +73,6 @@ export const PieChart = (props: tPieChart) => {
           ))}
         </Pie>
       </RPieChart>
-
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
-        {children}
-      </div>
     </div>
   );
 };

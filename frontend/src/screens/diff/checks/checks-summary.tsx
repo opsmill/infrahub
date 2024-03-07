@@ -17,7 +17,7 @@ import { useAuth } from "../../../hooks/useAuth";
 import { genericsState } from "../../../state/atoms/schema.atom";
 import { schemaKindLabelState } from "../../../state/atoms/schemaKindLabel.atom";
 import { getValidatorsStats } from "../../../utils/checks";
-import { classNames } from "../../../utils/common";
+import LoadingScreen from "../../loading-screen/loading-screen";
 
 type tChecksSummaryProps = {
   validators: any[];
@@ -94,22 +94,18 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
           />
         </div>
 
+        {!Object.entries(validatorsCount).length && <LoadingScreen hideText />}
+
         {Object.entries(validatorsCount).map(([kind, data]: [string, any]) => (
           <div key={kind} className="flex items-center justify-center gap-2 p-2">
-            <div
-              className={classNames(
-                "fill",
-                "flex flex-col items-center group relative",
-                canRetry(data) ? "cursor-pointer" : ""
-              )}>
-              <PieChart data={data}>
+            <div className={"flex flex-col items-center group relative"}>
+              <PieChart data={data} onClick={() => canRetry(data) && handleRetry(kind)}>
                 {canRetry(data) && (
                   <div className="absolute invisible group-hover:visible cursor-pointer">
                     <Retry
                       isLoading={isLoading || !!data.inProgress}
                       isDisabled={!canRetry(data)}
                       className="!hover:bg-transparent"
-                      onClick={() => handleRetry(kind)}
                     />
                   </div>
                 )}

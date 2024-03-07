@@ -43,32 +43,32 @@ export const getValidatorsStats = (validators: any[]) => {
   }
 
   return [
-    {
+    successValidators.length && {
       name: CHECKS_LABEL.SUCCESS,
       value: successValidators.length,
       className: "fill-green-400",
     },
-    {
+    inProgressValidators.length && {
       name: CHECKS_LABEL.IN_PROGRESS,
       value: inProgressValidators.length,
       className: "fill-orange-400",
     },
-    {
+    failedValidators.length && {
       name: CHECKS_LABEL.FAILURE,
       value: failedValidators.length,
       className: "fill-red-400",
     },
-    {
+    queuedValidators.length && {
       name: CHECKS_LABEL.QUEUED,
       value: queuedValidators.length,
       className: "fill-yellow-300",
     },
-    {
+    unkownValidators.length && {
       name: CHECKS_LABEL.UNKOWN,
       value: unkownValidators.length,
       className: "fill-gray-400",
     },
-  ];
+  ].filter(Boolean);
 };
 
 export const getChecksStats = (checks: any[]) => {
