@@ -145,7 +145,7 @@ export const ProposedChangesDetails = () => {
       case DIFF_TABS.CHECKS:
         return <Checks ref={refetchRef} />;
       case TASK_TAB:
-        if (!qspTaskId) return <TaskItems ref={refetchRef} />;
+        if (!qspTaskId) return <TaskItems ref={refetchRef} hideRelatedNode />;
 
         return (
           <div>
