@@ -200,6 +200,11 @@ class EnumMutation(str, Enum):
     remove = "SchemaEnumRemove"
 
 
+class SchemaState(str, Enum):
+    PRESENT = "present"
+    ABSENT = "absent"
+
+
 class AttributeSchema(pydantic.BaseModel):
     name: str
     kind: str
@@ -219,6 +224,8 @@ class AttributeSchema(pydantic.BaseModel):
 
 
 class RelationshipSchema(pydantic.BaseModel):
+    id: Optional[str] = None
+    state: Optional[SchemaState] = None
     name: str
     peer: str
     kind: RelationshipKind = RelationshipKind.GENERIC
@@ -233,6 +240,8 @@ class RelationshipSchema(pydantic.BaseModel):
 
 
 class BaseNodeSchema(pydantic.BaseModel):
+    id: Optional[str] = None
+    state: Optional[SchemaState] = None
     name: str
     label: Optional[str] = None
     namespace: str
@@ -404,14 +413,6 @@ class InfrahubSchemaBase:
 
 
 class InfrahubSchema(InfrahubSchemaBase):
-    """
-    client.schema.get(branch="name", kind="xxx")
-    client.schema.all(branch="xxx")
-    client.schema.validate()
-    client.schema.add()
-    client.schema.node.add()
-    """
-
     def __init__(self, client: InfrahubClient):
         self.client = client
         self.cache: dict = defaultdict(lambda: dict)
@@ -467,6 +468,22 @@ class InfrahubSchema(InfrahubSchemaBase):
 
         if response.status_code == httpx.codes.ACCEPTED:
             return True, None
+
+        if response.status_code == httpx.codes.UNPROCESSABLE_ENTITY:
+            return False, response.json()
+
+        response.raise_for_status()
+        return False, None
+
+    async def check(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
+        branch = branch or self.client.default_branch
+        url = f"{self.client.address}/api/schema/check?branch={branch}"
+        response = await self.client._post(
+            url=url, timeout=max(120, self.client.default_timeout), payload={"schemas": schemas}
+        )
+
+        if response.status_code == httpx.codes.ACCEPTED:
+            return True, response.json()
 
         if response.status_code == httpx.codes.UNPROCESSABLE_ENTITY:
             return False, response.json()
