@@ -190,6 +190,7 @@ def load_infra_data(context: Context, database: str = INFRAHUB_DATABASE):
         command = f"{base_cmd} run infrahub-git infrahubctl run models/infrastructure_edge.py"
         execute_command(context=context, command=command)
 
+
 @task(optional=["database"])
 def fake_proposed_change(context: Context, database: str = INFRAHUB_DATABASE):
     """Load some demo data."""
@@ -198,6 +199,7 @@ def fake_proposed_change(context: Context, database: str = INFRAHUB_DATABASE):
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
         command = f"{base_cmd} run infrahub-git infrahubctl run utilities/proposed_change_faker.py"
         execute_command(context=context, command=command)
+
 
 @task(optional=["database"])
 def infra_git_import(context: Context, database: str = INFRAHUB_DATABASE):
