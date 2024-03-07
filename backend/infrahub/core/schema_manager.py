@@ -5,7 +5,7 @@ import hashlib
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from infrahub_sdk.utils import compare_lists, duplicates
+from infrahub_sdk.utils import compare_lists, duplicates, intersection
 from pydantic import BaseModel
 
 from infrahub import lock
@@ -114,6 +114,13 @@ class SchemaBranch:
     def generic_names(self) -> List[str]:
         return list(self.generics.keys())
 
+    def get_all_kind_id_map(self) -> Dict[str, str]:
+        kind_id_map = {}
+        for name in self.all_names:
+            item = self.get(name=name, duplicate=False)
+            kind_id_map[name] = item.id
+        return kind_id_map
+
     @property
     def all_names(self) -> List[str]:
         return self.node_names + self.generic_names
@@ -169,21 +176,38 @@ class SchemaBranch:
 
     def diff(self, other: SchemaBranch) -> SchemaDiff:
         # Identify the nodes or generics that have been added or removed
-        local_keys = list(self.nodes.keys()) + list(self.generics.keys())
-        other_keys = list(other.nodes.keys()) + list(other.generics.keys())
+        local_kind_id_map = self.get_all_kind_id_map()
+        other_kind_id_map = other.get_all_kind_id_map()
+        clean_local_ids = [id for id in local_kind_id_map.values() if id is not None]
+        clean_other_ids = [id for id in other_kind_id_map.values() if id is not None]
+        shared_ids = intersection(list1=clean_local_ids, list2=clean_other_ids)
+
+        local_keys = [kind for kind, id in local_kind_id_map.items() if id not in shared_ids]
+        other_keys = [kind for kind, id in other_kind_id_map.items() if id not in shared_ids]
+
         present_both, present_local_only, present_other_only = compare_lists(list1=local_keys, list2=other_keys)
 
         added_elements = {element: HashableModelDiff() for element in present_other_only}
         removed_elements = {element: HashableModelDiff() for element in present_local_only}
         schema_diff = SchemaDiff(added=added_elements, removed=removed_elements)
 
-        # Process of the one that have been updated to identify the list of fields impacted
+        # Process of the one that have been updated to identify the list of impacted fields
         for key in present_both:
             local_node = self.get(name=key, duplicate=False)
             other_node = other.get(name=key, duplicate=False)
             diff_node = other_node.diff(other=local_node)
             if diff_node.has_diff:
                 schema_diff.changed[key] = diff_node
+
+        reversed_map_local = dict(map(reversed, local_kind_id_map.items()))
+        reversed_map_other = dict(map(reversed, other_kind_id_map.items()))
+
+        for shared_id in shared_ids:
+            local_node = self.get(name=reversed_map_local[shared_id], duplicate=False)
+            other_node = other.get(name=reversed_map_other[shared_id], duplicate=False)
+            diff_node = other_node.diff(other=local_node)
+            if diff_node.has_diff:
+                schema_diff.changed[reversed_map_other[shared_id]] = diff_node
 
         return schema_diff
 

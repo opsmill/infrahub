@@ -1,4 +1,5 @@
 import copy
+import uuid
 
 import pytest
 from deepdiff import DeepDiff
@@ -1634,6 +1635,127 @@ async def test_schema_branch_diff_attribute(
                 },
                 "removed": {},
             },
+        },
+        "removed": {},
+    }
+
+
+async def test_schema_branch_diff_rename_element(
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+):
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Criticality",
+                "namespace": "Builtin",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "attributes": [
+                    {"id": str(uuid.uuid4()), "name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"id": str(uuid.uuid4()), "name": "level", "kind": "Number", "label": "Level"},
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": "color",
+                        "kind": "Text",
+                        "label": "Color",
+                        "default_value": "#444444",
+                    },
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": "description",
+                        "kind": "Text",
+                        "label": "Description",
+                        "optional": True,
+                    },
+                ],
+                "relationships": [
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": "tags",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Tags",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": "primary_tag",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Primary Tag",
+                        "identifier": "primary_tag__criticality",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Tag",
+                "namespace": "Builtin",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"id": str(uuid.uuid4()), "name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": "description",
+                        "kind": "Text",
+                        "label": "Description",
+                        "optional": True,
+                    },
+                ],
+            },
+        ]
+    }
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
+    new_schema = schema_branch.duplicate()
+
+    criticality = new_schema.get(name="BuiltinCriticality")
+    criticality.attributes[0].name = f"new-{criticality.attributes[0].name}"
+    criticality.relationships[0].name = f"new-{criticality.relationships[0].name}"
+    new_schema.set(name="BuiltinCriticality", schema=criticality)
+
+    tag = new_schema.get(name="BuiltinTag")
+    tag.name = "NewTag"
+    new_schema.delete(name="BuiltinTag")
+    new_schema.set(name="BuiltinNewTag", schema=tag)
+
+    diff = schema_branch.diff(other=new_schema)
+    assert diff.model_dump() == {
+        "added": {},
+        "changed": {
+            "BuiltinCriticality": {
+                "added": {},
+                "changed": {
+                    "attributes": {
+                        "added": {},
+                        "changed": {
+                            "new-name": {
+                                "added": {},
+                                "changed": {"name": None},
+                                "removed": {},
+                            },
+                        },
+                        "removed": {},
+                    },
+                    "relationships": {
+                        "added": {},
+                        "changed": {
+                            "new-tags": {
+                                "added": {},
+                                "changed": {"name": None},
+                                "removed": {},
+                            },
+                        },
+                        "removed": {},
+                    },
+                },
+                "removed": {},
+            },
+            "BuiltinNewTag": {"added": {}, "changed": {"name": None}, "removed": {}},
         },
         "removed": {},
     }

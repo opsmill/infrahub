@@ -4,6 +4,13 @@ import enum
 from typing import Any, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
+import hashlib
+import keyword
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Type, Union
+
+from infrahub_sdk.utils import compare_lists, intersection
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from infrahub.core.constants import RESTRICTED_NAMESPACES
 from infrahub.core.models import HashableModel
