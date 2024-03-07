@@ -265,7 +265,7 @@ class BranchMerge(Mutation):
             request_id = log_data.get("request_id", "")
             message = messages.EventBranchMerge(
                 source_branch=obj.name,
-                target_branch=config.SETTINGS.main.default_branch,
+                target_branch=registry.default_branch,
                 meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
             context.background.add_task(services.send, message)

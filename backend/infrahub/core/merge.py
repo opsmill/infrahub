@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
-from infrahub import config
 from infrahub.core.constants import (
     DiffAction,
     InfrahubKind,
@@ -202,7 +201,7 @@ class BranchMerger:
                 f"Unable to merge the branch '{self.source_branch.name}', validation failed: {', '.join(errors)}"
             )
 
-        if self.source_branch.name == config.SETTINGS.main.default_branch:
+        if self.source_branch.name == registry.default_branch:
             raise ValidationError(f"Unable to merge the branch '{self.source_branch.name}' into itself")
 
         # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
@@ -218,7 +217,7 @@ class BranchMerger:
         rel_ids_to_update: List[str] = []
         conflict_resolution = conflict_resolution or {}
 
-        default_branch: Branch = registry.branch[config.SETTINGS.main.default_branch]
+        default_branch: Branch = registry.branch[registry.default_branch]
 
         at = Timestamp(at)
 
@@ -407,7 +406,7 @@ class BranchMerger:
                     repository_id=repo.id,
                     repository_name=repo.name.value,  # type: ignore[attr-defined]
                     source_branch=self.source_branch.name,
-                    destination_branch=config.SETTINGS.main.default_branch,
+                    destination_branch=registry.default_branch,
                 )
             )
 

@@ -49,6 +49,7 @@ async def initialization(db: InfrahubDatabase) -> None:
 
         root = await get_root_node(db=db, initialize=True)
         registry.id = str(root.get_uuid())
+        registry.default_branch = root.default_branch
 
     # ---------------------------------------------------
     # Initialize the Storage Driver
@@ -72,7 +73,7 @@ async def initialization(db: InfrahubDatabase) -> None:
         registry.schema.register_schema(schema=schema)
 
         # Import the default branch
-        default_branch: Branch = registry.get_branch_from_registry(branch=config.SETTINGS.main.default_branch)
+        default_branch: Branch = registry.get_branch_from_registry(branch=registry.default_branch)
         hash_in_db = default_branch.active_schema_hash.main
         schema_default_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
         registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
@@ -120,18 +121,19 @@ async def initialization(db: InfrahubDatabase) -> None:
 
 
 async def create_root_node(db: InfrahubDatabase) -> Root:
-    root = Root(graph_version=GRAPH_VERSION)
+    root = Root(graph_version=GRAPH_VERSION, default_branch=config.SETTINGS.initial.default_branch)
     await root.save(db=db)
     log.info(f"Generated instance ID : {root.uuid} (v{GRAPH_VERSION})")
 
     registry.id = root.id
+    registry.default_branch = root.default_branch
 
     return root
 
 
 async def create_default_branch(db: InfrahubDatabase) -> Branch:
     branch = Branch(
-        name=config.SETTINGS.main.default_branch,
+        name=registry.default_branch,
         status="OPEN",
         description="Default Branch",
         hierarchy_level=1,

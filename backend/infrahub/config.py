@@ -45,9 +45,6 @@ class TraceTransportProtocol(str, Enum):
 
 class MainSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_")
-    default_branch: str = "main"
-    # default_account: str = "default"
-    # default_account_perm: str = "CAN_READ"
     docs_index_path: str = Field(
         default="/opt/infrahub/docs/build/search-index.json",
         description="Full path of saved json containing pre-indexed documentation",
@@ -184,6 +181,14 @@ class GitSettings(BaseSettings):
     repositories_directory: str = "repositories"
     sync_interval: int = Field(
         default=10, ge=0, description="Time (in seconds) between git repositories synchronizations"
+    )
+
+
+class InitialSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_INITIAL_")
+    default_branch: str = Field(
+        default="main",
+        description="Defines the name of the default branch within Infrahub, can only be set once during initialization of the system.",
     )
 
 
@@ -346,6 +351,10 @@ class ConfiguredSettings:
         return self.active_settings.miscellaneous
 
     @property
+    def initial(self) -> InitialSettings:
+        return self.active_settings.initial
+
+    @property
     def logging(self) -> LoggingSettings:
         return self.active_settings.logging
 
@@ -382,6 +391,7 @@ class Settings(BaseSettings):
     miscellaneous: MiscellaneousSettings = MiscellaneousSettings()
     logging: LoggingSettings = LoggingSettings()
     analytics: AnalyticsSettings = AnalyticsSettings()
+    initial: InitialSettings = InitialSettings()
     security: SecuritySettings = SecuritySettings()
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()

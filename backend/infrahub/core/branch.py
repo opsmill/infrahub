@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from pydantic import Field as FieldV2
 from pydantic import field_validator
 
-from infrahub import config
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
 )
@@ -152,7 +151,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
         For now, either a branch is the default branch or it must inherit from it so we can only have 2 values at best
         But the idea is that it will change at some point in a future version.
         """
-        default_branch = config.SETTINGS.main.default_branch
+        default_branch = registry.default_branch
         if self.name == default_branch:
             return [self.name]
 

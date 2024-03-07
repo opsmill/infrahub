@@ -6,7 +6,7 @@ from infrahub.database import InfrahubDatabase
 
 async def test_migration_001_no_version(db: InfrahubDatabase, reset_registry, delete_all_nodes_in_db):
     query_init_root = """
-    CREATE (root:Root { uuid: "%(uuid)s" })
+    CREATE (root:Root { uuid: "%(uuid)s", default_branch: "main" })
     RETURN root
     """ % {"uuid": str(UUIDT().new())}
     await db.execute_query(query=query_init_root)
@@ -21,7 +21,7 @@ async def test_migration_001_no_version(db: InfrahubDatabase, reset_registry, de
 
 async def test_migration_001_initial_version(db: InfrahubDatabase, reset_registry, delete_all_nodes_in_db):
     query_init_root = """
-    CREATE (root:Root { uuid: "%(uuid)s", graph_version: 0 })
+    CREATE (root:Root { uuid: "%(uuid)s", graph_version: 0, default_branch: "main" })
     RETURN root
     """ % {"uuid": str(UUIDT().new())}
     await db.execute_query(query=query_init_root)
@@ -38,7 +38,7 @@ async def test_migration_001_validate(db: InfrahubDatabase, reset_registry, dele
     root_id = str(UUIDT().new())
 
     query_init_root = """
-    CREATE (root:Root { uuid: "%(uuid)s", graph_version: 0 })
+    CREATE (root:Root { uuid: "%(uuid)s", graph_version: 0, default_branch: "main" })
     RETURN root
     """ % {"uuid": root_id}
     await db.execute_query(query=query_init_root)
