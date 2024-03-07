@@ -850,7 +850,7 @@ async def test_schema_branch_validate_cyclic_menu_placement():
     with pytest.raises(ValueError) as exc:
         schema.validate_menu_placements()
 
-    assert str(exc.value) == "TestCriticality: cyclic menu placement with TestSubObject"
+    assert str(exc.value) == "TestSubObject: cyclic menu placement with TestCriticality"
 
 
 @pytest.mark.parametrize(
