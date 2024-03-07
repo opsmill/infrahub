@@ -17,6 +17,39 @@ import { SelectButton } from "./buttons/select-button";
 import { POPOVER_SIZE, PopOver } from "./display/popover";
 import { SelectOption } from "./inputs/select";
 
+const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
+  branch && (
+    <>
+      {branch.is_isolated && (
+        <Icon
+          icon={"mdi:shield-check-outline"}
+          className={classNames(active ? "text-custom-white" : "text-gray-500")}
+        />
+      )}
+
+      {branch.is_isolated && (
+        <Icon
+          icon={"mdi:circular-arrows"}
+          className={classNames(active ? "text-custom-white" : "text-gray-500")}
+        />
+      )}
+
+      {branch.is_default && (
+        <Icon
+          icon={"mdi:source-branch"}
+          className={classNames(active ? "text-custom-white" : "text-gray-500")}
+        />
+      )}
+
+      {branch.is_data_only && (
+        <Icon
+          icon={"mdi:database"}
+          className={classNames(active ? "text-custom-white" : "text-gray-500")}
+        />
+      )}
+    </>
+  );
+
 export default function BranchSelector() {
   const [branches, setBranches] = useAtom(branchesState);
   const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
@@ -26,10 +59,11 @@ export default function BranchSelector() {
   const [createBranch, { loading }] = useMutation(BRANCH_CREATE);
 
   const valueLabel = (
-    <>
-      <Icon icon={"mdi:layers-triple"} />
+    <div className="flex items-center fill-custom-white">
+      {getBranchIcon(branch, true)}
+
       <p className="ml-2.5 text-sm font-medium truncate">{branch?.name}</p>
-    </>
+    </div>
   );
 
   const PopOverButton = (
@@ -86,34 +120,7 @@ export default function BranchSelector() {
 
   const renderOption = ({ option, active, selected }: any) => (
     <div className="flex relative flex-col">
-      <div className="flex absolute bottom-0 right-0">
-        {option.is_isolated && (
-          <div className="">
-            <Icon
-              icon={"mdi:shield-check-outline"}
-              className={classNames(active ? "text-custom-white" : "text-gray-500")}
-            />
-          </div>
-        )}
-
-        {option.is_default && (
-          <div className="">
-            <Icon
-              icon={"mdi:source-branch"}
-              className={classNames(active ? "text-custom-white" : "text-gray-500")}
-            />
-          </div>
-        )}
-
-        {option.is_data_only && (
-          <div className="">
-            <Icon
-              icon={"mdi:database"}
-              className={classNames(active ? "text-custom-white" : "text-gray-500")}
-            />
-          </div>
-        )}
-      </div>
+      <div className="flex absolute bottom-0 right-0">{getBranchIcon(option, active)}</div>
 
       <div className="flex justify-between">
         <p className={selected ? "font-semibold" : "font-normal"}>{option.name}</p>
