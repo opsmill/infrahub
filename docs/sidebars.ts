@@ -112,7 +112,8 @@ const sidebars: SidebarsConfig = {
         'reference/configuration',
         'reference/git-agent',
         'reference/api-server',
-        'reference/dotinfrahub'
+        'reference/dotinfrahub',
+        'reference/infrahub-tests'
       ],
     },
     {

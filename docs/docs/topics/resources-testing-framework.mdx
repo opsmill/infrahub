@@ -45,53 +45,7 @@ infrahub_tests:
           kind: TypeOfTest
 ```
 
-Values for the `resource` key can be one of `Check`, `GraphQLQuery`, `Jinja2Transform` or `PythonTransform` and are case sensitive. They define the type of the resource to test.
-
-By default tests are expected to pass (implicit `expect: PASS`) but this can be changed by setting `expect: FAIL`.
-
-Values for the `kind` key must be one of the following:
-
-* `check-smoke`
-* `check-unit-process`
-* `check-integration`
-* `graphql-query-smoke`
-* `graphql-query-integration`
-* `jinja2-transform-smoke`
-* `jinja2-transform-unit-render`
-* `jinja2-transform-integration`
-* `python-transform-smoke`
-* `python-transform-unit-process`
-* `python-transform-integration`
-
-They define the type of test to apply to a given resource. While smoke tests do not take any other parameters, unit tests and integration tests do. Parameters must be set within the value of the `spec` key for each tests.
-
-The unit tests behaviour can be changed by defining the following keys:
-
-* `directory` which corresponds to the path to the directory where the input and expected output files are located, it can be a relative or absolite path and defaults to the current directory
-* `input` which corresponds to the path to the file with the input data for the test, it defaults to `input.json` and is looked up from the value of `directory`
-* `output` which corresponds to the path to the file with the expected output for the test, if omitted the output of the test won't be compared to an expected one
-
-Both input and output files can be JSON (with the `.json` suffix), YAML (with the `.yaml` or `.yml` suffixes) or plain text.
-
-Note that an extra `path` key, with the path to the GraphQL query file as value, is required for `graphql-query-smoke` tests.
-
-Here is what a test can look like with all the keys set:
-
-```yaml
-infrahub_tests:
-  - resource: TypeOfResource
-    resource_name: NameOfTheResourceToTest
-    tests:
-      - name: NameOfTheTest
-        expect: PASS
-        spec:
-          kind: TypeOfTest
-          directory: /path/to/directory
-          input: input.yml
-          output: output.yml
-```
-
-Integration tests can be configured with the same properties as the unit tests. They have one more key, `variables` which corresponds to the path to a JSON or YAML file defining the variables to use while running queries, Python transforms or while rendering Jinja2 transforms. It can also take a YAML dictionary as a value instead of a path to a file.
+All availables keys and their values are listed in the tests configuration file [reference](/reference/infrahub-tests).
 
 ## Real life example
 
