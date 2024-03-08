@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH } from "../constants";
+import { ACCOUNT_STATE_PATH } from "../../constants";
 
 const NEW_DEVICE_NAME = "New device";
 const EXISTING_TAG = "blue";
