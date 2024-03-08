@@ -445,7 +445,7 @@ typing = ["typing-extensions (>=4.8)"]
 name = "gitdb"
 version = "4.0.11"
 description = "Git Object Database"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "gitdb-4.0.11-py3-none-any.whl", hash = "sha256:81a3407ddd2ee8df444cbacea00e2d038e40150acfa3001696fe0dcf1d3adfa4"},
@@ -459,7 +459,7 @@ smmap = ">=3.0.1,<6"
 name = "gitpython"
 version = "3.1.42"
 description = "GitPython is a Python library used to interact with Git repositories"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "GitPython-3.1.42-py3-none-any.whl", hash = "sha256:1bf9cd7c9e7255f77778ea54359e54ac22a72a5b51288c457c881057b7bb9ecd"},
@@ -1738,7 +1738,7 @@ files = [
 name = "smmap"
 version = "5.0.1"
 description = "A pure Python implementation of a sliding window memory map manager"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "smmap-5.0.1-py3-none-any.whl", hash = "sha256:e6d8668fa5f93e706934a62d7b4db19c8d9eb8cf2adbb75ef1b675aa332b69da"},
@@ -2080,10 +2080,10 @@ docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.link
 testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy (>=0.9.1)", "pytest-ruff"]
 
 [extras]
-ctl = ["Jinja2", "numpy", "numpy", "pyarrow", "ujson"]
-tests = ["Jinja2", "pytest"]
+ctl = ["Jinja2", "gitpython", "numpy", "numpy", "pyarrow", "ujson"]
+tests = ["Jinja2", "gitpython", "pytest"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "749d8711bd92c783bf1a1a86474fd10fe889c05257203231df736b4c7b0c0a6b"
+content-hash = "1755e5cc861505d7056802b99288274c2a811202dfe9b2c23ab8c3ab16a26634"
