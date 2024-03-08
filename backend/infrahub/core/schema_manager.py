@@ -966,6 +966,7 @@ class SchemaBranch:
                         peer=node.parent,
                         kind=RelationshipKind.HIERARCHY,
                         cardinality=RelationshipCardinality.ONE,
+                        max_count=1,
                         branch=BranchSupportType.AWARE,
                         direction=RelationshipDirection.OUTBOUND,
                         hierarchical=node.hierarchy,
