@@ -3,10 +3,11 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 
 const NEW_DEVICE_NAME = "New device";
 const EXISTING_TAG = "blue";
+const EXISTING_TAG_2 = "red";
 const NEW_TAG_NAME = "New tag";
 const NEW_TAG_NAME_2 = "New tag 2";
 
-test.describe("Create + edit a new device to check multi select values", () => {
+test.describe("Verify multi select behaviour", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test("Create a new device with exisiting tags + a new tag, and verify the multi select values", async ({
@@ -26,7 +27,7 @@ test.describe("Create + edit a new device to check multi select values", () => {
       .first()
       .getByTestId("select-open-option-button")
       .click();
-    await page.getByTestId("side-panel-container").getByText("atl1").click();
+    await page.getByRole("option", { name: "atl1" }).click();
 
     // Add existing tag
     await page
@@ -34,7 +35,8 @@ test.describe("Create + edit a new device to check multi select values", () => {
       .first()
       .getByTestId("select-open-option-button")
       .click();
-    await page.getByTestId("side-panel-container").getByText(EXISTING_TAG).click();
+    await page.getByRole("option", { name: EXISTING_TAG }).click();
+
     await expect(
       page.getByTestId("side-panel-container").getByText(EXISTING_TAG).first()
     ).toBeVisible();
@@ -46,20 +48,17 @@ test.describe("Create + edit a new device to check multi select values", () => {
 
     // Submit creation and check values
     await page.getByRole("button", { name: "Create" }).click();
+    await expect(page.locator("#alert-success-Tag-created")).toContainText("Tag created");
     await expect(page.getByText(NEW_TAG_NAME)).toBeVisible();
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(page.getByText("Device created")).toBeVisible();
-  });
-
-  test("Edit the new device with exisiting tags + a new tag, and verify the multi select values", async ({
-    page,
-  }) => {
-    // Access new device
-    await page.goto("/");
+    await expect(page.locator("#alert-success-Device-created")).toContainText("Device created");
+    //Search new object
+    await page.getByPlaceholder("Search anywhere").click();
     await page
       .getByTestId("search-anywhere")
       .getByPlaceholder("Search anywhere")
       .fill(NEW_DEVICE_NAME);
+
     await page.getByRole("option", { name: `${NEW_DEVICE_NAME}Device Description` }).click();
 
     // Verify values
@@ -75,11 +74,22 @@ test.describe("Create + edit a new device to check multi select values", () => {
       page.getByTestId("side-panel-container").getByText(NEW_TAG_NAME).first()
     ).toBeVisible();
 
+    // Add existing tag #2
+    await page
+      .locator("div:below(:text('Tags'))")
+      .first()
+      .getByTestId("select-open-option-button")
+      .click();
+    await page.getByTestId("side-panel-container").getByText(EXISTING_TAG_2).click();
+    await expect(
+      page.getByTestId("side-panel-container").getByText(EXISTING_TAG_2).first()
+    ).toBeVisible();
+
     // Add new tag #2
-    await page.locator("div:below(#Tags)").first().getByTestId("select-open-option-button").click();
     await page.getByText("Add Tag").click();
     await page.getByLabel("Create TagmainStandard Tag").locator("#Name").fill(NEW_TAG_NAME_2);
     await page.getByRole("button", { name: "Create" }).click();
+
     await expect(
       page.getByTestId("side-panel-container").getByText(EXISTING_TAG).first()
     ).toBeVisible();
@@ -92,6 +102,9 @@ test.describe("Create + edit a new device to check multi select values", () => {
 
     // Save and verify values
     await page.getByRole("button", { name: "Save" }).click();
-    await expect(page.locator("dd").filter({ hasText: NEW_TAG_NAME_2 })).toBeVisible();
+
+    await expect(page.locator("#alert-success-updated")).toContainText("Device updated");
+
+    await expect(page.getByText(NEW_TAG_NAME_2)).toBeVisible();
   });
 });
