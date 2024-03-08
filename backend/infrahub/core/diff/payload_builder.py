@@ -153,7 +153,7 @@ class DiffPayloadBuilder:
                 )
             change.properties[prop.type].changes.append(prop)
             change.summary.inc(prop.action.value)
-            if branch_diff_node_element:
+            if branch_diff_node_element and element.value:
                 branch_diff_node_element.summary.inc(element.value.action.value)
 
     def _add_node_element_relationship(
@@ -463,6 +463,27 @@ class DiffPayloadBuilder:
         for node_diff in self.diffs:
             node_diffs_by_branch[node_diff.branch].append(node_diff)
         return node_diffs_by_branch
+
+    async def get_summarized_node_diffs(self) -> List[EnrichedDiffSummaryElement]:
+        if not self.is_parsed:
+            await self._parse_diff()
+        enriched_summaries: List[EnrichedDiffSummaryElement] = []
+        summaries_by_branch_and_id = await self.diff.get_summaries_by_branch_and_id()
+
+        for node_diff in self.diffs:
+            summary = summaries_by_branch_and_id.get(node_diff.branch, {}).get(node_diff.id)
+            enriched_summaries.append(
+                EnrichedDiffSummaryElement(
+                    branch=node_diff.branch,
+                    node=node_diff.id,
+                    kind=node_diff.kind,
+                    actions=summary.actions if summary else [node_diff.action],
+                    action=node_diff.action,
+                    display_label=node_diff.display_label,
+                    elements=node_diff.elements,
+                )
+            )
+        return enriched_summaries
 
 
 def extract_diff_relationship_one(

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict, Optional, Union
 
-from graphene import Boolean, Field, List, ObjectType, String
+from graphene import Boolean, Field, JSONString, List, ObjectType, String
 
 from infrahub.core.diff.branch_differ import BranchDiffer
+from infrahub.core.diff.payload_builder import DiffPayloadBuilder
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -15,8 +16,12 @@ if TYPE_CHECKING:
 class DiffSummaryEntry(ObjectType):
     branch = String(required=True)
     node = String(required=True)
+    id = String(required=True)
     kind = String(required=True)
     actions = List(String, required=True)
+    action = String(required=True)
+    display_label = String()
+    elements = JSONString()
 
     @staticmethod
     async def resolve(
@@ -45,8 +50,9 @@ class DiffSummaryEntry(ObjectType):
         diff = await BranchDiffer.init(
             db=context.db, branch=context.branch, diff_from=time_from, diff_to=time_to, branch_only=branch_only
         )
-        summary = await diff.get_summary()
-        return [entry.to_graphql() for entry in summary]
+        diff_payload_builder = DiffPayloadBuilder(db=context.db, diff=diff)
+        enriched_summaries = await diff_payload_builder.get_summarized_node_diffs()
+        return [summary.to_graphql() for summary in enriched_summaries]
 
 
 DiffSummary = Field(

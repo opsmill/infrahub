@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from infrahub.core.constants import (
     DiffAction,
@@ -134,15 +134,39 @@ class DiffSummaryElement(BaseModel):
     branch: str = Field(..., description="The branch where the change occured")
     node: str = Field(..., description="The unique ID of the node")
     kind: str = Field(..., description="The kind of the node as defined by its namespace and name")
-    actions: List[DiffAction] = Field(..., description="A list of actions on this node.")
+    actions: List[DiffAction] = Field(..., description="A list of all actions on this node.")
 
-    def to_graphql(self) -> Dict[str, Union[str, List[str]]]:
+    def to_graphql(self) -> Dict[str, Any]:
         return {
             "branch": self.branch,
             "node": self.node,
             "kind": self.kind,
             "actions": [action.value for action in self.actions],
         }
+
+
+class EnrichedDiffSummaryElement(DiffSummaryElement):
+    action: DiffAction = Field(..., description="A list of all actions on this node.")
+    display_label: str
+    elements: Dict[str, Union[BranchDiffRelationshipOne, BranchDiffRelationshipMany, BranchDiffAttribute]] = Field(
+        default_factory=dict
+    )
+
+    @computed_field
+    def id(self) -> str:
+        return self.node
+
+    def to_graphql(self) -> Dict[str, Any]:
+        graphql_dict = super().to_graphql()
+        graphql_dict.update(
+            {
+                "id": self.id,
+                "action": self.action.value,
+                "display_label": self.display_label,
+                "elements": {element_name: element.model_dump() for element_name, element in self.elements.items()},
+            }
+        )
+        return graphql_dict
 
 
 class ModifiedPath(BaseModel):
@@ -459,7 +483,7 @@ class BranchDiffNode(BaseModel):
     branch: str
     kind: str
     id: str
-    summary: DiffSummary = DiffSummary()
+    summary: DiffSummary = Field(default_factory=DiffSummary)
     display_label: str
     changed_at: Optional[str] = None
     action: DiffAction
@@ -474,7 +498,7 @@ class BranchDiffEntry(BaseModel):
     id: str
     path: str
     elements: Dict[str, BranchDiffElement] = Field(default_factory=dict)
-    summary: DiffSummary = DiffSummary()
+    summary: DiffSummary = Field(default_factory=DiffSummary)
     action: Dict[str, DiffAction] = Field(default_factory=dict)
     display_label: Dict[str, str] = Field(default_factory=dict)
 

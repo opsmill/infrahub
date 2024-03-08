@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from deepdiff import DeepDiff
 from graphql import graphql
@@ -562,6 +564,19 @@ async def test_display_label_nested_query(db: InfrahubDatabase, default_branch: 
     assert DeepDiff(result.data["TestPerson"]["edges"][0]["node"], expected_result, ignore_order=True).to_dict() == {}
 
 
+def _check_diff_for_branch_and_id(all_dicts: list[dict], branch_name: str, id: str, things_to_check: dict) -> dict:
+    this_dict = None
+    for one_dict in all_dicts:
+        if one_dict["branch"] == branch_name and one_dict["id"] == id:
+            this_dict = one_dict
+            break
+    if not this_dict:
+        raise ValueError(f"No diff for branch={branch_name} and id={id}")
+    for key, value in things_to_check.items():
+        assert this_dict.get(key) == value
+    return this_dict
+
+
 async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
@@ -605,8 +620,12 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
         DiffSummary {
             branch
             node
+            id
             kind
             actions
+            action
+            display_label
+            elements
         }
     }
     """
@@ -621,13 +640,97 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
     assert result.errors is None
     assert result.data
     diff_summary = result.data["DiffSummary"]
-    assert len(diff_summary) == 7
 
-    assert {"branch": "main", "node": c1_main.id, "kind": "TestCar", "actions": ["removed"]} in diff_summary
-    assert {"branch": "main", "node": c2_main.id, "kind": "TestCar", "actions": ["updated"]} in diff_summary
-    assert {"branch": "branch2", "node": c3_branch2.id, "kind": "TestCar", "actions": ["updated"]} in diff_summary
-    assert {"branch": "main", "node": p2_main.id, "kind": "TestPerson", "actions": ["updated"]} in diff_summary
-    assert {"branch": "branch2", "node": p1_branch2.id, "kind": "TestPerson", "actions": ["updated"]} in diff_summary
+    assert len(diff_summary) == 5
+
+    _check_diff_for_branch_and_id(
+        all_dicts=diff_summary,
+        branch_name="main",
+        id=c1_main.id,
+        things_to_check={
+            "branch": "main",
+            "node": c1_main.id,
+            "id": c1_main.id,
+            "kind": "TestCar",
+            "actions": ["removed"],
+            "action": "removed",
+            "display_label": "",
+        },
+    )
+    c2_main_diff = _check_diff_for_branch_and_id(
+        all_dicts=diff_summary,
+        branch_name="main",
+        id=c2_main.id,
+        things_to_check={
+            "branch": "main",
+            "node": c2_main.id,
+            "id": c2_main.id,
+            "kind": "TestCar",
+            "actions": ["updated"],
+            "action": "updated",
+            "display_label": "bolting #444444",
+        },
+    )
+    c2_main_diff_elements = json.loads(c2_main_diff["elements"])
+    assert len(c2_main_diff_elements) == 1
+    assert c2_main_diff_elements["name"]["action"] == "updated"
+    assert c2_main_diff_elements["name"]["summary"] == {"added": 0, "updated": 1, "removed": 0}
+    c3_branch2_diff = _check_diff_for_branch_and_id(
+        all_dicts=diff_summary,
+        branch_name="branch2",
+        id=c3_branch2.id,
+        things_to_check={
+            "branch": "branch2",
+            "node": c3_branch2.id,
+            "id": c3_branch2.id,
+            "kind": "TestCar",
+            "actions": ["updated"],
+            "action": "updated",
+            "display_label": "nolt #444444",
+        },
+    )
+    c3_branch2_diff_elements = json.loads(c3_branch2_diff["elements"])
+    assert len(c3_branch2_diff_elements) == 1
+    assert c3_branch2_diff_elements["owner"]["action"] == "updated"
+    p2_main_diff = _check_diff_for_branch_and_id(
+        all_dicts=diff_summary,
+        branch_name="main",
+        id=p2_main.id,
+        things_to_check={
+            "branch": "main",
+            "node": p2_main.id,
+            "id": p2_main.id,
+            "kind": "TestPerson",
+            "actions": ["updated"],
+            "action": "updated",
+            "display_label": "Jeanette",
+        },
+    )
+    p2_main_diff_elements = json.loads(p2_main_diff["elements"])
+    assert len(p2_main_diff_elements) == 1
+    assert p2_main_diff_elements["name"]["action"] == "updated"
+    assert p2_main_diff_elements["name"]["summary"] == {"added": 0, "updated": 1, "removed": 0}
+    p1_branch2_diff = _check_diff_for_branch_and_id(
+        all_dicts=diff_summary,
+        branch_name="branch2",
+        id=p1_branch2.id,
+        things_to_check={
+            "branch": "branch2",
+            "node": p1_branch2.id,
+            "id": p1_branch2.id,
+            "kind": "TestPerson",
+            "actions": ["updated"],
+            "action": "updated",
+            "display_label": "Jonathan",
+        },
+    )
+    p1_branch2_diff_elements = json.loads(p1_branch2_diff["elements"])
+    assert len(p1_branch2_diff_elements) == 2
+    assert p1_branch2_diff_elements["name"]["action"] == "updated"
+    assert p1_branch2_diff_elements["name"]["summary"] == {"added": 0, "updated": 1, "removed": 0}
+    assert "cars" in p1_branch2_diff_elements
+    assert len(p1_branch2_diff_elements["cars"]["peers"]) == 1
+    assert p1_branch2_diff_elements["cars"]["peers"][0]["action"] == "added"
 
 
 async def test_query_typename(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
