@@ -37,7 +37,11 @@ async def test_schema_migrations_runner(
     assert await count_nodes(db=db, label="Attribute") == 12
 
     errors = await schema_migrations_runner(
-        branch=default_branch, schema=schema, migrations=migrations, service=service
+        branch=default_branch,
+        new_schema=schema,
+        previous_schema=registry.schema.get_schema_branch(name=default_branch.name),
+        migrations=migrations,
+        service=service,
     )
     assert errors == []
 

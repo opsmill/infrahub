@@ -30,7 +30,8 @@ class SchemaMigration(BaseModel):
     name: str = Field(..., description="Name of the migration")
     queries: Sequence[type[Query]] = Field(..., description="List of queries to execute for this migration")
 
-    node_schema: Union[NodeSchema, GenericSchema]
+    new_node_schema: Union[NodeSchema, GenericSchema]
+    previous_node_schema: Union[NodeSchema, GenericSchema]
     schema_path: SchemaPath
 
     # async def validate_migration(self, db: InfrahubDatabase):
@@ -55,14 +56,22 @@ class SchemaMigration(BaseModel):
 
 class AttributeSchemaMigration(SchemaMigration):
     @property
-    def attribute_schema(self) -> AttributeSchema:
-        return self.node_schema.get_attribute(name=self.schema_path.field_name)
+    def new_attribute_schema(self) -> AttributeSchema:
+        return self.new_node_schema.get_attribute(name=self.schema_path.field_name)
+
+    @property
+    def previous_attribute_schema(self) -> AttributeSchema:
+        return self.previous_node_schema.get_attribute(name=self.schema_path.field_name)
 
 
 class RelationshipSchemaMigration(SchemaMigration):
     @property
-    def relationship_schema(self) -> RelationshipSchema:
-        return self.node_schema.get_relationship(name=self.schema_path.field_name)
+    def new_relationship_schema(self) -> RelationshipSchema:
+        return self.new_node_schema.get_relationship(name=self.schema_path.field_name)
+
+    @property
+    def previous_relationship_schema(self) -> RelationshipSchema:
+        return self.previous_node_schema.get_relationship(name=self.schema_path.field_name)
 
 
 class GraphMigration(BaseModel):

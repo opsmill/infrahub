@@ -154,7 +154,8 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         if merger and merger.migrations:
             errors = await schema_migrations_runner(
                 branch=merger.destination_branch,
-                schema=merger.destination_schema,
+                new_schema=merger.destination_schema,
+                previous_schema=merger.initial_source_schema,
                 migrations=merger.migrations,
                 service=context.service,
             )

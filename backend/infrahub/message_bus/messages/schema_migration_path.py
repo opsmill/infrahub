@@ -15,7 +15,12 @@ ROUTING_KEY = "schema.migration.path"
 class SchemaMigrationPath(InfrahubMessage):
     branch: Branch = Field(..., description="The name of the branch to target")
     migration_name: str = Field(..., description="The name of the migration to run")
-    node_schema: Union[NodeSchema, GenericSchema] = Field(..., description="Schema of Node or Generic to process")
+    new_node_schema: Union[NodeSchema, GenericSchema] = Field(
+        ..., description="new Schema of Node or Generic to process"
+    )
+    previous_node_schema: Union[NodeSchema, GenericSchema] = Field(
+        ..., description="Previous Schema of Node or Generic to process"
+    )
     schema_path: SchemaPath = Field(..., description="SchemaPath to the element of the schema to migrate")
 
 
