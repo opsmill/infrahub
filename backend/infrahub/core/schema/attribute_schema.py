@@ -57,8 +57,7 @@ class AttributeSchema(GeneratedAttributeSchema):
     def uses_enum_class(self) -> bool:
         return bool(self.enum) and config.SETTINGS.experimental_features.graphql_enums
 
-    @property
-    def _branch(self) -> BranchSupportType:
+    def get_branch(self) -> BranchSupportType:
         if not self.branch:
             raise ValueError("branch hasn't been defined yet")
         return self.branch

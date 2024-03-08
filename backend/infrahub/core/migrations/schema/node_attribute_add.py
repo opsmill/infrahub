@@ -17,29 +17,28 @@ class NodeAttributeAddMigrationQuery01(Query):
 
     def __init__(
         self,
-        *args: Any,
         migration: NodeAttributeAddMigration,
         **kwargs: Any,
     ):
         self.migration = migration
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.migration.node_schema.kind
-        self.params["attr_name"] = self.migration.attribute_schema.name
-        self.params["attr_type"] = self.migration.attribute_schema.kind
+        self.params["node_kind"] = self.migration.new_node_schema.kind
+        self.params["attr_name"] = self.migration.new_attribute_schema.name
+        self.params["attr_type"] = self.migration.new_attribute_schema.kind
 
-        if self.migration.attribute_schema.default_value:
-            self.params["attr_value"] = self.migration.attribute_schema.default_value
+        if self.migration.new_attribute_schema.default_value:
+            self.params["attr_value"] = self.migration.new_attribute_schema.default_value
         else:
             self.params["attr_value"] = "NULL"
 
         if self.branch.is_default:
-            self.params["branch_support"] = self.migration.attribute_schema._branch.value
+            self.params["branch_support"] = self.migration.new_attribute_schema.get_branch().value
         else:
             self.params["branch_support"] = BranchSupportType.LOCAL.value
 
