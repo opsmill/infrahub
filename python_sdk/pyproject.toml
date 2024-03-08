@@ -69,8 +69,24 @@ pytest-xdist = "^3.3.1"
 types-python-slugify = "^8.0.0.3"
 
 [tool.poetry.extras]
-ctl = ["gitpython", "Jinja2", "numpy", "pyarrow", "pyyaml", "rich", "toml", "typer", "ujson"]
-tests = ["gitpython","Jinja2", "pytest", "pyyaml", "rich"]
+ctl = [
+    "gitpython",
+    "Jinja2",
+    "numpy",
+    "pyarrow",
+    "pyyaml",
+    "rich",
+    "toml",
+    "typer",
+    "ujson"
+]
+tests = [
+    "gitpython",
+    "Jinja2",
+    "pytest",
+    "pyyaml",
+    "rich"
+]
 
 [tool.poetry.scripts]
 infrahubctl = "infrahub_sdk.ctl.cli:app"
