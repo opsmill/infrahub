@@ -27,8 +27,8 @@ from .diff.branch_differ import BranchDiffer
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.models import SchemaUpdateMigrationInfo
-    from infrahub.core.schema_manager import SchemaBranch
+    from infrahub.core.models import SchemaUpdateConstraintInfo, SchemaUpdateMigrationInfo
+    from infrahub.core.schema_manager import SchemaBranch, SchemaDiff
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
@@ -51,6 +51,9 @@ class BranchMerger:
 
         self._source_schema: Optional[SchemaBranch] = None
         self._destination_schema: Optional[SchemaBranch] = None
+        self._initial_source_schema: Optional[SchemaBranch] = None
+
+        self.schema_diff: Optional[SchemaBranchDiff] = None
 
         self._service = service
 
@@ -69,6 +72,12 @@ class BranchMerger:
         return self._destination_schema
 
     @property
+    def initial_source_schema(self) -> SchemaBranch:
+        if self._initial_source_schema:
+            return self._initial_source_schema
+        raise ValueError("_initial_source_schema hasn't been initialized")
+
+    @property
     def service(self) -> InfrahubServices:
         if not self._service:
             raise ValueError("BranchMerger hasn't been initialized with a service object")
@@ -80,12 +89,33 @@ class BranchMerger:
 
         return self._graph_diff
 
+    async def get_initial_source_branch(self) -> SchemaBranch:
+        """Retrieve the schema of the source branch when the branch was created.
+        To be as efficient as possible, this function is using the diff of the schema
+        Generated from the Data Diff.
+        """
+        if self._initial_source_schema:
+            return self._initial_source_schema
+
+        self._initial_source_schema = await registry.schema.load_schema_from_db(
+            db=self.db,
+            branch=self.source_branch,
+            schema=self.source_schema.duplicate(),
+            schema_diff=await self.get_schema_diff(),
+            at=Timestamp(self.source_branch.branched_from),
+        )
+
+        return self._initial_source_schema
+
     async def get_schema_diff(self) -> SchemaBranchDiff:
         """Return a SchemaBranchDiff object with the list of nodes and generics
         based on the information returned by the Graph Diff.
 
         The Graph Diff return a list of UUID so we need to convert that back into Kind
         """
+
+        if self.schema_diff:
+            return self.schema_diff
 
         graph_diff = await self.get_graph_diff()
         schema_summary = await graph_diff.get_schema_summary()
@@ -111,7 +141,8 @@ class BranchMerger:
         schema_diff.nodes = list(set(schema_diff.nodes))
         schema_diff.generics = list(set(schema_diff.generics))
 
-        return schema_diff
+        self.schema_diff = schema_diff
+        return self.schema_diff
 
     async def update_schema(self) -> bool:
         """After the merge, if there was some changes, we need to:
@@ -134,27 +165,43 @@ class BranchMerger:
         self.destination_branch.update_schema_hash()
         await self.destination_branch.save(db=self.db)
 
+        await self.calculate_migrations(target_schema=updated_schema)
+
+        return True
+
+    def get_candidate_schema(self) -> SchemaBranch:
+        # For now, we retrieve the latest schema for each branch from the registry
+        # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff
+        current_schema = self.source_schema.duplicate()
+        candidate_schema = self.destination_schema.duplicate()
+        candidate_schema.update(schema=current_schema)
+
+        return candidate_schema
+
+    async def get_3ways_diff_schema(self) -> SchemaDiff:
         # To calculate the migrations that we need to execute we need
         # the initial version of the schema when the branch was created
         # and we need to calculate a 3 ways comparison between
         # - The initial schema and the current schema in the source branch
         # - The initial schema and the current schema in the destination branch
-        initial_source_schema = await registry.schema.load_schema_from_db(
-            db=self.db,
-            branch=self.source_branch,
-            schema=self.source_schema.duplicate(),
-            schema_diff=schema_diff,
-            at=Timestamp(self.source_branch.branched_from),
-        )
+        initial_source_schema = await self.get_initial_source_branch()
 
         diff_source = initial_source_schema.diff(other=self.source_schema)
         diff_destination = initial_source_schema.diff(other=self.destination_schema)
         diff_both = diff_source + diff_destination
 
-        validation = SchemaUpdateValidationResult.init(diff=diff_both, schema=updated_schema)
-        self.migrations = validation.migrations
+        return diff_both
 
-        return True
+    async def calculate_migrations(self, target_schema: SchemaBranch) -> List[SchemaUpdateMigrationInfo]:
+        diff_3way = await self.get_3ways_diff_schema()
+        validation = SchemaUpdateValidationResult.init(diff=diff_3way, schema=target_schema)
+        self.migrations = validation.migrations
+        return self.migrations
+
+    async def calculate_validations(self, target_schema: SchemaBranch) -> List[SchemaUpdateConstraintInfo]:
+        diff_3way = await self.get_3ways_diff_schema()
+        validation = SchemaUpdateValidationResult.init(diff=diff_3way, schema=target_schema)
+        return validation.constraints
 
     async def validate_branch(self) -> List[DataConflict]:
         """
