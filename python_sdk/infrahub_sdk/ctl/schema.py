@@ -1,4 +1,3 @@
-import logging
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -12,13 +11,13 @@ except ImportError:
     import pydantic  # type: ignore[no-redef]
 
 from rich.console import Console
-from rich.logging import RichHandler
 
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.async_typer import AsyncTyper
 from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.ctl.exceptions import FileNotValidError
+from infrahub_sdk.ctl.utils import init_logging
 from infrahub_sdk.utils import find_files
 
 app = AsyncTyper()
@@ -126,14 +125,7 @@ async def load(
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
 
-    logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
-    logging.getLogger("httpx").setLevel(logging.ERROR)
-    logging.getLogger("httpcore").setLevel(logging.ERROR)
-
-    log_level = "DEBUG" if debug else "INFO"
-    FORMAT = "%(message)s"
-    logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-    logging.getLogger("infrahubctl")
+    init_logging(debug=debug)
 
     console = Console()
 
@@ -163,14 +155,7 @@ async def check(
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
 
-    logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
-    logging.getLogger("httpx").setLevel(logging.ERROR)
-    logging.getLogger("httpcore").setLevel(logging.ERROR)
-
-    log_level = "DEBUG" if debug else "INFO"
-    FORMAT = "%(message)s"
-    logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-    logging.getLogger("infrahubctl")
+    init_logging(debug=debug)
 
     console = Console()
 
