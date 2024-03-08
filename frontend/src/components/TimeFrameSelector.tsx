@@ -6,7 +6,7 @@ import { Icon } from "@iconify-icon/react";
 import DateTimePicker from "react-datepicker";
 import { classNames } from "../utils/common";
 import { format, setHours, setMinutes } from "date-fns";
-import { useEffect } from "react";
+import { HTMLAttributes, useEffect } from "react";
 import { Transition } from "@headlessui/react";
 
 export const TimeFrameSelector = () => {
@@ -33,8 +33,8 @@ export const TimeFrameSelector = () => {
   return (
     <div
       className={classNames(
-        "p-3 rounded-full inline-flex items-center bg-gray-800 text-white",
-        date && "bg-orange-600 py-1.5 shadow-md "
+        "inline-flex bg-gray-800 text-white rounded-full",
+        date && "bg-orange-600 shadow-md"
       )}
       data-testid="timeframe-selector">
       <Transition
@@ -46,21 +46,22 @@ export const TimeFrameSelector = () => {
         leaveFrom="w-40"
         leaveTo="w-0"
         className="flex items-center truncate">
-        <Icon
-          icon="mdi:close"
-          className="cursor-pointer"
-          onClick={reset}
-          data-testid="reset-timeframe-selector"
-        />
-        <div className="flex flex-col mx-3">
+        <ButtonStyled onClick={reset} data-testid="reset-timeframe-selector">
+          <Icon icon="mdi:close" />
+        </ButtonStyled>
+
+        <div className="flex flex-col">
           <span className="font-medium text-xs">Current view time:</span>
           {date && <span className="text-sm">{format(date, "PP | H:mm")}</span>}
         </div>
       </Transition>
 
       <DateTimePicker
-        customInput={<Icon icon="mdi:calendar-clock" className="text-2xl cursor-pointer" />}
-        wrapperClassName="w-6 h-6"
+        customInput={
+          <ButtonStyled>
+            <Icon icon="mdi:calendar-clock" className="text-2xl" />
+          </ButtonStyled>
+        }
         selected={date}
         onChange={onChange}
         showTimeSelect
@@ -73,3 +74,13 @@ export const TimeFrameSelector = () => {
     </div>
   );
 };
+
+const ButtonStyled = ({ className, ...props }: HTMLAttributes<HTMLButtonElement>) => (
+  <button
+    className={classNames(
+      "inline-flex p-3 rounded-full focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2",
+      className
+    )}
+    {...props}
+  />
+);
