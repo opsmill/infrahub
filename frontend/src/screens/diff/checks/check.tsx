@@ -76,6 +76,8 @@ const getCheckData = (check: any, refetch: Function) => {
     case "CoreDataCheck": {
       const { id, conflicts } = check;
 
+      if (!conflicts?.values?.length) return null;
+
       return (
         <div>
           <div>
