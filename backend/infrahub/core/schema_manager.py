@@ -420,7 +420,7 @@ class SchemaBranch:
             if not rels_missing_identifier:
                 continue
 
-            node = self.get(name=name)
+            node = node.duplicate()
             for rel in node.relationships:
                 if rel.identifier:
                     continue
@@ -679,7 +679,7 @@ class SchemaBranch:
             if not attributes:
                 continue
 
-            node = self.get(name=name)
+            node = node.duplicate()
             changed = False
 
             for attr in attributes:
@@ -718,7 +718,7 @@ class SchemaBranch:
             if not check_if_need_to_update_label(node):
                 continue
 
-            node = self.get(name=name)
+            node = node.duplicate()
             if not node.label:
                 node.label = format_label(node.name)
 
@@ -746,7 +746,7 @@ class SchemaBranch:
                 # TODO add a proper exception for all schema related issue
                 raise ValueError(f"{node.kind} Unable to find the generic {node.hierarchy!r} provided in 'hierarchy'.")
 
-            node = self.get(name=name)
+            node = node.duplicate()
             changed = False
 
             if node.hierarchy not in node.inherit_from:
@@ -777,9 +777,11 @@ class SchemaBranch:
 
         # For all node_schema, add the attributes & relationships from the generic / interface
         for name in self.nodes.keys():
-            node = self.get(name=name)
+            node = self.get(name=name, duplicate=False)
             if not node.inherit_from:
                 continue
+
+            node = node.duplicate()
 
             generics_used_by["CoreNode"].append(node.kind)
 
@@ -789,12 +791,13 @@ class SchemaBranch:
                     # TODO add a proper exception for all schema related issue
                     raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
 
-                if self.get(generic_kind).hierarchical:
+                generic_kind_schema = self.get(generic_kind, duplicate=False)
+                if generic_kind_schema.hierarchical:
                     generic_with_hierarchical_support.append(generic_kind)
 
                 # Store the list of node referencing a specific generics
                 generics_used_by[generic_kind].append(node.kind)
-                node.inherit_from_interface(interface=self.get(name=generic_kind))
+                node.inherit_from_interface(interface=generic_kind_schema)
 
             if len(generic_with_hierarchical_support) > 1:
                 raise ValueError(
@@ -821,8 +824,27 @@ class SchemaBranch:
 
         if either node on a relationship support branch, the relationship must be branch aware.
         """
+        # pylint: disable=too-many-branches
+
         for name in self.all_names:
-            node = self.get(name=name)
+            node = self.get(name=name, duplicate=False)
+
+            # Check if this node requires a change before duplicating
+            change_required = False
+            for attr in node.attributes:
+                if attr.branch is None:
+                    change_required = True
+                    break
+            if not change_required:
+                for rel in node.relationships:
+                    if rel.branch is None:
+                        change_required = True
+                        break
+
+            if not change_required:
+                continue
+
+            node = node.duplicate()
 
             for attr in node.attributes:
                 if attr.branch is not None:
@@ -834,7 +856,7 @@ class SchemaBranch:
                 if rel.branch is not None:
                     continue
 
-                peer_node = self.get(name=rel.peer)
+                peer_node = self.get(name=rel.peer, duplicate=False)
                 if node.branch == peer_node.branch:
                     rel.branch = node.branch
                 elif BranchSupportType.LOCAL in (node.branch, peer_node.branch):
@@ -853,7 +875,7 @@ class SchemaBranch:
             if not attrs_to_update:
                 continue
 
-            node = self.get(name=name)
+            node = node.duplicate()
             for attr in attrs_to_update:
                 attr.optional = True
 
@@ -876,8 +898,35 @@ class SchemaBranch:
 
     def process_cardinality_counts(self) -> None:
         """Ensure that all relationships with a cardinality of ONE have a min_count and max_count of 1."""
+        # pylint: disable=too-many-branches
+
         for name in self.all_names:
-            node = self.get(name=name)
+            node = self.get(name=name, duplicate=False)
+
+            # Check if this node requires a change before duplicating
+            change_required = False
+            for rel in node.relationships:
+                if rel.cardinality != RelationshipCardinality.ONE:
+                    continue
+                # Handle default values of RelationshipSchema when cardinality is ONE and set to valid values (1)
+                # RelationshipSchema default values 0 for min_count and max_count
+                if rel.optional and rel.min_count != 0:
+                    change_required = True
+                    break
+                if rel.optional and rel.max_count != 1:
+                    change_required = True
+                    break
+                if not rel.optional and rel.min_count == 0:
+                    change_required = True
+                    break
+                if not rel.optional and rel.max_count == 0:
+                    change_required = True
+                    break
+
+            if not change_required:
+                continue
+
+            node = node.duplicate()
 
             for rel in node.relationships:
                 if rel.cardinality != RelationshipCardinality.ONE:
@@ -902,6 +951,8 @@ class SchemaBranch:
             if not items_to_update:
                 continue
 
+            node = node.duplicate()
+
             current_weight = 0
             for item in node.attributes + node.relationships:
                 current_weight += 1000
@@ -915,7 +966,8 @@ class SchemaBranch:
             return
 
         for node_name in self.all_names:
-            schema: Union[NodeSchema, GenericSchema] = self.get(name=node_name)
+            schema: Union[NodeSchema, GenericSchema] = self.get(name=node_name, duplicate=False)
+            changed = False
 
             if isinstance(schema, NodeSchema) and InfrahubKind.GENERICGROUP in schema.inherit_from:
                 continue
@@ -924,6 +976,9 @@ class SchemaBranch:
                 continue
 
             if "member_of_groups" not in schema.relationship_names:
+                if not changed:
+                    schema = schema.duplicate()
+                    changed = True
                 schema.relationships.append(
                     RelationshipSchema(
                         name="member_of_groups",
@@ -936,6 +991,9 @@ class SchemaBranch:
                 )
 
             if "subscriber_of_groups" not in schema.relationship_names:
+                if not changed:
+                    schema = schema.duplicate()
+                    changed = True
                 schema.relationships.append(
                     RelationshipSchema(
                         name="subscriber_of_groups",
@@ -947,7 +1005,8 @@ class SchemaBranch:
                     )
                 )
 
-            self.set(name=node_name, schema=schema)
+            if changed:
+                self.set(name=node_name, schema=schema)
 
     def add_hierarchy(self):
         for node_name in self.nodes.keys():
@@ -956,7 +1015,7 @@ class SchemaBranch:
             if node.parent is None and node.children is None:
                 continue
 
-            node: NodeSchema = self.get(name=node_name)
+            node: NodeSchema = node.duplicate()
 
             if node.parent and "parent" not in node.relationship_names:
                 node.relationships.append(
