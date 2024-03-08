@@ -10,6 +10,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.schema.runner import schema_migrations_runner
 from infrahub.core.node import Node
+from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import BranchNotFound, ValidationError
@@ -145,7 +146,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     request_id = log_data.get("request_id", "")
                     message = messages.EventBranchMerge(
                         source_branch=source_branch.name,
-                        target_branch=config.SETTINGS.main.default_branch,
+                        target_branch=registry.default_branch,
                         meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
                     )
                     context.background.add_task(services.send, message)

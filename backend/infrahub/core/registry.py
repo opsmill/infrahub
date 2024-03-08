@@ -4,7 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, Optional, Type, Union
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.exceptions import (
     BranchNotFound,
@@ -37,6 +37,7 @@ class Registry:
     attribute: Dict[str, BaseAttribute] = field(default_factory=dict)
     branch: dict = field(default_factory=dict)
     node: dict = field(default_factory=dict)
+    _default_branch: Optional[str] = None
     _schema: Optional[SchemaManager] = None
     default_graphql_type: Dict[str, InfrahubObject] = field(default_factory=dict)
     graphql_type: dict = field(default_factory=lambda: defaultdict(dict))
@@ -49,6 +50,17 @@ class Registry:
     branch_object: Optional[Type[Brancher]] = None
     _manager: Optional[Type[NodeManager]] = None
     _storage: Optional[InfrahubObjectStorage] = None
+
+    @property
+    def default_branch(self) -> str:
+        if not self._default_branch:
+            raise InitializationError()
+
+        return self._default_branch
+
+    @default_branch.setter
+    def default_branch(self, value: str):
+        self._default_branch = value
 
     @property
     def schema(self) -> SchemaManager:
@@ -89,7 +101,7 @@ class Registry:
         return False
 
     def set_item(self, kind: str, name: str, item, branch: Optional[str] = None) -> bool:
-        branch = branch or config.SETTINGS.main.default_branch
+        branch = branch or registry.default_branch
         getattr(self, kind)[branch][name] = item
         return True
 
@@ -108,7 +120,7 @@ class Registry:
         if branch.name in attr and name in attr[branch.name]:
             return attr[branch.name][name]
 
-        default_branch = config.SETTINGS.main.default_branch
+        default_branch = registry.default_branch
         if name in attr[default_branch]:
             return attr[default_branch][name]
 
@@ -124,7 +136,7 @@ class Registry:
         if branch.name in attr:
             return attr[branch.name]
 
-        default_branch = config.SETTINGS.main.default_branch
+        default_branch = registry.default_branch
         return attr[default_branch]
 
     def get_node_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> NodeSchema:
@@ -179,7 +191,7 @@ class Registry:
 
         # if the name of the branch is not defined or not a string we used the default branch name
         if not branch or not isinstance(branch, str):
-            branch = config.SETTINGS.main.default_branch
+            branch = registry.default_branch
 
         # Try to get it from the registry
         #   if not present in the registry and if a session has been provided get it from the database directly
@@ -222,7 +234,7 @@ class Registry:
             raise BranchNotFound(identifier=GLOBAL_BRANCH_NAME)
 
         if not branch or not isinstance(branch, str):
-            branch = config.SETTINGS.main.default_branch
+            branch = registry.default_branch
 
         try:
             return self.get_branch_from_registry(branch=branch)

@@ -9,6 +9,7 @@ from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
 from fastapi import FastAPI, Request, Response
 from fastapi.logger import logger
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -156,6 +157,7 @@ app.add_middleware(
     skip_paths=["/health"],
 )
 app.add_middleware(InfrahubCORSMiddleware)
+app.add_middleware(GZipMiddleware, minimum_size=100_000)
 
 app.add_exception_handler(Error, generic_api_exception_handler)
 app.add_exception_handler(TimestampFormatError, partial(generic_api_exception_handler, http_code=400))

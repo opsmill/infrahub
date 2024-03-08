@@ -5,6 +5,7 @@ import { SchemaPageHeader } from "./schema-page-header";
 import { SchemaSelector } from "./schema-selector";
 import { SchemaViewerStack } from "./schema-viewer";
 import { Badge } from "../../components/ui/badge";
+import Content from "../layout/content";
 
 export default function SchemaPage() {
   useTitle("Schema");
@@ -12,7 +13,7 @@ export default function SchemaPage() {
   const generics = useAtomValue(genericsState);
 
   return (
-    <>
+    <Content>
       <SchemaPageHeader
         title={
           <>
@@ -21,10 +22,10 @@ export default function SchemaPage() {
         }
       />
 
-      <div className="flex items-start relative">
+      <div className="flex items-stretch min-h-full">
         <SchemaSelector className="flex-grow max-w-md shrink-0" />
-        <SchemaViewerStack className="flex-grow min-w-96 sm:min-w-[520px] max-w-xl max-h-[90vh] sticky top-2 right-2 m-2" />
+        <SchemaViewerStack className="flex-grow min-w-96 sm:min-w-[520px] max-w-xl max-h-[calc(100vh-145px)] sticky top-2 right-2 m-2" />
       </div>
-    </>
+    </Content>
   );
 }

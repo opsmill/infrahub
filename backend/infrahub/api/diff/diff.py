@@ -6,13 +6,12 @@ from typing import TYPE_CHECKING, Dict, Optional, Tuple
 from fastapi import APIRouter, Depends, Request
 from infrahub_sdk.utils import compare_lists
 
-from infrahub import config
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind
 from infrahub.core.diff.branch_differ import BranchDiffer
-from infrahub.core.diff.payload import (
+from infrahub.core.diff.payload_builder import (
     ArtifactTarget,
     BranchDiff,
     BranchDiffArtifact,
@@ -20,8 +19,7 @@ from infrahub.core.diff.payload import (
     BranchDiffFile,
     BranchDiffNode,
     BranchDiffRepository,
-    DiffPayload,
-    generate_diff_payload,
+    DiffPayloadBuilder,
     get_display_labels_per_kind,
 )
 from infrahub.core.schema_manager import INTERNAL_SCHEMA_NODE_KINDS
@@ -32,7 +30,6 @@ from .validation_models import DiffQueryValidated
 if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
 
-# pylint: disable=too-many-branches,too-many-lines
 
 router = APIRouter(prefix="/diff")
 
@@ -57,8 +54,8 @@ async def get_diff_data(
         namespaces_exclude=["Schema"],
     )
     schema = registry.schema.get_full(branch=branch)
-    diff_payload = DiffPayload(db=db, diff=diff, kinds_to_include=list(schema.keys()))
-    return await diff_payload.generate_diff_payload()
+    diff_payload_builder = DiffPayloadBuilder(db=db, diff=diff, kinds_to_include=list(schema.keys()))
+    return await diff_payload_builder.get_branch_diff()
 
 
 @router.get("/schema")
@@ -79,8 +76,8 @@ async def get_diff_schema(
         branch_only=query.branch_only,
         kinds_include=INTERNAL_SCHEMA_NODE_KINDS,
     )
-    diff_payload = DiffPayload(db=db, diff=diff)
-    return await diff_payload.generate_diff_payload()
+    diff_payload_builder = DiffPayloadBuilder(db=db, diff=diff)
+    return await diff_payload_builder.get_branch_diff()
 
 
 @router.get("/files")
@@ -118,6 +115,7 @@ async def get_diff_files(
     return response
 
 
+# pylint: disable=too-many-branches
 @router.get("/artifacts")
 async def get_diff_artifacts(
     db: InfrahubDatabase = Depends(get_db),
@@ -129,7 +127,7 @@ async def get_diff_artifacts(
 ) -> Dict[str, BranchDiffArtifact]:
     response = {}
 
-    default_branch_name = config.SETTINGS.main.default_branch
+    default_branch_name = registry.default_branch
     # Query the Diff for all artifacts
     diff = await BranchDiffer.init(
         db=db,
@@ -140,7 +138,8 @@ async def get_diff_artifacts(
         kinds_include=[InfrahubKind.ARTIFACT],
         branch_support=[BranchSupportType.AWARE, BranchSupportType.LOCAL],
     )
-    payload = await generate_diff_payload(diff=diff, db=db, kinds_to_include=[InfrahubKind.ARTIFACT])
+    diff_payload_builder = DiffPayloadBuilder(db=db, diff=diff, kinds_to_include=[InfrahubKind.ARTIFACT])
+    payload = await diff_payload_builder.get_node_diffs_by_branch()
 
     # Extract the ids of all the targets associated with these artifacts and query the display label for all of them
     artifact_ids_branch = [node.id for node in payload[branch.name]]

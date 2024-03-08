@@ -45,7 +45,6 @@ spec:
           ports:
           {{- range .Values.messageQueue.ports }}
             - containerPort: {{ .targetPort }}
-              hostPort: {{ .port }}
               protocol: TCP
               name: {{ quote .name }}
           {{- end }}

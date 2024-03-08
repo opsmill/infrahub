@@ -191,10 +191,6 @@ module = "infrahub.core.attribute"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.diff.payload"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.manager"
 ignore_errors = true
 
@@ -248,6 +244,22 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.schema"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.core.schema.attribute_schema"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.core.schema.basenode_schema"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.core.schema.node_schema"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.core.schema.relationship_schema"
 ignore_errors = true
 
 [[tool.mypy.overrides]]

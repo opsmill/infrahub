@@ -187,7 +187,7 @@ class BranchDiffer:
 
         return False
 
-    async def get_summary(self) -> List[DiffSummaryElement]:
+    async def get_summaries_by_branch_and_id(self) -> Dict[str, Dict[str, DiffSummaryElement]]:
         """Return a list of changed nodes and associated actions
 
         If only a relationship is modified for a given node it will have the updated action.
@@ -217,7 +217,10 @@ class BranchDiffer:
                             changes[branch_name][rel_node.id] = DiffSummaryElement(
                                 branch=branch_name, node=rel_node.id, kind=rel_node.kind, actions=[DiffAction.UPDATED]
                             )
+        return changes
 
+    async def get_summary(self) -> List[DiffSummaryElement]:
+        changes = await self.get_summaries_by_branch_and_id()
         summary = []
         for branch_diff in changes.values():
             for entry in branch_diff.values():

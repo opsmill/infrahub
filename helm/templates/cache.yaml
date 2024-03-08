@@ -37,7 +37,6 @@ spec:
           ports:
           {{- range .Values.cache.ports }}
             - containerPort: {{ .targetPort }}
-              hostPort: {{ .port }}
           {{- end }}
           resources: {}
       restartPolicy: Always

@@ -44,7 +44,6 @@ spec:
           {{- range .Values.infrahubServer.ports }}
           {{- if eq .name "infrahub-gui" }}
             - containerPort: {{ .targetPort }}
-              hostPort: {{ .port }}
               protocol: TCP
               name: {{ quote .name }}
           {{- end }}
