@@ -4,7 +4,7 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.server import app
 
-from infrahub_sdk import Config, InfrahubClient, SchemaRoot
+from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import NodeNotFound
 from infrahub_sdk.node import InfrahubNode
 
@@ -24,9 +24,7 @@ class TestInfrahubNode:
         return await InfrahubClient.init(config=config)
 
     @pytest.fixture(scope="class")
-    async def load_builtin_schema(
-        self, db: InfrahubDatabase, test_client: InfrahubTestClient, builtin_org_schema
-    ):
+    async def load_builtin_schema(self, db: InfrahubDatabase, test_client: InfrahubTestClient, builtin_org_schema):
         config = Config(username="admin", password="infrahub", requester=test_client.async_request)
         client = await InfrahubClient.init(config=config)
         success, response = await client.schema.load(schemas=[builtin_org_schema])

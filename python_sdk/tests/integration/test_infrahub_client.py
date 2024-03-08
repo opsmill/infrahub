@@ -9,7 +9,6 @@ from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.exceptions import BranchNotFound
 from infrahub_sdk.node import InfrahubNode
-from infrahub_sdk.schema import SchemaRoot
 
 from .conftest import InfrahubTestClient
 
