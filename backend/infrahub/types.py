@@ -232,6 +232,15 @@ class IPNetwork(InfrahubDataType):
     infrahub = "IPNetwork"
 
 
+class Boolean(InfrahubDataType):
+    label: str = "Boolean"
+    graphql = graphene.Boolean
+    graphql_query = "CheckboxAttributeType"
+    graphql_input = "CheckboxAttributeInput"
+    graphql_filter = graphene.Boolean
+    infrahub = "Boolean"
+
+
 class Checkbox(InfrahubDataType):
     label: str = "Checkbox"
     graphql = graphene.Boolean
@@ -268,36 +277,6 @@ class Any(InfrahubDataType):
     infrahub = "AnyAttribute"
 
 
-# ------------------------------------------
-# Deprecated
-# ------------------------------------------
-class String(InfrahubDataType):
-    label: str = "String"
-    graphql = graphene.String
-    graphql_query = "TextAttributeType"
-    graphql_input = "TextAttributeInput"
-    graphql_filter = graphene.String
-    infrahub = "String"
-
-
-class Integer(InfrahubDataType):
-    label: str = "Integer"
-    graphql = graphene.Int
-    graphql_query = "NumberAttributeType"
-    graphql_input = "NumberAttributeInput"
-    graphql_filter = graphene.Int
-    infrahub = "Integer"
-
-
-class Boolean(InfrahubDataType):
-    label: str = "Boolean"
-    graphql = graphene.Boolean
-    graphql_query = "CheckboxAttributeType"
-    graphql_input = "CheckboxAttributeInput"
-    graphql_filter = graphene.Boolean
-    infrahub = "Boolean"
-
-
 ATTRIBUTE_TYPES: Dict[str, Type[InfrahubDataType]] = {
     "ID": ID,
     "Dropdown": Dropdown,
@@ -315,13 +294,11 @@ ATTRIBUTE_TYPES: Dict[str, Type[InfrahubDataType]] = {
     "Bandwidth": Bandwidth,
     "IPHost": IPHost,
     "IPNetwork": IPNetwork,
+    "Boolean": Boolean,
     "Checkbox": Checkbox,
     "List": List,
     "JSON": JSON,
     "Any": Any,
-    "String": String,
-    "Integer": Integer,
-    "Boolean": Boolean,
 }
 
 ATTRIBUTE_KIND_LABELS = list(ATTRIBUTE_TYPES.keys())
