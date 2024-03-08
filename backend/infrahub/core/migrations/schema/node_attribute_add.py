@@ -39,7 +39,7 @@ class NodeAttributeAddMigrationQuery01(Query):
             self.params["attr_value"] = "NULL"
 
         if self.branch.is_default:
-            self.params["branch_support"] = self.migration.new_attribute_schema._branch.value
+            self.params["branch_support"] = self.migration.new_attribute_schema.get_branch().value
         else:
             self.params["branch_support"] = BranchSupportType.LOCAL.value
 
