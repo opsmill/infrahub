@@ -16,6 +16,8 @@ const GET_BRANCHES = gql`
       created_at
       is_data_only
       is_default
+      is_isolated
+      has_schema_changes
     }
   }
 `;
