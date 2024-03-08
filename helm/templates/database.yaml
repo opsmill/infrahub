@@ -41,7 +41,6 @@ spec:
           ports:
           {{- range .Values.database.ports }}
             - containerPort: {{ .targetPort }}
-              hostPort: {{ .port }}
               protocol: TCP
               name: {{ quote .name }}
           {{- end }}

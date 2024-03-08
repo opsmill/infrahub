@@ -6,6 +6,7 @@ import { useTitle } from "../../hooks/useTitle";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { TaskItems } from "./task-items";
+import Content from "../layout/content";
 
 export const TaskItemsScreen = () => {
   useTitle("Task Overview");
@@ -33,16 +34,14 @@ export const TaskItemsScreen = () => {
   const { count } = result;
 
   return (
-    <div className="bg-custom-white flex-1 flex flex-col">
+    <Content className="bg-custom-white">
       <div className="flex items-center p-4 w-full">
         <div className="sm:flex-auto flex items-center">
           <h1 className="text-md font-semibold text-gray-900 mr-2">Task Overview ({count})</h1>
-
-          <div className="text-sm"></div>
         </div>
       </div>
 
       <TaskItems />
-    </div>
+    </Content>
   );
 };

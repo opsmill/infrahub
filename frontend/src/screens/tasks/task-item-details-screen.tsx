@@ -11,6 +11,7 @@ import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { TaskItemDetails } from "./task-item-details";
+import Content from "../layout/content";
 
 export const TaskItemDetailsScreen = () => {
   useTitle("Task details");
@@ -43,7 +44,7 @@ export const TaskItemDetailsScreen = () => {
   const object = edges[0].node;
 
   return (
-    <div className=" flex-1 flex flex-col">
+    <Content>
       <div className="bg-custom-white">
         <div className="flex items-center p-4 w-full">
           <div className="sm:flex-auto flex items-center">
@@ -61,6 +62,6 @@ export const TaskItemDetailsScreen = () => {
       </div>
 
       <TaskItemDetails />
-    </div>
+    </Content>
   );
 };

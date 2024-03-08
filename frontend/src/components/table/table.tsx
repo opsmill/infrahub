@@ -5,7 +5,7 @@ import NoDataFound from "../../screens/no-data-found/no-data-found";
 import { classNames } from "../../utils/common";
 import { BUTTON_TYPES, Button } from "../buttons/button";
 
-type tColumn = {
+export type tColumn = {
   name: string;
   label: string;
 };

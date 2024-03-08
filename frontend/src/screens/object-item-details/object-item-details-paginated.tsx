@@ -57,6 +57,7 @@ import { TaskItems } from "../tasks/task-items";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
 import { RelationshipsDetails } from "./relationships-details-paginated";
+import Content from "../layout/content";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -180,176 +181,172 @@ export default function ObjectItemDetails(props: any) {
   }
 
   return (
-    <div className="flex-1 overflow-auto flex flex-col">
-      <div className="bg-custom-white">
-        {!hideHeaders && (
-          <>
-            <div className="px-4 py-5 flex items-center">
-              <Link to={constructPath(`/objects/${objectname}`)}>
-                <h1 className="text-md font-semibold text-gray-900 mr-2">{schemaData.name}</h1>
-              </Link>
+    <Content>
+      {!hideHeaders && (
+        <div className="bg-custom-white">
+          <div className="px-4 py-5 flex items-center">
+            <Link to={constructPath(`/objects/${objectname}`)}>
+              <h1 className="text-md font-semibold text-gray-900 mr-2">{schemaData.name}</h1>
+            </Link>
 
-              <ChevronRightIcon
-                className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
-                aria-hidden="true"
-              />
+            <ChevronRightIcon
+              className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
+              aria-hidden="true"
+            />
 
-              <p className="max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
+            <p className="max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
 
-              <div className="ml-2">
-                <Retry isLoading={loading} onClick={handleRefetch} />
-              </div>
+            <div className="ml-2">
+              <Retry isLoading={loading} onClick={handleRefetch} />
             </div>
+          </div>
 
-            <div className="px-4 ">{schemaData?.description}</div>
+          <div className="px-4 ">{schemaData?.description}</div>
 
-            <Tabs
-              tabs={tabs}
-              rightItems={
-                <>
-                  {schemaData.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
+          <Tabs
+            tabs={tabs}
+            rightItems={
+              <>
+                {schemaData.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
 
+                <Button
+                  disabled={!auth?.permissions?.write}
+                  onClick={() => setShowEditDrawer(true)}
+                  className="mr-4">
+                  Edit
+                  <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                </Button>
+
+                {!schemaData.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
                   <Button
                     disabled={!auth?.permissions?.write}
-                    onClick={() => setShowEditDrawer(true)}
+                    onClick={() => setShowAddToGroupDrawer(true)}
                     className="mr-4">
-                    Edit
-                    <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                    Manage groups
+                    <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                   </Button>
+                )}
+              </>
+            }
+          />
+        </div>
+      )}
 
-                  {!schemaData.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
-                    <Button
-                      disabled={!auth?.permissions?.write}
-                      onClick={() => setShowAddToGroupDrawer(true)}
-                      className="mr-4">
-                      Manage groups
-                      <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                    </Button>
-                  )}
-                </>
-              }
-            />
-          </>
-        )}
+      {!qspTab && (
+        <dl className="bg-custom-white divide-y">
+          <ObjectAttributeRow name="ID" value={objectDetailsData.id} />
+          {attributes?.map((attribute) => {
+            if (
+              !objectDetailsData[attribute.name] ||
+              !objectDetailsData[attribute.name].is_visible
+            ) {
+              return null;
+            }
 
-        {!qspTab && (
-          <div className="px-4 py-5 sm:p-0 flex-1 overflow-auto">
-            <dl className="sm:divide-y sm:divide-gray-200">
-              <ObjectAttributeRow name="ID" value={objectDetailsData.id} />
-              {attributes?.map((attribute) => {
-                if (
-                  !objectDetailsData[attribute.name] ||
-                  !objectDetailsData[attribute.name].is_visible
-                ) {
-                  return null;
+            return (
+              <ObjectAttributeRow
+                key={attribute.name}
+                name={attribute.label as string}
+                value={
+                  <>
+                    {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
+
+                    {objectDetailsData[attribute.name] && (
+                      <MetaDetailsTooltip
+                        items={[
+                          {
+                            label: "Updated at",
+                            value: objectDetailsData[attribute.name].updated_at,
+                            type: "date",
+                          },
+                          {
+                            label: "Update time",
+                            value: `${new Date(
+                              objectDetailsData[attribute.name].updated_at
+                            ).toLocaleDateString()} ${new Date(
+                              objectDetailsData[attribute.name].updated_at
+                            ).toLocaleTimeString()}`,
+                            type: "text",
+                          },
+                          {
+                            label: "Source",
+                            value: objectDetailsData[attribute.name].source,
+                            type: "link",
+                          },
+                          {
+                            label: "Owner",
+                            value: objectDetailsData[attribute.name].owner,
+                            type: "link",
+                          },
+                          {
+                            label: "Is protected",
+                            value: objectDetailsData[attribute.name].is_protected
+                              ? "True"
+                              : "False",
+                            type: "text",
+                          },
+                          {
+                            label: "Is inherited",
+                            value: objectDetailsData[attribute.name].is_inherited
+                              ? "True"
+                              : "False",
+                            type: "text",
+                          },
+                        ]}
+                        header={
+                          <div className="flex justify-between items-center w-full p-4">
+                            <div className="font-semibold">{attribute.label}</div>
+                            <Button
+                              buttonType={BUTTON_TYPES.INVISIBLE}
+                              disabled={!auth?.permissions?.write}
+                              onClick={() => {
+                                setMetaEditFieldDetails({
+                                  type: "attribute",
+                                  attributeOrRelationshipName: attribute.name,
+                                  label: attribute.label || attribute.name,
+                                });
+                                setShowMetaEditModal(true);
+                              }}
+                              data-testid="edit-metadata-button"
+                              data-cy="metadata-edit-button">
+                              <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
+                            </Button>
+                          </div>
+                        }
+                      />
+                    )}
+
+                    {objectDetailsData[attribute.name].is_protected && (
+                      <LockClosedIcon className="w-4 h-4" />
+                    )}
+                  </>
                 }
+              />
+            );
+          })}
 
-                return (
-                  <ObjectAttributeRow
-                    key={attribute.name}
-                    name={attribute.label as string}
-                    value={
-                      <>
-                        {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
+          {relationships?.map((relationship: any) => {
+            const relationshipSchema = schemaData?.relationships?.find(
+              (relation) => relation?.name === relationship?.name
+            );
 
-                        {objectDetailsData[attribute.name] && (
-                          <MetaDetailsTooltip
-                            items={[
-                              {
-                                label: "Updated at",
-                                value: objectDetailsData[attribute.name].updated_at,
-                                type: "date",
-                              },
-                              {
-                                label: "Update time",
-                                value: `${new Date(
-                                  objectDetailsData[attribute.name].updated_at
-                                ).toLocaleDateString()} ${new Date(
-                                  objectDetailsData[attribute.name].updated_at
-                                ).toLocaleTimeString()}`,
-                                type: "text",
-                              },
-                              {
-                                label: "Source",
-                                value: objectDetailsData[attribute.name].source,
-                                type: "link",
-                              },
-                              {
-                                label: "Owner",
-                                value: objectDetailsData[attribute.name].owner,
-                                type: "link",
-                              },
-                              {
-                                label: "Is protected",
-                                value: objectDetailsData[attribute.name].is_protected
-                                  ? "True"
-                                  : "False",
-                                type: "text",
-                              },
-                              {
-                                label: "Is inherited",
-                                value: objectDetailsData[attribute.name].is_inherited
-                                  ? "True"
-                                  : "False",
-                                type: "text",
-                              },
-                            ]}
-                            header={
-                              <div className="flex justify-between items-center w-full p-4">
-                                <div className="font-semibold">{attribute.label}</div>
-                                <Button
-                                  buttonType={BUTTON_TYPES.INVISIBLE}
-                                  disabled={!auth?.permissions?.write}
-                                  onClick={() => {
-                                    setMetaEditFieldDetails({
-                                      type: "attribute",
-                                      attributeOrRelationshipName: attribute.name,
-                                      label: attribute.label || attribute.name,
-                                    });
-                                    setShowMetaEditModal(true);
-                                  }}
-                                  data-testid="edit-metadata-button"
-                                  data-cy="metadata-edit-button">
-                                  <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
-                                </Button>
-                              </div>
-                            }
-                          />
-                        )}
+            const relationshipData = relationship?.paginated
+              ? objectDetailsData[relationship.name]?.edges
+              : objectDetailsData[relationship.name];
 
-                        {objectDetailsData[attribute.name].is_protected && (
-                          <LockClosedIcon className="w-4 h-4" />
-                        )}
-                      </>
-                    }
-                  />
-                );
-              })}
-
-              {relationships?.map((relationship: any) => {
-                const relationshipSchema = schemaData?.relationships?.find(
-                  (relation) => relation?.name === relationship?.name
-                );
-
-                const relationshipData = relationship?.paginated
-                  ? objectDetailsData[relationship.name]?.edges
-                  : objectDetailsData[relationship.name];
-
-                return (
-                  <RelationshipDetails
-                    parentNode={objectDetailsData}
-                    mode="DESCRIPTION-LIST"
-                    parentSchema={schemaData}
-                    key={relationship.name}
-                    relationshipsData={relationshipData}
-                    relationshipSchema={relationshipSchema}
-                  />
-                );
-              })}
-            </dl>
-          </div>
-        )}
-      </div>
+            return (
+              <RelationshipDetails
+                parentNode={objectDetailsData}
+                mode="DESCRIPTION-LIST"
+                parentSchema={schemaData}
+                key={relationship.name}
+                relationshipsData={relationshipData}
+                relationshipSchema={relationshipSchema}
+              />
+            );
+          })}
+        </dl>
+      )}
 
       {qspTab && qspTab !== TASK_TAB && (
         <RelationshipsDetails
@@ -360,7 +357,9 @@ export default function ObjectItemDetails(props: any) {
         />
       )}
 
-      {qspTab && qspTab === TASK_TAB && !qspTaskId && <TaskItems ref={refetchRef} />}
+      {qspTab && qspTab === TASK_TAB && !qspTaskId && (
+        <TaskItems ref={refetchRef} hideRelatedNode />
+      )}
 
       {qspTab && qspTab === TASK_TAB && qspTaskId && (
         <div>
@@ -517,6 +516,6 @@ export default function ObjectItemDetails(props: any) {
           row={objectDetailsData}
         />
       </SlideOver>
-    </div>
+    </Content>
   );
 }

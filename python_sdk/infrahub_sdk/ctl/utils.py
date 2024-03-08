@@ -1,4 +1,5 @@
 import glob
+import logging
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -6,11 +7,23 @@ from typing import Any, Dict, List, Optional, Union
 import pendulum
 from pendulum.datetime import DateTime
 from rich.console import Console
+from rich.logging import RichHandler
 from rich.markup import escape
 
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
 
 from .client import initialize_client_sync
+
+
+def init_logging(debug: bool = False) -> None:
+    logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
+    logging.getLogger("httpx").setLevel(logging.ERROR)
+    logging.getLogger("httpcore").setLevel(logging.ERROR)
+
+    log_level = "DEBUG" if debug else "INFO"
+    FORMAT = "%(message)s"
+    logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
+    logging.getLogger("infrahubctl")
 
 
 def execute_graphql_query(
