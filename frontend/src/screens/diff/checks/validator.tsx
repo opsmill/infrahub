@@ -1,16 +1,11 @@
-import {
-  ArrowPathIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  ExclamationCircleIcon,
-  ExclamationTriangleIcon,
-} from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { MoreButton } from "../../../components/buttons/more-button";
 import Accordion from "../../../components/display/accordion";
 import { DateDisplay } from "../../../components/display/date-display";
 import { DurationDisplay } from "../../../components/display/duration-display";
 import { PopOver } from "../../../components/display/popover";
 import { List } from "../../../components/table/list";
+import { Tooltip } from "../../../components/utils/tooltip";
 import { ValidatorDetails } from "./validator-details";
 
 type tValidatorProps = {
@@ -20,21 +15,41 @@ type tValidatorProps = {
 const getValidatorState = (state?: string, conclusion?: string) => {
   switch (state) {
     case "queued": {
-      return <ClockIcon className="h-6 w-6" />;
+      return (
+        <Tooltip message={"Queued"}>
+          <Icon icon={"mdi:timer-sand-complete"} className="text-yellow-500 mr-2" />
+        </Tooltip>
+      );
     }
     case "in_progress": {
-      return <ArrowPathIcon className="h-6 w-6 text-orange-500 animate-spin" />;
+      return (
+        <Tooltip message={"In progress"}>
+          <Icon icon={"mdi:clock-time-four-outline"} className="text-yellow-500 mr-2" />
+        </Tooltip>
+      );
     }
     case "completed": {
       if (conclusion === "success") {
-        return <CheckCircleIcon className="h-6 w-6 text-green-500" />;
+        return (
+          <Tooltip message={"Success"}>
+            <Icon icon={"mdi:check-circle-outline"} className="text-green-500 mr-2" />
+          </Tooltip>
+        );
       }
 
       if (conclusion === "failure") {
-        return <ExclamationCircleIcon className="h-6 w-6 text-red-500" />;
+        return (
+          <Tooltip message={"Failure"}>
+            <Icon icon={"mdi:warning"} className="text-red-500 mr-2" />
+          </Tooltip>
+        );
       }
 
-      return <ExclamationTriangleIcon className="h-6 w-6 text-yellow-500" />;
+      return (
+        <Tooltip message={"Unkown"}>
+          <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500 mr-2" />
+        </Tooltip>
+      );
     }
     default: {
       return null;
@@ -87,7 +102,7 @@ export const Validator = (props: tValidatorProps) => {
 
   const title = (
     <div className="flex items-center">
-      <div className="mr-2">{getValidatorState(state?.value, conclusion?.value)}</div>
+      {getValidatorState(state?.value, conclusion?.value)}
 
       <span>{display_label}</span>
 
@@ -104,7 +119,7 @@ export const Validator = (props: tValidatorProps) => {
   );
 
   return (
-    <div className="bg-custom-white rounded-md p-2">
+    <div className="bg-custom-white rounded-md p-2 mb-2 last:mb-0">
       <Accordion title={title}>
         <ValidatorDetails id={id} />
       </Accordion>

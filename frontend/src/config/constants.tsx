@@ -107,6 +107,15 @@ export const CHECK_CONCLUSIONS = {
   SUCCESS: "success",
 };
 
+export const CHECKS_LABEL = {
+  EMPTY: "Empty",
+  UNKOWN: "Unkown",
+  QUEUED: "Queued",
+  FAILURE: "Failure",
+  SUCCESS: "Success",
+  IN_PROGRESS: "In progress",
+};
+
 export const VALIDATIONS_ENUM_MAP: { [key: string]: string } = {
   CoreArtifactValidator: "ARTIFACT",
   CoreDataValidator: "DATA",
