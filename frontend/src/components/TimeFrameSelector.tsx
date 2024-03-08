@@ -35,7 +35,8 @@ export const TimeFrameSelector = () => {
       className={classNames(
         "p-3 rounded-full inline-flex items-center bg-gray-800 text-white",
         date && "bg-orange-600 py-1.5 shadow-md "
-      )}>
+      )}
+      data-testid="timeframe-selector">
       <Transition
         show={!!date}
         enter="ease-out duration-300"
@@ -45,7 +46,12 @@ export const TimeFrameSelector = () => {
         leaveFrom="w-40"
         leaveTo="w-0"
         className="flex items-center truncate">
-        <Icon icon="mdi:close" className="cursor-pointer" onClick={reset} />
+        <Icon
+          icon="mdi:close"
+          className="cursor-pointer"
+          onClick={reset}
+          data-testid="reset-timeframe-selector"
+        />
         <div className="flex flex-col mx-3">
           <span className="font-medium text-xs">Current view time:</span>
           {date && <span className="text-sm">{format(date, "PP | H:mm")}</span>}
