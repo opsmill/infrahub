@@ -57,20 +57,28 @@ class SchemaMigration(BaseModel):
 class AttributeSchemaMigration(SchemaMigration):
     @property
     def new_attribute_schema(self) -> AttributeSchema:
+        if not self.schema_path.field_name:
+            raise ValueError("field_name is not defined")
         return self.new_node_schema.get_attribute(name=self.schema_path.field_name)
 
     @property
     def previous_attribute_schema(self) -> AttributeSchema:
+        if not self.schema_path.field_name:
+            raise ValueError("field_name is not defined")
         return self.previous_node_schema.get_attribute(name=self.schema_path.field_name)
 
 
 class RelationshipSchemaMigration(SchemaMigration):
     @property
     def new_relationship_schema(self) -> RelationshipSchema:
+        if not self.schema_path.field_name:
+            raise ValueError("field_name is not defined")
         return self.new_node_schema.get_relationship(name=self.schema_path.field_name)
 
     @property
     def previous_relationship_schema(self) -> RelationshipSchema:
+        if not self.schema_path.field_name:
+            raise ValueError("field_name is not defined")
         return self.previous_node_schema.get_relationship(name=self.schema_path.field_name)
 
 

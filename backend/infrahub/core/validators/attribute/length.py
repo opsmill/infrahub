@@ -85,6 +85,8 @@ class AttributeLengthChecker(ConstraintCheckerInterface):
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
         grouped_data_paths_list: List[GroupedDataPaths] = []
+        if not request.schema_path.field_name:
+            raise ValueError("field_name is not defined")
         attribute_schema = request.node_schema.get_attribute(name=request.schema_path.field_name)
         if attribute_schema.min_length is None and attribute_schema.max_length is True:
             return grouped_data_paths_list
