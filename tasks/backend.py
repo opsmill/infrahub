@@ -219,7 +219,7 @@ def generate(context: Context):
 
 
 @task
-def validate(context: Context, docker: bool = False):
+def validate_generated(context: Context, docker: bool = False):
     """Validate that the generated documentation is committed to Git."""
 
     _generate(context=context)
