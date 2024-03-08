@@ -4,7 +4,7 @@ title: Tests configuration file
 
 # Tests configuration file
 
-The tests configuration file allows you to define multiple tests for Infrahub resources such as Jinja2 tranforms, Python transforms, checks and GraphQL queries.
+The tests configuration file allows you to define multiple tests for Infrahub resources such as Jinja2 transforms, Python transforms, checks and GraphQL queries.
 
 The file should be formatted as a YAML file, have a filename prefixed with `test_` like `test_all.yml` and should be stored somewhere in the [repository](/topics/repository).
 
@@ -80,8 +80,8 @@ When a test has an input or an output property, the value of these can be path t
 | Spec     | Type | Description | Mandatory | Default |
 | -------- | ---- | ----------- |:---------:| ------- |
 | directory | string | Path to the directory where the input and output files are located | :x: |  |
-| input | string | Path to the file with the input data for the test, can be a relative path from the config file or from the directory. | :x: | input.json |
-| output | string | Path to the file with the expected output for the test, can be a relative path from the config file or from the directory. | :x: |  |
+| input | string | Path to the file with the input data for the test, can be a relative path from the configuration file or from the directory. | :x: | input.json |
+| output | string | Path to the file with the expected output for the test, can be a relative path from the configuration file or from the directory. | :x: |  |
 | kind | string | Static value `check-unit-process` | :white_check_mark: |  |
 
 <!-- vale off -->
@@ -91,8 +91,8 @@ When a test has an input or an output property, the value of these can be path t
 | Spec     | Type | Description | Mandatory | Default |
 | -------- | ---- | ----------- |:---------:| ------- |
 | directory | string | Path to the directory where the input and output files are located | :x: |  |
-| input | string | Path to the file with the input data for the test, can be a relative path from the config file or from the directory. | :x: | input.json |
-| output | string | Path to the file with the expected output for the test, can be a relative path from the config file or from the directory. | :x: |  |
+| input | string | Path to the file with the input data for the test, can be a relative path from the configuration file or from the directory. | :x: | input.json |
+| output | string | Path to the file with the expected output for the test, can be a relative path from the configuration file or from the directory. | :x: |  |
 | variables | string or dictionary | Variables and corresponding values to pass to the GraphQL query | :x: | variables.json |
 | kind | string | Static value `check-integration` | :white_check_mark: |  |
 
@@ -112,8 +112,8 @@ When a test has an input or an output property, the value of these can be path t
 | Spec     | Type | Description | Mandatory | Default |
 | -------- | ---- | ----------- |:---------:| ------- |
 | directory | string | Path to the directory where the input and output files are located | :x: |  |
-| input | string | Path to the file with the input data for the test, can be a relative path from the config file or from the directory. | :x: | input.json |
-| output | string | Path to the file with the expected output for the test, can be a relative path from the config file or from the directory. | :x: |  |
+| input | string | Path to the file with the input data for the test, can be a relative path from the configuration file or from the directory. | :x: | input.json |
+| output | string | Path to the file with the expected output for the test, can be a relative path from the configuration file or from the directory. | :x: |  |
 | variables | string or dictionary | Variables and corresponding values to pass to the GraphQL query | :x: | variables.json |
 | kind | string | Static value `graphql-query-integration` | :white_check_mark: |  |
 | query | string | Name of a pre-defined GraphQL query to execute | :white_check_mark: |  |
@@ -133,8 +133,8 @@ When a test has an input or an output property, the value of these can be path t
 | Spec     | Type | Description | Mandatory | Default |
 | -------- | ---- | ----------- |:---------:| ------- |
 | directory | string | Path to the directory where the input and output files are located | :x: |  |
-| input | string | Path to the file with the input data for the test, can be a relative path from the config file or from the directory. | :x: | input.json |
-| output | string | Path to the file with the expected output for the test, can be a relative path from the config file or from the directory. | :x: |  |
+| input | string | Path to the file with the input data for the test, can be a relative path from the configuration file or from the directory. | :x: | input.json |
+| output | string | Path to the file with the expected output for the test, can be a relative path from the configuration file or from the directory. | :x: |  |
 | kind | string | Static value `jinja2-transform-unit-render` | :white_check_mark: |  |
 
 <!-- vale off -->
@@ -144,8 +144,8 @@ When a test has an input or an output property, the value of these can be path t
 | Spec     | Type | Description | Mandatory | Default |
 | -------- | ---- | ----------- |:---------:| ------- |
 | directory | string | Path to the directory where the input and output files are located | :x: |  |
-| input | string | Path to the file with the input data for the test, can be a relative path from the config file or from the directory. | :x: | input.json |
-| output | string | Path to the file with the expected output for the test, can be a relative path from the config file or from the directory. | :x: |  |
+| input | string | Path to the file with the input data for the test, can be a relative path from the configuration file or from the directory. | :x: | input.json |
+| output | string | Path to the file with the expected output for the test, can be a relative path from the configuration file or from the directory. | :x: |  |
 | variables |  | Variables and corresponding values to pass to the GraphQL query | :x: | variables.json |
 | kind | string | Static value `jinja2-transform-integration` | :white_check_mark: |  |
 
@@ -164,8 +164,8 @@ When a test has an input or an output property, the value of these can be path t
 | Spec     | Type | Description | Mandatory | Default |
 | -------- | ---- | ----------- |:---------:| ------- |
 | directory | string | Path to the directory where the input and output files are located | :x: |  |
-| input | string | Path to the file with the input data for the test, can be a relative path from the config file or from the directory. | :x: | input.json |
-| output | string | Path to the file with the expected output for the test, can be a relative path from the config file or from the directory. | :x: |  |
+| input | string | Path to the file with the input data for the test, can be a relative path from the configuration file or from the directory. | :x: | input.json |
+| output | string | Path to the file with the expected output for the test, can be a relative path from the configuration file or from the directory. | :x: |  |
 | kind | string | Static value `python-transform-unit-process` | :white_check_mark: |  |
 
 <!-- vale off -->
@@ -175,7 +175,7 @@ When a test has an input or an output property, the value of these can be path t
 | Spec     | Type | Description | Mandatory | Default |
 | -------- | ---- | ----------- |:---------:| ------- |
 | directory | string | Path to the directory where the input and output files are located | :x: |  |
-| input | string | Path to the file with the input data for the test, can be a relative path from the config file or from the directory. | :x: | input.json |
-| output | string | Path to the file with the expected output for the test, can be a relative path from the config file or from the directory. | :x: |  |
+| input | string | Path to the file with the input data for the test, can be a relative path from the configuration file or from the directory. | :x: | input.json |
+| output | string | Path to the file with the expected output for the test, can be a relative path from the configuration file or from the directory. | :x: |  |
 | variables | string or dictionary | Variables and corresponding values to pass to the GraphQL query | :x: | variables.json |
 | kind | string | Static value `python-transform-unit-process` | :white_check_mark: |  |
