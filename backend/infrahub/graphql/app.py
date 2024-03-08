@@ -22,10 +22,11 @@ from typing import (
     cast,
 )
 
-from graphql import (  # pylint: disable=no-name-in-module
+from graphql import (
     ExecutionContext,
     ExecutionResult,
     GraphQLError,
+    GraphQLFormattedError,
     Middleware,
     OperationType,
     graphql,
@@ -33,7 +34,8 @@ from graphql import (  # pylint: disable=no-name-in-module
     subscribe,
     validate,
 )
-from graphql.utilities import (  # pylint: disable=no-name-in-module,import-error
+from graphql.error.graphql_error import format_error
+from graphql.utilities import (
     get_operation_ast,
 )
 from starlette.datastructures import UploadFile
@@ -41,24 +43,10 @@ from starlette.requests import HTTPConnection, Request
 from starlette.responses import JSONResponse, Response
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
-from infrahub.core.registry import registry
-
-# pylint: disable=no-name-in-module,unused-argument,ungrouped-imports,raise-missing-from
-
-try:
-    # graphql-core==3.2.*
-    from graphql import GraphQLFormattedError
-    from graphql.error.graphql_error import format_error
-except ImportError:
-    # graphql-core==3.1.*
-    from graphql import format_error
-
-    GraphQLFormattedError = Dict[str, Any]
-
-
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
 from infrahub.core import get_branch
+from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound, Error
 from infrahub.graphql import prepare_graphql_params
@@ -79,7 +67,7 @@ from .metrics import (
 if TYPE_CHECKING:
     import graphene
     from graphql import GraphQLSchema
-    from graphql.language.ast import (  # pylint: disable=no-name-in-module,import-error
+    from graphql.language.ast import (
         DocumentNode,
         OperationDefinitionNode,
     )
@@ -89,6 +77,8 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
     from .auth.query_permission_checker.checker import GraphQLQueryPermissionChecker
+
+# pylint: disable=unused-argument,raise-missing-from
 
 
 GQL_CONNECTION_ACK = "connection_ack"
