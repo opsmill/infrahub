@@ -58,7 +58,7 @@ def print_graphql_errors(console: Console, errors: List) -> None:
             console.print(f"[red]{escape(str(error))}")
 
 
-def parse_cli_vars(variables: Optional[List[str]]) -> dict:
+def parse_cli_vars(variables: Optional[List[str]]) -> Dict[str, str]:
     if not variables:
         return {}
 
