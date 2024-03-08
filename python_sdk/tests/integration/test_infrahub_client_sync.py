@@ -8,7 +8,6 @@ from infrahub_sdk import Config, InfrahubClientSync
 from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.exceptions import BranchNotFound
 from infrahub_sdk.node import InfrahubNodeSync
-from infrahub_sdk.schema import SchemaRoot
 
 from .conftest import InfrahubTestClient
 
@@ -30,10 +29,10 @@ class TestInfrahubClientSync:
         return InfrahubClientSync.init(config=config)
 
     @pytest.fixture(scope="class")
-    async def base_dataset(self, db: InfrahubDatabase, test_client: InfrahubTestClient, builtin_org_schema: SchemaRoot):
+    async def base_dataset(self, db: InfrahubDatabase, test_client: InfrahubTestClient, builtin_org_schema):
         config = Config(username="admin", password="infrahub", sync_requester=test_client.sync_request)
         client = InfrahubClientSync.init(config=config)
-        success, response = client.schema.load(schemas=[builtin_org_schema.dict()])
+        success, response = client.schema.load(schemas=[builtin_org_schema])
         assert response is None
         assert success
 

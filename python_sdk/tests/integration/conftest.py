@@ -235,7 +235,7 @@ async def builtin_org_schema() -> SchemaRoot:
         ],
     }
 
-    return SchemaRoot(**SCHEMA)
+    return SCHEMA
 
 
 @pytest.fixture

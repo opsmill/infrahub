@@ -16,11 +16,33 @@ $ infrahubctl schema [OPTIONS] COMMAND [ARGS]...
 
 **Commands**:
 
-* `load`: Load a schema file into Infrahub.
+* `check`: Check if schema files are valid and what...
+* `load`: Load one or multiple schema files into...
+
+## `infrahubctl schema check`
+
+Check if schema files are valid and what would be the impact of loading them with Infrahub.
+
+**Usage**:
+
+```console
+$ infrahubctl schema check [OPTIONS] SCHEMAS...
+```
+
+**Arguments**:
+
+* `SCHEMAS...`: [required]
+
+**Options**:
+
+* `--debug / --no-debug`: [default: no-debug]
+* `--branch TEXT`: Branch on which to check the schema.  [default: main]
+* `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
+* `--help`: Show this message and exit.
 
 ## `infrahubctl schema load`
 
-Load a schema file into Infrahub.
+Load one or multiple schema files into Infrahub.
 
 **Usage**:
 

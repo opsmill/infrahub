@@ -5,7 +5,7 @@ import hashlib
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from infrahub_sdk.utils import compare_lists, duplicates
+from infrahub_sdk.utils import compare_lists, duplicates, intersection
 from pydantic import BaseModel
 
 from infrahub import lock
@@ -16,6 +16,7 @@ from infrahub.core.constants import (
     RESTRICTED_NAMESPACES,
     BranchSupportType,
     FilterSchemaKind,
+    HashableModelState,
     InfrahubKind,
     RelationshipCardinality,
     RelationshipDirection,
@@ -113,6 +114,13 @@ class SchemaBranch:
     def generic_names(self) -> List[str]:
         return list(self.generics.keys())
 
+    def get_all_kind_id_map(self) -> Dict[str, str]:
+        kind_id_map = {}
+        for name in self.all_names:
+            item = self.get(name=name, duplicate=False)
+            kind_id_map[name] = item.id
+        return kind_id_map
+
     @property
     def all_names(self) -> List[str]:
         return self.node_names + self.generic_names
@@ -168,21 +176,38 @@ class SchemaBranch:
 
     def diff(self, other: SchemaBranch) -> SchemaDiff:
         # Identify the nodes or generics that have been added or removed
-        local_keys = list(self.nodes.keys()) + list(self.generics.keys())
-        other_keys = list(other.nodes.keys()) + list(other.generics.keys())
+        local_kind_id_map = self.get_all_kind_id_map()
+        other_kind_id_map = other.get_all_kind_id_map()
+        clean_local_ids = [id for id in local_kind_id_map.values() if id is not None]
+        clean_other_ids = [id for id in other_kind_id_map.values() if id is not None]
+        shared_ids = intersection(list1=clean_local_ids, list2=clean_other_ids)
+
+        local_keys = [kind for kind, id in local_kind_id_map.items() if id not in shared_ids]
+        other_keys = [kind for kind, id in other_kind_id_map.items() if id not in shared_ids]
+
         present_both, present_local_only, present_other_only = compare_lists(list1=local_keys, list2=other_keys)
 
         added_elements = {element: HashableModelDiff() for element in present_other_only}
         removed_elements = {element: HashableModelDiff() for element in present_local_only}
         schema_diff = SchemaDiff(added=added_elements, removed=removed_elements)
 
-        # Process of the one that have been updated to identify the list of fields impacted
+        # Process of the one that have been updated to identify the list of impacted fields
         for key in present_both:
             local_node = self.get(name=key, duplicate=False)
             other_node = other.get(name=key, duplicate=False)
             diff_node = other_node.diff(other=local_node)
             if diff_node.has_diff:
                 schema_diff.changed[key] = diff_node
+
+        reversed_map_local = dict(map(reversed, local_kind_id_map.items()))
+        reversed_map_other = dict(map(reversed, other_kind_id_map.items()))
+
+        for shared_id in shared_ids:
+            local_node = self.get(name=reversed_map_local[shared_id], duplicate=False)
+            other_node = other.get(name=reversed_map_other[shared_id], duplicate=False)
+            diff_node = other_node.diff(other=local_node)
+            if diff_node.has_diff:
+                schema_diff.changed[reversed_map_other[shared_id]] = diff_node
 
         return schema_diff
 
@@ -260,6 +285,16 @@ class SchemaBranch:
             branch_name=self.name, identifier=name, message=f"Unable to find the schema {name!r} in the registry"
         )
 
+    def delete(self, name: str) -> None:
+        if name in self.nodes:
+            del self.nodes[name]
+        elif name in self.generics:
+            del self.generics[name]
+        else:
+            raise SchemaNotFound(
+                branch_name=self.name, identifier=name, message=f"Unable to find the schema {name!r} in the registry"
+            )
+
     def get_by_id(self, id: str, duplicate: bool = True) -> Union[NodeSchema, GenericSchema]:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
@@ -329,6 +364,10 @@ class SchemaBranch:
         In the current implementation, if a schema object present in the SchemaRoot already exist, it will be overwritten.
         """
         for item in schema.nodes + schema.generics:
+            if item.state == HashableModelState.ABSENT and self.has(name=item.kind):
+                self.delete(name=item.kind)
+                continue
+
             try:
                 new_item = self.get(name=item.kind)
                 new_item.update(item)
@@ -927,6 +966,7 @@ class SchemaBranch:
                         peer=node.parent,
                         kind=RelationshipKind.HIERARCHY,
                         cardinality=RelationshipCardinality.ONE,
+                        max_count=1,
                         branch=BranchSupportType.AWARE,
                         direction=RelationshipDirection.OUTBOUND,
                         hierarchical=node.hierarchy,
@@ -1265,7 +1305,7 @@ class SchemaManager(NodeManager):
         new_node = node.duplicate()
 
         # Create the node first
-        schema_dict = node.model_dump(exclude={"id", "filters", "relationships", "attributes"})
+        schema_dict = node.model_dump(exclude={"id", "state", "filters", "relationships", "attributes"})
         obj = await Node.init(schema=node_schema, branch=branch, db=db)
         await obj.new(**schema_dict, db=db)
         await obj.save(db=db)
@@ -1310,7 +1350,7 @@ class SchemaManager(NodeManager):
             raise ValueError(f"Only schema node of type {SUPPORTED_SCHEMA_NODE_TYPE} are supported: {node_type}")
 
         # Update the node First
-        schema_dict = node.model_dump(exclude={"id", "filters", "relationships", "attributes"})
+        schema_dict = node.model_dump(exclude={"id", "state", "filters", "relationships", "attributes"})
         obj = await self.get_one(id=node.id, branch=branch, db=db, include_owner=True, include_source=True)
 
         if not obj:
@@ -1371,7 +1411,7 @@ class SchemaManager(NodeManager):
         schema: NodeSchema, item: AttributeSchema, branch: Branch, parent: Node, db: InfrahubDatabase
     ) -> AttributeSchema:
         obj = await Node.init(schema=schema, branch=branch, db=db)
-        await obj.new(**item.model_dump(exclude={"id", "filters"}), node=parent, db=db)
+        await obj.new(**item.model_dump(exclude={"id", "state", "filters"}), node=parent, db=db)
         await obj.save(db=db)
         new_item = item.duplicate()
         new_item.id = obj.id
@@ -1382,7 +1422,7 @@ class SchemaManager(NodeManager):
         schema: NodeSchema, item: RelationshipSchema, branch: Branch, parent: Node, db: InfrahubDatabase
     ) -> RelationshipSchema:
         obj = await Node.init(schema=schema, branch=branch, db=db)
-        await obj.new(**item.model_dump(exclude={"id", "filters"}), node=parent, db=db)
+        await obj.new(**item.model_dump(exclude={"id", "state", "filters"}), node=parent, db=db)
         await obj.save(db=db)
         new_item = item.duplicate()
         new_item.id = obj.id
@@ -1390,14 +1430,14 @@ class SchemaManager(NodeManager):
 
     @staticmethod
     async def update_attribute_in_db(item: AttributeSchema, attr: Node, db: InfrahubDatabase) -> None:
-        item_dict = item.model_dump(exclude={"id", "filters"})
+        item_dict = item.model_dump(exclude={"id", "state", "filters"})
         for key, value in item_dict.items():
             getattr(attr, key).value = value
         await attr.save(db=db)
 
     @staticmethod
     async def update_relationship_in_db(item: RelationshipSchema, rel: Node, db: InfrahubDatabase) -> None:
-        item_dict = item.model_dump(exclude={"id", "filters"})
+        item_dict = item.model_dump(exclude={"id", "state", "filters"})
         for key, value in item_dict.items():
             getattr(rel, key).value = value
         await rel.save(db=db)
