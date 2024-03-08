@@ -11,6 +11,7 @@ from pydantic import field_validator
 from infrahub.core.models import HashableModelDiff
 
 from .attribute_schema import AttributeSchema  # noqa: TCH001
+from .filter import FilterSchema  # noqa: TCH001
 from .generated.base_node_schema import GeneratedBaseNodeSchema
 from .relationship_schema import RelationshipSchema  # noqa: TCH001
 
@@ -27,7 +28,7 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
 class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-public-methods
-    _exclude_from_hash: List[str] = ["attributes", "relationships"]
+    _exclude_from_hash: List[str] = ["attributes", "relationships", "filters"]
     _sort_by: List[str] = ["namespace", "name"]
 
     @property
@@ -57,6 +58,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         for rel_name in sorted(self.relationship_names):
             md5hash.update(self.get_relationship(name=rel_name).get_hash(display_values=display_values).encode())
 
+        for filter_name in sorted(self.filter_names):
+            md5hash.update(self.get_filter(name=filter_name).get_hash(display_values=display_values).encode())
+
         return md5hash.hexdigest()
 
     def diff(self, other: Self) -> HashableModelDiff:
@@ -78,11 +82,20 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
             get_map_func=BaseNodeSchema.get_relationship_name_id_map,
             obj_type=RelationshipSchema,
         )
+        # Filters
+        filters_diff = self._diff_element(
+            other=other,
+            get_func=BaseNodeSchema.get_filter,
+            get_map_func=BaseNodeSchema.get_filter_name_id_map,
+            obj_type=FilterSchema,
+        )
 
         if attrs_diff.has_diff:
             node_diff.changed["attributes"] = attrs_diff
         if rels_diff.has_diff:
             node_diff.changed["relationships"] = rels_diff
+        if filters_diff.has_diff:
+            node_diff.changed["filters"] = filters_diff
 
         return node_diff
 
@@ -91,7 +104,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         other: Self,
         get_func: Callable,
         get_map_func: Callable,
-        obj_type: Union[Type[AttributeSchema], Type[RelationshipSchema]],
+        obj_type: Union[Type[AttributeSchema], Type[RelationshipSchema], Type[FilterSchema]],
     ):
         """The goal of this function is to reduce the amount of code duplicated between Attribute and Relationship to calculate a diff
         The logic is the same for both, except that the functions we are using to access these objects are differents
@@ -173,6 +186,16 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         raise ValueError(f"Unable to find the relationship {name}")
 
+    def get_filter(self, name, raise_on_error: bool = True) -> FilterSchema:
+        for item in self.filters:
+            if item.name == name:
+                return item
+
+        if not raise_on_error:
+            return None
+
+        raise ValueError(f"Unable to find the filter {name}")
+
     def get_relationship_by_identifier(self, id: str, raise_on_error: bool = True) -> RelationshipSchema:
         for item in self.relationships:
             if item.identifier == id:
@@ -204,6 +227,12 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
             name_id_map[rel.name] = rel.id
         return name_id_map
 
+    def get_filter_name_id_map(self) -> Dict[str, str]:
+        name_id_map = {}
+        for filter in self.filters:
+            name_id_map[filter.name] = filter.id
+        return name_id_map
+
     @property
     def valid_input_names(self) -> List[str]:
         return self.attribute_names + self.relationship_names + NODE_METADATA_ATTRIBUTES
@@ -215,6 +244,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
     @property
     def relationship_names(self) -> List[str]:
         return [item.name for item in self.relationships]
+
+    @property
+    def filter_names(self) -> List[str]:
+        return [item.name for item in self.filters]
 
     @property
     def mandatory_input_names(self) -> List[str]:
