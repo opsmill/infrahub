@@ -18,6 +18,23 @@ source .venv/bin/activate
 pip install infrahub-sdk
 ```
 
+Some features of the SDK such as the test framework are only available after installing extras of the initial packages. Available extras are:
+
+* `ctl` which is required for running infrahubctl commands
+* `tests` which is required for using the test framework
+
+You can install extras using pip:
+
+```bash
+pip install 'infrahub-sdk[tests]'
+```
+
+If you want a SDK installation allowing you to use all the features you can use:
+
+```bash
+pip install 'infrahub-sdk[all]'
+```
+
 ## Getting started
 
 The SDK supports both synchronous and asynchronous Python. The default asynchronous version is provided by the `InfrahubClient` class while the synchronous version uses the `InfrahubClientSync` class.

@@ -143,7 +143,7 @@ def _generate_infrahubctl_documentation(context: Context):
 
     print(" - Generate infrahubctl CLI documentation")
     for cmd in app.registered_commands:
-        exec_cmd = f'poetry run typer --func {cmd.name} infrahub_sdk.ctl.cli utils docs --name "infrahubctl {cmd.name}"'
+        exec_cmd = f'poetry run typer --func {cmd.name} infrahub_sdk.ctl.cli_commands utils docs --name "infrahubctl {cmd.name}"'
         exec_cmd += f" --output docs/docs/infrahubctl/infrahubctl-{cmd.name}.mdx"
         with context.cd(ESCAPED_REPO_PATH):
             context.run(exec_cmd)

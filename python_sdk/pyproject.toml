@@ -23,30 +23,33 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.8"
-httpx = "^0.23"
-rich = "^13.3"
-pendulum = [
-    { version = ">=2.1", python = ">=3.8,<3.12" },
-    { version = "~3.0", python = ">=3.12" }
-]
-typer = "^0.7"
-Jinja2 = "^3.1.3"
-toml = "^0.10.2"
-jsonlines = "^3.1"
-deepdiff = "^6.2"
-ujson = "^5.7"
 pydantic = ">=1.7.4,!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0"
-pyyaml = "^6.0"
-gitpython = "^3.1.41"
-pyarrow = "^14.0.1"
-numpy = [
-    { version = "^1.24.2", python = ">=3.8,<3.12" },
-    { version = "^1.26.2", python = ">=3.12" }
+graphql-core = ">=3.1,<3.3"
+httpx = [
+    { version = ">=0.20", python = ">=3.8,<3.11"},
+    { version = ">=0.23", python = ">=3.11"}
 ]
-graphql-core = "^3.2.3"
-pytest = "*"
+pendulum = [
+    { version = ">=2", python = ">=3.8,<3.12" },
+    { version = ">=3", python = ">=3.12" }
+]
+gitpython = { version = "^3", optional = true }
+Jinja2 = { version = "^3", optional = true }
+numpy = [
+    { version = "^1.24.2", optional = true , python = ">=3.8,<3.12" },
+    { version = "^1.26.2", optional = true , python = ">=3.12" }
+]
+pyarrow = { version = "^14", optional = true }
+rich = { version = "^13", optional = true }
+toml = { version = "^0.10", optional = true }
+typer = { version = "^0", optional = true }
+ujson = { version = "^5", optional = true }
+pytest = { version = "*", optional = true }
+pyyaml = { version = "^6", optional = true }
 
 [tool.poetry.group.dev.dependencies]
+pytest = "*"
+pytest-asyncio = "<0.23"
 pytest-clarity = "^1.0.1"
 pytest-cov = "^4.0.0"
 pytest-httpx = "*"
@@ -54,7 +57,6 @@ yamllint = "*"
 pylint = "*"
 mypy = "*"
 ipython = "*"
-pytest-asyncio = "*"
 requests = "*"
 pre-commit = "^2.20.0"
 autoflake = "*"
@@ -65,6 +67,26 @@ typer-cli = "*"
 ruff = "^0.1.5"
 pytest-xdist = "^3.3.1"
 types-python-slugify = "^8.0.0.3"
+
+[tool.poetry.extras]
+ctl = [
+    "gitpython",
+    "Jinja2",
+    "numpy",
+    "pyarrow",
+    "pyyaml",
+    "rich",
+    "toml",
+    "typer",
+    "ujson"
+]
+tests = [
+    "gitpython",
+    "Jinja2",
+    "pytest",
+    "pyyaml",
+    "rich"
+]
 
 [tool.poetry.scripts]
 infrahubctl = "infrahub_sdk.ctl.cli:app"
