@@ -47,6 +47,8 @@ infrahub_tests:
 
 Values for the `resource` key can be one of `Check`, `GraphQLQuery`, `Jinja2Transform` or `PythonTransform` and are case sensitive. They define the type of the resource to test.
 
+By default tests are expected to pass (implicit `expect: PASS`) but this can be changed by setting `expect: FAIL`.
+
 Values for the `kind` key must be one of the following:
 
 * `check-smoke`
@@ -81,6 +83,7 @@ infrahub_tests:
     resource_name: NameOfTheResourceToTest
     tests:
       - name: NameOfTheTest
+        expect: PASS
         spec:
           kind: TypeOfTest
           directory: /path/to/directory
