@@ -9,7 +9,7 @@ import {
   relationshipsForTabs,
 } from "../config/constants";
 import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
-import { sortByOrderWeight } from "./common";
+import { isGeneric, sortByOrderWeight } from "./common";
 
 export const getObjectAttributes = (
   schema: iNodeSchema | iGenericSchema | undefined,
@@ -97,7 +97,11 @@ export const getSchemaObjectColumns = (
     return columns.slice(0, limit);
   }
 
-  return columns;
+  const kindColumn = {
+    label: "Kind",
+    name: "__typename",
+  };
+  return isGeneric(schema) ? [kindColumn, ...columns] : columns;
 };
 
 export const getGroupColumns = (schema?: iNodeSchema | iGenericSchema) => {

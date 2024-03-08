@@ -28,6 +28,11 @@ test.describe("/proposed-changes diff data", () => {
       await expect(page.getByText("Stateopen")).toBeVisible();
     });
 
+    await test.step("go to Tasks tab and do not see related node information", async () => {
+      await page.getByLabel("Tabs").getByText("Tasks").click();
+      await expect(page.locator("thead")).not.toContainText("Related node");
+    });
+
     await test.step("go to Data tab and open comment form", async () => {
       await page.getByLabel("Tabs").getByText("Data").click();
       await page.getByText("InfraCircuit").first().hover();

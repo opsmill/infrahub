@@ -166,6 +166,11 @@ class ProposedChangeState(InfrahubStringEnum):
             )
 
 
+class HashableModelState(InfrahubStringEnum):
+    PRESENT = "present"
+    ABSENT = "absent"
+
+
 class RelationshipCardinality(InfrahubStringEnum):
     ONE = "one"
     MANY = "many"

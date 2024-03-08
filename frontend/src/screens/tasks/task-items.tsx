@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { Table } from "../../components/table/table";
+import { Table, tColumn } from "../../components/table/table";
 import { Pagination } from "../../components/utils/pagination";
 import { TASK_OBJECT, TASK_TAB } from "../../config/constants";
 import useQuery from "../../hooks/useQuery";
@@ -17,7 +17,11 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getConclusionBadge } from "./task-item-details";
 
-export const TaskItems = forwardRef((props, ref) => {
+interface TaskItemsProps {
+  hideRelatedNode?: boolean;
+}
+
+export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) => {
   const { objectid, proposedchange } = useParams();
   const location = useLocation();
   const [pagination] = usePagination();
@@ -68,7 +72,7 @@ export const TaskItems = forwardRef((props, ref) => {
       name: "conclusion",
       label: "Conclusion",
     },
-    {
+    !hideRelatedNode && {
       name: "related_node",
       label: "Related node",
     },
@@ -80,7 +84,7 @@ export const TaskItems = forwardRef((props, ref) => {
       name: "updated_at",
       label: "Updated at",
     },
-  ];
+  ].filter((v): v is tColumn => !!v);
 
   const getUrl = (id: string) => {
     if (!objectid && !proposedchange) {

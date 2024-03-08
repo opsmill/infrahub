@@ -502,5 +502,8 @@ async def test_schema_load_endpoint_constraints_not_valid(
             json={"schemas": [{"version": "1.0", "nodes": [person_schema]}]},
         )
 
-    assert response.json() == {"error": "clear error message"}
+    assert response.json() == {
+        "data": None,
+        "errors": [{"extensions": {"code": 422}, "message": "clear error message"}],
+    }
     assert response.status_code == 422
