@@ -810,13 +810,16 @@ class SchemaBranch:
 
         # Update all generics with the list of nodes referrencing them.
         for generic_name in self.generics.keys():
-            generic = self.get(name=generic_name)
+            generic = self.get(name=generic_name, duplicate=False)
+            # model_dump trick to avoid deepcopy
+            new_generic = generic.model_dump()
 
             if generic.kind in generics_used_by:
-                generic.used_by = sorted(generics_used_by[generic.kind])
+                new_generic["used_by"] = sorted(generics_used_by[generic.kind])
             else:
-                generic.used_by = []
+                new_generic["used_by"] = []
 
+            generic = generic.__class__(**new_generic)
             self.set(name=generic_name, schema=generic)
 
     def process_branch_support(self) -> None:
@@ -884,16 +887,24 @@ class SchemaBranch:
     def process_filters(self) -> Node:
         # Generate the filters for all nodes and generics, at the NodeSchema and at the relationships level.
         for name in self.all_names:
-            node = self.get(name=name)
-            node.filters = self.generate_filters(schema=node, include_relationships=True)
+            node = self.get(name=name, duplicate=False)
+            # model_dump trick to avoid deepcopy
+            new_node = node.model_dump()
+            new_node["filters"] = [
+                filter.model_dump() for filter in self.generate_filters(schema=node, include_relationships=True)
+            ]
 
-            for rel in node.relationships:
-                peer_schema = self.get(name=rel.peer, duplicate=False)
+            for rel in new_node["relationships"]:
+                peer_schema = self.get(name=rel["peer"], duplicate=False)
                 if not peer_schema:
                     continue
 
-                rel.filters = self.generate_filters(schema=peer_schema, include_relationships=False)
+                rel["filters"] = [
+                    filter.model_dump()
+                    for filter in self.generate_filters(schema=peer_schema, include_relationships=False)
+                ]
 
+            node = node.__class__(**new_node)
             self.set(name=name, schema=node)
 
     def process_cardinality_counts(self) -> None:
