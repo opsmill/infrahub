@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field
@@ -390,7 +390,7 @@ class HashableModel(BaseModel):
         return True
 
     @staticmethod
-    def _organize_sub_items(items: List[HashableModel], shared_ids: List[str]) -> Dict[Tuple[Any], HashableModel]:
+    def _organize_sub_items(items: List[HashableModel], shared_ids: Set[str]) -> Dict[Tuple[Any], HashableModel]:
         """Convert a list of HashableModel into a dict with the sorting_id is the key, or the id if it was provided as part of the shared_ids"""
         sub_items = {}
         for item in items:
