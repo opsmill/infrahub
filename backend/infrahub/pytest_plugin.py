@@ -141,7 +141,7 @@ class InfrahubBackendPlugin:
         check.severity.value = OUTCOME_TO_SEVERITY_MAP[report.outcome]
         check.conclusion.value = OUTCOME_TO_CONCLUSION_MAP[report.outcome]
         # Workaround for https://github.com/opsmill/infrahub/issues/2184
-        check.update(at=Timestamp(), do_full_update=True)
+        check.update(do_full_update=True)
 
     def pytest_sessionfinish(self, session: Session) -> None:  # pylint: disable=unused-argument
         """Set the final RepositoryValidator details after completing the test session."""
