@@ -22,21 +22,21 @@ const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
     <>
       {branch.is_isolated && (
         <Icon
-          icon={"mdi:shield-check-outline"}
+          icon={"mdi:alpha-i-box"}
           className={classNames(active ? "text-custom-white" : "text-gray-500")}
         />
       )}
 
       {branch.has_schema_changes && (
         <Icon
-          icon={"mdi:circular-arrows"}
+          icon={"mdi:file-alert"}
           className={classNames(active ? "text-custom-white" : "text-gray-500")}
         />
       )}
 
       {branch.is_default && (
         <Icon
-          icon={"mdi:source-branch"}
+          icon={"mdi:shield-star"}
           className={classNames(active ? "text-custom-white" : "text-gray-500")}
         />
       )}
@@ -44,7 +44,7 @@ const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
       {!branch.is_data_only && (
         <Icon
           icon={"mdi:git"}
-          className={classNames(active ? "text-custom-white" : "text-gray-500")}
+          className={classNames(active ? "text-custom-white" : "text-red-400")}
         />
       )}
     </>

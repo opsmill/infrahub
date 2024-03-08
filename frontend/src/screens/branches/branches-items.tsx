@@ -57,25 +57,25 @@ export const BranchesItems = () => {
                     <div className="flex items-center">
                       {branch.is_default && (
                         <Tooltip message={"Default branch"}>
-                          <Icon icon={"mdi:source-branch"} className="text-gray-400 mr-1" />
+                          <Icon icon={"mdi:shield-star"} className="text-gray-400 mr-1" />
                         </Tooltip>
                       )}
 
                       {!branch.is_data_only && (
                         <Tooltip message={"Data only"}>
-                          <Icon icon={"mdi:git"} className="text-gray-400 mr-1" />
+                          <Icon icon={"mdi:git"} className="text-red-400 mr-1" />
                         </Tooltip>
                       )}
 
                       {branch.is_isolated && (
                         <Tooltip message={"Isolated mode"}>
-                          <Icon icon={"mdi:shield-check-outline"} className="text-gray-400 mr-1" />
+                          <Icon icon={"mdi:alpha-i-box"} className="text-gray-400 mr-1" />
                         </Tooltip>
                       )}
 
                       {branch.has_schema_changes && (
                         <Tooltip message={"Has schema changes"}>
-                          <Icon icon={"mdi:circular-arrows"} className="text-gray-400 mr-1" />
+                          <Icon icon={"mdi:file-alert"} className="text-gray-400 mr-1" />
                         </Tooltip>
                       )}
                     </div>
