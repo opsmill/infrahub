@@ -70,7 +70,7 @@ extensions:
 | **Default Value** | {{ attr.default_value }} |
 | **Constraints** | {{attribute_constraints(attr)}} |
 {% if attr.enum -%}
-| **Accepted Values** | {% for value in  attr.enum %}`{{ value }}` {% endfor %} |
+| **Accepted Values** | {% for value in attr.enum %}`{{ value }}` {% endfor -%} |
 {% endif %}
 {% endfor -%}
 
