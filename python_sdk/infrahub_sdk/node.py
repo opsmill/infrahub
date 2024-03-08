@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 import re
+import warnings
 from copy import copy
 from typing import (
     TYPE_CHECKING,
@@ -692,6 +693,15 @@ class InfrahubNodeBase:
                 Attribute(name=attr_name, schema=attr_schema, data=attr_data),
             )
 
+    def _deprecated_parameter(self, **kwargs: Any) -> None:
+        for param_name, param_value in kwargs.items():
+            if param_value is not None:
+                warnings.warn(
+                    f"{param_name} has been deprecated and will be removed completely in a future version",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+
     def _init_relationships(self, data: Optional[dict] = None) -> None:
         pass
 
@@ -1075,11 +1085,11 @@ class InfrahubNode(InfrahubNodeBase):
     async def save(
         self, at: Optional[Timestamp] = None, allow_upsert: bool = False, update_group_context: Optional[bool] = None
     ) -> None:
-        at = Timestamp(at)
+        self._deprecated_parameter(at=at)
         if self._existing is False or allow_upsert is True:
-            await self.create(at=at, allow_upsert=allow_upsert)
+            await self.create(allow_upsert=allow_upsert)
         else:
-            await self.update(at=at)
+            await self.update()
 
         if update_group_context is None and self._client.mode == InfrahubClientMode.TRACKING:
             update_group_context = True
@@ -1241,7 +1251,8 @@ class InfrahubNode(InfrahubNodeBase):
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipremove-{relation_to_update}"
         await self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
-    async def create(self, at: Timestamp, allow_upsert: bool = False) -> None:
+    async def create(self, at: Optional[Timestamp] = None, allow_upsert: bool = False) -> None:
+        self._deprecated_parameter(at=at)
         input_data = self._generate_input_data()
         mutation_query = {"ok": None, "object": {"id": None}}
         if allow_upsert:
@@ -1257,7 +1268,7 @@ class InfrahubNode(InfrahubNodeBase):
             variables=input_data["mutation_variables"],
         )
         response = await self._client.execute_graphql(
-            query=query.render(), branch_name=self._branch, at=at, tracker=tracker, variables=input_data["variables"]
+            query=query.render(), branch_name=self._branch, tracker=tracker, variables=input_data["variables"]
         )
         self._existing = True
 
@@ -1265,7 +1276,8 @@ class InfrahubNode(InfrahubNodeBase):
         if allow_upsert:
             self.id = response[mutation_name]["object"]["id"]
 
-    async def update(self, at: Timestamp, do_full_update: bool = False) -> None:
+    async def update(self, at: Optional[Timestamp] = None, do_full_update: bool = False) -> None:
+        self._deprecated_parameter(at=at)
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(
@@ -1277,7 +1289,6 @@ class InfrahubNode(InfrahubNodeBase):
         await self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
-            at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
             variables=input_data["variables"],
         )
@@ -1395,7 +1406,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
         return content
 
     def delete(self, at: Optional[Timestamp] = None) -> None:
-        at = Timestamp(at)
+        self._deprecated_parameter(at=at)
         input_data = {"data": {"id": self.id}}
         mutation_query = {"ok": None}
         query = Mutation(
@@ -1406,18 +1417,17 @@ class InfrahubNodeSync(InfrahubNodeBase):
         self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
-            at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-delete",
         )
 
     def save(
         self, at: Optional[Timestamp] = None, allow_upsert: bool = False, update_group_context: Optional[bool] = None
     ) -> None:
-        at = Timestamp(at)
+        self._deprecated_parameter(at=at)
         if self._existing is False or allow_upsert is True:
-            self.create(at=at, allow_upsert=allow_upsert)
+            self.create(allow_upsert=allow_upsert)
         else:
-            self.update(at=at)
+            self.update()
 
         if update_group_context is None and self._client.mode == InfrahubClientMode.TRACKING:
             update_group_context = True
@@ -1578,7 +1588,8 @@ class InfrahubNodeSync(InfrahubNodeBase):
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipremove-{relation_to_update}"
         self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
-    def create(self, at: Timestamp, allow_upsert: bool = False) -> None:
+    def create(self, at: Optional[Timestamp] = None, allow_upsert: bool = False) -> None:
+        self._deprecated_parameter(at=at)
         input_data = self._generate_input_data()
         mutation_query = {"ok": None, "object": {"id": None}}
         if allow_upsert:
@@ -1603,7 +1614,8 @@ class InfrahubNodeSync(InfrahubNodeBase):
         if allow_upsert:
             self.id = response[mutation_name]["object"]["id"]
 
-    def update(self, at: Timestamp, do_full_update: bool = False) -> None:
+    def update(self, at: Optional[Timestamp] = None, do_full_update: bool = False) -> None:
+        self._deprecated_parameter(at=at)
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(
