@@ -1647,25 +1647,25 @@ async def mock_rest_api_artifact_generate(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
-async def mock_query_mutation_schema_dropdown_add(httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_query_mutation_schema_dropdown_add(httpx_mock: HTTPXMock) -> None:
     response = {"data": {"SchemaDropdownAdd": {"ok": True}}}
     httpx_mock.add_response(method="POST", url="http://mock/graphql", json=response)
 
 
 @pytest.fixture
-async def mock_query_mutation_schema_dropdown_remove(httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_query_mutation_schema_dropdown_remove(httpx_mock: HTTPXMock) -> None:
     response = {"data": {"SchemaDropdownRemove": {"ok": True}}}
     httpx_mock.add_response(method="POST", url="http://mock/graphql", json=response)
 
 
 @pytest.fixture
-async def mock_query_mutation_schema_enum_add(httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_query_mutation_schema_enum_add(httpx_mock: HTTPXMock) -> None:
     response = {"data": {"SchemaEnumAdd": {"ok": True}}}
     httpx_mock.add_response(method="POST", url="http://mock/graphql", json=response)
 
 
 @pytest.fixture
-async def mock_query_mutation_schema_enum_remove(httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_query_mutation_schema_enum_remove(httpx_mock: HTTPXMock) -> None:
     response = {"data": {"SchemaEnumRemove": {"ok": True}}}
     httpx_mock.add_response(method="POST", url="http://mock/graphql", json=response)
 
@@ -1685,9 +1685,7 @@ async def mock_query_mutation_location_create_failed(httpx_mock: HTTPXMock) -> H
             }
         ],
     }
-    url_regex = re.compile(
-        r"http://mock/graphql/main\?at=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6}Z"
-    )
+    url_regex = re.compile(r"http://mock/graphql/main")
     httpx_mock.add_response(method="POST", url=url_regex, json=response1)
     httpx_mock.add_response(method="POST", url=url_regex, json=response2)
     return httpx_mock

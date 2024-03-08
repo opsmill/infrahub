@@ -9,7 +9,7 @@ type tRetryProps = {
 };
 
 export const Retry = (props: tRetryProps) => {
-  const { isLoading, onClick, isDisabled, className = "" } = props;
+  const { isLoading, onClick, isDisabled } = props;
 
   const handleClick = (event: any) => {
     if (isDisabled) {
@@ -28,15 +28,14 @@ export const Retry = (props: tRetryProps) => {
   return (
     <div
       className={classNames(
-        "flex items-center p-1 rounded-full cursor-pointer",
+        "flex justify-center items-center p-1 rounded-full cursor-pointer",
         isLoading ? "animate-spin" : "",
-        isLoading || isDisabled ? "!cursor-not-allowed" : "",
-        className?.includes("hover:") ? "" : "hover:bg-gray-200"
+        isLoading || isDisabled ? "!cursor-not-allowed" : ""
       )}
       onClick={handleClick}>
       <Icon
         icon={"mdi:circle-arrows"}
-        className={classNames("h-4 w-4", isLoading ? "text-gray-300" : "text-gray-400")}
+        className={classNames(isLoading ? "text-gray-300" : "text-gray-400")}
       />
     </div>
   );

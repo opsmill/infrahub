@@ -5,9 +5,9 @@ import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
-import { useAuth } from "../hooks/useAuth";
 import { Branch } from "../generated/graphql";
 import { BRANCH_CREATE } from "../graphql/mutations/branches/createBranch";
+import { useAuth } from "../hooks/useAuth";
 import { DynamicFieldData } from "../screens/edit-form-hook/dynamic-control-types";
 import { Form } from "../screens/edit-form-hook/form";
 import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
@@ -16,6 +16,39 @@ import { BUTTON_TYPES, Button } from "./buttons/button";
 import { SelectButton } from "./buttons/select-button";
 import { POPOVER_SIZE, PopOver } from "./display/popover";
 import { SelectOption } from "./inputs/select";
+
+const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
+  branch && (
+    <>
+      {branch.is_isolated && (
+        <Icon
+          icon={"mdi:alpha-i-box"}
+          className={classNames(active ? "text-custom-white" : "text-gray-500")}
+        />
+      )}
+
+      {branch.has_schema_changes && (
+        <Icon
+          icon={"mdi:file-alert"}
+          className={classNames(active ? "text-custom-white" : "text-gray-500")}
+        />
+      )}
+
+      {branch.is_default && (
+        <Icon
+          icon={"mdi:shield-star"}
+          className={classNames(active ? "text-custom-white" : "text-gray-500")}
+        />
+      )}
+
+      {!branch.is_data_only && (
+        <Icon
+          icon={"mdi:git"}
+          className={classNames(active ? "text-custom-white" : "text-red-400")}
+        />
+      )}
+    </>
+  );
 
 export default function BranchSelector() {
   const [branches, setBranches] = useAtom(branchesState);
@@ -26,10 +59,11 @@ export default function BranchSelector() {
   const [createBranch, { loading }] = useMutation(BRANCH_CREATE);
 
   const valueLabel = (
-    <>
-      <Icon icon={"mdi:layers-triple"} />
+    <div className="flex items-center fill-custom-white">
+      {getBranchIcon(branch, true)}
+
       <p className="ml-2.5 text-sm font-medium truncate">{branch?.name}</p>
-    </>
+    </div>
   );
 
   const PopOverButton = (
@@ -50,6 +84,7 @@ export default function BranchSelector() {
       name: branch.name,
       is_data_only: branch.is_data_only,
       is_default: branch.is_default,
+      is_isolated: branch.is_isolated,
       created_at: branch.created_at,
     }))
     .sort((branch1, branch2) => {
@@ -85,23 +120,7 @@ export default function BranchSelector() {
 
   const renderOption = ({ option, active, selected }: any) => (
     <div className="flex relative flex-col">
-      {option.is_data_only && (
-        <div className="absolute bottom-0 right-0">
-          <Icon
-            icon={"mdi:database"}
-            className={classNames(active ? "text-custom-white" : "text-gray-500")}
-          />
-        </div>
-      )}
-
-      {option.is_default && (
-        <div className="absolute bottom-0 right-0">
-          <Icon
-            icon={"mdi:shield-check"}
-            className={classNames(active ? "text-custom-white" : "text-gray-500")}
-          />
-        </div>
-      )}
+      <div className="flex absolute bottom-0 right-0">{getBranchIcon(option, active)}</div>
 
       <div className="flex justify-between">
         <p className={selected ? "font-semibold" : "font-normal"}>{option.name}</p>
@@ -123,14 +142,10 @@ export default function BranchSelector() {
   );
 
   const handleSubmit = async (data: any, close: Function) => {
-    const { name, description, is_data_only } = data;
-
     try {
       const { data: response } = await createBranch({
         variables: {
-          name,
-          description,
-          is_data_only,
+          ...data,
         },
       });
 
@@ -194,6 +209,13 @@ export default function BranchSelector() {
       label: "Data only",
       type: "checkbox",
       value: true,
+      isOptional: true,
+    },
+    {
+      name: "is_isolated",
+      label: "Isolated mode",
+      type: "checkbox",
+      value: false,
       isOptional: true,
     },
   ];

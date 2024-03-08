@@ -5,6 +5,7 @@ import usePagination from "../../../hooks/usePagination";
 import useQuery from "../../../hooks/useQuery";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
+import NoDataFound from "../../no-data-found/no-data-found";
 import { Check } from "./check";
 
 type tValidatorDetails = {
@@ -36,7 +37,7 @@ export const ValidatorDetails = (props: tValidatorDetails) => {
   const { loading, error, data } = useQuery(query);
 
   if (loading) {
-    return <LoadingScreen />;
+    return <LoadingScreen hideText />;
   }
 
   if (error) {
@@ -46,14 +47,16 @@ export const ValidatorDetails = (props: tValidatorDetails) => {
   const validator = data?.CoreValidator?.edges[0]?.node;
 
   return (
-    <div className="flex-1 overflow-auto flex flex-col">
+    <div className="flex-1 flex flex-col">
       <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 p-2">
         {validator?.checks?.edges?.map((check: any, index: number) => (
           <Check key={index} id={check?.node?.id} />
         ))}
+
+        {!validator?.checks?.edges?.length && <NoDataFound message="No checks found." />}
       </div>
 
-      <Pagination count={validator?.checks?.count} />
+      {!!validator?.checks?.edges?.length && <Pagination count={validator?.checks?.count} />}
     </div>
   );
 };
