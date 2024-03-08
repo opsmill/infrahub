@@ -412,9 +412,9 @@ class HashableModel(BaseModel):
         """
 
         # Identify all nodes that are sharing a real IDs
-        local_sub_real_ids = [item.id for item in attr_local if item.id]
-        other_sub_real_ids = [item.id for item in attr_other if item.id]
-        shared_real_ids = intersection(list(local_sub_real_ids), list(other_sub_real_ids))
+        local_sub_real_ids = {item.id for item in attr_local if item.id}
+        other_sub_real_ids = {item.id for item in attr_other if item.id}
+        shared_real_ids = local_sub_real_ids & other_sub_real_ids
 
         local_sub_items = HashableModel._organize_sub_items(items=attr_local, shared_ids=shared_real_ids)
         other_sub_items = HashableModel._organize_sub_items(items=attr_other, shared_ids=shared_real_ids)
