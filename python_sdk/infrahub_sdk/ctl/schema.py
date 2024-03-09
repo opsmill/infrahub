@@ -43,6 +43,10 @@ class SchemaFile(pydantic.BaseModel):
             self.error_message = "Invalid YAML/JSON file"
             self.valid = False
 
+        if not self.content:
+            self.error_message = "Empty YAML/JSON file"
+            self.valid = False
+
 
 def load_schemas_from_disk(schemas: List[Path]) -> List[SchemaFile]:
     schemas_data: List[SchemaFile] = []
@@ -50,10 +54,7 @@ def load_schemas_from_disk(schemas: List[Path]) -> List[SchemaFile]:
         if schema.is_file():
             schema_file = SchemaFile(location=schema)
             schema_file.load_content()
-            if schema_file.content:
-                schemas_data.append(schema_file)
-            else:
-                raise FileNotValidError(name=schema, message=f"Schema path: {schema} is empty.")
+            schemas_data.append(schema_file)
         elif schema.is_dir():
             files = find_files(extension=["yaml", "yml", "json"], directory=schema, recursive=True)
             for item in files:
@@ -75,7 +76,7 @@ def load_schemas_from_disk_and_exit(schemas: List[Path], console: Console):
         raise typer.Exit(2) from exc
 
     for schema_file in schemas_data:
-        if schema_file.valid:
+        if schema_file.valid and schema_file.content:
             continue
         console.print(f"[red]{schema_file.error_message} ({schema_file.location})")
         has_error = True
