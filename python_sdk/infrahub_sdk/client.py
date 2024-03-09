@@ -51,9 +51,11 @@ if TYPE_CHECKING:
 
 class NodeDiff(ExtensionTypedDict):
     branch: str
-    actions: List[str]
     kind: str
-    node: str
+    id: str
+    action: str
+    display_label: str
+    elements: List[Dict[str, Any]]
 
 
 class ProcessRelationsNode(TypedDict):
@@ -669,10 +671,41 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         query = """
             query {
                 DiffSummary {
-                    kind
-                    node
                     branch
-                    actions
+                    id
+                    kind
+                    action
+                    display_label
+                    elements {
+                        ... on DiffSummaryElement {
+                            type
+                            name
+                            action
+                            summary {
+                                added
+                                updated
+                                removed
+                            }
+                        }
+                        ... on DiffSummaryElementRelationshipMany {
+                            type
+                            name
+                            action
+                            summary {
+                                added
+                                updated
+                                removed
+                            }
+                            peers {
+                                action
+                                summary {
+                                    added
+                                    updated
+                                    removed
+                                }
+                            }
+                        }
+                    }
                 }
             }
         """
@@ -1172,10 +1205,41 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         query = """
             query {
                 DiffSummary {
-                    kind
-                    node
                     branch
-                    actions
+                    id
+                    kind
+                    action
+                    display_label
+                    elements {
+                        ... on DiffSummaryElement {
+                            type
+                            name
+                            action
+                            summary {
+                                added
+                                updated
+                                removed
+                            }
+                        }
+                        ... on DiffSummaryElementRelationshipMany {
+                            type
+                            name
+                            action
+                            summary {
+                                added
+                                updated
+                                removed
+                            }
+                            peers {
+                                action
+                                summary {
+                                    added
+                                    updated
+                                    removed
+                                }
+                            }
+                        }
+                    }
                 }
             }
         """

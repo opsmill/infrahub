@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict, Optional, Union
 
-from graphene import Boolean, Field, JSONString, List, ObjectType, String
+from graphene import Boolean, Field, List, ObjectType, String
 
 from infrahub.core.diff.branch_differ import BranchDiffer
-from infrahub.core.diff.payload_builder import DiffPayloadBuilder
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -13,15 +12,11 @@ if TYPE_CHECKING:
     from infrahub.graphql import GraphqlContext
 
 
-class DiffSummaryEntry(ObjectType):
+class DiffSummaryEntryOld(ObjectType):
     branch = String(required=True)
     node = String(required=True)
-    id = String(required=True)
     kind = String(required=True)
     actions = List(String, required=True)
-    action = String(required=True)
-    display_label = String()
-    elements = JSONString()
 
     @staticmethod
     async def resolve(
@@ -31,7 +26,7 @@ class DiffSummaryEntry(ObjectType):
         time_from: Optional[str] = None,
         time_to: Optional[str] = None,
     ) -> list[Dict[str, Union[str, list[str]]]]:
-        return await DiffSummaryEntry.get_summary(
+        return await DiffSummaryEntryOld.get_summary(
             info=info,
             branch_only=branch_only,
             time_from=time_from or None,
@@ -50,15 +45,14 @@ class DiffSummaryEntry(ObjectType):
         diff = await BranchDiffer.init(
             db=context.db, branch=context.branch, diff_from=time_from, diff_to=time_to, branch_only=branch_only
         )
-        diff_payload_builder = DiffPayloadBuilder(db=context.db, diff=diff)
-        enriched_summaries = await diff_payload_builder.get_summarized_node_diffs()
-        return [summary.to_graphql() for summary in enriched_summaries]
+        summary = await diff.get_summary()
+        return [entry.to_graphql() for entry in summary]
 
 
-DiffSummary = Field(
-    List(DiffSummaryEntry),
+DiffSummaryOld = Field(
+    List(DiffSummaryEntryOld),
     time_from=String(required=False),
     time_to=String(required=False),
     branch_only=Boolean(required=False, default_value=False),
-    resolver=DiffSummaryEntry.resolve,
+    resolver=DiffSummaryEntryOld.resolve,
 )

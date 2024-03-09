@@ -145,8 +145,11 @@ class DiffSummaryElement(BaseModel):
         }
 
 
-class EnrichedDiffSummaryElement(DiffSummaryElement):
-    action: DiffAction = Field(..., description="A list of all actions on this node.")
+class EnrichedDiffSummaryElement(BaseModel):
+    branch: str = Field(..., description="The branch where the change occured")
+    node: str = Field(..., description="The unique ID of the node")
+    kind: str = Field(..., description="The kind of the node as defined by its namespace and name")
+    action: DiffAction
     display_label: str
     elements: Dict[str, Union[BranchDiffRelationshipOne, BranchDiffRelationshipMany, BranchDiffAttribute]] = Field(
         default_factory=dict
@@ -155,18 +158,6 @@ class EnrichedDiffSummaryElement(DiffSummaryElement):
     @computed_field
     def id(self) -> str:
         return self.node
-
-    def to_graphql(self) -> Dict[str, Any]:
-        graphql_dict = super().to_graphql()
-        graphql_dict.update(
-            {
-                "id": self.id,
-                "action": self.action.value,
-                "display_label": self.display_label,
-                "elements": {element_name: element.model_dump() for element_name, element in self.elements.items()},
-            }
-        )
-        return graphql_dict
 
 
 class ModifiedPath(BaseModel):
@@ -342,7 +333,7 @@ class BranchDiffAttribute(BaseModel):
     name: str
     id: str
     changed_at: Optional[str] = None
-    summary: DiffSummary = DiffSummary()
+    summary: DiffSummary = Field(default_factory=DiffSummary)
     action: DiffAction
     value: Optional[BranchDiffProperty] = None
     properties: List[BranchDiffProperty] = Field(default_factory=list)
@@ -366,7 +357,7 @@ class BranchDiffRelationshipOne(BaseModel):
     branch: str
     id: str
     identifier: str
-    summary: DiffSummary = DiffSummary()
+    summary: DiffSummary = Field(default_factory=DiffSummary)
     name: str
     peer: BranchDiffRelationshipOnePeerValue
     properties: List[BranchDiffProperty] = Field(default_factory=list)
@@ -379,7 +370,7 @@ class BranchDiffRelationshipManyElement(BaseModel):
     branch: str
     id: str
     identifier: str
-    summary: DiffSummary = DiffSummary()
+    summary: DiffSummary = Field(default_factory=DiffSummary)
     peer: BranchDiffRelationshipPeerNode
     properties: List[BranchDiffProperty] = Field(default_factory=list)
     changed_at: Optional[str] = None
@@ -391,7 +382,7 @@ class BranchDiffRelationshipMany(BaseModel):
     type: DiffElementType = DiffElementType.RELATIONSHIP_MANY
     branch: str
     identifier: str
-    summary: DiffSummary = DiffSummary()
+    summary: DiffSummary = Field(default_factory=DiffSummary)
     name: str
     peers: List[BranchDiffRelationshipManyElement] = Field(default_factory=list)
 
@@ -410,7 +401,7 @@ class BranchDiffElementAttribute(BaseModel):
     type: DiffElementType = DiffElementType.ATTRIBUTE
     branches: List[str] = Field(default_factory=list)
     id: str = ""
-    summary: DiffSummary = DiffSummary()
+    summary: DiffSummary = Field(default_factory=DiffSummary)
     action: DiffAction = DiffAction.UNCHANGED
     value: Optional[BranchDiffPropertyCollection] = None
     properties: Dict[str, BranchDiffPropertyCollection] = Field(default_factory=dict)
@@ -443,7 +434,7 @@ class BranchDiffElementRelationshipOne(BaseModel):
     id: str = ""
     identifier: str = ""
     branches: List[str] = Field(default_factory=list)
-    summary: DiffSummary = DiffSummary()
+    summary: DiffSummary = Field(default_factory=DiffSummary)
     peer: Optional[BranchDiffRelationshipOnePeerCollection] = None
     properties: Dict[str, BranchDiffPropertyCollection] = Field(default_factory=dict)
     changed_at: Optional[str] = None
@@ -466,7 +457,7 @@ class BranchDiffElementRelationshipMany(BaseModel):
     type: DiffElementType = DiffElementType.RELATIONSHIP_MANY
     identifier: str = ""
     branches: Set[str] = Field(default_factory=set)
-    summary: DiffSummary = DiffSummary()
+    summary: DiffSummary = Field(default_factory=DiffSummary)
     peers: Dict[str, BranchDiffElementRelationshipManyPeer] = Field(default_factory=dict)
 
 
