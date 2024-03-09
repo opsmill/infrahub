@@ -31,7 +31,9 @@ async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
     )
     query = await NodeKindUpdateMigrationQuery01.init(db=db, branch=default_branch, migration=migration)
+    # print(query.get_query(var=True, inline=True))
     await query.execute(db=db)
+    assert query.get_nbr_migrations_executed() == 2
 
     # we expect 14 new relationships per TestCar, 28 TOTAL
     # 2 x 5 attributes = 10
@@ -44,7 +46,7 @@ async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch
     # Re-execute the query once to ensure that it won't change anything
     query = await NodeKindUpdateMigrationQuery01.init(db=db, branch=default_branch, migration=migration)
     await query.execute(db=db)
-
+    assert query.get_nbr_migrations_executed() == 0
     assert await count_relationships(db=db) == count_rels + 28
     assert await count_nodes(db=db, label="TestCar") == 2
     assert await count_nodes(db=db, label="Test2NewCar") == 2
@@ -73,7 +75,7 @@ async def test_migration(db: InfrahubDatabase, default_branch: Branch, car_accor
 
     execution_result = await migration.execute(db=db, branch=default_branch)
     assert not execution_result.errors
-
+    assert execution_result.count_update == 2
     assert await count_relationships(db=db) == count_rels + 28
     assert await count_nodes(db=db, label="TestCar") == 2
     assert await count_nodes(db=db, label="Test2NewCar") == 2

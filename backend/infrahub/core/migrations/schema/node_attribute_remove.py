@@ -4,9 +4,8 @@ from typing import TYPE_CHECKING, Any, Dict, Sequence
 
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.graph.schema import GraphAttributeRelationships
-from infrahub.core.query import Query, QueryType
 
-from ..shared import AttributeSchemaMigration
+from ..shared import AttributeMigrationQuery, AttributeSchemaMigration
 
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
@@ -14,17 +13,9 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class NodeAttributeRemoveMigrationQuery01(Query):
+class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
     name = "migration_node_attribute_remove_01"
-    type: QueryType = QueryType.WRITE
-
-    def __init__(
-        self,
-        migration: NodeAttributeRemoveMigration,
-        **kwargs: Any,
-    ):
-        self.migration = migration
-        super().__init__(**kwargs)
+    insert_return: bool = False
 
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
@@ -112,15 +103,15 @@ class NodeAttributeRemoveMigrationQuery01(Query):
         CALL {
             %(sub_query_all)s
         }
-        WITH p2 as peer_node, rb
+        WITH p2 as peer_node, rb, active_attr
         FOREACH (i in CASE WHEN rb.branch = $branch_name THEN [1] ELSE [] END |
             SET rb.to = $current_time
         )
+        RETURN DISTINCT active_attr
         """ % {"branch_filter": branch_filter, "sub_query_all": sub_query_all}
         self.add_to_query(query)
-        self.return_labels = ["peer_node"]
 
 
 class NodeAttributeRemoveMigration(AttributeSchemaMigration):
     name: str = "node.attribute.remove"
-    queries: Sequence[type[Query]] = [NodeAttributeRemoveMigrationQuery01]
+    queries: Sequence[type[AttributeMigrationQuery]] = [NodeAttributeRemoveMigrationQuery01]  # type: ignore[assignment]

@@ -26,6 +26,9 @@ class SchemaMigrationPath(InfrahubMessage):
 
 class SchemaMigrationPathResponseData(InfrahubResponseData):
     errors: List[str] = Field(default_factory=list)
+    migration_name: str
+    nbr_migrations_executed: int
+    schema_path: SchemaPath
 
 
 class SchemaMigrationPathResponse(InfrahubResponse):

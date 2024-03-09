@@ -3,26 +3,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, Sequence
 
 from infrahub.core.constants import BranchSupportType
-from infrahub.core.query import Query, QueryType
 
-from ..shared import AttributeSchemaMigration
+from ..shared import AttributeMigrationQuery, AttributeSchemaMigration
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class NodeAttributeAddMigrationQuery01(Query):
+class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery):
     name = "migration_node_attribute_add_01"
-    type: QueryType = QueryType.WRITE
-
-    def __init__(
-        self,
-        migration: NodeAttributeAddMigration,
-        **kwargs: Any,
-    ):
-        self.migration = migration
-
-        super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
@@ -83,4 +72,4 @@ class NodeAttributeAddMigrationQuery01(Query):
 
 class NodeAttributeAddMigration(AttributeSchemaMigration):
     name: str = "node.attribute.add"
-    queries: Sequence[type[Query]] = [NodeAttributeAddMigrationQuery01]
+    queries: Sequence[type[AttributeMigrationQuery]] = [NodeAttributeAddMigrationQuery01]  # type: ignore[assignment]

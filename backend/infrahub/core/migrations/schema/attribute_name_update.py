@@ -4,9 +4,8 @@ from typing import TYPE_CHECKING, Any, Dict, Sequence
 
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.graph.schema import GraphAttributeRelationships
-from infrahub.core.query import Query, QueryType
 
-from ..shared import AttributeSchemaMigration
+from ..shared import AttributeMigrationQuery, AttributeSchemaMigration
 
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
@@ -14,17 +13,9 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class AttributeNameUpdateMigrationQuery01(Query):
+class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery):
     name = "migration_attribute_name_update_01"
-    type: QueryType = QueryType.WRITE
-
-    def __init__(
-        self,
-        migration: AttributeNameUpdateMigration,
-        **kwargs: Any,
-    ):
-        self.migration = migration
-        super().__init__(**kwargs)
+    insert_return: bool = False
 
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
@@ -121,15 +112,15 @@ class AttributeNameUpdateMigrationQuery01(Query):
         CALL {
             %(sub_query_all)s
         }
-        WITH p2 as peer_node, rb
+        WITH p2 as peer_node, rb, new_attr
         FOREACH (i in CASE WHEN rb.branch = $branch_name THEN [1] ELSE [] END |
             SET rb.to = $current_time
         )
+        RETURN DISTINCT new_attr
         """ % {"branch_filter": branch_filter, "add_uuid": add_uuid, "sub_query_all": sub_query_all}
         self.add_to_query(query)
-        self.return_labels = ["peer_node"]
 
 
 class AttributeNameUpdateMigration(AttributeSchemaMigration):
     name: str = "attribute.name.update"
-    queries: Sequence[type[Query]] = [AttributeNameUpdateMigrationQuery01]
+    queries: Sequence[type[AttributeMigrationQuery]] = [AttributeNameUpdateMigrationQuery01]  # type: ignore[assignment]

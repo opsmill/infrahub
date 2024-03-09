@@ -1,21 +1,22 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Sequence, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.core.path import SchemaPath  # noqa: TCH001
+from infrahub.core.query import Query, QueryType
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema  # noqa: TCH001
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.query import Query
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
 class MigrationResult(BaseModel):
     errors: List[str] = Field(default_factory=list)
+    nbr_migrations_executed: int = 0
 
     @property
     def success(self) -> bool:
@@ -28,14 +29,11 @@ class MigrationResult(BaseModel):
 class SchemaMigration(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(..., description="Name of the migration")
-    queries: Sequence[type[Query]] = Field(..., description="List of queries to execute for this migration")
+    queries: Sequence[type[MigrationQuery]] = Field(..., description="List of queries to execute for this migration")
 
     new_node_schema: Union[NodeSchema, GenericSchema]
     previous_node_schema: Union[NodeSchema, GenericSchema]
     schema_path: SchemaPath
-
-    # async def validate_migration(self, db: InfrahubDatabase):
-    #     raise NotImplementedError
 
     async def execute(
         self, db: InfrahubDatabase, branch: Branch, at: Optional[Union[Timestamp, str]] = None
@@ -47,6 +45,7 @@ class SchemaMigration(BaseModel):
                 try:
                     query = await migration_query.init(db=ts, branch=branch, at=at, migration=self)
                     await query.execute(db=ts)
+                    result.nbr_migrations_executed += query.get_nbr_migrations_executed()
                 except Exception as exc:  # pylint: disable=broad-exception-caught
                     result.errors.append(str(exc))
                     return result
@@ -104,3 +103,33 @@ class GraphMigration(BaseModel):
                     return result
 
         return result
+
+
+class MigrationQuery(Query):
+    type: QueryType = QueryType.WRITE
+
+    def __init__(
+        self,
+        migration: SchemaMigration,
+        **kwargs: Any,
+    ):
+        self.migration = migration
+        super().__init__(**kwargs)
+
+    def get_nbr_migrations_executed(self) -> int:
+        return self.num_of_results
+
+
+class AttributeMigrationQuery(Query):
+    type: QueryType = QueryType.WRITE
+
+    def __init__(
+        self,
+        migration: AttributeSchemaMigration,
+        **kwargs: Any,
+    ):
+        self.migration = migration
+        super().__init__(**kwargs)
+
+    def get_nbr_migrations_executed(self) -> int:
+        return self.num_of_results

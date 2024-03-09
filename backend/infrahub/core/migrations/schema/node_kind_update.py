@@ -4,9 +4,8 @@ from typing import TYPE_CHECKING, Any, Dict, Sequence
 
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.graph.schema import GraphNodeRelationships, GraphRelDirection
-from infrahub.core.query import Query, QueryType
 
-from ..shared import SchemaMigration
+from ..shared import MigrationQuery, SchemaMigration
 
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
@@ -14,17 +13,9 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class NodeKindUpdateMigrationQuery01(Query):
+class NodeKindUpdateMigrationQuery01(MigrationQuery):
     name = "migration_node_kind_update_01"
-    type: QueryType = QueryType.WRITE
-
-    def __init__(
-        self,
-        migration: NodeKindUpdateMigration,
-        **kwargs: Any,
-    ):
-        self.migration = migration
-        super().__init__(**kwargs)
+    insert_return: bool = False
 
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
@@ -145,6 +136,7 @@ class NodeKindUpdateMigrationQuery01(Query):
         FOREACH (i in CASE WHEN rel_inband.branch = $branch_name THEN [1] ELSE [] END |
             SET rel_inband.to = $current_time
         )
+        RETURN DISTINCT new_node
         """ % {
             "branch_filter": branch_filter,
             "labels": ":".join(self.migration.new_node_schema.get_labels()),
@@ -152,9 +144,11 @@ class NodeKindUpdateMigrationQuery01(Query):
             "sub_query_in": sub_query_in,
         }
         self.add_to_query(query)
-        self.return_labels = ["peer_node"]
+
+    def get_nbr_migrations_executed(self) -> int:
+        return self.stats.get_counter(name="nodes_created")
 
 
 class NodeKindUpdateMigration(SchemaMigration):
     name: str = "node.kind.update"
-    queries: Sequence[type[Query]] = [NodeKindUpdateMigrationQuery01]
+    queries: Sequence[type[MigrationQuery]] = [NodeKindUpdateMigrationQuery01]  # type: ignore[assignment]
