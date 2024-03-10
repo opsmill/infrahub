@@ -70,7 +70,7 @@ async def test_migration(db: InfrahubDatabase, default_branch: Branch, car_accor
     migration = NodeKindUpdateMigration(
         previous_node_schema=schema.get(name="TestCar"),
         new_node_schema=car_schema,
-        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="new-color"),
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="namespace"),
     )
 
     execution_result = await migration.execute(db=db, branch=default_branch)
