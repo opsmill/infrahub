@@ -1,0 +1,91 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/develop/schema.schema.json
+---
+version: '1.0'
+nodes:
+  - name: Person
+    namespace: Testing
+    include_in_menu: true
+    label: "Person"
+    attributes:
+      - name: firstname
+        kind: Text
+      - name: lastname
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: height
+        kind: Number
+        optional: true
+        state: absent
+    relationships:
+      - name: cars
+        kind: Generic
+        optional: True
+        peer: TestingCar
+        cardinality: many
+  - name: Car
+    namespace: Testing
+    include_in_menu: true
+    label: "Car"
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: color
+        kind: Text
+    relationships:
+      - name: owner
+        kind: Attribute
+        optional: False
+        peer: TestingPerson
+        cardinality: one
+      - name: manufacturer
+        kind: Attribute
+        optional: False
+        peer: TestingCarMaker
+        cardinality: one
+        identifier: car__manufacturer
+  - name: CarMaker
+    namespace: Testing
+    include_in_menu: true
+    label: "CarMaker"
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+    relationships:
+      - name: cars
+        kind: Generic
+        optional: True
+        peer: TestingCar
+        cardinality: many
+        identifier: car__manufacturer
+      - name: customers
+        kind: Generic
+        optional: True
+        peer: TestingPerson
+        cardinality: many
+        identifier: person__manufacturer
+  - name: Tag
+    namespace: Testing
+    include_in_menu: true
+    label: "Testing Tag"
+    attributes:
+      - name: name
+        kind: Text
+    relationships:
+      - name: cars
+        kind: Generic
+        optional: True
+        peer: TestingCar
+        cardinality: many
+      - name: persons
+        kind: Generic
+        optional: True
+        peer: TestingPerson
+        cardinality: many
