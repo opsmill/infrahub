@@ -279,6 +279,7 @@ class QueryStats:
 class QueryStat:
     contains_updates: bool = False
     labels_added: Optional[int] = None
+    labels_removed: Optional[int] = None
     nodes_created: Optional[int] = None
     nodes_deleted: Optional[int] = None
     properties_set: Optional[int] = None
