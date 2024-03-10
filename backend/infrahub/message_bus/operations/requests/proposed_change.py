@@ -19,6 +19,7 @@ from infrahub.core.diff.model import SchemaConflict
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.registry import registry
 from infrahub.core.validators.checker import schema_validators_checker
+from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
@@ -711,12 +712,5 @@ async def _populate_subscribers(branch_diff: ProposedChangeBranchDiff, service: 
 async def _get_proposed_change_schema_integrity_constraints(
     message: messages.RequestProposedChangeSchemaIntegrity, schema: SchemaBranch
 ) -> List[SchemaUpdateConstraintInfo]:
-    # For now we run the constraints for all models that have changed in the source branch or the destination branch
-    # We need to revisit that to properly calculate which constraints we should validate
-    modified_kinds = {node_diff["kind"] for node_diff in message.branch_diff.diff_summary}
-
-    constraints: List[SchemaUpdateConstraintInfo] = []
-    for kind in modified_kinds:
-        constraints.extend(await schema.get_constraints_per_model(name=kind))
-
-    return constraints
+    determiner = ConstraintValidatorDeterminer(schema_branch=schema)
+    return await determiner.get_constraints(node_diffs=message.branch_diff.diff_summary)
