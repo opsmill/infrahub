@@ -280,8 +280,10 @@ class QueryStat:
     contains_updates: bool = False
     labels_added: Optional[int] = None
     nodes_created: Optional[int] = None
+    nodes_deleted: Optional[int] = None
     properties_set: Optional[int] = None
     relationships_created: Optional[int] = None
+    relationships_deleted: Optional[int] = None
 
     @classmethod
     def from_metadata(cls, data: Dict[str, Any]) -> Self:
@@ -531,7 +533,7 @@ class Query(ABC):
     def get_raw_results(self) -> List[QueryResult]:
         return self.results
 
-    def get_result(self) -> Union[QueryResult, None]:
+    def get_result(self) -> Optional[QueryResult]:
         """Return a single Result."""
 
         if not self.has_been_executed:
@@ -540,7 +542,10 @@ class Query(ABC):
         if self.num_of_results == 1:
             return self.results[0]
 
-        return next(self.get_results())
+        try:
+            return next(self.get_results())
+        except StopIteration:
+            return None
 
     def get_results(self) -> Generator[QueryResult, None, None]:
         """Get all the results sorted by score."""
