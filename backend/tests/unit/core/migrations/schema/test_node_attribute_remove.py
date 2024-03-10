@@ -59,6 +59,6 @@ async def test_migration(db: InfrahubDatabase, default_branch: Branch, car_accor
 
     execution_result = await migration.execute(db=db, branch=default_branch)
     assert not execution_result.errors
-    assert execution_result.count_update == 2
+    assert execution_result.nbr_migrations_executed == 2
     assert await count_nodes(db=db, label="Attribute") == count_attr_node
     assert await count_relationships(db=db) == count_rels + 8
