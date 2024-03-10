@@ -95,3 +95,19 @@ def _stage_branch_update(client: InfrahubClientSync, prefix: str, amount: int, o
 
 
 stage_branch_update = partial(_stage_branch_update, prefix="Branch")
+
+
+def _stage_branch_diff(client: InfrahubClientSync, prefix: str, amount: int, offset: int = 0):
+    extra_attributes = prepare_node_attributes(client)
+
+    branch_name = "DiffTestBranch"
+    client.branch.create(branch_name=branch_name, description="description", data_only=True)
+    for i in range(offset, offset + config.node_amount):
+        # Add diff by creating a new node
+        node = client.create(kind="InfraNode", branch=branch_name, data={"name": f"{prefix}{i}", **extra_attributes})
+        node.save()
+
+    stage_infranode(client=client, amount=100)
+
+
+stage_branch_diff = partial(_stage_branch_diff, prefix="Node")
