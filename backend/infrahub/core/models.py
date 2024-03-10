@@ -231,7 +231,7 @@ class SchemaUpdateValidationResult(BaseModel):
                 )
             )
         elif field_update == UpdateSupport.MIGRATION_REQUIRED.value:
-            migration_name = f"{schema_path.path_type.value}.{schema_path.field_name}.update"
+            migration_name = f"{schema_path.path_type.value}.{schema_path.property_name}.update"
             self.migrations.append(
                 SchemaUpdateMigrationInfo(
                     path=schema_path,
