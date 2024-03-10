@@ -58,7 +58,6 @@ class TestInfrahubClient:
     def local_storage_dir(self, tmpdir_factory) -> str:
         storage_dir = os.path.join(str(tmpdir_factory.getbasetemp().strpath), "storage")
         os.mkdir(storage_dir)
-        # tmpdir_factory.mktemp('storage')
 
         config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
         config.SETTINGS.storage.local.path_ = storage_dir
@@ -199,7 +198,6 @@ class TestInfrahubClient:
             "diff": {
                 "added": {},
                 "changed": {
-                    "TestingCar": {"added": {}, "changed": {"filters": None}, "removed": {}},
                     "TestingPerson": {
                         "added": {},
                         "changed": {
@@ -214,7 +212,6 @@ class TestInfrahubClient:
                                 },
                                 "removed": {},
                             },
-                            "filters": None,
                         },
                         "removed": {},
                     },
@@ -258,7 +255,6 @@ class TestInfrahubClient:
                     "TestingCar": {
                         "added": {},
                         "changed": {
-                            "filters": None,
                             "relationships": {
                                 "added": {},
                                 "changed": {
@@ -286,7 +282,6 @@ class TestInfrahubClient:
                                 "changed": {},
                                 "removed": {"height": None},
                             },
-                            "filters": None,
                         },
                         "removed": {},
                     },

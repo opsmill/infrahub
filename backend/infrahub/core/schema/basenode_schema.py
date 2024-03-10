@@ -82,20 +82,11 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
             get_map_func=BaseNodeSchema.get_relationship_name_id_map,
             obj_type=RelationshipSchema,
         )
-        # Filters
-        filters_diff = self._diff_element(
-            other=other,
-            get_func=BaseNodeSchema.get_filter,
-            get_map_func=BaseNodeSchema.get_filter_name_id_map,
-            obj_type=FilterSchema,
-        )
 
         if attrs_diff.has_diff:
             node_diff.changed["attributes"] = attrs_diff
         if rels_diff.has_diff:
             node_diff.changed["relationships"] = rels_diff
-        if filters_diff.has_diff:
-            node_diff.changed["filters"] = filters_diff
 
         return node_diff
 
