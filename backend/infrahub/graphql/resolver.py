@@ -72,6 +72,7 @@ async def default_resolver(*args, **kwargs):
         objs = await NodeManager.query_peers(
             db=db,
             ids=[parent["id"]],
+            source_kind=node_schema.kind,
             schema=node_rel,
             filters=filters,
             fields=fields,
@@ -125,6 +126,7 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
         objs = await NodeManager.query_peers(
             db=db,
             ids=[parent["id"]],
+            source_kind=node_schema.kind,
             schema=node_rel,
             filters=filters,
             fields=node_fields,
@@ -200,6 +202,7 @@ async def many_relationship_resolver(
             response["count"] = await NodeManager.count_peers(
                 db=db,
                 ids=ids,
+                source_kind=node_schema.kind,
                 schema=node_rel,
                 filters=filters,
                 at=context.at,
@@ -212,6 +215,7 @@ async def many_relationship_resolver(
         objs = await NodeManager.query_peers(
             db=db,
             ids=ids,
+            source_kind=node_schema.kind,
             schema=node_rel,
             filters=filters,
             fields=node_fields,

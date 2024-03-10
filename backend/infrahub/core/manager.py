@@ -155,6 +155,7 @@ class NodeManager:
     async def count_peers(
         cls,
         ids: List[str],
+        source_kind: str,
         schema: RelationshipSchema,
         filters: dict,
         db: InfrahubDatabase,
@@ -167,7 +168,7 @@ class NodeManager:
         rel = Relationship(schema=schema, branch=branch, node_id="PLACEHOLDER")
 
         query = await RelationshipGetPeerQuery.init(
-            db=db, source_ids=ids, schema=schema, filters=filters, rel=rel, at=at
+            db=db, source_ids=ids, source_kind=source_kind, schema=schema, filters=filters, rel=rel, at=at
         )
         return await query.count(db=db)
 
@@ -176,6 +177,7 @@ class NodeManager:
         cls,
         db: InfrahubDatabase,
         ids: List[str],
+        source_kind: str,
         schema: RelationshipSchema,
         filters: dict,
         fields: Optional[dict] = None,
@@ -192,6 +194,7 @@ class NodeManager:
         query = await RelationshipGetPeerQuery.init(
             db=db,
             source_ids=ids,
+            source_kind=source_kind,
             schema=schema,
             filters=filters,
             rel=rel,
