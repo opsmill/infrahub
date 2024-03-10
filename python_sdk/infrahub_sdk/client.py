@@ -6,7 +6,7 @@ import json
 import logging
 from logging import Logger
 from time import sleep
-from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, NotRequired, Optional, Type, TypedDict, Union
 
 import httpx
 from typing_extensions import Self
@@ -55,7 +55,26 @@ class NodeDiff(ExtensionTypedDict):
     id: str
     action: str
     display_label: str
-    elements: List[Dict[str, Any]]
+    elements: List[NodeDiffElement]
+
+
+class NodeDiffElement(ExtensionTypedDict):
+    name: str
+    type: str
+    action: str
+    summary: NodeDiffSummary
+    peers: NotRequired[List[NodeDiffPeer]]
+
+
+class NodeDiffSummary(ExtensionTypedDict):
+    added: int
+    updated: int
+    removed: int
+
+
+class NodeDiffPeer(ExtensionTypedDict):
+    action: str
+    summary: NodeDiffSummary
 
 
 class ProcessRelationsNode(TypedDict):
