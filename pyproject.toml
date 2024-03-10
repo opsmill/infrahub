@@ -15,7 +15,7 @@ optional = true
 [tool.poetry.dependencies]
 python = "^3.8, < 3.13"
 neo4j = "~5.18"
-infrahub-sdk = {path = "python_sdk", develop=true}
+infrahub-sdk = {path = "python_sdk", extras = ["ctl","tests"], develop=true}
 pydantic = "~2.6"
 pydantic-settings = "~2.2"
 pytest = "~7.4"
