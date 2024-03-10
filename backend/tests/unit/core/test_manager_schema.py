@@ -342,8 +342,8 @@ async def test_schema_branch_add_groups(schema_all_in_one):
     assert criticality.get_relationship(name="subscriber_of_groups")
 
     std_group = schema.get(name=InfrahubKind.STANDARDGROUP)
-    assert std_group.get_relationship(name="member_of_groups", raise_on_error=False) is None
-    assert std_group.get_relationship(name="subscriber_of_groups", raise_on_error=False) is None
+    assert std_group.get_relationship_or_none(name="member_of_groups") is None
+    assert std_group.get_relationship_or_none(name="subscriber_of_groups") is None
 
 
 async def test_schema_branch_generate_weight(schema_all_in_one):
