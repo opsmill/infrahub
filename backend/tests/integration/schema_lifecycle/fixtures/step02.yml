@@ -20,7 +20,7 @@ nodes:
     relationships:
       - name: cars
         kind: Generic
-        optional: True
+        optional: true
         peer: TestingCar
         cardinality: many
   - name: Car
@@ -38,12 +38,12 @@ nodes:
     relationships:
       - name: owner
         kind: Attribute
-        optional: False
+        optional: false
         peer: TestingPerson
         cardinality: one
       - name: manufacturer
         kind: Attribute
-        optional: False
+        optional: false
         peer: TestingManufacturer
         cardinality: one
         identifier: car__manufacturer
@@ -60,13 +60,13 @@ nodes:
     relationships:
       - name: cars
         kind: Generic
-        optional: True
+        optional: true
         peer: TestingCar
         cardinality: many
         identifier: car__manufacturer
       - name: customers
         kind: Generic
-        optional: True
+        optional: true
         peer: TestingPerson
         cardinality: many
         identifier: person__manufacturer
@@ -80,11 +80,11 @@ nodes:
     relationships:
       - name: cars
         kind: Generic
-        optional: True
+        optional: true
         peer: TestingCar
         cardinality: many
       - name: persons
         kind: Generic
-        optional: True
+        optional: true
         peer: TestingPerson
         cardinality: many
