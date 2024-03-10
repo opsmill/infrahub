@@ -9,6 +9,10 @@ from infrahub.core.migrations.schema.node_attribute_remove import (
     NodeAttributeRemoveMigration,
     NodeAttributeRemoveMigrationQuery01,
 )
+from infrahub.core.migrations.schema.node_kind_update import (
+    NodeKindUpdateMigration,
+    NodeKindUpdateMigrationQuery01,
+)
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath, SchemaPathType
 from infrahub.core.query.node import (
@@ -224,6 +228,36 @@ async def test_query_NodeListGetInfoQuery(
     query = await NodeListGetInfoQuery.init(db=db, branch=branch, ids=ids)
     await query.execute(db=db)
     assert len(list(query.get_results_group_by(("n", "uuid")))) == 3
+
+
+async def test_query_NodeListGetInfoQuery_renamed(
+    db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+):
+    schema = registry.schema.get_schema_branch(name=branch.name)
+    candidate_schema = schema.duplicate()
+    person_schema = candidate_schema.get(name="TestPerson")
+    candidate_schema.delete(name="TestPerson")
+    person_schema.name = "NewPerson"
+    person_schema.namespace = "Test2"
+    candidate_schema.set(name="Test2NewPerson", schema=person_schema)
+    assert person_schema.kind == "Test2NewPerson"
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestPerson"),
+        new_node_schema=person_schema,
+        schema_path=SchemaPath(
+            path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
+        ),
+    )
+    query = await NodeKindUpdateMigrationQuery01.init(db=db, branch=branch, migration=migration)
+    await query.execute(db=db)
+
+    ids = [person_john_main.id, person_jim_main.id, person_albert_main.id]
+    query = await NodeListGetInfoQuery.init(db=db, branch=branch, ids=ids)
+    await query.execute(db=db)
+    results = [node.labels async for node in query.get_nodes()]
+    for result in results:
+        assert sorted(result) == ["CoreNode", "Node", "Test2NewPerson"]
 
 
 async def test_query_NodeListGetAttributeQuery_all_fields(db: InfrahubDatabase, base_dataset_02):

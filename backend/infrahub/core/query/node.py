@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, Generator, List, Optional, Tuple, Union
 
 from infrahub import config
 from infrahub.core.constants import RelationshipDirection, RelationshipHierarchyDirection
@@ -25,14 +25,16 @@ if TYPE_CHECKING:
 
 @dataclass
 class NodeToProcess:
-    schema: NodeSchema
+    schema: Optional[NodeSchema]
 
-    node_id: int
+    node_id: str
     node_uuid: str
 
     updated_at: str
 
     branch: str
+
+    labels: List[str]
 
 
 @dataclass
@@ -512,31 +514,38 @@ class NodeListGetInfoQuery(Query):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        query = (
-            """
-        MATCH p = (root:Root)<-[rb:IS_PART_OF]-(n)
-        WHERE (n.uuid IN $ids) AND all(r IN relationships(p) WHERE (%s))
-        """
-            % branch_filter
-        )
+        query = """
+        MATCH p = (root:Root)<-[:IS_PART_OF]-(n)
+        WHERE n.uuid IN $ids
+        CALL {
+            WITH root, n
+            MATCH (root:Root)<-[r:IS_PART_OF]-(n)
+            WHERE %(branch_filter)s
+            RETURN n as n1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH n1 as n, r1 as rb
+        WHERE rb.status = "active"
+        """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
-
         self.params["ids"] = self.ids
 
         self.return_labels = ["n", "rb"]
 
-    async def get_nodes(self, duplicate: bool = True) -> Generator[NodeToProcess, None, None]:
+    async def get_nodes(self, duplicate: bool = True) -> AsyncIterator[NodeToProcess]:
         """Return all the node objects as NodeToProcess."""
 
         for result in self.get_results_group_by(("n", "uuid")):
-            schema = find_node_schema(node=result.get("n"), branch=self.branch, duplicate=duplicate)
+            schema = find_node_schema(node=result.get_node("n"), branch=self.branch, duplicate=duplicate)
             yield NodeToProcess(
                 schema=schema,
-                node_id=result.get("n").element_id,
-                node_uuid=result.get("n").get("uuid"),
-                updated_at=result.get("rb").get("from"),
-                branch=self.branch,
+                node_id=result.get_node("n").element_id,
+                node_uuid=result.get_node("n").get("uuid"),
+                updated_at=result.get_rel("rb").get("from"),
+                branch=self.branch.name,
+                labels=list(result.get_node("n").labels),
             )
 
 
