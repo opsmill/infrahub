@@ -109,9 +109,9 @@ class GroupedDataPaths:
 class SchemaPath(InfrahubPath):
     path_type: SchemaPathType
     schema_kind: str = Field(..., description="Kind of the model in the schema")
-    schema_id: Optional[str] = Field(None, description="UUID of the model in the schema")
-    field_name: Optional[str] = Field(None, description="Name of the field (either an attribute or a relationship)")
-    property_name: Optional[str] = Field(None, description="Name of the property")
+    schema_id: Optional[str] = Field(default=None, description="UUID of the model in the schema")
+    field_name: Optional[str] = Field(default=None, description="Name of the field (either an attribute or a relationship)")
+    property_name: Optional[str] = Field(default=None, description="Name of the property")
 
     @property
     def resource_type(self) -> PathResourceType:

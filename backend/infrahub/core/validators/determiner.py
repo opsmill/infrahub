@@ -97,7 +97,7 @@ class ConstraintValidatorDeterminer:
     ) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
         for prop_name, prop_field_info in schema.model_fields.items():
-            if prop_name in ["attributes", "relationships"] or not prop_field_info.json_schema_extra:
+            if prop_name in ["attributes", "relationships"] or not prop_field_info.json_schema_extra or not isinstance(prop_field_info.json_schema_extra, dict):
                 continue
 
             prop_field_update = prop_field_info.json_schema_extra.get("update")
@@ -147,7 +147,7 @@ class ConstraintValidatorDeterminer:
     ) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
         for prop_name, prop_field_info in field.model_fields.items():
-            if not prop_field_info.json_schema_extra:
+            if not prop_field_info.json_schema_extra or not isinstance(prop_field_info.json_schema_extra, dict):
                 continue
 
             prop_field_update = prop_field_info.json_schema_extra.get("update")
