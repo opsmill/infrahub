@@ -93,13 +93,14 @@ export default function AddObjectToGroup(props: Props) {
 
   async function onSubmit(data: any) {
     // TODO: use object update mutation to provide the whole list
+    setIsLoading(true);
+
     const { groupids } = data;
 
     const previousIds = objectGroups.map((group: any) => group.id);
-    const newIds = groupids.map((group: any) => group.id);
 
-    const newGroups = newIds.filter((id: string) => !previousIds.includes(id));
-    const removedGroups = previousIds.filter((id: string) => !newIds.includes(id));
+    const newGroups = groupids.filter((id: string) => !previousIds.includes(id));
+    const removedGroups = previousIds.filter((id: string) => !groupids.includes(id));
 
     try {
       if (newGroups.length) {
