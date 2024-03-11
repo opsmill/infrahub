@@ -257,10 +257,10 @@ class BaseNodeSchema(pydantic.BaseModel):
         return self.namespace + self.name
 
     def get_field(self, name: str, raise_on_error: bool = True) -> Union[AttributeSchema, RelationshipSchema, None]:
-        if attribute_field := self.get_attribute(name, raise_on_error=False):
+        if attribute_field := self.get_attribute_or_none(name=name):
             return attribute_field
 
-        if relationship_field := self.get_relationship(name, raise_on_error=False):
+        if relationship_field := self.get_relationship_or_none(name=name):
             return relationship_field
 
         if not raise_on_error:
@@ -268,25 +268,29 @@ class BaseNodeSchema(pydantic.BaseModel):
 
         raise ValueError(f"Unable to find the field {name}")
 
-    def get_attribute(self, name: str, raise_on_error: bool = True) -> Union[AttributeSchema, None]:
+    def get_attribute(self, name: str) -> AttributeSchema:
         for item in self.attributes:
             if item.name == name:
                 return item
-
-        if not raise_on_error:
-            return None
-
         raise ValueError(f"Unable to find the attribute {name}")
 
-    def get_relationship(self, name: str, raise_on_error: bool = True) -> Union[RelationshipSchema, None]:
+    def get_attribute_or_none(self, name: str) -> Optional[AttributeSchema]:
+        for item in self.attributes:
+            if item.name == name:
+                return item
+        return None
+
+    def get_relationship(self, name: str) -> RelationshipSchema:
         for item in self.relationships:
             if item.name == name:
                 return item
-
-        if not raise_on_error:
-            return None
-
         raise ValueError(f"Unable to find the relationship {name}")
+
+    def get_relationship_or_none(self, name: str) -> Optional[RelationshipSchema]:
+        for item in self.relationships:
+            if item.name == name:
+                return item
+        return None
 
     def get_relationship_by_identifier(self, id: str, raise_on_error: bool = True) -> Union[RelationshipSchema, None]:
         for item in self.relationships:
@@ -498,7 +502,7 @@ class InfrahubSchema(InfrahubSchemaBase):
     ) -> Tuple[str, AttributeSchema]:
         node_kind: str = kind._schema.kind if not isinstance(kind, str) else kind
         node_schema = await self.client.schema.get(kind=node_kind, branch=branch)
-        schema_attr = node_schema.get_attribute(attribute, raise_on_error=True)
+        schema_attr = node_schema.get_attribute(name=attribute)
 
         if schema_attr is None:
             raise ValueError(f"Unable to find attribute {attribute}")
@@ -693,7 +697,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
     ) -> Tuple[str, AttributeSchema]:
         node_kind: str = kind._schema.kind if not isinstance(kind, str) else kind
         node_schema = self.client.schema.get(kind=node_kind, branch=branch)
-        schema_attr = node_schema.get_attribute(attribute, raise_on_error=True)
+        schema_attr = node_schema.get_attribute(name=attribute)
 
         if schema_attr is None:
             raise ValueError(f"Unable to find attribute {attribute}")

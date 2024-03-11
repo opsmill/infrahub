@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type
 
 from neo4j import (
     READ_ACCESS,
     WRITE_ACCESS,
     AsyncDriver,
     AsyncGraphDatabase,
+    AsyncResult,
     AsyncSession,
     AsyncTransaction,
     Record,
@@ -162,18 +163,30 @@ class InfrahubDatabase:
         self, query: str, params: Optional[Dict[str, Any]] = None, name: Optional[str] = "undefined"
     ) -> List[Record]:
         with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
-            if self.is_transaction:
-                execution_method = await self.transaction()
-            else:
-                execution_method = await self.session()
-
-            try:
-                response = await execution_method.run(query=query, parameters=params)
-            except ServiceUnavailable as exc:
-                log.error("Database Service unavailable", error=str(exc))
-                raise DatabaseError(message="Unable to connect to the database") from exc
-
+            response = await self.run_query(query=query, params=params)
             return [item async for item in response]
+
+    async def execute_query_with_metadata(
+        self, query: str, params: Optional[Dict[str, Any]] = None, name: Optional[str] = "undefined"
+    ) -> Tuple[List[Record], Dict[str, Any]]:
+        with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
+            response = await self.run_query(query=query, params=params)
+            results = [item async for item in response]
+            return results, response._metadata or {}
+
+    async def run_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> AsyncResult:
+        if self.is_transaction:
+            execution_method = await self.transaction()
+        else:
+            execution_method = await self.session()
+
+        try:
+            response = await execution_method.run(query=query, parameters=params)
+        except ServiceUnavailable as exc:
+            log.error("Database Service unavailable", error=str(exc))
+            raise DatabaseError(message="Unable to connect to the database") from exc
+
+        return response
 
     def render_list_comprehension(self, items: str, item_name: str) -> str:
         if self.db_type == DatabaseType.MEMGRAPH:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, Generator, List, Optional, Tuple, Union
 
 from infrahub import config
 from infrahub.core.constants import RelationshipDirection, RelationshipHierarchyDirection
@@ -25,14 +25,16 @@ if TYPE_CHECKING:
 
 @dataclass
 class NodeToProcess:
-    schema: NodeSchema
+    schema: Optional[NodeSchema]
 
-    node_id: int
+    node_id: str
     node_uuid: str
 
     updated_at: str
 
     branch: str
+
+    labels: List[str]
 
 
 @dataclass
@@ -270,7 +272,7 @@ class NodeDeleteQuery(NodeQuery):
 
         query = """
         MATCH (root:Root)
-        MATCH (n { uuid: $uuid })
+        MATCH (n:Node { uuid: $uuid })
         CREATE (n)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at }]->(root)
         """
 
@@ -337,81 +339,73 @@ class NodeListGetAttributeQuery(Query):
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
 
-        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
-        self.params.update(rels_params)
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        self.params.update(branch_params)
 
         query = """
-        MATCH (n) WHERE n.uuid IN $ids
-        MATCH p = ((n)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2:HAS_VALUE]-(av))
+        MATCH (n:Node) WHERE n.uuid IN $ids
+        MATCH (n)-[:HAS_ATTRIBUTE]-(a:Attribute)
         """
-
         if self.fields:
-            query += "\n WHERE all(r IN relationships(p) WHERE ((a.name IN $field_names) AND %s))" % rels_filter
+            query += "\n WHERE a.name IN $field_names"
             self.params["field_names"] = list(self.fields.keys())
-        else:
-            query += "\n WHERE all(r IN relationships(p) WHERE ( %s))" % rels_filter
 
+        self.add_to_query(query)
+
+        query = """
+        CALL {
+            WITH n, a
+            MATCH (n)-[r:HAS_ATTRIBUTE]-(a:Attribute)
+            WHERE %(branch_filter)s
+            RETURN n as n1, r as r1, a as a1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH n1 as n, r1, a1 as a
+        WHERE r1.status = "active"
+        WITH n, r1, a
+        MATCH (a)-[:HAS_VALUE]-(av:AttributeValue)
+        CALL {
+            WITH a, av
+            MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
+            WHERE %(branch_filter)s
+            RETURN a as a1, r as r2, av as av1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH n, r1, a1 as a, r2, av1 as av
+        WHERE r2.status = "active"
+        WITH n, a, av, r1, r2
+        """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
 
         self.return_labels = ["n", "a", "av", "r1", "r2"]
 
         # Add Is_Protected and Is_visible
-        query = (
-            """
+        query = """
         MATCH (a)-[rel_isv:IS_VISIBLE]-(isv:Boolean)
         MATCH (a)-[rel_isp:IS_PROTECTED]-(isp:Boolean)
-        WHERE all(r IN [rel_isv, rel_isp] WHERE ( %s))
-        """
-            % rels_filter
-        )
+        WHERE all(r IN [rel_isv, rel_isp] WHERE ( %(branch_filter)s ))
+        """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
 
         self.return_labels.extend(["isv", "isp", "rel_isv", "rel_isp"])
 
         if self.include_source:
-            query = (
-                """
+            query = """
             OPTIONAL MATCH (a)-[rel_source:HAS_SOURCE]-(source)
-            WHERE all(r IN [rel_source] WHERE ( %s))
-            """
-                % rels_filter
-            )
+            WHERE all(r IN [rel_source] WHERE ( %(branch_filter)s ))
+            """ % {"branch_filter": branch_filter}
             self.add_to_query(query)
             self.return_labels.extend(["source", "rel_source"])
 
         if self.include_owner:
-            query = (
-                """
+            query = """
             OPTIONAL MATCH (a)-[rel_owner:HAS_OWNER]-(owner)
-            WHERE all(r IN [rel_owner] WHERE ( %s))
-            """
-                % rels_filter
-            )
+            WHERE all(r IN [rel_owner] WHERE ( %(branch_filter)s ))
+            """ % {"branch_filter": branch_filter}
             self.add_to_query(query)
             self.return_labels.extend(["owner", "rel_owner"])
-
-    # def query_add_permission(self):
-
-    #     rels_filter_perms, rels_params = self.branch.get_query_filter_relationships(
-    #         rel_labels=["r4", "r5", "r6", "r7"], at=self.at, include_outside_parentheses=True
-    #     )
-    #     self.params.update(rels_params)
-
-    #     query = """
-    #     WITH %s
-    #     MATCH (account) WHERE ID(account) = $account_id
-    #     MATCH (a)-[r4:IS_MEMBER_OF]-(ag:AttrGroup)-[r5:CAN_READ|CAN_WRITE]-(perm:Permission)-[r6:HAS_PERM]-(g:Group)-[r7:IS_MEMBER_OF]-(account)
-    #     WHERE %s
-    #     """ % (
-    #         ",".join(self.return_labels),
-    #         "\n AND ".join(rels_filter_perms),
-    #     )
-
-    #     self.add_to_query(query)
-
-    #     self.params["account_id"] = self.account.id
-
-    #     self.return_labels.extend(["r5"])
 
     def get_attributes_group_by_node(self) -> Dict[str, Dict[str, AttrToProcess]]:
         attrs_by_node = defaultdict(lambda: {"node": None, "attrs": None})
@@ -520,31 +514,38 @@ class NodeListGetInfoQuery(Query):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        query = (
-            """
-        MATCH p = (root:Root)<-[rb:IS_PART_OF]-(n)
-        WHERE (n.uuid IN $ids) AND all(r IN relationships(p) WHERE (%s))
-        """
-            % branch_filter
-        )
+        query = """
+        MATCH p = (root:Root)<-[:IS_PART_OF]-(n)
+        WHERE n.uuid IN $ids
+        CALL {
+            WITH root, n
+            MATCH (root:Root)<-[r:IS_PART_OF]-(n)
+            WHERE %(branch_filter)s
+            RETURN n as n1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH n1 as n, r1 as rb
+        WHERE rb.status = "active"
+        """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
-
         self.params["ids"] = self.ids
 
         self.return_labels = ["n", "rb"]
 
-    async def get_nodes(self, duplicate: bool = True) -> Generator[NodeToProcess, None, None]:
+    async def get_nodes(self, duplicate: bool = True) -> AsyncIterator[NodeToProcess]:
         """Return all the node objects as NodeToProcess."""
 
         for result in self.get_results_group_by(("n", "uuid")):
-            schema = find_node_schema(node=result.get("n"), branch=self.branch, duplicate=duplicate)
+            schema = find_node_schema(node=result.get_node("n"), branch=self.branch, duplicate=duplicate)
             yield NodeToProcess(
                 schema=schema,
-                node_id=result.get("n").element_id,
-                node_uuid=result.get("n").get("uuid"),
-                updated_at=result.get("rb").get("from"),
-                branch=self.branch,
+                node_id=result.get_node("n").element_id,
+                node_uuid=result.get_node("n").get("uuid"),
+                updated_at=result.get_rel("rb").get("from"),
+                branch=self.branch.name,
+                labels=list(result.get_node("n").labels),
             )
 
 

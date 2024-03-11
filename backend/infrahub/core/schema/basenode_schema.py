@@ -41,6 +41,11 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
     def menu_title(self) -> str:
         return self.label or self.name
 
+    def get_id(self) -> str:
+        if self.id:
+            return self.id
+        raise ValueError(f"id is not defined on {self.kind}")
+
     def __hash__(self) -> int:
         """Return a hash of the object.
         Be careful hash generated from hash() have a salt by default and they will not be the same across run"""
@@ -82,20 +87,11 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
             get_map_func=BaseNodeSchema.get_relationship_name_id_map,
             obj_type=RelationshipSchema,
         )
-        # Filters
-        filters_diff = self._diff_element(
-            other=other,
-            get_func=BaseNodeSchema.get_filter,
-            get_map_func=BaseNodeSchema.get_filter_name_id_map,
-            obj_type=FilterSchema,
-        )
 
         if attrs_diff.has_diff:
             node_diff.changed["attributes"] = attrs_diff
         if rels_diff.has_diff:
             node_diff.changed["relationships"] = rels_diff
-        if filters_diff.has_diff:
-            node_diff.changed["filters"] = filters_diff
 
         return node_diff
 
@@ -155,10 +151,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         return elements_diff
 
     def get_field(self, name: str, raise_on_error: bool = True) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
-        if field := self.get_attribute(name, raise_on_error=False):
+        if field := self.get_attribute_or_none(name=name):
             return field
 
-        if field := self.get_relationship(name, raise_on_error=False):
+        if field := self.get_relationship_or_none(name=name):
             return field
 
         if not raise_on_error:
@@ -166,24 +162,30 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         raise ValueError(f"Unable to find the field {name}")
 
-    def get_attribute(self, name, raise_on_error: bool = True) -> AttributeSchema:
+    def get_attribute(self, name: str) -> AttributeSchema:
         for item in self.attributes:
             if item.name == name:
                 return item
 
-        if not raise_on_error:
-            return None
-
         raise ValueError(f"Unable to find the attribute {name}")
 
-    def get_relationship(self, name, raise_on_error: bool = True) -> RelationshipSchema:
+    def get_attribute_or_none(self, name: str) -> Optional[AttributeSchema]:
+        for item in self.attributes:
+            if item.name == name:
+                return item
+        return None
+
+    def get_attribute_by_id(self, id: str) -> AttributeSchema:
+        for item in self.attributes:
+            if item.id == id:
+                return item
+
+        raise ValueError(f"Unable to find the attribute with the ID: {id}")
+
+    def get_relationship(self, name: str) -> RelationshipSchema:
         for item in self.relationships:
             if item.name == name:
                 return item
-
-        if not raise_on_error:
-            return None
-
         raise ValueError(f"Unable to find the relationship {name}")
 
     def get_filter(self, name, raise_on_error: bool = True) -> FilterSchema:
@@ -195,6 +197,12 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
             return None
 
         raise ValueError(f"Unable to find the filter {name}")
+
+    def get_relationship_or_none(self, name: str) -> Optional[RelationshipSchema]:
+        for item in self.relationships:
+            if item.name == name:
+                return item
+        return None
 
     def get_relationship_by_identifier(self, id: str, raise_on_error: bool = True) -> RelationshipSchema:
         for item in self.relationships:

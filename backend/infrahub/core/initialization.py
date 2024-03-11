@@ -196,6 +196,37 @@ async def create_branch(
     return branch
 
 
+async def create_account(
+    db: InfrahubDatabase,
+    name: str = "admin",
+    role: str = "admin",
+    password: Optional[str] = None,
+    token_value: Optional[str] = None,
+) -> Node:
+    token_schema = registry.schema.get_node_schema(name=InfrahubKind.ACCOUNTTOKEN)
+    obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await obj.new(
+        db=db,
+        name=name,
+        type="User",
+        role=role,
+        password=password,
+    )
+    await obj.save(db=db)
+    log.info(f"Created Account: {name}", account_name=name)
+
+    if token_value:
+        token = await Node.init(db=db, schema=token_schema)
+        await token.new(
+            db=db,
+            token=token_value,
+            account=obj,
+        )
+        await token.save(db=db)
+
+    return obj
+
+
 async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create the default Branch
@@ -221,24 +252,10 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create Default Users and Groups
     # --------------------------------------------------
-    token_schema = registry.schema.get_node_schema(name=InfrahubKind.ACCOUNTTOKEN)
-    admin_name = "admin"
-    obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-    await obj.new(
-        db=db,
-        name=admin_name,
-        type="User",
-        role="admin",
-        password=config.SETTINGS.security.initial_admin_password,
-    )
-    await obj.save(db=db)
-    log.info(f"Created Account: {admin_name}", account_name=admin_name)
 
-    if config.SETTINGS.security.initial_admin_token:
-        token = await Node.init(db=db, schema=token_schema)
-        await token.new(
-            db=db,
-            token=config.SETTINGS.security.initial_admin_token,
-            account=obj,
-        )
-        await token.save(db=db)
+    await create_account(
+        db=db,
+        name="admin",
+        password=config.SETTINGS.security.initial_admin_password,
+        token_value=config.SETTINGS.security.initial_admin_token,
+    )

@@ -28,11 +28,13 @@ def get_attribute_path_from_string(
         name, property_name = path.split("__")
     else:
         name, property_name = path, None
-    attribute_schema = schema.get_attribute(name, raise_on_error=False)
-    relationship_schema = schema.get_relationship(name, raise_on_error=False)
-    if not (attribute_schema or relationship_schema):
-        raise ValueError(f"{path} is not valid on {schema.kind}")
-    return attribute_schema or relationship_schema, property_name
+    attribute_schema = schema.get_attribute_or_none(name=name)
+    relationship_schema = schema.get_relationship_or_none(name=name)
+    if attribute_schema:
+        return attribute_schema, property_name
+    if relationship_schema:
+        return relationship_schema, property_name
+    raise ValueError(f"{path} is not valid on {schema.kind}")
 
 
 class UniquenessChecker(ConstraintCheckerInterface):

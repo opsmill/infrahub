@@ -224,7 +224,7 @@ base_node_schema = SchemaNode(
             regex=str(NODE_NAME_REGEX),
             min_length=DEFAULT_NAME_MIN_LENGTH,
             max_length=DEFAULT_NAME_MAX_LENGTH,
-            extra={"update": UpdateSupport.NOT_SUPPORTED},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
         ),
         SchemaAttribute(
             name="namespace",
@@ -233,7 +233,7 @@ base_node_schema = SchemaNode(
             regex=str(NAMESPACE_REGEX),
             min_length=DEFAULT_KIND_MIN_LENGTH,
             max_length=DEFAULT_KIND_MAX_LENGTH,
-            extra={"update": UpdateSupport.NOT_SUPPORTED},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
         ),
         SchemaAttribute(
             name="description",
@@ -433,7 +433,7 @@ attribute_schema = SchemaNode(
             regex=str(NAME_REGEX),
             min_length=DEFAULT_KIND_MIN_LENGTH,
             max_length=DEFAULT_KIND_MAX_LENGTH,
-            extra={"update": UpdateSupport.NOT_SUPPORTED},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
         ),
         SchemaAttribute(
             name="kind",
@@ -587,7 +587,7 @@ relationship_schema = SchemaNode(
             regex=str(NAME_REGEX),
             min_length=DEFAULT_KIND_MIN_LENGTH,
             max_length=DEFAULT_KIND_MAX_LENGTH,
-            extra={"update": UpdateSupport.NOT_SUPPORTED},
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="peer",

@@ -9,7 +9,10 @@ from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.core.utils import count_relationships
 from infrahub.core.validators.model import SchemaViolation
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus.messages.schema_migration_path import SchemaMigrationPathResponse
+from infrahub.message_bus.messages.schema_migration_path import (
+    SchemaMigrationPathResponse,
+    SchemaMigrationPathResponseData,
+)
 from infrahub.message_bus.messages.schema_validator_path import (
     SchemaValidatorPathResponse,
     SchemaValidatorPathResponseData,
@@ -258,6 +261,7 @@ async def test_schema_load_endpoint_valid_with_generics(
     client: TestClient,
     admin_headers,
     default_branch: Branch,
+    register_core_schema_db,
     authentication_base,
     helper,
 ):
@@ -282,6 +286,7 @@ async def test_schema_load_endpoint_idempotent_with_generics(
     client: TestClient,
     admin_headers,
     default_branch: Branch,
+    register_core_schema_db,
     authentication_base,
     helper,
 ):
@@ -330,7 +335,21 @@ async def test_schema_load_endpoint_valid_with_extensions(
     org_schema = registry.schema.get(name="CoreOrganization", branch=default_branch.name)
     initial_nbr_relationships = len(org_schema.relationships)
 
-    rpc_bus.response.append(SchemaMigrationPathResponse(data={"errors": []}))
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(
+        db=db, schema=schema, branch=default_branch, limit=["CoreOrganization", "InfraSite"]
+    )
+
+    rpc_bus.response.append(
+        SchemaMigrationPathResponse(
+            data=SchemaMigrationPathResponseData(
+                migration_name="test.test.update",
+                errors=[],
+                nbr_migrations_executed=3,
+                schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="CoreOrganization"),
+            )
+        )
+    )
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:

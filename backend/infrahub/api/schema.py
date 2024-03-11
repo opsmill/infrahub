@@ -197,10 +197,16 @@ async def load_schema(
         # ----------------------------------------------------------
         # Update the schema
         # ----------------------------------------------------------
+        origin_schema = branch_schema.duplicate()
         log.info("Schema has diff, will need to be updated", diff=result.diff.all, branch=branch.name)
         async with db.start_transaction() as dbt:
             await registry.schema.update_schema_branch(
-                schema=candidate_schema, db=dbt, branch=branch.name, limit=result.diff.all, update_db=True
+                schema=candidate_schema,
+                db=dbt,
+                branch=branch.name,
+                diff=result.diff,
+                limit=result.diff.all,
+                update_db=True,
             )
             branch.update_schema_hash()
             log.info("Schema has been updated", branch=branch.name, hash=branch.active_schema_hash.main)
@@ -217,7 +223,7 @@ async def load_schema(
         error_messages = await schema_migrations_runner(
             branch=branch,
             new_schema=candidate_schema,
-            previous_schema=branch_schema,
+            previous_schema=origin_schema,
             migrations=result.migrations,
             service=service,
         )
