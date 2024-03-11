@@ -34,7 +34,7 @@ class ConstraintValidatorDeterminer:
                 self._attribute_element_map[node_kind] = {}
             for element in node_diff["elements"]:
                 element_name = element["name"]
-                element_type = element["type"]
+                element_type = element["element_type"]
                 if element_type.lower() in (
                     DiffElementType.RELATIONSHIP_MANY.value.lower(),
                     DiffElementType.RELATIONSHIP_ONE.value.lower(),
@@ -43,13 +43,13 @@ class ConstraintValidatorDeterminer:
                         self._relationship_element_map[node_kind] = {}
                     if element_name not in self._relationship_element_map[node_kind]:
                         self._relationship_element_map[node_kind][element_name] = []
-                    self._relationship_element_map[node_kind][node_kind].append(element)
+                    self._relationship_element_map[node_kind][element_name].append(element)
                 elif element_type.lower() in (DiffElementType.ATTRIBUTE.value.lower(),):
                     if node_kind not in self._attribute_element_map:
                         self._attribute_element_map[node_kind] = {}
                     if element_name not in self._attribute_element_map[node_kind]:
                         self._attribute_element_map[node_kind][element_name] = []
-                    self._attribute_element_map[node_kind][node_kind].append(element)
+                    self._attribute_element_map[node_kind][element_name].append(element)
 
     def _get_attribute_diffs(self, kind: str, name: str) -> list[NodeDiff]:
         return self._attribute_element_map.get(kind, {}).get(name, [])
@@ -62,6 +62,10 @@ class ConstraintValidatorDeterminer:
     ) -> list[SchemaUpdateConstraintInfo]:
         self._index_node_diffs(node_diffs)
         constraints: list[SchemaUpdateConstraintInfo] = []
+        if not node_diffs:
+            return constraints
+
+        constraints.extend(await self._get_all_property_constraints())
 
         for kind in self._node_diffs_by_kind.keys():
             schema = self.schema_branch.get(name=kind, duplicate=False)
@@ -87,9 +91,14 @@ class ConstraintValidatorDeterminer:
         self, schema: Union[NodeSchema, GenericSchema]
     ) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
-        constraints.extend(await self._get_property_constraints_for_one_schema(schema=schema))
         constraints.extend(await self._get_attribute_constraints_for_one_schema(schema=schema))
         constraints.extend(await self._get_relationship_constraints_for_one_schema(schema=schema))
+        return constraints
+
+    async def _get_all_property_constraints(self) -> list[SchemaUpdateConstraintInfo]:
+        constraints: list[SchemaUpdateConstraintInfo] = []
+        for schema in self.schema_branch.get_all().values():
+            constraints.extend(await self._get_property_constraints_for_one_schema(schema=schema))
         return constraints
 
     async def _get_property_constraints_for_one_schema(
@@ -97,7 +106,11 @@ class ConstraintValidatorDeterminer:
     ) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
         for prop_name, prop_field_info in schema.model_fields.items():
-            if prop_name in ["attributes", "relationships"] or not prop_field_info.json_schema_extra or not isinstance(prop_field_info.json_schema_extra, dict):
+            if (
+                prop_name in ["attributes", "relationships"]
+                or not prop_field_info.json_schema_extra
+                or not isinstance(prop_field_info.json_schema_extra, dict)
+            ):
                 continue
 
             prop_field_update = prop_field_info.json_schema_extra.get("update")
