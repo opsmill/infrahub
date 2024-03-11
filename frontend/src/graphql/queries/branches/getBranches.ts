@@ -14,7 +14,7 @@ const GET_BRANCHES = gql`
       origin_branch
       branched_from
       created_at
-      is_data_only
+      sync_with_git
       is_default
       is_isolated
       has_schema_changes

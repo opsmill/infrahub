@@ -7,7 +7,7 @@ query GetBranches {
     origin_branch
     branched_from
     created_at
-    is_data_only
+    sync_with_git
     is_default
   }
 }
@@ -21,7 +21,7 @@ export const branchesMocks = [
     origin_branch: "main",
     branched_from: "2023-05-23T11:15:42.209793Z",
     created_at: "2023-05-23T11:15:42.209819Z",
-    is_data_only: false,
+    sync_with_git: true,
     is_default: true,
     __typename: "Branch",
   },

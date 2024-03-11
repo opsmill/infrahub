@@ -395,7 +395,7 @@ export type Branch = {
   created_at?: Maybe<Scalars["String"]>;
   description?: Maybe<Scalars["String"]>;
   id: Scalars["String"];
-  is_data_only?: Maybe<Scalars["Boolean"]>;
+  sync_with_git?: Maybe<Scalars["Boolean"]>;
   is_default?: Maybe<Scalars["Boolean"]>;
   is_isolated?: Maybe<Scalars["Boolean"]>;
   has_schema_changes?: Maybe<Scalars["Boolean"]>;
@@ -413,7 +413,7 @@ export type BranchCreateInput = {
   branched_from?: InputMaybe<Scalars["String"]>;
   description?: InputMaybe<Scalars["String"]>;
   id?: InputMaybe<Scalars["String"]>;
-  is_data_only?: InputMaybe<Scalars["Boolean"]>;
+  sync_with_git?: InputMaybe<Scalars["Boolean"]>;
   name: Scalars["String"];
   origin_branch?: InputMaybe<Scalars["String"]>;
 };
