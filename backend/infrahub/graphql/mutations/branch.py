@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Optional
 
 import pydantic
 from graphene import Boolean, Field, InputObjectType, List, Mutation, String
-from graphql import GraphQLResolveInfo
 from infrahub_sdk.utils import extract_fields, extract_fields_first_node
 from typing_extensions import Self
 
@@ -19,9 +20,12 @@ from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 
+from ..task import GraphQLTaskReport
 from ..types import BranchType
 
 if TYPE_CHECKING:
+    from graphql import GraphQLResolveInfo
+
     from .. import GraphqlContext
 
 
@@ -55,47 +59,54 @@ class BranchCreate(Mutation):
     ) -> Self:
         context: GraphqlContext = info.context
 
-        # Check if the branch already exist
-        try:
-            await Branch.get_by_name(db=context.db, name=data["name"])
-            raise ValueError(f"The branch {data['name']}, already exist")
-        except BranchNotFoundError:
-            pass
+        async with await GraphQLTaskReport.init(
+            title=f"Create branch : {data['name']}", context=context, logger=log
+        ) as task:
+            # Check if the branch already exist
+            try:
+                await Branch.get_by_name(db=context.db, name=data["name"])
+                msg = f"The branch {data['name']}, already exist"
+                await task.error(message=msg)
+                raise ValueError(msg)
+            except BranchNotFoundError:
+                pass
 
-        try:
-            obj = Branch(**data)
-        except pydantic.ValidationError as exc:
-            error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
-            raise ValueError("\n".join(error_msgs)) from exc
+            try:
+                obj = Branch(**data)
+            except pydantic.ValidationError as exc:
+                error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
+                await task.error(message="\n".join(error_msgs))
+                raise ValueError("\n".join(error_msgs)) from exc
 
-        async with lock.registry.local_schema_lock():
-            # Copy the schema from the origin branch and set the hash and the schema_changed_at value
-            origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
-            new_schema = origin_schema.duplicate(name=obj.name)
-            registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
-            obj.update_schema_hash()
-            await obj.save(db=context.db)
+            async with lock.registry.local_schema_lock():
+                # Copy the schema from the origin branch and set the hash and the schema_changed_at value
+                origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
+                new_schema = origin_schema.duplicate(name=obj.name)
+                registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
+                obj.update_schema_hash()
+                await obj.save(db=context.db)
 
-            # Add Branch to registry
-            registry.branch[obj.name] = obj
+                # Add Branch to registry
+                registry.branch[obj.name] = obj
 
-        log.info("created_branch", name=obj.name)
-        log_data = get_log_data()
-        request_id = log_data.get("request_id", "")
+            await task.info(message="created_branch", name=obj.name)
 
-        ok = True
+            log_data = get_log_data()
+            request_id = log_data.get("request_id", "")
 
-        fields = await extract_fields(info.field_nodes[0].selection_set)
-        if context.service:
-            message = messages.EventBranchCreate(
-                branch=obj.name,
-                branch_id=str(obj.id),
-                sync_with_git=obj.sync_with_git,
-                meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
-            )
-            await context.service.send(message=message)
+            ok = True
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+            fields = await extract_fields(info.field_nodes[0].selection_set)
+            if context.service:
+                message = messages.EventBranchCreate(
+                    branch=obj.name,
+                    branch_id=str(obj.id),
+                    data_only=obj.sync_with_git,
+                    meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
+                )
+                await context.service.send(message=message)
+
+            return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 
 
 class BranchNameInput(InputObjectType):
@@ -182,24 +193,28 @@ class BranchRebase(Mutation):
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
-        obj = await Branch.get_by_name(db=context.db, name=str(data.name))
-        async with context.db.start_transaction() as db:
-            await obj.rebase(db=db)
+        async with await GraphQLTaskReport.init(
+            title=f"Rebase branch : {data['name']}", context=context, logger=log
+        ) as task:
+            obj = await Branch.get_by_name(db=context.db, name=str(data.name))
+            async with context.db.start_transaction() as db:
+                await obj.rebase(db=db)
+                await task.info(message="Branch successfully rebased")
 
-        fields = await extract_fields_first_node(info=info)
+            fields = await extract_fields_first_node(info=info)
 
-        ok = True
+            ok = True
 
-        if context.service:
-            log_data = get_log_data()
-            request_id = log_data.get("request_id", "")
-            message = messages.EventBranchRebased(
-                branch=obj.name,
-                meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
-            )
-            await context.service.send(message=message)
+            if context.service:
+                log_data = get_log_data()
+                request_id = log_data.get("request_id", "")
+                message = messages.EventBranchRebased(
+                    branch=obj.name,
+                    meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
+                )
+                await context.service.send(message=message)
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+            return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 
 
 class BranchValidate(Mutation):

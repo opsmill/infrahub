@@ -9,6 +9,7 @@ from infrahub.graphql import prepare_graphql_params
 from infrahub.services import InfrahubServices, services
 
 if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
     from infrahub.database import InfrahubDatabase
 
 
@@ -18,12 +19,18 @@ async def graphql_mutation(
     branch: Optional[Branch] = None,
     variables: Optional[dict[str, Any]] = None,
     service: Optional[InfrahubServices] = None,
+    account_session: Optional[AccountSession] = None,
 ) -> ExecutionResult:
     branch = branch or await Branch.get_by_name(name="main", db=db)
     service = service or services.service
     variables = variables or {}
     gql_params = prepare_graphql_params(
-        db=db, include_subscription=False, include_mutation=True, branch=branch, service=service
+        db=db,
+        include_subscription=False,
+        include_mutation=True,
+        branch=branch,
+        service=service,
+        account_session=account_session,
     )
     return await graphql(
         schema=gql_params.schema,
