@@ -41,7 +41,8 @@ export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: a
         `,
           className ?? "",
           disabled ? "cursor-not-allowed bg-gray-100" : ""
-        )}>
+        )}
+        data-testid="multi-select-input">
         Empty list
       </div>
     );
@@ -57,7 +58,8 @@ export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: a
         `,
         className ?? "",
         disabled ? "cursor-not-allowed bg-gray-100" : ""
-      )}>
+      )}
+      data-testid="multi-select-input">
       {value?.map((item: string | SelectOption, index: number) => (
         <Badge
           key={index}
