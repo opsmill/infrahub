@@ -272,7 +272,7 @@ class NodeDeleteQuery(NodeQuery):
 
         query = """
         MATCH (root:Root)
-        MATCH (n { uuid: $uuid })
+        MATCH (n:Node { uuid: $uuid })
         CREATE (n)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at }]->(root)
         """
 

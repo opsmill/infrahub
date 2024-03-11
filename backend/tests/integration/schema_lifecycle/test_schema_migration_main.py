@@ -215,3 +215,28 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         honda = manufacturers[0]
         honda_cars = await honda.cars.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(honda_cars) == 2
+
+    async def test_step04_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
+        tag_schema = registry.schema.get_node_schema(name=TAG_KIND)
+
+        # Insert the ID of the attribute name into the schema in order to rename it firstname
+        assert schema_step04["nodes"][3]["name"] == "Tag"
+        schema_step04["nodes"][3]["id"] = tag_schema.id
+
+        success, response = await client.schema.check(schemas=[schema_step04])
+
+        assert response == {"diff": {"added": {}, "changed": {}, "removed": {"TestingTag": None}}}
+        assert success
+
+    async def test_step04_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
+        tag_schema = registry.schema.get_node_schema(name=TAG_KIND)
+
+        # Insert the ID of the attribute name into the schema in order to rename it firstname
+        assert schema_step04["nodes"][3]["name"] == "Tag"
+        schema_step04["nodes"][3]["id"] = tag_schema.id
+
+        success, response = await client.schema.load(schemas=[schema_step04])
+        assert response is None
+        assert success
+
+        assert registry.schema.has(name=TAG_KIND) is False

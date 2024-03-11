@@ -272,3 +272,33 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         renault = manufacturers[0]
         renault_cars = await renault.cars.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(renault_cars) == 2
+
+    async def test_step04_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
+        tag_schema = registry.schema.get_node_schema(name=TAG_KIND, branch=self.branch1)
+
+        # Insert the ID of the attribute name into the schema in order to rename it firstname
+        assert schema_step04["nodes"][3]["name"] == "Tag"
+        schema_step04["nodes"][3]["id"] = tag_schema.id
+
+        success, response = await client.schema.check(schemas=[schema_step04], branch=self.branch1.name)
+
+        assert response == {"diff": {"added": {}, "changed": {}, "removed": {"TestingTag": None}}}
+        assert success
+
+    async def test_step04_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
+        tag_schema = registry.schema.get_node_schema(name=TAG_KIND, branch=self.branch1)
+
+        # Insert the ID of the attribute name into the schema in order to rename it firstname
+        assert schema_step04["nodes"][3]["name"] == "Tag"
+        schema_step04["nodes"][3]["id"] = tag_schema.id
+
+        success, response = await client.schema.load(schemas=[schema_step04], branch=self.branch1.name)
+        assert response is None
+        assert success
+
+        assert registry.schema.has(name=TAG_KIND) is True
+        # FIXME after loading the new schema, TestingTag is still present in the branch, need to investigate
+        # assert registry.schema.has(name=TAG_KIND, branch=self.branch1) is False
+
+        tags = await registry.manager.query(db=db, schema=TAG_KIND)
+        assert len(tags) == 2

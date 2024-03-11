@@ -4,9 +4,11 @@ from .schema.attribute_name_update import AttributeNameUpdateMigration
 from .schema.node_attribute_add import NodeAttributeAddMigration
 from .schema.node_attribute_remove import NodeAttributeRemoveMigration
 from .schema.node_kind_update import NodeKindUpdateMigration
+from .schema.node_remove import NodeRemoveMigration
 from .shared import SchemaMigration
 
 MIGRATION_MAP: Dict[str, Optional[Type[SchemaMigration]]] = {
+    "node.remove": NodeRemoveMigration,
     "node.branch.update": None,
     "node.attribute.add": NodeAttributeAddMigration,
     "node.attribute.remove": NodeAttributeRemoveMigration,

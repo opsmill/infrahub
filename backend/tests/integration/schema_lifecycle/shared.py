@@ -150,6 +150,11 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
+    def schema_tag_04_absent(self, schema_tag_base) -> Dict[str, Any]:
+        schema_tag_base["state"] = "absent"
+        return schema_tag_base
+
+    @pytest.fixture(scope="class")
     def schema_step01(
         self, schema_car_base, schema_person_base, schema_manufacturer_base, schema_tag_base
     ) -> Dict[str, Any]:
@@ -178,5 +183,19 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
                 schema_car_02_carmaker,
                 schema_manufacturer_02_car_maker,
                 schema_tag_base,
+            ],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_step04(
+        self, schema_car_02_carmaker, schema_person_03_no_height, schema_manufacturer_02_car_maker, schema_tag_04_absent
+    ) -> Dict[str, Any]:
+        return {
+            "version": "1.0",
+            "nodes": [
+                schema_person_03_no_height,
+                schema_car_02_carmaker,
+                schema_manufacturer_02_car_maker,
+                schema_tag_04_absent,
             ],
         }

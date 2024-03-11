@@ -208,7 +208,9 @@ class SchemaBranch:
             local_node = self.get(name=reversed_map_local[shared_id], duplicate=False)
             other_node = other.get(name=reversed_map_other[shared_id], duplicate=False)
             diff_node = other_node.diff(other=local_node)
-            if diff_node.has_diff:
+            if other_node.state == HashableModelState.ABSENT:
+                schema_diff.removed[reversed_map_other[shared_id]] = None
+            elif diff_node.has_diff:
                 schema_diff.changed[reversed_map_other[shared_id]] = diff_node
 
         return schema_diff
@@ -380,10 +382,6 @@ class SchemaBranch:
         In the current implementation, if a schema object present in the SchemaRoot already exist, it will be overwritten.
         """
         for item in schema.nodes + schema.generics:
-            if item.state == HashableModelState.ABSENT and self.has(name=item.kind):
-                self.delete(name=item.kind)
-                continue
-
             try:
                 if item.id:
                     new_item = self.get_by_id(id=item.id)
@@ -1369,11 +1367,9 @@ class SchemaManager(NodeManager):
             item_kinds.append(item_kind)
 
         for item_kind, item_diff in diff.removed.items():
-            item_kinds.append(item_kind)
-            # item = schema.get(name=item_kind, duplicate=False)
-            # node = await self.delete_node_in_db(node=item, branch=branch, db=db)
-            # schema.set(name=item_kind, schema=node)
-            # TODO delete node in the database
+            item = schema.get(name=item_kind, duplicate=False)
+            node = await self.delete_node_in_db(node=item, branch=branch, db=db)
+            schema.delete(name=item_kind)
 
         schema_diff = SchemaBranchDiff(
             nodes=[name for name in schema.node_names if name in item_kinds],
@@ -1779,6 +1775,11 @@ class SchemaManager(NodeManager):
         # the namespace and the name will be extracted from the kind with the function `parse_node_kind`
         filters = {"generics": {}, "nodes": {}}
         has_filters = False
+
+        # If a diff is provided but is empty there is nothing to query
+        if schema_diff is not None and not schema_diff:
+            return schema
+
         if schema_diff:
             log.info("Loading schema from DB", schema_to_update=schema_diff.to_list())
 
