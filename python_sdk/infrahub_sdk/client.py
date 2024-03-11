@@ -63,7 +63,7 @@ class NodeDiffElement(ExtensionTypedDict):
     element_type: str
     action: str
     summary: NodeDiffSummary
-    peers: NotRequired[List[NodeDiffPeer]]
+    peers: Optional[List[NodeDiffPeer]]
 
 
 class NodeDiffSummary(ExtensionTypedDict):

@@ -41,7 +41,7 @@ class DiffSummaryElementInterface(GrapheneInterface):
     def resolve_type(cls, instance: Dict[str, Any], info: Any) -> type:
         if (
             str(instance["element_type"]).lower() == DiffElementType.RELATIONSHIP_MANY.value.lower()
-            or "peers" in instance
+            or instance.get("peers")
         ):
             return DiffSummaryElementRelationshipMany
         if str(instance["element_type"]).lower() == DiffElementType.RELATIONSHIP_ONE.value.lower():
@@ -120,6 +120,7 @@ class DiffSummaryEntry(ObjectType):
                     "name": element_name,
                     "action": element.action,
                     "summary": element.summary,
+                    "peers": None,
                 }
                 if isinstance(element, BranchDiffRelationshipMany):
                     serial_element["peers"] = [
