@@ -214,7 +214,7 @@ select = [
     "I",     # isort-like checks
     "ICN",   # flake8-import-conventions
     "INP",   # flake8-no-pep420
-    "N818",  # pep8-naming error-suffix-on-exception-name
+    "N",     # pep8-naming
     "PIE",   # flake8-pie
     "PL",    # pylint
     "PYI",   # flake8-pyi
@@ -241,6 +241,8 @@ ignore = [
     "C408",    # Unnecessary `dict` call (rewrite as a literal)
     "C414",    # Unnecessary `list` call within `sorted()`
     "INP001",  # File is part of an implicit namespace package. Add an `__init__.py`.
+    "N802",    # Function name should be lowercase
+    "N806",    # Variable in function should be lowercase
     "PIE808",  # [*] Unnecessary `start` argument in `range`
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments in function definition
