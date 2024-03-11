@@ -37,9 +37,6 @@ test.describe("object dropdown creation", () => {
     await expect(page.getByText("Create Tag")).toBeVisible();
     await expect(page.getByRole("button", { name: "Create" })).toBeVisible();
 
-    // Assert screenshot comparison
-    // await expect(page).toHaveScreenshot("dropdown-option-creation.png");
-
     // Create a new tag
     await page.getByLabel("Create TagmainStandard Tag").locator("#Name").click();
     await page.getByLabel("Create TagmainStandard Tag").locator("#Name").fill("new-tag");
