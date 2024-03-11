@@ -74,7 +74,7 @@ class DataTypeNotFoundError(Error):
         super().__init__(self.message)
 
 
-class FileNotFoundError(Error):
+class RepositoryFileNotFoundError(Error):
     HTTP_CODE: int = 404
 
     def __init__(self, repository_name, location, commit, message=None):
