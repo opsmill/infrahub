@@ -1111,20 +1111,22 @@ async def test_update_input_data__with_relationships_01(
     tag_schema,
     tag_blue_data,
     tag_green_data,
+    tag_red_data,
     client_type,
 ):
     if client_type == "standard":
         location = InfrahubNode(client=client, schema=location_schema, data=location_data01)
         tag_green = InfrahubNode(client=client, schema=tag_schema, data=tag_green_data)
         tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
-
+        tag_red = InfrahubNode(client=client, schema=tag_schema, data=tag_red_data)
     else:
         location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
         tag_green = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_green_data)
-        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+        tag_blue = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_blue_data)
+        tag_red = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_red_data)
 
     location.primary_tag = tag_green_data
-    location.tags.add(tag_green)
+    location.tags.extend([tag_green, tag_red])
     location.tags.remove(tag_blue)
 
     assert location._generate_input_data()["data"] == {
@@ -1132,7 +1134,7 @@ async def test_update_input_data__with_relationships_01(
             "id": "llllllll-llll-llll-llll-llllllllllll",
             "name": {"is_protected": True, "is_visible": True, "value": "DFW"},
             "primary_tag": {"id": "gggggggg-gggg-gggg-gggg-gggggggggggg"},
-            "tags": [{"id": "gggggggg-gggg-gggg-gggg-gggggggggggg"}],
+            "tags": [{"id": "gggggggg-gggg-gggg-gggg-gggggggggggg"}, {"id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr"}],
             "type": {"is_protected": True, "is_visible": True, "value": "SITE"},
         },
     }

@@ -9,6 +9,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Iterable,
     List,
     Optional,
     Tuple,
@@ -531,6 +532,11 @@ class RelationshipManager(RelationshipManagerBase):
                 )
             )
 
+    def extend(self, data: Iterable[Union[str, RelatedNode, dict]]) -> None:
+        """Add new peers to this relationship."""
+        for d in data:
+            self.add(d)
+
     def remove(self, data: Union[str, RelatedNode, dict]) -> None:
         node_to_remove = RelatedNode(schema=self.schema, client=self.client, branch=self.branch, data=data)
 
@@ -634,6 +640,11 @@ class RelationshipManagerSync(RelationshipManagerBase):
                     data=data,
                 )
             )
+
+    def extend(self, data: Iterable[Union[str, RelatedNodeSync, dict]]) -> None:
+        """Add new peers to this relationship."""
+        for d in data:
+            self.add(d)
 
     def remove(self, data: Union[str, RelatedNodeSync, dict]) -> None:
         node_to_remove = RelatedNodeSync(schema=self.schema, client=self.client, branch=self.branch, data=data)
