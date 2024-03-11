@@ -300,7 +300,9 @@ async def repository_checks(message: messages.RequestProposedChangeRepositoryChe
                     proposed_change=message.proposed_change,
                     repository=repository.repository_id,
                     source_branch=message.source_branch,
+                    source_branch_data_only=message.source_branch_data_only,
                     target_branch=message.destination_branch,
+                    branch_diff=message.branch_diff,
                 )
             )
             await task_report.info(f"{repository.repository_name}: Requesting user checks")
