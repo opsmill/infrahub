@@ -4,26 +4,13 @@ from typing import Any, Dict
 
 import pytest
 import yaml
-from infrahub_sdk import UUIDT, Config, InfrahubClient
+from infrahub_sdk import InfrahubClient
 
-from infrahub import config
 from infrahub.core import registry
-from infrahub.core.branch import Branch
-from infrahub.core.initialization import (
-    create_account,
-    create_default_branch,
-    create_global_branch,
-    create_root_node,
-    initialization,
-)
 from infrahub.core.node import Node
-from infrahub.core.schema import SchemaRoot, core_models, internal_schema
-from infrahub.core.schema_manager import SchemaBranch, SchemaManager
-from infrahub.core.utils import delete_all_nodes
+from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
-from infrahub.server import app, app_initialization
-from tests.adapters.message_bus import BusSimulator
-from tests.helpers.test_client import InfrahubTestClient
+from tests.helpers.test_app import TestInfrahubApp
 
 # pylint: disable=unused-argument
 
@@ -45,7 +32,6 @@ async def load_schema(db: InfrahubDatabase, name: str):
     await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch_name, update_db=True)
 
 
-API_TOKEN = str(UUIDT())
 PERSON_KIND = "TestingPerson"
 CAR_KIND = "TestingCar"
 MANUFACTURER_KIND_01 = "TestingManufacturer"
@@ -53,63 +39,11 @@ MANUFACTURER_KIND_03 = "TestingCarMaker"
 TAG_KIND = "TestingTag"
 
 
-class TestInfrahubClient:
+class TestSchemaLifecycleMain(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    def local_storage_dir(self, tmpdir_factory) -> str:
-        storage_dir = os.path.join(str(tmpdir_factory.getbasetemp().strpath), "storage")
-        os.mkdir(storage_dir)
-
-        config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
-        config.SETTINGS.storage.local.path_ = storage_dir
-
-        return storage_dir
-
-    @pytest.fixture(scope="class")
-    def bus_simulator(self, db: InfrahubDatabase):
-        bus = BusSimulator(database=db)
-        original = config.OVERRIDE.message_bus
-        config.OVERRIDE.message_bus = bus
-        yield bus
-        config.OVERRIDE.message_bus = original
-
-    @pytest.fixture(scope="class")
-    async def default_branch(self, local_storage_dir, db: InfrahubDatabase) -> Branch:
-        registry.delete_all()
-        await delete_all_nodes(db=db)
-        await create_root_node(db=db)
-        branch = await create_default_branch(db=db)
-        await create_global_branch(db=db)
-        registry.schema = SchemaManager()
-        return branch
-
-    @pytest.fixture(scope="class")
-    async def register_internal_schema(self, default_branch: Branch) -> SchemaBranch:
-        schema = SchemaRoot(**internal_schema)
-        schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-        default_branch.update_schema_hash()
-        return schema_branch
-
-    @pytest.fixture(scope="class")
-    async def register_core_schema(self, default_branch: Branch, register_internal_schema) -> SchemaBranch:
-        schema = SchemaRoot(**core_models)
-        schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-        default_branch.update_schema_hash()
-        return schema_branch
-
-    @pytest.fixture(scope="class")
-    async def initialize_infrahub(self, db: InfrahubDatabase, register_core_schema, bus_simulator):
-        await create_account(
-            db=db,
-            name="admin",
-            password=config.SETTINGS.security.initial_admin_password,
-            create_token=True,
-            token_value=API_TOKEN,
-        )
+    async def initial_dataset(self, db: InfrahubDatabase, initialize_registry):
         await load_schema(db=db, name="step01")
-        await initialization(db=db)
 
-    @pytest.fixture(scope="class")
-    async def initial_dataset(self, db: InfrahubDatabase, initialize_infrahub):
         john = await Node.init(schema=PERSON_KIND, db=db)
         await john.new(db=db, name="John", height=175, description="The famous Joe Doe")
         await john.save(db=db)
@@ -165,20 +99,6 @@ class TestInfrahubClient:
         }
 
         return objs
-
-    @pytest.fixture(scope="class")
-    async def test_client(
-        self,
-        initialize_infrahub,
-    ) -> InfrahubTestClient:
-        await app_initialization(app)
-        return InfrahubTestClient(app=app)
-
-    @pytest.fixture
-    async def client(self, test_client: InfrahubTestClient):
-        config = Config(api_token=API_TOKEN, requester=test_client.async_request)
-
-        return await InfrahubClient.init(config=config)
 
     async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
