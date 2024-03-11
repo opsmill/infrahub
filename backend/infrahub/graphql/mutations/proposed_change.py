@@ -13,7 +13,7 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import BranchNotFound, ValidationError
+from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
 from infrahub.log import get_log_data
@@ -213,7 +213,7 @@ class ProposedChangeRequestRunCheck(Mutation):
 async def _get_source_branch(db: InfrahubDatabase, name: str) -> Branch:
     try:
         return await Branch.get_by_name(name=name, db=db)
-    except BranchNotFound:
+    except BranchNotFoundError:
         raise ValidationError(
             input_value="The specified source branch for this proposed change was not found."
         ) from None

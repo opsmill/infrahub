@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, Optional
 
-from infrahub_sdk.exceptions import NodeNotFound
+from infrahub_sdk.exceptions import NodeNotFoundError
 
 if TYPE_CHECKING:
     from infrahub_sdk.node import InfrahubNode, InfrahubNodeSync
@@ -30,7 +30,7 @@ class NodeStoreBase:
         if kind and kind not in self._store and key not in self._store[kind]:  # type: ignore[attr-defined]
             if not raise_when_missing:
                 return None
-            raise NodeNotFound(
+            raise NodeNotFoundError(
                 node_type=kind,
                 identifier={"key": [key]},
                 message="Unable to find the node in the Store",
@@ -45,7 +45,7 @@ class NodeStoreBase:
 
         if not raise_when_missing:
             return None
-        raise NodeNotFound(
+        raise NodeNotFoundError(
             node_type="n/a",
             identifier={"key": [key]},
             message=f"Unable to find the node {key!r} in the Store",

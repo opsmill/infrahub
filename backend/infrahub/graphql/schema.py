@@ -7,7 +7,7 @@ from infrahub_sdk.utils import extract_fields
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
-from infrahub.exceptions import NodeNotFound
+from infrahub.exceptions import NodeNotFoundError
 
 from .mutations import (
     BranchCreate,
@@ -56,7 +56,7 @@ async def account_resolver(root, info: GraphQLResolveInfo):
             account_profile = await results[0].to_graphql(db=db, fields=fields)
             return account_profile
 
-        raise NodeNotFound(
+        raise NodeNotFoundError(
             node_type=InfrahubKind.ACCOUNT,
             identifier=context.account_session.account_id,
         )

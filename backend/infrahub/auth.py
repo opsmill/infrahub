@@ -15,7 +15,7 @@ from infrahub.core.account import validate_token
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.exceptions import AuthorizationError, NodeNotFound
+from infrahub.exceptions import AuthorizationError, NodeNotFoundError
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -53,7 +53,7 @@ async def authenticate_with_password(
         limit=1,
     )
     if not response:
-        raise NodeNotFound(
+        raise NodeNotFoundError(
             branch_name=selected_branch.name,
             node_type=InfrahubKind.ACCOUNT,
             identifier=credentials.username,
@@ -102,7 +102,7 @@ async def create_fresh_access_token(
         db=db,
     )
     if not account:
-        raise NodeNotFound(
+        raise NodeNotFoundError(
             branch_name=selected_branch.name,
             node_type="Account",
             identifier=refresh_data.account_id,

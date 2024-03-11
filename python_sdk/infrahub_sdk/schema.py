@@ -13,7 +13,7 @@ try:
 except ImportError:
     import pydantic  # type: ignore[no-redef]
 
-from infrahub_sdk.exceptions import SchemaNotFound, ValidationError
+from infrahub_sdk.exceptions import SchemaNotFoundError, ValidationError
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.utils import duplicates
 
@@ -442,7 +442,7 @@ class InfrahubSchema(InfrahubSchemaBase):
         if branch in self.cache and kind in self.cache[branch]:
             return self.cache[branch][kind]
 
-        raise SchemaNotFound(identifier=kind)
+        raise SchemaNotFoundError(identifier=kind)
 
     async def all(
         self, branch: Optional[str] = None, refresh: bool = False, namespaces: Optional[List[str]] = None
@@ -690,7 +690,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         if branch in self.cache and kind in self.cache[branch]:
             return self.cache[branch][kind]
 
-        raise SchemaNotFound(identifier=kind)
+        raise SchemaNotFoundError(identifier=kind)
 
     def _get_kind_and_attribute_schema(
         self, kind: Union[str, InfrahubNodeTypes], attribute: str, branch: Optional[str] = None

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from infrahub_sdk import Config, InfrahubClient, NodeNotFound
+from infrahub_sdk import Config, InfrahubClient, NodeNotFoundError
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
@@ -139,7 +139,7 @@ class TestInfrahubClient:
         modified_query = await client.get(kind=InfrahubKind.GRAPHQLQUERY, id=queries[0].id)
         assert modified_query.query.value == value_before_change
 
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             await client.get(kind=InfrahubKind.GRAPHQLQUERY, id=obj.id)
 
     async def test_import_all_python_files(
@@ -214,10 +214,10 @@ class TestInfrahubClient:
         assert modified_transform1.query.id == transform_query_value_before_change
 
         # FIXME not implemented yet
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             await client.get(kind=InfrahubKind.CHECKDEFINITION, id=obj1.id)
 
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             await client.get(kind="CoreTransformPython", id=obj2.id)
 
     async def test_import_all_yaml_files(
@@ -261,5 +261,5 @@ class TestInfrahubClient:
         assert modified_rfile.query.id == rfile_query_value_before_change
 
         # FIXME not implemented yet
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             await client.get(kind=InfrahubKind.TRANSFORMJINJA2, id=obj.id)

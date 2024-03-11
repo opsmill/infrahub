@@ -7,7 +7,7 @@ try:
 except ImportError:
     import pydantic  # type: ignore[no-redef]
 
-from infrahub_sdk.exceptions import BranchNotFound
+from infrahub_sdk.exceptions import BranchNotFoundError
 from infrahub_sdk.graphql import Mutation, Query
 
 if TYPE_CHECKING:
@@ -167,7 +167,7 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
         )
 
         if not data["Branch"]:
-            raise BranchNotFound(identifier=branch_name)
+            raise BranchNotFoundError(identifier=branch_name)
         return BranchData(**data["Branch"][0])
 
     async def diff_data(
@@ -209,7 +209,7 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
         )
 
         if not data["Branch"]:
-            raise BranchNotFound(identifier=branch_name)
+            raise BranchNotFoundError(identifier=branch_name)
         return BranchData(**data["Branch"][0])
 
     def create(

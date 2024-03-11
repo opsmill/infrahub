@@ -6,7 +6,7 @@ import fastapi_storages
 from typing_extensions import Self
 
 from infrahub.config import StorageSettings
-from infrahub.exceptions import NodeNotFound
+from infrahub.exceptions import NodeNotFoundError
 
 
 class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
@@ -53,6 +53,6 @@ class InfrahubObjectStorage:
             with self._storage.open(identifier) as f:
                 return f.read().decode()
         except (FileNotFoundError, botocore.exceptions.ClientError):
-            raise NodeNotFound(  # pylint: disable=raise-missing-from
+            raise NodeNotFoundError(  # pylint: disable=raise-missing-from
                 node_type="StorageObject", identifier=identifier
             )

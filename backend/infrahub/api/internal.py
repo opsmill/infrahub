@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from infrahub import __version__, config
 from infrahub.config import AnalyticsSettings, ExperimentalFeaturesSettings, LoggingSettings, MainSettings
 from infrahub.core import registry
-from infrahub.exceptions import NodeNotFound
+from infrahub.exceptions import NodeNotFoundError
 
 router = APIRouter()
 
@@ -88,7 +88,7 @@ class SearchDocs:
                 self._heading_documents = heading_json["documents"]
                 self._heading_index = Index.load(heading_json["index"])
         except FileNotFoundError as exc:
-            raise NodeNotFound(
+            raise NodeNotFoundError(
                 identifier=config.SETTINGS.main.docs_index_path,
                 message="documentation index not found",
                 node_type="file",

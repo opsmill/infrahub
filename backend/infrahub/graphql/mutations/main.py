@@ -20,7 +20,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.exceptions import NodeNotFound, ValidationError
+from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
@@ -250,7 +250,7 @@ class InfrahubMutationMixin:
         context: GraphqlContext = info.context
 
         if not (obj := await NodeManager.get_one(db=context.db, id=data.get("id"), branch=branch, at=at)):
-            raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
+            raise NodeNotFoundError(branch, cls._meta.schema.kind, data.get("id"))
 
         async with context.db.start_transaction() as db:
             await obj.delete(db=db, at=at)

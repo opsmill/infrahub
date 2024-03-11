@@ -2,7 +2,7 @@ from typing import Dict, List, Optional, Sequence, Set
 
 from infrahub_sdk.schema import BaseNodeSchema
 
-from ..topological_sort import DependencyCycleExists, topological_sort
+from ..topological_sort import DependencyCycleExistsError, topological_sort
 from .exceptions import SchemaImportError
 
 
@@ -25,7 +25,7 @@ class InfrahubSchemaTopologicalSorter:
 
         try:
             return topological_sort(relationship_graph)
-        except DependencyCycleExists:
+        except DependencyCycleExistsError:
             raise SchemaImportError(
                 "Cannot import nodes. There are cycles in the dependency graph."
-            ) from DependencyCycleExists
+            ) from DependencyCycleExistsError

@@ -25,7 +25,7 @@ from infrahub.core.query.relationship import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import update_relationships_to
-from infrahub.exceptions import Error, NodeNotFound, ValidationError
+from infrahub.exceptions import Error, NodeNotFoundError, ValidationError
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -228,7 +228,9 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             await self._get_peer(db=db)
 
         if self._peer is None or isinstance(self._peer, str):
-            raise NodeNotFound(branch_name=self.branch.name, node_type=self.schema.peer, identifier=self.get_peer_id())
+            raise NodeNotFoundError(
+                branch_name=self.branch.name, node_type=self.schema.peer, identifier=self.get_peer_id()
+            )
 
         return self._peer
 
@@ -243,7 +245,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                 include_owner=True,
                 include_source=True,
             )
-        except NodeNotFound:
+        except NodeNotFoundError:
             self._peer = None
             return
 

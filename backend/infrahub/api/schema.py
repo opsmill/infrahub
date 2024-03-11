@@ -8,7 +8,7 @@ from starlette.responses import JSONResponse
 
 from infrahub import config, lock
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
-from infrahub.api.exceptions import SchemaNotValid
+from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.migrations.schema.runner import schema_migrations_runner
@@ -90,12 +90,12 @@ def evaluate_candidate_schemas(
             candidate_schema.load_schema(schema=schema)
         candidate_schema.process()
     except ValueError as exc:
-        raise SchemaNotValid(message=str(exc)) from exc
+        raise SchemaNotValidError(message=str(exc)) from exc
 
     result = branch_schema.validate_update(other=candidate_schema)
 
     if result.errors:
-        raise SchemaNotValid(message=", ".join([error.to_string() for error in result.errors]))
+        raise SchemaNotValidError(message=", ".join([error.to_string() for error in result.errors]))
 
     return candidate_schema, result
 
@@ -192,7 +192,7 @@ async def load_schema(
             branch=branch, schema=candidate_schema, constraints=result.constraints, service=service
         )
         if error_messages:
-            raise SchemaNotValid(message=",\n".join(error_messages))
+            raise SchemaNotValidError(message=",\n".join(error_messages))
 
         # ----------------------------------------------------------
         # Update the schema
@@ -268,6 +268,6 @@ async def check_schema(
         branch=branch, schema=candidate_schema, constraints=result.constraints, service=service
     )
     if error_messages:
-        raise SchemaNotValid(message=",\n".join(error_messages))
+        raise SchemaNotValidError(message=",\n".join(error_messages))
 
     return JSONResponse(status_code=202, content={"diff": result.diff.model_dump()})

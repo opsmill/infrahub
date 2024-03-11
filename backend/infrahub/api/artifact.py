@@ -9,7 +9,7 @@ from infrahub.api.dependencies import BranchParams, get_branch_params, get_curre
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
-from infrahub.exceptions import NodeNotFound
+from infrahub.exceptions import NodeNotFoundError
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 
@@ -37,7 +37,7 @@ async def get_artifact(
 ) -> Response:
     artifact = await registry.manager.get_one(db=db, id=artifact_id, branch=branch_params.branch, at=branch_params.at)
     if not artifact:
-        raise NodeNotFound(
+        raise NodeNotFoundError(
             branch_name=branch_params.branch.name, node_type=InfrahubKind.ARTIFACT, identifier=artifact_id
         )
 

@@ -9,8 +9,8 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
-    FileNotFound,
     RepositoryError,
+    RepositoryFileNotFoundError,
     TransformError,
 )
 from infrahub.git import (
@@ -435,7 +435,7 @@ async def test_render_jinja2_template_missing(client, git_repo_jinja: InfrahubRe
 
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
-    with pytest.raises(FileNotFound):
+    with pytest.raises(RepositoryFileNotFoundError):
         await repo.render_jinja2_template(commit=commit_main, location="notthere.tpl.j2", data={})
 
 
@@ -454,7 +454,7 @@ async def test_execute_python_check_file_missing(client, git_repo_checks: Infrah
     repo = git_repo_checks
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
-    with pytest.raises(FileNotFound):
+    with pytest.raises(RepositoryFileNotFoundError):
         await repo.execute_python_check(
             branch_name="main", commit=commit_main, location="notthere.py", class_name="Check01", client=client
         )
@@ -641,7 +641,7 @@ async def test_execute_python_transform_file_missing(client, git_repo_transforms
     repo = git_repo_transforms
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
-    with pytest.raises(FileNotFound):
+    with pytest.raises(RepositoryFileNotFoundError):
         await repo.execute_python_transform(
             branch_name="main", commit=commit_main, location="transform99.py::Transform01", client=client
         )

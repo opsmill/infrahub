@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Dict, Optional, Type, Union
 from infrahub import lock
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.exceptions import (
-    BranchNotFound,
-    DataTypeNotFound,
+    BranchNotFoundError,
+    DataTypeNotFoundError,
     Error,
     InitializationError,
 )
@@ -147,7 +147,7 @@ class Registry:
         name: str,
     ) -> InfrahubDataType:
         if name not in self.data_type:
-            raise DataTypeNotFound(name=name)
+            raise DataTypeNotFoundError(name=name)
         return self.data_type[name]
 
     def get_full_schema(
@@ -179,7 +179,7 @@ class Registry:
             branch (Optional[Union[Branch, str]]): Branch object or name of a branch
 
         Raises:
-            BranchNotFound:
+            BranchNotFoundError:
 
         Returns:
             Branch: A Branch Object
@@ -199,7 +199,7 @@ class Registry:
         if branch in self.branch:
             return self.branch[branch]
 
-        raise BranchNotFound(identifier=branch)
+        raise BranchNotFoundError(identifier=branch)
 
     async def get_branch(
         self,
@@ -218,7 +218,7 @@ class Registry:
             session (Optional[AsyncSession], optional): AsyncSession to connect to the database. Defaults to None.
 
         Raises:
-            BranchNotFound:
+            BranchNotFoundError:
 
         Returns:
             Branch: A Branch Object
@@ -231,14 +231,14 @@ class Registry:
         if (self.branch_object.isinstance(branch) and branch.name == GLOBAL_BRANCH_NAME) or (
             isinstance(branch, str) and branch == GLOBAL_BRANCH_NAME
         ):
-            raise BranchNotFound(identifier=GLOBAL_BRANCH_NAME)
+            raise BranchNotFoundError(identifier=GLOBAL_BRANCH_NAME)
 
         if not branch or not isinstance(branch, str):
             branch = registry.default_branch
 
         try:
             return self.get_branch_from_registry(branch=branch)
-        except BranchNotFound:
+        except BranchNotFoundError:
             if not session and not db:
                 raise
 

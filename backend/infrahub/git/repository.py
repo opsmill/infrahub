@@ -43,9 +43,9 @@ from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
     Error,
-    FileNotFound,
     InitializationError,
     RepositoryError,
+    RepositoryFileNotFoundError,
     TransformError,
 )
 from infrahub.log import get_logger
@@ -1947,7 +1947,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
     def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> None:
         if not os.path.exists(os.path.join(worktree_directory, file_path)):
-            raise FileNotFound(repository_name=self.name, commit=commit, location=file_path)
+            raise RepositoryFileNotFoundError(repository_name=self.name, commit=commit, location=file_path)
 
 
 class InfrahubRepository(InfrahubRepositoryBase):

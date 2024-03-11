@@ -48,7 +48,7 @@ from infrahub.auth import AccountSession, authentication_token
 from infrahub.core import get_branch
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import BranchNotFound, Error
+from infrahub.exceptions import BranchNotFoundError, Error
 from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.log import get_logger
@@ -138,7 +138,7 @@ class InfrahubGraphQLApp:
                 try:
                     branch_name = request.path_params.get("branch_name", registry.default_branch)
                     branch = await get_branch(db=db, branch=branch_name)
-                except BranchNotFound as exc:
+                except BranchNotFoundError as exc:
                     response = JSONResponse({"errors": [exc.message]}, status_code=404)
 
                 if request.method == "POST" and not response:

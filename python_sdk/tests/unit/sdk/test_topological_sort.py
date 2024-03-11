@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub_sdk.topological_sort import DependencyCycleExists, topological_sort
+from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 
 
 def test_topological_sort_empty():
@@ -10,7 +10,7 @@ def test_topological_sort_empty():
 def test_topological_sort_with_cycle_raises_error():
     dependencies = {0: [1, 2], 1: [2], 2: [0]}
 
-    with pytest.raises(DependencyCycleExists):
+    with pytest.raises(DependencyCycleExistsError):
         topological_sort(dependencies)
 
 
