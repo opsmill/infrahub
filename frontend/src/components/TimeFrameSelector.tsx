@@ -6,7 +6,7 @@ import { Icon } from "@iconify-icon/react";
 import DateTimePicker from "react-datepicker";
 import { classNames } from "../utils/common";
 import { format, setHours, setMinutes } from "date-fns";
-import { HTMLAttributes, useEffect } from "react";
+import { forwardRef, HTMLAttributes, useEffect } from "react";
 import { Transition } from "@headlessui/react";
 
 export const TimeFrameSelector = () => {
@@ -75,12 +75,15 @@ export const TimeFrameSelector = () => {
   );
 };
 
-const ButtonStyled = ({ className, ...props }: HTMLAttributes<HTMLButtonElement>) => (
-  <button
-    className={classNames(
-      "inline-flex p-3 rounded-full focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2",
-      className
-    )}
-    {...props}
-  />
+const ButtonStyled = forwardRef<HTMLButtonElement, HTMLAttributes<HTMLButtonElement>>(
+  ({ className, ...props }, ref) => (
+    <button
+      ref={ref}
+      className={classNames(
+        "inline-flex p-3 rounded-full focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2",
+        className
+      )}
+      {...props}
+    />
+  )
 );
