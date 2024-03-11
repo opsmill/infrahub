@@ -9,7 +9,7 @@ class Error(Exception):
         super().__init__(self.message)
 
 
-class ServerNotReacheableError(Error):
+class ServerNotReachableError(Error):
     def __init__(self, address: str, message: Optional[str] = None):
         self.address = address
         self.message = message or f"Unable to connect to '{address}'."
@@ -40,21 +40,21 @@ class GraphQLError(Error):
         super().__init__(self.message)
 
 
-class BranchNotFound(Error):
+class BranchNotFoundError(Error):
     def __init__(self, identifier: str, message: Optional[str] = None):
         self.identifier = identifier
         self.message = message or f"Unable to find the branch '{identifier}' in the Database."
         super().__init__(self.message)
 
 
-class SchemaNotFound(Error):
+class SchemaNotFoundError(Error):
     def __init__(self, identifier: str, message: Optional[str] = None):
         self.identifier = identifier
         self.message = message or f"Unable to find the schema '{identifier}'."
         super().__init__(self.message)
 
 
-class NodeNotFound(Error):
+class NodeNotFoundError(Error):
     def __init__(
         self,
         node_type: str,
@@ -76,7 +76,7 @@ class NodeNotFound(Error):
         """
 
 
-class FilterNotFound(Error):
+class FilterNotFoundError(Error):
     def __init__(
         self,
         identifier: str,
@@ -116,5 +116,5 @@ class AuthenticationError(Error):
         super().__init__(self.message)
 
 
-class FeatureNotSupported(Error):
+class FeatureNotSupportedError(Error):
     """Raised when trying to use a method on a node that doesn't support it."""

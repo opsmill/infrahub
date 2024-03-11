@@ -1,7 +1,7 @@
 import json
 from typing import Dict, Type
 
-from infrahub.exceptions import NodeNotFound
+from infrahub.exceptions import NodeNotFoundError
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 from infrahub.webhook import CustomWebhook, StandardWebhook, TransformWebhook, Webhook
@@ -15,7 +15,7 @@ async def event(message: messages.SendWebhookEvent, service: InfrahubServices) -
         webhook_definition = await service.cache.get(key=f"webhook:active:{message.webhook_id}")
         if not webhook_definition:
             service.log.warning("Webhook not found", webhook_id=message.webhook_id)
-            raise NodeNotFound(
+            raise NodeNotFoundError(
                 node_type="Webhook", identifier=message.webhook_id, message="The requested Webhook was not found"
             )
 

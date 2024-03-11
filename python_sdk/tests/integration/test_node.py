@@ -5,7 +5,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.server import app
 
 from infrahub_sdk import Config, InfrahubClient
-from infrahub_sdk.exceptions import NodeNotFound
+from infrahub_sdk.exceptions import NodeNotFoundError
 from infrahub_sdk.node import InfrahubNode
 
 from .conftest import InfrahubTestClient
@@ -80,7 +80,7 @@ class TestInfrahubNode:
         assert node_pre_delete
         assert node_pre_delete.id
         await node_pre_delete.delete()
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             await client.get(kind="CoreAccount", name__value="delete-my-account")
 
     async def test_node_create_with_relationships(

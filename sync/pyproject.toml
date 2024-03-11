@@ -164,6 +164,7 @@ select = [
     "I",     # isort-like checks
     "ICN",   # flake8-import-conventions
     "INP",   # flake8-no-pep420
+    "N",     # pep8-naming
     "PIE",   # flake8-pie
     "PL",    # pylint
     "PYI",   # flake8-pyi

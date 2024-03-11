@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub_sdk.exceptions import FeatureNotSupported
+from infrahub_sdk.exceptions import FeatureNotSupportedError
 from infrahub_sdk.node import InfrahubNode, InfrahubNodeSync
 
 client_types = ["standard", "sync"]
@@ -11,11 +11,11 @@ async def test_node_artifact_generate_raise_featurenotsupported(client, client_t
     # node does not inherit from CoreArtifactTarget
     if client_type == "standard":
         node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
-        with pytest.raises(FeatureNotSupported):
+        with pytest.raises(FeatureNotSupportedError):
             await node.artifact_generate("artifact_definition")
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
-        with pytest.raises(FeatureNotSupported):
+        with pytest.raises(FeatureNotSupportedError):
             node.artifact_generate("artifact_definition")
 
 
@@ -24,11 +24,11 @@ async def test_node_artifact_fetch_raise_featurenotsupported(client, client_type
     # node does not inherit from CoreArtifactTarget
     if client_type == "standard":
         node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
-        with pytest.raises(FeatureNotSupported):
+        with pytest.raises(FeatureNotSupportedError):
             await node.artifact_fetch("artifact_definition")
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
-        with pytest.raises(FeatureNotSupported):
+        with pytest.raises(FeatureNotSupportedError):
             node.artifact_fetch("artifact_definition")
 
 
@@ -37,11 +37,11 @@ async def test_node_generate_raise_featurenotsupported(client, client_type, loca
     # node not of kind CoreArtifactDefinition
     if client_type == "standard":
         node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
-        with pytest.raises(FeatureNotSupported):
+        with pytest.raises(FeatureNotSupportedError):
             await node.generate("artifact_definition")
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
-        with pytest.raises(FeatureNotSupported):
+        with pytest.raises(FeatureNotSupportedError):
             node.generate("artifact_definition")
 
 

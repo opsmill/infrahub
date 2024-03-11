@@ -65,7 +65,7 @@ class CommitNotFoundError(Error):
         super().__init__(self.message)
 
 
-class DataTypeNotFound(Error):
+class DataTypeNotFoundError(Error):
     HTTP_CODE: int = 400
 
     def __init__(self, name, message=None):
@@ -74,7 +74,7 @@ class DataTypeNotFound(Error):
         super().__init__(self.message)
 
 
-class FileNotFound(Error):
+class RepositoryFileNotFoundError(Error):
     HTTP_CODE: int = 404
 
     def __init__(self, repository_name, location, commit, message=None):
@@ -117,7 +117,7 @@ class TransformNotFoundError(TransformError):
         super().__init__(repository_name, location, commit, self.message)
 
 
-class BranchNotFound(Error):
+class BranchNotFoundError(Error):
     HTTP_CODE: int = 400
 
     def __init__(self, identifier, message=None):
@@ -126,7 +126,7 @@ class BranchNotFound(Error):
         super().__init__(self.message)
 
 
-class NodeNotFound(Error):
+class NodeNotFoundError(Error):
     HTTP_CODE: int = 404
 
     def __init__(
@@ -179,7 +179,7 @@ class ProcessingError(Error):
         super().__init__(self.message)
 
 
-class SchemaNotFound(Error):
+class SchemaNotFoundError(Error):
     HTTP_CODE: int = 422
 
     def __init__(self, branch_name, identifier, message=None):

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 from infrahub_sdk.constants import InfrahubClientMode
-from infrahub_sdk.exceptions import NodeNotFound
+from infrahub_sdk.exceptions import NodeNotFoundError
 from infrahub_sdk.timestamp import Timestamp
 from infrahub_sdk.utils import dict_hash
 
@@ -85,7 +85,7 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
         group_name = self._generate_group_name()
         try:
             group = await self.client.get(kind=self.group_type, name__value=group_name, include=["members", "children"])
-        except NodeNotFound:
+        except NodeNotFoundError:
             return None
 
         if not store_peers:
@@ -191,7 +191,7 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
         group_name = self._generate_group_name()
         try:
             group = self.client.get(kind=self.group_type, name__value=group_name, include=["members", "children"])
-        except NodeNotFound:
+        except NodeNotFoundError:
             return None
 
         if not store_peers:

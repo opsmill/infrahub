@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 from pytest_httpx import HTTPXMock
 
-from infrahub_sdk.exceptions import NodeNotFound
+from infrahub_sdk.exceptions import NodeNotFoundError
 from infrahub_sdk.node import (
     SAFE_VALUE,
     InfrahubNode,
@@ -1245,10 +1245,10 @@ async def test_node_get_relationship_not_in_store(client, location_schema, locat
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
 
-    with pytest.raises(NodeNotFound):
+    with pytest.raises(NodeNotFoundError):
         node.primary_tag.peer  # pylint: disable=pointless-statement
 
-    with pytest.raises(NodeNotFound):
+    with pytest.raises(NodeNotFoundError):
         node.tags[0].peer  # pylint: disable=pointless-statement
 
 

@@ -31,7 +31,7 @@ from infrahub_sdk.exceptions import (
     AuthenticationError,
     GraphQLError,
     InfrahubTransformNotFoundError,
-    ServerNotReacheableError,
+    ServerNotReachableError,
     ServerNotResponsiveError,
 )
 from infrahub_sdk.transforms import get_transform_class_instance
@@ -284,7 +284,7 @@ def version(config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=c
     query = "query { InfrahubInfo { version }}"
     try:
         response = client.execute_graphql(query=query, raise_for_error=True)
-    except (AuthenticationError, GraphQLError, HTTPError, ServerNotReacheableError, ServerNotResponsiveError) as exc:
+    except (AuthenticationError, GraphQLError, HTTPError, ServerNotReachableError, ServerNotResponsiveError) as exc:
         console.print("Unable to gather infrahub version")
         raise typer.Exit(1) from exc
 

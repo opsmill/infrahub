@@ -25,8 +25,8 @@ from infrahub_sdk.exceptions import (
     AuthenticationError,
     Error,
     GraphQLError,
-    NodeNotFound,
-    ServerNotReacheableError,
+    NodeNotFoundError,
+    ServerNotReachableError,
     ServerNotResponsiveError,
 )
 from infrahub_sdk.graphql import Query
@@ -257,7 +257,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         )  # type: ignore[arg-type]
 
         if len(results) == 0:
-            raise NodeNotFound(branch_name=branch, node_type=kind, identifier=filters)
+            raise NodeNotFoundError(branch_name=branch, node_type=kind, identifier=filters)
         if len(results) > 1:
             raise IndexError("More than 1 node returned")
 
@@ -488,7 +488,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                     resp.raise_for_status()
 
                 retry = False
-            except ServerNotReacheableError:
+            except ServerNotReachableError:
                 if retry:
                     self.log.warning(
                         f"Unable to connect to {self.address}, will retry in {self.retry_delay} seconds .."
@@ -526,7 +526,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         """Execute a HTTP POST with HTTPX.
 
         Raises:
-            ServerNotReacheableError if we are not able to connect to the server
+            ServerNotReachableError if we are not able to connect to the server
             ServerNotResponsiveError if the server didn't respond before the timeout expired
         """
         await self.login()
@@ -545,7 +545,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         """Execute a HTTP GET with HTTPX.
 
         Raises:
-            ServerNotReacheableError if we are not able to connect to the server
+            ServerNotReachableError if we are not able to connect to the server
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         await self.login()
@@ -592,7 +592,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                     **params,
                 )
             except httpx.NetworkError as exc:
-                raise ServerNotReacheableError(address=self.address) from exc
+                raise ServerNotReachableError(address=self.address) from exc
             except httpx.ReadTimeout as exc:
                 raise ServerNotResponsiveError(url=url, timeout=timeout) from exc
 
@@ -900,7 +900,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                     resp.raise_for_status()
 
                 retry = False
-            except ServerNotReacheableError:
+            except ServerNotReachableError:
                 if retry:
                     self.log.warning(
                         f"Unable to connect to {self.address}, will retry in {self.retry_delay} seconds .."
@@ -1134,7 +1134,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         )  # type: ignore[arg-type]
 
         if len(results) == 0:
-            raise NodeNotFound(branch_name=branch, node_type=kind, identifier=filters)
+            raise NodeNotFoundError(branch_name=branch, node_type=kind, identifier=filters)
         if len(results) > 1:
             raise IndexError("More than 1 node returned")
 
@@ -1258,7 +1258,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         """Execute a HTTP GET with HTTPX.
 
         Raises:
-            ServerNotReacheableError if we are not able to connect to the server
+            ServerNotReachableError if we are not able to connect to the server
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         self.login()
@@ -1282,7 +1282,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         """Execute a HTTP POST with HTTPX.
 
         Raises:
-            ServerNotReacheableError if we are not able to connect to the server
+            ServerNotReachableError if we are not able to connect to the server
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         self.login()
@@ -1331,7 +1331,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                     **params,
                 )
             except httpx.NetworkError as exc:
-                raise ServerNotReacheableError(address=self.address) from exc
+                raise ServerNotReachableError(address=self.address) from exc
             except httpx.ReadTimeout as exc:
                 raise ServerNotResponsiveError(url=url, timeout=timeout) from exc
 

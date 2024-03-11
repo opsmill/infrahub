@@ -18,7 +18,7 @@ from typing import (
 )
 
 from infrahub_sdk.constants import InfrahubClientMode
-from infrahub_sdk.exceptions import Error, FeatureNotSupported, FilterNotFound, NodeNotFound
+from infrahub_sdk.exceptions import Error, FeatureNotSupportedError, FilterNotFoundError, NodeNotFoundError
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.schema import GenericSchema, RelationshipCardinality, RelationshipKind
 from infrahub_sdk.timestamp import Timestamp
@@ -318,7 +318,7 @@ class RelatedNode(RelatedNodeBase):
         if self.id and self.typename:
             return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
 
-        raise NodeNotFound(
+        raise NodeNotFoundError(
             branch_name=self._branch,
             node_type=self.schema.peer,
             identifier={"key": [self.id]},
@@ -367,7 +367,7 @@ class RelatedNodeSync(RelatedNodeBase):
         if self.id and self.typename:
             return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
 
-        raise NodeNotFound(
+        raise NodeNotFoundError(
             branch_name=self._branch,
             node_type=self.schema.peer,
             identifier={"key": [self.id]},
@@ -900,11 +900,11 @@ class InfrahubNodeBase:
 
     def _validate_artifact_support(self, message: str) -> None:
         if not self._artifact_support:
-            raise FeatureNotSupported(message)
+            raise FeatureNotSupportedError(message)
 
     def _validate_artifact_definition_support(self, message: str) -> None:
         if not self._artifact_definition_support:
-            raise FeatureNotSupported(message)
+            raise FeatureNotSupportedError(message)
 
     def generate_query_data_init(
         self,
@@ -946,7 +946,7 @@ class InfrahubNodeBase:
                     break
             if not found:
                 valid_filters = [entry.name for entry in self._schema.filters]
-                raise FilterNotFound(
+                raise FilterNotFoundError(
                     identifier=filter_name,
                     kind=self._schema.kind,
                     filters=valid_filters,

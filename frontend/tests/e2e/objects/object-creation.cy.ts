@@ -1,8 +1,8 @@
 /// <reference types="cypress" />
 
-import { ADMIN_CREDENTIALS } from "../constants";
-import { NEW_ACCOUNT } from "../mocks/e2e/accounts";
-import { waitFor } from "../utils";
+import { ADMIN_CREDENTIALS } from "../../constants";
+import { NEW_ACCOUNT } from "../../mocks/e2e/accounts";
+import { waitFor } from "../../utils";
 
 describe("Object creation and deletion", () => {
   let itemsNumber = 0;

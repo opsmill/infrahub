@@ -12,7 +12,7 @@ from infrahub.core.query.relationship import (
     RelationshipPeerData,
 )
 from infrahub.core.relationship import Relationship
-from infrahub.exceptions import NodeNotFound, ValidationError
+from infrahub.exceptions import NodeNotFoundError, ValidationError
 
 from ..types import RelatedNodeInput
 
@@ -55,7 +55,7 @@ class RelationshipMixin:
                 include_source=True,
             )
         ):
-            raise NodeNotFound(context.branch, None, data.get("id"))
+            raise NodeNotFoundError(context.branch, None, data.get("id"))
 
         # Check if the name of the relationship provided exist for this node and is of cardinality Many
         if data.get("name") not in source._schema.relationship_names:

@@ -9,7 +9,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import BranchNotFound, ValidationError
+from infrahub.exceptions import BranchNotFoundError, ValidationError
 
 
 async def test_branch_name_validator(db: InfrahubDatabase):
@@ -317,7 +317,7 @@ async def test_delete_branch(db: InfrahubDatabase, default_branch: Branch, repos
     post_delete = await db.execute_query(query=relationship_query, params=params)
 
     assert branch.id == found.id
-    with pytest.raises(BranchNotFound):
+    with pytest.raises(BranchNotFoundError):
         await Branch.get_by_name(name=branch_name, db=db)
 
     assert pre_delete

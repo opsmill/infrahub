@@ -432,6 +432,7 @@ select = [
     "I",     # isort-like checks
     "ICN",   # flake8-import-conventions
     "INP",   # flake8-no-pep420
+    "N",     # pep8-naming
     "PIE",   # flake8-pie
     "PL",    # pylint
     "PYI",   # flake8-pyi
@@ -467,6 +468,12 @@ ignore = [
     "C414",     # Unnecessary `list` call within `sorted()`
     "C419",     # Unnecessary list comprehension.
     "INP001",   # File is part of an implicit namespace package. Add an `__init__.py`.
+    "N801",     # Class name should use CapWords convention
+    "N802",     # Function name should be lowercase
+    "N805",     # First argument of a method should be named self
+    "N806",     # Variable in function should be lowercase
+    "N811",     # Constant imported as non-constant
+    "N812",     # Lowercase imported as non-lowercase
     "PIE804",   # [*] Unnecessary `dict` kwargs
     "PIE807",   # Prefer `dict` over useless lambda
     "PIE808",   # [*] Unnecessary `start` argument in `range`

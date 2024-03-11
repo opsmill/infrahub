@@ -4,7 +4,7 @@ import pytest
 from pytest_httpx import HTTPXMock
 
 from infrahub_sdk import InfrahubClient, InfrahubClientSync
-from infrahub_sdk.exceptions import FilterNotFound, NodeNotFound
+from infrahub_sdk.exceptions import FilterNotFoundError, NodeNotFoundError
 from infrahub_sdk.node import InfrahubNode, InfrahubNodeSync
 
 async_client_methods = [method for method in dir(InfrahubClient) if not method.startswith("_")]
@@ -162,7 +162,7 @@ async def test_method_get_by_id(httpx_mock: HTTPXMock, clients, mock_schema_quer
     if client_type == "standard":
         repo = await clients.standard.get(kind="CoreRepository", id=response_id)
         assert isinstance(repo, InfrahubNode)
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             assert clients.standard.store.get(key=response_id)
 
         repo = await clients.standard.get(kind="CoreRepository", id=response_id, populate_store=True)
@@ -170,7 +170,7 @@ async def test_method_get_by_id(httpx_mock: HTTPXMock, clients, mock_schema_quer
     else:
         repo = clients.sync.get(kind="CoreRepository", id=response_id)
         assert isinstance(repo, InfrahubNodeSync)
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             assert clients.sync.store.get(key=response_id)
 
         repo = clients.sync.get(kind="CoreRepository", id=response_id, populate_store=True)
@@ -207,7 +207,7 @@ async def test_method_get_by_default_filter(httpx_mock: HTTPXMock, clients, mock
     if client_type == "standard":
         repo = await clients.standard.get(kind="CoreRepository", id="infrahub-demo-core")
         assert isinstance(repo, InfrahubNode)
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             assert clients.standard.store.get(key=response_id)
 
         repo = await clients.standard.get(kind="CoreRepository", id="infrahub-demo-core", populate_store=True)
@@ -215,7 +215,7 @@ async def test_method_get_by_default_filter(httpx_mock: HTTPXMock, clients, mock
     else:
         repo = clients.sync.get(kind="CoreRepository", id="infrahub-demo-core")
         assert isinstance(repo, InfrahubNodeSync)
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             assert clients.sync.store.get(key="infrahub-demo-core")
 
         repo = clients.sync.get(kind="CoreRepository", id="infrahub-demo-core", populate_store=True)
@@ -259,7 +259,7 @@ async def test_method_get_by_name(httpx_mock: HTTPXMock, clients, mock_schema_qu
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_method_get_not_found(httpx_mock: HTTPXMock, clients, mock_query_repository_page1_empty, client_type):  # pylint: disable=unused-argument
-    with pytest.raises(NodeNotFound):
+    with pytest.raises(NodeNotFoundError):
         if client_type == "standard":
             await clients.standard.get(kind="CoreRepository", name__value="infrahub-demo-core")
         else:
@@ -283,7 +283,7 @@ async def test_method_get_found_many(
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_method_get_invalid_filter(httpx_mock: HTTPXMock, clients, mock_schema_query_01, client_type):  # pylint: disable=unused-argument
-    with pytest.raises(FilterNotFound) as excinfo:
+    with pytest.raises(FilterNotFoundError) as excinfo:
         if client_type == "standard":
             await clients.standard.get(kind="CoreRepository", name__name="infrahub-demo-core")
         else:

@@ -18,7 +18,7 @@ from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import NodeNotFound, SchemaNotFound
+from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -318,7 +318,7 @@ class NodeManager:
 
         node_schema = registry.schema.get(name=schema_name, branch=branch)
         if not node_schema.default_filter:
-            raise NodeNotFound(branch_name=branch.name, node_type=schema_name, identifier=id)
+            raise NodeNotFoundError(branch_name=branch.name, node_type=schema_name, identifier=id)
 
         items = await NodeManager.query(
             db=db,
@@ -335,7 +335,7 @@ class NodeManager:
         )
 
         if len(items) > 1:
-            raise NodeNotFound(
+            raise NodeNotFoundError(
                 branch_name=branch.name,
                 node_type=schema_name,
                 identifier=id,
@@ -388,7 +388,7 @@ class NodeManager:
             account=account,
         )
         if not node:
-            raise NodeNotFound(branch_name=branch.name, node_type=schema_name, identifier=id)
+            raise NodeNotFoundError(branch_name=branch.name, node_type=schema_name, identifier=id)
         return node
 
     @classmethod
@@ -424,7 +424,7 @@ class NodeManager:
         node = result[id]
 
         if kind and node.get_kind() != kind:
-            raise NodeNotFound(
+            raise NodeNotFoundError(
                 branch_name=branch.name,
                 node_type=kind,
                 identifier=id,
@@ -506,7 +506,7 @@ class NodeManager:
             attrs = {"db_id": node.node_id, "id": node_id, "updated_at": node.updated_at}
 
             if not node.schema:
-                raise SchemaNotFound(
+                raise SchemaNotFoundError(
                     branch_name=branch.name,
                     identifier=node_id,
                     message=f"Unable to find the Schema associated with {node_id}, {node.labels}",
