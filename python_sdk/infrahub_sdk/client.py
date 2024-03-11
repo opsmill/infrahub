@@ -6,7 +6,7 @@ import json
 import logging
 from logging import Logger
 from time import sleep
-from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, NotRequired, Optional, Type, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
 
 import httpx
 from typing_extensions import Self
