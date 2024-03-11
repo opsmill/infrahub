@@ -12,7 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import NodeNotFound, PermissionDeniedError
+from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
 
 from ..types import InfrahubObjectType
 
@@ -61,7 +61,7 @@ class AccountMixin:
             schema=InfrahubKind.ACCOUNT, filters={"ids": [context.account_session.account_id]}, db=context.db
         )
         if not results:
-            raise NodeNotFound(node_type=InfrahubKind.ACCOUNT, identifier=context.account_session.account_id)
+            raise NodeNotFoundError(node_type=InfrahubKind.ACCOUNT, identifier=context.account_session.account_id)
 
         account = results[0]
 

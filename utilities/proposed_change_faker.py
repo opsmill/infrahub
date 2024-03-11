@@ -11,7 +11,7 @@ import tempfile
 from typing import Any
 
 from infrahub_sdk.client import InfrahubClient
-from infrahub_sdk.exceptions import BranchNotFound, NodeNotFound
+from infrahub_sdk.exceptions import BranchNotFoundError, NodeNotFoundError
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.timestamp import Timestamp
 
@@ -76,7 +76,7 @@ async def create_checks(
                 try:
                     c = await client.get(check_kind, validator__ids=validator.id, conclusion__value=conclusion)
                     log.info(f"- Found check: {c!r} with conclusion {conclusion}")
-                except NodeNotFound:
+                except NodeNotFoundError:
                     c = await client.create(check_kind, data=check_data)
                     await c.save()
                     log.info(f"- Created check: {c!r} with conclusion {conclusion}")
@@ -106,7 +106,7 @@ async def create_validators(
             try:
                 v = await client.get(validator_kind, proposed_change__ids=proposed_change.id, state__value=state)
                 log.info(f"- Found validator: {v!r} with state {state}")
-            except NodeNotFound:
+            except NodeNotFoundError:
                 # State and name
                 create_data.update(
                     {
@@ -132,7 +132,7 @@ async def create_repository(client: InfrahubClient, log: logging.Logger) -> Infr
     try:
         new_repository = await client.get(kind="CoreRepository", name__value=repo_name)
         log.info(f"- Found repository: {new_repository!r}")
-    except NodeNotFound:
+    except NodeNotFoundError:
         new_repository = await client.create(kind="CoreRepository", data={"name": repo_name, "location": temp_dir.name})
         await new_repository.save()
         log.info(f"- Created repository: {new_repository!r}")
@@ -148,7 +148,7 @@ async def create_proposed_change(client: InfrahubClient, log: logging.Logger) ->
     try:
         new_branch = await client.branch.get(branch_name)
         log.info(f"- Found branch: {new_branch!r}")
-    except BranchNotFound:
+    except BranchNotFoundError:
         new_branch = await client.branch.create(
             branch_name="dummy-branch", data_only=True, description="Empty shell for testing validators and checks"
         )
@@ -157,7 +157,7 @@ async def create_proposed_change(client: InfrahubClient, log: logging.Logger) ->
     try:
         new_proposed_change = await client.get(kind="CoreProposedChange", name__value="validators-checks-faker")
         log.info(f"- Found proposed change: {new_proposed_change!r}")
-    except NodeNotFound:
+    except NodeNotFoundError:
         new_proposed_change = await client.create(
             "CoreProposedChange",
             data={"name": "validators-checks-faker", "source_branch": "dummy-branch", "destination_branch": "main"},

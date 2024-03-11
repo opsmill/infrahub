@@ -8,7 +8,7 @@ from infrahub_sdk import (
     NodeSchema,
     NodeStoreSync,
 )
-from infrahub_sdk.exceptions import NodeNotFound
+from infrahub_sdk.exceptions import NodeNotFoundError
 from infrahub_sdk.utils import compare_lists
 
 from diffsync import DiffSync, DiffSyncModel
@@ -64,7 +64,7 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
         remote_account = config.source.name
         try:
             self.account = self.client.get(kind="CoreAccount", name__value=remote_account)
-        except NodeNotFound:
+        except NodeNotFoundError:
             self.account = None
 
     def model_loader(self, model_name: str, model):

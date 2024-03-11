@@ -8,7 +8,7 @@ from infrahub_sdk.client import NodeDiff  # noqa: TCH002
 from pydantic import BaseModel, Field
 
 from infrahub.core.constants import InfrahubKind
-from infrahub.exceptions import NodeNotFound
+from infrahub.exceptions import NodeNotFoundError
 
 SCHEMA_CHANGE = re.compile("^Schema[A-Z]")
 
@@ -95,7 +95,7 @@ class ProposedChangeBranchDiff(BaseModel):
         for repository in self.repositories:
             if repository_id == repository.repository_id:
                 return repository
-        raise NodeNotFound(node_type="Repository", identifier=repository_id)
+        raise NodeNotFoundError(node_type="Repository", identifier=repository_id)
 
     def get_subscribers_ids(self, kind: str) -> list[str]:
         return [subscriber.subscriber_id for subscriber in self.subscribers if subscriber.kind == kind]

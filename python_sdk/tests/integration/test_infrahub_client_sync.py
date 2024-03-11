@@ -6,7 +6,7 @@ from infrahub.server import app
 
 from infrahub_sdk import Config, InfrahubClientSync
 from infrahub_sdk.constants import InfrahubClientMode
-from infrahub_sdk.exceptions import BranchNotFound
+from infrahub_sdk.exceptions import BranchNotFoundError
 from infrahub_sdk.node import InfrahubNodeSync
 
 from .conftest import InfrahubTestClient
@@ -86,7 +86,7 @@ class TestInfrahubClientSync:
         branches = client.branch.all()
         main = client.branch.get(branch_name="main")
 
-        with pytest.raises(BranchNotFound):
+        with pytest.raises(BranchNotFoundError):
             client.branch.get(branch_name="not-found")
 
         assert main.name == "main"

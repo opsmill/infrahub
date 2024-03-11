@@ -12,7 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.task import Task
 from infrahub.core.task_log import TaskLog
 from infrahub.core.timestamp import current_timestamp
-from infrahub.exceptions import NodeNotFound
+from infrahub.exceptions import NodeNotFoundError
 from infrahub.graphql.types.task_log import RelatedTaskLogCreateInput
 
 if TYPE_CHECKING:
@@ -66,7 +66,7 @@ class TaskCreate(Mutation):
         if not (
             related_node := await NodeManager.get_one(db=context.db, id=str(data.related_node), branch=context.branch)
         ):
-            raise NodeNotFound(
+            raise NodeNotFoundError(
                 node_type="related_node",
                 identifier=str(data.related_node),
                 message="The indicated related node was not found in the database",
@@ -120,7 +120,7 @@ class TaskUpdate(Mutation):
         fields = await extract_fields_first_node(info)
 
         if not task:
-            raise NodeNotFound(node_type="Task", identifier=task_id, message="The requested Task was not found")
+            raise NodeNotFoundError(node_type="Task", identifier=task_id, message="The requested Task was not found")
 
         if data.title:
             task.title = str(data.title)

@@ -19,7 +19,7 @@ from infrahub.core.query.branch import (
 )
 from infrahub.core.registry import get_branch_from_registry, registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import BranchNotFound, InitializationError, ValidationError
+from infrahub.exceptions import BranchNotFoundError, InitializationError, ValidationError
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -130,7 +130,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
         results = await db.execute_query(query=query, params=params, name="branch_get_by_name")
 
         if len(results) == 0:
-            raise BranchNotFound(identifier=name)
+            raise BranchNotFoundError(identifier=name)
 
         return cls.from_db(results[0].values()[0])
 

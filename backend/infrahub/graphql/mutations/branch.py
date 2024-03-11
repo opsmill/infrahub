@@ -12,7 +12,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.schema.runner import schema_migrations_runner
-from infrahub.exceptions import BranchNotFound
+from infrahub.exceptions import BranchNotFoundError
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
@@ -57,7 +57,7 @@ class BranchCreate(Mutation):
         try:
             await Branch.get_by_name(db=context.db, name=data["name"])
             raise ValueError(f"The branch {data['name']}, already exist")
-        except BranchNotFound:
+        except BranchNotFoundError:
             pass
 
         try:

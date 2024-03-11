@@ -52,7 +52,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.utils import parse_node_kind
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
-from infrahub.exceptions import SchemaNotFound
+from infrahub.exceptions import SchemaNotFoundError
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
 from infrahub.utils import format_label
@@ -282,7 +282,7 @@ class SchemaBranch:
         if key and not duplicate:
             return self._cache[key]
 
-        raise SchemaNotFound(
+        raise SchemaNotFoundError(
             branch_name=self.name, identifier=name, message=f"Unable to find the schema {name!r} in the registry"
         )
 
@@ -306,7 +306,7 @@ class SchemaBranch:
         elif name in self.generics:
             del self.generics[name]
         else:
-            raise SchemaNotFound(
+            raise SchemaNotFoundError(
                 branch_name=self.name, identifier=name, message=f"Unable to find the schema {name!r} in the registry"
             )
 
@@ -319,7 +319,7 @@ class SchemaBranch:
                 return node
             return self.get(name=name, duplicate=True)
 
-        raise SchemaNotFound(
+        raise SchemaNotFoundError(
             branch_name=self.name,
             identifier=id,
             message=f"Unable to find the schema with the id {id!r} in the registry",
@@ -329,7 +329,7 @@ class SchemaBranch:
         try:
             self.get(name=name, duplicate=False)
             return True
-        except SchemaNotFound:
+        except SchemaNotFoundError:
             return False
 
     def get_all(
@@ -388,7 +388,7 @@ class SchemaBranch:
                     new_item = self.get(name=item.kind)
                 new_item.update(item)
                 self.set(name=item.kind, schema=new_item)
-            except SchemaNotFound:
+            except SchemaNotFoundError:
                 self.set(name=item.kind, schema=item)
 
         for node_extension in schema.extensions.nodes:
@@ -632,7 +632,7 @@ class SchemaBranch:
             if node.menu_placement:
                 try:
                     placement_node = self.get(name=node.menu_placement, duplicate=False)
-                except SchemaNotFound:
+                except SchemaNotFoundError:
                     raise ValueError(f"{node.kind}: {node.menu_placement} is not a valid menu placement") from None
 
                 if node == placement_node:
@@ -1234,7 +1234,7 @@ class SchemaManager(NodeManager):
         try:
             self.get(name=name, branch=branch, duplicate=False)
             return True
-        except SchemaNotFound:
+        except SchemaNotFoundError:
             return False
 
     def get(
@@ -1246,7 +1246,7 @@ class SchemaManager(NodeManager):
         if branch.name in self._branches:
             try:
                 return self._branches[branch.name].get(name=name, duplicate=duplicate)
-            except SchemaNotFound:
+            except SchemaNotFoundError:
                 pass
 
         default_branch = registry.default_branch
@@ -1457,7 +1457,7 @@ class SchemaManager(NodeManager):
 
         obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
         if not obj:
-            raise SchemaNotFound(
+            raise SchemaNotFoundError(
                 branch_name=branch.name,
                 identifier=node.id,
                 message=f"Unable to find the Schema associated with {node.id}, {node.kind}",
