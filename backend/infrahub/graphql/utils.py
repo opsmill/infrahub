@@ -11,6 +11,7 @@ from graphql import (  # pylint: disable=no-name-in-module
     GraphQLObjectType,
     GraphQLResolveInfo,
     GraphQLSchema,
+    GraphQLUnionType,
     InlineFragmentNode,
     SelectionSetNode,
 )
@@ -221,8 +222,14 @@ def find_types_implementing_interface(
     return results
 
 
-async def extract_schema_models(fields: dict, schema: GrapheneObjectType, root_schema: GraphQLSchema) -> Set[str]:
+async def extract_schema_models(
+    fields: dict, schema: Union[GrapheneObjectType, GraphQLUnionType], root_schema: GraphQLSchema
+) -> Set[str]:
     response = set()
+
+    if isinstance(schema, GraphQLUnionType):
+        return {t.name for t in schema.types}
+
     for field_name, value in fields.items():
         if field_name not in schema.fields:
             continue

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from infrahub.graphql import GraphqlContext
 
 
-class DiffSummaryEntry(ObjectType):
+class DiffSummaryEntryOld(ObjectType):
     branch = String(required=True)
     node = String(required=True)
     kind = String(required=True)
@@ -26,7 +26,7 @@ class DiffSummaryEntry(ObjectType):
         time_from: Optional[str] = None,
         time_to: Optional[str] = None,
     ) -> list[Dict[str, Union[str, list[str]]]]:
-        return await DiffSummaryEntry.get_summary(
+        return await DiffSummaryEntryOld.get_summary(
             info=info,
             branch_only=branch_only,
             time_from=time_from or None,
@@ -49,10 +49,10 @@ class DiffSummaryEntry(ObjectType):
         return [entry.to_graphql() for entry in summary]
 
 
-DiffSummary = Field(
-    List(DiffSummaryEntry),
+DiffSummaryOld = Field(
+    List(DiffSummaryEntryOld),
     time_from=String(required=False),
     time_to=String(required=False),
     branch_only=Boolean(required=False, default_value=False),
-    resolver=DiffSummaryEntry.resolve,
+    resolver=DiffSummaryEntryOld.resolve,
 )

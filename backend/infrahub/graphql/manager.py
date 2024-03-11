@@ -21,6 +21,11 @@ from .mutations import (
     InfrahubProposedChangeMutation,
     InfrahubRepositoryMutation,
 )
+from .queries.diff.diff import (
+    DiffSummaryElementAttribute,
+    DiffSummaryElementRelationshipMany,
+    DiffSummaryElementRelationshipOne,
+)
 from .resolver import (
     ancestors_resolver,
     default_resolver,
@@ -64,6 +69,12 @@ def get_attr_kind(node_schema: Union[NodeSchema, GenericSchema], attr_schema: At
 
 
 class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
+    _extra_types: Dict[str, GraphQLTypes] = {
+        "DiffSummaryElementAttribute": DiffSummaryElementAttribute,
+        "DiffSummaryElementRelationshipOne": DiffSummaryElementRelationshipOne,
+        "DiffSummaryElementRelationshipMany": DiffSummaryElementRelationshipMany,
+    }
+
     def __init__(self, schema: SchemaBranch):
         self.schema = schema
 
@@ -134,7 +145,9 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         raise ValueError(f"Unable to find {name!r}")
 
     def get_all(self) -> Dict[str, GraphQLTypes]:
-        return self._graphql_types
+        infrahub_types = self._graphql_types
+        infrahub_types.update(self._extra_types)
+        return infrahub_types
 
     def set_type(self, name: str, graphql_type: GraphQLTypes) -> None:
         self._graphql_types[name] = graphql_type
