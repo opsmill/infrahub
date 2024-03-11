@@ -71,10 +71,7 @@ if TYPE_CHECKING:
 # pylint: disable=redefined-builtin,too-many-public-methods,too-many-lines
 
 INTERNAL_SCHEMA_NODE_KINDS = [node["namespace"] + node["name"] for node in internal_schema["nodes"]]
-SUPPORTED_SCHEMA_NODE_TYPE = [
-    "SchemaGeneric",
-    "SchemaNode",
-]
+
 SUPPORTED_SCHEMA_EXTENSION_TYPE = ["NodeExtensionSchema"]
 
 KIND_FILTER_MAP = {
@@ -1412,9 +1409,6 @@ class SchemaManager(NodeManager):
         if isinstance(node, GenericSchema):
             node_type = "SchemaGeneric"
 
-        if node_type not in SUPPORTED_SCHEMA_NODE_TYPE:
-            raise ValueError(f"Only schema node of type {SUPPORTED_SCHEMA_NODE_TYPE} are supported: {node_type}")
-
         node_schema = self.get_node_schema(name=node_type, branch=branch)
         attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
         relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
@@ -1459,17 +1453,7 @@ class SchemaManager(NodeManager):
         """Update a Node with its attributes and its relationships in the database."""
         branch = await get_branch(branch=branch, db=db)
 
-        if isinstance(node, GenericSchema):
-            node_type = "SchemaGeneric"
-        elif isinstance(node, NodeSchema):
-            node_type = "SchemaNode"
-
-        if node_type not in SUPPORTED_SCHEMA_NODE_TYPE:
-            raise ValueError(f"Only schema node of type {SUPPORTED_SCHEMA_NODE_TYPE} are supported: {node_type}")
-
-        if not node.id:
-            raise ValueError(f"id is not defined on {node.kind}")
-        obj = await self.get_one(id=node.id, branch=branch, db=db)
+        obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
         if not obj:
             raise SchemaNotFound(
                 branch_name=branch.name,
@@ -1533,17 +1517,7 @@ class SchemaManager(NodeManager):
         """Update a Node with its attributes and its relationships in the database based on a HashableModelDiff."""
         branch = await get_branch(branch=branch, db=db)
 
-        if isinstance(node, GenericSchema):
-            node_type = "SchemaGeneric"
-        elif isinstance(node, NodeSchema):
-            node_type = "SchemaNode"
-
-        if node_type not in SUPPORTED_SCHEMA_NODE_TYPE:
-            raise ValueError(f"Only schema node of type {SUPPORTED_SCHEMA_NODE_TYPE} are supported: {node_type}")
-
-        if not node.id:
-            raise ValueError(f"id is not defined on {node.kind}")
-        obj = await self.get_one(id=node.id, branch=branch, db=db)
+        obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
         if not obj:
             raise SchemaNotFound(
                 branch_name=branch.name,
@@ -1653,17 +1627,7 @@ class SchemaManager(NodeManager):
         """Delete the node with its attributes and relationships."""
         branch = await get_branch(branch=branch, db=db)
 
-        if isinstance(node, GenericSchema):
-            node_type = "SchemaGeneric"
-        elif isinstance(node, NodeSchema):
-            node_type = "SchemaNode"
-
-        if node_type not in SUPPORTED_SCHEMA_NODE_TYPE:
-            raise ValueError(f"Only schema node of type {SUPPORTED_SCHEMA_NODE_TYPE} are supported: {node_type}")
-
-        if not node.id:
-            raise ValueError(f"id is not defined on {node.kind}")
-        obj = await self.get_one(id=node.id, branch=branch, db=db)
+        obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
         if not obj:
             raise SchemaNotFound(
                 branch_name=branch.name,

@@ -41,6 +41,11 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
     def menu_title(self) -> str:
         return self.label or self.name
 
+    def get_id(self) -> str:
+        if self.id:
+            return self.id
+        raise ValueError(f"id is not defined on {self.kind}")
+
     def __hash__(self) -> int:
         """Return a hash of the object.
         Be careful hash generated from hash() have a salt by default and they will not be the same across run"""
