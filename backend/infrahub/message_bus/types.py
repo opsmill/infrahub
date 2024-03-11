@@ -122,7 +122,7 @@ class ProposedChangeBranchDiff(BaseModel):
     def modified_nodes(self, branch: str) -> list[str]:
         """Return a list of non schema nodes that have been modified on the branch"""
         return [
-            entry["node"]
+            entry["id"]
             for entry in self.diff_summary
             if entry["branch"] == branch and not SCHEMA_CHANGE.match(entry["kind"])
         ]

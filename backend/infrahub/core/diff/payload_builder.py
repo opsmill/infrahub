@@ -1,16 +1,35 @@
 from __future__ import annotations
 
 import copy
-import enum
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
-
-from pydantic import BaseModel, ConfigDict, Field
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 from infrahub.core import get_branch, registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.manager import NodeManager
 from infrahub.log import get_logger
+
+from .model import (
+    BranchDiff,
+    BranchDiffAttribute,
+    BranchDiffElement,
+    BranchDiffElementAttribute,
+    BranchDiffElementRelationshipMany,
+    BranchDiffElementRelationshipManyPeer,
+    BranchDiffElementRelationshipOne,
+    BranchDiffEntry,
+    BranchDiffNode,
+    BranchDiffProperty,
+    BranchDiffPropertyCollection,
+    BranchDiffRelationshipMany,
+    BranchDiffRelationshipManyElement,
+    BranchDiffRelationshipOne,
+    BranchDiffRelationshipOnePeer,
+    BranchDiffRelationshipOnePeerCollection,
+    BranchDiffRelationshipOnePeerValue,
+    BranchDiffRelationshipPeerNode,
+    DiffElementType,
+)
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -20,266 +39,6 @@ if TYPE_CHECKING:
 
 
 log = get_logger(__name__)
-
-
-class DiffElementType(str, enum.Enum):
-    ATTRIBUTE = "Attribute"
-    RELATIONSHIP_ONE = "RelationshipOne"
-    RELATIONSHIP_MANY = "RelationshipMany"
-
-
-class DiffSummary(BaseModel):
-    added: int = 0
-    removed: int = 0
-    updated: int = 0
-
-    def inc(self, name: str) -> int:
-        """Increase one of the counter by 1.
-
-        Return the new value of the counter.
-        """
-        try:
-            cnt = getattr(self, name)
-        except AttributeError as exc:
-            raise ValueError(f"{name} is not a valid counter in DiffSummary.") from exc
-
-        new_value = cnt + 1
-        setattr(self, name, new_value)
-
-        return new_value
-
-
-class BranchDiffPropertyValue(BaseModel):
-    new: Any = None
-    previous: Any = None
-
-
-class BranchDiffProperty(BaseModel):
-    branch: str
-    type: str
-    changed_at: Optional[str] = None
-    action: DiffAction
-    value: BranchDiffPropertyValue
-
-
-class BranchDiffPropertyCollection(BaseModel):
-    path: str
-    changes: List[BranchDiffProperty] = Field(default_factory=list)
-
-    def add_change(self, change: BranchDiffProperty) -> bool:
-        current_branches = [item.branch for item in self.changes]
-        if change.branch not in current_branches:
-            self.changes.append(change)
-            return True
-
-        return False
-
-
-class BranchDiffAttribute(BaseModel):
-    type: DiffElementType = DiffElementType.ATTRIBUTE
-    name: str
-    id: str
-    changed_at: Optional[str] = None
-    summary: DiffSummary = DiffSummary()
-    action: DiffAction
-    value: Optional[BranchDiffProperty] = None
-    properties: List[BranchDiffProperty] = Field(default_factory=list)
-
-
-class BranchDiffRelationshipPeerNode(BaseModel):
-    id: str
-    kind: str
-    display_label: Optional[str] = None
-
-
-# OLD
-class BranchDiffRelationshipOnePeerValue(BaseModel):
-    new: Optional[BranchDiffRelationshipPeerNode] = None
-    previous: Optional[BranchDiffRelationshipPeerNode] = None
-
-
-# OLD
-class BranchDiffRelationshipOne(BaseModel):
-    type: DiffElementType = DiffElementType.RELATIONSHIP_ONE
-    branch: str
-    id: str
-    identifier: str
-    summary: DiffSummary = DiffSummary()
-    name: str
-    peer: BranchDiffRelationshipOnePeerValue
-    properties: List[BranchDiffProperty] = Field(default_factory=list)
-    changed_at: Optional[str] = None
-    action: DiffAction
-
-
-# OLD
-class BranchDiffRelationshipManyElement(BaseModel):
-    branch: str
-    id: str
-    identifier: str
-    summary: DiffSummary = DiffSummary()
-    peer: BranchDiffRelationshipPeerNode
-    properties: List[BranchDiffProperty] = Field(default_factory=list)
-    changed_at: Optional[str] = None
-    action: DiffAction
-
-
-# OLD
-class BranchDiffRelationshipMany(BaseModel):
-    type: DiffElementType = DiffElementType.RELATIONSHIP_MANY
-    branch: str
-    identifier: str
-    summary: DiffSummary = DiffSummary()
-    name: str
-    peers: List[BranchDiffRelationshipManyElement] = Field(default_factory=list)
-
-    @property
-    def action(self) -> DiffAction:
-        if self.summary.added and not self.summary.updated and not self.summary.removed:
-            return DiffAction.ADDED
-        if not self.summary.added and not self.summary.updated and self.summary.removed:
-            return DiffAction.REMOVED
-        return DiffAction.UPDATED
-
-
-# NEW
-class BranchDiffElementAttribute(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    type: DiffElementType = DiffElementType.ATTRIBUTE
-    branches: List[str] = Field(default_factory=list)
-    id: str = ""
-    summary: DiffSummary = DiffSummary()
-    action: DiffAction = DiffAction.UNCHANGED
-    value: Optional[BranchDiffPropertyCollection] = None
-    properties: Dict[str, BranchDiffPropertyCollection] = Field(default_factory=dict)
-
-
-# NEW
-class BranchDiffRelationshipOnePeer(BaseModel):
-    branch: str
-    new: Optional[BranchDiffRelationshipPeerNode] = None
-    previous: Optional[BranchDiffRelationshipPeerNode] = None
-
-
-class BranchDiffRelationshipOnePeerCollection(BaseModel):
-    path: str
-    changes: List[BranchDiffRelationshipOnePeer] = Field(default_factory=list)
-
-    def add_change(self, change: BranchDiffRelationshipOnePeer) -> bool:
-        current_branches = [item.branch for item in self.changes]
-        if change.branch not in current_branches:
-            self.changes.append(change)
-            return True
-
-        return False
-
-
-# NEW
-class BranchDiffElementRelationshipOne(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    type: DiffElementType = DiffElementType.RELATIONSHIP_ONE
-    id: str = ""
-    identifier: str = ""
-    branches: List[str] = Field(default_factory=list)
-    summary: DiffSummary = DiffSummary()
-    peer: Optional[BranchDiffRelationshipOnePeerCollection] = None
-    properties: Dict[str, BranchDiffPropertyCollection] = Field(default_factory=dict)
-    changed_at: Optional[str] = None
-    action: Dict[str, DiffAction] = Field(default_factory=dict)
-
-
-class BranchDiffElementRelationshipManyPeer(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    branches: Set[str] = Field(default_factory=set)
-    peer: BranchDiffRelationshipPeerNode
-    path: str
-    properties: Dict[str, BranchDiffPropertyCollection] = Field(default_factory=dict)
-    changed_at: Optional[str] = None
-    action: Dict[str, DiffAction] = Field(default_factory=dict)
-
-
-# NEW
-class BranchDiffElementRelationshipMany(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    type: DiffElementType = DiffElementType.RELATIONSHIP_MANY
-    identifier: str = ""
-    branches: Set[str] = Field(default_factory=set)
-    summary: DiffSummary = DiffSummary()
-    peers: Dict[str, BranchDiffElementRelationshipManyPeer] = Field(default_factory=dict)
-
-
-# NEW
-class BranchDiffElement(BaseModel):
-    type: DiffElementType
-    name: str
-    path: str
-    change: Union[BranchDiffElementAttribute, BranchDiffElementRelationshipOne, BranchDiffElementRelationshipMany]
-
-
-# OLD
-class BranchDiffNode(BaseModel):
-    branch: str
-    kind: str
-    id: str
-    summary: DiffSummary = DiffSummary()
-    display_label: str
-    changed_at: Optional[str] = None
-    action: DiffAction
-    elements: Dict[str, Union[BranchDiffRelationshipOne, BranchDiffRelationshipMany, BranchDiffAttribute]] = Field(
-        default_factory=dict
-    )
-
-
-# NEW
-class BranchDiffEntry(BaseModel):
-    kind: str
-    id: str
-    path: str
-    elements: Dict[str, BranchDiffElement] = Field(default_factory=dict)
-    summary: DiffSummary = DiffSummary()
-    action: Dict[str, DiffAction] = Field(default_factory=dict)
-    display_label: Dict[str, str] = Field(default_factory=dict)
-
-
-#  NEW
-class BranchDiff(BaseModel):
-    diffs: List[BranchDiffEntry] = Field(default_factory=list)
-
-
-class BranchDiffFile(BaseModel):
-    branch: str
-    location: str
-    action: DiffAction
-
-
-class BranchDiffRepository(BaseModel):
-    branch: str
-    id: str
-    display_name: Optional[str] = None
-    commit_from: str
-    commit_to: str
-    files: List[BranchDiffFile] = Field(default_factory=list)
-
-
-class BranchDiffArtifactStorage(BaseModel):
-    storage_id: str
-    checksum: str
-
-
-class ArtifactTarget(BaseModel):
-    id: str
-    kind: str
-    display_label: Optional[str] = None
-
-
-class BranchDiffArtifact(BaseModel):
-    branch: str
-    id: str
-    display_label: Optional[str] = None
-    action: DiffAction
-    target: Optional[ArtifactTarget] = None
-    item_new: Optional[BranchDiffArtifactStorage] = None
-    item_previous: Optional[BranchDiffArtifactStorage] = None
 
 
 async def get_display_labels_per_kind(
@@ -317,11 +76,11 @@ class DiffPayloadBuilder:
         self.display_labels: Dict[str, Dict[str, str]] = {}
         self.rels: Dict[str, Dict[str, Dict[str, RelationshipDiffElement]]] = {}
         self.nodes: Dict[str, Dict[str, NodeDiffElement]] = {}
-        self.nodes_in_diff: Set[str] = set()
         self.is_parsed: bool = False
 
-    def _add_node_summary(self, node_id: str, action: DiffAction) -> None:
-        self.entries[node_id].summary.inc(action.value)
+    def _add_node_summary(self, branch_diff_node: BranchDiffNode, action: DiffAction) -> None:
+        self.entries[branch_diff_node.id].summary.inc(action.value)
+        branch_diff_node.summary.inc(action.value)
 
     def _set_display_label(self, node_id: str, branch: str, display_label: str) -> None:
         if not display_label:
@@ -350,10 +109,11 @@ class DiffPayloadBuilder:
 
     def _add_node_element_attribute(
         self,
-        node_id: str,
-        branch: str,
+        branch_diff_node: BranchDiffNode,
         element: BranchDiffAttribute,
     ) -> None:
+        node_id = branch_diff_node.id
+        branch = branch_diff_node.branch
         if element.name not in self.entries[node_id].elements:
             self.entries[node_id].elements[element.name] = BranchDiffElement(
                 type=element.type,
@@ -367,6 +127,7 @@ class DiffPayloadBuilder:
         if not isinstance(change, BranchDiffElementAttribute):
             return
 
+        branch_diff_node_element = branch_diff_node.elements.get(element.name)
         change.branches.append(branch)
         if element.value:
             if not change.value:
@@ -380,7 +141,9 @@ class DiffPayloadBuilder:
                     value=element.value.value,
                 )
             )
-            diff_element.change.summary.inc(element.value.action.value)
+            change.summary.inc(element.value.action.value)
+            if branch_diff_node_element:
+                branch_diff_node_element.summary.inc(element.value.action.value)
 
         for prop in element.properties:
             if prop.type not in change.properties:
@@ -389,31 +152,33 @@ class DiffPayloadBuilder:
                 )
             change.properties[prop.type].changes.append(prop)
             change.summary.inc(prop.action.value)
+            if branch_diff_node_element and element.value:
+                branch_diff_node_element.summary.inc(element.value.action.value)
 
     def _add_node_element_relationship(
         self,
-        node_id: str,
+        branch_diff_node: BranchDiffNode,
         element_name: str,
-        branch: str,
         relationship: Union[BranchDiffRelationshipOne, BranchDiffRelationshipMany],
     ) -> None:
         if isinstance(relationship, BranchDiffRelationshipOne):
             self._add_node_element_relationship_one(
-                node_id=node_id, element_name=element_name, branch=branch, relationship=relationship
+                branch_diff_node=branch_diff_node, element_name=element_name, relationship=relationship
             )
             return
 
         self._add_node_element_relationship_many(
-            node_id=node_id, element_name=element_name, branch=branch, relationship=relationship
+            branch_diff_node=branch_diff_node, element_name=element_name, relationship=relationship
         )
 
     def _add_node_element_relationship_one(
         self,
-        node_id: str,
+        branch_diff_node: BranchDiffNode,
         element_name: str,
-        branch: str,
         relationship: BranchDiffRelationshipOne,
     ) -> None:
+        node_id = branch_diff_node.id
+        branch = branch_diff_node.branch
         if element_name not in self.entries[node_id].elements:
             self.entries[node_id].elements[element_name] = BranchDiffElement(
                 type=DiffElementType.RELATIONSHIP_ONE,
@@ -427,6 +192,7 @@ class DiffPayloadBuilder:
         if not isinstance(change, BranchDiffElementRelationshipOne):
             return
 
+        branch_diff_node_element = branch_diff_node.elements.get(element_name)
         if branch not in change.branches:
             change.branches.append(branch)
 
@@ -449,16 +215,19 @@ class DiffPayloadBuilder:
                 )
             if change.properties[prop.type].add_change(prop):
                 change.summary.inc(prop.action.value)
+                if branch_diff_node_element:
+                    branch_diff_node_element.summary.inc(prop.action.value)
 
         # Fix: Add summary to element
 
     def _add_node_element_relationship_many(
         self,
-        node_id: str,
+        branch_diff_node: BranchDiffNode,
         element_name: str,
-        branch: str,
         relationship: BranchDiffRelationshipMany,
     ) -> None:
+        node_id = branch_diff_node.id
+        branch = branch_diff_node.branch
         if element_name not in self.entries[node_id].elements:
             self.entries[node_id].elements[element_name] = BranchDiffElement(
                 type=DiffElementType.RELATIONSHIP_MANY,
@@ -472,6 +241,7 @@ class DiffPayloadBuilder:
         if not isinstance(change, BranchDiffElementRelationshipMany):
             return
 
+        branch_diff_node_element = branch_diff_node.elements.get(element_name)
         if branch not in change.branches:
             change.branches.add(branch)
 
@@ -482,6 +252,8 @@ class DiffPayloadBuilder:
             # Update Action, Branches and Summary
             change.branches.add(peer.branch)
             self.entries[node_id].summary.inc(peer.action.value)
+            if branch_diff_node_element:
+                branch_diff_node_element.summary.inc(peer.action.value)
 
             if peer.peer.id not in change.peers:
                 change.peers[peer.peer.id] = BranchDiffElementRelationshipManyPeer(
@@ -501,6 +273,8 @@ class DiffPayloadBuilder:
                     )
                 peer_element.properties[prop.type].changes.append(prop)
                 change.summary.inc(prop.action.value)
+                if branch_diff_node_element:
+                    branch_diff_node_element.summary.inc(prop.action.value)
 
     async def _process_nodes(self) -> None:
         # Generate the Diff per node and associated the appropriate relationships if they are present in the schema
@@ -512,7 +286,6 @@ class DiffPayloadBuilder:
                 branch_diff_node = await self._process_one_node(node_diff=item, branch_name=branch_name)
 
                 self.diffs.append(branch_diff_node)
-                self.nodes_in_diff.add(branch_diff_node.id)
 
     async def _process_one_node(self, node_diff: NodeDiffElement, branch_name: str) -> BranchDiffNode:
         node_diff_graphql = node_diff.to_graphql()
@@ -520,6 +293,7 @@ class DiffPayloadBuilder:
         # We need to convert the list of attributes to a dict under elements
         node_diff_dict = copy.deepcopy(node_diff_graphql)
         del node_diff_dict["attributes"]
+        node_diff_dict["branch"] = branch_name
         node_diff_elements = {attr["name"]: attr for attr in node_diff_graphql["attributes"]}
 
         display_label = self._get_node_display_label(branch_name=branch_name, node_id=node_diff.id)
@@ -533,8 +307,7 @@ class DiffPayloadBuilder:
         for element in branch_diff_node.elements.values():
             if not isinstance(element, BranchDiffAttribute):
                 continue
-            branch_diff_node.summary.inc(element.action.value)
-            self._add_node_summary(node_id=node_diff_dict["id"], action=element.action)
+            self._add_node_summary(branch_diff_node=branch_diff_node, action=element.action)
 
             for prop in element.properties:
                 if prop.type == "HAS_VALUE":
@@ -544,7 +317,7 @@ class DiffPayloadBuilder:
 
             if element.value:
                 element.properties.remove(element.value)
-            self._add_node_element_attribute(node_id=node_diff_dict["id"], branch=branch_name, element=element)
+            self._add_node_element_attribute(branch_diff_node=branch_diff_node, element=element)
 
         if branch_diff_node.id not in self.rels_per_node[branch_name]:
             return branch_diff_node
@@ -575,12 +348,10 @@ class DiffPayloadBuilder:
             if not diff_rel:
                 continue
             branch_diff_node.elements[diff_rel.name] = diff_rel
-            branch_diff_node.summary.inc(diff_rel.action.value)
-            self._add_node_summary(node_id=node_diff_dict["id"], action=diff_rel.action)
+            self._add_node_summary(branch_diff_node=branch_diff_node, action=diff_rel.action)
             self._add_node_element_relationship(
-                node_id=branch_diff_node.id,
+                branch_diff_node=branch_diff_node,
                 element_name=diff_rel.name,
-                branch=branch_name,
                 relationship=diff_rel,
             )
         return branch_diff_node
@@ -589,11 +360,14 @@ class DiffPayloadBuilder:
         # Check if all nodes associated with a relationship have been accounted for
         # If a node is missing it means its changes are only related to its relationships
         for branch_name, _ in self.rels_per_node.items():
-            for node_in_rel, relationship_diffs_by_name in self.rels_per_node[branch_name].items():
-                if node_in_rel in self.nodes_in_diff:
+            for node_in_rel_id, relationship_diffs_by_name in self.rels_per_node[branch_name].items():
+                if node_in_rel_id in self.entries:
                     continue
+
                 branch_diff_node = await self._process_one_node_relationships(
-                    node_id=node_in_rel, relationship_diffs_by_name=relationship_diffs_by_name, branch_name=branch_name
+                    node_id=node_in_rel_id,
+                    relationship_diffs_by_name=relationship_diffs_by_name,
+                    branch_name=branch_name,
                 )
 
                 if branch_diff_node:
@@ -654,12 +428,11 @@ class DiffPayloadBuilder:
             if not diff_rel:
                 continue
 
-            node_diff.summary.inc(diff_rel.action.value)
-            self._add_node_summary(node_id=node_id, action=diff_rel.action)
+            node_diff.elements[diff_rel.name] = diff_rel
+            self._add_node_summary(branch_diff_node=node_diff, action=diff_rel.action)
             self._add_node_element_relationship(
-                node_id=node_diff.id,
+                branch_diff_node=node_diff,
                 element_name=diff_rel.name,
-                branch=branch_name,
                 relationship=diff_rel,
             )
         return node_diff
@@ -689,6 +462,11 @@ class DiffPayloadBuilder:
         for node_diff in self.diffs:
             node_diffs_by_branch[node_diff.branch].append(node_diff)
         return node_diffs_by_branch
+
+    async def get_branch_diff_nodes(self) -> List[BranchDiffNode]:
+        if not self.is_parsed:
+            await self._parse_diff()
+        return self.diffs
 
 
 def extract_diff_relationship_one(
@@ -779,7 +557,7 @@ def extract_diff_relationship_many(
         if rel.changed_at:
             changed_at = rel.changed_at.to_string()
 
-        peer = [rel_node for rel_node in rel.nodes.values() if rel_node.id != node_id][0].dict(
+        peer = [rel_node for rel_node in rel.nodes.values() if rel_node.id != node_id][0].model_dump(
             exclude={"db_id", "labels"}
         )
         peer["display_label"] = display_labels.get(peer["id"], "")

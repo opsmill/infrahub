@@ -49,15 +49,19 @@ def branch_diff_01() -> ProposedChangeBranchDiff:
         diff_summary=[
             {
                 "branch": "branch2",
-                "actions": ["updated"],
+                "action": "updated",
                 "kind": "TestPerson",
-                "node": "11111111-1111-1111-1111-111111111111",
+                "id": "11111111-1111-1111-1111-111111111111",
+                "display_label": "",
+                "elements": [],
             },
             {
                 "branch": "main",
-                "actions": ["updated"],
+                "action": "updated",
                 "kind": "TestPerson",
-                "node": "22222222-2222-2222-2222-222222222222",
+                "id": "22222222-2222-2222-2222-222222222222",
+                "display_label": "",
+                "elements": [],
             },
         ],
         repositories=[],
