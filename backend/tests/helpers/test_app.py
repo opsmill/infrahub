@@ -31,7 +31,8 @@ class TestInfrahubApp:
     @pytest.fixture(scope="class")
     def local_storage_dir(self, tmpdir_factory) -> str:
         storage_dir = os.path.join(str(tmpdir_factory.getbasetemp().strpath), "storage")
-        os.mkdir(storage_dir)
+        if not os.path.exists(storage_dir):
+            os.mkdir(storage_dir)
 
         config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
         config.SETTINGS.storage.local.path_ = storage_dir
