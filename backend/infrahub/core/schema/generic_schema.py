@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from .generated.genericnode_schema import GeneratedGenericSchema
 
@@ -16,3 +16,7 @@ class GenericSchema(GeneratedGenericSchema):
             return self
 
         raise ValueError(f"hierarchical mode is not enabled on {self.kind}")
+
+    def get_labels(self) -> List[str]:
+        """Return the labels for this object"""
+        return [self.kind]

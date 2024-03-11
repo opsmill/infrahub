@@ -643,7 +643,7 @@ async def test_query_diffsummary_old(db: InfrahubDatabase, default_branch: Branc
     assert {"branch": "branch2", "node": p1_branch2.id, "kind": "TestPerson", "actions": ["updated"]} in diff_summary
 
 
-async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_query_diffsummaryold(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -683,15 +683,82 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
 
     query = """
     query {
-        DiffSummary {
+        DiffSummaryOld {
             branch
-            id
+            node
             kind
-            action
-            display_label
-            elements {
-                ... on DiffSummaryElement {
-                    type
+            actions
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=branch2)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+    assert result.data
+    diff_summary = result.data["DiffSummaryOld"]
+    assert len(diff_summary) == 7
+
+    assert {"branch": "main", "node": c1_main.id, "kind": "TestCar", "actions": ["removed"]} in diff_summary
+    assert {"branch": "main", "node": c2_main.id, "kind": "TestCar", "actions": ["updated"]} in diff_summary
+    assert {"branch": "branch2", "node": c3_branch2.id, "kind": "TestCar", "actions": ["updated"]} in diff_summary
+    assert {"branch": "main", "node": p2_main.id, "kind": "TestPerson", "actions": ["updated"]} in diff_summary
+    assert {"branch": "branch2", "node": p1_branch2.id, "kind": "TestPerson", "actions": ["updated"]} in diff_summary
+
+
+async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+    car = registry.schema.get(name="TestCar")
+    person = registry.schema.get(name="TestPerson")
+
+    p1_main = await Node.init(db=db, schema=person)
+    await p1_main.new(db=db, name="John", height=180)
+    await p1_main.save(db=db)
+    p2_main = await Node.init(db=db, schema=person)
+    await p2_main.new(db=db, name="Jane", height=170)
+    await p2_main.save(db=db)
+
+    c1_main = await Node.init(db=db, schema=car)
+    await c1_main.new(db=db, name="volt", nbr_seats=4, is_electric=True, owner=p1_main)
+    await c1_main.save(db=db)
+    c2_main = await Node.init(db=db, schema=car)
+    await c2_main.new(db=db, name="bolt", nbr_seats=4, is_electric=True, owner=p1_main)
+    await c2_main.save(db=db)
+    c3_main = await Node.init(db=db, schema=car)
+    await c3_main.new(db=db, name="nolt", nbr_seats=4, is_electric=True, owner=p2_main)
+    await c3_main.save(db=db)
+
+    branch2 = await create_branch(branch_name="branch2", db=db)
+    await c1_main.delete(db=db)
+    p1_branch2 = await NodeManager.get_one_by_id_or_default_filter(
+        id=p1_main.id, db=db, schema_name="TestPerson", branch=branch2
+    )
+    p1_branch2.name.value = "Jonathan"
+    await p1_branch2.save(db=db)
+    p2_main.name.value = "Jeanette"
+    await p2_main.save(db=db)
+    c2_main.name.value = "bolting"
+    await c2_main.save(db=db)
+    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(
+        id=c3_main.id, db=db, schema_name="TestCar", branch=branch2
+    )
+    await c3_branch2.owner.update(data=p1_branch2.id, db=db)
+    await c3_branch2.save(db=db)
+
+    query = """
+        query {
+            DiffSummary {
+                branch
+                id
+                kind
+                action
+                display_label
+                elements {
+                    element_type
                     name
                     action
                     summary {
@@ -699,28 +766,19 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
                         updated
                         removed
                     }
-                }
-                ... on DiffSummaryElementRelationshipMany {
-                    type
-                    name
-                    action
-                    summary {
-                        added
-                        updated
-                        removed
-                    }
-                    peers {
-                        action
-                        summary {
-                            added
-                            updated
-                            removed
+                    ... on DiffSummaryElementRelationshipMany {
+                        peers {
+                            action
+                            summary {
+                                added
+                                updated
+                                removed
+                            }
                         }
                     }
                 }
             }
         }
-    }
     """
     gql_params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=branch2)
     result = await graphql(
@@ -761,7 +819,7 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
             "display_label": "bolting #444444",
             "elements": [
                 {
-                    "type": "ATTRIBUTE",
+                    "element_type": "ATTRIBUTE",
                     "name": "name",
                     "action": "UPDATED",
                     "summary": {"added": 0, "updated": 1, "removed": 0},
@@ -783,7 +841,7 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
     )
     c3_branch2_diff_elements = c3_branch2_diff["elements"]
     assert len(c3_branch2_diff_elements) == 1
-    assert c3_branch2_diff_elements[0]["type"] == "RELATIONSHIP_ONE"
+    assert c3_branch2_diff_elements[0]["element_type"] == "RELATIONSHIP_ONE"
     assert c3_branch2_diff_elements[0]["name"] == "owner"
     assert c3_branch2_diff_elements[0]["action"] == "UPDATED"
     p2_main_diff = _check_diff_for_branch_and_id(
@@ -800,7 +858,7 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
     )
     p2_main_diff_elements = p2_main_diff["elements"]
     assert len(p2_main_diff_elements) == 1
-    assert p2_main_diff_elements[0]["type"] == "ATTRIBUTE"
+    assert p2_main_diff_elements[0]["element_type"] == "ATTRIBUTE"
     assert p2_main_diff_elements[0]["name"] == "name"
     assert p2_main_diff_elements[0]["action"] == "UPDATED"
     assert p2_main_diff_elements[0]["summary"] == {"added": 0, "updated": 1, "removed": 0}
@@ -822,11 +880,11 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
     assert {"cars", "name"} == set(p1_branch2_diff_elements_map.keys())
     name_element = p1_branch2_diff_elements_map["name"]
     assert name_element["name"] == "name"
-    assert name_element["type"] == "ATTRIBUTE"
+    assert name_element["element_type"] == "ATTRIBUTE"
     assert name_element["action"] == "UPDATED"
     cars_element = p1_branch2_diff_elements_map["cars"]
     assert cars_element["name"] == "cars"
-    assert cars_element["type"] == "RELATIONSHIP_MANY"
+    assert cars_element["element_type"] == "RELATIONSHIP_MANY"
     assert cars_element["action"] == "ADDED"
     assert len(cars_element["peers"]) == 1
     assert cars_element["peers"][0]["action"] == "ADDED"

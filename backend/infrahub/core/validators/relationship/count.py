@@ -164,6 +164,8 @@ class RelationshipCountChecker(ConstraintCheckerInterface):
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
         grouped_data_paths_list: List[GroupedDataPaths] = []
+        if not request.schema_path.field_name:
+            raise ValueError("field_name is not defined")
         relationship_schema = request.node_schema.get_relationship(name=request.schema_path.field_name)
         min_count_override, max_count_override = None, None
         if request.constraint_name == "relationship.cardinality.update":

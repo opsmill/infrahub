@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Generator, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
 
 from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Relationship as Neo4jRelationship
@@ -257,6 +257,41 @@ class QueryResult:
         yield from self.data
 
 
+@dataclass
+class QueryStats:
+    stats: List[QueryStat] = field(default_factory=list)
+
+    def add(self, data: Optional[Dict[str, Any]]) -> None:
+        if data:
+            self.stats.append(QueryStat.from_metadata(data))
+
+    def get_counter(self, name: str) -> int:
+        cnt = 0
+        for stat in self.stats:
+            if not hasattr(stat, name):
+                raise ValueError(f"Counter {name} is not available")
+            cnt += getattr(stat, name)
+
+        return cnt
+
+
+@dataclass
+class QueryStat:
+    contains_updates: bool = False
+    labels_added: Optional[int] = None
+    labels_removed: Optional[int] = None
+    nodes_created: Optional[int] = None
+    nodes_deleted: Optional[int] = None
+    properties_set: Optional[int] = None
+    relationships_created: Optional[int] = None
+    relationships_deleted: Optional[int] = None
+
+    @classmethod
+    def from_metadata(cls, data: Dict[str, Any]) -> Self:
+        data = {key.replace("-", "_"): value for key, value in data.items()}
+        return cls(**data)
+
+
 class Query(ABC):
     name: str = "base-query"
     type: QueryType = QueryType.READ
@@ -293,6 +328,8 @@ class Query(ABC):
 
         self.has_been_executed: bool = False
         self.has_errors: bool = False
+
+        self.stats: QueryStats = QueryStats()
 
     def update_return_labels(self, value: Union[str, List[str]]) -> None:
         if isinstance(value, str) and value not in self.return_labels:
@@ -437,7 +474,11 @@ class Query(ABC):
                 results = await self.query_with_size_limit(db=db)
 
         elif self.type == QueryType.WRITE:
-            results = await db.execute_query(query=self.get_query(), params=self.params, name=self.name)
+            results, metadata = await db.execute_query_with_metadata(
+                query=self.get_query(), params=self.params, name=self.name
+            )
+            if "stats" in metadata:
+                self.stats.add(metadata.get("stats"))
         else:
             raise ValueError(f"unknown value for {self.type}")
 
@@ -455,11 +496,13 @@ class Query(ABC):
         results = []
         remaining = True
         while remaining:
-            offset_results = await db.execute_query(
+            offset_results, metadata = await db.execute_query_with_metadata(
                 query=self.get_query(limit=query_limit, offset=offset),
                 params=self.params,
                 name=self.name,
             )
+            if "stats" in metadata:
+                self.stats.add(metadata.get("stats"))
             results.extend(offset_results)
             offset += query_limit
 
@@ -491,16 +534,19 @@ class Query(ABC):
     def get_raw_results(self) -> List[QueryResult]:
         return self.results
 
-    def get_result(self) -> Union[QueryResult, None]:
+    def get_result(self) -> Optional[QueryResult]:
         """Return a single Result."""
 
-        if not self.num_of_results:
+        if not self.has_been_executed:
             return None
 
         if self.num_of_results == 1:
             return self.results[0]
 
-        return next(self.get_results())
+        try:
+            return next(self.get_results())
+        except StopIteration:
+            return None
 
     def get_results(self) -> Generator[QueryResult, None, None]:
         """Get all the results sorted by score."""
@@ -549,9 +595,9 @@ class Query(ABC):
             yield self.results[attr_info["idx"]]
 
     @property
-    def num_of_results(self) -> Optional[int]:
+    def num_of_results(self) -> int:
         if not self.has_been_executed:
-            return None
+            raise ValueError("The query hasn't been executed yet")
 
         return len([result for result in self.results if not result.has_deleted_rels])
 

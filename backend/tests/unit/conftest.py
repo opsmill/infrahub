@@ -57,7 +57,7 @@ def neo4j_factory():
 
 
 @pytest.fixture
-def git_sources_dir(tmp_path) -> str:
+def git_sources_dir(default_branch, tmp_path) -> str:
     source_dir = os.path.join(str(tmp_path), "sources")
 
     os.mkdir(source_dir)

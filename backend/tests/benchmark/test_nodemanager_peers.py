@@ -34,6 +34,7 @@ def test_nodemanager_querypeers(aio_benchmark, db: InfrahubDatabase, default_bra
         NodeManager().query_peers,
         db=db,
         ids=[test_account.id],
+        source_kind=model.kind,
         schema=model.get_relationship("member_of_groups"),
         filters=[],
     )

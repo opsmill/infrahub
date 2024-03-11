@@ -23,7 +23,7 @@ class GeneratedBaseNodeSchema(HashableModel):
         pattern="^[A-Z][a-zA-Z0-9]+$",
         min_length=2,
         max_length=32,
-        json_schema_extra={"update": "not_supported"},
+        json_schema_extra={"update": "migration_required"},
     )
     namespace: str = Field(
         ...,
@@ -31,7 +31,7 @@ class GeneratedBaseNodeSchema(HashableModel):
         pattern="^[A-Z][a-z0-9]+$",
         min_length=3,
         max_length=32,
-        json_schema_extra={"update": "not_supported"},
+        json_schema_extra={"update": "migration_required"},
     )
     description: Optional[str] = Field(
         default=None,

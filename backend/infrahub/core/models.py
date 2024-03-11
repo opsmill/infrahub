@@ -124,14 +124,24 @@ class SchemaUpdateValidationResult(BaseModel):
         return obj
 
     def process_diff(self, schema: SchemaBranch) -> None:
+        for schema_name, schema_diff in self.diff.removed.items():
+            self.migrations.append(
+                SchemaUpdateMigrationInfo(
+                    path=SchemaPath(  # type: ignore[call-arg]
+                        schema_kind=schema_name, path_type=SchemaPathType.NODE
+                    ),
+                    migration_name="node.remove",
+                )
+            )
+
         for schema_name, schema_diff in self.diff.changed.items():
             schema_node = schema.get(name=schema_name, duplicate=False)
 
-            # Nothing to do today if we add a new model in the schema
+            # Nothing to do today if we add a new attribute to a node in the schema
             # for node_field_name, _ in schema_diff.added.items():
             #     pass
 
-            # Not possible today, we need to add some specific mutations to support that
+            # Not possible today, removing an attribute from the schema will be manage by database migrations
             # for node_field_name, _ in schema_diff.removed.items():
             #     pass
 
@@ -221,7 +231,7 @@ class SchemaUpdateValidationResult(BaseModel):
                 )
             )
         elif field_update == UpdateSupport.MIGRATION_REQUIRED.value:
-            migration_name = f"{schema_path.path_type.value}.{schema_path.field_name}.update"
+            migration_name = f"{schema_path.path_type.value}.{schema_path.property_name}.update"
             self.migrations.append(
                 SchemaUpdateMigrationInfo(
                     path=schema_path,

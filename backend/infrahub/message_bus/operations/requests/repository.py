@@ -93,34 +93,43 @@ async def checks(message: messages.RequestRepositoryChecks, service: InfrahubSer
 
 async def user_checks(message: messages.RequestRepositoryUserChecks, service: InfrahubServices):
     """Request to start validation checks on a specific repository for User-defined checks."""
-    log.info(
-        "Running user defined checks checks",
-        repository_id=message.repository,
-        proposed_change_id=message.proposed_change,
-    )
-    events: List[InfrahubMessage] = []
-
-    repository = await service.client.get(
-        kind=InfrahubKind.GENERICREPOSITORY, id=message.repository, branch=message.source_branch, fragment=True
-    )
-    await repository.checks.fetch()
-
-    for relationship in repository.checks.peers:
-        log.info("Adding check for user defined check")
-        check_definition = relationship.peer
-        events.append(
-            messages.CheckRepositoryCheckDefinition(
-                check_definition_id=check_definition.id,
-                repository_id=repository.id,
-                repository_name=repository.name.value,
-                commit=repository.commit.value,
-                file_path=check_definition.file_path.value,
-                class_name=check_definition.class_name.value,
-                branch_name=message.source_branch,
-                proposed_change=message.proposed_change,
-            )
+    async with service.task_report(
+        related_node=message.proposed_change,
+        title=f"{message.branch_diff.get_repository(message.repository).repository_name} - Evaluating User Defined Checks",
+    ) as task_report:
+        log.info(
+            "Evaluating user-defined checks",
+            repository_id=message.repository,
+            proposed_change_id=message.proposed_change,
         )
+        events: List[InfrahubMessage] = []
 
-    for event in events:
-        event.assign_meta(parent=message)
-        await service.send(message=event)
+        repository = await service.client.get(
+            kind=InfrahubKind.GENERICREPOSITORY, id=message.repository, branch=message.source_branch, fragment=True
+        )
+        await repository.checks.fetch()
+
+        for relationship in repository.checks.peers:
+            log.info("Adding check for user defined check")
+            check_definition = relationship.peer
+            events.append(
+                messages.CheckRepositoryCheckDefinition(
+                    check_definition_id=check_definition.id,
+                    repository_id=repository.id,
+                    repository_name=repository.name.value,
+                    commit=repository.commit.value,
+                    file_path=check_definition.file_path.value,
+                    class_name=check_definition.class_name.value,
+                    branch_name=message.source_branch,
+                    proposed_change=message.proposed_change,
+                    branch_diff=message.branch_diff,
+                )
+            )
+
+        for event in events:
+            event.assign_meta(parent=message)
+            await service.send(message=event)
+
+        await task_report.info(
+            f"Requested {len(repository.checks.peers)} user defined checks", proposed_change=message.proposed_change
+        )

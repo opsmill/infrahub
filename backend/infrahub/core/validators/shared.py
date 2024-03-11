@@ -28,10 +28,14 @@ class SchemaValidatorQuery(Query):
 class AttributeSchemaValidatorQuery(SchemaValidatorQuery):
     @property
     def attribute_schema(self) -> AttributeSchema:
+        if not self.schema_path.field_name:
+            raise ValueError("field_name not defined")
         return self.node_schema.get_attribute(name=self.schema_path.field_name)
 
 
 class RelationshipSchemaValidatorQuery(SchemaValidatorQuery):
     @property
     def relationship_schema(self) -> RelationshipSchema:
+        if not self.schema_path.field_name:
+            raise ValueError("field_name not defined")
         return self.node_schema.get_relationship(name=self.schema_path.field_name)

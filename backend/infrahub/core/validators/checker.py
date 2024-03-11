@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import asyncio
 from typing import TYPE_CHECKING, List, Tuple
-from infrahub.core.models import SchemaUpdateConstraintInfo
 
 from infrahub.message_bus.messages import MESSAGE_MAP, RESPONSE_MAP
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema_manager import SchemaBranch
     from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPathResponse
     from infrahub.services import InfrahubServices

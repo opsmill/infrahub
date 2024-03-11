@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 from graphene import Boolean, Field, Int, List, ObjectType, String
 from graphene import Enum as GrapheneEnum
-from graphene import Union as GrapheneUnion
+from graphene import Interface as GrapheneInterface
 
 from infrahub.core.constants import DiffAction
 from infrahub.core.diff.branch_differ import BranchDiffer
@@ -31,27 +31,39 @@ class DiffActionSummary(ObjectType):
     summary = Field(DiffSummaryCount)
 
 
-class DiffSummarySubElement(DiffActionSummary):
+class DiffSummaryElementInterface(GrapheneInterface):
+    element_type = Field(GrapheneEnum.from_enum(DiffElementType), required=True)
     name = String(required=True)
-
-
-class DiffSummaryElement(DiffSummarySubElement):
-    type = Field(GrapheneEnum.from_enum(DiffElementType), required=True)
-
-
-class DiffSummaryElementRelationshipMany(DiffSummaryElement):
-    peers = List(DiffActionSummary)
-
-
-class OneDiffSummaryElement(GrapheneUnion):
-    class Meta:
-        types = (DiffSummaryElement, DiffSummaryElementRelationshipMany)
+    action = Field(GrapheneDiffActionEnum, required=True)
+    summary = Field(DiffSummaryCount, required=True)
 
     @classmethod
     def resolve_type(cls, instance: Dict[str, Any], info: Any) -> type:
-        if instance["type"] == DiffElementType.RELATIONSHIP_MANY.value or "peers" in instance:
+        if (
+            str(instance["element_type"]).lower() == DiffElementType.RELATIONSHIP_MANY.value.lower()
+            or "peers" in instance
+        ):
             return DiffSummaryElementRelationshipMany
-        return DiffSummaryElement
+        if str(instance["element_type"]).lower() == DiffElementType.RELATIONSHIP_ONE.value.lower():
+            return DiffSummaryElementRelationshipOne
+        return DiffSummaryElementAttribute
+
+
+class DiffSummaryElementRelationshipMany(ObjectType):
+    class Meta:
+        interfaces = (DiffSummaryElementInterface,)
+
+    peers = List(DiffActionSummary)
+
+
+class DiffSummaryElementRelationshipOne(ObjectType):
+    class Meta:
+        interfaces = (DiffSummaryElementInterface,)
+
+
+class DiffSummaryElementAttribute(ObjectType):
+    class Meta:
+        interfaces = (DiffSummaryElementInterface,)
 
 
 class DiffSummaryEntry(ObjectType):
@@ -60,7 +72,7 @@ class DiffSummaryEntry(ObjectType):
     kind = String(required=True)
     action = Field(GrapheneDiffActionEnum)
     display_label = String()
-    elements = List(OneDiffSummaryElement)
+    elements = List(DiffSummaryElementInterface)
 
     @staticmethod
     async def resolve(
@@ -104,7 +116,7 @@ class DiffSummaryEntry(ObjectType):
             serial_elements: List[Dict[str, Any]] = []
             for element_name, element in diff_node.elements.items():
                 serial_element: Dict[str, Any] = {
-                    "type": element.type.value,
+                    "element_type": element.type.value,
                     "name": element_name,
                     "action": element.action,
                     "summary": element.summary,

@@ -466,6 +466,7 @@ class RelationshipGetPeerQuery(Query):
         filters: Optional[dict] = None,
         source: Optional[Node] = None,
         source_ids: Optional[List[str]] = None,
+        source_kind: Optional[str] = None,
         rel: Union[Type[Relationship], Relationship] = None,
         rel_type: Optional[str] = None,
         schema: RelationshipSchema = None,
@@ -486,6 +487,10 @@ class RelationshipGetPeerQuery(Query):
         self.filters = filters or {}
         self.source_ids = source_ids or [source.id]
         self.source = source
+
+        self.source_kind = source_kind or "Node"
+        if source and not source_kind:
+            self.source_kind = source.get_kind()
 
         self.rel = rel
         self.rel_type = rel_type or self.rel.rel_type
@@ -512,6 +517,8 @@ class RelationshipGetPeerQuery(Query):
 
         self.params["source_ids"] = self.source_ids
         self.params["rel_identifier"] = self.schema.identifier
+        self.params["peer_kind"] = self.schema.peer
+        self.params["source_kind"] = self.source_kind
 
         arrows = self.schema.get_query_arrows()
 
@@ -526,7 +533,12 @@ class RelationshipGetPeerQuery(Query):
         CALL {
             WITH rl
             MATCH path = (source_node:Node)%(path)s(peer:Node)
-            WHERE source_node.uuid IN $source_ids AND peer.uuid <> source_node.uuid AND all(r IN relationships(path) WHERE (%(branch_filter)s))
+            WHERE
+                source_node.uuid IN $source_ids AND
+                $source_kind IN LABELS(source_node) AND
+                peer.uuid <> source_node.uuid AND
+                $peer_kind IN LABELS(peer) AND
+                all(r IN relationships(path) WHERE (%(branch_filter)s))
             WITH source_node, peer, rl, relationships(path) as rels, %(branch_level)s AS branch_level, %(froms)s AS froms
             RETURN source_node, peer as peer, rels, rl as rl1
             ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC

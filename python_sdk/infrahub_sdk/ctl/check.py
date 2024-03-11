@@ -9,6 +9,7 @@ from types import ModuleType
 from typing import Dict, List, Optional
 
 import typer
+from rich.console import Console
 from rich.logging import RichHandler
 
 from infrahub_sdk import InfrahubClient
@@ -18,12 +19,9 @@ from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
 from infrahub_sdk.ctl.repository import get_repository_config
 from infrahub_sdk.ctl.utils import execute_graphql_query
-from infrahub_sdk.schema import InfrahubCheckDefinitionConfig
+from infrahub_sdk.schema import InfrahubCheckDefinitionConfig, InfrahubRepositoryConfig
 
 app = typer.Typer()
-
-
-INFRAHUB_CHECK_VARIABLE_TO_IMPORT = "INFRAHUB_CHECKS"
 
 
 @dataclass
@@ -45,12 +43,15 @@ def callback() -> None:
 
 @app.command()
 def run(
-    branch: Optional[str] = None,
-    path: str = typer.Argument("."),
-    debug: bool = False,
-    format_json: bool = False,
-    config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
+    *,
+    path: str,
+    debug: bool,
+    format_json: bool,
+    config_file: str,
+    list_available: bool,
+    variables: Dict[str, str],
     name: Optional[str] = None,
+    branch: Optional[str] = None,
 ) -> None:
     """Locate and execute all checks under the defined path."""
 
@@ -60,10 +61,26 @@ def run(
 
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
+    console = Console()
 
-    check_definitions = get_available_checks(name=name)
+    repository_config = get_repository_config(Path(config.INFRAHUB_REPO_CONFIG_FILE))
+
+    if list_available:
+        list_checks(repository_config=repository_config)
+        return
+
+    check_definitions = repository_config.check_definitions
+    if name:
+        check_definitions = [check for check in repository_config.check_definitions if check.name == name]
+        if not check_definitions:
+            console.print(f"[red]Unable to find requested transform: {name}")
+            list_checks(repository_config=repository_config)
+            return
+
     check_modules = get_modules(check_definitions=check_definitions)
-    aiorun(run_checks(check_modules=check_modules, format_json=format_json, path=path, branch=branch))
+    aiorun(
+        run_checks(check_modules=check_modules, format_json=format_json, path=path, variables=variables, branch=branch)
+    )
 
 
 async def run_check(
@@ -106,7 +123,12 @@ async def run_check(
 
 
 async def run_targeted_check(
-    check_module: CheckModule, client: InfrahubClient, format_json: bool, path: str, branch: Optional[str] = None
+    check_module: CheckModule,
+    client: InfrahubClient,
+    format_json: bool,
+    path: str,
+    variables: Dict[str, str],
+    branch: Optional[str] = None,
 ) -> bool:
     filters = {}
     param_value = list(check_module.definition.parameters.values())
@@ -119,28 +141,43 @@ async def run_targeted_check(
         identifier = param_key[0]
 
     check_summary: List[bool] = []
-    targets = await client.get(kind="CoreGroup", include=["members"], **filters)
-    await targets.members.fetch()
-    for member in targets.members.peers:
-        check_parameter = {}
-        if identifier:
-            attribute = getattr(member.peer, identifier)
-            check_parameter = {identifier: attribute.value}
+    if variables:
         result = await run_check(
             check_module=check_module,
             client=client,
             format_json=format_json,
             path=path,
             branch=branch,
-            params=check_parameter,
+            params=variables,
         )
         check_summary.append(result)
+    else:
+        targets = await client.get(kind="CoreGroup", include=["members"], **filters)
+        await targets.members.fetch()
+        for member in targets.members.peers:
+            check_parameter = {}
+            if identifier:
+                attribute = getattr(member.peer, identifier)
+                check_parameter = {identifier: attribute.value}
+            result = await run_check(
+                check_module=check_module,
+                client=client,
+                format_json=format_json,
+                path=path,
+                branch=branch,
+                params=check_parameter,
+            )
+            check_summary.append(result)
 
     return all(check_summary)
 
 
 async def run_checks(
-    check_modules: List[CheckModule], format_json: bool, path: str, branch: Optional[str] = None
+    check_modules: List[CheckModule],
+    format_json: bool,
+    path: str,
+    variables: Dict[str, str],
+    branch: Optional[str] = None,
 ) -> None:
     log = logging.getLogger("infrahub")
 
@@ -149,7 +186,12 @@ async def run_checks(
     for check_module in check_modules:
         if check_module.definition.targets:
             result = await run_targeted_check(
-                check_module=check_module, client=client, format_json=format_json, path=path, branch=branch
+                check_module=check_module,
+                client=client,
+                format_json=format_json,
+                path=path,
+                variables=variables,
+                branch=branch,
             )
             check_summary.append(result)
         else:
@@ -193,19 +235,10 @@ def get_modules(check_definitions: List[InfrahubCheckDefinitionConfig]) -> List[
     return modules
 
 
-def get_available_checks(name: Optional[str] = None) -> List[InfrahubCheckDefinitionConfig]:
-    repository_config = get_repository_config(Path(config.INFRAHUB_REPO_CONFIG_FILE))
-    log = logging.getLogger("infrahub")
-    if name:
-        matched = [
-            check_definition
-            for check_definition in repository_config.check_definitions
-            if check_definition.name == name
-        ]
-        if matched:
-            return matched
-        available_checks = [check_definition.name for check_definition in repository_config.check_definitions]
-        log.error(f"Unable to find check definition for {name} in .infrahub.yml {available_checks}")
-        sys.exit(1)
+def list_checks(repository_config: InfrahubRepositoryConfig) -> None:
+    console = Console()
+    console.print(f"Python checks defined in repository: {len(repository_config.check_definitions)}")
 
-    return repository_config.check_definitions
+    for check in repository_config.check_definitions:
+        target = check.targets or "-global-"
+        console.print(f"{check.name} ({check.file_path}::{check.class_name}) Target: {target}")
