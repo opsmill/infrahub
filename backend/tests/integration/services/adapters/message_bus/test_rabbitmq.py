@@ -340,8 +340,8 @@ async def test_rabbitmq_publish(rabbitmq_api: RabbitMQManager) -> None:
     bus = RabbitMQMessageBus(settings=rabbitmq_api.settings)
     service = InfrahubServices(message_bus=bus, component_type=ComponentType.API_SERVER)
 
-    normal_message = messages.EventBranchCreate(branch="normal", branch_id=str(uuid4()), data_only=True)
-    delayed_message = messages.EventBranchCreate(branch="delayed", branch_id=str(uuid4()), data_only=True)
+    normal_message = messages.EventBranchCreate(branch="normal", branch_id=str(uuid4()), sync_with_git=False)
+    delayed_message = messages.EventBranchCreate(branch="delayed", branch_id=str(uuid4()), sync_with_git=False)
 
     await bus.initialize(service=service)
     await service.send(message=normal_message)

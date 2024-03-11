@@ -18,7 +18,7 @@ class BranchData(pydantic.BaseModel):
     id: str
     name: str
     description: Optional[str] = None
-    is_data_only: bool
+    sync_with_git: bool
     is_default: bool
     is_isolated: bool
     has_schema_changes: bool
@@ -33,7 +33,7 @@ BRANCH_DATA = {
     "origin_branch": None,
     "branched_from": None,
     "is_default": None,
-    "is_data_only": None,
+    "sync_with_git": None,
     "is_isolated": None,
     "has_schema_changes": None,
 }
@@ -76,7 +76,7 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
     async def create(
         self,
         branch_name: str,
-        data_only: bool = False,
+        sync_with_git: bool = True,
         is_isolated: bool = False,
         description: str = "",
         background_execution: bool = False,
@@ -86,7 +86,7 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
             "data": {
                 "name": branch_name,
                 "description": description,
-                "is_data_only": data_only,
+                "sync_with_git": sync_with_git,
                 "is_isolated": is_isolated,
             },
         }
@@ -215,7 +215,7 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
     def create(
         self,
         branch_name: str,
-        data_only: bool = False,
+        sync_with_git: bool = True,
         is_isolated: bool = False,
         description: str = "",
         background_execution: bool = False,
@@ -225,7 +225,7 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
             "data": {
                 "name": branch_name,
                 "description": description,
-                "is_data_only": data_only,
+                "sync_with_git": sync_with_git,
                 "is_isolated": is_isolated,
             },
         }

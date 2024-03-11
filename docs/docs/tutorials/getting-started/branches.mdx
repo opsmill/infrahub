@@ -45,7 +45,7 @@ Branch names are fairly permissive, but must conform to [git ref format](https:/
   ```graphql
   # Endpoint : http://127.0.0.1:8000/graphql/main
   mutation {
-    BranchCreate(data: { name: "cr1234", is_data_only: false}) {
+    BranchCreate(data: { name: "cr1234", sync_with_git: true}) {
       ok
       object {
         id

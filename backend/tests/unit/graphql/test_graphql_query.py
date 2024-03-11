@@ -2129,7 +2129,7 @@ async def test_query_branches(db: InfrahubDatabase, default_branch: Branch, regi
             id
             name
             branched_from
-            is_data_only
+            sync_with_git
         }
     }
     """
@@ -2155,13 +2155,13 @@ async def test_query_multiple_branches(db: InfrahubDatabase, default_branch: Bra
             id
             name
             branched_from
-            is_data_only
+            sync_with_git
         }
         branch2: Branch {
             id
             name
             branched_from
-            is_data_only
+            sync_with_git
         }
     }
     """

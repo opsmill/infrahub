@@ -8,7 +8,7 @@ async def test_delete():
     """Validate that a deleted branch triggers a registry refresh and cancels open proposed changes"""
 
     message = messages.EventBranchDelete(
-        branch_id="40fb612f-eaaa-422b-9480-df269080c103", branch="cr1234", data_only=False
+        branch_id="40fb612f-eaaa-422b-9480-df269080c103", branch="cr1234", sync_with_git=True
     )
 
     recorder = BusRecorder()

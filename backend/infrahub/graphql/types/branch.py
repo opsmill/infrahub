@@ -20,7 +20,7 @@ class BranchType(InfrahubObjectType):
     origin_branch = String(required=False)
     branched_from = String(required=False)
     created_at = String(required=False)
-    is_data_only = Boolean(required=False)
+    sync_with_git = Boolean(required=False)
     is_default = Boolean(required=False)
     is_isolated = Boolean(required=False)
     has_schema_changes = Boolean(required=False)

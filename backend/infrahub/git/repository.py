@@ -284,7 +284,7 @@ class Worktree(BaseModel):
 class BranchInGraph(BaseModel):
     id: str
     name: str
-    is_data_only: bool
+    sync_with_git: bool
     commit: Optional[str] = None
 
 
@@ -585,7 +585,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             response[branch_name] = BranchInGraph(
                 id=branch.id,
                 name=branch.name,
-                is_data_only=branch.is_data_only,
+                sync_with_git=branch.sync_with_git,
                 commit=repository.branches[branch_name] or None,
             )
 

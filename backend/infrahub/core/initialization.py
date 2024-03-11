@@ -138,7 +138,7 @@ async def create_default_branch(db: InfrahubDatabase) -> Branch:
         description="Default Branch",
         hierarchy_level=1,
         is_default=True,
-        is_data_only=False,
+        sync_with_git=True,
     )
     await branch.save(db=db)
     registry.branch[branch.name] = branch
@@ -155,7 +155,7 @@ async def create_global_branch(db: InfrahubDatabase) -> Branch:
         description="Global Branch",
         hierarchy_level=1,
         is_global=True,
-        is_data_only=False,
+        sync_with_git=False,
     )
     await branch.save(db=db)
     registry.branch[branch.name] = branch

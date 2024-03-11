@@ -43,7 +43,7 @@ $ infrahubctl branch create [OPTIONS] BRANCH_NAME
 **Options**:
 
 * `--description TEXT`: Description of the branch
-* `--data-only / --no-data-only`: if not data only, the branch will be extended to all Read-Write Git repository  [default: data-only]
+* `--sync-with-git / --no-sync-with-git`: Extend the branch to Git and have Infrahub create the branch in connected repositories.  [default: no-sync-with-git]
 * `--isolated / --no-isolated`: Set the branch to isolated mode  [default: no-isolated]
 * `--config-file PATH`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--help`: Show this message and exit.

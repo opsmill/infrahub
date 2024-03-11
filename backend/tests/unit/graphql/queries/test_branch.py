@@ -36,7 +36,7 @@ async def test_branch_query(db: InfrahubDatabase, default_branch: Branch, regist
             origin_branch
             description
             is_default
-            is_data_only
+            sync_with_git
             is_isolated
             has_schema_changes
         }
@@ -57,7 +57,7 @@ async def test_branch_query(db: InfrahubDatabase, default_branch: Branch, regist
         {
             "description": "Default Branch",
             "has_schema_changes": False,
-            "is_data_only": False,
+            "sync_with_git": True,
             "is_default": True,
             "is_isolated": False,
             "name": "main",
@@ -66,7 +66,7 @@ async def test_branch_query(db: InfrahubDatabase, default_branch: Branch, regist
         {
             "description": "my description",
             "has_schema_changes": False,
-            "is_data_only": False,
+            "sync_with_git": True,
             "is_default": False,
             "is_isolated": False,
             "name": "branch3",

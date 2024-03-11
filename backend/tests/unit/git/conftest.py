@@ -30,7 +30,7 @@ def branch01():
     return BranchData(
         id="6c915158-d8ef-4169-9b00-59f94716b8c3 ",
         name="branch01",
-        is_data_only=True,
+        sync_with_git=False,
         is_default=False,
         branched_from="main",
         is_isolated=False,
@@ -43,7 +43,7 @@ def branch02():
     return BranchData(
         id="7708dcea-f7b4-4f5a-b5e9-a0605d4c11ba",
         name="branch02",
-        is_data_only=True,
+        sync_with_git=False,
         is_default=False,
         branched_from="main",
         is_isolated=False,
@@ -56,7 +56,7 @@ def branch99():
     return BranchData(
         id="2e933717-086c-47cf-8242-21421dd3c2bb",
         name="branch99",
-        is_data_only=True,
+        sync_with_git=False,
         is_default=False,
         branched_from="main",
         is_isolated=False,
@@ -463,7 +463,7 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                 {
                     "id": "eca306cf-662e-4e03-8180-2b788b191d3c",
                     "name": "main",
-                    "is_data_only": False,
+                    "sync_with_git": True,
                     "is_default": True,
                     "origin_branch": None,
                     "branched_from": "2023-02-17T09:30:17.811719Z",
@@ -473,7 +473,7 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                 {
                     "id": "7d9f817a-b958-4e76-8528-8afd0c689ada",
                     "name": "cr1234",
-                    "is_data_only": True,
+                    "sync_with_git": False,
                     "is_default": False,
                     "origin_branch": "main",
                     "branched_from": "2023-02-17T09:30:17.811719Z",
@@ -540,7 +540,7 @@ async def mock_add_branch01_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                     "id": "8927425e-fd89-482a-bcec-aad267eb2c66",
                     "name": "branch01",
                     "is_default": False,
-                    "is_data_only": False,
+                    "sync_with_git": True,
                     "description": "",
                     "branched_from": "2023-02-17T09:30:17.811719Z",
                     "is_isolated": False,

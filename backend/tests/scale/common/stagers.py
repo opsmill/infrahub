@@ -45,7 +45,7 @@ stage_infranode = partial(_stage_node, kind="InfraNode", prefix="Node")
 
 def _stage_branch(client: InfrahubClientSync, prefix: str, amount: int, offset: int = 0):
     for i in range(offset, offset + config.node_amount):
-        client.branch.create(branch_name=f"{prefix}{i}", description="description", data_only=True)
+        client.branch.create(branch_name=f"{prefix}{i}", description="description", sync_with_git=False)
 
     stage_infranode(client=client, amount=100)
 

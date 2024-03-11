@@ -150,7 +150,7 @@ async def create_proposed_change(client: InfrahubClient, log: logging.Logger) ->
         log.info(f"- Found branch: {new_branch!r}")
     except BranchNotFoundError:
         new_branch = await client.branch.create(
-            branch_name="dummy-branch", data_only=True, description="Empty shell for testing validators and checks"
+            branch_name="dummy-branch", sync_with_git=False, description="Empty shell for testing validators and checks"
         )
         log.info(f"- Created branch: {new_branch!r}")
 

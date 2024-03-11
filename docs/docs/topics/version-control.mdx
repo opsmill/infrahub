@@ -81,7 +81,7 @@ Creating a branch won't create a copy of the database, only the changes applied 
 
   ```graphql
   mutation {
-    BranchCreate(data: { name: "cr1234", is_data_only: false}) {
+    BranchCreate(data: { name: "cr1234", sync_with_git: true}) {
       ok
       object {
         id
