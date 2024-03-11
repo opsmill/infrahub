@@ -50,7 +50,7 @@ async def get_menu(
 ) -> List[InterfaceMenu]:
     log.info("menu_request", branch=branch.name)
 
-    full_schema = registry.schema.get_full(branch=branch)
+    full_schema = registry.schema.get_full(branch=branch, duplicate=False)
     objects = InterfaceMenu(
         title="Objects",
         children=[],

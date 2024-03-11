@@ -1245,7 +1245,9 @@ class SchemaManager(NodeManager):
 
         raise ValueError("The selected node is not of type NodeSchema")
 
-    def get_full(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, Union[NodeSchema, GenericSchema]]:
+    def get_full(
+        self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+    ) -> Dict[str, Union[NodeSchema, GenericSchema]]:
         branch = get_branch_from_registry(branch=branch)
 
         branch_name = None
@@ -1254,7 +1256,7 @@ class SchemaManager(NodeManager):
         else:
             branch_name = registry.default_branch
 
-        return self._branches[branch_name].get_all()
+        return self._branches[branch_name].get_all(duplicate=duplicate)
 
     async def get_full_safe(
         self, branch: Optional[Union[Branch, str]] = None
