@@ -1521,7 +1521,7 @@ class SchemaManager(NodeManager):
 
         obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
         if not obj:
-            raise SchemaNotFound(
+            raise SchemaNotFoundError(
                 branch_name=branch.name,
                 identifier=node.id,
                 message=f"Unable to find the Schema associated with {node.id}, {node.kind}",
@@ -1631,7 +1631,7 @@ class SchemaManager(NodeManager):
 
         obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
         if not obj:
-            raise SchemaNotFound(
+            raise SchemaNotFoundError(
                 branch_name=branch.name,
                 identifier=node.id,
                 message=f"Unable to find the Schema associated with {node.id}, {node.kind}",
