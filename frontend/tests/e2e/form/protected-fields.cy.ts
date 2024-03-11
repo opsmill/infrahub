@@ -1,6 +1,10 @@
 /// <reference types="cypress" />
 
-import { ADMIN_CREDENTIALS, ENG_TEAM_ONLY_CREDENTIALS, READ_WRITE_CREDENTIALS } from "../constants";
+import {
+  ADMIN_CREDENTIALS,
+  ENG_TEAM_ONLY_CREDENTIALS,
+  READ_WRITE_CREDENTIALS,
+} from "../../constants";
 
 describe("Protected fields", () => {
   beforeEach(() => {

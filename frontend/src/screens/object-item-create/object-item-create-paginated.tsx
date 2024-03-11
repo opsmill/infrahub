@@ -79,7 +79,7 @@ export default function ObjectItemCreate(props: iProps) {
           type={ALERT_TYPES.SUCCESS}
           message={`${schema?.kind && schemaKindName[schema?.kind]} created`}
         />,
-        { toastId: "alert-success" }
+        { toastId: `alert-success-${schema?.kind && schemaKindName[schema?.kind]}-created` }
       );
 
       if (onCreate) {

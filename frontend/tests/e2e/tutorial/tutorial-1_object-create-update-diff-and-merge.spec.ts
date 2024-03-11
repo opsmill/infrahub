@@ -22,7 +22,9 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
 
     await test.step("confirm creation and update UI", async () => {
-      await expect(page.locator("#alert-success")).toContainText("Organization created");
+      await expect(page.locator("#alert-success-Organization-created")).toContainText(
+        "Organization created"
+      );
       await expect(page.locator("tbody")).toContainText("my-first-org");
       await expect(page.locator("tbody")).toContainText("My-First-Org");
       await expect(page.locator("tbody")).toContainText("Testing Infrahub");
