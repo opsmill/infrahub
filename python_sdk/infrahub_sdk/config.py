@@ -12,7 +12,7 @@ from infrahub_sdk.types import AsyncRequester, RequesterTransport, SyncRequester
 from infrahub_sdk.utils import get_branch, is_valid_url
 
 
-class Config(pydantic.BaseSettings):
+class ConfigBase(pydantic.BaseSettings):
     address: str = pydantic.Field(
         default="http://localhost:8000",
         description="The URL to use when connecting to Infrahub.",
@@ -25,14 +25,6 @@ class Config(pydantic.BaseSettings):
     )
     username: Optional[str] = pydantic.Field(default=None, description="Username for accessing Infrahub", min_length=1)
     password: Optional[str] = pydantic.Field(default=None, description="Password for accessing Infrahub", min_length=1)
-    recorder: RecorderType = pydantic.Field(
-        default=RecorderType.NONE,
-        description="Select builtin recorder for later replay.",
-    )
-    custom_recorder: Recorder = pydantic.Field(
-        default_factory=NoRecorder.default,
-        description="Provides a way to record responses from the Infrahub API",
-    )
     default_branch: str = pydantic.Field(
         default="main", description="Default branch to target if not specified for each request."
     )
@@ -41,13 +33,11 @@ class Config(pydantic.BaseSettings):
         description="Indicates if the default Infrahub branch to target should come from the active branch in the local Git repository.",
     )
     mode: InfrahubClientMode = pydantic.Field(InfrahubClientMode.DEFAULT, description="Default mode for the client")
-    requester: Optional[AsyncRequester] = None
     timeout: int = pydantic.Field(default=10, description="Default connection timeout in seconds")
     transport: RequesterTransport = pydantic.Field(
         default=RequesterTransport.HTTPX,
         description="Set an alternate transport using a predefined option",
     )
-    sync_requester: Optional[SyncRequester] = None
 
     class Config:
         env_prefix = "INFRAHUB_SDK_"
@@ -63,14 +53,6 @@ class Config(pydantic.BaseSettings):
             raise ValueError("Both 'username' and 'password' needs to be set")
         return values
 
-    @pydantic.root_validator(pre=True)
-    @classmethod
-    def set_custom_recorder(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        if values.get("recorder") == RecorderType.NONE and "custom_recorder" not in values:
-            values["custom_recorder"] = NoRecorder()
-        elif values.get("recorder") == RecorderType.JSON and "custom_recorder" not in values:
-            values["custom_recorder"] = JSONRecorder()
-        return values
 
     @pydantic.root_validator(pre=True)
     @classmethod
@@ -112,3 +94,24 @@ class Config(pydantic.BaseSettings):
         if self.username:
             return True
         return False
+
+class Config(ConfigBase):
+    recorder: RecorderType = pydantic.Field(
+        default=RecorderType.NONE,
+        description="Select builtin recorder for later replay.",
+    )
+    custom_recorder: Recorder = pydantic.Field(
+        default_factory=NoRecorder.default,
+        description="Provides a way to record responses from the Infrahub API",
+    )
+    requester: Optional[AsyncRequester] = None
+    sync_requester: Optional[SyncRequester] = None
+
+    @pydantic.root_validator(pre=True)
+    @classmethod
+    def set_custom_recorder(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        if values.get("recorder") == RecorderType.NONE and "custom_recorder" not in values:
+            values["custom_recorder"] = NoRecorder()
+        elif values.get("recorder") == RecorderType.JSON and "custom_recorder" not in values:
+            values["custom_recorder"] = JSONRecorder()
+        return values
