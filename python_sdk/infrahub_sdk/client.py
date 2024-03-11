@@ -677,25 +677,15 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                     action
                     display_label
                     elements {
-                        ... on DiffSummaryElement {
-                            type
-                            name
-                            action
-                            summary {
-                                added
-                                updated
-                                removed
-                            }
+                        element_type
+                        name
+                        action
+                        summary {
+                            added
+                            updated
+                            removed
                         }
                         ... on DiffSummaryElementRelationshipMany {
-                            type
-                            name
-                            action
-                            summary {
-                                added
-                                updated
-                                removed
-                            }
                             peers {
                                 action
                                 summary {
@@ -1211,25 +1201,15 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                     action
                     display_label
                     elements {
-                        ... on DiffSummaryElement {
-                            type
-                            name
-                            action
-                            summary {
-                                added
-                                updated
-                                removed
-                            }
+                        element_type
+                        name
+                        action
+                        summary {
+                            added
+                            updated
+                            removed
                         }
                         ... on DiffSummaryElementRelationshipMany {
-                            type
-                            name
-                            action
-                            summary {
-                                added
-                                updated
-                                removed
-                            }
                             peers {
                                 action
                                 summary {
