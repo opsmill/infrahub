@@ -19,7 +19,7 @@ from infrahub_sdk import __version__ as sdk_version
 from infrahub_sdk.async_typer import AsyncTyper
 from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.branch import app as branch_app
-from infrahub_sdk.ctl.check import app as check_app
+from infrahub_sdk.ctl.check import run as run_check
 from infrahub_sdk.ctl.client import initialize_client, initialize_client_sync
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
 from infrahub_sdk.ctl.repository import get_repository_config
@@ -43,13 +43,40 @@ from .importer import load
 app = AsyncTyper(pretty_exceptions_show_locals=False)
 
 app.add_typer(branch_app, name="branch")
-app.add_typer(check_app, name="check")
 app.add_typer(schema, name="schema")
 app.add_typer(validate_app, name="validate")
 app.command(name="dump")(dump)
 app.command(name="load")(load)
 
 console = Console()
+
+
+@app.command(name="check")
+def check(
+    check_name: str = typer.Argument(default="", help="Name of the Python check"),
+    branch: Optional[str] = None,
+    path: str = typer.Option(".", help="Root directory"),
+    debug: bool = False,
+    format_json: bool = False,
+    config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
+    list_available: bool = typer.Option(False, "--list", help="Show available Python checks"),
+    variables: Optional[List[str]] = typer.Argument(
+        None, help="Variables to pass along with the query. Format key=value key=value."
+    ),
+) -> None:
+    """Execute user-defined checks."""
+
+    variables_dict = parse_cli_vars(variables)
+    run_check(
+        path=path,
+        debug=debug,
+        branch=branch,
+        format_json=format_json,
+        config_file=config_file,
+        list_available=list_available,
+        name=check_name,
+        variables=variables_dict,
+    )
 
 
 @app.command(name="run")
@@ -199,7 +226,7 @@ def render(
 
 @app.command(name="transform")
 def transform(
-    transform_name: str = typer.Argument("Name of the Python transformation class"),
+    transform_name: str = typer.Argument(default="", help="Name of the Python transformation", show_default=False),
     variables: Optional[List[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
     ),
