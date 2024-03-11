@@ -87,6 +87,8 @@ KIND_FILTER_MAP = {
     "Dropdown": FilterSchemaKind.TEXT,
 }
 
+IGNORE_FOR_NODE = {"id", "state", "filters", "relationships", "attributes"}
+
 
 class SchemaNamespace(BaseModel):
     name: str
@@ -1479,7 +1481,6 @@ class SchemaManager(NodeManager):
                 message=f"Unable to find the Schema associated with {node.id}, {node.kind}",
             )
 
-        IGNORE_FOR_NODE = {"id", "state", "filters", "relationships", "attributes"}
         schema_dict = node.model_dump(exclude=IGNORE_FOR_NODE)
         for key, value in schema_dict.items():
             getattr(obj, key).value = value
@@ -1554,7 +1555,6 @@ class SchemaManager(NodeManager):
                 message=f"Unable to find the Schema associated with {node.id}, {node.kind}",
             )
 
-        IGNORE_FOR_NODE = {"id", "state", "filters", "relationships", "attributes"}
         properties_to_update = set(list(diff.added.keys()) + list(diff.changed.keys())) - IGNORE_FOR_NODE
 
         if properties_to_update:
