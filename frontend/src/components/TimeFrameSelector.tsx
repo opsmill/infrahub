@@ -14,11 +14,9 @@ export const TimeFrameSelector = () => {
   const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, DateTimeParam);
 
   useEffect(() => {
-    if (date) return;
-    if (!qspDate) return;
-
-    setDate(qspDate);
-  }, []);
+    if (date === qspDate) return;
+    setDate(qspDate ?? null);
+  }, [qspDate]);
 
   const onChange = (newDate: Date) => {
     setDate(newDate);
