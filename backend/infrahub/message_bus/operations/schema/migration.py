@@ -12,10 +12,16 @@ log = get_logger()
 
 async def path(message: SchemaMigrationPath, service: InfrahubServices) -> None:
     async with service.database.start_session() as db:
+        node_kind = None
+        if message.new_node_schema:
+            node_kind = message.new_node_schema.kind
+        elif message.previous_node_schema:
+            node_kind = message.previous_node_schema.kind
+
         service.log.info(
             "schema.migration.path - received",
             migration=message.migration_name,
-            node_kind=message.new_node_schema.kind,
+            node_kind=node_kind,
             path=message.schema_path.get_path(),
         )
         migration_class = MIGRATION_MAP.get(message.migration_name)
@@ -32,7 +38,7 @@ async def path(message: SchemaMigrationPath, service: InfrahubServices) -> None:
         service.log.info(
             "schema.migration.path - completed",
             migration=message.migration_name,
-            node_kind=message.new_node_schema.kind,
+            node_kind=node_kind,
             path=message.schema_path.get_path(),
             result=execution_result,
         )

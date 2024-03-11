@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Union
+from typing import List, Optional, Union
 
 from pydantic import Field
 
@@ -15,20 +15,20 @@ ROUTING_KEY = "schema.migration.path"
 class SchemaMigrationPath(InfrahubMessage):
     branch: Branch = Field(..., description="The name of the branch to target")
     migration_name: str = Field(..., description="The name of the migration to run")
-    new_node_schema: Union[NodeSchema, GenericSchema] = Field(
-        ..., description="new Schema of Node or Generic to process"
+    new_node_schema: Optional[Union[NodeSchema, GenericSchema]] = Field(
+        None, description="new Schema of Node or Generic to process"
     )
-    previous_node_schema: Union[NodeSchema, GenericSchema] = Field(
-        ..., description="Previous Schema of Node or Generic to process"
+    previous_node_schema: Optional[Union[NodeSchema, GenericSchema]] = Field(
+        None, description="Previous Schema of Node or Generic to process"
     )
     schema_path: SchemaPath = Field(..., description="SchemaPath to the element of the schema to migrate")
 
 
 class SchemaMigrationPathResponseData(InfrahubResponseData):
     errors: List[str] = Field(default_factory=list)
-    migration_name: str
-    nbr_migrations_executed: int
-    schema_path: SchemaPath
+    migration_name: Optional[str] = None
+    nbr_migrations_executed: Optional[int] = None
+    schema_path: Optional[SchemaPath] = None
 
 
 class SchemaMigrationPathResponse(InfrahubResponse):

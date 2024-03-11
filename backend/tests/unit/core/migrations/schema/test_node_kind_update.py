@@ -31,7 +31,6 @@ async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
     )
     query = await NodeKindUpdateMigrationQuery01.init(db=db, branch=default_branch, migration=migration)
-    # print(query.get_query(var=True, inline=True))
     await query.execute(db=db)
     assert query.get_nbr_migrations_executed() == 2
 

@@ -17,17 +17,49 @@ class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery):
     name = "migration_attribute_name_update_01"
     insert_return: bool = False
 
+    def render_sub_query_per_rel_type_update_active(self, rel_type: str, rel_def: FieldInfo) -> str:
+        subquery = [
+            "WITH peer_node, rb, active_attr",
+            "WITH peer_node, rb, active_attr",
+            f'WHERE type(rb) = "{rel_type}"',
+        ]
+        if rel_def.default.direction.value == "outbound":
+            subquery.append(f"CREATE (active_attr)-[:{rel_type} $rel_props_delete ]->(peer_node)")
+        elif rel_def.default.direction.value == "inbound":
+            subquery.append(f"CREATE (active_attr)<-[:{rel_type} $rel_props_delete ]-(peer_node)")
+        else:
+            subquery.append(f"CREATE (active_attr)-[:{rel_type} $rel_props_delete ]-(peer_node)")
+
+        subquery.append("RETURN peer_node as p2")
+        return "\n".join(subquery)
+
+    def render_sub_query_per_rel_type_create_new(self, rel_type: str, rel_def: FieldInfo) -> str:
+        subquery = [
+            "WITH peer_node, rb, active_attr, new_attr",
+            "WITH peer_node, rb, active_attr, new_attr",
+            f'WHERE type(rb) = "{rel_type}"',
+        ]
+        if rel_def.default.direction.value == "outbound":
+            subquery.append(f"CREATE (new_attr)-[:{rel_type} $rel_props_create ]->(peer_node)")
+        elif rel_def.default.direction.value == "inbound":
+            subquery.append(f"CREATE (new_attr)<-[:{rel_type} $rel_props_create ]-(peer_node)")
+        else:
+            subquery.append(f"CREATE (new_attr)-[:{rel_type} $rel_props_create ]-(peer_node)")
+
+        subquery.append("RETURN peer_node as p2")
+        return "\n".join(subquery)
+
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.migration.new_node_schema.kind
+        self.params["node_kind"] = self.migration.new_schema.kind
         self.params["new_attr_name"] = self.migration.new_attribute_schema.name
 
         attr_id = self.migration.new_attribute_schema.id
         if not attr_id:
             raise ValueError("The Id is not defined on new_attribute_schema")
-        prev_attr = self.migration.previous_node_schema.get_attribute_by_id(id=attr_id)
+        prev_attr = self.migration.previous_schema.get_attribute_by_id(id=attr_id)
         self.params["prev_attr_name"] = prev_attr.name
         self.params["current_time"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
@@ -51,46 +83,14 @@ class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery):
             "from": self.at.to_string(),
         }
 
-        def render_sub_query_per_rel_type_create_new(rel_type: str, rel_def: FieldInfo) -> str:
-            subquery = [
-                "WITH peer_node, rb, active_attr, new_attr",
-                "WITH peer_node, rb, active_attr, new_attr",
-                f'WHERE type(rb) = "{rel_type}"',
-            ]
-            if rel_def.default.direction.value == "outbound":
-                subquery.append(f"CREATE (new_attr)-[:{rel_type} $rel_props_create ]->(peer_node)")
-            elif rel_def.default.direction.value == "inbound":
-                subquery.append(f"CREATE (new_attr)<-[:{rel_type} $rel_props_create ]-(peer_node)")
-            else:
-                subquery.append(f"CREATE (new_attr)-[:{rel_type} $rel_props_create ]-(peer_node)")
-
-            subquery.append("RETURN peer_node as p2")
-            return "\n".join(subquery)
-
         sub_queries_create = [
-            render_sub_query_per_rel_type_create_new(rel_type, rel_def)
+            self.render_sub_query_per_rel_type_create_new(rel_type, rel_def)
             for rel_type, rel_def in GraphAttributeRelationships.model_fields.items()
         ]
         sub_query_create_all = "\nUNION\n".join(sub_queries_create)
 
-        def render_sub_query_per_rel_type_update_active(rel_type: str, rel_def: FieldInfo) -> str:
-            subquery = [
-                "WITH peer_node, rb, active_attr",
-                "WITH peer_node, rb, active_attr",
-                f'WHERE type(rb) = "{rel_type}"',
-            ]
-            if rel_def.default.direction.value == "outbound":
-                subquery.append(f"CREATE (active_attr)-[:{rel_type} $rel_props_delete ]->(peer_node)")
-            elif rel_def.default.direction.value == "inbound":
-                subquery.append(f"CREATE (active_attr)<-[:{rel_type} $rel_props_delete ]-(peer_node)")
-            else:
-                subquery.append(f"CREATE (active_attr)-[:{rel_type} $rel_props_delete ]-(peer_node)")
-
-            subquery.append("RETURN peer_node as p2")
-            return "\n".join(subquery)
-
         sub_queries_update = [
-            render_sub_query_per_rel_type_update_active(rel_type, rel_def)
+            self.render_sub_query_per_rel_type_update_active(rel_type, rel_def)
             for rel_type, rel_def in GraphAttributeRelationships.model_fields.items()
         ]
         sub_query_update_all = "\nUNION\n".join(sub_queries_update)

@@ -17,7 +17,7 @@ class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.migration.new_node_schema.kind
+        self.params["node_kind"] = self.migration.new_schema.kind
         self.params["attr_name"] = self.migration.new_attribute_schema.name
         self.params["attr_type"] = self.migration.new_attribute_schema.kind
 

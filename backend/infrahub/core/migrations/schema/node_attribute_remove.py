@@ -21,7 +21,7 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.migration.new_node_schema.kind
+        self.params["node_kind"] = self.migration.new_schema.kind
         self.params["attr_name"] = self.migration.schema_path.field_name
         self.params["current_time"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
@@ -37,9 +37,6 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
             "status": RelationshipStatus.DELETED.value,
             "from": self.at.to_string(),
         }
-
-        self.params["is_protected_default"] = False
-        self.params["is_visible_default"] = True
 
         def render_sub_query_per_rel_type(rel_type: str, rel_def: FieldInfo) -> str:
             subquery = [

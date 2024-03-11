@@ -31,8 +31,8 @@ class SchemaMigration(BaseModel):
     name: str = Field(..., description="Name of the migration")
     queries: Sequence[type[MigrationQuery]] = Field(..., description="List of queries to execute for this migration")
 
-    new_node_schema: Union[NodeSchema, GenericSchema]
-    previous_node_schema: Union[NodeSchema, GenericSchema]
+    new_node_schema: Optional[Union[NodeSchema, GenericSchema]] = None
+    previous_node_schema: Optional[Union[NodeSchema, GenericSchema]] = None
     schema_path: SchemaPath
 
     async def execute(
@@ -52,19 +52,31 @@ class SchemaMigration(BaseModel):
 
         return result
 
+    @property
+    def new_schema(self) -> Union[NodeSchema, GenericSchema]:
+        if self.new_node_schema:
+            return self.new_node_schema
+        raise ValueError("new_node_schema hasn't been initialized")
+
+    @property
+    def previous_schema(self) -> Union[NodeSchema, GenericSchema]:
+        if self.previous_node_schema:
+            return self.previous_node_schema
+        raise ValueError("previous_node_schema hasn't been initialized")
+
 
 class AttributeSchemaMigration(SchemaMigration):
     @property
     def new_attribute_schema(self) -> AttributeSchema:
         if not self.schema_path.field_name:
             raise ValueError("field_name is not defined")
-        return self.new_node_schema.get_attribute(name=self.schema_path.field_name)
+        return self.new_schema.get_attribute(name=self.schema_path.field_name)
 
     @property
     def previous_attribute_schema(self) -> AttributeSchema:
         if not self.schema_path.field_name:
             raise ValueError("field_name is not defined")
-        return self.previous_node_schema.get_attribute(name=self.schema_path.field_name)
+        return self.previous_schema.get_attribute(name=self.schema_path.field_name)
 
 
 class RelationshipSchemaMigration(SchemaMigration):
@@ -72,13 +84,13 @@ class RelationshipSchemaMigration(SchemaMigration):
     def new_relationship_schema(self) -> RelationshipSchema:
         if not self.schema_path.field_name:
             raise ValueError("field_name is not defined")
-        return self.new_node_schema.get_relationship(name=self.schema_path.field_name)
+        return self.new_schema.get_relationship(name=self.schema_path.field_name)
 
     @property
     def previous_relationship_schema(self) -> RelationshipSchema:
-        if not self.schema_path.field_name:
+        if not self.schema_path.field_name or not self.previous_node_schema:
             raise ValueError("field_name is not defined")
-        return self.previous_node_schema.get_relationship(name=self.schema_path.field_name)
+        return self.previous_schema.get_relationship(name=self.schema_path.field_name)
 
 
 class GraphMigration(BaseModel):

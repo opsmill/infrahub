@@ -31,9 +31,13 @@ async def schema_migrations_runner(
             f"Preparing migration for {migration.migration_name!r} ({migration.routing_key})", branch=branch.name
         )
 
-        new_node_schema = new_schema.get(name=migration.path.schema_kind)
+        new_node_schema: Optional[Union[NodeSchema, GenericSchema]] = None
         previous_node_schema: Optional[Union[NodeSchema, GenericSchema]] = None
-        if new_node_schema.id:
+
+        if new_schema.has(name=migration.path.schema_kind):
+            new_node_schema = new_schema.get(name=migration.path.schema_kind)
+
+        if new_node_schema and new_node_schema.id:
             previous_node_schema = previous_schema.get_by_id(id=new_node_schema.id)
         else:
             previous_node_schema = previous_schema.get(name=migration.path.schema_kind)

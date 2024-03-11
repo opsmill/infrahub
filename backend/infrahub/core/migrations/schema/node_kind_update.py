@@ -17,20 +17,57 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery):
     name = "migration_node_kind_update_01"
     insert_return: bool = False
 
+    def render_sub_query_per_rel_type(
+        self, rel_name: str, rel_type: str, rel_def: FieldInfo, direction: GraphRelDirection
+    ) -> str:
+        subquery = [
+            f"WITH peer_node, {rel_name}, active_node, new_node",
+            f"WITH peer_node, {rel_name}, active_node, new_node",
+            f'WHERE type({rel_name}) = "{rel_type}"',
+        ]
+        if rel_def.default.direction in [direction, GraphRelDirection.EITHER]:
+            subquery.append(f"CREATE (new_node)-[:{rel_type} $rel_props_new ]->(peer_node)")
+            subquery.append(f"CREATE (active_node)-[:{rel_type} $rel_props_prev ]->(peer_node)")
+        elif rel_def.default.direction in [direction, GraphRelDirection.EITHER]:
+            subquery.append(f"CREATE (new_node)<-[:{rel_type} $rel_props_new ]-(peer_node)")
+            subquery.append(f"CREATE (active_node)<-[:{rel_type} $rel_props_prev ]-(peer_node)")
+        subquery.append("RETURN peer_node as p2")
+        return "\n".join(subquery)
+
+    def render_sub_query_out(self) -> str:
+        sub_queries_out = [
+            self.render_sub_query_per_rel_type(
+                rel_name="rel_outband", rel_type=rel_type, rel_def=rel_def, direction=GraphRelDirection.OUTBOUND
+            )
+            for rel_type, rel_def in GraphNodeRelationships.model_fields.items()
+        ]
+        sub_query_out = "\nUNION\n".join(sub_queries_out)
+        return sub_query_out
+
+    def render_sub_query_in(self) -> str:
+        sub_queries_in = [
+            self.render_sub_query_per_rel_type(
+                rel_name="rel_inband", rel_type=rel_type, rel_def=rel_def, direction=GraphRelDirection.INBOUND
+            )
+            for rel_type, rel_def in GraphNodeRelationships.model_fields.items()
+        ]
+        sub_query_in = "\nUNION\n".join(sub_queries_in)
+        return sub_query_in
+
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["new_node_kind"] = self.migration.new_node_schema.kind
-        self.params["new_node_namespace"] = self.migration.new_node_schema.namespace
-        self.params["prev_node_kind"] = self.migration.previous_node_schema.kind
-        self.params["prev_node_namespace"] = self.migration.previous_node_schema.namespace
+        self.params["new_node_kind"] = self.migration.new_schema.kind
+        self.params["new_node_namespace"] = self.migration.new_schema.namespace
+        self.params["prev_node_kind"] = self.migration.previous_schema.kind
+        self.params["prev_node_namespace"] = self.migration.previous_schema.namespace
 
         self.params["current_time"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
 
         if self.branch.is_default:
-            self.params["branch_support"] = self.migration.new_node_schema.branch.value
+            self.params["branch_support"] = self.migration.new_schema.branch.value
         else:
             self.params["branch_support"] = BranchSupportType.LOCAL.value
 
@@ -48,38 +85,8 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery):
             "from": self.at.to_string(),
         }
 
-        def render_sub_query_per_rel_type(
-            rel_name: str, rel_type: str, rel_def: FieldInfo, direction: GraphRelDirection
-        ) -> str:
-            subquery = [
-                f"WITH peer_node, {rel_name}, active_node, new_node",
-                f"WITH peer_node, {rel_name}, active_node, new_node",
-                f'WHERE type({rel_name}) = "{rel_type}"',
-            ]
-            if rel_def.default.direction in [direction, GraphRelDirection.EITHER]:
-                subquery.append(f"CREATE (new_node)-[:{rel_type} $rel_props_new ]->(peer_node)")
-                subquery.append(f"CREATE (active_node)-[:{rel_type} $rel_props_prev ]->(peer_node)")
-            elif rel_def.default.direction in [direction, GraphRelDirection.EITHER]:
-                subquery.append(f"CREATE (new_node)<-[:{rel_type} $rel_props_new ]-(peer_node)")
-                subquery.append(f"CREATE (active_node)<-[:{rel_type} $rel_props_prev ]-(peer_node)")
-            subquery.append("RETURN peer_node as p2")
-            return "\n".join(subquery)
-
-        sub_queries_out = [
-            render_sub_query_per_rel_type(
-                rel_name="rel_outband", rel_type=rel_type, rel_def=rel_def, direction=GraphRelDirection.OUTBOUND
-            )
-            for rel_type, rel_def in GraphNodeRelationships.model_fields.items()
-        ]
-        sub_query_out = "\nUNION\n".join(sub_queries_out)
-
-        sub_queries_in = [
-            render_sub_query_per_rel_type(
-                rel_name="rel_inband", rel_type=rel_type, rel_def=rel_def, direction=GraphRelDirection.INBOUND
-            )
-            for rel_type, rel_def in GraphNodeRelationships.model_fields.items()
-        ]
-        sub_query_in = "\nUNION\n".join(sub_queries_in)
+        sub_query_out = self.render_sub_query_out()
+        sub_query_in = self.render_sub_query_in()
 
         # ruff: noqa: E501
         query = """
@@ -139,7 +146,7 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery):
         RETURN DISTINCT new_node
         """ % {
             "branch_filter": branch_filter,
-            "labels": ":".join(self.migration.new_node_schema.get_labels()),
+            "labels": ":".join(self.migration.new_schema.get_labels()),
             "sub_query_out": sub_query_out,
             "sub_query_in": sub_query_in,
         }
