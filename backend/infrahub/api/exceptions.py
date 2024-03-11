@@ -8,7 +8,7 @@ class QueryValidationError(Error):
         self.message = message
 
 
-class SchemaNotValid(Error):
+class SchemaNotValidError(Error):
     HTTP_CODE = 422
 
     def __init__(self, message: str):

@@ -432,6 +432,7 @@ select = [
     "I",     # isort-like checks
     "ICN",   # flake8-import-conventions
     "INP",   # flake8-no-pep420
+    "N818",  # pep8-naming error-suffix-on-exception-name
     "PIE",   # flake8-pie
     "PL",    # pylint
     "PYI",   # flake8-pyi
