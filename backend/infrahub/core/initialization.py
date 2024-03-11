@@ -201,7 +201,6 @@ async def create_account(
     name: str = "admin",
     role: str = "admin",
     password: Optional[str] = None,
-    create_token: bool = False,
     token_value: Optional[str] = None,
 ) -> Node:
     token_schema = registry.schema.get_node_schema(name=InfrahubKind.ACCOUNTTOKEN)
@@ -216,7 +215,7 @@ async def create_account(
     await obj.save(db=db)
     log.info(f"Created Account: {name}", account_name=name)
 
-    if create_token and token_value:
+    if token_value:
         token = await Node.init(db=db, schema=token_schema)
         await token.new(
             db=db,
@@ -258,6 +257,5 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
         db=db,
         name="admin",
         password=config.SETTINGS.security.initial_admin_password,
-        create_token=True,
         token_value=config.SETTINGS.security.initial_admin_token,
     )
