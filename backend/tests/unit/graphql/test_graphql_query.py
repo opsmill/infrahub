@@ -682,16 +682,15 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
     await c3_branch2.save(db=db)
 
     query = """
-    query {
-        DiffSummary {
-            branch
-            id
-            kind
-            action
-            display_label
-            elements {
-                ... on DiffSummaryElement {
-                    type
+        query {
+            DiffSummary {
+                branch
+                id
+                kind
+                action
+                display_label
+                elements {
+                    element_type
                     name
                     action
                     summary {
@@ -699,28 +698,19 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
                         updated
                         removed
                     }
-                }
-                ... on DiffSummaryElementRelationshipMany {
-                    type
-                    name
-                    action
-                    summary {
-                        added
-                        updated
-                        removed
-                    }
-                    peers {
-                        action
-                        summary {
-                            added
-                            updated
-                            removed
+                    ... on DiffSummaryElementRelationshipMany {
+                        peers {
+                            action
+                            summary {
+                                added
+                                updated
+                                removed
+                            }
                         }
                     }
                 }
             }
         }
-    }
     """
     gql_params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=branch2)
     result = await graphql(
@@ -761,7 +751,7 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
             "display_label": "bolting #444444",
             "elements": [
                 {
-                    "type": "ATTRIBUTE",
+                    "element_type": "ATTRIBUTE",
                     "name": "name",
                     "action": "UPDATED",
                     "summary": {"added": 0, "updated": 1, "removed": 0},
@@ -783,7 +773,7 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
     )
     c3_branch2_diff_elements = c3_branch2_diff["elements"]
     assert len(c3_branch2_diff_elements) == 1
-    assert c3_branch2_diff_elements[0]["type"] == "RELATIONSHIP_ONE"
+    assert c3_branch2_diff_elements[0]["element_type"] == "RELATIONSHIP_ONE"
     assert c3_branch2_diff_elements[0]["name"] == "owner"
     assert c3_branch2_diff_elements[0]["action"] == "UPDATED"
     p2_main_diff = _check_diff_for_branch_and_id(
@@ -800,7 +790,7 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
     )
     p2_main_diff_elements = p2_main_diff["elements"]
     assert len(p2_main_diff_elements) == 1
-    assert p2_main_diff_elements[0]["type"] == "ATTRIBUTE"
+    assert p2_main_diff_elements[0]["element_type"] == "ATTRIBUTE"
     assert p2_main_diff_elements[0]["name"] == "name"
     assert p2_main_diff_elements[0]["action"] == "UPDATED"
     assert p2_main_diff_elements[0]["summary"] == {"added": 0, "updated": 1, "removed": 0}
@@ -822,11 +812,11 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
     assert {"cars", "name"} == set(p1_branch2_diff_elements_map.keys())
     name_element = p1_branch2_diff_elements_map["name"]
     assert name_element["name"] == "name"
-    assert name_element["type"] == "ATTRIBUTE"
+    assert name_element["element_type"] == "ATTRIBUTE"
     assert name_element["action"] == "UPDATED"
     cars_element = p1_branch2_diff_elements_map["cars"]
     assert cars_element["name"] == "cars"
-    assert cars_element["type"] == "RELATIONSHIP_MANY"
+    assert cars_element["element_type"] == "RELATIONSHIP_MANY"
     assert cars_element["action"] == "ADDED"
     assert len(cars_element["peers"]) == 1
     assert cars_element["peers"][0]["action"] == "ADDED"
