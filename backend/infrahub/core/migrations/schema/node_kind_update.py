@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Sequence
 
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import BranchSupportType, RelationshipStatus
 from infrahub.core.graph.schema import GraphNodeRelationships, GraphRelDirection
 
 from ..shared import MigrationQuery, SchemaMigration
@@ -37,14 +37,14 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery):
         self.params["rel_props_new"] = {
             "branch": self.branch.name,
             "branch_level": self.branch.hierarchy_level,
-            "status": "active",
+            "status": RelationshipStatus.ACTIVE.value,
             "from": self.at.to_string(),
         }
 
         self.params["rel_props_prev"] = {
             "branch": self.branch.name,
             "branch_level": self.branch.hierarchy_level,
-            "status": "delete",
+            "status": RelationshipStatus.DELETED.value,
             "from": self.at.to_string(),
         }
 
@@ -59,7 +59,7 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery):
             if rel_def.default.direction in [direction, GraphRelDirection.EITHER]:
                 subquery.append(f"CREATE (new_node)-[:{rel_type} $rel_props_new ]->(peer_node)")
                 subquery.append(f"CREATE (active_node)-[:{rel_type} $rel_props_prev ]->(peer_node)")
-            elif rel_def.default.direction.value in [direction, GraphRelDirection.EITHER]:
+            elif rel_def.default.direction in [direction, GraphRelDirection.EITHER]:
                 subquery.append(f"CREATE (new_node)<-[:{rel_type} $rel_props_new ]-(peer_node)")
                 subquery.append(f"CREATE (active_node)<-[:{rel_type} $rel_props_prev ]-(peer_node)")
             subquery.append("RETURN peer_node as p2")

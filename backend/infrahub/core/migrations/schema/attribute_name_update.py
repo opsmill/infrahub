@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Sequence
 
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import BranchSupportType, RelationshipStatus
 from infrahub.core.graph.schema import GraphAttributeRelationships
 
 from ..shared import AttributeMigrationQuery, AttributeSchemaMigration
@@ -40,14 +40,14 @@ class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery):
         self.params["rel_props_create"] = {
             "branch": self.branch.name,
             "branch_level": self.branch.hierarchy_level,
-            "status": "active",
+            "status": RelationshipStatus.ACTIVE.value,
             "from": self.at.to_string(),
         }
 
         self.params["rel_props_delete"] = {
             "branch": self.branch.name,
             "branch_level": self.branch.hierarchy_level,
-            "status": "delete",
+            "status": RelationshipStatus.DELETED.value,
             "from": self.at.to_string(),
         }
 
