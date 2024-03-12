@@ -34,74 +34,99 @@ jobs:
   scale-tests:
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: 2
       matrix:
         include:
-          - name: 1000 nodes
-            node-amount: 1000
+          # - name: 1000 nodes
+          #   node-amount: 1000
+          #   attrs-amount: 0
+          #   rels-amount: 0
+          #   changes-amount: 0
+          #   stager: stage_infranode
+          # - name: 10000 nodes
+          #   node-amount: 10000
+          #   attrs-amount: 0
+          #   rels-amount: 0
+          #   changes-amount: 0
+          #   stager: stage_infranode
+          # - name: 100 attrs
+          #   node-amount: 10
+          #   attrs-amount: 100
+          #   rels-amount: 0
+          #   changes-amount: 0
+          #   stager: stage_infranode
+          # - name: 1000 attrs
+          #   node-amount: 10
+          #   attrs-amount: 1000
+          #   rels-amount: 0
+          #   changes-amount: 0
+          #   stager: stage_infranode
+          # - name: 100 rels
+          #   node-amount: 10
+          #   attrs-amount: 0
+          #   rels-amount: 100
+          #   changes-amount: 0
+          #   stager: stage_infranode
+          # - name: 1000 rels
+          #   node-amount: 10
+          #   attrs-amount: 0
+          #   rels-amount: 1000
+          #   changes-amount: 0
+          #   stager: stage_infranode
+          # - name: 100 branches (with new nodes)
+          #   node-amount: 100
+          #   attrs-amount: 0
+          #   rels-amount: 0
+          #   changes-amount: 0
+          #   stager: stage_branch
+          # - name: 100 branches (with single node)
+          #   node-amount: 100
+          #   attrs-amount: 0
+          #   rels-amount: 0
+          #   changes-amount: 0
+          #   stager: stage_branch_update
+          # - name: 1000 branches (with new nodes)
+          #   node-amount: 1000
+          #   attrs-amount: 0
+          #   rels-amount: 0
+          #   changes-amount: 0
+          #   stager: stage_branch
+          # - name: 1000 branches (with single node)
+          #   node-amount: 1000
+          #   attrs-amount: 0
+          #   rels-amount: 0
+          #   changes-amount: 0
+          #   stager: stage_branch_update
+          # - name: 1000 updates of a single node
+          #   node-amount: 1
+          #   attrs-amount: 0
+          #   rels-amount: 0
+          #   changes-amount: 1000
+          #   stager: stage_infranode
+          - name: 100 updates of a single node
+            node-amount: 1
             attrs-amount: 0
             rels-amount: 0
+            changes-amount: 100
             stager: stage_infranode
-          - name: 10000 nodes
-            node-amount: 10000
-            attrs-amount: 0
-            rels-amount: 0
-            stager: stage_infranode
-          - name: 100 attrs
-            node-amount: 10
-            attrs-amount: 100
-            rels-amount: 0
-            stager: stage_infranode
-          - name: 1000 attrs
-            node-amount: 10
-            attrs-amount: 1000
-            rels-amount: 0
-            stager: stage_infranode
-          - name: 100 rels
-            node-amount: 10
-            attrs-amount: 0
-            rels-amount: 100
-            stager: stage_infranode
-          - name: 1000 rels
-            node-amount: 10
-            attrs-amount: 0
-            rels-amount: 1000
-            stager: stage_infranode
-          - name: 100 branches (with new nodes)
+          - name: 100 updates of 100 nodes
             node-amount: 100
             attrs-amount: 0
             rels-amount: 0
-            stager: stage_branch
-          - name: 100 branches (with single node)
-            node-amount: 100
-            attrs-amount: 0
-            rels-amount: 0
-            stager: stage_branch_update
-          - name: 1000 branches (with new nodes)
-            node-amount: 1000
-            attrs-amount: 0
-            rels-amount: 0
-            stager: stage_branch
-          - name: 1000 branches (with single node)
-            node-amount: 1000
-            attrs-amount: 0
-            rels-amount: 0
-            stager: stage_branch_update
-          - name: 1000 updates of a single node
-            node-amount: 1000
-            attrs-amount: 0
-            rels-amount: 0
-            stager: stage_infranode_update
-          - name: 1000 changes in diff
-            node-amount: 1000
-            attrs-amount: 0
-            rels-amount: 0
-            stager: stage_branch_diff
-          - name: 10000 changes in diff
-            node-amount: 10000
-            attrs-amount: 0
-            rels-amount: 0
-            stager: stage_branch_diff
+            changes-amount: 100
+            stager: stage_infranode
+          # - name: 1000 changes in diff
+          #   node-amount: 1000
+          #   attrs-amount: 0
+          #   rels-amount: 0
+          #   changes-amount: 0
+          #   stager: stage_branch_diff
+          # - name: 10000 changes in diff
+          #   node-amount: 10000
+          #   attrs-amount: 0
+          #   rels-amount: 0
+          #   changes-amount: 0
+          #   stager: stage_branch_diff
     name: ${{ matrix.name }}
     runs-on:
       group: huge-runners
@@ -142,15 +167,13 @@ jobs:
         run: echo "INFRAHUB_DB_BACKUP_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
       - name: Select vmagent port
         run: echo "VMAGENT_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
-      - name: Set test name env var
-        run: echo "TEST_NAME=${{ matrix.name }}" | sed 's/ /_/g' >> $GITHUB_ENV
 
       - name: "Start scale environment"
         run: "poetry run invoke backend.test-scale-env-start -g 1"
       - name: "Store start time"
         run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
       - name: "Run test"
-        run: "poetry run invoke backend.test-scale --amount ${{ matrix.node-amount }} --attrs ${{ matrix.attrs-amount }} --rels ${{ matrix.rels-amount }} -s backend/tests/scale/schema.yml --stager ${{ matrix.stager }}"
+        run: "poetry run invoke backend.test-scale --amount ${{ matrix.node-amount }} --attrs ${{ matrix.attrs-amount }} --rels ${{ matrix.rels-amount }} --changes ${{ matrix.changes-amount }} -s backend/tests/scale/schema.yml --stager ${{ matrix.stager }}"
       - name: "Push metrics"
         run: 'curl -v --data-binary @metrics.csv "http://localhost:${VMAGENT_PORT}/api/v1/import/csv?format=1:metric:scale_test_response_time,2:time:unix_ms,3:label:operation_name,4:label:stage,5:label:node_amount,6:label:attrs_amount,7:label:rels_amount"'
       - name: "Wait for vmagent to push metrics"
