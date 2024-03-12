@@ -240,7 +240,6 @@ ignore = [
     "B018",    # Found useless attribute access. Either assign it to a variable or remove it.
     "C408",    # Unnecessary `dict` call (rewrite as a literal)
     "C414",    # Unnecessary `list` call within `sorted()`
-    "INP001",  # File is part of an implicit namespace package. Add an `__init__.py`.
     "N802",    # Function name should be lowercase
     "N806",    # Variable in function should be lowercase
     "PIE808",  # [*] Unnecessary `start` argument in `range`

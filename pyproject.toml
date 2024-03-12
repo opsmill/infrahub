@@ -467,7 +467,6 @@ ignore = [
     "C409",     # Unnecessary `list` literal passed to `tuple()` (rewrite as a `tuple` literal)
     "C414",     # Unnecessary `list` call within `sorted()`
     "C419",     # Unnecessary list comprehension.
-    "INP001",   # File is part of an implicit namespace package. Add an `__init__.py`.
     "N801",     # Class name should use CapWords convention
     "N802",     # Function name should be lowercase
     "N805",     # First argument of a method should be named self

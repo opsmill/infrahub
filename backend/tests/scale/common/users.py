@@ -1,9 +1,8 @@
 import time
 
+import common.stagers
 from infrahub_sdk import Config
 from locust import User, task
-
-import common.stagers
 
 from .config import config
 from .protocols import LocustInfrahubClient
