@@ -140,7 +140,7 @@ async def test_merge_relationship_many(
 async def test_merge_update_schema(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_core_models_schema,
+    register_core_schema_db,
     car_accord_main: Node,
     car_volt_main: Node,
     person_john_main,
