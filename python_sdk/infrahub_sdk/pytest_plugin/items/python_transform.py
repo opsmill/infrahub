@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
     from infrahub_sdk.pytest_plugin.models import InfrahubTest
     from infrahub_sdk.schema import InfrahubRepositoryConfigElement
+    from infrahub_sdk.transforms import InfrahubTransform
 
 
 class InfrahubPythonTransformItem(InfrahubItem):
@@ -30,12 +31,16 @@ class InfrahubPythonTransformItem(InfrahubItem):
     ):
         super().__init__(*args, resource_name=resource_name, resource_config=resource_config, test=test, **kwargs)
 
+        self.transform_instance: InfrahubTransform
+
+    def instantiate_transform(self) -> None:
         self.transform_instance = get_transform_class_instance(
             transform_config=self.resource_config,  # type: ignore[arg-type]
             search_path=self.session.infrahub_config_path.parent,  # type: ignore[attr-defined]
         )
 
     def run_transform(self, variables: Dict[str, Any]) -> Any:
+        self.instantiate_transform()
         return asyncio.run(self.transform_instance.run(data=variables))
 
     def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
@@ -60,6 +65,8 @@ class InfrahubPythonTransformItem(InfrahubItem):
 
 class InfrahubPythonTransformSmokeItem(InfrahubPythonTransformItem):
     def runtest(self) -> None:
+        self.instantiate_transform()
+
         for attr in ("query", "transform"):
             if not hasattr(self.transform_instance, attr):
                 raise PythonTransformDefinitionError(f"Missing attribute or function {attr}")

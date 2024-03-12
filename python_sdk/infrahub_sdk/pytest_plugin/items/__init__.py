@@ -1,3 +1,4 @@
+from .base import InfrahubItem
 from .check import InfrahubCheckIntegrationItem, InfrahubCheckSmokeItem, InfrahubCheckUnitProcessItem
 from .graphql_query import InfrahubGraphQLQueryIntegrationItem, InfrahubGraphQLQuerySmokeItem
 from .jinja2_transform import (
@@ -12,6 +13,7 @@ from .python_transform import (
 )
 
 __all__ = [
+    "InfrahubItem",
     "InfrahubCheckIntegrationItem",
     "InfrahubCheckSmokeItem",
     "InfrahubCheckUnitProcessItem",
