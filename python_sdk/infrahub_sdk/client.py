@@ -9,7 +9,7 @@ from time import sleep
 from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
 
 import httpx
-from typing_extensions import Self
+from typing_extensions import NotRequired, Self
 from typing_extensions import TypedDict as ExtensionTypedDict
 
 from infrahub_sdk.batch import InfrahubBatch
@@ -63,7 +63,7 @@ class NodeDiffElement(ExtensionTypedDict):
     element_type: str
     action: str
     summary: NodeDiffSummary
-    peers: Optional[List[NodeDiffPeer]]
+    peers: NotRequired[List[NodeDiffPeer]]
 
 
 class NodeDiffSummary(ExtensionTypedDict):

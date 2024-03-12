@@ -27,7 +27,6 @@ def person_name_node_diff(
                 "element_type": DiffElementType.ATTRIBUTE.value,
                 "action": DiffAction.UPDATED.value,
                 "summary": {"added": 0, "updated": 1, "removed": 0},
-                "peers": None,
             }
         ],
     }

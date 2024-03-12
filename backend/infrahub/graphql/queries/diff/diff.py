@@ -119,7 +119,6 @@ class DiffSummaryEntry(ObjectType):
                     "name": element_name,
                     "action": element.action,
                     "summary": element.summary,
-                    "peers": None,
                 }
                 if isinstance(element, BranchDiffRelationshipMany):
                     serial_element["peers"] = [

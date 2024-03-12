@@ -34,7 +34,8 @@ from infrahub.pytest_plugin import InfrahubBackendPlugin
 if TYPE_CHECKING:
     from infrahub_sdk.node import InfrahubNode
 
-    from infrahub.core.schema_manager import SchemaBranch, SchemaUpdateConstraintInfo
+    from infrahub.core.models import SchemaUpdateConstraintInfo
+    from infrahub.core.schema_manager import SchemaBranch
     from infrahub.services import InfrahubServices
 
 
