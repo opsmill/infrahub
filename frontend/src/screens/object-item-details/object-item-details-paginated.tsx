@@ -398,7 +398,7 @@ export default function ObjectItemDetails(props: any) {
                   aria-hidden="true"
                 />
 
-                <span className="flex-grow text-gray-500 overflow-hidden break-words">
+                <span className="flex-grow text-gray-500 overflow-hidden break-words line-clamp-3">
                   {objectDetailsData.display_label}
                 </span>
               </div>
