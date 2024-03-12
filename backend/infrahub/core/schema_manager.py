@@ -558,6 +558,14 @@ class SchemaBranch:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.display_labels:
+                if isinstance(node_schema, NodeSchema):
+                    for generic in node_schema.inherit_from:
+                        generic_schema = self.get(name=generic, duplicate=False)
+                        if generic_schema.display_labels:
+                            node_schema.display_labels = generic_schema.display_labels
+                            break
+
+            if not node_schema.display_labels:
                 continue
 
             for display_label_path in node_schema.display_labels:
@@ -1022,12 +1030,12 @@ class SchemaBranch:
 
     def add_hierarchy(self):
         for node_name in self.nodes.keys():
-            node: NodeSchema = self.get(name=node_name, duplicate=False)
+            node = self.get_node(name=node_name, duplicate=False)
 
             if node.parent is None and node.children is None:
                 continue
 
-            node: NodeSchema = node.duplicate()
+            node = node.duplicate()
 
             if node.parent and "parent" not in node.relationship_names:
                 node.relationships.append(
