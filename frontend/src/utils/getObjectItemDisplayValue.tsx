@@ -6,6 +6,7 @@ import { PasswordDisplay } from "../components/display/password-display";
 import { CodeEditor } from "../components/editor/code-editor";
 import { MAX_VALUE_LENGTH_DISPLAY } from "../config/constants";
 import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
+import { MarkdownViewer } from "../components/editor/markdown-viewer";
 
 const getTextValue = (data: any) => {
   if (typeof data === "string" || typeof data === "number") {
@@ -42,7 +43,7 @@ export const getDisplayValue = (
   }
 
   if (attribute?.kind === "TextArea") {
-    return <pre>{row[attribute?.name]?.value}</pre>;
+    return <MarkdownViewer markdownText={row[attribute?.name]?.value} />;
   }
 
   if (attribute?.kind === "JSON") {
