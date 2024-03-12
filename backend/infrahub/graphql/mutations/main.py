@@ -193,7 +193,8 @@ class InfrahubMutationMixin:
             await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
             node_id = data.get("id", obj.id)
             fields = list(data.keys())
-            fields.remove("id")
+            if "id" in fields:
+                fields.remove("id")
             validate_mutation_permissions_update_node(
                 operation=cls.__name__, node_id=node_id, account_session=context.account_session, fields=fields
             )

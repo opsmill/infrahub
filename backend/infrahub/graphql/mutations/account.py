@@ -11,7 +11,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
+from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
 
 from ..types import InfrahubObjectType
@@ -74,6 +74,7 @@ class AccountMixin:
         return response
 
     @classmethod
+    @retry_db_transaction(name="account_token_create")
     async def create_token(
         cls, db: InfrahubDatabase, account: Node, data: Dict[str, Any], info: GraphQLResolveInfo
     ) -> Self:
@@ -94,6 +95,7 @@ class AccountMixin:
         return cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=True)  # type: ignore[call-arg]
 
     @classmethod
+    @retry_db_transaction(name="account_update_self")
     async def update_self(
         cls, db: InfrahubDatabase, account: Node, data: Dict[str, Any], info: GraphQLResolveInfo
     ) -> Self:

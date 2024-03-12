@@ -12,6 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.task import Task
 from infrahub.core.task_log import TaskLog
 from infrahub.core.timestamp import current_timestamp
+from infrahub.database import retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.graphql.types.task_log import RelatedTaskLogCreateInput
 
@@ -53,6 +54,7 @@ class TaskCreate(Mutation):
     object = Field(TaskFields)
 
     @classmethod
+    @retry_db_transaction(name="task_create")
     async def mutate(
         cls,
         root: dict,  # pylint: disable=unused-argument
@@ -107,6 +109,7 @@ class TaskUpdate(Mutation):
     object = Field(TaskFields)
 
     @classmethod
+    @retry_db_transaction(name="task_update")
     async def mutate(
         cls,
         root: dict,  # pylint: disable=unused-argument
