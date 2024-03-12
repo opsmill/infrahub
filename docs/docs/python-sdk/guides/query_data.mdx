@@ -1,0 +1,459 @@
+---
+title: Querying data in Infrahub
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Querying data in Infrahub
+
+We can query data in 3 ways using the SDK:
+
+- querying a single node of a given kind, based on some filters, using the `get` method
+- querying multiple nodes of a given kind, based on some filters, using the `filters` method
+- querying all the nodes of a given kind, using the `all` method
+
+## Query filters
+
+The `get` and `filters` query methods allow you to use filters. Filters specify on which attribute(s) or attributes of a relationship(s) the resulting node(s) should match. The available filters depend on the kind of Node you want to query and are dynamically generated from the schema.
+
+### Discovering available filters
+
+The easiest way to discover the available filters for a kind of node is by querying the schema.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  tag_schema = await client.schema.get("BuiltinTag")
+  print(tag_schema.filters)
+  ```
+
+  </TabItem>
+  <TabItem value="Sync">
+
+  ```python
+  tag_schema = client.schema.get("BuiltinTag")
+  print(tag_schema.filters)
+  ```
+
+  </TabItem>
+</Tabs>
+
+### Attribute filters
+
+For every attribute the following filters will be generated (replace attribute with the name of the attribute):
+
+- `attribute__value`: filter for a single attribute value
+- `attribute__values`: (list) filter for multiple attribute values
+- `attribute__is_visible`: (bool) filter for the is_visible property of an attribute
+- `attribute__is_protected`: (bool) filter for the is_protected property of an attribute
+- `attribute__source__id`: filter for the source property of an attribute
+- `attribute__owner__id`: filter for the owner property of an attribute
+
+### Relationship filters
+
+For every attribute of a relationship of the node, the same filters will be generated. The name of the filter will be prefixed with the relationship name followed by 2 underscores `relationship__attribute__value`.
+
+### Using filters
+
+Filters can be passed as arguments to the `get` or `filters` method.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  tag = await client.get(kind="BuiltinTag", name__value="RED")
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  tag = client.get(kind="BuiltinTag", name__value="RED")
+  ```
+
+  </TabItem>
+</Tabs>
+
+### Using multiple filters
+
+When you pass multiple filters as argument to the `get` or `filters` method, they will combined in a logical AND operation. The resulting nodes of your query will match on all the filters in that case.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  tags = await client.filters(kind="BuiltinTag", name__values=["RED", "BLUE"], name__is_protected=True)
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  tags = client.filters(kind="BuiltinTag", name__values=["RED", "BLUE"], name__is_protected=True)
+  ```
+
+  </TabItem>
+</Tabs>
+
+## Querying a single node
+
+You can query Infrahub for a single node of a particular kind, by using the `get` method and using 1 or more filters.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  tag = await client.get(kind="BuiltinTag", name__value="RED")
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  tag = client.get(kind="BuiltinTag", name__value="RED")
+  ```
+
+  </TabItem>
+</Tabs>
+
+## Querying multiple nodes
+
+You can query Infrahub for multiple nodes of a particular kind, by using the `filters` method and using 1 or more filters.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  tags = client.filters(kind="BuiltinTag", name__values=["RED", "BLUE"])
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  tags = client.filters(kind="BuiltinTag", name__values=["RED", "BLUE"])
+  ```
+
+  </TabItem>
+</Tabs>
+
+## Querying all nodes
+
+You can query Infrahub for all nodes of a particular kind, by using the `all` method.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  tags = await client.all(kind="BuiltinTag")
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  tags = client.all(kind="BuiltinTag")
+  ```
+
+  </TabItem>
+</Tabs>
+
+## Attributes and relationships
+
+By default, the result of a query will include attributes, relationships of cardinality one and relationships of kind Attribute or Parent. Relationships that are included in a query will be automatically initialized which means the ID, type and display name of the peers will be included in the query. But the related node itself will not be included.
+
+To explore this in a bit more details, we are going to assume the following simple schema has been loaded into Infrahub
+
+```yaml
+---
+version: "1.0"
+nodes:
+  - name: Device
+    namespace: Test
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        optional: false
+    relationships:
+      - name: tags
+        cardinality: many
+        kind: Attribute
+        peer: BuiltinTag
+        optional: true
+      - name: site
+        cardinality: one
+        kind: Attribute
+        peer: TestSite
+        optional: false
+      - name: interfaces
+        cardinality: many
+        kind: Component
+        peer: TestInterface
+        optional: false
+  - name: Site
+    namespace: Test
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        optional: false
+    relationships:
+      - name: device
+        cardinality: many
+        kind: Attribute
+        peer: TestDevice
+        optional: true
+  - name: Interface
+    namespace: Test
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        optional: false
+    relationships:
+      - name: device
+        cardinality: one
+        kind: Parent
+        peer: TestDevice
+        optional: true
+```
+
+### Attributes
+
+Attributes are included by default.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  device = await client.get(kind="BuiltinTag", name__value="atl1-edge1")
+  print(device.name.value)
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  device = client.get(kind="BuiltinTag", name__value="atl1-edge1")
+  print(device.name.value)
+  ```
+
+  </TabItem>
+</Tabs>
+
+### Relationships of cardinality one
+
+Relationships of cardinality one are included by default and will be initialized.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  device = await client.get(kind="TestDevice", name__value="atl1-edge1")
+  print(device.site.initialized) # True
+  print(device.site.id, device.site.display_label, device.site.typename)
+  print(device.site.peer) # the related node is not included
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  device = client.get(kind="TestDevice", name__value="atl1-edge1")
+  print(device.site.initialized) # True
+  print(device.site.id, device.site.display_label, device.site.typename)
+  print(device.site.peer) # the related node is not included
+  ```
+
+  </TabItem>
+</Tabs>
+
+Relationships of kind `Attribute`, `Parent` are included by default and will be initialized.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  device = await client.get(kind="TestDevice", name__value="atl1-edge1")
+  print(device.tags.initialized) # True
+  print(device.tags.peers)
+
+  for tag in device.tags.peers:
+   print(tag.id, tag.display_label, tag.typename)
+
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+   ```python
+   device = client.get(kind="TestDevice", name__value="atl1-edge1")
+   print(device.tags.initialized) # True
+   print(device.tags.peers)
+
+   for tag in device.tags.peers:
+    print(tag.id, tag.display_label, tag.typename)
+   ```
+
+  </TabItem>
+</Tabs>
+
+### Relationships of cardinality many are not included by default
+
+Relationships of cardinality many are not included by default.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  device = await client.get(kind="TestDevice", name__value="atl1-edge1")
+  print(device.interfaces.initialized) # False
+  print(device.interfaces.peers) # empty list []
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+   ```python
+   device = client.get(kind="TestDevice", name__value="atl1-edge1")
+   print(device.interfaces.initialized) # False
+   print(device.interfaces.peers) # empty list []
+   ```
+
+  </TabItem>
+</Tabs>
+
+### Including attributes and relationships
+
+You can include attributes and relationships that are not retrieved as part of a query by default.
+The included relationships will be initialized and the related nodes (peers) will be retrieved from the database.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  device = await client.get(kind="TestDevice", name__value="atl1-edge1", include=["interfaces"])
+  print(device.interfaces.initialized) # True
+  print(device.interfaces.peers)
+
+  for interface in device.interfaces.peers:
+   print(interface.id, interface.display_label, interface.typename)
+
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+   ```python
+   device = client.get(kind="TestDevice", name__value="atl1-edge1", include=["interfaces"])
+   print(device.interfaces.initialized) # True
+   print(device.interfaces.peers)
+
+   for interface in device.interfaces.peers:
+    print(interface.id, interface.display_label, interface.typename)
+   ```
+
+  </TabItem>
+</Tabs>
+
+### Excluding attribute and relationships
+
+You can exclude attributes and relationships that are retrieved with a query by default. This can be useful if you need to optimize or speed up a particular query.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+   ```python
+   device = await client.get(kind="TestDevice", exclude=["site"])
+   print(device.site) # None
+   ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+   ```python
+   device = client.get(kind="TestDevice", exclude=["site"])
+   print(device.site) # None
+   ```
+
+  </TabItem>
+</Tabs>
+
+### Fetching relationships manually
+
+Relationships that are not retrieved as part of a query by default, or through the `include` query method argument, can be retrieved using the `fetch` method.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  device = await client.get(kind="TestDevice", name__value="atl1-edge1")
+  print(device.interfaces.initialized) # False
+
+  await device.interfaces.fetch()
+  print(device.interfaces.initialized) # True
+  for interface in device.interfaces.peers:
+   print(interface.id, interface.display_label, interface.typename, interface.peer.name.value)
+
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  device = client.get(kind="TestDevice", name__value="atl1-edge1")
+  print(device.interfaces.initialized) # False
+
+  device.interfaces.fetch()
+  print(device.interfaces.initialized) # True
+  for interface in device.interfaces.peers:
+   print(interface.id, interface.display_label, interface.typename, interface.peer.name.value)
+  ```
+
+  </TabItem>
+</Tabs>
+
+## Query a node(s) in the past
+
+To query the state of a Node in the past, you can pass the `at` argument to all the query methods. The at argument accepts a `str`, `DateTime` or `Timestamp` object as value.
+Values of type `str` will be parsed using the [Pendulum](https://pendulum.eustace.io/) library.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  device = await client.get(kind="TestDevice", name__value="atl1-edge1", at="10:10:10")
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  device = client.get(kind="TestDevice", name__value="atl1-edge1", at="10:10:10")
+  ```
+
+  </TabItem>
+</Tabs>
+
+## Query a node(s) in a different branch
+
+If you want to query a node(s) in a different branch than the default branch with which the SDK client was initiated, then you can use the `branch` argument of the query methods.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  device = client.get(kind="TestDevice", name__value="atl1-edge1", branch="refresh-site-atl1")
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  device = client.get(kind="TestDevice", name__value="atl1-edge1", branch="refresh-site-atl1")
+  ```
+
+  </TabItem>
+</Tabs>
