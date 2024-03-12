@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 import pytest
 from git.exc import InvalidGitRepositoryError
 
+from ..exceptions import InvalidResourceConfigError
 from ..models import InfrahubInputOutputTest
 
 if TYPE_CHECKING:
@@ -35,6 +36,11 @@ class InfrahubItem(pytest.Item):
         # Smoke tests do not need this, hence this clause
         if isinstance(self.test.spec, InfrahubInputOutputTest):
             self.test.spec.update_paths(base_dir=self.fspath.dirpath())
+
+    def validate_resource_config(self) -> None:
+        """Make sure that a test resource config is properly defined."""
+        if self.resource_config is None:
+            raise InvalidResourceConfigError(self.resource_name)
 
     def get_result_differences(self, computed: Any) -> Optional[str]:
         """Compute the differences between the computed result and the expected one.

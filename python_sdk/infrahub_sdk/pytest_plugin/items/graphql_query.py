@@ -16,6 +16,10 @@ if TYPE_CHECKING:
 
 
 class InfrahubGraphQLQueryItem(InfrahubItem):
+    def validate_resource_config(self) -> None:
+        # Resource name does not need to match against infrahub repo config
+        return
+
     def execute_query(self) -> Any:
         return self.session.infrahub_client.query_gql_query(  # type: ignore[attr-defined]
             self.test.spec.query,  # type: ignore[union-attr]

@@ -6,12 +6,14 @@ import pytest
 import yaml
 from pytest import Item
 
+from .exceptions import InvalidResourceConfigError
 from .items import (
     InfrahubCheckIntegrationItem,
     InfrahubCheckSmokeItem,
     InfrahubCheckUnitProcessItem,
     InfrahubGraphQLQueryIntegrationItem,
     InfrahubGraphQLQuerySmokeItem,
+    InfrahubItem,
     InfrahubJinja2TransformIntegrationItem,
     InfrahubJinja2TransformSmokeItem,
     InfrahubJinja2TransformUnitRenderItem,
@@ -72,13 +74,19 @@ class InfrahubYamlFile(pytest.File):
 
         for test in group.tests:
             item_class: type[pytest.Item] = ITEMS_MAPPING[test.spec.kind]  # type: ignore[assignment]
-            item: pytest.Item = item_class.from_parent(
+            item: InfrahubItem = item_class.from_parent(
                 name=f"{marker.markname}__{group.resource_name}__{test.name}",
                 parent=self,
                 resource_name=group.resource_name,
                 resource_config=resource_config,
                 test=test,
             )
+
+            # If item does not pass validation, mark it to be skipped
+            try:
+                item.validate_resource_config()
+            except InvalidResourceConfigError as exc:
+                item.add_marker(pytest.mark.skip(reason=str(exc)))
 
             item.add_marker(pytest.mark.infrahub)
             item.add_marker(marker)
