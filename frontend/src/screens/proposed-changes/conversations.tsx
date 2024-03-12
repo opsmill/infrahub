@@ -504,35 +504,35 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
         </>
       ),
       updated_at: <DateDisplay date={proposedChangesDetails?._updated_at} />,
+      actions: (
+        <>
+          <Button
+            onClick={handleApprove}
+            isLoading={isLoadingApprove}
+            disabled={!auth?.permissions?.write || !approverId || !canApprove}
+            className="mr-2">
+            Approve
+          </Button>
+
+          <Button
+            onClick={handleMerge}
+            buttonType={BUTTON_TYPES.VALIDATE}
+            isLoading={isLoadingMerge}
+            disabled={!auth?.permissions?.write || state === "closed" || state === "merged"}
+            className="mr-2">
+            Merge
+          </Button>
+
+          <Button
+            onClick={handleClose}
+            buttonType={BUTTON_TYPES.CANCEL}
+            isLoading={isLoadingClose}
+            disabled={!auth?.permissions?.write || state === "merged"}>
+            {state === "closed" ? "Re-open" : "Close"}
+          </Button>
+        </>
+      ),
     },
-    actions: (
-      <>
-        <Button
-          onClick={handleApprove}
-          isLoading={isLoadingApprove}
-          disabled={!auth?.permissions?.write || !approverId || !canApprove}
-          className="mr-2">
-          Approve
-        </Button>
-
-        <Button
-          onClick={handleMerge}
-          buttonType={BUTTON_TYPES.VALIDATE}
-          isLoading={isLoadingMerge}
-          disabled={!auth?.permissions?.write || state === "closed" || state === "merged"}
-          className="mr-2">
-          Merge
-        </Button>
-
-        <Button
-          onClick={handleClose}
-          buttonType={BUTTON_TYPES.CANCEL}
-          isLoading={isLoadingClose}
-          disabled={!auth?.permissions?.write || state === "merged"}>
-          {state === "closed" ? "Re-open" : "Close"}
-        </Button>
-      </>
-    ),
   };
 
   return (
