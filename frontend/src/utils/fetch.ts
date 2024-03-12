@@ -49,7 +49,7 @@ export const fetchStream = async (url: string, payload?: any) => {
   return result;
 };
 
-const QSP_TO_INCLUDE = [QSP.BRANCH];
+const QSP_TO_INCLUDE = [QSP.BRANCH, QSP.DATETIME];
 
 type overrideQueryParams = {
   name: string;
