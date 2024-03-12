@@ -7,6 +7,16 @@ test.describe("/objects/:objectname", () => {
     await expect(page.locator("thead")).toContainText("Kind");
   });
 
+  test("should display default column when a relationship schema has no attributes/relationship", async ({
+    page,
+  }) => {
+    await page.goto("/objects/CoreStandardGroup");
+    await page.getByRole("link", { name: "arista_devices" }).click();
+    await page.getByText("Members").click();
+    await expect(page.getByRole("columnheader", { name: "Type" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Name" })).toBeVisible();
+  });
+
   test.describe("when not logged in", () => {
     test("should not be able to create a new object", async ({ page }) => {
       await page.goto("/objects/BuiltinTag");

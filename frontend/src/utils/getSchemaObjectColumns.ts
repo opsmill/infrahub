@@ -101,7 +101,10 @@ export const getSchemaObjectColumns = (
     label: "Kind",
     name: "__typename",
   };
-  return isGeneric(schema) ? [kindColumn, ...columns] : columns;
+
+  // columns.length > 0 needed because of relationship-details-paginated.tsx
+  // Relationship needs refactoring to hanble this better
+  return isGeneric(schema) && columns.length > 0 ? [kindColumn, ...columns] : columns;
 };
 
 export const getGroupColumns = (schema?: iNodeSchema | iGenericSchema) => {
