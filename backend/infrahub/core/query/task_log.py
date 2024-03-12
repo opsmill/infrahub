@@ -7,7 +7,7 @@ from infrahub.core.query import QueryType
 from .standard_node import StandardNodeQuery
 
 if TYPE_CHECKING:
-    from infrahub.core.task_log import TaskLog
+    from infrahub.core.task import TaskLog
     from infrahub.database import InfrahubDatabase
 
 

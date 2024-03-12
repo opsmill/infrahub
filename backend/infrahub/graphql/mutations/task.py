@@ -9,8 +9,7 @@ from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.core.constants import TaskConclusion as PyTaskConclusion
 from infrahub.core.manager import NodeManager
-from infrahub.core.task import Task
-from infrahub.core.task_log import TaskLog
+from infrahub.core.task import Task, TaskLog
 from infrahub.core.timestamp import current_timestamp
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError

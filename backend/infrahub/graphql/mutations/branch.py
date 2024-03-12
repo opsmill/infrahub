@@ -13,6 +13,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.schema.runner import schema_migrations_runner
+from infrahub.core.task import UserTask
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import BranchNotFoundError
 from infrahub.log import get_log_data, get_logger
@@ -20,7 +21,6 @@ from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 
-from ..task import GraphQLTaskReport
 from ..types import BranchType
 
 if TYPE_CHECKING:
@@ -59,15 +59,11 @@ class BranchCreate(Mutation):
     ) -> Self:
         context: GraphqlContext = info.context
 
-        async with await GraphQLTaskReport.init(
-            title=f"Create branch : {data['name']}", context=context, logger=log
-        ) as task:
+        async with UserTask.from_graphql_context(title=f"Create branch : {data['name']}", context=context) as task:
             # Check if the branch already exist
             try:
                 await Branch.get_by_name(db=context.db, name=data["name"])
-                msg = f"The branch {data['name']}, already exist"
-                await task.error(message=msg)
-                raise ValueError(msg)
+                raise ValueError(f"The branch {data['name']}, already exist")
             except BranchNotFoundError:
                 pass
 
@@ -75,7 +71,6 @@ class BranchCreate(Mutation):
                 obj = Branch(**data)
             except pydantic.ValidationError as exc:
                 error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
-                await task.error(message="\n".join(error_msgs))
                 raise ValueError("\n".join(error_msgs)) from exc
 
             async with lock.registry.local_schema_lock():
@@ -130,21 +125,22 @@ class BranchDelete(Mutation):
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
-        obj = await Branch.get_by_name(db=context.db, name=str(data.name))
-        await obj.delete(db=context.db)
+        async with UserTask.from_graphql_context(title=f"Delete branch: {data['name']}", context=context):
+            obj = await Branch.get_by_name(db=context.db, name=str(data.name))
+            await obj.delete(db=context.db)
 
-        if context.service:
-            log_data = get_log_data()
-            request_id = log_data.get("request_id", "")
-            message = messages.EventBranchDelete(
-                branch=obj.name,
-                branch_id=str(obj.id),
-                sync_with_git=obj.sync_with_git,
-                meta=Meta(request_id=request_id),
-            )
-            await context.service.send(message=message)
+            if context.service:
+                log_data = get_log_data()
+                request_id = log_data.get("request_id", "")
+                message = messages.EventBranchDelete(
+                    branch=obj.name,
+                    branch_id=str(obj.id),
+                    data_only=obj.sync_with_git,
+                    meta=Meta(request_id=request_id),
+                )
+                await context.service.send(message=message)
 
-        return cls(ok=True)
+            return cls(ok=True)
 
 
 class BranchUpdate(Mutation):
@@ -193,13 +189,11 @@ class BranchRebase(Mutation):
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
-        async with await GraphQLTaskReport.init(
-            title=f"Rebase branch : {data['name']}", context=context, logger=log
-        ) as task:
+        async with UserTask.from_graphql_context(title=f"Rebase branch : {data.name}", context=context) as task:
             obj = await Branch.get_by_name(db=context.db, name=str(data.name))
-            async with context.db.start_transaction() as db:
-                await obj.rebase(db=db)
-                await task.info(message="Branch successfully rebased")
+            async with context.db.start_transaction() as dbt:
+                await obj.rebase(db=dbt)
+                await task.info(message="Branch successfully rebased", db=dbt)
 
             fields = await extract_fields_first_node(info=info)
 
@@ -230,21 +224,24 @@ class BranchValidate(Mutation):
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
-        obj = await Branch.get_by_name(db=context.db, name=data["name"])
-        ok = True
-        validation_messages = ""
+        async with UserTask.from_graphql_context(title=f"Validate branch: {data['name']}", context=context):
+            obj = await Branch.get_by_name(db=context.db, name=data["name"])
+            ok = True
+            validation_messages = ""
 
-        diff = await BranchDiffer.init(db=context.db, branch=obj)
-        conflicts = await diff.get_conflicts()
+            diff = await BranchDiffer.init(db=context.db, branch=obj)
+            conflicts = await diff.get_conflicts()
 
-        if conflicts:
-            ok = False
-            errors = [str(conflict) for conflict in conflicts]
-            validation_messages = ", ".join(errors)
+            if conflicts:
+                ok = False
+                errors = [str(conflict) for conflict in conflicts]
+                validation_messages = ", ".join(errors)
 
-        fields = await extract_fields(info.field_nodes[0].selection_set)
+            fields = await extract_fields(info.field_nodes[0].selection_set)
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), messages=validation_messages, ok=ok)
+            return cls(
+                object=await obj.to_graphql(fields=fields.get("object", {})), messages=validation_messages, ok=ok
+            )
 
 
 class BranchMerge(Mutation):
@@ -259,38 +256,39 @@ class BranchMerge(Mutation):
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
-        obj = await Branch.get_by_name(db=context.db, name=data["name"])
+        async with UserTask.from_graphql_context(title=f"Merge branch: {data['name']}", context=context) as task:
+            obj = await Branch.get_by_name(db=context.db, name=data["name"])
 
-        merger: Optional[BranchMerger] = None
-        async with lock.registry.global_graph_lock():
-            async with context.db.start_transaction() as db:
-                merger = BranchMerger(db=db, source_branch=obj, service=context.service)
-                await merger.merge()
-                await merger.update_schema()
+            merger: Optional[BranchMerger] = None
+            async with lock.registry.global_graph_lock():
+                async with context.db.start_transaction() as db:
+                    merger = BranchMerger(db=db, source_branch=obj, service=context.service)
+                    await merger.merge()
+                    await merger.update_schema()
 
-        fields = await extract_fields(info.field_nodes[0].selection_set)
+            fields = await extract_fields(info.field_nodes[0].selection_set)
 
-        ok = True
+            ok = True
 
-        if merger and merger.migrations and context.service:
-            errors = await schema_migrations_runner(
-                branch=merger.destination_branch,
-                new_schema=merger.destination_schema,
-                previous_schema=merger.initial_source_schema,
-                migrations=merger.migrations,
-                service=context.service,
-            )
-            for error in errors:
-                context.service.log.error(error)
+            if merger and merger.migrations and context.service:
+                errors = await schema_migrations_runner(
+                    branch=merger.destination_branch,
+                    new_schema=merger.destination_schema,
+                    previous_schema=merger.initial_source_schema,
+                    migrations=merger.migrations,
+                    service=context.service,
+                )
+                for error in errors:
+                    await task.error(message=error)
 
-        if config.SETTINGS.broker.enable and context.background:
-            log_data = get_log_data()
-            request_id = log_data.get("request_id", "")
-            message = messages.EventBranchMerge(
-                source_branch=obj.name,
-                target_branch=registry.default_branch,
-                meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
-            )
-            context.background.add_task(services.send, message)
+            if config.SETTINGS.broker.enable and context.background:
+                log_data = get_log_data()
+                request_id = log_data.get("request_id", "")
+                message = messages.EventBranchMerge(
+                    source_branch=obj.name,
+                    target_branch=registry.default_branch,
+                    meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
+                )
+                context.background.add_task(services.send, message)
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+            return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
