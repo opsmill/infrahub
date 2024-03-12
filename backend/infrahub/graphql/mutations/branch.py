@@ -96,7 +96,7 @@ class BranchCreate(Mutation):
                 message = messages.EventBranchCreate(
                     branch=obj.name,
                     branch_id=str(obj.id),
-                    data_only=obj.sync_with_git,
+                    sync_with_git=obj.sync_with_git,
                     meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
                 )
                 await context.service.send(message=message)
@@ -135,7 +135,7 @@ class BranchDelete(Mutation):
                 message = messages.EventBranchDelete(
                     branch=obj.name,
                     branch_id=str(obj.id),
-                    data_only=obj.sync_with_git,
+                    sync_with_git=obj.sync_with_git,
                     meta=Meta(request_id=request_id),
                 )
                 await context.service.send(message=message)
