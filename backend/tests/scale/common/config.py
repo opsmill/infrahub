@@ -20,6 +20,7 @@ class Config(BaseSettings):
     node_amount: int = 10
     attrs_amount: int = 0
     rels_amount: int = 0
+    changes_amount: int = 0
 
     current_stage: str = ""
 
