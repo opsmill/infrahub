@@ -121,6 +121,7 @@ const sidebars: SidebarsConfig = {
       label: 'Python SDK',
       link: {type: 'doc', id: 'python-sdk/readme'},
       items: [
+        'python-sdk/config',
         'python-sdk/query',
         'python-sdk/create-update-delete',
         'python-sdk/branches',

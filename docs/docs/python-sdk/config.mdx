@@ -1,0 +1,131 @@
+---
+title: Python SDK Configuration
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The Python SDK (Async or Sync) client can be configured using an instance of the `Config` class.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+  ```python
+  from infrahub_sdk import Config, InfrahubClient
+  config = Config(address="http://infrahub:8080", api_token="123-xyz-invalid-token")
+  client = await InfrahubClient.init(config=config)
+  ```
+  </TabItem>
+  <TabItem value="Sync">
+  ```python
+  from infrahub_sdk import Config, InfrahubClientSync
+  config = Config(address="http://infrahub:8080", api_token="123-xyz-invalid-token")
+  client = InfrahubClientSync.init(config=config)
+  ```
+  </TabItem>
+</Tabs>
+
+The following settings can be defined in the Config class
+
+## address
+
+**Property**: address<br />
+**Description**: The URL to use when connecting to Infrahub.<br />
+**Type**: `string`<br />
+**Default value**: http://localhost:8000<br />
+**Environment variable**: `INFRAHUB_SDK_ADDRESS`<br />
+
+## api_token
+
+**Property**: api_token<br />
+**Description**: API token for authentication against Infrahub.<br />
+**Type**: `string`<br />
+**Environment variable**: `INFRAHUB_SDK_API_TOKEN`<br />
+
+## echo_graphql_queries
+
+**Property**: echo_graphql_queries<br />
+**Description**: If set the GraphQL query and variables will be echoed to the screen<br />
+**Type**: `boolean`<br />
+**Default value**: False<br />
+**Environment variable**: `INFRAHUB_SDK_ECHO_GRAPHQL_QUERIES`<br />
+
+## username
+
+**Property**: username<br />
+**Description**: Username for accessing Infrahub<br />
+**Type**: `string`<br />
+**Environment variable**: `INFRAHUB_SDK_USERNAME`<br />
+
+## password
+
+**Property**: password<br />
+**Description**: Password for accessing Infrahub<br />
+**Type**: `string`<br />
+**Environment variable**: `INFRAHUB_SDK_PASSWORD`<br />
+
+## default_branch
+
+**Property**: default_branch<br />
+**Description**: Default branch to target if not specified for each request.<br />
+**Type**: `string`<br />
+**Default value**: main<br />
+**Environment variable**: `INFRAHUB_SDK_DEFAULT_BRANCH`<br />
+
+## default_branch_from_git
+
+**Property**: default_branch_from_git<br />
+**Description**: Indicates if the default Infrahub branch to target should come from the active branch in the local Git repository.<br />
+**Type**: `boolean`<br />
+**Default value**: False<br />
+**Environment variable**: `INFRAHUB_SDK_DEFAULT_BRANCH_FROM_GIT`<br />
+
+## mode
+
+**Property**: mode<br />
+**Description**: Default mode for the client<br />
+**Type**: `enum`<br />
+**Default value**: default<br />
+**Choices**: default, tracking<br />
+**Environment variable**: `INFRAHUB_SDK_MODE`<br />
+
+## timeout
+
+**Property**: timeout<br />
+**Description**: Default connection timeout in seconds<br />
+**Type**: `integer`<br />
+**Default value**: 10<br />
+**Environment variable**: `INFRAHUB_SDK_TIMEOUT`<br />
+
+## transport
+
+**Property**: transport<br />
+**Description**: Set an alternate transport using a predefined option<br />
+**Type**: `enum`<br />
+**Default value**: httpx<br />
+**Choices**: httpx, json<br />
+**Environment variable**: `INFRAHUB_SDK_TRANSPORT`<br />
+
+## recorder
+
+**Property**: recorder<br />
+**Description**: Select builtin recorder for later replay.<br />
+**Type**: `RecorderType`<br />
+**Default value**: RecorderType.NONE <br />
+
+## custom_recorder
+
+**Property**: custom_recorder<br />
+**Description**: Provides a way to record responses from the Infrahub API<br />
+**Type**: `Recorder` (protocol) <br />
+**Default value**: NoRecorder.default <br />
+
+## requester
+
+**Property**: requester<br />
+**Type**: `AsyncRequester`<br />
+**Default value**: None <br />
+
+## sync_requester
+
+**Property**: sync_requester<br />
+**Type**: `SyncRequester`<br />
+**Default value**: None <br />

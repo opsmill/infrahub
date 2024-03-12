@@ -1,0 +1,67 @@
+---
+title: Python SDK Configuration
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The Python SDK (Async or Sync) client can be configured using an instance of the `Config` class.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+  ```python
+  from infrahub_sdk import Config, InfrahubClient
+  config = Config(address="http://infrahub:8080", api_token="123-xyz-invalid-token")
+  client = await InfrahubClient.init(config=config)
+  ```
+  </TabItem>
+  <TabItem value="Sync">
+  ```python
+  from infrahub_sdk import Config, InfrahubClientSync
+  config = Config(address="http://infrahub:8080", api_token="123-xyz-invalid-token")
+  client = InfrahubClientSync.init(config=config)
+  ```
+  </TabItem>
+</Tabs>
+
+The following settings can be defined in the Config class
+{% for property in properties %}
+
+## {{ property.name }}
+
+**Property**: {{ property.name }}<br />
+**Description**: {{ property.description }}<br />
+**Type**: `{{ property.type }}`<br />
+{% if "default" in property and property.default is not none and property.default != ""%}
+**Default value**: {{ property.default }}<br />
+{% endif %}
+{% if "choices" in property and property.choices | length > 0 %}
+**Choices**: {{ property.choices | join(", ") }}<br />
+{% endif %}
+**Environment variable**: `{{ property.env_vars | join(", ") | upper | default("", true) }}`<br />
+{% endfor %}
+
+## recorder
+
+**Property**: recorder<br />
+**Description**: Select builtin recorder for later replay.<br />
+**Type**: `RecorderType`<br />
+**Default value**: RecorderType.NONE <br />
+
+## custom_recorder
+
+**Property**: custom_recorder<br />
+**Description**: Provides a way to record responses from the Infrahub API<br />
+**Type**: `Recorder` (protocol) <br />
+**Default value**: NoRecorder.default <br />
+
+## requester
+
+**Property**: requester<br />
+**Type**: `AsyncRequester`<br />
+**Default value**: None <br />
+
+## sync_requester
+
+**Property**: sync_requester<br />
+**Type**: `SyncRequester`<br />
+**Default value**: None <br />
