@@ -59,7 +59,7 @@ class InfraHubBranchManagerBase:
         time_to: Optional[str] = None,
     ) -> str:
         """Generate the URL for the diff_data function."""
-        url = f"{client.address}/diff/data?branch={branch_name}"
+        url = f"{client.address}/api/diff/data?branch={branch_name}"
         url += f"&branch_only={str(branch_only).lower()}"
         if time_from:
             url += f"&time_from={time_from}"
