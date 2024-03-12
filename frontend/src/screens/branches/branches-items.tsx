@@ -61,8 +61,8 @@ export const BranchesItems = () => {
                         </Tooltip>
                       )}
 
-                      {!branch.is_data_only && (
-                        <Tooltip message={"Data only"}>
+                      {branch.sync_with_git && (
+                        <Tooltip message={"Sync with Git"}>
                           <Icon icon={"mdi:git"} className="text-red-400 mr-1" />
                         </Tooltip>
                       )}

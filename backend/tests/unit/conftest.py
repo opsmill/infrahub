@@ -207,7 +207,7 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
         status="OPEN",
         description="Second Branch",
         is_default=False,
-        is_data_only=True,
+        sync_with_git=False,
         branched_from=params["time_m45"],
         created_at=params["time_m45"],
     )
@@ -429,7 +429,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
         status="OPEN",
         description="Second Branch",
         is_default=False,
-        is_data_only=True,
+        sync_with_git=False,
         branched_from=params["time_m45"],
         created_at=params["time_m45"],
     )
@@ -656,7 +656,7 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
             status="OPEN",
             description=description,
             is_default=False,
-            is_data_only=True,
+            sync_with_git=False,
             branched_from=params[branched_from],
             created_at=params[created_at],
         )

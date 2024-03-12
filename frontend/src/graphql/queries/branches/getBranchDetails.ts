@@ -9,7 +9,7 @@ import Handlebars from "handlebars";
 //         origin_branch
 //         branched_from
 //         created_at
-//         is_data_only
+//         sync_with_git
 //         is_default
 //     }
 // }
@@ -23,7 +23,7 @@ export const getBranchDetails = Handlebars.compile(`query {
       origin_branch
       branched_from
       created_at
-      is_data_only
+      sync_with_git
       is_default
   }
   {{#if accountKind}}

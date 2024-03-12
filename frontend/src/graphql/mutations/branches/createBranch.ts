@@ -4,14 +4,14 @@ export const BRANCH_CREATE = gql`
   mutation BranchCreate(
     $name: String!
     $description: String!
-    $is_data_only: Boolean!
+    $sync_with_git: Boolean!
     $is_isolated: Boolean!
   ) {
     BranchCreate(
       data: {
         name: $name
         description: $description
-        is_data_only: $is_data_only
+        sync_with_git: $sync_with_git
         is_isolated: $is_isolated
       }
     ) {
@@ -22,7 +22,7 @@ export const BRANCH_CREATE = gql`
         origin_branch
         branched_from
         created_at
-        is_data_only
+        sync_with_git
         is_default
       }
     }

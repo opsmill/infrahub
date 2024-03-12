@@ -56,13 +56,13 @@ async def test_branch_create(
 ):
     query = """
     mutation {
-        BranchCreate(data: { name: "branch2", is_data_only: true }) {
+        BranchCreate(data: { name: "branch2", sync_with_git: false }) {
             ok
             object {
                 id
                 name
                 description
-                is_data_only
+                sync_with_git
                 is_default
                 branched_from
             }
@@ -80,7 +80,7 @@ async def test_branch_create(
     assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # lenght of an UUID
     assert result.data["BranchCreate"]["object"]["name"] == "branch2"
     assert not result.data["BranchCreate"]["object"]["description"]
-    assert result.data["BranchCreate"]["object"]["is_data_only"] is True
+    assert result.data["BranchCreate"]["object"]["sync_with_git"] is False
     assert result.data["BranchCreate"]["object"]["is_default"] is False
     assert result.data["BranchCreate"]["object"]["branched_from"] is not None
     assert recorder.seen_routing_keys == ["event.branch.create"]
@@ -119,7 +119,7 @@ async def test_branch_create(
                 id
                 name
                 description
-                is_data_only
+                sync_with_git
             }
         }
     }
@@ -139,7 +139,7 @@ async def test_branch_create(
     assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # lenght of an UUID
     assert result.data["BranchCreate"]["object"]["name"] == "branch3"
     assert result.data["BranchCreate"]["object"]["description"] == "my description"
-    assert result.data["BranchCreate"]["object"]["is_data_only"] is False
+    assert result.data["BranchCreate"]["object"]["sync_with_git"] is True
 
 
 async def test_branch_delete(
@@ -147,13 +147,13 @@ async def test_branch_delete(
 ):
     create_query = """
     mutation {
-        BranchCreate(data: { name: "branch3", description: "my description", is_data_only: true }) {
+        BranchCreate(data: { name: "branch3", description: "my description", sync_with_git: false }) {
             ok
             object {
                 id
                 name
                 description
-                is_data_only
+                sync_with_git
             }
         }
     }
@@ -192,13 +192,13 @@ async def test_branch_create_registry(
 ):
     query = """
     mutation {
-        BranchCreate(data: { name: "branch2", is_data_only: true }) {
+        BranchCreate(data: { name: "branch2", sync_with_git: false }) {
             ok
             object {
                 id
                 name
                 description
-                is_data_only
+                sync_with_git
                 is_default
                 branched_from
             }
@@ -227,7 +227,7 @@ async def test_branch_create_invalid_names(
 ):
     query = """
     mutation($branch_name: String!) {
-        BranchCreate(data: { name: $branch_name, is_data_only: true }) {
+        BranchCreate(data: { name: $branch_name, sync_with_git: false }) {
             ok
             object {
                 id
@@ -258,7 +258,7 @@ async def test_branch_create_short_name(
 ):
     query = """
     mutation($branch_name: String!) {
-        BranchCreate(data: { name: $branch_name, is_data_only: true }) {
+        BranchCreate(data: { name: $branch_name, sync_with_git: false }) {
             ok
             object {
                 id
@@ -282,7 +282,7 @@ async def test_branch_create_with_repositories(
 ):
     query = """
     mutation {
-        BranchCreate(data: { name: "branch2", is_data_only: false }) {
+        BranchCreate(data: { name: "branch2", sync_with_git: true }) {
             ok
             object {
                 id

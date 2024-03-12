@@ -11,7 +11,7 @@ test.describe("Getting started with Infrahub - Integration with Git", () => {
     await test.step(" Create a new branch update-ethernet1", async () => {
       await page.getByTestId("create-branch-button").click();
       await page.getByLabel("New branch name").fill("update-ethernet1");
-      await page.getByLabel("Data only").click();
+      await page.getByLabel("Sync with Git").click();
       await saveScreenshotForDocs(page, "tutorial_6_branch_creation");
       await page.getByRole("button", { name: "Create" }).click();
 

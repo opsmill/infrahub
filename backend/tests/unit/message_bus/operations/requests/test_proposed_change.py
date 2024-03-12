@@ -87,7 +87,7 @@ async def schema_integrity_01(
     message = RequestProposedChangeSchemaIntegrity(
         proposed_change=obj.id,
         source_branch=SOURCE_BRANCH_A,
-        source_branch_data_only=True,
+        source_branch_sync_with_git=False,
         destination_branch="main",
         branch_diff=branch_diff_01,
     )

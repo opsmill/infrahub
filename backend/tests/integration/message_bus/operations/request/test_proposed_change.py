@@ -120,7 +120,7 @@ async def test_run_pipeline_validate_requested_jobs(
 ):
     message = messages.RequestProposedChangePipeline(
         source_branch="change1",
-        source_branch_data_only=False,
+        source_branch_sync_with_git=True,
         destination_branch="main",
         proposed_change=prepare_proposed_change,
     )

@@ -11,7 +11,7 @@ async def create(message: messages.EventBranchCreate, service: InfrahubServices)
     log.info("run_message", branch=message.branch)
 
     events: List[InfrahubMessage] = [messages.RefreshRegistryBranches()]
-    if not message.data_only:
+    if message.sync_with_git:
         events.append(messages.RequestGitCreateBranch(branch=message.branch, branch_id=message.branch_id))
 
     for event in events:

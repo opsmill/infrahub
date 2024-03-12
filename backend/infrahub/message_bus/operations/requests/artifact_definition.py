@@ -84,7 +84,7 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
             artifact_id = artifacts_by_member.get(member.id)
             if _render_artifact(
                 artifact_id=artifact_id,
-                managed_branch=not message.source_branch_data_only,
+                managed_branch=message.source_branch_sync_with_git,
                 impacted_artifacts=impacted_artifacts,
             ):
                 check_execution_id = str(UUIDT())
@@ -166,7 +166,7 @@ async def generate(message: messages.RequestArtifactDefinitionGenerate, service:
     query = transform.query.peer
     repository = transformation_repository.peer
     branch = await service.client.branch.get(branch_name=message.branch)
-    if not branch.is_data_only:
+    if branch.sync_with_git:
         repository = await service.client.get(
             kind=InfrahubKind.GENERICREPOSITORY, id=repository.id, branch=message.branch, fragment=True
         )

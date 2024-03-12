@@ -114,7 +114,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             proposed_change=message.proposed_change,
         )
 
-        if not message.source_branch_data_only and await _validate_repository_merge_conflicts(
+        if message.source_branch_sync_with_git and await _validate_repository_merge_conflicts(
             repositories=repositories
         ):
             for repo in repositories:
@@ -145,7 +145,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
                 messages.RequestProposedChangeRefreshArtifacts(
                     proposed_change=message.proposed_change,
                     source_branch=message.source_branch,
-                    source_branch_data_only=message.source_branch_data_only,
+                    source_branch_sync_with_git=message.source_branch_sync_with_git,
                     destination_branch=message.destination_branch,
                     branch_diff=branch_diff,
                 )
@@ -159,7 +159,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
                 messages.RequestProposedChangeDataIntegrity(
                     proposed_change=message.proposed_change,
                     source_branch=message.source_branch,
-                    source_branch_data_only=message.source_branch_data_only,
+                    source_branch_sync_with_git=message.source_branch_sync_with_git,
                     destination_branch=message.destination_branch,
                     branch_diff=branch_diff,
                 )
@@ -171,7 +171,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
                 messages.RequestProposedChangeRepositoryChecks(
                     proposed_change=message.proposed_change,
                     source_branch=message.source_branch,
-                    source_branch_data_only=message.source_branch_data_only,
+                    source_branch_sync_with_git=message.source_branch_sync_with_git,
                     destination_branch=message.destination_branch,
                     branch_diff=branch_diff,
                 )
@@ -185,7 +185,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
                 messages.RequestProposedChangeSchemaIntegrity(
                     proposed_change=message.proposed_change,
                     source_branch=message.source_branch,
-                    source_branch_data_only=message.source_branch_data_only,
+                    source_branch_sync_with_git=message.source_branch_sync_with_git,
                     destination_branch=message.destination_branch,
                     branch_diff=branch_diff,
                 )
@@ -197,7 +197,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
                 messages.RequestProposedChangeRunTests(
                     proposed_change=message.proposed_change,
                     source_branch=message.source_branch,
-                    source_branch_data_only=message.source_branch_data_only,
+                    source_branch_sync_with_git=message.source_branch_sync_with_git,
                     destination_branch=message.destination_branch,
                     branch_diff=branch_diff,
                 )
@@ -284,7 +284,7 @@ async def repository_checks(message: messages.RequestProposedChangeRepositoryChe
         events: List[InfrahubMessage] = []
         for repository in message.branch_diff.repositories:
             log_line = "Skipping merge conflict checks for data only branch"
-            if not message.source_branch_data_only and not repository.read_only:
+            if message.source_branch_sync_with_git and not repository.read_only:
                 events.append(
                     messages.RequestRepositoryChecks(
                         proposed_change=message.proposed_change,
@@ -300,7 +300,7 @@ async def repository_checks(message: messages.RequestProposedChangeRepositoryChe
                     proposed_change=message.proposed_change,
                     repository=repository.repository_id,
                     source_branch=message.source_branch,
-                    source_branch_data_only=message.source_branch_data_only,
+                    source_branch_sync_with_git=message.source_branch_sync_with_git,
                     target_branch=message.destination_branch,
                     branch_diff=message.branch_diff,
                 )
@@ -341,7 +341,7 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
             select = select.add_flag(
                 current=select,
                 flag=ArtifactSelect.FILE_CHANGES,
-                condition=not message.source_branch_data_only and message.branch_diff.has_file_modifications,
+                condition=message.source_branch_sync_with_git and message.branch_diff.has_file_modifications,
             )
 
             for changed_model in message.branch_diff.modified_kinds(branch=message.source_branch):
@@ -359,7 +359,7 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
                     branch_diff=message.branch_diff,
                     proposed_change=message.proposed_change,
                     source_branch=message.source_branch,
-                    source_branch_data_only=message.source_branch_data_only,
+                    source_branch_sync_with_git=message.source_branch_sync_with_git,
                     destination_branch=message.destination_branch,
                 )
 
@@ -467,7 +467,7 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
 
         for repository in message.branch_diff.repositories:
             log_line = "Skipping tests for data only branch"
-            if not message.source_branch_data_only:
+            if message.source_branch_sync_with_git:
                 log_line = "Running tests"
                 repo = await get_initialized_repo(
                     repository_id=repository.repository_id,

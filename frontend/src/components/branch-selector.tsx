@@ -41,7 +41,7 @@ const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
         />
       )}
 
-      {!branch.is_data_only && (
+      {branch.sync_with_git && (
         <Icon
           icon={"mdi:git"}
           className={classNames(active ? "text-custom-white" : "text-red-400")}
@@ -82,7 +82,7 @@ export default function BranchSelector() {
     .map((branch) => ({
       id: branch.id,
       name: branch.name,
-      is_data_only: branch.is_data_only,
+      sync_with_git: branch.sync_with_git,
       is_default: branch.is_default,
       is_isolated: branch.is_isolated,
       created_at: branch.created_at,
@@ -205,10 +205,10 @@ export default function BranchSelector() {
       isOptional: true,
     },
     {
-      name: "is_data_only",
-      label: "Data only",
+      name: "sync_with_git",
+      label: "Sync with Git",
       type: "checkbox",
-      value: true,
+      value: false,
       isOptional: true,
     },
     {

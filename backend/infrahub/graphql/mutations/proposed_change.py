@@ -70,7 +70,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             message = messages.RequestProposedChangePipeline(
                 proposed_change=proposed_change.id,
                 source_branch=source_branch.name,
-                source_branch_data_only=source_branch.is_data_only,
+                source_branch_sync_with_git=source_branch.sync_with_git,
                 destination_branch=destination_branch,
             )
             await context.service.send(message=message)
@@ -200,7 +200,7 @@ class ProposedChangeRequestRunCheck(Mutation):
         message = messages.RequestProposedChangePipeline(
             proposed_change=proposed_change.id,
             source_branch=source_branch.name,
-            source_branch_data_only=source_branch.is_data_only,
+            source_branch_sync_with_git=source_branch.sync_with_git,
             destination_branch=destination_branch,
             check_type=check_type,
         )

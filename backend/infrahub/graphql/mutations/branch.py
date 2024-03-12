@@ -35,7 +35,7 @@ class BranchCreateInput(InputObjectType):
     description = String(required=False)
     origin_branch = String(required=False)
     branched_from = String(required=False)
-    is_data_only = Boolean(required=False)
+    sync_with_git = Boolean(required=False)
     is_isolated = Boolean(required=False)
 
 
@@ -88,7 +88,7 @@ class BranchCreate(Mutation):
             message = messages.EventBranchCreate(
                 branch=obj.name,
                 branch_id=str(obj.id),
-                data_only=obj.is_data_only,
+                sync_with_git=obj.sync_with_git,
                 meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
             await context.service.send(message=message)
@@ -125,7 +125,7 @@ class BranchDelete(Mutation):
             message = messages.EventBranchDelete(
                 branch=obj.name,
                 branch_id=str(obj.id),
-                data_only=obj.is_data_only,
+                sync_with_git=obj.sync_with_git,
                 meta=Meta(request_id=request_id),
             )
             await context.service.send(message=message)
