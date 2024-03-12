@@ -11,9 +11,6 @@ on:
         description: commit sha or branch name
         default: ''
         required: false
-  push:
-    branches:
-      - fac-branch-scale-test
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -34,75 +31,75 @@ jobs:
   scale-tests:
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 4
       matrix:
         include:
-          # - name: 1000 nodes
-          #   node-amount: 1000
-          #   attrs-amount: 0
-          #   rels-amount: 0
-          #   changes-amount: 0
-          #   stager: stage_infranode
-          # - name: 10000 nodes
-          #   node-amount: 10000
-          #   attrs-amount: 0
-          #   rels-amount: 0
-          #   changes-amount: 0
-          #   stager: stage_infranode
-          # - name: 100 attrs
-          #   node-amount: 10
-          #   attrs-amount: 100
-          #   rels-amount: 0
-          #   changes-amount: 0
-          #   stager: stage_infranode
-          # - name: 1000 attrs
-          #   node-amount: 10
-          #   attrs-amount: 1000
-          #   rels-amount: 0
-          #   changes-amount: 0
-          #   stager: stage_infranode
-          # - name: 100 rels
-          #   node-amount: 10
-          #   attrs-amount: 0
-          #   rels-amount: 100
-          #   changes-amount: 0
-          #   stager: stage_infranode
-          # - name: 1000 rels
-          #   node-amount: 10
-          #   attrs-amount: 0
-          #   rels-amount: 1000
-          #   changes-amount: 0
-          #   stager: stage_infranode
-          # - name: 100 branches (with new nodes)
-          #   node-amount: 100
-          #   attrs-amount: 0
-          #   rels-amount: 0
-          #   changes-amount: 0
-          #   stager: stage_branch
-          # - name: 100 branches (with single node)
-          #   node-amount: 100
-          #   attrs-amount: 0
-          #   rels-amount: 0
-          #   changes-amount: 0
-          #   stager: stage_branch_update
-          # - name: 1000 branches (with new nodes)
-          #   node-amount: 1000
-          #   attrs-amount: 0
-          #   rels-amount: 0
-          #   changes-amount: 0
-          #   stager: stage_branch
-          # - name: 1000 branches (with single node)
-          #   node-amount: 1000
-          #   attrs-amount: 0
-          #   rels-amount: 0
-          #   changes-amount: 0
-          #   stager: stage_branch_update
-          # - name: 1000 updates of a single node
-          #   node-amount: 1
-          #   attrs-amount: 0
-          #   rels-amount: 0
-          #   changes-amount: 1000
-          #   stager: stage_infranode
+          - name: 1000 nodes
+            node-amount: 1000
+            attrs-amount: 0
+            rels-amount: 0
+            changes-amount: 0
+            stager: stage_infranode
+          - name: 10000 nodes
+            node-amount: 10000
+            attrs-amount: 0
+            rels-amount: 0
+            changes-amount: 0
+            stager: stage_infranode
+          - name: 100 attrs
+            node-amount: 10
+            attrs-amount: 100
+            rels-amount: 0
+            changes-amount: 0
+            stager: stage_infranode
+          - name: 1000 attrs
+            node-amount: 10
+            attrs-amount: 1000
+            rels-amount: 0
+            changes-amount: 0
+            stager: stage_infranode
+          - name: 100 rels
+            node-amount: 10
+            attrs-amount: 0
+            rels-amount: 100
+            changes-amount: 0
+            stager: stage_infranode
+          - name: 1000 rels
+            node-amount: 10
+            attrs-amount: 0
+            rels-amount: 1000
+            changes-amount: 0
+            stager: stage_infranode
+          - name: 100 branches (with new nodes)
+            node-amount: 100
+            attrs-amount: 0
+            rels-amount: 0
+            changes-amount: 0
+            stager: stage_branch
+          - name: 100 branches (with single node)
+            node-amount: 100
+            attrs-amount: 0
+            rels-amount: 0
+            changes-amount: 0
+            stager: stage_branch_update
+          - name: 1000 branches (with new nodes)
+            node-amount: 1000
+            attrs-amount: 0
+            rels-amount: 0
+            changes-amount: 0
+            stager: stage_branch
+          - name: 1000 branches (with single node)
+            node-amount: 1000
+            attrs-amount: 0
+            rels-amount: 0
+            changes-amount: 0
+            stager: stage_branch_update
+          - name: 1000 updates of a single node
+            node-amount: 1
+            attrs-amount: 0
+            rels-amount: 0
+            changes-amount: 1000
+            stager: stage_infranode
           - name: 100 updates of a single node
             node-amount: 1
             attrs-amount: 0
@@ -115,18 +112,18 @@ jobs:
             rels-amount: 0
             changes-amount: 100
             stager: stage_infranode
-          # - name: 1000 changes in diff
-          #   node-amount: 1000
-          #   attrs-amount: 0
-          #   rels-amount: 0
-          #   changes-amount: 0
-          #   stager: stage_branch_diff
-          # - name: 10000 changes in diff
-          #   node-amount: 10000
-          #   attrs-amount: 0
-          #   rels-amount: 0
-          #   changes-amount: 0
-          #   stager: stage_branch_diff
+          - name: 1000 changes in diff
+            node-amount: 1000
+            attrs-amount: 0
+            rels-amount: 0
+            changes-amount: 0
+            stager: stage_branch_diff
+          - name: 10000 changes in diff
+            node-amount: 10000
+            attrs-amount: 0
+            rels-amount: 0
+            changes-amount: 0
+            stager: stage_branch_diff
     name: ${{ matrix.name }}
     runs-on:
       group: huge-runners
@@ -138,7 +135,7 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
         with:
-          ref: ${{ inputs.commit == '' && 'fac-branch-scale-test' || inputs.commit }}
+          ref: ${{ inputs.commit == '' && 'develop' || inputs.commit }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
