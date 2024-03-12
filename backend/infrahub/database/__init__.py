@@ -268,10 +268,7 @@ def retry_db_transaction(name: str):
                 try:
                     return await func(*args, **kwargs)
                 except TransientError as exc:
-                    log.warning(
-                        f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}",
-                        data=kwargs["data"],
-                    )
+                    log.info(f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}")
                     log.debug("database transaction failed", message=exc.message)
                     TRANSACTION_RETRIES.labels(name).inc()
                     if attempt == config.SETTINGS.database.retry_limit:
