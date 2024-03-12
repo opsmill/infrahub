@@ -3,9 +3,9 @@ from infrahub_sdk import InfrahubClient
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
+from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema_manager import SchemaUpdateConstraintInfo
 from infrahub.core.validators.checker import schema_validators_checker
 from infrahub.database import InfrahubDatabase
 from infrahub.services import InfrahubServices
