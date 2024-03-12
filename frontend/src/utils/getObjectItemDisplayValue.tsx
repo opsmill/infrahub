@@ -126,7 +126,7 @@ export const getObjectItemDisplayValue = (
   schemaKindLabel?: iSchemaKindNameMap
 ) => {
   return (
-    <div className="flex items-center min-w-[28px] min-h-[28px] truncate">
+    <div className="flex items-center min-w-7 min-h-7">
       {getDisplayValue(row, attribute, schemaKindName, schemaKindLabel)}
     </div>
   );
