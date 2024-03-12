@@ -53,8 +53,8 @@ export const CodeEditor = (props: any) => {
           fontSize: 12,
           resize: "vertical",
         }}
-        preClassName="!break-all z-10" // Needed to make highligted text (in browser search) visible
-        textareaClassName="!break-all"
+        preClassName="!break-all"
+        textareaClassName="!break-all !text-red-100" // text-red-100 needed to make highligted text (in browser search) visible
         className={classNames(
           "rounded-md shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 border-gray-300 text-sm disabled:cursor-not-allowed disabled:bg-gray-300 focus:ring-2 focus:ring-inset focus:ring-custom-blue-600 focus:border-custom-blue-600 focus:outline-none",
           dark ? "text-gray-300 bg-gray-800" : "bg-custom-white"
