@@ -12,8 +12,8 @@ from infrahub.core.branch import Branch
 from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.schema.runner import schema_migrations_runner
-from infrahub.exceptions import BranchNotFoundError
 from infrahub.database import retry_db_transaction
+from infrahub.exceptions import BranchNotFoundError
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
