@@ -208,10 +208,13 @@ jobs:
       - name: "Mypy Tests"
         run: "poetry run mypy --show-error-codes infrahub_sdk/"
       - name: "Unit Tests"
-        run: "poetry --directory python_sdk run pytest -v --cov=infrahub_sdk python_sdk/tests/unit/"
+        run: "poetry --directory python_sdk run coverage run --source=infrahub_sdk -m pytest python_sdk/tests/unit/"
         working-directory: ./
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
+      - name: "Create coverage file"
+        run: "poetry --directory python_sdk run coverage xml"
+        working-directory: ./
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         env:
