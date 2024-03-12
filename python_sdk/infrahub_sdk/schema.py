@@ -417,6 +417,21 @@ class InfrahubSchemaBase:
 
         return obj_data
 
+    @staticmethod
+    def _validate_response(response: httpx.Response) -> Tuple[bool, Optional[dict]]:
+        if response.status_code == httpx.codes.ACCEPTED:
+            return True, None
+
+        if response.status_code == httpx.codes.BAD_REQUEST:
+            return False, response.json()
+
+        if response.status_code == httpx.codes.UNPROCESSABLE_ENTITY:
+            return False, response.json()
+
+        response.raise_for_status()
+
+        return False, None
+
 
 class InfrahubSchema(InfrahubSchemaBase):
     def __init__(self, client: InfrahubClient):
@@ -472,14 +487,7 @@ class InfrahubSchema(InfrahubSchemaBase):
             url=url, timeout=max(120, self.client.default_timeout), payload={"schemas": schemas}
         )
 
-        if response.status_code == httpx.codes.ACCEPTED:
-            return True, None
-
-        if response.status_code == httpx.codes.UNPROCESSABLE_ENTITY:
-            return False, response.json()
-
-        response.raise_for_status()
-        return False, None
+        return self._validate_response(response=response)
 
     async def check(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
@@ -844,14 +852,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
             url=url, timeout=max(120, self.client.default_timeout), payload={"schemas": schemas}
         )
 
-        if response.status_code == httpx.codes.ACCEPTED:
-            return True, None
-
-        if response.status_code == httpx.codes.UNPROCESSABLE_ENTITY:
-            return False, response.json()
-
-        response.raise_for_status()
-        return False, None
+        return self._validate_response(response=response)
 
     def check(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
