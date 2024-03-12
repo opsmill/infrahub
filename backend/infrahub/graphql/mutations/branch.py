@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
+from typing_extensions import Self
 
 import pydantic
 from graphene import Boolean, Field, InputObjectType, List, Mutation, String
