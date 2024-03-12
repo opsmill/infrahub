@@ -35,7 +35,10 @@ class UserTask:
             raise ValueError("Either account or account_id must be provided to initialize UserTask")
 
         self._account = account
-        self.account_id = account_id
+        if account_id:
+            self.account_id = account_id
+        if not account_id and account:
+            self.account_id = account.id
 
         self.title = title
         self._task: Optional[Task]
@@ -56,16 +59,13 @@ class UserTask:
 
     @property
     def task_id(self) -> str:
-        if self.task and self.task.uuid:
+        if self.task.uuid:
             return str(self.task.uuid)
         raise ValueError("Task hasn't been initialized")
 
     async def fetch_account(self) -> bool:
         if self._account:
             return False
-
-        if not self.account_id:
-            raise ValueError("Unable to find the account because account_id isn't defined")
 
         account = await registry.manager.get_one(id=self.account_id, db=self.db)
         if not account:
@@ -112,17 +112,17 @@ class UserTask:
         tlog = TaskLog(message=message, severity=severity, task_id=self.task_id)
         await tlog.save(db=db or self.db)
 
-    async def info(self, message: str, *args: Any, db: Optional[InfrahubDatabase] = None, **kwargs: Any) -> None:
+    async def info(self, message: str, db: Optional[InfrahubDatabase] = None, **kwargs: Any) -> None:
         if self.log:
-            self.log.info(message, *args, **kwargs)
+            self.log.info(message, **kwargs)
         await self.add_log(message=message, severity=Severity.INFO, db=db)
 
-    async def warning(self, message: str, *args: Any, db: Optional[InfrahubDatabase] = None, **kwargs: Any) -> None:
+    async def warning(self, message: str, db: Optional[InfrahubDatabase] = None, **kwargs: Any) -> None:
         if self.log:
-            self.log.warning(message, *args, **kwargs)
+            self.log.warning(message, **kwargs)
         await self.add_log(message=message, severity=Severity.WARNING, db=db)
 
-    async def error(self, message: str, *args: Any, db: Optional[InfrahubDatabase] = None, **kwargs: Any) -> None:
+    async def error(self, message: str, db: Optional[InfrahubDatabase] = None, **kwargs: Any) -> None:
         if self.log:
-            self.log.error(message, *args, **kwargs)
+            self.log.error(message, **kwargs)
         await self.add_log(message=message, severity=Severity.ERROR, db=db)
