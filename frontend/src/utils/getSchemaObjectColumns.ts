@@ -203,11 +203,7 @@ export const getRelationshipValue = (row: any, field: any) => {
 export const getRelationshipOptions = (row: any, field: any, schemas: any[], generics: any[]) => {
   const value = row && (row[field.name]?.node ?? row[field.name]);
 
-  if (!value) {
-    return [];
-  }
-
-  if (value.edges) {
+  if (value?.edges) {
     return value.edges.map((edge: any) => ({
       name: edge.node.display_label,
       id: edge.node.id,
@@ -229,6 +225,10 @@ export const getRelationshipOptions = (row: any, field: any, schemas: any[], gen
     });
 
     return options;
+  }
+
+  if (!value) {
+    return [];
   }
 
   const option = {
