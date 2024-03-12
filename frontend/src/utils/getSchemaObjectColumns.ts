@@ -103,7 +103,7 @@ export const getSchemaObjectColumns = (
   };
 
   // columns.length > 0 needed because of relationship-details-paginated.tsx
-  // Relationship needs refactoring to hanble this better
+  // Relationship needs refactoring to handle this better
   return isGeneric(schema) && columns.length > 0 ? [kindColumn, ...columns] : columns;
 };
 
