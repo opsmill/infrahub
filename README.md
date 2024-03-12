@@ -32,7 +32,7 @@ Leveraging [Codespaces](https://docs.github.com/en/codespaces/overview) from Git
 | Documentation | [![Documentation](https://img.shields.io/badge/Documentation%20for%20stable-0B97BB?style=for-the-badge)](https://docs.infrahub.app/) | [![Documentation](https://img.shields.io/badge/Documentation%20for%20develop-0B97BB?style=for-the-badge)](https://develop.infrahub.pages.dev/) |
 
 > [!TIP]
-> The cost for running an Infrahub instance in Codespaces is covered by OpsMill
+> The cost for running an Infrahub instance in Codespaces is covered by OpsMill. You can find your codespaces even after they are closed in your dashboard https://github.com/codespaces where you can reconnect to a previous codespace.
 
 ## Documentation
 
