@@ -39,9 +39,8 @@ class DiffSummaryElementInterface(GrapheneInterface):
 
     @classmethod
     def resolve_type(cls, instance: Dict[str, Any], info: Any) -> type:
-        if (
-            str(instance["element_type"]).lower() == DiffElementType.RELATIONSHIP_MANY.value.lower()
-            or "peers" in instance
+        if str(instance["element_type"]).lower() == DiffElementType.RELATIONSHIP_MANY.value.lower() or instance.get(
+            "peers"
         ):
             return DiffSummaryElementRelationshipMany
         if str(instance["element_type"]).lower() == DiffElementType.RELATIONSHIP_ONE.value.lower():

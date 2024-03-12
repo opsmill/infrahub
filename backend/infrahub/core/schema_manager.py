@@ -21,8 +21,6 @@ from infrahub.core.constants import (
     RelationshipCardinality,
     RelationshipDirection,
     RelationshipKind,
-    SchemaPathType,
-    UpdateSupport,
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations import MIGRATION_MAP
@@ -31,11 +29,9 @@ from infrahub.core.models import (
     SchemaBranchDiff,
     SchemaBranchHash,
     SchemaDiff,
-    SchemaUpdateConstraintInfo,
     SchemaUpdateValidationResult,
 )
 from infrahub.core.node import Node
-from infrahub.core.path import SchemaPath
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
 from infrahub.core.registry import registry
 from infrahub.core.schema import (
@@ -1131,84 +1127,6 @@ class SchemaBranch:
                     )
 
         return filters
-
-    async def get_constraints_per_model(  # pylint: disable=too-many-branches
-        self, name: str, filter_invalid: bool = True
-    ) -> List[SchemaUpdateConstraintInfo]:
-        schema = self.get(name=name, duplicate=False)
-        constraints: List[SchemaUpdateConstraintInfo] = []
-
-        for prop_name, prop_field_info in schema.model_fields.items():
-            if prop_name in ["attributes", "relationships"] or not prop_field_info.json_schema_extra:
-                continue
-
-            prop_field_update = prop_field_info.json_schema_extra.get("update")
-            if prop_field_update != UpdateSupport.VALIDATE_CONSTRAINT.value:
-                continue
-
-            if getattr(schema, prop_name) is None:
-                continue
-
-            schema_path = SchemaPath(
-                schema_kind=schema.kind,
-                path_type=SchemaPathType.NODE,
-                field_name=prop_name,
-                property_name=prop_name,
-            )
-            constraint_name = f"node.{prop_name}.update"
-
-            constraints.append(SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path))
-
-        for field_name in schema.attribute_names + schema.relationship_names:
-            field: Union[AttributeSchema, RelationshipSchema]
-            if field_name in schema.attribute_names:
-                field = schema.get_attribute(name=field_name)
-            else:
-                field = schema.get_relationship(name=field_name)
-
-            for prop_name, prop_field_info in field.model_fields.items():
-                if not prop_field_info.json_schema_extra:
-                    continue
-
-                prop_field_update = prop_field_info.json_schema_extra.get("update")
-                if prop_field_update != UpdateSupport.VALIDATE_CONSTRAINT.value:
-                    continue
-
-                if getattr(field, prop_name) is None:
-                    continue
-
-                path_type = SchemaPathType.ATTRIBUTE
-                constraint_name = f"attribute.{prop_name}.update"
-                if isinstance(field, RelationshipSchema):
-                    if field.kind == RelationshipKind.GROUP:
-                        continue
-                    path_type = SchemaPathType.RELATIONSHIP
-                    constraint_name = f"relationship.{prop_name}.update"
-
-                schema_path = SchemaPath(
-                    schema_kind=schema.kind,
-                    path_type=path_type,
-                    field_name=field_name,
-                    property_name=prop_name,
-                )
-
-                constraints.append(SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path))
-
-        if not filter_invalid:
-            return constraints
-
-        validated_constraints: List[SchemaUpdateConstraintInfo] = []
-        for constraint in constraints:
-            if CONSTRAINT_VALIDATOR_MAP.get(constraint.constraint_name, None):
-                validated_constraints.append(constraint)
-            else:
-                log.warning(
-                    f"Unable to validate: {constraint.constraint_name!r} for {constraint.path.get_path()!r}, validator not available",
-                    constraint_name=constraint.constraint_name,
-                    path=constraint.path.get_path(),
-                )
-
-        return validated_constraints
 
 
 # pylint: disable=too-many-public-methods

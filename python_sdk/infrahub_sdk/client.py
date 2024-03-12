@@ -9,7 +9,7 @@ from time import sleep
 from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
 
 import httpx
-from typing_extensions import Self
+from typing_extensions import NotRequired, Self
 from typing_extensions import TypedDict as ExtensionTypedDict
 
 from infrahub_sdk.batch import InfrahubBatch
@@ -55,7 +55,26 @@ class NodeDiff(ExtensionTypedDict):
     id: str
     action: str
     display_label: str
-    elements: List[Dict[str, Any]]
+    elements: List[NodeDiffElement]
+
+
+class NodeDiffElement(ExtensionTypedDict):
+    name: str
+    element_type: str
+    action: str
+    summary: NodeDiffSummary
+    peers: NotRequired[List[NodeDiffPeer]]
+
+
+class NodeDiffSummary(ExtensionTypedDict):
+    added: int
+    updated: int
+    removed: int
+
+
+class NodeDiffPeer(ExtensionTypedDict):
+    action: str
+    summary: NodeDiffSummary
 
 
 class ProcessRelationsNode(TypedDict):

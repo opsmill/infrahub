@@ -8,7 +8,8 @@ from pytest_httpx import HTTPXMock
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind, SchemaPathType
+from infrahub.core.constants import DiffAction, InfrahubKind, SchemaPathType
+from infrahub.core.diff.model import DiffElementType
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -53,7 +54,14 @@ def branch_diff_01() -> ProposedChangeBranchDiff:
                 "kind": "TestPerson",
                 "id": "11111111-1111-1111-1111-111111111111",
                 "display_label": "",
-                "elements": [],
+                "elements": [
+                    {
+                        "name": "name",
+                        "element_type": DiffElementType.ATTRIBUTE.value,
+                        "action": DiffAction.UPDATED.value,
+                        "summary": {"added": 0, "updated": 1, "removed": 0},
+                    }
+                ],
             },
             {
                 "branch": "main",
@@ -61,7 +69,24 @@ def branch_diff_01() -> ProposedChangeBranchDiff:
                 "kind": "TestPerson",
                 "id": "22222222-2222-2222-2222-222222222222",
                 "display_label": "",
-                "elements": [],
+                "elements": [
+                    {
+                        "name": "height",
+                        "element_type": DiffElementType.ATTRIBUTE.value,
+                        "action": DiffAction.UPDATED.value,
+                        "summary": {"added": 0, "updated": 1, "removed": 0},
+                    },
+                    {
+                        "name": "cars",
+                        "element_type": DiffElementType.RELATIONSHIP_MANY.value,
+                        "action": DiffAction.UPDATED.value,
+                        "summary": {"added": 0, "updated": 1, "removed": 0},
+                        "peers": [
+                            {"action": DiffAction.REMOVED.value, "summary": {"added": 0, "updated": 0, "removed": 1}},
+                            {"action": DiffAction.ADDED.value, "summary": {"added": 1, "updated": 0, "removed": 0}},
+                        ],
+                    },
+                ],
             },
         ],
         repositories=[],
@@ -101,7 +126,7 @@ async def test_get_proposed_change_schema_integrity_constraints(
     constraints = await proposed_change._get_proposed_change_schema_integrity_constraints(
         message=schema_integrity_01, schema=schema
     )
-    assert len(constraints) == 9
+    assert len(constraints) == 13
     dumped_constraints = [c.model_dump() for c in constraints]
     assert {
         "constraint_name": "relationship.optional.update",
@@ -191,6 +216,46 @@ async def test_get_proposed_change_schema_integrity_constraints(
             "property_name": "unique",
             "schema_id": None,
             "schema_kind": "TestPerson",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "node.parent.update",
+        "path": {
+            "field_name": "parent",
+            "path_type": SchemaPathType.NODE,
+            "property_name": "parent",
+            "schema_id": None,
+            "schema_kind": "CoreStandardGroup",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "node.children.update",
+        "path": {
+            "field_name": "children",
+            "path_type": SchemaPathType.NODE,
+            "property_name": "children",
+            "schema_id": None,
+            "schema_kind": "CoreStandardGroup",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "node.parent.update",
+        "path": {
+            "field_name": "parent",
+            "path_type": SchemaPathType.NODE,
+            "property_name": "parent",
+            "schema_id": None,
+            "schema_kind": "CoreGraphQLQueryGroup",
+        },
+    } in dumped_constraints
+    assert {
+        "constraint_name": "node.children.update",
+        "path": {
+            "field_name": "children",
+            "path_type": SchemaPathType.NODE,
+            "property_name": "children",
+            "schema_id": None,
+            "schema_kind": "CoreGraphQLQueryGroup",
         },
     } in dumped_constraints
 
