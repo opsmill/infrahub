@@ -12,7 +12,7 @@ from infrahub.core.migrations.schema.runner import schema_migrations_runner
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
-from infrahub.database import InfrahubDatabase
+from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
@@ -41,6 +41,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
     @classmethod
+    @retry_db_transaction(name="proposed_change_create")
     async def mutate_create(
         cls,
         root: dict,
@@ -78,6 +79,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         return proposed_change, result
 
     @classmethod
+    @retry_db_transaction(name="proposed_change_update")
     async def mutate_update(
         cls,
         root: dict,

@@ -12,6 +12,7 @@ from infrahub.core.query.relationship import (
     RelationshipPeerData,
 )
 from infrahub.core.relationship import Relationship
+from infrahub.database import retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 
 from ..types import RelatedNodeInput
@@ -121,9 +122,29 @@ class RelationshipAdd(RelationshipMixin, Mutation):
 
     ok = Boolean()
 
+    @classmethod
+    @retry_db_transaction(name="relationship_add")
+    async def mutate(
+        cls,
+        root: dict,
+        info: GraphQLResolveInfo,
+        data,
+    ):
+        return await super().mutate(root=root, info=info, data=data)
+
 
 class RelationshipRemove(RelationshipMixin, Mutation):
     class Arguments:
         data = RelationshipNodesInput(required=True)
 
     ok = Boolean()
+
+    @classmethod
+    @retry_db_transaction(name="relationship_remove")
+    async def mutate(
+        cls,
+        root: dict,
+        info: GraphQLResolveInfo,
+        data,
+    ):
+        return await super().mutate(root=root, info=info, data=data)

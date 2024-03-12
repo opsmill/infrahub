@@ -19,6 +19,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
+from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.log import get_log_data, get_logger
@@ -115,6 +116,7 @@ class InfrahubMutationMixin:
         return mutation
 
     @classmethod
+    @retry_db_transaction(name="object_create")
     async def mutate_create(
         cls,
         root: dict,
@@ -156,6 +158,7 @@ class InfrahubMutationMixin:
         return obj, cls(**result)
 
     @classmethod
+    @retry_db_transaction(name="object_update")
     async def mutate_update(
         cls,
         root: dict,
@@ -188,8 +191,10 @@ class InfrahubMutationMixin:
             await obj.from_graphql(db=db, data=data)
             fields_to_validate = list(data)
             await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
-            node_id = data.pop("id", obj.id)
+            node_id = data.get("id", obj.id)
             fields = list(data.keys())
+            if "id" in fields:
+                fields.remove("id")
             validate_mutation_permissions_update_node(
                 operation=cls.__name__, node_id=node_id, account_session=context.account_session, fields=fields
             )
@@ -211,6 +216,7 @@ class InfrahubMutationMixin:
         return obj, cls(**result)
 
     @classmethod
+    @retry_db_transaction(name="object_upsert")
     async def mutate_upsert(
         cls,
         root: dict,
@@ -239,6 +245,7 @@ class InfrahubMutationMixin:
         return created_obj, mutation, True
 
     @classmethod
+    @retry_db_transaction(name="object_delete")
     async def mutate_delete(
         cls,
         root,

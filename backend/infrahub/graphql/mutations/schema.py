@@ -9,7 +9,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import RESTRICTED_NAMESPACES
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import DropdownChoice, GenericSchema, NodeSchema
-from infrahub.database import InfrahubDatabase
+from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
@@ -50,6 +50,7 @@ class SchemaDropdownAdd(Mutation):
     object = Field(DropdownFields)
 
     @classmethod
+    @retry_db_transaction(name="schema_dropdown_add")
     async def mutate(
         cls,
         root: dict,  # pylint: disable=unused-argument
@@ -99,6 +100,7 @@ class SchemaDropdownRemove(Mutation):
     ok = Boolean()
 
     @classmethod
+    @retry_db_transaction(name="schema_dropdown_remove")
     async def mutate(
         cls,
         root: dict,  # pylint: disable=unused-argument
@@ -140,6 +142,7 @@ class SchemaEnumAdd(Mutation):
     ok = Boolean()
 
     @classmethod
+    @retry_db_transaction(name="schema_dropdown_add")
     async def mutate(
         cls,
         root: dict,  # pylint: disable=unused-argument
@@ -174,6 +177,7 @@ class SchemaEnumRemove(Mutation):
     ok = Boolean()
 
     @classmethod
+    @retry_db_transaction(name="schema_enum_remove")
     async def mutate(
         cls,
         root: dict,  # pylint: disable=unused-argument
