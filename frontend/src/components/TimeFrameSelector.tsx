@@ -39,16 +39,16 @@ export const TimeFrameSelector = () => {
         show={!!date}
         enter="ease-out duration-300"
         enterFrom="w-0"
-        enterTo="w-40"
+        enterTo="w-44"
         leave="ease-out duration-300"
-        leaveFrom="w-40"
+        leaveFrom="w-44"
         leaveTo="w-0"
         className="flex items-center truncate">
         <ButtonStyled onClick={reset} data-testid="reset-timeframe-selector">
           <Icon icon="mdi:close" />
         </ButtonStyled>
 
-        <div className="flex flex-col">
+        <div className="w-[136px] flex flex-col">
           <span className="font-medium text-xs">Current view time:</span>
           {date && <span className="text-sm">{format(date, "PP | H:mm")}</span>}
         </div>
