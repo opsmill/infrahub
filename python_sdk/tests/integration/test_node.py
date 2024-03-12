@@ -5,7 +5,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.server import app
 
 from infrahub_sdk import Config, InfrahubClient
-from infrahub_sdk.exceptions import NodeNotFoundError
+from infrahub_sdk.exceptions import NodeNotFoundError, UninitializedError
 from infrahub_sdk.node import InfrahubNode
 
 from .conftest import InfrahubTestClient
@@ -280,3 +280,19 @@ class TestInfrahubNode:
 
         # pylint: disable=no-member
         assert node.name.value == "cdg01"  # type: ignore[attr-defined]
+
+    async def test_relationship_manager_errors_without_fetch(self, client: InfrahubClient, load_builtin_schema):
+        organization = await client.create("CoreOrganization", name="organization-1")
+        await organization.save()
+        tag = await client.create("BuiltinTag", name="blurple")
+        await tag.save()
+
+        with pytest.raises(UninitializedError, match=r"Must call fetch"):
+            organization.tags.add(tag)
+
+        await organization.tags.fetch()
+        organization.tags.add(tag)
+        await organization.save()
+
+        organization = await client.get("CoreOrganization", name__value="organization-1")
+        assert [t.id for t in organization.tags.peers] == [tag.id]
