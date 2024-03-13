@@ -615,6 +615,8 @@ jobs:
 
       - name: Set infrahub address
         run: echo "INFRAHUB_ADDRESS=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
+      - name: Set cypress endpoint
+        run: echo "CYPRESS_BASE_URL=$INFRAHUB_ADDRESS" >> $GITHUB_ENV
 
       - name: Git Repository
         run: "invoke demo.infra-git-import demo.infra-git-create"
