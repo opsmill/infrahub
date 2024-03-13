@@ -17,7 +17,7 @@ import { useAuth } from "../hooks/useAuth";
 const customId = "profile-alert";
 
 export const AccountMenu = () => {
-  const auth = useAuth();
+  const { isAuthenticated, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [schemaList] = useAtom(schemaState);
@@ -56,14 +56,11 @@ export const AccountMenu = () => {
     });
 
     // Sign out because there is nothing from the API for that user id
-    if (auth?.signOut) {
-      auth?.signOut();
-    }
-
+    signOut();
     navigate("/");
   }
 
-  return auth?.accessToken ? (
+  return isAuthenticated ? (
     <Menu as="div">
       <Menu.Button
         className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2"
@@ -99,7 +96,7 @@ export const AccountMenu = () => {
           <Menu.Item>
             <button
               className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"
-              onClick={() => auth.signOut()}>
+              onClick={() => signOut()}>
               Sign out
             </button>
           </Menu.Item>

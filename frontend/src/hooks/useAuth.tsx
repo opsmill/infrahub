@@ -132,10 +132,10 @@ export function useAuth() {
 
 export function RequireAuth({ children }: { children: ReactElement }) {
   const [config] = useAtom(configState);
-  const { accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const location = useLocation();
 
-  if (accessToken || config?.main?.allow_anonymous_access) return children;
+  if (isAuthenticated || config?.main?.allow_anonymous_access) return children;
 
   // Redirect them to the /signin page, but save the current location they were
   // trying to go to when they were redirected. This allows us to send them
