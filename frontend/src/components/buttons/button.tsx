@@ -102,6 +102,7 @@ export const Button = forwardRef((props: ButtonProps, ref: any) => {
 
   return (
     <button
+      ref={ref}
       type={type ?? "button"}
       className={classNames(DEFAULT_CLASS(className, buttonType), customClassName, className)}
       {...propsToPass}
