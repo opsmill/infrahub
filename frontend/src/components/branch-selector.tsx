@@ -1,6 +1,5 @@
 import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -14,6 +13,7 @@ import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
 import { classNames } from "../utils/common";
 import { BUTTON_TYPES, Button } from "./buttons/button";
 import { SelectButton } from "./buttons/select-button";
+import { DateDisplay } from "./display/date-display";
 import { POPOVER_SIZE, PopOver } from "./display/popover";
 import { SelectOption } from "./inputs/select";
 
@@ -131,13 +131,7 @@ export default function BranchSelector() {
         ) : null}
       </div>
 
-      {option?.created_at && (
-        <p className={classNames(active ? "text-custom-white" : "text-gray-500", "mt-2")}>
-          {formatDistanceToNow(new Date(option?.created_at), {
-            addSuffix: true,
-          })}
-        </p>
-      )}
+      {option?.created_at && <DateDisplay date={option?.created_at} />}
     </div>
   );
 
