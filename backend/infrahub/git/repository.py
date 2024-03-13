@@ -31,7 +31,8 @@ from infrahub_sdk.schema import (
     InfrahubPythonTransformConfig,
 )
 from infrahub_sdk.task_report import InfrahubTaskReportLogger  # noqa: TCH002
-from infrahub_sdk.yaml import SchemaFile, compare_lists
+from infrahub_sdk.utils import compare_lists
+from infrahub_sdk.yaml import SchemaFile
 from pydantic import ValidationError as PydanticValidationError
 from pydantic.v1 import BaseModel, Field
 
