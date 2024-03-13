@@ -30,7 +30,10 @@ def dump(
         envvar="INFRAHUBCTL_CONCURRENT_EXECUTION",
     ),
     timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
-    exclude: List[str] = typer.Option([], help="Prevent node kind(s) from being exported (e.g. CoreAccount)"),
+    exclude: List[str] = typer.Option(
+        ["CoreAccount"],
+        help="Prevent node kind(s) from being exported, CoreAccount is excluded by default",
+    ),
 ) -> None:
     """Export node(s)."""
     console = Console()
