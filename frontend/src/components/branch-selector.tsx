@@ -70,9 +70,9 @@ export default function BranchSelector() {
   );
 
   const PopOverButton = (
-    <Tooltip enabled={!permission.create.allow} content={permission.edit.message ?? undefined}>
+    <Tooltip enabled={!permission.write.allow} content={permission.write.message ?? undefined}>
       <Button
-        disabled={!permission.edit.allow}
+        disabled={!permission.write.allow}
         buttonType={BUTTON_TYPES.MAIN}
         className="h-full rounded-r-md border border-transparent"
         type="submit"

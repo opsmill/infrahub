@@ -290,11 +290,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           <div className="flex justify-between items-center w-full p-4">
                             <div className="font-semibold">{relationshipSchema.label}</div>
                             <Tooltip
-                              enabled={!permission.edit.allow}
-                              content={permission.edit.message ?? undefined}>
+                              enabled={!permission.write.allow}
+                              content={permission.write.message ?? undefined}>
                               <Button
                                 buttonType={BUTTON_TYPES.INVISIBLE}
-                                disabled={!permission.edit.allow}
+                                disabled={!permission.write.allow}
                                 onClick={() => {
                                   setMetaEditFieldDetails({
                                     type: "relationship",
@@ -422,7 +422,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         </div>
 
                         <Button
-                          disabled={!permission.edit.allow}
+                          disabled={!permission.write.allow}
                           buttonType={BUTTON_TYPES.INVISIBLE}
                           onClick={() => {
                             setRelatedObjectToEdit(node);
@@ -432,7 +432,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         </Button>
 
                         <Button
-                          disabled={!permission.edit.allow}
+                          disabled={!permission.write.allow}
                           buttonType={BUTTON_TYPES.INVISIBLE}
                           onClick={() => {
                             setRelatedRowToDelete(node);
@@ -517,7 +517,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       {mode === "TABLE" && (
         <div className="absolute bottom-4 right-4 z-10">
           <RoundedButton
-            disabled={!permission.edit.allow}
+            disabled={!permission.write.allow}
             onClick={() => setShowAddDrawer(true)}
             className="p-3 ml-2 bg-custom-blue-500 hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2"
             data-cy="open-relationship-form-button">
