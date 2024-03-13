@@ -16,11 +16,11 @@ export function Tooltip({
   return (
     <TooltipPrimitives.Provider>
       <TooltipPrimitives.Root delayDuration={0}>
-        <TooltipPrimitives.Trigger>{children}</TooltipPrimitives.Trigger>
+        <TooltipPrimitives.Trigger asChild>{children}</TooltipPrimitives.Trigger>
         <TooltipPrimitives.Content
           side={side}
           className={classNames(
-            "bg-gray-600 text-white text-sm font-medium px-3 py-2 rounded-lg shadow-sm",
+            "bg-gray-600 text-white text-sm font-medium px-3 py-2 rounded-lg shadow-sm z-50",
             !enabled && "hidden",
             className
           )}
