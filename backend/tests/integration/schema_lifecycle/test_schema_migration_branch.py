@@ -59,7 +59,7 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         await red.save(db=db)
 
         # Create Branch1
-        branch1 = await create_branch(db=db, branch_name="branch1", isolated=True)
+        branch1 = await create_branch(db=db, branch_name="branch1")
         pytest.state = {"branch1": branch1}
 
         # Load data in BRANCH1
@@ -127,7 +127,7 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
 
     async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, branch=self.branch1)
-        assert len(persons) == 2
+        assert len(persons) == 3
 
     async def test_step02_check_attr_add_rename(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
@@ -179,6 +179,11 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         success, response = await client.schema.load(schemas=[schema_step02], branch=self.branch1.name)
         assert success
         assert response is None
+
+        # Check if the branch has been properly updated
+        branches = await client.branch.all()
+        assert branches[self.branch1.name].is_isolated is True
+        assert branches[self.branch1.name].has_schema_changes is True
 
         # Ensure that we can query the nodes with the new schema in BRANCH1
         persons = await registry.manager.query(
@@ -272,6 +277,26 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         renault = manufacturers[0]
         renault_cars = await renault.cars.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(renault_cars) == 2
+
+    async def test_rebase(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset):
+        branch = await client.branch.rebase(branch_name=self.branch1.name)
+        assert branch
+
+        # Validate that all data added to main after the creation of the branch has been migrated properly
+        persons = await registry.manager.query(
+            db=db, schema=PERSON_KIND, filters={"firstname__value": "Jane"}, branch=self.branch1
+        )
+        assert len(persons) == 1
+        jane = persons[0]
+        assert not hasattr(jane, "height")
+
+        manufacturers = await registry.manager.query(
+            db=db, schema=MANUFACTURER_KIND_03, filters={"name__value": "honda"}, branch=self.branch1
+        )
+        assert len(manufacturers) == 1
+        honda = manufacturers[0]
+        honda_cars = await honda.cars.get_peers(db=db)  # type: ignore[attr-defined]
+        assert len(honda_cars) == 2
 
     async def test_step04_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
         tag_schema = registry.schema.get_node_schema(name=TAG_KIND, branch=self.branch1)

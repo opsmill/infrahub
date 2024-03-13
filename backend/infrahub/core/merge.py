@@ -91,8 +91,9 @@ class BranchMerger:
 
     async def get_initial_source_branch(self) -> SchemaBranch:
         """Retrieve the schema of the source branch when the branch was created.
-        To be as efficient as possible, this function is using the diff of the schema
-        Generated from the Data Diff.
+        For now we are querying the full schema, but this is something we'll need to revisit in the future by either:
+         - having a faster way to pull a previous version of the schema
+         - using the diff generated from the data
         """
         if self._initial_source_schema:
             return self._initial_source_schema
@@ -100,8 +101,6 @@ class BranchMerger:
         self._initial_source_schema = await registry.schema.load_schema_from_db(
             db=self.db,
             branch=self.source_branch,
-            schema=self.source_schema.duplicate(),
-            schema_diff=await self.get_schema_diff(),
             at=Timestamp(self.source_branch.branched_from),
         )
 

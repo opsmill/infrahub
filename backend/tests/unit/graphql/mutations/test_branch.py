@@ -375,7 +375,7 @@ async def test_branch_rebase_wrong_branch(
     recorder = BusRecorder()
     service = InfrahubServices(message_bus=recorder)
     gql_params = prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_admin
+        db=db, include_subscription=False, service=service, branch=default_branch, account_session=session_admin
     )
     result = await graphql(
         schema=gql_params.schema,

@@ -58,17 +58,21 @@ class TestInfrahubApp:
         return branch
 
     @pytest.fixture(scope="class")
-    async def register_internal_schema(self, default_branch: Branch) -> SchemaBranch:
+    async def register_internal_schema(self, db: InfrahubDatabase, default_branch: Branch) -> SchemaBranch:
         schema = SchemaRoot(**internal_schema)
         schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
         default_branch.update_schema_hash()
+        await default_branch.save(db=db)
         return schema_branch
 
     @pytest.fixture(scope="class")
-    async def register_core_schema(self, default_branch: Branch, register_internal_schema) -> SchemaBranch:
+    async def register_core_schema(
+        self, db: InfrahubDatabase, default_branch: Branch, register_internal_schema
+    ) -> SchemaBranch:
         schema = SchemaRoot(**core_models)
         schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
         default_branch.update_schema_hash()
+        await default_branch.save(db=db)
         return schema_branch
 
     @pytest.fixture(scope="class")
@@ -93,4 +97,5 @@ class TestInfrahubApp:
             password=config.SETTINGS.security.initial_admin_password,
             token_value=api_token,
         )
+
         await initialization(db=db)
