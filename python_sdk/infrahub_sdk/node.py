@@ -18,7 +18,13 @@ from typing import (
 )
 
 from infrahub_sdk.constants import InfrahubClientMode
-from infrahub_sdk.exceptions import Error, FeatureNotSupportedError, FilterNotFoundError, NodeNotFoundError
+from infrahub_sdk.exceptions import (
+    Error,
+    FeatureNotSupportedError,
+    FilterNotFoundError,
+    NodeNotFoundError,
+    UninitializedError,
+)
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.schema import GenericSchema, RelationshipCardinality, RelationshipKind
 from infrahub_sdk.timestamp import Timestamp
@@ -520,6 +526,8 @@ class RelationshipManager(RelationshipManagerBase):
 
     def add(self, data: Union[str, RelatedNode, dict]) -> None:
         """Add a new peer to this relationship."""
+        if not self.initialized:
+            raise UninitializedError("Must call fetch() on RelationshipManager before editing members")
         new_node = RelatedNode(schema=self.schema, client=self.client, branch=self.branch, data=data)
 
         if new_node.id and new_node.id not in self.peer_ids:
@@ -538,6 +546,8 @@ class RelationshipManager(RelationshipManagerBase):
             self.add(d)
 
     def remove(self, data: Union[str, RelatedNode, dict]) -> None:
+        if not self.initialized:
+            raise UninitializedError("Must call fetch() on RelationshipManager before editing members")
         node_to_remove = RelatedNode(schema=self.schema, client=self.client, branch=self.branch, data=data)
 
         if node_to_remove.id and node_to_remove.id in self.peer_ids:
@@ -629,6 +639,8 @@ class RelationshipManagerSync(RelationshipManagerBase):
 
     def add(self, data: Union[str, RelatedNodeSync, dict]) -> None:
         """Add a new peer to this relationship."""
+        if not self.initialized:
+            raise UninitializedError("Must call fetch() on RelationshipManager before editing members")
         new_node = RelatedNodeSync(schema=self.schema, client=self.client, branch=self.branch, data=data)
 
         if new_node.id and new_node.id not in self.peer_ids:
@@ -647,6 +659,8 @@ class RelationshipManagerSync(RelationshipManagerBase):
             self.add(d)
 
     def remove(self, data: Union[str, RelatedNodeSync, dict]) -> None:
+        if not self.initialized:
+            raise UninitializedError("Must call fetch() on RelationshipManager before editing members")
         node_to_remove = RelatedNodeSync(schema=self.schema, client=self.client, branch=self.branch, data=data)
 
         if node_to_remove.id and node_to_remove.id in self.peer_ids:

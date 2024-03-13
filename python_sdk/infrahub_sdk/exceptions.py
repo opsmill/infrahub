@@ -118,3 +118,7 @@ class AuthenticationError(Error):
 
 class FeatureNotSupportedError(Error):
     """Raised when trying to use a method on a node that doesn't support it."""
+
+
+class UninitializedError(Error):
+    """Raised when an object requires an initialization step before use"""
