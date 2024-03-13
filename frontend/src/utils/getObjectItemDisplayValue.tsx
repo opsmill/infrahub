@@ -164,7 +164,7 @@ export const ObjectAttributeValue = ({
     | ListAttribute
     | AnyAttribute;
 }) => {
-  if (!attributeValue.value) return null;
+  if (!attributeValue.value) return "-";
 
   switch (attributeSchema.kind as SchemaAttributeType) {
     case SCHEMA_ATTRIBUTE_KIND.ID:
