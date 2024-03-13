@@ -27,7 +27,6 @@ services:
       - "INFRAHUB_ALLOW_ANONYMOUS_ACCESS=true"
       - "INFRAHUB_DB_TYPE=${INFRAHUB_DB_TYPE}"
     volumes:
-      - ../:/source
       - "storage_data:/opt/infrahub/storage"
     tty: true
     healthcheck:
@@ -58,7 +57,6 @@ services:
       - "INFRAHUB_SDK_TIMEOUT=20"
       - "INFRAHUB_DB_TYPE=${INFRAHUB_DB_TYPE}"
     volumes:
-      - ../:/source
       - "git_data:/opt/infrahub/git"
       - "git_remote_data:/remote"
     tty: true

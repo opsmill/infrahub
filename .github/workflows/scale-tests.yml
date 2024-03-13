@@ -25,7 +25,7 @@ env:
   INFRAHUB_BROKER_ADDRESS: message-queue
   INFRAHUB_LOG_LEVEL: CRITICAL
   INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
-  INFRAHUB_IMAGE_VER: "testing"
+  INFRAHUB_IMAGE_VER: "local"
 
 jobs:
   scale-tests:
@@ -66,7 +66,7 @@ jobs:
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
       - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 

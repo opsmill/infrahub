@@ -1,0 +1,12 @@
+---
+version: "3.4"
+services:
+  infrahub-server:
+    volumes:
+      - ../:/source
+      - "storage_data:/opt/infrahub/storage"
+  infrahub-git:
+    volumes:
+      - ../:/source
+      - "git_data:/opt/infrahub/git"
+      - "git_remote_data:/remote"

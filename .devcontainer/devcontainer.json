@@ -27,7 +27,8 @@
     "remoteUser": "vscode",
     "remoteEnv": {
         "INFRAHUB_SDK_API_TOKEN": "06438eb2-8019-4776-878c-0941b1f1d1ec",
-        "INFRAHUB_DB_TYPE": "memgraph"
+        "INFRAHUB_DB_TYPE": "memgraph",
+        "INFRAHUB_IMAGE_VER": "local"
     },
     "forwardPorts": [8000],
     "runArgs": ["--volume=/var/lib/docker", "--privileged"],
