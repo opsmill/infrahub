@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
-from typing_extensions import Self
 
 import pydantic
 from graphene import Boolean, Field, InputObjectType, List, Mutation, String
@@ -241,20 +240,20 @@ class BranchRebase(Mutation):
                 for error in errors:
                     context.service.log.error(error)
 
-                fields = await extract_fields_first_node(info=info)
+            fields = await extract_fields_first_node(info=info)
 
-                ok = True
+            ok = True
 
-                if context.service:
-                    log_data = get_log_data()
-                    request_id = log_data.get("request_id", "")
-                    message = messages.EventBranchRebased(
-                        branch=obj.name,
-                        meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
-                    )
-                    await context.service.send(message=message)
+            if context.service:
+                log_data = get_log_data()
+                request_id = log_data.get("request_id", "")
+                message = messages.EventBranchRebased(
+                    branch=obj.name,
+                    meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
+                )
+                await context.service.send(message=message)
 
-                return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+            return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 
 
 class BranchValidate(Mutation):
