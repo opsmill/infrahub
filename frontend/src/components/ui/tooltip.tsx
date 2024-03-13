@@ -2,7 +2,7 @@ import * as TooltipPrimitives from "@radix-ui/react-tooltip";
 import { ComponentPropsWithoutRef } from "react";
 import { classNames } from "../../utils/common";
 
-interface TooltipProps extends ComponentPropsWithoutRef<typeof TooltipPrimitives.Content> {
+export interface TooltipProps extends ComponentPropsWithoutRef<typeof TooltipPrimitives.Content> {
   enabled?: boolean;
 }
 export function Tooltip({
