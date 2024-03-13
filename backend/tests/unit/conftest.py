@@ -10,6 +10,7 @@ from neo4j._codec.hydration.v1 import HydrationHandler
 from pytest_httpx import HTTPXMock
 
 from infrahub import config
+from infrahub.auth import AccountSession, AuthType
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, InfrahubKind
@@ -2315,6 +2316,12 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
     await token.save(db=db)
 
     return account
+
+
+@pytest.fixture
+async def session_admin(db: InfrahubDatabase, create_test_admin) -> AccountSession:
+    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin.id, role="admin")
+    return session
 
 
 @pytest.fixture

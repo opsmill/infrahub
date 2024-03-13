@@ -52,7 +52,7 @@ async def repos_and_checks_in_main(db: InfrahubDatabase, register_core_models_sc
 
 
 async def test_branch_create(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema, session_admin
 ):
     query = """
     mutation {
@@ -72,7 +72,9 @@ async def test_branch_create(
     recorder = BusRecorder()
     service = InfrahubServices(message_bus=recorder)
 
-    result = await graphql_mutation(query=query, db=db, service=service, branch=default_branch)
+    result = await graphql_mutation(
+        query=query, db=db, service=service, branch=default_branch, account_session=session_admin
+    )
 
     assert result.errors is None
     assert result.data
@@ -98,7 +100,9 @@ async def test_branch_create(
     assert branch2.schema_hash == branch2_schema.get_hash_full()
 
     # Validate that we can't create a branch with a name that already exist
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -124,7 +128,9 @@ async def test_branch_create(
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -143,7 +149,7 @@ async def test_branch_create(
 
 
 async def test_branch_delete(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema, session_admin
 ):
     create_query = """
     mutation {
@@ -167,16 +173,24 @@ async def test_branch_delete(
     }
     """
 
-    delete_before_create = await graphql_mutation(query=delete_query, db=db, branch=default_branch)
+    delete_before_create = await graphql_mutation(
+        query=delete_query, db=db, branch=default_branch, account_session=session_admin
+    )
     recorder = BusRecorder()
     service = InfrahubServices(message_bus=recorder)
 
-    create = await graphql_mutation(query=create_query, db=db, branch=default_branch, service=service)
+    create = await graphql_mutation(
+        query=create_query, db=db, branch=default_branch, service=service, account_session=session_admin
+    )
     recorder = BusRecorder()
     service = InfrahubServices(message_bus=recorder)
 
-    delete_after_create = await graphql_mutation(query=delete_query, db=db, branch=default_branch, service=service)
-    delete_after_delete = await graphql_mutation(query=delete_query, db=db, branch=default_branch)
+    delete_after_create = await graphql_mutation(
+        query=delete_query, db=db, branch=default_branch, service=service, account_session=session_admin
+    )
+    delete_after_delete = await graphql_mutation(
+        query=delete_query, db=db, branch=default_branch, account_session=session_admin
+    )
 
     assert delete_before_create.errors
     assert delete_before_create.errors[0].message == "Branch: branch3 not found."
@@ -188,7 +202,7 @@ async def test_branch_delete(
 
 
 async def test_branch_create_registry(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema, session_admin
 ):
     query = """
     mutation {
@@ -205,7 +219,9 @@ async def test_branch_create_registry(
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -223,7 +239,7 @@ async def test_branch_create_registry(
 
 
 async def test_branch_create_invalid_names(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema, session_admin
 ):
     query = """
     mutation($branch_name: String!) {
@@ -236,7 +252,9 @@ async def test_branch_create_invalid_names(
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -254,7 +272,7 @@ async def test_branch_create_invalid_names(
 
 
 async def test_branch_create_short_name(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema, session_admin
 ):
     query = """
     mutation($branch_name: String!) {
@@ -267,7 +285,7 @@ async def test_branch_create_short_name(
         }
     }
     """
-    result = await graphql_mutation(query=query, db=db, variables={"branch_name": "b"})
+    result = await graphql_mutation(query=query, db=db, variables={"branch_name": "b"}, account_session=session_admin)
     assert result.errors
     assert len(result.errors) == 1
     assert result.errors[0].message == "invalid field name: String should have at least 3 characters"
@@ -279,6 +297,7 @@ async def test_branch_create_with_repositories(
     repos_and_checks_in_main,
     register_core_models_schema,
     data_schema,
+    session_admin,
 ):
     query = """
     mutation {
@@ -291,7 +310,9 @@ async def test_branch_create_with_repositories(
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -308,7 +329,7 @@ async def test_branch_create_with_repositories(
     assert await Branch.get_by_name(db=db, name="branch2")
 
 
-async def test_branch_rebase(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_branch_rebase(db: InfrahubDatabase, default_branch: Branch, car_person_schema, session_admin):
     branch2 = await create_branch(db=db, branch_name="branch2")
 
     query = """
@@ -323,7 +344,9 @@ async def test_branch_rebase(db: InfrahubDatabase, default_branch: Branch, car_p
     """
     recorder = BusRecorder()
     service = InfrahubServices(message_bus=recorder)
-    result = await graphql_mutation(query=query, db=db, branch=default_branch, service=service)
+    result = await graphql_mutation(
+        query=query, db=db, branch=default_branch, service=service, account_session=session_admin
+    )
 
     assert result.errors is None
     assert result.data
@@ -336,7 +359,9 @@ async def test_branch_rebase(db: InfrahubDatabase, default_branch: Branch, car_p
     assert recorder.seen_routing_keys == ["event.branch.rebased"]
 
 
-async def test_branch_rebase_wrong_branch(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_branch_rebase_wrong_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema, session_admin
+):
     query = """
     mutation {
         BranchRebase(data: { name: "branch2" }) {
@@ -347,7 +372,11 @@ async def test_branch_rebase_wrong_branch(db: InfrahubDatabase, default_branch: 
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    recorder = BusRecorder()
+    service = InfrahubServices(message_bus=recorder)
+    gql_params = prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -361,7 +390,7 @@ async def test_branch_rebase_wrong_branch(db: InfrahubDatabase, default_branch: 
     assert result.errors[0].message == "Branch: branch2 not found."
 
 
-async def test_branch_validate(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
+async def test_branch_validate(db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin):
     branch1 = await Branch.get_by_name(db=db, name="branch1")
 
     query = """
@@ -374,7 +403,9 @@ async def test_branch_validate(db: InfrahubDatabase, base_dataset_02, register_c
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch1)
+    gql_params = prepare_graphql_params(
+        db=db, include_subscription=False, branch=branch1, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -504,7 +535,7 @@ async def test_branch_update_isolated_schema_change(db: InfrahubDatabase, defaul
     assert "Can't convert branch4 to non-isolated mode" in result.errors[0].message
 
 
-async def test_branch_merge(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
+async def test_branch_merge(db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin):
     branch1 = await Branch.get_by_name(db=db, name="branch1")
 
     query = """
@@ -517,7 +548,9 @@ async def test_branch_merge(db: InfrahubDatabase, base_dataset_02, register_core
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch1)
+    gql_params = prepare_graphql_params(
+        db=db, include_subscription=False, branch=branch1, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,

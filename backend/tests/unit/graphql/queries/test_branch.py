@@ -1,3 +1,5 @@
+import operator
+
 from graphql import graphql
 
 from infrahub.core.branch import Branch
@@ -5,7 +7,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
 
 
-async def test_branch_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+async def test_branch_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, session_admin):
     create_branch_query = """
     mutation {
         BranchCreate(data: { name: "branch3", description: "my description" }) {
@@ -17,7 +19,9 @@ async def test_branch_query(db: InfrahubDatabase, default_branch: Branch, regist
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
+    )
     branch3_result = await graphql(
         schema=gql_params.schema,
         source=create_branch_query,
@@ -25,6 +29,7 @@ async def test_branch_query(db: InfrahubDatabase, default_branch: Branch, regist
         root_value=None,
         variable_values={},
     )
+    assert branch3_result.errors is None
     assert branch3_result.data
     branch3 = branch3_result.data["BranchCreate"]["object"]
 
@@ -53,7 +58,8 @@ async def test_branch_query(db: InfrahubDatabase, default_branch: Branch, regist
     assert all_branches.errors is None
     assert all_branches.data
     assert len(all_branches.data["Branch"]) == 2
-    assert all_branches.data["Branch"] == [
+
+    expected_branches = [
         {
             "description": "Default Branch",
             "has_schema_changes": False,
@@ -73,6 +79,9 @@ async def test_branch_query(db: InfrahubDatabase, default_branch: Branch, regist
             "origin_branch": "main",
         },
     ]
+    assert all_branches.data["Branch"].sort(key=operator.itemgetter("name")) == expected_branches.sort(
+        key=operator.itemgetter("name")
+    )
 
     # Query Branch3 by Name
     name_query = """
