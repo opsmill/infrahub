@@ -28,7 +28,6 @@ import {
 } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
-import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
@@ -58,6 +57,7 @@ import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
 import { RelationshipsDetails } from "./relationships-details-paginated";
 import Content from "../layout/content";
+import { usePermission } from "../../hooks/usePermission";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -73,7 +73,7 @@ export default function ObjectItemDetails(props: any) {
   const [qspTaskId, setQspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [showAddToGroupDrawer, setShowAddToGroupDrawer] = useState(false);
-  const auth = useAuth();
+  const permission = usePermission();
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const branch = useAtomValue(currentBranchAtom);
@@ -210,7 +210,7 @@ export default function ObjectItemDetails(props: any) {
                 {schemaData.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
 
                 <Button
-                  disabled={!auth?.permissions?.write}
+                  disabled={!permission.edit.allow}
                   onClick={() => setShowEditDrawer(true)}
                   className="mr-4">
                   Edit
@@ -219,7 +219,7 @@ export default function ObjectItemDetails(props: any) {
 
                 {!schemaData.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
                   <Button
-                    disabled={!auth?.permissions?.write}
+                    disabled={!permission.edit.allow}
                     onClick={() => setShowAddToGroupDrawer(true)}
                     className="mr-4">
                     Manage groups
@@ -298,7 +298,7 @@ export default function ObjectItemDetails(props: any) {
                             <div className="font-semibold">{attribute.label}</div>
                             <Button
                               buttonType={BUTTON_TYPES.INVISIBLE}
-                              disabled={!auth?.permissions?.write}
+                              disabled={!permission.edit.allow}
                               onClick={() => {
                                 setMetaEditFieldDetails({
                                   type: "attribute",

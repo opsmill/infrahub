@@ -18,6 +18,7 @@ type PermissionsType = {
 type AuthContextType = {
   accessToken: string | null;
   data?: any;
+  isAuthenticated: boolean;
   isLoading: boolean;
   permissions?: PermissionsType;
   signIn: (data: any, callback?: () => void) => void;
@@ -82,7 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify(data),
     };
 
-    const result = await fetchUrl(CONFIG.AUTH_SIGN_IN_URL, payload);
+    const result: components["schemas"]["UserToken"] = await fetchUrl(
+      CONFIG.AUTH_SIGN_IN_URL,
+      payload
+    );
 
     setIsLoading(false);
 
@@ -109,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextType = {
     accessToken,
     data,
+    isAuthenticated: !!accessToken,
     isLoading,
     permissions: {
       write: WRITE_ROLES.includes(data?.user_claims?.role),
