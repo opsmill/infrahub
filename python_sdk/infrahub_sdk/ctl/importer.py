@@ -26,7 +26,7 @@ def load(
     ),
     timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
 ) -> None:
-    """Import node(s)."""
+    """Import nodes and their relationships into the database."""
     console = Console()
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)

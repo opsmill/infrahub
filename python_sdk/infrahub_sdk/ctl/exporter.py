@@ -35,7 +35,7 @@ def dump(
         help="Prevent node kind(s) from being exported, CoreAccount is excluded by default",
     ),
 ) -> None:
-    """Export node(s)."""
+    """Export nodes and their relationships out of the database."""
     console = Console()
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
