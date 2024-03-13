@@ -29,6 +29,7 @@ Below is the list of all available options to define a Relationship in the schem
 | [**optional**](#optional) | Attribute | Indicate if this relationship is mandatory or optional. | False |
 | [**order_weight**](#order_weight) | Attribute | Number used to order the relationship in the frontend (table and view). | False |
 | [**peer**](#peer) | Attribute | Type (kind) of objects supported on the other end of the relationship. | True |
+| [**state**](#state) | Attribute | Expected state of the relationship after loading the schema | False |
 
 ## Reference Guide
 
@@ -200,6 +201,18 @@ Below is the list of all available options to define a Relationship in the schem
 | **Optional** | False |
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br /> Length: min 3, max 32 |
+
+### state
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | state |
+| **Kind** | `Text` |
+| **Description** | Expected state of the relationship after loading the schema |
+| **Optional** | True |
+| **Default Value** | present |
+| **Constraints** |  |
+| **Accepted Values** | `present` `absent`  |
 
 ## node
 

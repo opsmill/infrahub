@@ -1,0 +1,105 @@
+---
+title: Schema Update
+---
+
+<!-- vale off -->
+<!-- markdownlint-disable MD012 -->
+
+# Schema Update
+
+For each element* of the schema, when its value is being updated, Infrahub will determine what should be done from the list of possible actions:
+- **allowed** : Nothing is required, the update of this element is allowed
+- **migration_required** : The existing data must be migrated to the new schema
+- **validate_constraint** : The existing data needs to be validated to ensure that its compatible with the new schema
+- **not_supported** : The update of this element is not supported
+
+:::info
+
+In this context, an element represent either a Node, a Generic, an Attribute or a Relationship
+
+:::
+
+## Reference Guide
+
+### Node
+
+| Name | Status |
+| ---- | ---- |
+| **name** | migration_required |
+| **namespace** | migration_required |
+| **description** | allowed |
+| **label** | allowed |
+| **branch** | not_supported |
+| **default_filter** | allowed |
+| **display_labels** | allowed |
+| **include_in_menu** | allowed |
+| **menu_placement** | allowed |
+| **icon** | allowed |
+| **order_by** | allowed |
+| **uniqueness_constraints** | validate_constraint |
+| **inherit_from** | not_supported |
+| **hierarchy** | validate_constraint |
+| **parent** | validate_constraint |
+| **children** | validate_constraint |
+
+
+### Attribute
+
+| Name | Status |
+| ---- | ---- |
+| **name** | migration_required |
+| **kind** | validate_constraint |
+| **enum** | validate_constraint |
+| **choices** | validate_constraint |
+| **regex** | validate_constraint |
+| **max_length** | validate_constraint |
+| **min_length** | validate_constraint |
+| **label** | allowed |
+| **description** | allowed |
+| **read_only** | allowed |
+| **unique** | validate_constraint |
+| **optional** | validate_constraint |
+| **branch** | not_supported |
+| **order_weight** | allowed |
+| **default_value** | allowed |
+
+
+### Relationship
+
+| Name | Status |
+| ---- | ---- |
+| **name** | allowed |
+| **peer** | validate_constraint |
+| **kind** | allowed |
+| **label** | allowed |
+| **description** | allowed |
+| **identifier** | allowed |
+| **cardinality** | validate_constraint |
+| **min_count** | validate_constraint |
+| **max_count** | validate_constraint |
+| **order_weight** | allowed |
+| **optional** | validate_constraint |
+| **branch** | not_supported |
+| **direction** | not_supported |
+| **hierarchical** | not_supported |
+
+
+### Generic
+
+| Name | Status |
+| ---- | ---- |
+| **name** | migration_required |
+| **namespace** | migration_required |
+| **description** | allowed |
+| **label** | allowed |
+| **branch** | not_supported |
+| **default_filter** | allowed |
+| **display_labels** | allowed |
+| **include_in_menu** | allowed |
+| **menu_placement** | allowed |
+| **icon** | allowed |
+| **order_by** | allowed |
+| **uniqueness_constraints** | validate_constraint |
+| **hierarchical** | validate_constraint |
+
+
