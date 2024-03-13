@@ -58,6 +58,7 @@ import RelationshipDetails from "./relationship-details-paginated";
 import { RelationshipsDetails } from "./relationships-details-paginated";
 import Content from "../layout/content";
 import { usePermission } from "../../hooks/usePermission";
+import { Tooltip } from "../../components/ui/tooltip";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -209,22 +210,30 @@ export default function ObjectItemDetails(props: any) {
               <>
                 {schemaData.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
 
-                <Button
-                  disabled={!permission.edit.allow}
-                  onClick={() => setShowEditDrawer(true)}
-                  className="mr-4">
-                  Edit
-                  <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                </Button>
-
-                {!schemaData.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
+                <Tooltip
+                  enabled={!permission.edit.allow}
+                  content={permission.edit.message ?? undefined}>
                   <Button
                     disabled={!permission.edit.allow}
-                    onClick={() => setShowAddToGroupDrawer(true)}
+                    onClick={() => setShowEditDrawer(true)}
                     className="mr-4">
-                    Manage groups
-                    <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                    Edit
+                    <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                   </Button>
+                </Tooltip>
+
+                {!schemaData.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
+                  <Tooltip
+                    enabled={!permission.edit.allow}
+                    content={permission.edit.message ?? undefined}>
+                    <Button
+                      disabled={!permission.edit.allow}
+                      onClick={() => setShowAddToGroupDrawer(true)}
+                      className="mr-4">
+                      Manage groups
+                      <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  </Tooltip>
                 )}
               </>
             }
@@ -296,21 +305,25 @@ export default function ObjectItemDetails(props: any) {
                         header={
                           <div className="flex justify-between items-center w-full p-4">
                             <div className="font-semibold">{attribute.label}</div>
-                            <Button
-                              buttonType={BUTTON_TYPES.INVISIBLE}
-                              disabled={!permission.edit.allow}
-                              onClick={() => {
-                                setMetaEditFieldDetails({
-                                  type: "attribute",
-                                  attributeOrRelationshipName: attribute.name,
-                                  label: attribute.label || attribute.name,
-                                });
-                                setShowMetaEditModal(true);
-                              }}
-                              data-testid="edit-metadata-button"
-                              data-cy="metadata-edit-button">
-                              <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
-                            </Button>
+                            <Tooltip
+                              enabled={!permission.edit.allow}
+                              content={permission.edit.message ?? undefined}>
+                              <Button
+                                buttonType={BUTTON_TYPES.INVISIBLE}
+                                disabled={!permission.edit.allow}
+                                onClick={() => {
+                                  setMetaEditFieldDetails({
+                                    type: "attribute",
+                                    attributeOrRelationshipName: attribute.name,
+                                    label: attribute.label || attribute.name,
+                                  });
+                                  setShowMetaEditModal(true);
+                                }}
+                                data-testid="edit-metadata-button"
+                                data-cy="metadata-edit-button">
+                                <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
+                              </Button>
+                            </Tooltip>
                           </div>
                         }
                       />

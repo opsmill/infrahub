@@ -23,7 +23,6 @@ import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
-import { useAuth } from "../../hooks/useAuth";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -43,6 +42,8 @@ import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { ObjectAttributeRow } from "./object-attribute-row";
+import { usePermission } from "../../hooks/usePermission";
+import { Tooltip } from "../../components/ui/tooltip";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -67,7 +68,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   } = props;
 
   const { objectname, objectid } = useParams();
-  const auth = useAuth();
+  const permission = usePermission();
 
   const schemaList = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
@@ -288,20 +289,24 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         header={
                           <div className="flex justify-between items-center w-full p-4">
                             <div className="font-semibold">{relationshipSchema.label}</div>
-                            <Button
-                              buttonType={BUTTON_TYPES.INVISIBLE}
-                              disabled={!auth?.permissions?.write}
-                              onClick={() => {
-                                setMetaEditFieldDetails({
-                                  type: "relationship",
-                                  attributeOrRelationshipName: relationshipSchema.name,
-                                  label: relationshipSchema.label || relationshipSchema.name,
-                                });
-                                setShowMetaEditModal(true);
-                              }}
-                              data-cy="metadata-edit-button">
-                              <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
-                            </Button>
+                            <Tooltip
+                              enabled={!permission.edit.allow}
+                              content={permission.edit.message ?? undefined}>
+                              <Button
+                                buttonType={BUTTON_TYPES.INVISIBLE}
+                                disabled={!permission.edit.allow}
+                                onClick={() => {
+                                  setMetaEditFieldDetails({
+                                    type: "relationship",
+                                    attributeOrRelationshipName: relationshipSchema.name,
+                                    label: relationshipSchema.label || relationshipSchema.name,
+                                  });
+                                  setShowMetaEditModal(true);
+                                }}
+                                data-cy="metadata-edit-button">
+                                <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
+                              </Button>
+                            </Tooltip>
                           </div>
                         }
                       />
@@ -417,7 +422,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         </div>
 
                         <Button
-                          disabled={!auth?.permissions?.write}
+                          disabled={!permission.edit.allow}
                           buttonType={BUTTON_TYPES.INVISIBLE}
                           onClick={() => {
                             setRelatedObjectToEdit(node);
@@ -427,7 +432,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         </Button>
 
                         <Button
-                          disabled={!auth?.permissions?.write}
+                          disabled={!permission.edit.allow}
                           buttonType={BUTTON_TYPES.INVISIBLE}
                           onClick={() => {
                             setRelatedRowToDelete(node);
@@ -512,7 +517,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       {mode === "TABLE" && (
         <div className="absolute bottom-4 right-4 z-10">
           <RoundedButton
-            disabled={!auth?.permissions?.write}
+            disabled={!permission.edit.allow}
             onClick={() => setShowAddDrawer(true)}
             className="p-3 ml-2 bg-custom-blue-500 hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2"
             data-cy="open-relationship-form-button">
