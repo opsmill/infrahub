@@ -4,6 +4,7 @@
         "prepare": "husky install"
     },
     "dependencies": {
+        "@radix-ui/react-tooltip": "^1.0.7",
         "markdownlint-cli2": "^0.11.0",
         "retypeapp": "^3.3.0"
     },
