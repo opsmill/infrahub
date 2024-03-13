@@ -632,13 +632,13 @@ jobs:
           name: screenshots
           path: docs/media/*
       - name: Display server logs
-        run: docker logs infrahub-infrahub-server-1
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-server-1"
       - name: Display git 1 logs
-        run: docker logs infrahub-infrahub-git-1
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-1"
       - name: Display git 2 logs
-        run: docker logs infrahub-infrahub-git-2
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-2"
       - name: Display database logs
-        run: docker logs infrahub-database-1
+        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
       - name: Display server status
         run: invoke demo.status
 
