@@ -1,6 +1,6 @@
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import typer
 import yaml
@@ -19,6 +19,7 @@ from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.ctl.exceptions import FileNotValidError
 from infrahub_sdk.ctl.utils import init_logging
 from infrahub_sdk.utils import find_files
+from infrahub_sdk.yaml import SchemaFile
 
 app = AsyncTyper()
 
@@ -28,24 +29,6 @@ def callback() -> None:
     """
     Manage the schema in a remote Infrahub instance.
     """
-
-
-class SchemaFile(pydantic.BaseModel):
-    location: Path
-    content: Optional[dict] = None
-    valid: bool = True
-    error_message: Optional[str] = None
-
-    def load_content(self) -> None:
-        try:
-            self.content = yaml.safe_load(self.location.read_text())
-        except yaml.YAMLError:
-            self.error_message = "Invalid YAML/JSON file"
-            self.valid = False
-
-        if not self.content:
-            self.error_message = "Empty YAML/JSON file"
-            self.valid = False
 
 
 def load_schemas_from_disk(schemas: List[Path]) -> List[SchemaFile]:

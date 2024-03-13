@@ -9,7 +9,7 @@ from httpx import HTTPStatusError
 from rich.console import Console
 from rich.traceback import Traceback
 
-from ...utils import identify_faulty_jinja_code
+from ...jinja2 import identify_faulty_jinja_code
 from ..exceptions import Jinja2TransformError, Jinja2TransformUndefinedError, OutputMatchError
 from ..models import InfrahubInputOutputTest, InfrahubTestExpectedResult
 from .base import InfrahubItem

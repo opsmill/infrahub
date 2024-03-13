@@ -33,7 +33,7 @@ pendulum = [
     { version = ">=2", python = ">=3.8,<3.12" },
     { version = ">=3", python = ">=3.12" }
 ]
-gitpython = { version = "^3", optional = true }
+gitpython = "^3"
 Jinja2 = { version = "^3", optional = true }
 numpy = [
     { version = "^1.24.2", optional = true , python = ">=3.8,<3.12" },
@@ -70,7 +70,6 @@ types-python-slugify = "^8.0.0.3"
 
 [tool.poetry.extras]
 ctl = [
-    "gitpython",
     "Jinja2",
     "numpy",
     "pyarrow",
@@ -81,7 +80,6 @@ ctl = [
     "ujson"
 ]
 tests = [
-    "gitpython",
     "Jinja2",
     "pytest",
     "pyyaml",
