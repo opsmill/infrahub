@@ -16,6 +16,8 @@ import { SelectButton } from "./buttons/select-button";
 import { DateDisplay } from "./display/date-display";
 import { POPOVER_SIZE, PopOver } from "./display/popover";
 import { SelectOption } from "./inputs/select";
+import { usePermission } from "../hooks/usePermission";
+import { Tooltip } from "./ui/tooltip";
 
 const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
   branch && (
@@ -55,6 +57,7 @@ export default function BranchSelector() {
   const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const branch = useAtomValue(currentBranchAtom);
   const auth = useAuth();
+  const permission = usePermission();
 
   const [createBranch, { loading }] = useMutation(BRANCH_CREATE);
 
@@ -67,15 +70,17 @@ export default function BranchSelector() {
   );
 
   const PopOverButton = (
-    <Button
-      disabled={!auth?.permissions?.write}
-      buttonType={BUTTON_TYPES.MAIN}
-      className="h-full rounded-r-md border border-transparent"
-      type="submit"
-      data-cy="create-branch-button"
-      data-testid="create-branch-button">
-      <Icon icon={"mdi:plus"} className="text-custom-white" />
-    </Button>
+    <Tooltip enabled={!permission.create.allow} content={permission.edit.message ?? undefined}>
+      <Button
+        disabled={!permission.edit.allow}
+        buttonType={BUTTON_TYPES.MAIN}
+        className="h-full rounded-r-md border border-transparent"
+        type="submit"
+        data-cy="create-branch-button"
+        data-testid="create-branch-button">
+        <Icon icon={"mdi:plus"} className="text-custom-white" />
+      </Button>
+    </Tooltip>
   );
 
   const branchesOptions: SelectOption[] = branches
