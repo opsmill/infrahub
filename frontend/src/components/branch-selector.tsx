@@ -11,13 +11,13 @@ import { DynamicFieldData } from "../screens/edit-form-hook/dynamic-control-type
 import { Form } from "../screens/edit-form-hook/form";
 import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
 import { classNames } from "../utils/common";
-import { BUTTON_TYPES, Button } from "./buttons/button";
+import { BUTTON_TYPES } from "./buttons/button";
 import { SelectButton } from "./buttons/select-button";
 import { DateDisplay } from "./display/date-display";
 import { POPOVER_SIZE, PopOver } from "./display/popover";
 import { SelectOption } from "./inputs/select";
 import { usePermission } from "../hooks/usePermission";
-import { Tooltip } from "./ui/tooltip";
+import { ButtonWithTooltip } from "./buttons/button-with-tooltip";
 
 const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
   branch && (
@@ -70,17 +70,17 @@ export default function BranchSelector() {
   );
 
   const PopOverButton = (
-    <Tooltip enabled={!permission.write.allow} content={permission.write.message ?? undefined}>
-      <Button
-        disabled={!permission.write.allow}
-        buttonType={BUTTON_TYPES.MAIN}
-        className="h-full rounded-r-md border border-transparent"
-        type="submit"
-        data-cy="create-branch-button"
-        data-testid="create-branch-button">
-        <Icon icon={"mdi:plus"} className="text-custom-white" />
-      </Button>
-    </Tooltip>
+    <ButtonWithTooltip
+      disabled={!permission.write.allow}
+      tooltipEnabled={!permission.write.allow}
+      tooltipContent={permission.write.message ?? undefined}
+      buttonType={BUTTON_TYPES.MAIN}
+      className="h-full rounded-r-md border border-transparent"
+      type="submit"
+      data-cy="create-branch-button"
+      data-testid="create-branch-button">
+      <Icon icon={"mdi:plus"} className="text-custom-white" />
+    </ButtonWithTooltip>
   );
 
   const branchesOptions: SelectOption[] = branches

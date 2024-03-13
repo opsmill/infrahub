@@ -11,7 +11,7 @@ import { useAtomValue } from "jotai/index";
 import { Fragment, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import { BUTTON_TYPES } from "../../components/buttons/button";
 import { RoundedButton } from "../../components/buttons/rounded-button";
 import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
 import SlideOver from "../../components/display/slide-over";
@@ -43,7 +43,7 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit-pagina
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import { usePermission } from "../../hooks/usePermission";
-import { Tooltip } from "../../components/ui/tooltip";
+import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -289,24 +289,22 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         header={
                           <div className="flex justify-between items-center w-full p-4">
                             <div className="font-semibold">{relationshipSchema.label}</div>
-                            <Tooltip
-                              enabled={!permission.write.allow}
-                              content={permission.write.message ?? undefined}>
-                              <Button
-                                buttonType={BUTTON_TYPES.INVISIBLE}
-                                disabled={!permission.write.allow}
-                                onClick={() => {
-                                  setMetaEditFieldDetails({
-                                    type: "relationship",
-                                    attributeOrRelationshipName: relationshipSchema.name,
-                                    label: relationshipSchema.label || relationshipSchema.name,
-                                  });
-                                  setShowMetaEditModal(true);
-                                }}
-                                data-cy="metadata-edit-button">
-                                <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
-                              </Button>
-                            </Tooltip>
+                            <ButtonWithTooltip
+                              buttonType={BUTTON_TYPES.INVISIBLE}
+                              disabled={!permission.write.allow}
+                              tooltipEnabled={!permission.write.allow}
+                              tooltipContent={permission.write.message ?? undefined}
+                              onClick={() => {
+                                setMetaEditFieldDetails({
+                                  type: "relationship",
+                                  attributeOrRelationshipName: relationshipSchema.name,
+                                  label: relationshipSchema.label || relationshipSchema.name,
+                                });
+                                setShowMetaEditModal(true);
+                              }}
+                              data-cy="metadata-edit-button">
+                              <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
+                            </ButtonWithTooltip>
                           </div>
                         }
                       />
@@ -421,25 +419,29 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           />
                         </div>
 
-                        <Button
+                        <ButtonWithTooltip
                           disabled={!permission.write.allow}
+                          tooltipEnabled={!permission.write.allow}
+                          tooltipContent={permission.write.message ?? undefined}
                           buttonType={BUTTON_TYPES.INVISIBLE}
                           onClick={() => {
                             setRelatedObjectToEdit(node);
                           }}
                           data-cy="metadata-edit-button">
                           <PencilSquareIcon className="w-4 h-4 text-gray-500" />
-                        </Button>
+                        </ButtonWithTooltip>
 
-                        <Button
+                        <ButtonWithTooltip
                           disabled={!permission.write.allow}
+                          tooltipEnabled={!permission.write.allow}
+                          tooltipContent={permission.write.message ?? undefined}
                           buttonType={BUTTON_TYPES.INVISIBLE}
                           onClick={() => {
                             setRelatedRowToDelete(node);
                           }}
                           data-cy="relationship-delete-button">
                           <Icon icon="mdi:link-variant-remove" className="text-base text-red-600" />
-                        </Button>
+                        </ButtonWithTooltip>
                       </td>
                     </tr>
                   ))}

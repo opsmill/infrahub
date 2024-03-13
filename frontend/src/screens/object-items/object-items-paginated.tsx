@@ -6,7 +6,7 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import { BUTTON_TYPES } from "../../components/buttons/button";
 import { Retry } from "../../components/buttons/retry";
 import { RoundedButton } from "../../components/buttons/rounded-button";
 import SlideOver from "../../components/display/slide-over";
@@ -40,8 +40,10 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
-import { useAuth } from "../../hooks/useAuth";
 import Content from "../layout/content";
+import { Tooltip } from "../../components/ui/tooltip";
+import { usePermission } from "../../hooks/usePermission";
+import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -54,7 +56,7 @@ export default function ObjectItems(props: any) {
 
   const objectname = objectnameFromProps || objectnameFromParams;
 
-  const auth = useAuth();
+  const permission = usePermission();
 
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
@@ -202,13 +204,17 @@ export default function ObjectItems(props: any) {
         )}
 
         {schema && (
-          <RoundedButton
-            data-cy="create"
-            data-testid="create-object-button"
-            disabled={!auth?.permissions?.write}
-            onClick={() => setShowCreateDrawer(true)}>
-            <PlusIcon className="w-4 h-4" aria-hidden="true" />
-          </RoundedButton>
+          <Tooltip
+            enabled={!permission.write.allow}
+            content={permission.write.message ?? undefined}>
+            <RoundedButton
+              data-cy="create"
+              data-testid="create-object-button"
+              disabled={!permission.write.allow}
+              onClick={() => setShowCreateDrawer(true)}>
+              <PlusIcon className="w-4 h-4" aria-hidden="true" />
+            </RoundedButton>
+          </Tooltip>
         )}
       </div>
 
@@ -250,16 +256,18 @@ export default function ObjectItems(props: any) {
                   ))}
 
                   <td className="text-right w-8">
-                    <Button
+                    <ButtonWithTooltip
                       data-cy="delete"
-                      disabled={!auth?.permissions?.write}
+                      disabled={!permission.write.allow}
+                      tooltipEnabled={!permission.write.allow}
+                      tooltipContent={permission.write.message ?? undefined}
                       buttonType={BUTTON_TYPES.INVISIBLE}
                       onClick={() => {
                         setRowToDelete(row);
                         setDeleteModal(true);
                       }}>
                       <Icon icon="mdi:trash" className="text-red-500" />
-                    </Button>
+                    </ButtonWithTooltip>
                   </td>
                 </tr>
               ))}

@@ -12,7 +12,7 @@ import { useAtomValue } from "jotai/index";
 import { useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import { BUTTON_TYPES } from "../../components/buttons/button";
 import { Retry } from "../../components/buttons/retry";
 import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
 import SlideOver from "../../components/display/slide-over";
@@ -58,7 +58,7 @@ import RelationshipDetails from "./relationship-details-paginated";
 import { RelationshipsDetails } from "./relationships-details-paginated";
 import Content from "../layout/content";
 import { usePermission } from "../../hooks/usePermission";
-import { Tooltip } from "../../components/ui/tooltip";
+import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -210,30 +210,26 @@ export default function ObjectItemDetails(props: any) {
               <>
                 {schemaData.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
 
-                <Tooltip
-                  enabled={!permission.edit.allow}
-                  content={permission.edit.message ?? undefined}>
-                  <Button
-                    disabled={!permission.edit.allow}
-                    onClick={() => setShowEditDrawer(true)}
-                    className="mr-4">
-                    Edit
-                    <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                  </Button>
-                </Tooltip>
+                <ButtonWithTooltip
+                  disabled={!permission.write.allow}
+                  tooltipEnabled={!permission.write.allow}
+                  tooltipContent={permission.write.message ?? undefined}
+                  onClick={() => setShowEditDrawer(true)}
+                  className="mr-4">
+                  Edit
+                  <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                </ButtonWithTooltip>
 
                 {!schemaData.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
-                  <Tooltip
-                    enabled={!permission.edit.allow}
-                    content={permission.edit.message ?? undefined}>
-                    <Button
-                      disabled={!permission.edit.allow}
-                      onClick={() => setShowAddToGroupDrawer(true)}
-                      className="mr-4">
-                      Manage groups
-                      <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                    </Button>
-                  </Tooltip>
+                  <ButtonWithTooltip
+                    disabled={!permission.write.allow}
+                    tooltipEnabled={!permission.write.allow}
+                    tooltipContent={permission.write.message ?? undefined}
+                    onClick={() => setShowAddToGroupDrawer(true)}
+                    className="mr-4">
+                    Manage groups
+                    <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                  </ButtonWithTooltip>
                 )}
               </>
             }
@@ -305,25 +301,23 @@ export default function ObjectItemDetails(props: any) {
                         header={
                           <div className="flex justify-between items-center w-full p-4">
                             <div className="font-semibold">{attribute.label}</div>
-                            <Tooltip
-                              enabled={!permission.edit.allow}
-                              content={permission.edit.message ?? undefined}>
-                              <Button
-                                buttonType={BUTTON_TYPES.INVISIBLE}
-                                disabled={!permission.edit.allow}
-                                onClick={() => {
-                                  setMetaEditFieldDetails({
-                                    type: "attribute",
-                                    attributeOrRelationshipName: attribute.name,
-                                    label: attribute.label || attribute.name,
-                                  });
-                                  setShowMetaEditModal(true);
-                                }}
-                                data-testid="edit-metadata-button"
-                                data-cy="metadata-edit-button">
-                                <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
-                              </Button>
-                            </Tooltip>
+                            <ButtonWithTooltip
+                              buttonType={BUTTON_TYPES.INVISIBLE}
+                              disabled={!permission.write.allow}
+                              tooltipEnabled={!permission.write.allow}
+                              tooltipContent={permission.write.message ?? undefined}
+                              onClick={() => {
+                                setMetaEditFieldDetails({
+                                  type: "attribute",
+                                  attributeOrRelationshipName: attribute.name,
+                                  label: attribute.label || attribute.name,
+                                });
+                                setShowMetaEditModal(true);
+                              }}
+                              data-testid="edit-metadata-button"
+                              data-cy="metadata-edit-button">
+                              <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
+                            </ButtonWithTooltip>
                           </div>
                         }
                       />
