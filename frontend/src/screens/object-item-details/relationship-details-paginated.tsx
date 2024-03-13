@@ -5,7 +5,9 @@ import {
   PencilSquareIcon,
   PlusIcon,
 } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { Fragment, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -20,13 +22,13 @@ import { Link as StyledLink } from "../../components/utils/link";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
-import { useAuth } from "../../hooks/useAuth";
 import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
+import { useAuth } from "../../hooks/useAuth";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { schemaKindLabelState } from "../../state/atoms/schemaKindLabel.atom";
+import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
@@ -67,10 +69,12 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const { objectname, objectid } = useParams();
   const auth = useAuth();
 
-  const [schemaList] = useAtom(schemaState);
-  const [generics] = useAtom(genericsState);
+  const schemaList = useAtomValue(schemaState);
+  const generics = useAtomValue(genericsState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const schemaKindName = useAtomValue(schemaKindNameState);
+  const schemaKindLabel = useAtomValue(schemaKindLabelState);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showRelationMetaEditModal, setShowRelationMetaEditModal] = useState(false);
@@ -356,7 +360,12 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           <Link
                             className="whitespace-wrap px-2 py-1 text-xs flex items-center text-gray-900"
                             to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
-                            {getObjectItemDisplayValue(node, column)}
+                            {getObjectItemDisplayValue(
+                              node,
+                              column,
+                              schemaKindName,
+                              schemaKindLabel
+                            )}
                           </Link>
                         </td>
                       ))}

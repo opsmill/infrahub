@@ -23,7 +23,12 @@ const getTextValue = (data: any) => {
   );
 };
 
-export const getDisplayValue = (row: any, attribute: any, schemaKindName?: iSchemaKindNameMap) => {
+export const getDisplayValue = (
+  row: any,
+  attribute: any,
+  schemaKindName?: iSchemaKindNameMap,
+  schemaKindLabel?: iSchemaKindNameMap
+) => {
   if (!row) {
     return;
   }
@@ -82,12 +87,17 @@ export const getDisplayValue = (row: any, attribute: any, schemaKindName?: iSche
     return <DateDisplay date={row[attribute?.name]?.value} />;
   }
 
-  if (schemaKindName && attribute?.name === "__typename" && row[attribute?.name]) {
-    // Use the schema kind name and the value of the __typename to display the type
-    return schemaKindName[row[attribute?.name]] ?? "-";
+  const textValue = getTextValue(row[attribute?.name]);
+
+  if (schemaKindLabel && attribute?.name === "__typename" && row[attribute?.name]) {
+    // Use the schema kind name and the value of the __typename to display the type, or use the value itself if not defined
+    return schemaKindLabel[row[attribute?.name]] ?? textValue;
   }
 
-  const textValue = getTextValue(row[attribute?.name]);
+  if (schemaKindName && attribute?.name === "__typename" && row[attribute?.name]) {
+    // Use the schema kind name and the value of the __typename to display the type, or use the value itself if not defined
+    return schemaKindName[row[attribute?.name]] ?? textValue;
+  }
 
   if (attribute?.kind === "Password") {
     return <PasswordDisplay value={textValue} />;
@@ -111,11 +121,12 @@ export const getDisplayValue = (row: any, attribute: any, schemaKindName?: iSche
 export const getObjectItemDisplayValue = (
   row: any,
   attribute: any,
-  schemaKindName?: iSchemaKindNameMap
+  schemaKindName?: iSchemaKindNameMap,
+  schemaKindLabel?: iSchemaKindNameMap
 ) => {
   return (
     <div className="flex items-center min-w-[28px] min-h-[28px] truncate">
-      {getDisplayValue(row, attribute, schemaKindName)}
+      {getDisplayValue(row, attribute, schemaKindName, schemaKindLabel)}
     </div>
   );
 };
