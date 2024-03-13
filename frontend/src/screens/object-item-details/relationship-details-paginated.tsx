@@ -6,8 +6,7 @@ import {
   PlusIcon,
 } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai";
-import { useAtomValue } from "jotai/index";
+import { useAtom, useAtomValue } from "jotai";
 import { Fragment, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
