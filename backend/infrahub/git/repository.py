@@ -31,7 +31,7 @@ from infrahub_sdk.schema import (
     InfrahubPythonTransformConfig,
 )
 from infrahub_sdk.task_report import InfrahubTaskReportLogger  # noqa: TCH002
-from infrahub_sdk.utils import YamlFile, compare_lists
+from infrahub_sdk.yaml import SchemaFile, compare_lists
 from pydantic import ValidationError as PydanticValidationError
 from pydantic.v1 import BaseModel, Field
 
@@ -1136,7 +1136,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         # pylint: disable=too-many-branches
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
-        schemas_data: List[YamlFile] = []
+        schemas_data: List[SchemaFile] = []
 
         for schema in config_file.schemas:
             full_schema = Path(os.path.join(branch_wt.directory, schema))
@@ -1147,7 +1147,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 continue
 
             if full_schema.is_file():
-                schema_file = YamlFile(identifier=str(schema), location=full_schema)
+                schema_file = SchemaFile(identifier=str(schema), location=full_schema)
                 schema_file.load_content()
                 schemas_data.append(schema_file)
             elif full_schema.is_dir():
@@ -1160,7 +1160,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 )
                 for item in files:
                     identifier = item.replace(branch_wt.directory, "")
-                    schema_file = YamlFile(identifier=identifier, location=item)
+                    schema_file = SchemaFile(identifier=identifier, location=item)
                     schema_file.load_content()
                     schemas_data.append(schema_file)
 

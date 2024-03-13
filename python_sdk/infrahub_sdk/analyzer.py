@@ -16,11 +16,7 @@ try:
 except ImportError:
     import pydantic  # type: ignore[no-redef]
 
-from infrahub_sdk.utils import (
-    calculate_dict_depth,
-    calculate_dict_height,
-    extract_fields,
-)
+from infrahub_sdk.utils import calculate_dict_depth, calculate_dict_height, extract_fields
 
 
 class GraphQLQueryVariable(pydantic.BaseModel):

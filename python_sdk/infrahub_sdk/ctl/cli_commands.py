@@ -34,8 +34,9 @@ from infrahub_sdk.exceptions import (
     ServerNotReachableError,
     ServerNotResponsiveError,
 )
+from infrahub_sdk.jinja2 import identify_faulty_jinja_code
 from infrahub_sdk.transforms import get_transform_class_instance
-from infrahub_sdk.utils import get_branch, identify_faulty_jinja_code, write_to_file
+from infrahub_sdk.utils import get_branch, write_to_file
 
 from .exporter import dump
 from .importer import load
