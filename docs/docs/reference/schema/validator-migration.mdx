@@ -8,6 +8,7 @@ title: Schema Update
 # Schema Update
 
 For each element* of the schema, when its value is being updated, Infrahub will determine what should be done from the list of possible actions:
+
 - **allowed** : Nothing is required, the update of this element is allowed
 - **migration_required** : The existing data must be migrated to the new schema
 - **validate_constraint** : The existing data needs to be validated to ensure that its compatible with the new schema
