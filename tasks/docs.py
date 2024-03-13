@@ -205,8 +205,8 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
     ]
 
     template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/sdk_config.j2"
-    output_file = f"{DOCUMENTATION_DIRECTORY}/docs/python-sdk/config.mdx"
-    output_label = "docs/docs/python-sdk/config.mdx"
+    output_file = f"{DOCUMENTATION_DIRECTORY}/docs/python-sdk/reference/config.mdx"
+    output_label = "docs/docs/python-sdk/reference/config.mdx"
 
     if not os.path.exists(template_file):
         print(f"Unable to find the template file at {template_file}")

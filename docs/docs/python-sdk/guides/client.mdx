@@ -1,0 +1,112 @@
+---
+title: Creating a client
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Creating an Infrahub client
+
+Interfacing with Infrahub through the Python SDK is performed using a client object. A client object defines the Infrahub instance that you will be interfacing with. It provides methods to query data, create data, manage the schema and branches in Infrahub.
+
+The Python SDK supports synchronous and asynchronous Python.
+
+## Asynchronous Python
+
+The default client class `InfrahubClient` provides the asynchronous version.
+
+```python
+from infrahub_sdk import InfrahubClient
+client = await InfrahubClient.init(address="http://localhost:8000")
+```
+
+## Synchronous Python
+
+The `InfrahubClientSync` class provides the synchronous version.
+
+```python
+from infrahub_sdk import InfrahubClientSync
+client = InfrahubClientSync.init(address="http://localhost:8000")
+```
+
+## Authentication
+
+The SDK is using a token-based authentication method to authenticate with the API and GraphQL. The token can be provided using a Config object or you can define it as the `INFRAHUB_SDK_API_TOKEN` environment variable.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  from infrahub_sdk import InfrahubClient
+  client = await InfrahubClient.init(config=Config(api_token="token"))
+  client = await InfrahubClient.init() # token is read from the INFRAHUB_SDK_API_TOKEN environment variable
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  from infrahub_sdk import InfrahubClientSync
+  client = InfrahubClientSync.init(config=Config(api_token="token"))
+  client = InfrahubClientSync.init() # token is read from the INFRAHUB_SDK_API_TOKEN environment variable
+  ```
+
+  </TabItem>
+</Tabs>
+
+## Configuring the client object
+
+The client object can be configured by providing a Config object. Here we will show you how to enable the client to print out all of the GraphQL queries it will send to Infrahub.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  from infrahub_sdk import InfrahubClient, Config
+  config = Config(echo_graphql_queries=True)
+  client = await InfrahubClient.init(config=config)
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  from infrahub_sdk import InfrahubClientSync, Config
+  config = Config(echo_graphql_queries=True)
+  client = InfrahubClientSync.init(config=config)
+  ```
+
+  </TabItem>
+</Tabs>
+
+More details on the available configuration options can be found [SDK configuration reference](/python-sdk/reference/config).
+
+## Setting the default branch
+
+The client object can be configured to use a specific branch in Infrahub. By default the client will use the main branch, but you can change this to be any other branch. The methods, provided by the client, have a branch argument which allow you to specific against which branch you want to execute the functionality provided by the branch. If this argument is not provided then the `default_branch` of the client will be used.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  from infrahub_sdk import InfrahubClient, Config
+  config = Config(default_branch="other-branch")
+  client_other_branch = await InfrahubClient.init(config=config)
+
+  tag_other_branch = await client_other_branch.get(kind="BuiltinTag", name__value="RED")
+  tag_main_branch = await client_other_branch.get(kind="BuiltinTag", name__value="RED", branch="main")
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  from infrahub_sdk import InfrahubClientSync, Config
+  config = Config(default_branch="other-branch")
+  client_other_branch = InfrahubClientSync.init(config=config)
+
+  tag_other_branch = client_other_branch.get(kind="BuiltinTag", name__value="RED")
+  tag_main_branch = client_other_branch.get(kind="BuiltinTag", name__value="RED", branch="main")
+  ```
+
+  </TabItem>
+</Tabs>

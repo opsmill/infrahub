@@ -121,10 +121,24 @@ const sidebars: SidebarsConfig = {
       label: 'Python SDK',
       link: {type: 'doc', id: 'python-sdk/readme'},
       items: [
-        'python-sdk/config',
-        'python-sdk/query',
-        'python-sdk/create-update-delete',
-        'python-sdk/branches',
+        {
+          type: 'category',
+          label: 'Guides',
+          items: [
+	    'python-sdk/guides/installation',
+	    'python-sdk/guides/client',
+            'python-sdk/guides/query_data',
+	    'python-sdk/guides/create_update_delete',
+	    'python-sdk/guides/branches'
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Reference',
+          items: [
+	    'python-sdk/reference/config'
+          ],
+        },
       ],
     },
     {

@@ -8,95 +8,14 @@ import TabItem from '@theme/TabItem';
 
 The Infrahub Python SDK greatly simplifies how you can interact with Infrahub programmatically.
 
-## Installation
+## Guides
 
-The Infrahub SDK for Python is available on [PyPI](https://pypi.org/project/infrahub-sdk/) and can be installed using the `pip` package installer. It is recommended to install the SDK into a virtual environment.
+- [Installing infrahub-sdk](/python-sdk/guides/installation)
+- [Creating a client](/python-sdk/guides/client)
+- [Querying data in Infrahub](/python-sdk/guides/query_data)
+- [Create, update and deleting nodes](/python-sdk/guides/create_update_delete)
+- [Branch management](/python-sdk/guides/branches)
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install infrahub-sdk
-```
+## Reference
 
-Some features of the SDK such as the test framework are only available after installing extras of the initial packages. Available extras are:
-
-* `ctl` which is required for running infrahubctl commands
-* `tests` which is required for using the test framework
-
-You can install extras using pip:
-
-```bash
-pip install 'infrahub-sdk[tests]'
-```
-
-If you want a SDK installation allowing you to use all the features you can use:
-
-```bash
-pip install 'infrahub-sdk[all]'
-```
-
-## Getting started
-
-The SDK supports both synchronous and asynchronous Python. The default asynchronous version is provided by the `InfrahubClient` class while the synchronous version uses the `InfrahubClientSync` class.
-
-### Dynamic schema discovery
-
-By default, the Python client will automatically gather the active schema from Infrahub and all methods will generate based on that.
-
-<Tabs>
-  <TabItem value="Async" default>
-
-  ```python
-  from infrahub_sdk import InfrahubClient
-
-  client = await InfrahubClient.init(address="http://localhost:8000")
-  ```
-
-  </TabItem>
-  <TabItem value="Sync">
-
-  ```python
-  from infrahub_sdk import InfrahubClientSync
-
-  client = InfrahubClientSync.init(address="http://localhost:8000")
-  ```
-
-  </TabItem>
-</Tabs>
-
-### Authentication
-
-The SDK is using a token-based authentication method to authenticate with the API and GraphQL.
-
-The token can either be provided with `config=Config(api_token="TOKEN")` at initialization time or it can be retrieved automatically from the environment variable `INFRAHUB_SDK_API_TOKEN`.
-
-:::info
-
-In the demo environment, the default token for the Admin account is
-
-```yaml
-X-INFRAHUB-KEY: 06438eb2-8019-4776-878c-0941b1f1d1ec
-```
-
-:::
-
-<Tabs>
-  <TabItem value="Async" default>
-
-  ```python
-  from infrahub_sdk import InfrahubClient, Config
-
-  client = await InfrahubClient.init(config=Config(api_token="TOKEN"))
-  ```
-
-  </TabItem>
-  <TabItem value="Sync">
-
-  ```python
-  from infrahub_sdk import InfrahubClientSync, Config
-
-  client = InfrahubClientSync.init(config=Config(api_token="TOKEN"))
-  ```
-
-  </TabItem>
-</Tabs>
+- [Client configuration](/python-sdk/reference/config)

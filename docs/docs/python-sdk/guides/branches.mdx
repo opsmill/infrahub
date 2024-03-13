@@ -1,0 +1,131 @@
+---
+title: Branch management
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from "@theme/CodeBlock";
+import branchList from '!!raw-loader!../../../../python_sdk/examples/branch_list.py';
+import branchListSync from '!!raw-loader!../../../../python_sdk/examples/branch_list_sync.py';
+import branchCreate from '!!raw-loader!../../../../python_sdk/examples/branch_create.py';
+import branchCreateSync from '!!raw-loader!../../../../python_sdk/examples/branch_create_sync.py';
+import branchRebase from '!!raw-loader!../../../../python_sdk/examples/branch_rebase.py';
+import branchRebaseSync from '!!raw-loader!../../../../python_sdk/examples/branch_rebase_sync.py';
+import branchMerge from '!!raw-loader!../../../../python_sdk/examples/branch_merge.py';
+import branchMergeSync from '!!raw-loader!../../../../python_sdk/examples/branch_merge_sync.py';
+
+# Branch management
+
+The Python SDK provides multiple methods to manage the branches in an Infrahub instance.
+
+## Get a single branch
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  from infrahub_sdk import InfrahubClient
+  client = await InfrahubClient.init()
+  branch = await client.branch.get(branch_name="main")
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  from infrahub_sdk import InfrahubClientSync
+  client = InfrahubClientSync.init()
+  branch = client.branch.get(branch_name="main")
+  ```
+
+  </TabItem>
+</Tabs>
+
+## Get all the branches
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+  <CodeBlock language="python">{branchList}</CodeBlock>
+  </TabItem>
+  <TabItem value="Sync" default>
+  <CodeBlock language="python">{branchListSync}</CodeBlock>
+  </TabItem>
+</Tabs>
+
+## Create a branch
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+  <CodeBlock language="python">{branchCreate}</CodeBlock>
+  </TabItem>
+  <TabItem value="Sync" default>
+  <CodeBlock language="python">{branchCreateSync}</CodeBlock>
+  </TabItem>
+</Tabs>
+
+## Rebase a branch
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+  <CodeBlock language="python">{branchRebase}</CodeBlock>
+  </TabItem>
+  <TabItem value="Sync" default>
+  <CodeBlock language="python">{branchRebaseSync}</CodeBlock>
+  </TabItem>
+</Tabs>
+
+## Merge a branch
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+  <CodeBlock language="python">{branchMerge}</CodeBlock>
+  </TabItem>
+  <TabItem value="Sync" default>
+  <CodeBlock language="python">{branchMergeSync}</CodeBlock>
+  </TabItem>
+</Tabs>
+
+## Delete a branch
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  from infrahub_sdk import InfrahubClient
+  client = await InfrahubClient.init()
+  await client.branch.delete(branch_name="new-branch")
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  from infrahub_sdk import InfrahubClientSync
+  client = InfrahubClientSync.init()
+  client.branch.delete(branch_name="new-branch")
+  ```
+
+  </TabItem>
+</Tabs>
+
+## Generating a diff for a branch
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  from infrahub_sdk import InfrahubClient
+  client = await InfrahubClient.init()
+  diff = await client.branch.diff_data(branch_name="new-branch")
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  from infrahub_sdk import InfrahubClientSync
+  client = InfrahubClientSync.init()
+  diff = client.branch.diff_data(branch_name="new-branch")
+  ```
+
+  </TabItem>
+</Tabs>
