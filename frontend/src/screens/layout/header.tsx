@@ -1,6 +1,6 @@
 import { AccountMenu } from "../../components/account-menu";
 import { SearchModal } from "../../components/search/search-modal";
-import { TimeFrameSelector } from "../../components/TimeFrameSelector";
+import { TimeFrameSelector } from "../../components/time-selector";
 
 export default function Header() {
   return (

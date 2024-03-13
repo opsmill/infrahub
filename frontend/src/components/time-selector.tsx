@@ -1,13 +1,13 @@
+import { Transition } from "@headlessui/react";
+import { Icon } from "@iconify-icon/react";
+import { format, setHours, setMinutes } from "date-fns";
 import { useAtom } from "jotai/index";
-import { datetimeAtom } from "../state/atoms/time.atom";
+import { HTMLAttributes, forwardRef, useEffect } from "react";
+import DateTimePicker from "react-datepicker";
 import { DateTimeParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
-import { Icon } from "@iconify-icon/react";
-import DateTimePicker from "react-datepicker";
+import { datetimeAtom } from "../state/atoms/time.atom";
 import { classNames } from "../utils/common";
-import { format, setHours, setMinutes } from "date-fns";
-import { forwardRef, HTMLAttributes, useEffect } from "react";
-import { Transition } from "@headlessui/react";
 
 export const TimeFrameSelector = () => {
   const [date, setDate] = useAtom(datetimeAtom);
@@ -31,7 +31,7 @@ export const TimeFrameSelector = () => {
   return (
     <div
       className={classNames(
-        "inline-flex bg-gray-800 text-white rounded-full",
+        "inline-flex bg-custom-blue-800 text-white rounded-full",
         date && "bg-orange-600 shadow-md"
       )}
       data-testid="timeframe-selector">
