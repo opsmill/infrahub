@@ -12,7 +12,7 @@ import { useAtomValue } from "jotai/index";
 import { useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import { BUTTON_TYPES } from "../../components/buttons/button";
 import { Retry } from "../../components/buttons/retry";
 import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
 import SlideOver from "../../components/display/slide-over";
@@ -28,7 +28,6 @@ import {
 } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
-import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
@@ -58,6 +57,8 @@ import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
 import { RelationshipsDetails } from "./relationships-details-paginated";
 import Content from "../layout/content";
+import { usePermission } from "../../hooks/usePermission";
+import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -73,7 +74,7 @@ export default function ObjectItemDetails(props: any) {
   const [qspTaskId, setQspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [showAddToGroupDrawer, setShowAddToGroupDrawer] = useState(false);
-  const auth = useAuth();
+  const permission = usePermission();
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const branch = useAtomValue(currentBranchAtom);
@@ -209,22 +210,26 @@ export default function ObjectItemDetails(props: any) {
               <>
                 {schemaData.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
 
-                <Button
-                  disabled={!auth?.permissions?.write}
+                <ButtonWithTooltip
+                  disabled={!permission.write.allow}
+                  tooltipEnabled={!permission.write.allow}
+                  tooltipContent={permission.write.message ?? undefined}
                   onClick={() => setShowEditDrawer(true)}
                   className="mr-4">
                   Edit
                   <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                </Button>
+                </ButtonWithTooltip>
 
                 {!schemaData.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
-                  <Button
-                    disabled={!auth?.permissions?.write}
+                  <ButtonWithTooltip
+                    disabled={!permission.write.allow}
+                    tooltipEnabled={!permission.write.allow}
+                    tooltipContent={permission.write.message ?? undefined}
                     onClick={() => setShowAddToGroupDrawer(true)}
                     className="mr-4">
                     Manage groups
                     <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                  </Button>
+                  </ButtonWithTooltip>
                 )}
               </>
             }
@@ -296,9 +301,11 @@ export default function ObjectItemDetails(props: any) {
                         header={
                           <div className="flex justify-between items-center w-full p-4">
                             <div className="font-semibold">{attribute.label}</div>
-                            <Button
+                            <ButtonWithTooltip
                               buttonType={BUTTON_TYPES.INVISIBLE}
-                              disabled={!auth?.permissions?.write}
+                              disabled={!permission.write.allow}
+                              tooltipEnabled={!permission.write.allow}
+                              tooltipContent={permission.write.message ?? undefined}
                               onClick={() => {
                                 setMetaEditFieldDetails({
                                   type: "attribute",
@@ -310,7 +317,7 @@ export default function ObjectItemDetails(props: any) {
                               data-testid="edit-metadata-button"
                               data-cy="metadata-edit-button">
                               <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
-                            </Button>
+                            </ButtonWithTooltip>
                           </div>
                         }
                       />

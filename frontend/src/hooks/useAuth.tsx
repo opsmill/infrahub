@@ -18,6 +18,7 @@ type PermissionsType = {
 type AuthContextType = {
   accessToken: string | null;
   data?: any;
+  isAuthenticated: boolean;
   isLoading: boolean;
   permissions?: PermissionsType;
   signIn: (data: any, callback?: () => void) => void;
@@ -69,7 +70,18 @@ export const getNewToken = async () => {
   return result;
 };
 
-export const AuthContext = createContext<AuthContextType>(null!);
+export const AuthContext = createContext<AuthContextType>({
+  accessToken: null,
+  isAuthenticated: false,
+  isLoading: false,
+  data: undefined,
+  permissions: {
+    isAdmin: false,
+    write: false,
+  },
+  signIn: () => {},
+  signOut: () => {},
+});
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -82,7 +94,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify(data),
     };
 
-    const result = await fetchUrl(CONFIG.AUTH_SIGN_IN_URL, payload);
+    const result: components["schemas"]["UserToken"] = await fetchUrl(
+      CONFIG.AUTH_SIGN_IN_URL,
+      payload
+    );
 
     setIsLoading(false);
 
@@ -109,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextType = {
     accessToken,
     data,
+    isAuthenticated: !!accessToken,
     isLoading,
     permissions: {
       write: WRITE_ROLES.includes(data?.user_claims?.role),
@@ -127,10 +143,10 @@ export function useAuth() {
 
 export function RequireAuth({ children }: { children: ReactElement }) {
   const [config] = useAtom(configState);
-  const { accessToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const location = useLocation();
 
-  if (accessToken || config?.main?.allow_anonymous_access) return children;
+  if (isAuthenticated || config?.main?.allow_anonymous_access) return children;
 
   // Redirect them to the /signin page, but save the current location they were
   // trying to go to when they were redirected. This allows us to send them

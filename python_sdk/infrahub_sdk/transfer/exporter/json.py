@@ -66,8 +66,11 @@ class LineDelimitedJSONExporter(ExporterInterface):
         page_number = 1
         page_size = 50
 
-        many_relationship_identifiers = self.identify_many_to_many_relationships(node_schema_map)
+        many_relationship_identifiers = list(self.identify_many_to_many_relationships(node_schema_map).values())
         many_relationships: List[Dict[str, Any]] = []
+
+        if not many_relationship_identifiers:
+            return []
 
         while has_remaining_items:
             offset = (page_number - 1) * page_size
@@ -77,7 +80,7 @@ class LineDelimitedJSONExporter(ExporterInterface):
                 variables={
                     "offset": offset,
                     "limit": page_size,
-                    "relationship_identifiers": list(many_relationship_identifiers.values()),
+                    "relationship_identifiers": many_relationship_identifiers,
                 },
                 branch_name=branch,
                 tracker=f"query-relationships-page{page_number}",
@@ -156,11 +159,8 @@ class LineDelimitedJSONExporter(ExporterInterface):
             if not export_directory.exists():
                 export_directory.mkdir()
 
-            if json_lines:
-                node_file.write_text(file_content)
-
-            if many_relationships:
-                relationship_file.write_text(ujson.dumps(many_relationships))
+            node_file.write_text(file_content)
+            relationship_file.write_text(ujson.dumps(many_relationships))
 
         if self.console:
             self.console.print(f"Export directory - {export_directory}")

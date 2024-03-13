@@ -1,6 +1,8 @@
 // type ButtonProps = {};
 
 import { classNames } from "../../utils/common";
+import { forwardRef } from "react";
+import { ButtonProps } from "./button";
 
 export enum BUTTON_TYPES {
   DEFAULT,
@@ -53,7 +55,7 @@ const getClassName = (type: BUTTON_TYPES) => {
   }
 };
 
-export const RoundedButton = (props: any) => {
+export const RoundedButton = forwardRef<HTMLButtonElement, ButtonProps>((props: any, ref) => {
   const { type, className, onClick, ...propsToPass } = props;
 
   const customClassName = getClassName(type);
@@ -68,6 +70,7 @@ export const RoundedButton = (props: any) => {
 
   return (
     <button
+      ref={ref}
       type="button"
       className={classNames(DEFAULT_CLASS(className), customClassName, className)}
       onClick={handleClick}
@@ -75,4 +78,4 @@ export const RoundedButton = (props: any) => {
       {props.children}
     </button>
   );
-};
+});

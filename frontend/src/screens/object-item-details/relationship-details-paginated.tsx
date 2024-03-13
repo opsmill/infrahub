@@ -6,12 +6,11 @@ import {
   PlusIcon,
 } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai";
-import { useAtomValue } from "jotai/index";
+import { useAtom, useAtomValue } from "jotai";
 import { Fragment, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import { BUTTON_TYPES } from "../../components/buttons/button";
 import { RoundedButton } from "../../components/buttons/rounded-button";
 import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
 import SlideOver from "../../components/display/slide-over";
@@ -23,7 +22,6 @@ import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
-import { useAuth } from "../../hooks/useAuth";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -43,6 +41,8 @@ import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { ObjectAttributeRow } from "./object-attribute-row";
+import { usePermission } from "../../hooks/usePermission";
+import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -67,7 +67,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   } = props;
 
   const { objectname, objectid } = useParams();
-  const auth = useAuth();
+  const permission = usePermission();
 
   const schemaList = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
@@ -288,9 +288,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         header={
                           <div className="flex justify-between items-center w-full p-4">
                             <div className="font-semibold">{relationshipSchema.label}</div>
-                            <Button
+                            <ButtonWithTooltip
                               buttonType={BUTTON_TYPES.INVISIBLE}
-                              disabled={!auth?.permissions?.write}
+                              disabled={!permission.write.allow}
+                              tooltipEnabled={!permission.write.allow}
+                              tooltipContent={permission.write.message ?? undefined}
                               onClick={() => {
                                 setMetaEditFieldDetails({
                                   type: "relationship",
@@ -301,7 +303,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               }}
                               data-cy="metadata-edit-button">
                               <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
-                            </Button>
+                            </ButtonWithTooltip>
                           </div>
                         }
                       />
@@ -416,25 +418,29 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           />
                         </div>
 
-                        <Button
-                          disabled={!auth?.permissions?.write}
+                        <ButtonWithTooltip
+                          disabled={!permission.write.allow}
+                          tooltipEnabled={!permission.write.allow}
+                          tooltipContent={permission.write.message ?? undefined}
                           buttonType={BUTTON_TYPES.INVISIBLE}
                           onClick={() => {
                             setRelatedObjectToEdit(node);
                           }}
                           data-cy="metadata-edit-button">
                           <PencilSquareIcon className="w-4 h-4 text-gray-500" />
-                        </Button>
+                        </ButtonWithTooltip>
 
-                        <Button
-                          disabled={!auth?.permissions?.write}
+                        <ButtonWithTooltip
+                          disabled={!permission.write.allow}
+                          tooltipEnabled={!permission.write.allow}
+                          tooltipContent={permission.write.message ?? undefined}
                           buttonType={BUTTON_TYPES.INVISIBLE}
                           onClick={() => {
                             setRelatedRowToDelete(node);
                           }}
                           data-cy="relationship-delete-button">
                           <Icon icon="mdi:link-variant-remove" className="text-base text-red-600" />
-                        </Button>
+                        </ButtonWithTooltip>
                       </td>
                     </tr>
                   ))}
@@ -512,7 +518,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       {mode === "TABLE" && (
         <div className="absolute bottom-4 right-4 z-10">
           <RoundedButton
-            disabled={!auth?.permissions?.write}
+            disabled={!permission.write.allow}
             onClick={() => setShowAddDrawer(true)}
             className="p-3 ml-2 bg-custom-blue-500 hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2"
             data-cy="open-relationship-form-button">
