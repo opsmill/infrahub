@@ -70,7 +70,18 @@ export const getNewToken = async () => {
   return result;
 };
 
-export const AuthContext = createContext<AuthContextType>(null!);
+export const AuthContext = createContext<AuthContextType>({
+  accessToken: null,
+  isAuthenticated: false,
+  isLoading: false,
+  data: undefined,
+  permissions: {
+    isAdmin: false,
+    write: false,
+  },
+  signIn: () => {},
+  signOut: () => {},
+});
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
