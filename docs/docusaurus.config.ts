@@ -38,7 +38,7 @@ const config: Config = {
         docs: {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl: "https://github.com/opsmill/infrahub/tree/bab-docusaurus/docs-docusaurus/",
+          editUrl: "https://github.com/opsmill/infrahub/tree/stable/docs",
           routeBasePath: "/",
           sidebarCollapsed: true,
           sidebarPath: "./sidebars.ts",
