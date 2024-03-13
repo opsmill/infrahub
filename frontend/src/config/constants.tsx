@@ -154,7 +154,7 @@ export const SCHEMA_ATTRIBUTE_KIND: Record<string, SchemaAttributeType> = {
   HASHED_PASSWORD: "HashedPassword",
   URL: "URL",
   FILE: "File",
-  MacAddress: "File",
+  MAC_ADDRESS: "MacAddress",
   COLOR: "Color",
   NUMBER: "Number",
   BANDWIDTH: "Bandwidth",
