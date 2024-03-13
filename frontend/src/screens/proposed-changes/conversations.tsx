@@ -84,7 +84,7 @@ export const getFormStructure = (
     value: data?.source_branch?.value ?? "",
     options: branches,
     config: {
-      validate: (value) => !!value || "Is required",
+      validate: (value) => !!value || "Required",
     },
     isProtected: !!data?.source_branch?.value,
   },
