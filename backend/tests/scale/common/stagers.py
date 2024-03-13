@@ -73,7 +73,7 @@ def _stage_branch_update(client: InfrahubClientSync, prefix: str, amount: int, o
 
     for i in range(offset, offset + config.node_amount):
         branch_name = f"{prefix}{i}"
-        client.branch.create(branch_name=branch_name, description="description", data_only=True)
+        client.branch.create(branch_name=branch_name, description="description", sync_with_git=True)
         # Apply diff to base node
         node._branch = branch_name
         node.name.value = f"DiffTestNodeBranch{i}"
@@ -89,7 +89,7 @@ def _stage_branch_diff(client: InfrahubClientSync, prefix: str, amount: int, off
     extra_attributes = prepare_node_attributes(client)
 
     branch_name = "DiffTestBranch"
-    client.branch.create(branch_name=branch_name, description="description", data_only=True)
+    client.branch.create(branch_name=branch_name, description="description", sync_with_git=True)
     for i in range(offset, offset + config.node_amount):
         # Add diff by creating a new node
         node = client.create(kind="InfraNode", branch=branch_name, data={"name": f"{prefix}{i}", **extra_attributes})

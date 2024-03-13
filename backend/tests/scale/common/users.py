@@ -90,3 +90,7 @@ class InfrahubClientUser(User):
 
             if "diff" in self.custom_options["stager"]:
                 self.client.branch.diff_data("DiffTestBranch")
+
+        # End with a branch merge
+        if "diff" in self.custom_options["stager"]:
+            self.client.branch.merge("DiffTestBranch")
