@@ -149,8 +149,8 @@ INTERFACE_ROLES_MAPPING = {
         "peer",
         "backbone",
         "backbone",
-        "transit",
-        "transit",
+        "upstream",
+        "upstream",
         "spare",
         "spare",
         "peering",
@@ -169,15 +169,51 @@ INTERFACE_ROLES_MAPPING = {
 TAGS = ["blue", "green", "red"]
 
 ORGANIZATIONS = (
-    ["Telia", 1299],
-    ["Colt", 8220],
-    ["Verizon", 701],
-    ["GTT", 3257],
-    ["Hurricane Electric", 6939],
-    ["Lumen", 3356],
-    ["Zayo", 6461],
-    ["Duff", 64496],
-    ["Equinix", 24115],
+    # name, type
+    ("Arelion", "provider"),
+    ("Colt Technology Services", "provider"),
+    ("Verizon Business", "provider"),
+    ("GTT Communications", "provider"),
+    ("Hurricane Electric", "provider"),
+    ("Lumen", "provider"),
+    ("Zayo", "provider"),
+    ("Equinix", "provider"),
+    ("Interxion", "provider"),
+    ("PCCW Global", "provider"),
+    ("Orange S.A", "provider"),
+    ("Tata Communications", "provider"),
+    ("Sprint", "provider"),
+    ("NTT America", "provider"),
+    ("Cogent Communications", "provider"),
+    ("Comcast Cable Communication", "provider"),
+    ("Telecom Italia Sparkle", "provider"),
+     ("AT&T Services", "provider"),
+    ("Duff", "tenant"),
+    ("Juniper", "manufacturer"),
+    ("Cisco", "manufacturer"),
+    ("Arista", "manufacturer"),
+)
+
+ASNS = (
+    # asn, organization
+    (1299,  "Arelion"),
+    (8220,  "Colt Technology Services"),
+    (701,  "Verizon Business"),
+    (3257,  "GTT Communications"),
+    (6939,  "Hurricane Electric"),
+    (3356,  "Lumen"),
+    (6461,  "Zayo"),
+    (24115,  "Equinix"),
+    (20710,  "Interxion"),
+    (3491,  "PCCW Global"),
+    (5511,  "Orange S.A"),
+    (6453,  "Tata Communications"),
+    (1239,  "Sprint"),
+    (2914,  "NTT America"),
+    (174,  "Cogent Communications"),
+    (7922,  "Comcast Cable Communication"),
+    (6762,  "Telecom Italia Sparkle"),
+    (7018,  "AT&T Services")
 )
 
 INTERFACE_OBJS: Dict[str, List[InfrahubNode]] = defaultdict(list)
@@ -199,14 +235,14 @@ GROUPS = (
     ("core_router", "Core Router"),
     ("cisco_devices", "Cisco Devices"),
     ("arista_devices", "Arista Devices"),
-    ("transit_interfaces", "Transit Interface"),
+    ("upstream_interfaces", "Upstream Interface"),
 )
 
 BGP_PEER_GROUPS = (
     ("POP_INTERNAL", "IMPORT_INTRA_POP", "EXPORT_INTRA_POP", "Duff", "Duff"),
     ("POP_GLOBAL", "IMPORT_POP_GLOBAL", "EXPORT_POP_GLOBLA", "Duff", None),
-    ("TRANSIT_DEFAULT", "IMPORT_TRANSIT", "EXPORT_PUBLIC_PREFIX", "Duff", None),
-    ("TRANSIT_TELIA", "IMPORT_TRANSIT", "EXPORT_PUBLIC_PREFIX", "Duff", "Telia"),
+    ("UPSTREAM_DEFAULT", "IMPORT_UPSTREAM", "EXPORT_PUBLIC_PREFIX", "Duff", None),
+    ("UPSTREAM_ARELION", "IMPORT_UPSTREAM", "EXPORT_PUBLIC_PREFIX", "Duff", "Arelion"),
     ("IX_DEFAULT", "IMPORT_IX", "EXPORT_PUBLIC_PREFIX", "Duff", None),
 )
 
@@ -251,15 +287,15 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
     group_core_router = store.get(kind="CoreStandardGroup", key="core_router")
     group_cisco_devices = store.get(kind="CoreStandardGroup", key="cisco_devices")
     group_arista_devices = store.get(kind="CoreStandardGroup", key="arista_devices")
-    group_transit_interfaces = store.get(kind="CoreStandardGroup", key="transit_interfaces")
+    group_upstream_interfaces = store.get(kind="CoreStandardGroup", key="upstream_interfaces")
 
-    country = store.get(kind="InfraCountry", key=site["country"])
+    country = store.get(kind="LocationCountry", key=site["country"])
     # --------------------------------------------------
     # Create the Site
     # --------------------------------------------------
     site = await client.create(
         branch=branch,
-        kind="InfraSite",
+        kind="LocationSite",
         name={"value": site["name"], "is_protected": True, "source": account_crm.id},
         contact={"value": site["contact"], "is_protected": True, "source": account_crm.id},
         city={"value": site["city"], "is_protected": True, "source": account_crm.id},
@@ -398,7 +434,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             if intf_role == "peer":
                 address = f"{str(next(peer_networks[intf_idx]))}/31"
 
-            if intf_role in ["transit", "peering"] and "edge" in device_role:
+            if intf_role in ["upstream", "peering"] and "edge" in device_role:
                 subnet = next(NETWORKS_POOL_EXTERNAL).hosts()
                 address = f"{str(next(subnet))}/29"
                 peer_address = f"{str(next(subnet))}/29"
@@ -415,18 +451,18 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                 )
                 await ip.save()
 
-            # Create Circuit and BGP session for transit and peering
-            if intf_role in ["transit", "peering"]:
+            # Create Circuit and BGP session for upstream and peering
+            if intf_role in ["upstream", "peering"]:
                 circuit_id_unique = str(uuid.UUID(int=abs(hash(f"{device_name}-{intf_role}-{address}"))))[24:]
                 circuit_id = f"DUFF-{circuit_id_unique}"
-                transit_providers = ["Telia", "Colt"]
+                upstream_providers = ["Arelion", "Colt Technology Services"]
 
-                if intf_role == "transit":
-                    provider_name = transit_providers[intf_idx % 2]
+                if intf_role == "upstream":
+                    provider_name = upstream_providers[intf_idx % 2]
                 elif intf_role == "peering":
                     provider_name = "Equinix"
 
-                provider = store.get(kind="CoreOrganization", key=provider_name)
+                provider = store.get(kind="OrganizationProvider", key=provider_name)
 
                 circuit = await client.create(
                     branch=branch,
@@ -455,8 +491,8 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
                 intf.description.value = f"Connected to {provider_name} via {circuit_id}"
 
-                if intf_role == "transit":
-                    peer_group_name = "TRANSIT_TELIA" if "telia" in provider.name.value.lower() else "TRANSIT_DEFAULT"
+                if intf_role == "upstream":
+                    peer_group_name = "UPSTREAM_ARELION" if "telia" in provider.name.value.lower() else "UPSTREAM_DEFAULT"
 
                     peer_ip = await client.create(
                         branch=branch,
@@ -556,22 +592,22 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
     return site_name
 
 
-async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logger, site_name: str):
+async def branch_scenario_add_upstream(client: InfrahubClient, log: logging.Logger, site_name: str):
     """
-    Create a new branch and Add a new transit link with GTT on the edge1 device of the given site.
+    Create a new branch and Add a new upstream link with GTT on the edge1 device of the given site.
     """
-    log.info("Create a new branch and Add a new transit link with GTT on the edge1 device of the given site")
+    log.info("Create a new branch and Add a new upstream link with GTT on the edge1 device of the given site")
     device_name = f"{site_name}-edge1"
 
-    new_branch_name = f"{site_name}-add-transit"
+    new_branch_name = f"{site_name}-add-upstream"
     new_branch = await client.branch.create(
-        branch_name=new_branch_name, sync_with_git=False, description=f"Add a new Transit link in {site_name}"
+        branch_name=new_branch_name, sync_with_git=False, description=f"Add a new Upstream link in {site_name}"
     )
     log.info(f"- Creating branch: {new_branch_name!r}")
     # Querying the object for now, need to pull from the store instead
-    site = await client.get(branch=new_branch_name, kind="InfraSite", name__value=site_name)
+    site = await client.get(branch=new_branch_name, kind="LocationSite", name__value=site_name)
     device = await client.get(branch=new_branch_name, kind="InfraDevice", name__value=device_name)
-    gtt_organization = await client.get(branch=new_branch_name, kind="CoreOrganization", name__value="GTT")
+    gtt_organization = await client.get(branch=new_branch_name, kind="OrganizationProvider", name__value="GTT Communications")
 
     role_spare = "spare"
 
@@ -579,7 +615,7 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
         branch=new_branch_name, kind="InfraInterfaceL3", device__ids=[device.id], role__value=role_spare
     )
     intf = intfs[0]
-    log.info(f" - Adding new Transit on '{device_name}::{intf.name.value}'")
+    log.info(f" - Adding new Upstream on '{device_name}::{intf.name.value}'")
 
     # Allocate a new subnet and calculate new IP Addresses
     subnet = next(NETWORKS_POOL_EXTERNAL).hosts()
@@ -601,7 +637,7 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
     )
     await ip.save()
 
-    circuit_id_unique = str(uuid.UUID(int=abs(hash(f"{device_name}-transit-{address}"))))[24:]
+    circuit_id_unique = str(uuid.UUID(int=abs(hash(f"{device_name}-upstream-{address}"))))[24:]
     circuit_id = f"DUFF-{circuit_id_unique}"
 
     circuit = await client.create(
@@ -611,7 +647,7 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
         vendor_id=f"{gtt_organization.name.value.upper()}-{UUIDT().short()}",
         provider=gtt_organization.id,
         status=ACTIVE_STATUS,
-        role="transit",
+        role="upstream",
     )
     await circuit.save()
     log.info(f"  - Created {circuit._schema.kind} - {gtt_organization.name.value} [{circuit.vendor_id.value}]")
@@ -635,7 +671,7 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
     # Change Role
     # Change description
 
-    # peer_group_name = "TRANSIT_DEFAULT"
+    # peer_group_name = "UPSTREAM_DEFAULT"
 
     #     peer_as = store.get(kind="InfraAutonomousSystem", key=gtt_organization.name.value)
     #     bgp_session = await client.create(
@@ -715,12 +751,12 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
 
 async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logger, site_name: str):
     """
-    Create a new Branch and Delete Colt Transit Circuit
+    Create a new Branch and Delete Colt Upstream Circuit
     """
-    log.info("Create a new Branch and Delete Colt Transit Circuit")
-    new_branch_name = f"{site_name}-delete-transit"
+    log.info("Create a new Branch and Delete Colt Upstream Circuit")
+    new_branch_name = f"{site_name}-delete-upstream"
     new_branch = await client.branch.create(
-        branch_name=new_branch_name, sync_with_git=False, description=f"Delete transit circuit with colt in {site_name}"
+        branch_name=new_branch_name, sync_with_git=False, description=f"Delete upstream circuit with colt in {site_name}"
     )
     log.info(f"- Creating branch: {new_branch_name!r}")
 
@@ -763,7 +799,7 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
     colt_circuits = [
         circuit
         for circuit in circuits["InfraCircuitEndpoint"]["edges"]
-        if circuit["node"]["circuit"]["node"]["provider"]["node"]["name"]["value"] == "Colt"
+        if circuit["node"]["circuit"]["node"]["provider"]["node"]["name"]["value"] == "Colt Technology Services"
     ]
 
     for item in colt_circuits:
@@ -775,7 +811,7 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
             branch=new_branch_name, kind="InfraCircuit", id=item["node"]["circuit"]["node"]["id"]
         )
         await circuit.delete()
-        log.info(f" - Deleted Colt [{circuit_id}]")
+        log.info(f" - Deleted Colt Technology Services [{circuit_id}]")
 
 
 async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.Logger, site_name: str):
@@ -858,13 +894,13 @@ async def branch_scenario_conflict_platform(client: InfrahubClient, log: logging
 
 async def generate_continents_countries(client: InfrahubClient, log: logging.Logger, branch: str):
     for continent, countries in CONTINENT_COUNTRIES.items():
-        continent_obj = await client.create(branch=branch, kind="InfraContinent", data={"name": continent})
+        continent_obj = await client.create(branch=branch, kind="LocationContinent", data={"name": continent})
         await continent_obj.save()
         store.set(key=continent, node=continent_obj)
 
         for country in countries:
             country_obj = await client.create(
-                branch=branch, kind="InfraCountry", data={"name": country, "parent": continent_obj}
+                branch=branch, kind="LocationCountry", data={"name": country, "parent": continent_obj}
             )
             await country_obj.save()
             store.set(key=country, node=country_obj)
@@ -883,8 +919,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     batch = await client.create_batch()
     batch.add(task=generate_continents_countries, client=client, branch=branch, log=log)
     async for _, response in batch.execute():
-        log.info(f"Location {response} Creation Completed")
-
+        log.debug(f"{response} - Creation Completed")
     # ------------------------------------------
     # Create User Accounts, Groups, Organizations & Platforms
     # ------------------------------------------
@@ -902,6 +937,10 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         store.set(key=account[0], node=obj)
         log.info(f"- Created {obj._schema.kind} - {obj.name.value}")
 
+    account_pop = store.get("pop-builder")
+    account_chloe = store.get("Chloe O'Brian")
+    account_crm = store.get("CRM Synchronization")
+
     batch = await client.create_batch()
     for group in GROUPS:
         obj = await client.create(branch=branch, kind="CoreStandardGroup", data={"name": group[0], "label": group[1]})
@@ -910,11 +949,42 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         store.set(key=group[0], node=obj)
 
     for org in ORGANIZATIONS:
+        data_org={
+            "name": {"value": org[0], "is_protected": True},
+        }
         obj = await client.create(
-            branch=branch, kind="CoreOrganization", data={"name": {"value": org[0], "is_protected": True}}
+            branch=branch,
+            kind=f"Organization{org[1].title()}",
+            data=data_org
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=org[0], node=obj)
+    async for node, _ in batch.execute():
+        accessor = f"{node._schema.default_filter.split('__')[0]}"
+        log.info(f"- Created {node._schema.kind} - {getattr(node, accessor).value}")
+
+    # Autonomous System
+    organizations_dict = {name: type for name, type in ORGANIZATIONS}
+    batch = await client.create_batch()
+    for asn in ASNS:
+        organization_type = organizations_dict.get(asn[1], None)
+        asn_name  = f"AS{asn[0]}"
+        data_asn={
+            "name": {"value": asn_name, "source": account_crm.id, "owner": account_chloe.id},
+            "asn": {"value": asn[0], "source": account_crm.id, "owner": account_chloe.id},
+        }
+        if organization_type:
+            data_asn["description"] = {"value": f"{asn_name} for {asn[1]}", "source": account_crm.id, "owner": account_chloe.id}
+            data_asn["organization"] = {"id": store.get(kind=f"Organization{organization_type.title()}", key=asn[1]).id, "source": account_crm.id}
+        else:
+            data_asn["description"] = {"value": f"{asn_name}", "source": account_crm.id, "owner": account_chloe.id}
+        obj = await client.create(
+            branch=branch,
+            kind="InfraAutonomousSystem",
+            data=data_asn
+        )
+        batch.add(task=obj.save, node=obj)
+        store.set(key=asn[0], node=obj)
 
     for platform in PLATFORMS:
         obj = await client.create(
@@ -930,31 +1000,6 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=platform[0], node=obj)
-
-    # Create all Groups, Accounts and Organizations
-    async for node, _ in batch.execute():
-        log.info(f"- Created {node._schema.kind} - {node.name.value}")
-
-    account_pop = store.get("pop-builder")
-    account_cloe = store.get("Chloe O'Brian")
-
-    # ------------------------------------------
-    # Create Autonomous Systems
-    # ------------------------------------------
-    log.info(f"Creating Autonommous Systems")
-    batch = await client.create_batch()
-    for org in ORGANIZATIONS:
-        obj = await client.create(
-            branch=branch,
-            kind="InfraAutonomousSystem",
-            data={
-                "name": {"value": f"AS{org[1]}", "source": account_pop.id, "owner": account_cloe.id},
-                "asn": {"value": org[1], "source": account_pop.id, "owner": account_cloe.id},
-                "organization": {"id": store.get(kind="CoreOrganization", key=org[0]).id, "source": account_pop.id},
-            },
-        )
-        batch.add(task=obj.save, node=obj)
-        store.set(key=org[0], node=obj)
 
     async for node, _ in batch.execute():
         log.info(f"- Created {node._schema.kind} - {node.name.value}")
@@ -1011,7 +1056,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         batch.add(task=generate_site, site=site, client=client, branch=branch, log=log)
 
     async for _, response in batch.execute():
-        log.debug(f"Site {response} Creation Completed")
+        log.debug(f"{response} - Creation Completed")
 
     # --------------------------------------------------
     # CREATE Full Mesh iBGP SESSION between all the Edge devices
@@ -1052,7 +1097,11 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
                     )
 
     async for node, _ in batch.execute():
-        log.debug(f"BGP Session Creation Completed")
+        if node._schema.default_filter:
+            accessor = f"{node._schema.default_filter.split('__')[0]}"
+            log.info(f"{node._schema.kind} {getattr(node, accessor).value} - Creation Completed")
+        else:
+            log.info(f"{node} - Creation Completed")
 
     # --------------------------------------------------
     # CREATE Backbone Links & Circuits
@@ -1073,7 +1122,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         else:
             provider_name = "Zayo"
 
-        provider = store.get(kind="CoreOrganization", key=provider_name)
+        provider = store.get(kind="OrganizationProvider", key=provider_name)
         obj = await client.create(
             branch=branch,
             kind="InfraCircuit",
@@ -1147,7 +1196,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     #  Scenario 5 - Create some Node ADD and DELETE conflicts on some platform objects
     # --------------------------------------------------
     if branch == "main":
-        await branch_scenario_add_transit(
+        await branch_scenario_add_upstream(
             site_name=sites[1]["name"],
             client=client,
             log=log,

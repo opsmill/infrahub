@@ -56,8 +56,8 @@ generics:
             label: Backbone
             description: "Provide main data routes"
             color: "#6a5acd"
-          - name: transit
-            label: Transit
+          - name: upstream
+            label: Upstream
             description: "Connect to Internet service provider"
             color: "#9090de"
           - name: peering
@@ -116,8 +116,8 @@ generics:
         cardinality: one
         kind: Attribute
         identifier: connected__endpoint
-  - name: Location
-    namespace: Infra
+  - name: Generic # Location
+    namespace: Location
     description: "Generic hierarchical location"
     label: "Location"
     hierarchical: true
@@ -130,49 +130,79 @@ generics:
       - name: description
         kind: Text
         optional: true
+  - name: Generic # Organization
+    namespace: Organization
+    label: Organization
+    description: An organization represent a legal entity, a company.
+    default_filter: name__value
+    icon: mdi:domain
+    include_in_menu: true
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        order_weight: 1000
+      - name: description
+        kind: Text
+        optional: true
+        order_weight: 1200
+    relationships:
+      - name: tags
+        peer: BuiltinTag
+        cardinality: many
+        kind: Attribute
+        optional: true
+        order_weight: 3000
+      - name: asn
+        label: "Autonomous System"
+        cardinality: many
+        optional: true
+        peer: InfraAutonomousSystem
+        order_weight: 2000
+
 nodes:
   - name: Continent
-    namespace: Infra
+    namespace: Location
     description: "A continent on planet earth."
-    menu_placement: "InfraLocation"
+    menu_placement: "LocationGeneric"
     icon: "jam:world"
     inherit_from:
-      - "InfraLocation"
+      - "LocationGeneric"
     default_filter: "name__value"
     order_by:
       - "name__value"
     display_labels:
       - "name__value"
-    children: "InfraCountry"
+    children: "LocationCountry"
     parent: ""
   - name: Country
-    namespace: Infra
+    namespace: Location
     description: "A country within a continent."
-    menu_placement: "InfraLocation"
+    menu_placement: "LocationGeneric"
     icon: "gis:search-country"
     inherit_from:
-      - "InfraLocation"
+      - "LocationGeneric"
     default_filter: "name__value"
     order_by:
       - "name__value"
     display_labels:
       - "name__value"
-    children: "InfraSite"
-    parent: "InfraContinent"
+    children: "LocationSite"
+    parent: "LocationContinent"
   - name: Site
-    namespace: Infra
+    namespace: Location
     description: "A site within a country."
-    menu_placement: "InfraLocation"
+    menu_placement: "LocationGeneric"
     icon: "ri:building-line"
     inherit_from:
-      - "InfraLocation"
+      - "LocationGeneric"
     default_filter: "name__value"
     order_by:
       - "name__value"
     display_labels:
       - "name__value"
     children: ""
-    parent: "InfraCountry"
+    parent: "LocationCountry"
     attributes:
       - name: "city"
         kind: "Text"
@@ -207,41 +237,8 @@ nodes:
         name: "tags"
         optional: true
         peer: "BuiltinTag"
-  - name: Platform
-    namespace: Infra
-    description: "A Platform represents the type of software running on a device"
-    label: "Platform"
-    icon: "mdi:application-cog-outline"
-    menu_placement: "InfraDevice"
-    default_filter: name__value
-    order_by:
-      - name__value
-    display_labels:
-      - name__value
-    attributes:
-      - name: name
-        kind: Text
-        unique: true
-      - name: description
-        kind: Text
-        optional: true
-      - name: nornir_platform
-        kind: Text
-        optional: true
-      - name: napalm_driver
-        kind: Text
-        optional: true
-      - name: netmiko_device_type
-        kind: Text
-        optional: true
-      - name: ansible_network_os
-        kind: Text
-        optional: true
-    relationships:
-      - name: devices
-        peer: InfraDevice
-        optional: true
-        cardinality: many
+
+  # --------------------  Device (Platforms, Device, Interfaces )  --------------------
   - name: Device
     namespace: Infra
     description: "Generic Device object"
@@ -314,7 +311,7 @@ nodes:
     relationships:
       - name: site
         label: Site
-        peer: InfraSite
+        peer: LocationSite
         optional: false
         cardinality: one
         kind: Attribute
@@ -402,6 +399,43 @@ nodes:
         cardinality: many
         kind: Attribute
         identifier: interface_l2__tagged_vlan
+  - name: Platform
+    namespace: Infra
+    description: "A Platform represents the type of software running on a device"
+    label: "Platform"
+    icon: "mdi:application-cog-outline"
+    menu_placement: "InfraDevice"
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: nornir_platform
+        kind: Text
+        optional: true
+      - name: napalm_driver
+        kind: Text
+        optional: true
+      - name: netmiko_device_type
+        kind: Text
+        optional: true
+      - name: ansible_network_os
+        kind: Text
+        optional: true
+    relationships:
+      - name: devices
+        peer: InfraDevice
+        optional: true
+        cardinality: many
+
+  # --------------------  IPAM (VLAN, IP Address)  --------------------
   - name: IPAddress
     namespace: Infra
     description: "IP Address"
@@ -478,7 +512,7 @@ nodes:
     relationships:
       - name: site
         label: "Site"
-        peer: "InfraSite"
+        peer: "LocationSite"
         optional: true
         cardinality: one
         kind: Attribute
@@ -489,6 +523,8 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+
+  # --------------------  Circuits  --------------------
   - name: Circuit
     namespace: Infra
     description: "A Circuit represent a single physical link between two locations"
@@ -535,8 +571,8 @@ nodes:
             label: Backbone
             description: "Provide main data routes"
             color: "#6a5acd"
-          - name: transit
-            label: Transit
+          - name: upstream
+            label: Upstream
             description: "Connect to Internet service provider"
             color: "#9090de"
           - name: peering
@@ -546,7 +582,7 @@ nodes:
     relationships:
       - name: provider
         label: "Provider (Organization)"
-        peer: CoreOrganization
+        peer: OrganizationGeneric
         optional: false
         cardinality: one
         kind: Attribute
@@ -561,6 +597,7 @@ nodes:
     label: "Circuit Endpoint"
     icon: "mdi:ethernet-cable"
     menu_placement: "InfraCircuit"
+    include_in_menu: false
     attributes:
       - name: description
         kind: Text
@@ -570,7 +607,7 @@ nodes:
     relationships:
       - name: site
         label: "Site"
-        peer: "InfraSite"
+        peer: "LocationSite"
         optional: false
         cardinality: one
         kind: Attribute
@@ -580,6 +617,8 @@ nodes:
         optional: false
         cardinality: one
         kind: Parent
+
+  # --------------------  BGP (ASN, BGP Groups, BGP Sessions)  --------------------
   - name: AutonomousSystem
     namespace: Infra
     description: "An Autonomous System (AS) is a set of Internet routable IP prefixes belonging to a network"
@@ -603,7 +642,7 @@ nodes:
         optional: true
     relationships:
       - name: organization
-        peer: CoreOrganization
+        peer: OrganizationGeneric
         optional: false
         cardinality: one
         kind: Attribute
@@ -692,8 +731,8 @@ nodes:
             label: Backbone
             description: "Provide main data routes"
             color: "#6a5acd"
-          - name: transit
-            label: Transit
+          - name: upstream
+            label: Upstream
             description: "Connect to Internet service provider"
             color: "#9090de"
           - name: peering
@@ -740,16 +779,75 @@ nodes:
         cardinality: one
         kind: Attribute
 
-  - name: Organization
-    namespace: Core
-    label: Organization
-    description: "An organization represent a legal entity, a company"
+  # --------------------  Organizations (Manufacturer, Tenant, Provider)  --------------------
+  - name: Manufacturer
+    namespace: Organization
+    description: Device Manufacturer
+    default_filter: name__value
+    order_by: [name__value]
+    display_labels:
+      - name__value
+    icon: mdi:domain
+    inherit_from:
+      - OrganizationGeneric
+    include_in_menu: true
+    menu_placement: OrganizationGeneric
+    relationships:
+      - name: platform
+        peer: InfraPlatform
+        cardinality: many
+        optional: true
+  - name: Provider
+    namespace: Organization
+    description: Circuit or Location Provider
+    default_filter: name__value
+    order_by: [name__value]
+    display_labels:
+      - name__value
+    icon: mdi:domain
+    inherit_from:
+      - OrganizationGeneric
+    include_in_menu: true
+    menu_placement: OrganizationGeneric
+    relationships:
+      - name: location
+        peer: LocationSite
+        cardinality: many
+        optional: true
+      - name: circuit
+        peer: InfraCircuit
+        cardinality: many
+        optional: true
+  - name: Tenant
+    namespace: Organization
+    description: Customer
+    default_filter: name__value
+    order_by: [name__value]
+    display_labels:
+      - name__value
+    icon: mdi:domain
+    inherit_from:
+      - OrganizationGeneric
+    include_in_menu: true
+    menu_placement: OrganizationGeneric
+    relationships:
+      - name: location
+        peer: LocationSite
+        cardinality: many
+        optional: true
+      - name: circuit
+        peer: InfraCircuit
+        cardinality: many
+        optional: true
+
+  - name: Status
+    namespace: Builtin
+    label: Status
+    description: "Status represents the current state of an object: active, maintenance"
     default_filter: name__value
     display_labels: [label__value]
-    order_by: [name__value]
-    icon: mdi:domain
-    include_in_menu: true
-
+    icon: mdi:list-status
+    include_in_menu: false
     attributes:
       - kind: Text
         name: name
@@ -761,9 +859,22 @@ nodes:
         name: description
         optional: true
 
-    relationships:
-      - cardinality: many
-        kind: Attribute
-        name: tags
+  - name: Role
+    namespace: Builtin
+    label: Role
+    description: "Represents the role of an object"
+    default_filter: name__value
+    display_labels: [label__value]
+    order_by: [name__value]
+    icon: mdi:ballot
+    include_in_menu: false
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: label
         optional: true
-        peer: BuiltinTag
+      - kind: Text
+        name: description
+        optional: true
