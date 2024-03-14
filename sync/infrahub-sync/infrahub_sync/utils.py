@@ -58,12 +58,12 @@ def import_adapter(sync_instance: SyncInstance, adapter: SyncAdapter):
         sys.modules[f"{adapter.name}.adapter"] = adapter_module
         spec.loader.exec_module(adapter_module)
 
-        AdapterClass = getattr(adapter_module, adapter_name, None)
-        if AdapterClass is None:
+        adapter_class = getattr(adapter_module, adapter_name, None)
+        if adapter_class is None:
             raise AttributeError(f"{adapter_name} not found in adapter.py")
     except (FileNotFoundError, AttributeError) as exc:
         raise ImportError(f"{adapter_name}: {str(exc)}") from exc
-    return AdapterClass
+    return adapter_class
 
 
 def get_all_sync(directory: Optional[str] = None) -> List[SyncInstance]:

@@ -90,7 +90,7 @@ def run_utility(parsed_args: argparse.Namespace) -> None:
         restore_runner.restore(backup_path)
 
 
-class DatabaseContainerNotFound(Exception):
+class DatabaseContainerNotFoundError(Exception):
     ...
 
 
@@ -175,11 +175,11 @@ class Neo4jBackupRestoreBase:
         containers = self.docker_client.containers.list(filters={"label": "infrahub_role=database"})
         if len(containers) == 0:
             if raise_error_on_fail:
-                raise DatabaseContainerNotFound("No running container with label infrahub_role=database")
+                raise DatabaseContainerNotFoundError("No running container with label infrahub_role=database")
             return None
         if len(containers) > 1:
             if raise_error_on_fail:
-                raise DatabaseContainerNotFound(
+                raise DatabaseContainerNotFoundError(
                     "Multiple running containers with label infrahub_role=database, expected one"
                 )
             return None
@@ -295,7 +295,7 @@ class Neo4jBackupRunner(Neo4jBackupRestoreBase):
         if local_database_container and not database_url:
             database_url = local_database_container.name
         if not database_url:
-            raise DatabaseContainerNotFound(
+            raise DatabaseContainerNotFoundError(
                 "Remote database IP address is required when there is no local database container with label 'infrahub_role=database' running"
             )
         self._run_backup(
@@ -433,9 +433,9 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
             sys.exit(1)
         database_container_details = self._get_database_container_details()
         if not database_container_details:
-            raise DatabaseContainerNotFound("No running container with label infrahub_role=database")
+            raise DatabaseContainerNotFoundError("No running container with label infrahub_role=database")
         if not database_container_details.networks:
-            raise DatabaseContainerNotFound(
+            raise DatabaseContainerNotFoundError(
                 f"Database container {database_container_details.name} must be connected to at least one docker network"
             )
         helper_container = self._create_helper_container(
