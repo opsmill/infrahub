@@ -36,7 +36,7 @@ import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { constructPath } from "../../utils/fetch";
-import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
+import { ObjectAttributeValue } from "../../utils/getObjectItemDisplayValue";
 import {
   getObjectAttributes,
   getObjectRelationships,
@@ -240,7 +240,7 @@ export default function ObjectItemDetails(props: any) {
       {!qspTab && (
         <dl className="bg-custom-white divide-y">
           <ObjectAttributeRow name="ID" value={objectDetailsData.id} />
-          {attributes?.map((attribute) => {
+          {attributes.map((attribute) => {
             if (
               !objectDetailsData[attribute.name] ||
               !objectDetailsData[attribute.name].is_visible
@@ -254,7 +254,10 @@ export default function ObjectItemDetails(props: any) {
                 name={attribute.label as string}
                 value={
                   <>
-                    {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
+                    <ObjectAttributeValue
+                      attributeSchema={attribute}
+                      attributeValue={objectDetailsData[attribute.name]}
+                    />
 
                     {objectDetailsData[attribute.name] && (
                       <MetaDetailsTooltip
@@ -398,7 +401,7 @@ export default function ObjectItemDetails(props: any) {
                   aria-hidden="true"
                 />
 
-                <span className="flex-grow text-gray-500 overflow-hidden break-words">
+                <span className="flex-grow text-gray-500 overflow-hidden break-words line-clamp-3">
                   {objectDetailsData.display_label}
                 </span>
               </div>
