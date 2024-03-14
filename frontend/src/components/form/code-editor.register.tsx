@@ -15,7 +15,7 @@ interface Props {
 
 export const CodeEditorRegister = (props: Props) => {
   const { name, value, register, setValue, config, ...propsToPass } = props;
-  const [currentValue, setCurrentValue] = useState(JSON.stringify(value));
+  const [currentValue, setCurrentValue] = useState(value ? JSON.stringify(value) : null);
 
   const inputRegister = register(name, {
     value: value ?? "",
