@@ -155,7 +155,9 @@ async def search_docs(query: str, limit: Optional[int] = None) -> List[SearchRes
         SearchResultAPI(
             title=result["t"],
             url=result["u"] + result["h"],
-            breadcrumb=next(doc["b"] for doc in search_docs_loader.title_documents if doc["i"] == int(result["p"])),
+            breadcrumb=next(
+                doc["b"] + [doc["t"]] for doc in search_docs_loader.title_documents if doc["i"] == int(result["p"])
+            ),
         )
         for result in heading_results
     ]
