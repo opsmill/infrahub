@@ -177,6 +177,11 @@ export const getFieldValue = (row: any, attribute: any) => {
     return null;
   }
 
+  if (attribute.kind === "JSON") {
+    // Ensure we use objects as values
+    return typeof value === "string" ? JSON.parse(value) : value;
+  }
+
   return value ?? null;
 };
 
