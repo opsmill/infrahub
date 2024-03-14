@@ -101,6 +101,8 @@ DEV_COMPOSE_FILES_NEO4J = [
 ]
 DEV_OVERRIDE_FILE_NAME = "development/docker-compose.dev-override.yml"
 
+TEST_METRICS_OVERRIDE_FILE_NAME = "development/docker-compose-test-metrics.yml"
+
 ENV_VARS_DICT = {
     "IMAGE_NAME": IMAGE_NAME,
     "IMAGE_VER": IMAGE_VER,
@@ -207,6 +209,9 @@ def build_compose_files_cmd(database: str) -> str:
     if "local" in IMAGE_VER:
         COMPOSE_FILES.append(LOCAL_FILE_NAME)
 
+    if os.getenv("CI") is not None:
+        COMPOSE_FILES.append(TEST_METRICS_OVERRIDE_FILE_NAME)
+
     return f"-f {' -f '.join(COMPOSE_FILES)}"
 
 
@@ -261,6 +266,9 @@ def build_test_scale_compose_files_cmd(
     if os.path.exists(TEST_SCALE_OVERRIDE_FILE_NAME):
         print("!! Found a test scale override file for docker-compose !!")
         TEST_SCALE_COMPOSE_FILES.append(TEST_SCALE_OVERRIDE_FILE_NAME)
+
+    if os.getenv("CI") is not None:
+        TEST_SCALE_COMPOSE_FILES.append(TEST_METRICS_OVERRIDE_FILE_NAME)
 
     return f"-f {' -f '.join(TEST_SCALE_COMPOSE_FILES)}"
 

@@ -1,0 +1,28 @@
+---
+# yamllint disable rule:line-length
+
+version: "3.4"
+services:
+  # memgraph metrics requires enterprise license
+  # memgraph-exporter:
+  #   build:
+  #     context: ./memgraph_exporter
+  #   image: memgraph-exporter
+  #   hostname: "memgraph_exp"
+  vmagent:
+    image: victoriametrics/vmagent:v1.97.1
+    volumes:
+      - vmagentdata:/vmagentdata
+      - ./vmagent.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--promscrape.config=/etc/prometheus/prometheus.yml"
+      - "--remoteWrite.url=${METRICS_ENDPOINT:-http://127.0.0.1:8424}"
+      - "--remoteWrite.label=job=${GITHUB_JOB}"
+      - "--remoteWrite.label=run_id=${GITHUB_RUN_ID}"
+      - "--remoteWrite.label=run_number=${GITHUB_RUN_NUMBER}"
+      - "--remoteWrite.label=pr_number=${GITHUB_PR_NUMBER}"
+    ports:
+      - "${VMAGENT_PORT:-8429}:8429"
+
+volumes:
+  vmagentdata:
