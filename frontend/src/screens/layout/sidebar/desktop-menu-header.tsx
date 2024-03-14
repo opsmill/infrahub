@@ -4,10 +4,11 @@ import React from "react";
 import { Circle } from "../../../components/display/circle";
 import { classNames } from "../../../utils/common";
 import { DropDownMenuItem } from "./desktop-menu-item";
+import { MenuItem } from "./desktop-menu";
 
 interface Props {
   title: string;
-  items: React.ReactElement[];
+  items: MenuItem[];
   icon?: string;
   subItem?: boolean;
 }
@@ -42,7 +43,7 @@ export default function DropDownMenuHeader(props: Props) {
           </Disclosure.Button>
 
           <Disclosure.Panel className="py-0.5 pl-4 space-y-1">
-            {items.map((item: any, index: number) => {
+            {items.map((item, index: number) => {
               if (item.children?.length) {
                 return (
                   <DropDownMenuHeader
