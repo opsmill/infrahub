@@ -18,7 +18,7 @@ export const TextDisplay = ({ children, maxChars = MAX_TEXT_LENGTH }: TextDispla
 
   return (
     <div>
-      <p className={classNames(shouldTruncateText && "line-clamp-3")}>
+      <p className={classNames("break-all", shouldTruncateText && "line-clamp-3")}>
         {truncatedText}
         {shouldTruncateText && "..."}
       </p>
