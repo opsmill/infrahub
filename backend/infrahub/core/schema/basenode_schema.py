@@ -282,7 +282,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         return [item for item in self.attributes if item.unique]
 
     def generate_fields_for_display_label(self) -> Dict:
-        """Generate a Dictionnary containing the list of fields that are required
+        """Generate a Dictionary containing the list of fields that are required
         to generate the display_label.
 
         If display_labels is not defined, we return None which equal to everything.

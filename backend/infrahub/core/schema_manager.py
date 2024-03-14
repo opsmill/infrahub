@@ -557,13 +557,21 @@ class SchemaBranch:
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
-            if not node_schema.display_labels:
-                continue
+            if node_schema.display_labels:
+                for display_label_path in node_schema.display_labels:
+                    self._validate_attribute_path(
+                        node_schema, display_label_path, schema_map, schema_attribute_name="display_labels"
+                    )
+            elif isinstance(node_schema, NodeSchema):
+                generic_display_labels = []
+                for generic in node_schema.inherit_from:
+                    generic_schema = self.get(name=generic, duplicate=False)
+                    if generic_schema.display_labels:
+                        generic_display_labels.append(generic_schema.display_labels)
 
-            for display_label_path in node_schema.display_labels:
-                self._validate_attribute_path(
-                    node_schema, display_label_path, schema_map, schema_attribute_name="display_labels"
-                )
+                if len(generic_display_labels) == 1:
+                    # Only assign node display labels if a single generic has them defined
+                    node_schema.display_labels = generic_display_labels[0]
 
     def validate_order_by(self) -> None:
         full_schema_objects = self.to_dict_schema_object()
@@ -1022,12 +1030,12 @@ class SchemaBranch:
 
     def add_hierarchy(self):
         for node_name in self.nodes.keys():
-            node: NodeSchema = self.get(name=node_name, duplicate=False)
+            node = self.get_node(name=node_name, duplicate=False)
 
             if node.parent is None and node.children is None:
                 continue
 
-            node: NodeSchema = node.duplicate()
+            node = node.duplicate()
 
             if node.parent and "parent" not in node.relationship_names:
                 node.relationships.append(
