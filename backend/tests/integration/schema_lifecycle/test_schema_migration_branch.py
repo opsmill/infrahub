@@ -193,6 +193,10 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         john = persons[0]
         assert john.firstname.value == "John"  # type: ignore[attr-defined]
 
+        # Set a value to the new attribute
+        john.lastname.value = "Doe"  # type: ignore[attr-defined]
+        await john.save(db=db)
+
         # And ensure that we can still query them with the original schema in MAIN
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"name__value": "John"})
         assert len(persons) == 1
