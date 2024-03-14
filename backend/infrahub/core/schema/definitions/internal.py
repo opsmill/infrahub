@@ -320,8 +320,9 @@ base_node_schema = SchemaNode(
         SchemaAttribute(
             name="state",
             kind="Text",
+            internal_kind=HashableModelState,
             description="Expected state of the node/generic after loading the schema",
-            default_value=HashableModelState.PRESENT.value,
+            default_value=HashableModelState.PRESENT,
             enum=HashableModelState.available_types(),
             optional=True,
             extra={"update": UpdateSupport.NOT_APPLICABLE},
@@ -564,8 +565,9 @@ attribute_schema = SchemaNode(
         SchemaAttribute(
             name="state",
             kind="Text",
+            internal_kind=HashableModelState,
             description="Expected state of the attribute after loading the schema",
-            default_value=HashableModelState.PRESENT.value,
+            default_value=HashableModelState.PRESENT,
             enum=HashableModelState.available_types(),
             optional=True,
             extra={"update": UpdateSupport.NOT_APPLICABLE},
@@ -732,8 +734,9 @@ relationship_schema = SchemaNode(
         SchemaAttribute(
             name="state",
             kind="Text",
+            internal_kind=HashableModelState,
             description="Expected state of the relationship after loading the schema",
-            default_value=HashableModelState.PRESENT.value,
+            default_value=HashableModelState.PRESENT,
             enum=HashableModelState.available_types(),
             optional=True,
             extra={"update": UpdateSupport.NOT_APPLICABLE},

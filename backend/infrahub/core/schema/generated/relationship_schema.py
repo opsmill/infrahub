@@ -6,12 +6,15 @@ from typing import Optional
 
 from pydantic import Field
 
-from infrahub.core.constants import (  # noqa: TCH001
+from infrahub.core.constants import (
     BranchSupportType,
+    HashableModelState,
     RelationshipCardinality,
     RelationshipDirection,
     RelationshipKind,
 )
+
+# noqa: TCH001
 from infrahub.core.models import HashableModel
 from infrahub.core.schema.filter import FilterSchema  # noqa: TCH001
 
@@ -88,7 +91,7 @@ class GeneratedRelationshipSchema(HashableModel):
     branch: Optional[BranchSupportType] = Field(
         default=None,
         description="Type of branch support for the relatioinship, if not defined it will be determine based both peers.",
-        json_schema_extra={"update": "migration_required"},
+        json_schema_extra={"update": "not_supported"},
     )
     inherited: bool = Field(
         default=False,
@@ -98,12 +101,17 @@ class GeneratedRelationshipSchema(HashableModel):
     direction: RelationshipDirection = Field(
         default=RelationshipDirection.BIDIR,
         description="Defines the direction of the relationship,  Unidirectional relationship are required when the same model is on both side.",
-        json_schema_extra={"update": "migration_required"},
+        json_schema_extra={"update": "not_supported"},
     )
     hierarchical: Optional[str] = Field(
         default=None,
         description="Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind",
-        json_schema_extra={"update": "migration_required"},
+        json_schema_extra={"update": "not_supported"},
+    )
+    state: HashableModelState = Field(
+        default=HashableModelState.PRESENT,
+        description="Expected state of the relationship after loading the schema",
+        json_schema_extra={"update": "not_applicable"},
     )
     filters: list[FilterSchema] = Field(
         default_factory=list, description="Relationship filters", json_schema_extra={"update": "not_applicable"}
