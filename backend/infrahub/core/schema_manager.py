@@ -321,6 +321,32 @@ class SchemaBranch:
             message=f"Unable to find the schema with the id {id!r} in the registry",
         )
 
+    def get_by_any_id(self, id: str) -> Union[NodeSchema, GenericSchema]:
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+            if node.id == id:
+                return node
+
+            # search in the attributes and the relationships
+            try:
+                node.get_attribute_by_id(id=id)
+                return node
+
+            except ValueError:
+                pass
+
+            try:
+                node.get_relationship_by_id(id=id)
+                return node
+            except ValueError:
+                pass
+
+        raise SchemaNotFoundError(
+            branch_name=self.name,
+            identifier=id,
+            message=f"Unable to find the schema with the id {id!r} or with an attribute or a relationship with this id",
+        )
+
     def has(self, name: str) -> bool:
         try:
             self.get(name=name, duplicate=False)
