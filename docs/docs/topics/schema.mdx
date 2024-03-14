@@ -3,7 +3,8 @@ title: Schema
 ---
 
 import CodeBlock from "@theme/CodeBlock";
-import infrastructureExtensionRackYaml from '!!raw-loader!../../../models/infrastructure_extension_rack.yml';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # Schema
 
@@ -28,7 +29,7 @@ The schema is composed of 4 primary types of objects: `Nodes`- that are themselv
 
 In the example below, the node `Person` has 2 attributes (`name` and `description`) and the node `Car` has 1 attribute (`model`) and 1 relationship to `Person`, identified by `owner`.
 
-```yaml
+```yaml showLineNumbers
 nodes:
   - name: Person
     namespace: Example1
@@ -145,7 +146,7 @@ In the example below, we took the schema that we used previously and refactored 
 Now `Car` is a generic with 2 attributes and 1 relationship and 2 models. `ElectricCar` and `GazCar` are referencing it.
 In the GraphQL schema, `ElectricCar` and `GazCar` will have all the attributes and the relationships of `Car` in addition to the one defined under their respective section.
 
-```yaml
+```yaml showLineNumbers
 generics:
   - name: Car
     namespace: Example1
@@ -213,11 +214,11 @@ In the frontend, the API, or the GraphQL endpoint **branch-agnostic** objects ca
 
 To configure a model as **branch-agnostic** you need to set the option `branch` to `agnostic` in the schema
 
-```yaml
+```yaml {4} showLineNumbers
 nodes:
   - name: Fruit
     namespace: Example
-    branch: "agnostic"   # <<<<<<<<<<<<<<<
+    branch: "agnostic"
     attributes:
       - kind: Text
         name: name
@@ -227,7 +228,7 @@ nodes:
 
 Attributes and relationships can be configured as **branch-aware**, **branch-agnostic**, or **branch-local** too, independently of the configuration of the model itself using the parameter `branch`.
 
-```yaml
+```yaml {8} showLineNumbers
 nodes:
   - name: Fruit
     namespace: Example
@@ -235,7 +236,7 @@ nodes:
     attributes:
       - kind: Text
         name: name
-        branch: "agnostic"  # <<<<<<<<<<<<<<<
+        branch: "agnostic"
 ```
 
 By default, if a specific value is not defined:
@@ -274,7 +275,7 @@ By default, any node inheriting from the main `Generic` can be a parent or a chi
 In the example below, we are defining a hierarchy of `Location` with `Region`, `Country` and `City`.
 Only `Country` can be defined as children of a `Region` and only `City` can be defined as children of a `Country`
 
-```yaml
+```yaml showLineNumbers
 version: '1.0'
 generics:
   - name: Generic
@@ -319,7 +320,7 @@ For all relationships of cardinality many, it's possible to query all the object
 As an example, The GraphQL query below will query the members of all groups that are defined as children of `Group1`.
 Assuming that `Group1` has 2 sub-groups defined `Group A` and `Group B` (AKA children), the query will return the members of `Group1`, `Group A` and `Group B` together.
 
-```graphql
+```graphql showLineNumbers
 query {
     CoreStandardGroup(name__value: "Group1") {
         edges {
@@ -365,7 +366,7 @@ The full identifier of the icon must be used. Example `mdi:domain`
   <div className="row">
   <div className="col col--6">
 
-  ```yaml title="Schema"
+  ```yaml title="Schema" {6-7,11-12,17-18} showLineNumbers
   ---
   version: '1.0'
   nodes:
@@ -433,7 +434,7 @@ The schemas that should be loaded must be declared in the ``.infrahub.yml`` file
 
 Individual files and directory are both supported.
 
-```yaml
+```yaml showLineNumbers
 ---
 schemas:
   - schemas/demo_edge_fabric.yml
@@ -472,7 +473,7 @@ The format of the schema is declarative and incremental to allow schema to be co
 To remove an existing Node, Generic, Attribute or Relationship from the schema it is required to use the `state: absent` flag to explicitely indicate that this element must be deleted.
 Without this flag the element will be ignored but it will not be removed.
 
-```yaml
+```yaml {3} showLineNumbers
   - name: Rack
     namespace: Infra
     state: absent
@@ -501,16 +502,36 @@ In order to update the human readable identifier, it's required to temporarily p
 All Node, Generic, Attribute or Relationship have their unique identifier that can be find easily in the schema explorer in the frontend [http://localhost:8000/schema](http://localhost:8000/schema)
 The internal identifier should be an UUID4, with 36 characters.
 
-```yaml
+
+<Tabs>
+<TabItem value="new" label="New Version">
+
+```yaml {4-6} showLineNumbers
   - name: Rack
     namespace: Infra
-    state: absent
     attributes:
       - id: 76df607c-883f-4cf6-9087-353dc2d863e5
-        name: rack_name # previously name
+        name: rack_name
         kind: Text
     [..]
 ```
+
+</TabItem>
+<TabItem value="previous" label="Previous Version">
+```yaml {4-5} showLineNumbers
+  - name: Rack
+    namespace: Infra
+    attributes:
+      - name: name
+        kind: Text
+    [..]
+```
+</TabItem>
+</Tabs>
+
+
+
+
 
 ### Restrictions & Limitations
 
