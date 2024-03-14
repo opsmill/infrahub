@@ -65,11 +65,7 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery):
 
         self.params["current_time"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
-
-        if self.branch.is_default:
-            self.params["branch_support"] = self.migration.new_schema.branch.value
-        else:
-            self.params["branch_support"] = BranchSupportType.LOCAL.value
+        self.params["branch_support"] = self.migration.new_schema.branch.value
 
         self.params["rel_props_new"] = {
             "branch": self.branch.name,
