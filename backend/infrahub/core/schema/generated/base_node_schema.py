@@ -6,7 +6,7 @@ from typing import Optional
 
 from pydantic import Field
 
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import BranchSupportType, HashableModelState
 from infrahub.core.models import HashableModel
 from infrahub.core.schema.attribute_schema import AttributeSchema  # noqa: TCH001
 from infrahub.core.schema.filter import FilterSchema  # noqa: TCH001
@@ -48,7 +48,7 @@ class GeneratedBaseNodeSchema(HashableModel):
     branch: BranchSupportType = Field(
         default=BranchSupportType.AWARE,
         description="Type of branch support for the model.",
-        json_schema_extra={"update": "migration_required"},
+        json_schema_extra={"update": "not_supported"},
     )
     default_filter: Optional[str] = Field(
         default=None,
@@ -85,6 +85,11 @@ class GeneratedBaseNodeSchema(HashableModel):
         default=None,
         description="List of multi-element uniqueness constraints that can combine relationships and attributes",
         json_schema_extra={"update": "validate_constraint"},
+    )
+    state: HashableModelState = Field(
+        default=HashableModelState.PRESENT,
+        description="Expected state of the node/generic after loading the schema",
+        json_schema_extra={"update": "not_applicable"},
     )
     filters: list[FilterSchema] = Field(
         default_factory=list, description="Node filters", json_schema_extra={"update": "not_applicable"}

@@ -21,6 +21,7 @@ from infrahub.core.constants import (
     NODE_KIND_REGEX,
     NODE_NAME_REGEX,
     BranchSupportType,
+    HashableModelState,
     RelationshipCardinality,
     RelationshipDirection,
     RelationshipKind,
@@ -259,7 +260,7 @@ base_node_schema = SchemaNode(
             enum=BranchSupportType.available_types(),
             default_value=BranchSupportType.AWARE,
             optional=True,
-            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
+            extra={"update": UpdateSupport.NOT_SUPPORTED},  # https://github.com/opsmill/infrahub/issues/2477
         ),
         SchemaAttribute(
             name="default_filter",
@@ -315,6 +316,16 @@ base_node_schema = SchemaNode(
             description="List of multi-element uniqueness constraints that can combine relationships and attributes",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="state",
+            kind="Text",
+            internal_kind=HashableModelState,
+            description="Expected state of the node/generic after loading the schema",
+            default_value=HashableModelState.PRESENT,
+            enum=HashableModelState.available_types(),
+            optional=True,
+            extra={"update": UpdateSupport.NOT_APPLICABLE},
         ),
         SchemaAttribute(
             name="filters",
@@ -440,7 +451,7 @@ attribute_schema = SchemaNode(
             kind="Text",
             description="Defines the type of the attribute.",
             enum=ATTRIBUTE_KIND_LABELS,
-            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
             name="enum",
@@ -527,7 +538,7 @@ attribute_schema = SchemaNode(
             description="Type of branch support for the attribute, if not defined it will be inherited from the node.",
             enum=BranchSupportType.available_types(),
             optional=True,
-            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
+            extra={"update": UpdateSupport.NOT_SUPPORTED},  # https://github.com/opsmill/infrahub/issues/2475
         ),
         SchemaAttribute(
             name="order_weight",
@@ -548,6 +559,16 @@ attribute_schema = SchemaNode(
             kind="Boolean",
             default_value=False,
             description="Internal value to indicate if the attribute was inherited from a Generic node.",
+            optional=True,
+            extra={"update": UpdateSupport.NOT_APPLICABLE},
+        ),
+        SchemaAttribute(
+            name="state",
+            kind="Text",
+            internal_kind=HashableModelState,
+            description="Expected state of the attribute after loading the schema",
+            default_value=HashableModelState.PRESENT,
+            enum=HashableModelState.available_types(),
             optional=True,
             extra={"update": UpdateSupport.NOT_APPLICABLE},
         ),
@@ -682,7 +703,7 @@ relationship_schema = SchemaNode(
             description="Type of branch support for the relatioinship, if not defined it will be determine based both peers.",
             enum=BranchSupportType.available_types(),
             optional=True,
-            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
+            extra={"update": UpdateSupport.NOT_SUPPORTED},  # https://github.com/opsmill/infrahub/issues/2476
         ),
         SchemaAttribute(
             name="inherited",
@@ -701,14 +722,24 @@ relationship_schema = SchemaNode(
             enum=RelationshipDirection.available_types(),
             default_value=RelationshipDirection.BIDIR,
             optional=True,
-            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
+            extra={"update": UpdateSupport.NOT_SUPPORTED},  # https://github.com/opsmill/infrahub/issues/2471
         ),
         SchemaAttribute(
             name="hierarchical",
             kind="Text",
             description="Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind",
             optional=True,
-            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
+            extra={"update": UpdateSupport.NOT_SUPPORTED},  # https://github.com/opsmill/infrahub/issues/2596
+        ),
+        SchemaAttribute(
+            name="state",
+            kind="Text",
+            internal_kind=HashableModelState,
+            description="Expected state of the relationship after loading the schema",
+            default_value=HashableModelState.PRESENT,
+            enum=HashableModelState.available_types(),
+            optional=True,
+            extra={"update": UpdateSupport.NOT_APPLICABLE},
         ),
         SchemaAttribute(
             name="filters",

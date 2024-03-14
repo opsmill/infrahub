@@ -94,6 +94,7 @@ const sidebars: SidebarsConfig = {
             'reference/schema/attribute',
             'reference/schema/relationship',
             'reference/schema/generic',
+            'reference/schema/validator-migration',
           ],
         },
         {

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import Field
 
+from infrahub.core.constants import HashableModelState
 from infrahub.core.models import HashableModel
 from infrahub.core.schema.dropdown import DropdownChoice  # noqa: TCH001
 
@@ -26,7 +27,7 @@ class GeneratedAttributeSchema(HashableModel):
         json_schema_extra={"update": "migration_required"},
     )
     kind: str = Field(
-        ..., description="Defines the type of the attribute.", json_schema_extra={"update": "migration_required"}
+        ..., description="Defines the type of the attribute.", json_schema_extra={"update": "validate_constraint"}
     )
     enum: Optional[list] = Field(
         default=None,
@@ -83,7 +84,7 @@ class GeneratedAttributeSchema(HashableModel):
     branch: Optional[BranchSupportType] = Field(
         default=None,
         description="Type of branch support for the attribute, if not defined it will be inherited from the node.",
-        json_schema_extra={"update": "migration_required"},
+        json_schema_extra={"update": "not_supported"},
     )
     order_weight: Optional[int] = Field(
         default=None,
@@ -96,5 +97,10 @@ class GeneratedAttributeSchema(HashableModel):
     inherited: bool = Field(
         default=False,
         description="Internal value to indicate if the attribute was inherited from a Generic node.",
+        json_schema_extra={"update": "not_applicable"},
+    )
+    state: HashableModelState = Field(
+        default=HashableModelState.PRESENT,
+        description="Expected state of the attribute after loading the schema",
         json_schema_extra={"update": "not_applicable"},
     )

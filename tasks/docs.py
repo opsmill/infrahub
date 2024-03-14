@@ -30,8 +30,38 @@ def build(context: Context):
 
 @task
 def generate(context: Context):
-    """Generate documentation output from code."""
+    """Generate all documentation output from code."""
     _generate(context=context)
+
+
+@task
+def generate_schema(context: Context):
+    """Generate documentation for the schema."""
+    _generate_infrahub_schema_documentation()
+
+
+@task
+def generate_infrahub_cli(context: Context):
+    """Generate documentation for the infrahub cli."""
+    _generate_infrahub_cli_documentation(context=context)
+
+
+@task
+def generate_infrahubctl(context: Context):
+    """Generate documentation for the infrahubctl cli."""
+    _generate_infrahubctl_documentation(context=context)
+
+
+@task
+def generate_repository(context: Context):
+    """Generate documentation for the repository configuration file."""
+    _generate_infrahub_repository_configuration_documentation(context=context)
+
+
+@task
+def generate_python_sdk(context: Context):
+    """Generate documentation for the Python SDK."""
+    _generate_infrahub_sdk_configuration_documentation(context=context)
 
 
 @task
@@ -160,11 +190,17 @@ def _generate_infrahub_schema_documentation() -> None:
     """Generate documentation for the schema"""
     import jinja2
 
-    from infrahub.core.schema import internal_schema
+    from infrahub.core.schema import internal, internal_schema
 
-    schemas_to_generate = ["node", "attribute", "relationship", "generic"]
+    schemas_to_generate = {
+        "node": internal_schema,
+        "attribute": internal_schema,
+        "relationship": internal_schema,
+        "generic": internal_schema,
+        "validator-migration": internal,
+    }
     print(" - Generate Infrahub schema documentation")
-    for schema_name in schemas_to_generate:
+    for schema_name, schema in schemas_to_generate.items():
         template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/schema/{schema_name}.j2"
         output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/schema/{schema_name}.mdx"
         output_label = f"docs/docs/reference/schema/{schema_name}.mdx"
@@ -176,7 +212,7 @@ def _generate_infrahub_schema_documentation() -> None:
 
         environment = jinja2.Environment()
         template = environment.from_string(template_text)
-        rendered_file = template.render(schema=internal_schema)
+        rendered_file = template.render(schema=schema)
 
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(rendered_file)

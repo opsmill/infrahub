@@ -32,6 +32,16 @@ def person_name_node_diff(
     }
     schema_updated_constraint_infos = {
         SchemaUpdateConstraintInfo(
+            path=SchemaPath(
+                path_type=SchemaPathType.ATTRIBUTE,
+                schema_kind="TestPerson",
+                schema_id=None,
+                field_name="name",
+                property_name="kind",
+            ),
+            constraint_name="attribute.kind.update",
+        ),
+        SchemaUpdateConstraintInfo(
             constraint_name="attribute.optional.update",
             path=SchemaPath(
                 path_type=SchemaPathType.ATTRIBUTE,
