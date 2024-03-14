@@ -154,6 +154,7 @@ addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope"
 [tool.mypy]
 pretty = true
 ignore_missing_imports = true
+disallow_untyped_defs = true
 exclude = [
     "^backend/tests/scale",
     "^backend/tests/unit",
@@ -162,6 +163,22 @@ exclude = [
 [[tool.mypy.overrides]]
 module = "infrahub.*"
 disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "tests.benchmark.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "tests.conftest"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "tests.fixtures.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "tests.integration.*"
+disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = "infrahub.api.artifact"

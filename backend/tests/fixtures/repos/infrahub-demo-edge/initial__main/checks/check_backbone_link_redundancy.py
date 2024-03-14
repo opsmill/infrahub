@@ -6,10 +6,10 @@ from infrahub_sdk.checks import InfrahubCheck
 class InfrahubCheckBackboneLinkRedundancy(InfrahubCheck):
     query = "check_backbone_link_redundancy"
 
-    def validate(self, data):
+    def validate(self, data: dict) -> None:
         site_id_by_name = {}
 
-        backbone_links_per_site = defaultdict(lambda: defaultdict(int))
+        backbone_links_per_site: defaultdict = defaultdict(lambda: defaultdict(int))
 
         for circuit in data["InfraCircuit"]["edges"]:
             status = circuit["node"]["status"]["value"]

@@ -1,4 +1,5 @@
 import os
+from typing import Generator
 
 import pytest
 from infrahub_sdk import UUIDT, Config, InfrahubClient
@@ -29,7 +30,7 @@ class TestInfrahubApp:
         return str(UUIDT())
 
     @pytest.fixture(scope="class")
-    def local_storage_dir(self, tmpdir_factory) -> str:
+    def local_storage_dir(self, tmpdir_factory: pytest.TempdirFactory) -> str:
         storage_dir = os.path.join(str(tmpdir_factory.getbasetemp().strpath), "storage")
         if not os.path.exists(storage_dir):
             os.mkdir(storage_dir)
@@ -40,7 +41,7 @@ class TestInfrahubApp:
         return storage_dir
 
     @pytest.fixture(scope="class")
-    def bus_simulator(self, db: InfrahubDatabase):
+    def bus_simulator(self, db: InfrahubDatabase) -> Generator[BusSimulator, None, None]:
         bus = BusSimulator(database=db)
         original = config.OVERRIDE.message_bus
         config.OVERRIDE.message_bus = bus
@@ -48,7 +49,7 @@ class TestInfrahubApp:
         config.OVERRIDE.message_bus = original
 
     @pytest.fixture(scope="class")
-    async def default_branch(self, local_storage_dir, db: InfrahubDatabase) -> Branch:
+    async def default_branch(self, local_storage_dir: str, db: InfrahubDatabase) -> Branch:
         registry.delete_all()
         await delete_all_nodes(db=db)
         await create_root_node(db=db)
@@ -67,7 +68,7 @@ class TestInfrahubApp:
 
     @pytest.fixture(scope="class")
     async def register_core_schema(
-        self, db: InfrahubDatabase, default_branch: Branch, register_internal_schema
+        self, db: InfrahubDatabase, default_branch: Branch, register_internal_schema: SchemaBranch
     ) -> SchemaBranch:
         schema = SchemaRoot(**core_models)
         schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
@@ -78,19 +79,27 @@ class TestInfrahubApp:
     @pytest.fixture(scope="class")
     async def test_client(
         self,
-        initialize_registry,
+        initialize_registry: None,
     ) -> InfrahubTestClient:
         await app_initialization(app)
         return InfrahubTestClient(app=app)
 
     @pytest.fixture
-    async def client(self, test_client: InfrahubTestClient, api_token) -> InfrahubClient:
+    async def client(
+        self, test_client: InfrahubTestClient, api_token: str, bus_simulator: BusSimulator
+    ) -> InfrahubClient:
         config = Config(api_token=api_token, requester=test_client.async_request)
 
-        return await InfrahubClient.init(config=config)
+        sdk_client = await InfrahubClient.init(config=config)
+
+        bus_simulator.service._client = sdk_client
+
+        return sdk_client
 
     @pytest.fixture(scope="class")
-    async def initialize_registry(self, db: InfrahubDatabase, register_core_schema, bus_simulator, api_token):
+    async def initialize_registry(
+        self, db: InfrahubDatabase, register_core_schema: SchemaBranch, bus_simulator: BusSimulator, api_token: str
+    ) -> None:
         await create_account(
             db=db,
             name="admin",
