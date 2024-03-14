@@ -23,7 +23,7 @@ from .shared import (
 # pylint: disable=unused-argument
 
 
-class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
+class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     @property
     def branch1(self) -> Branch:
         return pytest.state["branch1"]  # type: ignore[index]
@@ -81,8 +81,8 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         await glc.save(db=db)
 
         green = await Node.init(schema=TAG_KIND, db=db, branch=branch1)
-        await red.new(db=db, name="green", persons=[john, richard])
-        await red.save(db=db)
+        await green.new(db=db, name="green", persons=[john, richard])
+        await green.save(db=db)
 
         # Create Data in MAIN after BRANCH1 was created
         jane = await Node.init(schema=PERSON_KIND, db=db)
@@ -280,7 +280,7 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         branch = await client.branch.merge(branch_name=self.branch1.name)
         assert branch
 
-        # Ensure that we can query the nodes with the new schema in BRANCH1
+        # Ensure that we can query the nodes with the new schema in MAIN
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "John"})
         assert len(persons) == 1
         john = persons[0]
@@ -296,4 +296,3 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert jane.lastname.value is None  # type: ignore[attr-defined]
         assert not hasattr(jane, "height")
         assert not hasattr(jane, "name")
-

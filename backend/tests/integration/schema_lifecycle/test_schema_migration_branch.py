@@ -80,8 +80,8 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         await glc.save(db=db)
 
         green = await Node.init(schema=TAG_KIND, db=db, branch=branch1)
-        await red.new(db=db, name="green", persons=[john, richard])
-        await red.save(db=db)
+        await green.new(db=db, name="green", persons=[john, richard])
+        await green.save(db=db)
 
         # Create Data in MAIN after BRANCH1 was created
         jane = await Node.init(schema=PERSON_KIND, db=db)
