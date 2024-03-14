@@ -11,7 +11,7 @@ import LoadingScreen from "../../loading-screen/loading-screen";
 import DropDownMenuHeader from "./desktop-menu-header";
 import { classNames } from "../../../utils/common";
 
-type MenuItem = {
+export type MenuItem = {
   title: string;
   path: string;
   icon: string;
@@ -85,11 +85,11 @@ export function DesktopMenu({ className = "" }: MenuProps) {
 
       {!isLoading && (
         <nav
-          className="flex-grow min-h-0 overflow-auto"
+          className="flex-grow min-h-0 overflow-y-auto overflow-x-hidden"
           aria-label="Sidebar"
           data-cy="sidebar-menu"
           data-testid="sidebar-menu">
-          {(query !== "" ? menuFiltered : menu).map((item: any, index: number) => (
+          {(query !== "" ? menuFiltered : menu).map((item, index: number) => (
             <DropDownMenuHeader
               key={index}
               title={item.title}

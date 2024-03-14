@@ -4,10 +4,11 @@ import React from "react";
 import { Circle } from "../../../components/display/circle";
 import { classNames } from "../../../utils/common";
 import { DropDownMenuItem } from "./desktop-menu-item";
+import { MenuItem } from "./desktop-menu";
 
 interface Props {
   title: string;
-  items: React.ReactElement[];
+  items: MenuItem[];
   icon?: string;
   subItem?: boolean;
 }
@@ -21,46 +22,42 @@ export default function DropDownMenuHeader(props: Props) {
         <>
           <Disclosure.Button
             className={classNames(
-              "flex flex-1 items-center group p-3 pr-[1.125rem] text-gray-900 text-left text-sm font-medium ",
+              "flex items-center p-3 text-gray-900 text-left text-sm font-medium group",
               subItem ? "bg-gray-50 hover:bg-gray-100" : "bg-gray-200 hover:bg-gray-300"
             )}>
-            {icon && (
-              <Icon icon={icon} className="mr-1 text-custom-blue-500 group-hover:text-gray-500" />
+            {icon ? (
+              <Icon icon={icon} className="text-custom-blue-500 group-hover:text-gray-500" />
+            ) : (
+              <Circle className="shrink-0" />
             )}
 
-            {!icon && <Circle />}
+            <span className="flex-grow truncate">{title}</span>
 
-            <span className="flex-1">{title}</span>
-
-            <svg
+            <Icon
+              icon="mdi:triangle-down"
               className={classNames(
-                open ? "text-gray-400 rotate-90" : "text-gray-300",
-                "ml-3 w-4 h-4 transform transition-colors duration-150 ease-in-out group-hover:text-gray-400"
+                "text-[8px] group-hover:text-gray-400 mr-2.5",
+                open ? "text-gray-400" : "text-gray-300 -rotate-90"
               )}
-              viewBox="0 0 20 20"
-              aria-hidden="true">
-              <path d="M6 6L14 10L6 14V6Z" fill="currentColor" />
-            </svg>
+            />
           </Disclosure.Button>
 
-          <Disclosure.Panel className="">
-            <div className="pl-4">
-              {items.map((item: any, index: number) => {
-                if (item.children?.length) {
-                  return (
-                    <DropDownMenuHeader
-                      key={index}
-                      title={item.title}
-                      items={item.children}
-                      icon={item.icon}
-                      subItem
-                    />
-                  );
-                }
+          <Disclosure.Panel className="py-0.5 pl-4 space-y-1">
+            {items.map((item, index: number) => {
+              if (item.children?.length) {
+                return (
+                  <DropDownMenuHeader
+                    key={index}
+                    title={item.title}
+                    items={item.children}
+                    icon={item.icon}
+                    subItem
+                  />
+                );
+              }
 
-                return <DropDownMenuItem key={index} {...item} />;
-              })}
-            </div>
+              return <DropDownMenuItem key={index} {...item} />;
+            })}
           </Disclosure.Panel>
         </>
       )}
