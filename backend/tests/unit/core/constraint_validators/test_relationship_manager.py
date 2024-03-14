@@ -17,7 +17,7 @@ async def test_node_validate_constraint_relationship_count_failure(
     with pytest.raises(ValidationError) as exc:
         await constraint.check(person.cars)
 
-    assert "has 2 peers for testcar__testperson, only 1 allowed" in exc.value.message
+    assert "has 2 peers for testcar__testperson, maximum of 1 allowed" in exc.value.message
 
 
 async def test_node_validate_constraint_relationship_count_success(

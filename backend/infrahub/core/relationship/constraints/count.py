@@ -79,10 +79,10 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
             if node.max_count and count_per_peer[node.uuid] + 1 > node.max_count:
                 raise ValidationError(
                     f"Node {node.uuid} has {count_per_peer[node.uuid] + 1} peers "
-                    f"for {relm.schema.identifier}, only {node.max_count} allowed",
+                    f"for {relm.schema.identifier}, maximum of {node.max_count} allowed",
                 )
             if node.min_count and count_per_peer[node.uuid] - 1 < node.min_count:
                 raise ValidationError(
                     f"Node {node.uuid} has {count_per_peer[node.uuid] - 1} peers "
-                    f"for {relm.schema.identifier}, no more than {node.min_count} allowed",
+                    f"for {relm.schema.identifier}, no fewer than {node.min_count} allowed",
                 )
