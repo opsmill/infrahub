@@ -1,11 +1,11 @@
-import { useAtomValue } from "jotai/index";
+import { useAtom, useAtomValue } from "jotai/index";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { SearchInput } from "../../../components/search/search-bar";
 import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
 import { CONFIG } from "../../../config/config";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
-import { currentSchemaHashAtom } from "../../../state/atoms/schema.atom";
+import { currentSchemaHashAtom, menuAtom } from "../../../state/atoms/schema.atom";
 import { fetchUrl } from "../../../utils/fetch";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import DropDownMenuHeader from "./desktop-menu-header";
@@ -25,9 +25,9 @@ type MenuProps = {
 export function DesktopMenu({ className = "" }: MenuProps) {
   const branch = useAtomValue(currentBranchAtom);
   const currentSchemaHash = useAtomValue(currentSchemaHashAtom);
+  const [menu, setMenu] = useAtom(menuAtom);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [menu, setMenu] = useState<MenuItem[]>([]);
   const [query, setQuery] = useState<string>("");
 
   const fetchMenu = async () => {

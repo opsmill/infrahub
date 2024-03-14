@@ -1,5 +1,6 @@
 import { atom } from "jotai";
 import { components } from "../../infraops";
+import { MenuItem } from "../../screens/layout/sidebar/desktop-menu";
 
 export type iNodeSchema = components["schemas"]["APINodeSchema"];
 export const schemaState = atom<iNodeSchema[]>([]);
@@ -36,3 +37,5 @@ export type SchemaSummary = {
 };
 
 export const currentSchemaHashAtom = atom<string | null>(null);
+
+export const menuAtom = atom<MenuItem[]>([]);
