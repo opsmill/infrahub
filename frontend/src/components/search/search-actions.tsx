@@ -1,27 +1,32 @@
 import { useMemo } from "react";
 import { useAtomValue } from "jotai";
-import {
-  genericsState,
-  iGenericSchema,
-  iNodeSchema,
-  schemaState,
-} from "../../state/atoms/schema.atom";
-import { Icon } from "@iconify-icon/react";
+import { menuAtom } from "../../state/atoms/schema.atom";
 import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-modal";
+import { MenuItem } from "../../screens/layout/sidebar/desktop-menu";
+import { constructPath } from "../../utils/fetch";
+import { Icon } from "@iconify-icon/react";
 
 type SearchProps = {
   query: string;
 };
 export const SearchActions = ({ query }: SearchProps) => {
-  const schemas = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
+  const menu = useAtomValue(menuAtom);
+  const menuItems = useMemo(() => {
+    const flattenMenuItems = (menuItems: MenuItem[]): MenuItem[] => {
+      return menuItems.reduce<MenuItem[]>((acc, menuItem) => {
+        if (menuItem.children.length === 0) {
+          return [...acc, menuItem];
+        }
 
-  const schemasInMenu = useMemo(() => {
-    return [...schemas, ...generics].filter((s) => s.include_in_menu);
-  }, [schemas.length, generics.length]);
+        return [...acc, ...flattenMenuItems(menuItem.children)];
+      }, []);
+    };
 
-  const results = schemasInMenu.filter(({ kind, label, name }) =>
-    (label || kind || name).toLowerCase().includes(query.toLowerCase())
+    return flattenMenuItems(menu);
+  }, [menu.length]);
+
+  const results = menuItems.filter(({ title }) =>
+    title.toLowerCase().includes(query.toLowerCase())
   );
 
   if (results.length === 0) return null;
@@ -31,25 +36,21 @@ export const SearchActions = ({ query }: SearchProps) => {
     <SearchGroup>
       <SearchGroupTitle>Go to</SearchGroupTitle>
 
-      {firstThreeMatches.map((s) => (
-        <ActionResult key={s.id} schema={s} />
+      {firstThreeMatches.map((menuItem) => (
+        <ActionOnMenu key={menuItem.path} menuItem={menuItem} />
       ))}
     </SearchGroup>
   );
 };
 
-type ActionResultProps = {
-  schema: iNodeSchema | iGenericSchema;
+type ActionOnMenuProps = {
+  menuItem: MenuItem;
 };
 
-const ActionResult = ({ schema }: ActionResultProps) => {
-  const { kind, label, name } = schema;
-
+const ActionOnMenu = ({ menuItem }: ActionOnMenuProps) => {
   return (
-    <SearchResultItem to={`/objects/${kind}`}>
-      <span>Objects</span>
-      <Icon icon="mdi:chevron-right" />
-      <span className="font-medium">{label || kind || name}</span>
+    <SearchResultItem to={constructPath(menuItem.path)}>
+      <span className="font-medium">{menuItem.title}</span>
       <Icon icon="mdi:chevron-right" />
       <span className="font-semibold text-custom-blue-700">View</span>
     </SearchResultItem>
