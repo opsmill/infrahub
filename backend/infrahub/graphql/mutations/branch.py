@@ -216,12 +216,15 @@ class BranchRebase(Mutation):
                 await task.info(message="Branch successfully rebased", db=dbt)
 
             if obj.has_schema_changes:
-                schema_diff = await merger.get_schema_diff()
+                # NOTE there is a bit additional work in order to calculate a proper diff that will
+                # allow us to pull only the part of the schema that has changed, for now the safest option is to pull
+                # Everything
+                # schema_diff = await merger.has_schema_changes()
                 updated_schema = await registry.schema.load_schema_from_db(
                     db=context.db,
                     branch=obj,
-                    schema=merger.source_schema.duplicate(),
-                    schema_diff=schema_diff,
+                    # schema=merger.source_schema.duplicate(),
+                    # schema_diff=schema_diff,
                 )
                 registry.schema.set_schema_branch(name=obj.name, schema=updated_schema)
                 obj.update_schema_hash()

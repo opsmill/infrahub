@@ -188,6 +188,13 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
                 return item
         raise ValueError(f"Unable to find the relationship {name}")
 
+    def get_relationship_by_id(self, id: str) -> RelationshipSchema:
+        for item in self.relationships:
+            if item.id == id:
+                return item
+
+        raise ValueError(f"Unable to find the relationship with the ID: {id}")
+
     def get_filter(self, name, raise_on_error: bool = True) -> FilterSchema:
         for item in self.filters:
             if item.name == name:

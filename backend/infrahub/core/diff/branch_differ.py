@@ -232,7 +232,7 @@ class BranchDiffer:
         """Return a list of DiffSummaryElement for SchemaNode organized per Branch."""
         summary: Dict[str, List[DiffSummaryElement]] = defaultdict(list)
         for element in await self.get_summary():
-            if element.kind == "SchemaNode":
+            if element.kind.startswith("Schema"):
                 summary[element.branch].append(element)
         return summary
 

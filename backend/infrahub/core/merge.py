@@ -106,6 +106,10 @@ class BranchMerger:
 
         return self._initial_source_schema
 
+    async def has_schema_changes(self) -> bool:
+        graph_diff = await self.get_graph_diff()
+        return await graph_diff.has_schema_changes()
+
     async def get_schema_diff(self) -> SchemaBranchDiff:
         """Return a SchemaBranchDiff object with the list of nodes and generics
         based on the information returned by the Graph Diff.
@@ -118,23 +122,22 @@ class BranchMerger:
 
         graph_diff = await self.get_graph_diff()
         schema_summary = await graph_diff.get_schema_summary()
-
         schema_diff = SchemaBranchDiff()
 
         # NOTE At this point there is no Generic in the schema but this could change in the future
         for element in schema_summary.get(self.source_branch.name, []):
-            if DiffAction.REMOVED in element.actions:
+            if element.kind == "SchemaNode" and DiffAction.REMOVED in element.actions:
                 continue
-            node = self.source_schema.get_by_id(id=element.node)
+            node = self.source_schema.get_by_any_id(id=element.node)
             if isinstance(node, NodeSchema):
                 schema_diff.nodes.append(node.kind)
             elif isinstance(node, GenericSchema):
                 schema_diff.generics.append(node.kind)
 
         for element in schema_summary.get(self.destination_branch.name, []):
-            if DiffAction.REMOVED in element.actions:
+            if element.kind == "SchemaNode" and DiffAction.REMOVED in element.actions:
                 continue
-            node = self.destination_schema.get_by_id(id=element.node)
+            node = self.destination_schema.get_by_any_id(id=element.node)
             if isinstance(node, NodeSchema):
                 schema_diff.nodes.append(node.kind)
             elif isinstance(node, GenericSchema):
@@ -153,16 +156,18 @@ class BranchMerger:
         - Identify if we need to execute some migrations
         """
 
-        schema_diff = await self.get_schema_diff()
+        # NOTE we need to revisit how to calculate an accurate diff to pull only what needs to be updated from the schema
+        # for now the best solution is to pull everything to ensure the integrity of the schema
+        # schema_diff = await self.get_schema_diff()
 
-        if not schema_diff.has_diff:
+        if not await self.has_schema_changes():
             return False
 
         updated_schema = await registry.schema.load_schema_from_db(
             db=self.db,
             branch=self.destination_branch,
-            schema=self.destination_schema.duplicate(),
-            schema_diff=schema_diff,
+            # schema=self.destination_schema.duplicate(),
+            # schema_diff=schema_diff,
         )
         registry.schema.set_schema_branch(name=self.destination_branch.name, schema=updated_schema)
         self.destination_branch.update_schema_hash()
