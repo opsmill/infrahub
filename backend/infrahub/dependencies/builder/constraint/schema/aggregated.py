@@ -7,6 +7,7 @@ from .attribute_length import SchemaAttributLengthConstraintDependency
 from .attribute_optional import SchemaAttributeOptionalConstraintDependency
 from .attribute_regex import SchemaAttributeRegexConstraintDependency
 from .attribute_uniqueness import SchemaAttributeUniqueConstraintDependency
+from .relationship_count import SchemaRelationshipCountConstraintDependency
 from .relationship_optional import SchemaRelationshipOptionalConstraintDependency
 from .uniqueness import SchemaUniquenessConstraintDependency
 
@@ -18,6 +19,7 @@ class AggregatedSchemaConstraintsDependency(DependencyBuilder[AggregatedConstrai
             constraints=[
                 SchemaUniquenessConstraintDependency.build(context=context),
                 SchemaRelationshipOptionalConstraintDependency.build(context=context),
+                SchemaRelationshipCountConstraintDependency.build(context=context),
                 SchemaAttributeRegexConstraintDependency.build(context=context),
                 SchemaAttributeUniqueConstraintDependency.build(context=context),
                 SchemaAttributeOptionalConstraintDependency.build(context=context),
