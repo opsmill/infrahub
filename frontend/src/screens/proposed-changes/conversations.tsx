@@ -60,7 +60,9 @@ export const getFormStructure = (
     label: "Name",
     value: data?.name?.value ?? "",
     options: [],
-    config: {},
+    config: {
+      validate: (value) => !!value || "Required",
+    },
     isProtected: false,
   },
   {
@@ -81,7 +83,9 @@ export const getFormStructure = (
     label: "Source Branch",
     value: data?.source_branch?.value ?? "",
     options: branches,
-    config: {},
+    config: {
+      validate: (value) => !!value || "Required",
+    },
     isProtected: !!data?.source_branch?.value,
   },
   {

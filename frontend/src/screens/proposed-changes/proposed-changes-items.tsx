@@ -23,11 +23,11 @@ import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
 import { getObjectRelationships } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
+import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "./conversations";
 import { ProposedChange } from "./proposed-changes-item";
-import Content from "../layout/content";
 
 export const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);
