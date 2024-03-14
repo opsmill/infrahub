@@ -85,7 +85,7 @@ export function DesktopMenu({ className = "" }: MenuProps) {
 
       {!isLoading && (
         <nav
-          className="flex-grow min-h-0 overflow-auto"
+          className="flex-grow min-h-0 overflow-y-auto overflow-x-hidden"
           aria-label="Sidebar"
           data-cy="sidebar-menu"
           data-testid="sidebar-menu">
