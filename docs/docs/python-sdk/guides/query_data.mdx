@@ -281,7 +281,7 @@ Relationships of kind `Attribute`, `Parent` are included by default and will be 
   print(device.tags.peers)
 
   for tag in device.tags.peers:
-   print(tag.id, tag.display_label, tag.typename)
+      print(tag.id, tag.display_label, tag.typename)
 
   ```
 
@@ -294,7 +294,7 @@ Relationships of kind `Attribute`, `Parent` are included by default and will be 
    print(device.tags.peers)
 
    for tag in device.tags.peers:
-    print(tag.id, tag.display_label, tag.typename)
+       print(tag.id, tag.display_label, tag.typename)
    ```
 
   </TabItem>
@@ -328,7 +328,7 @@ Relationships of cardinality many are not included by default.
 ### Including attributes and relationships
 
 You can include attributes and relationships that are not retrieved as part of a query by default.
-The included relationships will be initialized and the related nodes (peers) will be retrieved from the database.
+The included relationships will be initialized and the related nodes (peers) will be initialized.
 
 <Tabs groupId="async-sync">
   <TabItem value="Async" default>
@@ -339,7 +339,7 @@ The included relationships will be initialized and the related nodes (peers) wil
   print(device.interfaces.peers)
 
   for interface in device.interfaces.peers:
-   print(interface.id, interface.display_label, interface.typename)
+      print(interface.id, interface.display_label, interface.typename)
 
   ```
 
@@ -352,7 +352,7 @@ The included relationships will be initialized and the related nodes (peers) wil
    print(device.interfaces.peers)
 
    for interface in device.interfaces.peers:
-    print(interface.id, interface.display_label, interface.typename)
+       print(interface.id, interface.display_label, interface.typename)
    ```
 
   </TabItem>
@@ -383,7 +383,7 @@ You can exclude attributes and relationships that are retrieved with a query by 
 
 ### Fetching relationships manually
 
-Relationships that are not retrieved as part of a query by default, or through the `include` query method argument, can be retrieved using the `fetch` method.
+The `fetch` method can be used to retrieve relationships that are not retrieved as part of a query. The `fetch` method will initialized the relationship, if was not yet initialized and retrieve the related nodes.
 
 <Tabs groupId="async-sync">
   <TabItem value="Async" default>
@@ -395,8 +395,7 @@ Relationships that are not retrieved as part of a query by default, or through t
   await device.interfaces.fetch()
   print(device.interfaces.initialized) # True
   for interface in device.interfaces.peers:
-   print(interface.id, interface.display_label, interface.typename, interface.peer.name.value)
-
+      print(interface.id, interface.display_label, interface.typename, interface.peer.name.value)
   ```
 
   </TabItem>
@@ -409,11 +408,45 @@ Relationships that are not retrieved as part of a query by default, or through t
   device.interfaces.fetch()
   print(device.interfaces.initialized) # True
   for interface in device.interfaces.peers:
-   print(interface.id, interface.display_label, interface.typename, interface.peer.name.value)
+      print(interface.id, interface.display_label, interface.typename, interface.peer.name.value)
   ```
 
   </TabItem>
 </Tabs>
+
+The `fetch` method can also be used to `fetch` the related nodes of a relationship that was already initialized or retrieved as part of the query.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  device = await client.get(kind="TestDevice", name__value="atl1-edge1", include=["interfaces"])
+  print(device.interfaces.initialized) # True
+
+  await device.interfaces.fetch()
+  for interface in device.interfaces.peers:
+      print(interface.id, interface.display_label, interface.typename, interface.peer.name.value)
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  device = client.get(kind="TestDevice", name__value="atl1-edge1", include=["interfaces"])
+  print(device.interfaces.initialized) # True
+
+  device.interfaces.fetch()
+  for interface in device.interfaces.peers:
+      print(interface.id, interface.display_label, interface.typename, interface.peer.name.value)
+  ```
+
+  </TabItem>
+</Tabs>
+
+### Prefetch relationships
+
+Related nodes of a relationship can be retrieved, using the `prefetch_relationships` argument for the different `query` methods. But this requires the usage of the internal client store
+. More information can be found in the [Using the client store](/python-sdk/guides/store) guide.
 
 ## Query a node(s) in the past
 
