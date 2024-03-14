@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Sequence
 
-from infrahub.core.constants import BranchSupportType, RelationshipStatus
+from infrahub.core.constants import RelationshipStatus
 from infrahub.core.graph.schema import GraphAttributeRelationships
 
 from ..shared import AttributeMigrationQuery, AttributeSchemaMigration
@@ -63,11 +63,7 @@ class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery):
         self.params["prev_attr_name"] = prev_attr.name
         self.params["current_time"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
-
-        if self.branch.is_default:
-            self.params["branch_support"] = self.migration.new_attribute_schema.get_branch().value
-        else:
-            self.params["branch_support"] = BranchSupportType.LOCAL.value
+        self.params["branch_support"] = self.migration.new_attribute_schema.get_branch().value
 
         self.params["rel_props_create"] = {
             "branch": self.branch.name,
