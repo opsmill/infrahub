@@ -2,7 +2,7 @@ import { forwardRef, HTMLAttributes, useState } from "react";
 import { classNames } from "../../utils/common";
 import { Icon } from "@iconify-icon/react";
 
-const MAX_TEXT_LENGTH = 100;
+const MAX_TEXT_LENGTH = 200;
 
 interface TextDisplayProps {
   children: string;
@@ -13,10 +13,15 @@ export const TextDisplay = ({ children, maxChars = MAX_TEXT_LENGTH }: TextDispla
   const [showFullText, setShowFullText] = useState(false);
 
   const shouldShowReadMore = children.length > maxChars;
+  const shouldTruncateText = shouldShowReadMore && !showFullText;
+  const truncatedText = shouldTruncateText ? children.slice(0, maxChars) : children;
 
   return (
     <div>
-      <p className={classNames(!showFullText && "line-clamp-3")}>{children}</p>
+      <p className={classNames(shouldTruncateText && "line-clamp-3")}>
+        {truncatedText}
+        {shouldTruncateText && "..."}
+      </p>
       {shouldShowReadMore && (
         <ToggleFullTextButton isFullText={showFullText} setShowFullText={setShowFullText} />
       )}
