@@ -6,10 +6,10 @@
   },
   "customizations": {
       "settings": {
-      "python.pythonPath": "/usr/bin/python3",
-      "terminal.integrated.shell.linux": "/bin/bash",
-      "python.venvPath": "/workspace/.venv",
-      "python.linting.enabled": true
+        "python.pythonPath": "/workspace/infrahub/.venv/bin/python",
+        "terminal.integrated.shell.linux": "/bin/bash",
+        "python.venvPath": "/workspace/infrahub/.venv",
+        "python.linting.enabled": true
       },
       "vscode": {
       "extensions": [
