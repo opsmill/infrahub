@@ -11,6 +11,7 @@ import { Fragment, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { BUTTON_TYPES } from "../../components/buttons/button";
+import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 import { RoundedButton } from "../../components/buttons/rounded-button";
 import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
 import SlideOver from "../../components/display/slide-over";
@@ -22,6 +23,7 @@ import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
+import { usePermission } from "../../hooks/usePermission";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -41,8 +43,6 @@ import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { ObjectAttributeRow } from "./object-attribute-row";
-import { usePermission } from "../../hooks/usePermission";
-import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 
 type iRelationDetailsProps = {
   parentNode: any;
