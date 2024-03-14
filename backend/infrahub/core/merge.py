@@ -101,7 +101,7 @@ class BranchMerger:
         self._initial_source_schema = await registry.schema.load_schema_from_db(
             db=self.db,
             branch=self.source_branch,
-            at=Timestamp(self.source_branch.branched_from),
+            at=Timestamp(self.source_branch.created_at),
         )
 
         return self._initial_source_schema
@@ -123,6 +123,8 @@ class BranchMerger:
 
         # NOTE At this point there is no Generic in the schema but this could change in the future
         for element in schema_summary.get(self.source_branch.name, []):
+            if DiffAction.REMOVED in element.actions:
+                continue
             node = self.source_schema.get_by_id(id=element.node)
             if isinstance(node, NodeSchema):
                 schema_diff.nodes.append(node.kind)
@@ -130,6 +132,8 @@ class BranchMerger:
                 schema_diff.generics.append(node.kind)
 
         for element in schema_summary.get(self.destination_branch.name, []):
+            if DiffAction.REMOVED in element.actions:
+                continue
             node = self.destination_schema.get_by_id(id=element.node)
             if isinstance(node, NodeSchema):
                 schema_diff.nodes.append(node.kind)
