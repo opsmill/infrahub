@@ -11,8 +11,13 @@ from infrahub_sdk.transfer.importer.json import LineDelimitedJSONImporter
 from infrahub_sdk.transfer.schema_sorter import InfrahubSchemaTopologicalSorter
 
 
+def local_directory():
+    # We use a function here to avoid failure when generating the documentation due to directory name
+    return Path(".").absolute()
+
+
 def load(
-    directory: Path = typer.Argument(default=None, help="Directory path of exported data."),
+    directory: Path = typer.Option(local_directory, help="Directory path of exported data"),
     continue_on_error: bool = typer.Option(
         False, help="Allow exceptions during loading and display them when complete"
     ),
@@ -26,7 +31,7 @@ def load(
     ),
     timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
 ) -> None:
-    """Import node(s)."""
+    """Import nodes and their relationships into the database."""
     console = Console()
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)

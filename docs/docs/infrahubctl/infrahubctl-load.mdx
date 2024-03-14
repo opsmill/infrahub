@@ -1,19 +1,16 @@
 # `infrahubctl load`
 
-Import node(s).
+Import nodes and their relationships into the database.
 
 **Usage**:
 
 ```console
-$ infrahubctl load [OPTIONS] [DIRECTORY]
+$ infrahubctl load [OPTIONS]
 ```
-
-**Arguments**:
-
-* `[DIRECTORY]`: Directory path of exported data.
 
 **Options**:
 
+* `--directory PATH`: Directory path of exported data  [default: (dynamic)]
 * `--continue-on-error / --no-continue-on-error`: Allow exceptions during loading and display them when complete  [default: no-continue-on-error]
 * `--quiet / --no-quiet`: No console output  [default: no-quiet]
 * `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
