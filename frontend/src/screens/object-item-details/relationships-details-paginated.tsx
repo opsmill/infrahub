@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { forwardRef, useImperativeHandle } from "react";
+import { forwardRef, useEffect, useImperativeHandle } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -75,6 +75,12 @@ export const RelationshipsDetails = forwardRef((props: RelationshipsDetailsProps
   const query = gql`
     ${queryString}
   `;
+
+  useEffect(() => {
+    // Refetch on mount to update tab counter if needed
+    // TODO: improve test before refetching data
+    refetchObjectDetails();
+  }, []);
 
   const { loading, error, data, refetch } = useQuery(query, { skip: !relationshipTab });
 
