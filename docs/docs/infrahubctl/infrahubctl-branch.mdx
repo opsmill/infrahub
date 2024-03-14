@@ -20,7 +20,6 @@ $ infrahubctl branch [OPTIONS] COMMAND [ARGS]...
 
 * `create`: Create a new branch.
 * `delete`: Delete a branch.
-* `diff`: Show the differences between a Branch and...
 * `list`: List all existing branches.
 * `merge`: Merge a Branch with main.
 * `rebase`: Rebase a Branch with main.
@@ -64,28 +63,6 @@ $ infrahubctl branch delete [OPTIONS] BRANCH_NAME
 
 **Options**:
 
-* `--config-file PATH`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
-* `--help`: Show this message and exit.
-
-## `infrahubctl branch diff`
-
-Show the differences between a Branch and main.
-
-**Usage**:
-
-```console
-$ infrahubctl branch diff [OPTIONS] BRANCH_NAME
-```
-
-**Arguments**:
-
-* `BRANCH_NAME`: [required]
-
-**Options**:
-
-* `--from [%Y-%m-%d|%Y-%m-%dT%H:%M:%S|%Y-%m-%d %H:%M:%S]`: Start Time used to calculate the Diff, Default: from the start of the branch
-* `--to [%Y-%m-%d|%Y-%m-%dT%H:%M:%S|%Y-%m-%d %H:%M:%S]`: End Time used to calculate the Diff, Default: now
-* `--branch-only / --no-branch-only`: [default: branch-only]
 * `--config-file PATH`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--help`: Show this message and exit.
 

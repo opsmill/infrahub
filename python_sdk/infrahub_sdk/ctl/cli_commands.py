@@ -278,6 +278,7 @@ def transform(
 
 @app.command(name="version")
 def version(config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE)):
+    """Display the version of Infrahub and the version of the Python SDK in use."""
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
     client = initialize_client_sync()
