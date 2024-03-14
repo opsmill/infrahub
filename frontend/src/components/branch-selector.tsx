@@ -7,17 +7,17 @@ import { QSP } from "../config/qsp";
 import { Branch } from "../generated/graphql";
 import { BRANCH_CREATE } from "../graphql/mutations/branches/createBranch";
 import { useAuth } from "../hooks/useAuth";
+import { usePermission } from "../hooks/usePermission";
 import { DynamicFieldData } from "../screens/edit-form-hook/dynamic-control-types";
 import { Form } from "../screens/edit-form-hook/form";
 import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
 import { classNames } from "../utils/common";
 import { BUTTON_TYPES } from "./buttons/button";
+import { ButtonWithTooltip } from "./buttons/button-with-tooltip";
 import { SelectButton } from "./buttons/select-button";
 import { DateDisplay } from "./display/date-display";
 import { POPOVER_SIZE, PopOver } from "./display/popover";
 import { SelectOption } from "./inputs/select";
-import { usePermission } from "../hooks/usePermission";
-import { ButtonWithTooltip } from "./buttons/button-with-tooltip";
 
 const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
   branch && (
@@ -90,6 +90,7 @@ export default function BranchSelector() {
       sync_with_git: branch.sync_with_git,
       is_default: branch.is_default,
       is_isolated: branch.is_isolated,
+      has_schema_changes: branch.has_schema_changes,
       created_at: branch.created_at,
     }))
     .sort((branch1, branch2) => {
