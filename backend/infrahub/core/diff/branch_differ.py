@@ -554,10 +554,10 @@ class BranchDiffer:
                 node = self._results[branch_name]["nodes"][node_id]
                 item = {
                     "id": attr_id,
-                    "db_id": result.get("a").element_id,
+                    "db_id": result.get_node("a").element_id,
                     "name": attr_name,
                     "path": f"data/{node_id}/{attr_name}",
-                    "rel_id": result.get("r1").element_id,
+                    "rel_id": result.get_rel("r1").element_id,
                     "properties": {},
                     "origin_rel_id": None,
                 }
@@ -575,7 +575,7 @@ class BranchDiffer:
                     continue
 
                 if (
-                    node.action == DiffAction.ADDED
+                    node.action in [DiffAction.ADDED, DiffAction.UPDATED]
                     and attr_from >= self.diff_from
                     and branch_status == RelationshipStatus.ACTIVE.value
                 ):
