@@ -345,6 +345,13 @@ def git_repos_dir_module_scope(tmp_path_module_scope: str) -> Generator[str, Non
     config.SETTINGS.git.repositories_directory = old_repos_dir
 
 
+@pytest.fixture(scope="module")
+def git_repos_source_dir_module_scope(tmp_path_module_scope: str) -> str:
+    repos_dir = os.path.join(str(tmp_path_module_scope), "source")
+    os.mkdir(repos_dir)
+    return repos_dir
+
+
 class BusRPCMock(InfrahubMessageBus):
     def __init__(self) -> None:
         self.response: List[InfrahubResponse] = []

@@ -1,0 +1,6 @@
+---
+
+check_definitions:
+  - name: "car_description_check"
+    file_path: "checks/car_overview.py"
+    class_name: "CarDescription"
