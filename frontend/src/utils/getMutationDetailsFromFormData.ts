@@ -1,4 +1,5 @@
 import * as R from "ramda";
+import { SCHEMA_ATTRIBUTE_KIND } from "../config/constants";
 import { iNodeSchema } from "../state/atoms/schema.atom";
 
 export type MutationMode = "create" | "update";
@@ -27,6 +28,12 @@ const getMutationDetailsFromFormData = (
 
     if (mode === "update" && existingObject) {
       const existingValue = existingObject[attribute.name]?.value;
+
+      if (existingValue && !updatedValue && attribute.kind === SCHEMA_ATTRIBUTE_KIND.DROPDOWN) {
+        // Set as null for dropdown attributes
+        updatedObject[attribute.name] = null;
+        return;
+      }
 
       if (mode === "update" && JSON.stringify(updatedValue) === JSON.stringify(existingValue)) {
         delete updatedObject[attribute.name];
