@@ -13,7 +13,7 @@ from infrahub_sdk.exceptions import GraphQLError
 CONTINENT_COUNTRIES = {
     "North America": ["United States of America", "Canada"],
     "South America": ["Mexico", "Brazil"],
-    "Afrika": ["Morocco", "Senegal"],
+    "Africa": ["Morocco", "Senegal"],
     "Europe": ["France", "Spain", "Italy"],
     "Asia": ["Japan", "China"],
     "Oceania": ["Australia", "New Zealand"],
@@ -493,7 +493,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
                 if intf_role == "upstream":
                     peer_group_name = (
-                        "UPSTREAM_ARELION" if "telia" in provider.name.value.lower() else "UPSTREAM_DEFAULT"
+                        "UPSTREAM_ARELION" if "arelion" in provider.name.value.lower() else "UPSTREAM_DEFAULT"
                     )
 
                     peer_ip = await client.create(
@@ -1210,3 +1210,6 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         await branch_scenario_remove_colt(site_name=sites[0]["name"], client=client, log=log)
         await branch_scenario_conflict_device(site_name=sites[3]["name"], client=client, log=log)
         await branch_scenario_conflict_platform(client=client, log=log)
+
+    sessions = await client.all(kind="InfraBGPSession", branch=branch)
+    log.info(sessions)
