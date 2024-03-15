@@ -176,7 +176,6 @@ class RelatedNodeBase:
 
         self._peer = None
         self._id: Optional[str] = None
-        self._initial_id: Optional[str] = None
         self._display_label: Optional[str] = None
         self._typename: Optional[str] = None
 
@@ -214,7 +213,6 @@ class RelatedNodeBase:
                     setattr(self, prop, prop_data)
                 else:
                     setattr(self, prop, None)
-        self._set_initial_id()
 
     @property
     def initialized(self) -> bool:
@@ -229,10 +227,6 @@ class RelatedNodeBase:
         return self._id
 
     @property
-    def has_update(self) -> bool:
-        return self._initial_id != self.id
-
-    @property
     def display_label(self) -> Optional[str]:
         if self._peer:
             return self._peer.display_label
@@ -243,11 +237,6 @@ class RelatedNodeBase:
         if self._peer:
             return self._peer.typename
         return self._typename
-
-    def _set_initial_id(self) -> None:
-        if self._initial_id:
-            return
-        self._initial_id = self.id
 
     def _generate_input_data(self) -> Dict[str, Any]:
         data = {}
@@ -320,7 +309,6 @@ class RelatedNode(RelatedNodeBase):
             raise Error("Unable to fetch the peer, id and/or typename are not defined")
 
         self._peer = await self._client.get(ids=[self.id], kind=self.typename, populate_store=True, branch=self._branch)
-        self._set_initial_id()
 
     @property
     def peer(self) -> InfrahubNode:
@@ -370,7 +358,6 @@ class RelatedNodeSync(RelatedNodeBase):
             raise Error("Unable to fetch the peer, id and/or typename are not defined")
 
         self._peer = self._client.get(ids=[self.id], kind=self.typename, populate_store=True, branch=self._branch)
-        self._set_initial_id()
 
     @property
     def peer(self) -> InfrahubNodeSync:
@@ -486,9 +473,10 @@ class RelationshipManager(RelationshipManagerBase):
         self.client = client
         self.node = node
 
-        self.initialized = data is not None
-
         super().__init__(name=name, schema=schema, branch=branch)
+
+        self.initialized = data is not None
+        self._has_update = data is not None
 
         if data is None:
             return
@@ -538,7 +526,6 @@ class RelationshipManager(RelationshipManagerBase):
             self.peers = rm.peers
             self.initialized = True
 
-        # maybe get them all at once if that works
         for peer in self.peers:
             await peer.fetch()  # type: ignore[misc]
 
@@ -595,9 +582,10 @@ class RelationshipManagerSync(RelationshipManagerBase):
         self.client = client
         self.node = node
 
-        self.initialized = data is not None
-
         super().__init__(name=name, schema=schema, branch=branch)
+
+        self.initialized = data is not None
+        self._has_update = data is not None
 
         if data is None:
             return
@@ -868,7 +856,9 @@ class InfrahubNodeBase:
             relationship_property = getattr(self, relationship)
             if not relationship_property or relationship not in data:
                 continue
-            if not relationship_property.initialized or not relationship_property.has_update:
+            if not relationship_property.initialized:
+                data.pop(relationship)
+            elif isinstance(relationship_property, RelationshipManagerBase) and not relationship_property.has_update:
                 data.pop(relationship)
 
         for item in original_data.keys():

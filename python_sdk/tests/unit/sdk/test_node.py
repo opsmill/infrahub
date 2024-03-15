@@ -1402,12 +1402,4 @@ async def test_relationships_excluded_input_data(client, location_schema, client
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=data)
 
-    assert node.tags.has_update is False
-    assert node.primary_tag.has_update is False
-
-    node.name.value = "JFK2"
-    input_data = node._generate_input_data(exclude_unmodified=True)["data"]
-
-    assert "tags" not in input_data["data"]
-    assert "primary_tag" not in input_data["data"]
-    assert input_data["data"]["name"] == {"value": "JFK2"}
+    assert node.tags.has_update is True
