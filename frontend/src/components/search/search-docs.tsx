@@ -72,7 +72,7 @@ const DocsResults = ({ breadcrumb, title, url }: SearchDocsResultProps) => {
           <span>{b}</span>
           <Icon icon="mdi:chevron-right" />
         </>
-      ))}{" "}
+      ))}
       <strong className="font-semibold">{title}</strong>
     </SearchResultItem>
   );
