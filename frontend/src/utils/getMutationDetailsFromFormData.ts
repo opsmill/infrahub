@@ -27,7 +27,7 @@ const getMutationDetailsFromFormData = (
     if (mode === "update" && existingObject) {
       const existingValue = existingObject[attribute.name]?.value;
 
-      if (mode === "update" && updatedValue === existingValue) {
+      if (mode === "update" && JSON.stringify(updatedValue) === JSON.stringify(existingValue)) {
         delete updatedObject[attribute.name];
       }
 
