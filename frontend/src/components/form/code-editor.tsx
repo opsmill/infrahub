@@ -4,7 +4,7 @@ import { CodeEditor } from "../editor/code-editor";
 
 type tOpsCodeEditor = {
   label: string;
-  value?: string;
+  value: string | null;
   onChange: (value: string) => void;
   className?: string;
   error?: FormFieldError;

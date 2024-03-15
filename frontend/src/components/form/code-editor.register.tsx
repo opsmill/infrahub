@@ -30,9 +30,14 @@ export const CodeEditorRegister = (props: Props) => {
         // Set the JSON as string in state
         setCurrentValue(value);
 
+        if (!value) {
+          // Replace empty string with valid "null"
+          setValue(inputRegister.name, null);
+        }
+
         try {
           // Store the value as JSON
-          const newValue = JSON.parse(value ?? "");
+          const newValue = JSON.parse(value);
           setValue(inputRegister.name, newValue);
         } catch (e) {
           console.log("e: ", e);
