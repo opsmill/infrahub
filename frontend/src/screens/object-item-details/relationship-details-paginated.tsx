@@ -241,15 +241,19 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               name={relationshipSchema?.label}
               value={
                 <>
-                  <StyledLink
-                    to={constructPath(
-                      getObjectDetailsUrl(
-                        relationshipsData.node?.id,
-                        relationshipsData.node?.__typename
-                      )
-                    )}>
-                    {relationshipsData.node?.display_label}
-                  </StyledLink>
+                  {relationshipsData.node?.id ? (
+                    <StyledLink
+                      to={constructPath(
+                        getObjectDetailsUrl(
+                          relationshipsData.node?.id,
+                          relationshipsData.node?.__typename
+                        )
+                      )}>
+                      {relationshipsData.node?.display_label}
+                    </StyledLink>
+                  ) : (
+                    "-"
+                  )}
 
                   {relationshipsData.properties && (
                     <div className="px-2">
