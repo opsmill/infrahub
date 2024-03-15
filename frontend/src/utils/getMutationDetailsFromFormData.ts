@@ -3,6 +3,7 @@ import { iNodeSchema } from "../state/atoms/schema.atom";
 
 export type MutationMode = "create" | "update";
 
+// TODO: refactor this important function for better maintenance
 const getMutationDetailsFromFormData = (
   schema: iNodeSchema | undefined,
   formData: any,
@@ -49,15 +50,19 @@ const getMutationDetailsFromFormData = (
     if (mode === "update" && existingObject) {
       if (isOneToOne) {
         const existingValue = existingObject[relationship.name]?.node?.id;
+        console.log("existingValue: ", existingValue);
 
         const updatedValue = updatedObject[relationship.name]?.id;
+        console.log("updatedValue: ", updatedValue);
 
-        if (JSON.stringify(updatedValue) === JSON.stringify(existingValue)) {
+        if (updatedValue === existingValue) {
+          console.log("OK 1");
           delete updatedObject[relationship.name];
           return;
         }
 
         if (!updatedValue && !existingValue) {
+          console.log("OK 2");
           delete updatedObject[relationship.name];
           return;
         }
@@ -90,7 +95,9 @@ const getMutationDetailsFromFormData = (
     }
 
     if (isOneToOne && updatedObject[relationship.name] && !updatedObject[relationship.name].id) {
-      delete updatedObject[relationship.name];
+      // Set to null to remove the relationship
+      updatedObject[relationship.name] = null;
+      return;
     }
 
     if (isOneToMany && updatedObject[relationship.name] && updatedObject[relationship.name].list) {
