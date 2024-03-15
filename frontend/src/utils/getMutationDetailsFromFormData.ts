@@ -31,7 +31,7 @@ const getMutationDetailsFromFormData = (
 
       if (existingValue && !updatedValue && attribute.kind === SCHEMA_ATTRIBUTE_KIND.DROPDOWN) {
         // Set as null for dropdown attributes
-        updatedObject[attribute.name] = null;
+        updatedObject[attribute.name] = { value: null };
         return;
       }
 
