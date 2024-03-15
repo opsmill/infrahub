@@ -169,7 +169,14 @@ const sidebars: SidebarsConfig = {
       ],
     },
     {
-      'Release Notes': ['release-notes/release-0_7_0', 'release-notes/release-0_6_0'],
+      'Release Notes': [
+        'release-notes/release-0_12',
+        'release-notes/release-0_11',
+        'release-notes/release-0_10',
+        'release-notes/release-0_9',
+        'release-notes/release-0_8',
+        'release-notes/release-0_7',
+        'release-notes/release-0_6'],
     },
   ],
 };

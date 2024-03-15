@@ -1,0 +1,83 @@
+---
+title: Release 0.11
+---
+
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>0.11.0</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>XX, 2024</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Alpha #5</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v0.11.0](https://github.com/opsmill/infrahub/releases/tag/infrahub-v0.11.0)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 0.11.0 - Alpha #5
+<!-- markdownlint-disable -->
+<!-- vale off -->
+
+## Main Changes
+
+### New test framework for user defined checks
+
+Infrahub now supports running unittests defined in external repositories as part of the CI pipeline within a proposed change.
+
+### Read only repositories
+
+This is a new type of Infrahub Repository that allows following a single external commit, branch, or tag. A read-only repository will never push changes to the associated external Git repository and will only pull updates when requested via a GraphQL mutation. See the documentation for more details.
+
+### Object and menu search
+
+The frontend has a new search feature that allows you to search for any object in the database, the search bar is placed in the header of the application, at the top. The sidebar menu also has a search bar to help you quickly retrieve a menu item and allows you to navigate across a large schema.
+
+### Database backup and restore
+
+New CLI commands to backup and restore a Neo4j Infrahub database. See the documentation for more details.
+
+### Initial implementation of logging framework to track the status of background tasks
+
+This first iteration allows for the possibility to track webhooks so that users can use the GUI to determine if all of the webhooks are working as expected. In future versions we include other components such as the syncing of repositories within this framework.
+
+### Additional controls for schema constraints
+
+This version brings stricter control when merging branches to disallow the merging of branches if there are schema violations. It adds validations for order_by, default_filter, display_labels settings.
+
+### Initial database migrations
+
+For now it is still required to rebuild the database between Infrahub versions as described in the migration guide below. In this version we took the first step to perform these migrations within Infrahub to allow for a simpler upgrade in the future.
+
+### Landing page
+
+A new landing page is available to get more informations about Infrahub and its integrations. Links to the documentation are available for the main features and some help is available to get started with the product.
+
+### Renaming of Jinja2 Transforms
+
+The new name for Jinja2 rendered content is Jinja2 Transforms. The previous name "rfile" will no longer be used.
+
+### Performance improvements
+
+The overall performance both within the frontend as well as the backend has been significantly improved. The interface should feel a lot more responsive and the backend will respond faster than seen in previous versions.
+
+This also includes performance improvements within the CI pipelines of a proposed change to limit the checks that are required to run. For artifact definitions Infrahub now evaluates the need to regenerate artifacts based on the diff between two branches and doesn't try to regenerate artifacts if it is clear that the operation isn't required.
+
+### Improvements to documentation
+
+The documentation framework has been completely replaced which will make it easier to find information from within the product.
+
+Various other improvements has been done throughout the documentation:
+
+### Readability cleanup
+
+Add documentation about the format and required fields for .infrahub.yml files
+Add topic and guide for repositories
