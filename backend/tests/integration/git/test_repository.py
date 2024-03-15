@@ -6,6 +6,8 @@ import pytest
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
+from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -27,6 +29,12 @@ class TestCreateRepository(TestInfrahubApp):
     ) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
         FileRepo(name="car-dealership", sources_directory=git_repos_source_dir_module_scope)
+        john = await Node.init(schema=TestKind.PERSON, db=db)
+        await john.new(db=db, name="John", height=175, age=25)
+        await john.save(db=db)
+        people = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
+        await people.new(db=db, name="people", members=[john])
+        await people.save(db=db)
 
     async def test_create_repository(
         self,

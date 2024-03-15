@@ -7,6 +7,7 @@ MANUFACTURER = NodeSchema(
     namespace="Testing",
     include_in_menu=True,
     label="Manufacturer",
+    default_filter="name__value",
     attributes=[
         AttributeSchema(name="name", kind="Text"),
         AttributeSchema(name="description", kind="Text", optional=True),

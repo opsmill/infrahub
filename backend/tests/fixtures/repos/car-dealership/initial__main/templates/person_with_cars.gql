@@ -1,0 +1,23 @@
+query PersonWithTheirCars($name: String!) {
+  TestingPerson(name__value: $name) {
+    edges {
+      node {
+        name {
+          value
+        }
+        age {
+          value
+        }
+        cars {
+          edges {
+            node {
+              name {
+                value
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
