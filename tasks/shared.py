@@ -8,7 +8,7 @@ from typing import Optional, Union
 from invoke import Context, UnexpectedExit
 from invoke.runners import Result
 
-from .utils import project_ver, str_to_bool
+from .utils import str_to_bool
 
 
 class DatabaseType(str, Enum):
@@ -32,9 +32,9 @@ CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4")
 here = os.path.abspath(os.path.dirname(__file__))
 TOP_DIRECTORY_NAME = os.path.basename(os.path.abspath(os.path.join(here, "..")))
 BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", re.sub(r"[^a-zA-Z0-9_/.]", "", TOP_DIRECTORY_NAME))
-PYTHON_VER = os.getenv("PYTHON_VER", "3.11")
-IMAGE_NAME = os.getenv("IMAGE_NAME", f"opsmill/{BUILD_NAME}-py{PYTHON_VER}")
-IMAGE_VER = os.getenv("IMAGE_VER", project_ver())
+PYTHON_VER = os.getenv("PYTHON_VER", "3.12")
+IMAGE_NAME = os.getenv("IMAGE_NAME", "registry.opsmill.io/opsmill/infrahub")
+IMAGE_VER = os.getenv("IMAGE_VER", "stable")
 PWD = os.getcwd()
 
 NBR_WORKERS = os.getenv("PYTEST_XDIST_WORKER_COUNT", 1)
@@ -74,11 +74,12 @@ TEST_SCALE_COMPOSE_FILES_MEMGRAPH = [
 ]
 TEST_SCALE_OVERRIDE_FILE_NAME = "development/docker-compose-test-scale-override.yml"
 
-IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", f"opsmill/{BUILD_NAME}-py{PYTHON_VER}")
-IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER", project_ver())
+IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", "registry.opsmill.io/opsmill/infrahub")
+IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER", "stable")
 
 OVERRIDE_FILE_NAME = "development/docker-compose.override.yml"
 DEFAULT_FILE_NAME = "development/docker-compose.default.yml"
+LOCAL_FILE_NAME = "development/docker-compose.local-build.yml"
 COMPOSE_FILES_MEMGRAPH = [
     "development/docker-compose-deps.yml",
     "development/docker-compose-database-memgraph.yml",
@@ -202,6 +203,9 @@ def build_compose_files_cmd(database: str) -> str:
         COMPOSE_FILES.append(OVERRIDE_FILE_NAME)
     else:
         COMPOSE_FILES.append(DEFAULT_FILE_NAME)
+
+    if "local" in IMAGE_VER:
+        COMPOSE_FILES.append(LOCAL_FILE_NAME)
 
     return f"-f {' -f '.join(COMPOSE_FILES)}"
 

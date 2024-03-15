@@ -9,6 +9,7 @@ services:
       dockerfile: development/Dockerfile
       target: backend
     image: "${IMAGE_NAME}:${IMAGE_VER}"
+    pull_policy: always
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app
     depends_on:
@@ -27,7 +28,6 @@ services:
       - "INFRAHUB_ALLOW_ANONYMOUS_ACCESS=true"
       - "INFRAHUB_DB_TYPE=${INFRAHUB_DB_TYPE}"
     volumes:
-      - ../:/source
       - "storage_data:/opt/infrahub/storage"
     tty: true
     healthcheck:
@@ -45,6 +45,7 @@ services:
       dockerfile: development/Dockerfile
       target: backend
     image: "${IMAGE_NAME}:${IMAGE_VER}"
+    pull_policy: always
     command: infrahub git-agent start --debug
     restart: unless-stopped
     depends_on:
@@ -58,7 +59,6 @@ services:
       - "INFRAHUB_SDK_TIMEOUT=20"
       - "INFRAHUB_DB_TYPE=${INFRAHUB_DB_TYPE}"
     volumes:
-      - ../:/source
       - "git_data:/opt/infrahub/git"
       - "git_remote_data:/remote"
     tty: true

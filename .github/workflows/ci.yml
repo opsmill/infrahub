@@ -21,7 +21,7 @@ env:
   INFRAHUB_BROKER_ADDRESS: message-queue
   INFRAHUB_LOG_LEVEL: CRITICAL
   INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
-  INFRAHUB_IMAGE_VER: "testing"
+  INFRAHUB_IMAGE_VER: "local"
   PYTEST_XDIST_WORKER_COUNT: 4
   INFRAHUB_TEST_IN_DOCKER: 1
   BUILDKITE_ANALYTICS_BRANCH: ${{ github.ref }}
@@ -244,7 +244,7 @@ jobs:
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
       - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
@@ -320,7 +320,7 @@ jobs:
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
       - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build Test Image"
@@ -359,7 +359,7 @@ jobs:
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
       - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build Test Image"
@@ -402,7 +402,7 @@ jobs:
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
       - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build Test Image"
@@ -597,7 +597,7 @@ jobs:
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
       - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
@@ -681,7 +681,7 @@ jobs:
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
       - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
@@ -786,7 +786,7 @@ jobs:
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
       - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
