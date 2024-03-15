@@ -52,7 +52,7 @@ const getMutationDetailsFromFormData = (
 
         const updatedValue = updatedObject[relationship.name]?.id;
 
-        if (updatedValue === existingValue) {
+        if (JSON.stringify(updatedValue) === JSON.stringify(existingValue)) {
           delete updatedObject[relationship.name];
           return;
         }
@@ -68,11 +68,7 @@ const getMutationDetailsFromFormData = (
 
         const updatedIds = updatedObject[relationship.name]?.list?.sort() ?? [];
 
-        if (
-          existingValue &&
-          updatedIds.length &&
-          JSON.stringify(updatedIds) === JSON.stringify(existingValue)
-        ) {
+        if (JSON.stringify(updatedIds) === JSON.stringify(existingValue)) {
           delete updatedObject[relationship.name];
           return;
         }
