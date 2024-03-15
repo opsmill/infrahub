@@ -23,6 +23,7 @@ jobs:
           tags: |
             type=match,pattern=infrahub-v(\d+\.\d+\.\d+),group=1
             type=match,pattern=infrahub-v(\d+\.\d+),group=1
+            type=raw,value=stable
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
 
