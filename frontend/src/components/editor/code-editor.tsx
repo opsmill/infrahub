@@ -20,7 +20,7 @@ export const CodeEditor = (props: any) => {
   const handleCopy = async () => {
     setIsCopied(true);
 
-    await navigator.clipboard.writeText(props.value);
+    await navigator.clipboard.writeText(value);
 
     toast(<Alert message="Content copied" type={ALERT_TYPES.INFO} />);
 

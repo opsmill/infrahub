@@ -152,12 +152,13 @@ export const DynamicControl = (props: DynamicFieldData) => {
       );
     }
     case "json": {
-      const objectValue = existingValue ?? value;
-
-      const jsonValue = typeof objectValue === "string" ? objectValue : JSON.stringify(objectValue);
-
       return (
-        <CodeEditorRegister {...props} value={jsonValue} register={register} setValue={setValue} />
+        <CodeEditorRegister
+          {...props}
+          value={existingValue ?? value}
+          register={register}
+          setValue={setValue}
+        />
       );
     }
     case "color": {
