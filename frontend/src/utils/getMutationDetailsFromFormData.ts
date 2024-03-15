@@ -57,19 +57,15 @@ const getMutationDetailsFromFormData = (
     if (mode === "update" && existingObject) {
       if (isOneToOne) {
         const existingValue = existingObject[relationship.name]?.node?.id;
-        console.log("existingValue: ", existingValue);
 
         const updatedValue = updatedObject[relationship.name]?.id;
-        console.log("updatedValue: ", updatedValue);
 
         if (updatedValue === existingValue) {
-          console.log("OK 1");
           delete updatedObject[relationship.name];
           return;
         }
 
         if (!updatedValue && !existingValue) {
-          console.log("OK 2");
           delete updatedObject[relationship.name];
           return;
         }
