@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://schema.infrahub.app/develop/schema.schema.json
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
 version: '1.0'
 generics:
@@ -62,7 +62,7 @@ generics:
       - name: description
         kind: Text
         optional: true
-      - name: Color
+      - name: color
         kind: Text
         optional: true
     relationships:
@@ -185,7 +185,7 @@ nodes:
     relationships:
       - cardinality: many
         identifier: poweroutlet__type
-        name: PowerOutlet
+        name: power_outlet
         optional: true
         peer: InfraPowerOutlet
   - name: PowerPortType
@@ -201,6 +201,6 @@ nodes:
     relationships:
       - cardinality: many
         identifier: powerport__type
-        name: PowerPort
+        name: power_port
         optional: true
         peer: InfraPowerPort

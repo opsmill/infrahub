@@ -87,6 +87,11 @@ On a relationship of cardinality many, it's now possible to define a minimum or 
         min_count: 2
 ```
 
+#### New Version of the Data & Time Picker
+
+The widget to select the active date and time has been updated to improve its usability.
+In addition to this change, all edits have been disabled while viewing past data to avoid any confusions and guarantee the immutability of the database.
+
 ### CI Pipeline
 
 The CI Pipeline as part of a Proposed Change has been significantly improved to provide more visibility to the user.
@@ -116,14 +121,14 @@ All information are now accessible, in the future the page will be updated to mo
 #### Schema Documentation
 
 The internal schema has been refactored in order to generate better documentation and to be able to provide better validation of new schema.
-A new definition of the internal schema has been published in JSONSchema format and it's accessible at `https://schema.infrahub.app/develop/schema.schema.json`
+A new definition of the internal schema has been published in JSONSchema format and it's accessible at `https://schema.infrahub.app/infrahub/schema/latest.json`
 
 Multiple Editors are able to leverage this file to provide inline documentation and validation.
 
 In VS Code, [the YAML Plugin](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml) support file with the `yaml-language-server` marker at the top of the file.
 
 ```yaml {1}
-# yaml-language-server: $schema=https://schema.infrahub.app/develop/schema.schema.json
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
 version: '1.0'
 generics:
@@ -162,9 +167,9 @@ The project has been packaged as a dedicated Python package and it's now availab
 
 #### Documentation Update
 
-There's been multiple improvement to the documentation including:
+There have been multiple improvements to the documentation, including:
 
 - A new topic page about Immutability and Version Control
 - A new topic page about the Resources testing framework
 - A new guide on how to create your own schema
-- The Python SDK section has been reorganized to have Guides and Reference and it includes more information
+- The Python SDK section has been reorganized to have Guides, a Reference, and include more information
