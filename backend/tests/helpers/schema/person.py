@@ -12,7 +12,9 @@ PERSON = NodeSchema(
         AttributeSchema(name="name", kind="Text"),
         AttributeSchema(name="description", kind="Text", optional=True),
         AttributeSchema(name="height", kind="Number", optional=True),
+        AttributeSchema(name="age", kind="Number", optional=True),
     ],
+    inherit_from=["LineageOwner", "LineageSource"],
     relationships=[
         RelationshipSchema(
             name="cars",

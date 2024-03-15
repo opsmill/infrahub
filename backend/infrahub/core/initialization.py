@@ -178,6 +178,7 @@ async def create_branch(
         hierarchy_level=2,
         description=description,
         is_default=False,
+        sync_with_git=False,
         created_at=at,
         branched_from=at,
         is_isolated=isolated,

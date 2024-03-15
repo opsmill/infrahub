@@ -6,7 +6,7 @@ class CarDescription(InfrahubCheck):
 
     def validate(self, data: dict) -> None:
         for car in data["TestingCar"]["edges"]:
-            name = car["node"]["status"]["value"]
-            description = car["node"]["status"]["value"]
+            name = car["node"]["name"]["value"]
+            description = car["node"]["description"]["value"]
             if not description:
                 self.log_error(message=f"The {name} car doesn't have a description, how will we sell it?")

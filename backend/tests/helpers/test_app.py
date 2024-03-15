@@ -84,7 +84,7 @@ class TestInfrahubApp:
         await app_initialization(app)
         return InfrahubTestClient(app=app)
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     async def client(
         self, test_client: InfrahubTestClient, api_token: str, bus_simulator: BusSimulator
     ) -> InfrahubClient:
