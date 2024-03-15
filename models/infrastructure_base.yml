@@ -116,7 +116,7 @@ generics:
         cardinality: one
         kind: Attribute
         identifier: connected__endpoint
-  - name: Generic # Location
+  - name: Generic
     namespace: Location
     description: "Generic hierarchical location"
     label: "Location"
@@ -130,7 +130,7 @@ generics:
       - name: description
         kind: Text
         optional: true
-  - name: Generic # Organization
+  - name: Generic
     namespace: Organization
     label: Organization
     description: An organization represent a legal entity, a company.
