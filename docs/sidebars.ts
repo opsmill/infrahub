@@ -41,7 +41,7 @@ const sidebars: SidebarsConfig = {
       link: {type: 'doc', id: 'guides/readme'},
       items: [
         'guides/installation',
-        'guides/schema',
+        'guides/create-schema',
         'guides/repository',
         'guides/jinja2-transform',
         'guides/python-transform',
