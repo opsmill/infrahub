@@ -176,6 +176,7 @@ class RelatedNodeBase:
 
         self._peer = None
         self._id: Optional[str] = None
+        self._initial_id: Optional[str] = None
         self._display_label: Optional[str] = None
         self._typename: Optional[str] = None
 
@@ -213,6 +214,7 @@ class RelatedNodeBase:
                     setattr(self, prop, prop_data)
                 else:
                     setattr(self, prop, None)
+        self._set_initial_id()
 
     @property
     def initialized(self) -> bool:
@@ -227,6 +229,10 @@ class RelatedNodeBase:
         return self._id
 
     @property
+    def has_update(self) -> bool:
+        return self._initial_id != self.id
+
+    @property
     def display_label(self) -> Optional[str]:
         if self._peer:
             return self._peer.display_label
@@ -237,6 +243,11 @@ class RelatedNodeBase:
         if self._peer:
             return self._peer.typename
         return self._typename
+
+    def _set_initial_id(self) -> None:
+        if self._initial_id:
+            return
+        self._initial_id = self.id
 
     def _generate_input_data(self) -> Dict[str, Any]:
         data = {}
@@ -309,6 +320,7 @@ class RelatedNode(RelatedNodeBase):
             raise Error("Unable to fetch the peer, id and/or typename are not defined")
 
         self._peer = await self._client.get(ids=[self.id], kind=self.typename, populate_store=True, branch=self._branch)
+        self._set_initial_id()
 
     @property
     def peer(self) -> InfrahubNode:
@@ -358,6 +370,7 @@ class RelatedNodeSync(RelatedNodeBase):
             raise Error("Unable to fetch the peer, id and/or typename are not defined")
 
         self._peer = self._client.get(ids=[self.id], kind=self.typename, populate_store=True, branch=self._branch)
+        self._set_initial_id()
 
     @property
     def peer(self) -> InfrahubNodeSync:
@@ -383,8 +396,6 @@ class RelatedNodeSync(RelatedNodeBase):
 class RelationshipManagerBase:
     """Base class for RelationshipManager and RelationshipManagerSync"""
 
-    initialized: bool = False
-
     def __init__(self, name: str, branch: str, schema: RelationshipSchema):
         """
         Args:
@@ -392,6 +403,8 @@ class RelationshipManagerBase:
             branch (str): The branch where the relationship resides.
             schema (RelationshipSchema): The schema of the relationship.
         """
+        self.initialized: bool = False
+        self._has_update: bool = False
         self.name = name
         self.schema = schema
         self.branch = branch
@@ -405,6 +418,10 @@ class RelationshipManagerBase:
     @property
     def peer_ids(self) -> List[str]:
         return [peer.id for peer in self.peers if peer.id]
+
+    @property
+    def has_update(self) -> bool:
+        return self._has_update
 
     def _generate_input_data(self) -> List[Dict]:
         return [peer._generate_input_data() for peer in self.peers]
@@ -521,6 +538,7 @@ class RelationshipManager(RelationshipManagerBase):
             self.peers = rm.peers
             self.initialized = True
 
+        # maybe get them all at once if that works
         for peer in self.peers:
             await peer.fetch()  # type: ignore[misc]
 
@@ -531,14 +549,8 @@ class RelationshipManager(RelationshipManagerBase):
         new_node = RelatedNode(schema=self.schema, client=self.client, branch=self.branch, data=data)
 
         if new_node.id and new_node.id not in self.peer_ids:
-            self.peers.append(
-                RelatedNode(
-                    schema=self.schema,
-                    client=self.client,
-                    branch=self.branch,
-                    data=data,
-                )
-            )
+            self.peers.append(new_node)
+            self._has_update = True
 
     def extend(self, data: Iterable[Union[str, RelatedNode, dict]]) -> None:
         """Add new peers to this relationship."""
@@ -556,6 +568,7 @@ class RelationshipManager(RelationshipManagerBase):
                 raise IndexError(f"Unexpected situation, the node with the index {idx} should be {node_to_remove.id}")
 
             self.peers.pop(idx)
+            self._has_update = True
 
 
 class RelationshipManagerSync(RelationshipManagerBase):
@@ -644,14 +657,8 @@ class RelationshipManagerSync(RelationshipManagerBase):
         new_node = RelatedNodeSync(schema=self.schema, client=self.client, branch=self.branch, data=data)
 
         if new_node.id and new_node.id not in self.peer_ids:
-            self.peers.append(
-                RelatedNodeSync(
-                    schema=self.schema,
-                    client=self.client,
-                    branch=self.branch,
-                    data=data,
-                )
-            )
+            self.peers.append(new_node)
+            self._has_update = True
 
     def extend(self, data: Iterable[Union[str, RelatedNodeSync, dict]]) -> None:
         """Add new peers to this relationship."""
@@ -669,6 +676,7 @@ class RelationshipManagerSync(RelationshipManagerBase):
                 raise IndexError(f"Unexpected situation, the node with the index {idx} should be {node_to_remove.id}")
 
             self.peers.pop(idx)
+            self._has_update = True
 
 
 class InfrahubNodeBase:
@@ -802,7 +810,7 @@ class InfrahubNodeBase:
                 if variable_names := rel_data.get("variables"):
                     variables.update(variable_names)
 
-            elif rel_data and isinstance(rel_data, list):
+            elif isinstance(rel_data, list):
                 data[item_name] = rel_data
             elif rel_schema.cardinality == RelationshipCardinality.MANY:
                 data[item_name] = []
@@ -823,7 +831,8 @@ class InfrahubNodeBase:
 
     @staticmethod
     def _strip_unmodified_dict(data: dict, original_data: dict, variables: dict, item: str) -> None:
-        if item in original_data and isinstance(original_data[item], dict) and isinstance(data.get(item), dict):
+        data_item = data.get(item)
+        if item in original_data and isinstance(original_data[item], dict) and isinstance(data_item, dict):
             for item_key in original_data[item].keys():
                 for property_name in PROPERTIES_OBJECT:
                     if item_key == property_name and isinstance(original_data[item][property_name], dict):
@@ -849,15 +858,19 @@ class InfrahubNodeBase:
                         data[item].pop(item_key)
                         variables.pop(variable_key)
 
-        if not data[item]:
+        # TODO: I do not feel _great_ about this
+        if not data_item and data_item != []:
             data.pop(item)
 
     def _strip_unmodified(self, data: dict, variables: dict) -> Tuple[dict, dict]:
         original_data = self._data or {}
         for relationship in self._relationships:
             relationship_property = getattr(self, relationship)
-            if relationship_property and not relationship_property.initialized and relationship in data:
+            if not relationship_property or relationship not in data:
+                continue
+            if not relationship_property.initialized or not relationship_property.has_update:
                 data.pop(relationship)
+
         for item in original_data.keys():
             if item in data.keys():
                 if data[item] == original_data[item]:
