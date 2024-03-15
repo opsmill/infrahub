@@ -33,9 +33,12 @@ export INFRAHUB_METRICS_PORT=8001
 export INFRAHUB_DB_TYPE=memgraph # Accepts neo4j or memgraph
 export INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN="${ADMIN_TOKEN}" # Random string which can be generated using: openssl rand -hex 16
 export INFRAHUB_STORAGE_LOCAL_PATH="${HOME}/Development/infrahub-storage"
+export INFRAHUB_IMAGE_VER=local # Force building a local image instead of pulling one from the registry
 ```
 
 The exported environment variables are very important and must be set before moving to another step. Without these, you will likely face some errors or issues later.
+
+Setting `INFRAHUB_IMAGE_VER=local` is important because it tells Docker to do a fresh build and to bind mount the Infrahub repository inside the containers (this ensures containers are in sync with your local code).
 
 ## Required services
 
