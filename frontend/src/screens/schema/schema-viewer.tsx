@@ -32,6 +32,7 @@ export const SchemaViewerStack = ({ className = "" }: { className: string }) => 
               setKinds(nextKinds);
             }}
             style={{
+              transition: "transform 300ms ease-in-out",
               transform: `translate(${position * 10}px, ${position * 10}px)`,
               zIndex: index,
             }}
