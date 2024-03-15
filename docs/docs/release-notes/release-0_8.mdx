@@ -1,0 +1,80 @@
+---
+title: Release 0.8
+---
+
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>0.8.0</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>November 2nd, 2023</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Alpha #2</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[0.8.0](https://github.com/opsmill/infrahub/releases/tag/0.8.0)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 0.8.0 - Alpha #2
+
+## Main Changes
+
+### Conflict resolution for proposed changes
+
+When working with a proposed change and there are data conflicts between the source and target branch,
+the system now lets you specify how you want to resolve the conflict when merging. I.e. if you want to
+keep the data from the source branch of use what's already in the target branch.
+
+### Python SDK
+
+The Python SDK code now lives its own package and has been renamed from infrahub_client -> infrahub_sdk.
+
+### Friendlier error messages within the frontend
+
+The frontend how displays error messages from GraphQL that are easier to understand.
+
+### Change URL schema in the frontend
+
+The namespace of an object is now included in the URL to avoid conflicting URLs between namespaces.
+
+### Added support for loading multiple schema files and the ability to load from a git repository
+
+Previously you had to use the API or infrahubctl to load schema definitions into Infrahub. A third option
+is now to specify these files in an external git repository. Multiple files can be specified to avoid working
+with very large files for complex schemas.
+
+### Add ability to query nodes based on lineage information
+
+Now you are able to query nodes using lineage information such as owner. So it's possible to query for
+all nodes that are owned by a specific account.
+
+### Add support for specifying a UUID of nodes that are being created
+
+Previously the ID of a node was always determined by the system, now it's possible to specify a custom uuid
+when creating objects. For example when syncing from another system, it would now be possible to keep uuids
+used in that other system.
+
+### Add checks for Artifact on a proposed change
+
+When opening a proposed change the system will run checks for any artifact definitions that are defined
+so that it's possible to see how a proposed change might change an artifact and also if the artifact can
+be created successfully or if there is an error that should be resolved before merging.
+
+### Add ability to run checks for merge conflicts in Git
+
+When there are repositories tied to a proposed change using non data-only branches the internal CI
+system will now check if there are any merge conflicts within the git repositories that needs to be
+resolved before merging the proposed change.
+
+### Add the ability to run user defined checks for a proposed change
+
+It's possible to specify user defined checks within an external repository, these can then be executed
+as part of a proposed change within the internal CI system.
