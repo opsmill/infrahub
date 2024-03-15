@@ -1386,3 +1386,20 @@ async def test_read_only_attr(
         },
     }
     assert address.computed_address.value == "1234 Fake Street 123ABC"
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_relationships_excluded_input_data(client, location_schema, client_type):
+    data = {
+        "name": {"value": "JFK1"},
+        "description": {"value": "JFK Airport"},
+        "type": {"value": "SITE"},
+        "primary_tag": "pppppppp",
+        "tags": [{"id": "aaaaaa"}, {"id": "bbbb"}],
+    }
+    if client_type == "standard":
+        node = InfrahubNode(client=client, schema=location_schema, data=data)
+    else:
+        node = InfrahubNodeSync(client=client, schema=location_schema, data=data)
+
+    assert node.tags.has_update is True

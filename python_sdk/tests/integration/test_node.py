@@ -296,3 +296,42 @@ class TestInfrahubNode:
 
         organization = await client.get("CoreOrganization", name__value="organization-1")
         assert [t.id for t in organization.tags.peers] == [tag.id]
+
+    async def test_relationships_not_overwritten(
+        self, client: InfrahubClient, load_builtin_schema, schema_extension_01
+    ):
+        await client.schema.load(schemas=[schema_extension_01])
+        rack = await client.create("InfraRack", name="rack-1")
+        await rack.save()
+        tag = await client.create("BuiltinTag", name="blizzow")
+        # TODO: is it a bug that we need to save the object and fetch the tags before adding to a RelationshipManager now?
+        await tag.save()
+        await tag.racks.fetch()
+        tag.racks.add(rack)
+        await tag.save()
+        tag_2 = await client.create("BuiltinTag", name="blizzow2")
+        await tag_2.save()
+
+        # the "rack" object has no link to the "tag" object here
+        # rack.tags.peers is empty
+        rack.name.value = "New Rack Name"
+        await rack.save()
+
+        # assert that the above rack.save() did not overwrite the existing Rack-Tag relationship
+        refreshed_rack = await client.get("InfraRack", id=rack.id)
+        await refreshed_rack.tags.fetch()
+        assert [t.id for t in refreshed_rack.tags.peers] == [tag.id]
+
+        # check that we can purposefully remove a tag
+        refreshed_rack.tags.remove(tag.id)
+        await refreshed_rack.save()
+        rack_without_tag = await client.get("InfraRack", id=rack.id)
+        await rack_without_tag.tags.fetch()
+        assert rack_without_tag.tags.peers == []
+
+        # check that we can purposefully add a tag
+        rack_without_tag.tags.add(tag_2)
+        await rack_without_tag.save()
+        refreshed_rack_with_tag = await client.get("InfraRack", id=rack.id)
+        await refreshed_rack_with_tag.tags.fetch()
+        assert [t.id for t in refreshed_rack_with_tag.tags.peers] == [tag_2.id]
