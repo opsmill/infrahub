@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 import pytest
 from infrahub_sdk import InfrahubClient
 
@@ -12,7 +14,6 @@ from infrahub.database import InfrahubDatabase
 from .shared import (
     CAR_KIND,
     MANUFACTURER_KIND_01,
-    MANUFACTURER_KIND_03,
     PERSON_KIND,
     TAG_KIND,
     TestSchemaLifecycleBase,
@@ -22,7 +23,7 @@ from .shared import (
 # pylint: disable=unused-argument
 
 
-class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
+class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     @property
     def branch1(self) -> Branch:
         return pytest.state["branch1"]  # type: ignore[index]
@@ -125,32 +126,75 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
 
         return objs
 
+    @pytest.fixture(scope="class")
+    def schema_person_tag(self, schema_person_base) -> Dict[str, Any]:
+        schema_person_base["relationships"] = [
+            {
+                "name": "tags",
+                "kind": "Generic",
+                "optional": True,
+                "peer": "TestingTag",
+                "cardinality": "many",
+            }
+        ]
+        return schema_person_base
+
+    @pytest.fixture(scope="class")
+    def schema_car_main_driver(self, schema_car_base) -> Dict[str, Any]:
+        assert schema_car_base["relationships"][0]["name"] == "owner"
+        schema_car_base["relationships"][0]["name"] = "main_driver"
+        return schema_car_base
+
+    @pytest.fixture(scope="class")
+    def schema_tag_no_persons(self, schema_tag_base) -> Dict[str, Any]:
+        assert schema_tag_base["relationships"][1]["name"] == "persons"
+        schema_tag_base["relationships"][1]["state"] = "absent"
+        return schema_tag_base
+
+    @pytest.fixture(scope="class")
+    def schema_step02(
+        self, schema_car_main_driver, schema_person_tag, schema_manufacturer_base, schema_tag_base
+    ) -> Dict[str, Any]:
+        return {
+            "version": "1.0",
+            "nodes": [schema_person_tag, schema_car_main_driver, schema_manufacturer_base, schema_tag_base],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_step03(
+        self, schema_car_main_driver, schema_person_tag, schema_manufacturer_base, schema_tag_no_persons
+    ) -> Dict[str, Any]:
+        return {
+            "version": "1.0",
+            "nodes": [schema_person_tag, schema_car_main_driver, schema_manufacturer_base, schema_tag_no_persons],
+        }
+
     async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, branch=self.branch1)
         assert len(persons) == 3
 
-    async def test_step02_check_attr_add_rename(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
-    ):
-        person_schema = registry.schema.get_node_schema(name=PERSON_KIND)
-        attr = person_schema.get_attribute(name="name")
+    async def test_step02_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02):
+        car_schema = registry.schema.get_node_schema(name=CAR_KIND)
+        rel = car_schema.get_relationship(name="owner")
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
-        schema_step02["nodes"][0]["attributes"][0]["id"] = attr.id
+        assert schema_step02["nodes"][1]["name"] == "Car"
+        assert schema_step02["nodes"][1]["relationships"][0]["name"] == "main_driver"
+        schema_step02["nodes"][1]["relationships"][0]["id"] = rel.id
 
         success, response = await client.schema.check(schemas=[schema_step02], branch=self.branch1.name)
-        assert success
+
         assert response == {
             "diff": {
                 "added": {},
                 "changed": {
-                    "TestingPerson": {
+                    "TestingCar": {
                         "added": {},
                         "changed": {
-                            "attributes": {
-                                "added": {"lastname": None},
+                            "relationships": {
+                                "added": {},
                                 "changed": {
-                                    "firstname": {
+                                    "main_driver": {
                                         "added": {},
                                         "changed": {"name": None},
                                         "removed": {},
@@ -161,19 +205,31 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
                         },
                         "removed": {},
                     },
+                    "TestingPerson": {
+                        "added": {},
+                        "changed": {
+                            "relationships": {
+                                "added": {"tags": None},
+                                "changed": {},
+                                "removed": {},
+                            },
+                        },
+                        "removed": {},
+                    },
                 },
                 "removed": {},
             },
         }
+        assert success
 
-    async def test_step02_load_attr_add_rename(
-        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
-    ):
-        person_schema = registry.schema.get_node_schema(name=PERSON_KIND, branch=self.branch1)
-        attr = person_schema.get_attribute(name="name")
+    async def test_step02_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02):
+        car_schema = registry.schema.get_node_schema(name=CAR_KIND)
+        rel = car_schema.get_relationship(name="owner")
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
-        schema_step02["nodes"][0]["attributes"][0]["id"] = attr.id
+        assert schema_step02["nodes"][1]["name"] == "Car"
+        assert schema_step02["nodes"][1]["relationships"][0]["name"] == "main_driver"
+        schema_step02["nodes"][1]["relationships"][0]["id"] = rel.id
 
         # Load the new schema and apply the migrations
         success, response = await client.schema.load(schemas=[schema_step02], branch=self.branch1.name)
@@ -186,64 +242,34 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert branches[self.branch1.name].has_schema_changes is True
 
         # Ensure that we can query the nodes with the new schema in BRANCH1
-        persons = await registry.manager.query(
-            db=db, schema=PERSON_KIND, filters={"firstname__value": "John"}, branch=self.branch1
+        john_cars = await registry.manager.query(
+            db=db, schema=CAR_KIND, filters={"main_driver__name__value": "John"}, branch=self.branch1
         )
-        assert len(persons) == 1
-        john = persons[0]
-        assert john.firstname.value == "John"  # type: ignore[attr-defined]
-
-        # Set a value to the new attribute
-        john.lastname.value = "Doe"  # type: ignore[attr-defined]
-        await john.save(db=db)
+        assert len(john_cars) == 2
+        john = await john_cars[0].main_driver.get_peer(db=db)  # type: ignore[attr-defined]
+        assert john.id == initial_dataset["john"]
+        tags = await john.tags.get_peers(db=db)
+        assert len(tags) == 2
 
         # And ensure that we can still query them with the original schema in MAIN
-        persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"name__value": "John"})
-        assert len(persons) == 1
-        john = persons[0]
-        assert john.name.value == "John"  # type: ignore[attr-defined]
+        john_cars_main = await registry.manager.query(
+            db=db, schema=PERSON_KIND, filters={"main_driver__name__value": "John"}
+        )
+        assert len(john_cars_main) == 2
 
     async def test_step03_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
-        manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01, branch=self.branch1)
-
-        # Insert the ID of the attribute name into the schema in order to rename it firstname
-        assert schema_step03["nodes"][2]["name"] == "CarMaker"
-        schema_step03["nodes"][2]["id"] = manufacturer_schema.id
-
         success, response = await client.schema.check(schemas=[schema_step03], branch=self.branch1.name)
         assert response == {
             "diff": {
                 "added": {},
                 "changed": {
-                    "TestingCar": {
+                    "TestingTag": {
                         "added": {},
                         "changed": {
                             "relationships": {
                                 "added": {},
-                                "changed": {
-                                    "manufacturer": {
-                                        "added": {},
-                                        "changed": {"peer": None},
-                                        "removed": {},
-                                    },
-                                },
-                                "removed": {},
-                            },
-                        },
-                        "removed": {},
-                    },
-                    "TestingCarMaker": {
-                        "added": {},
-                        "changed": {"label": None, "name": None},
-                        "removed": {},
-                    },
-                    "TestingPerson": {
-                        "added": {},
-                        "changed": {
-                            "attributes": {
-                                "added": {},
                                 "changed": {},
-                                "removed": {"height": None},
+                                "removed": {"persons": None},
                             },
                         },
                         "removed": {},
@@ -255,79 +281,53 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert success
 
     async def test_step03_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
-        manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01, branch=self.branch1)
-
-        # Insert the ID of the attribute name into the schema in order to rename it firstname
-        assert schema_step03["nodes"][2]["name"] == "CarMaker"
-        schema_step03["nodes"][2]["id"] = manufacturer_schema.id
-
         success, response = await client.schema.load(schemas=[schema_step03], branch=self.branch1.name)
         assert response is None
         assert success
 
-        # Ensure that we can query the existing node with the new schema
-        # person_schema = registry.schema.get(name=PERSON_KIND)
-        persons = await registry.manager.query(
-            db=db, schema=PERSON_KIND, filters={"firstname__value": "John"}, branch=self.branch1
-        )
-        assert len(persons) == 1
-        john = persons[0]
-        assert not hasattr(john, "height")
+        john = await registry.manager.get_one(db=db, id=initial_dataset["john"], branch=self.branch1)
+        assert john
+        tags = await john.tags.get_peers(db=db)  # type: ignore[attr-defined]
+        assert len(tags) == 2
 
-        manufacturers = await registry.manager.query(
-            db=db, schema=MANUFACTURER_KIND_03, filters={"name__value": "renault"}, branch=self.branch1
-        )
-        assert len(manufacturers) == 1
-        renault = manufacturers[0]
-        renault_cars = await renault.cars.get_peers(db=db)  # type: ignore[attr-defined]
-        assert len(renault_cars) == 2
+        red_branch = await registry.manager.get_one(db=db, id=initial_dataset["red"], branch=self.branch1)
+        assert not hasattr(red_branch, "persons")
+
+        red_main = await registry.manager.get_one(db=db, id=initial_dataset["red"])
+        assert red_main
+        persons = await red_main.persons.get_peers(db=db)  # type: ignore[attr-defined]
+        assert len(persons) == 1
 
     async def test_rebase(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset):
         branch = await client.branch.rebase(branch_name=self.branch1.name)
         assert branch
 
-        # Validate that all data added to main after the creation of the branch has been migrated properly
-        persons = await registry.manager.query(
-            db=db, schema=PERSON_KIND, filters={"firstname__value": "Jane"}, branch=self.branch1
+        # Ensure that we can query the nodes with the new schema in BRANCH1
+        jane_cars = await registry.manager.query(
+            db=db, schema=CAR_KIND, filters={"main_driver__name__value": "Jane"}, branch=self.branch1
         )
-        assert len(persons) == 1
-        jane = persons[0]
-        assert not hasattr(jane, "height")
+        assert len(jane_cars) == 2
+        jane = await jane_cars[0].main_driver.get_peer(db=db)  # type: ignore[attr-defined]
+        assert jane.id == initial_dataset["jane"]
+        tags = await jane.tags.get_peers(db=db)
+        assert len(tags) == 1
 
-        manufacturers = await registry.manager.query(
-            db=db, schema=MANUFACTURER_KIND_03, filters={"name__value": "honda"}, branch=self.branch1
-        )
-        assert len(manufacturers) == 1
-        honda = manufacturers[0]
-        honda_cars = await honda.cars.get_peers(db=db)  # type: ignore[attr-defined]
-        assert len(honda_cars) == 2
+    async def test_merge(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset):
+        branch = await client.branch.merge(branch_name=self.branch1.name)
+        assert branch
 
-    async def test_step04_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
-        tag_schema = registry.schema.get_node_schema(name=TAG_KIND, branch=self.branch1)
+        # Ensure that we can query the nodes with the new schema in MAIN
+        # Ensure that we can query the nodes with the new schema in BRANCH1
+        jane_cars = await registry.manager.query(db=db, schema=CAR_KIND, filters={"main_driver__name__value": "Jane"})
+        assert len(jane_cars) == 2
+        jane = await jane_cars[0].main_driver.get_peer(db=db)  # type: ignore[attr-defined]
+        assert jane.id == initial_dataset["jane"]
+        tags = await jane.tags.get_peers(db=db)
+        assert len(tags) == 1
 
-        # Insert the ID of the attribute name into the schema in order to rename it firstname
-        assert schema_step04["nodes"][3]["name"] == "Tag"
-        schema_step04["nodes"][3]["id"] = tag_schema.id
-
-        success, response = await client.schema.check(schemas=[schema_step04], branch=self.branch1.name)
-
-        assert response == {"diff": {"added": {}, "changed": {}, "removed": {"TestingTag": None}}}
-        assert success
-
-    async def test_step04_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
-        tag_schema = registry.schema.get_node_schema(name=TAG_KIND, branch=self.branch1)
-
-        # Insert the ID of the attribute name into the schema in order to rename it firstname
-        assert schema_step04["nodes"][3]["name"] == "Tag"
-        schema_step04["nodes"][3]["id"] = tag_schema.id
-
-        success, response = await client.schema.load(schemas=[schema_step04], branch=self.branch1.name)
-        assert response is None
-        assert success
-
-        assert registry.schema.has(name=TAG_KIND) is True
-        # FIXME after loading the new schema, TestingTag is still present in the branch, need to investigate
-        # assert registry.schema.has(name=TAG_KIND, branch=self.branch1) is False
-
-        tags = await registry.manager.query(db=db, schema=TAG_KIND)
+        john_cars = await registry.manager.query(db=db, schema=CAR_KIND, filters={"main_driver__name__value": "John"})
+        assert len(john_cars) == 2
+        john = await john_cars[0].main_driver.get_peer(db=db)  # type: ignore[attr-defined]
+        assert john.id == initial_dataset["john"]
+        tags = await john.tags.get_peers(db=db)
         assert len(tags) == 2

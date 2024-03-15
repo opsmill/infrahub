@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Sequence
 
-from infrahub.core.constants import BranchSupportType, RelationshipStatus
+from infrahub.core.constants import RelationshipStatus
 
 from ..shared import AttributeMigrationQuery, AttributeSchemaMigration
 
@@ -20,16 +20,12 @@ class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery):
         self.params["node_kind"] = self.migration.new_schema.kind
         self.params["attr_name"] = self.migration.new_attribute_schema.name
         self.params["attr_type"] = self.migration.new_attribute_schema.kind
+        self.params["branch_support"] = self.migration.new_attribute_schema.get_branch().value
 
         if self.migration.new_attribute_schema.default_value:
             self.params["attr_value"] = self.migration.new_attribute_schema.default_value
         else:
             self.params["attr_value"] = "NULL"
-
-        if self.branch.is_default:
-            self.params["branch_support"] = self.migration.new_attribute_schema.get_branch().value
-        else:
-            self.params["branch_support"] = BranchSupportType.LOCAL.value
 
         self.params["rel_props"] = {
             "branch": self.branch.name,

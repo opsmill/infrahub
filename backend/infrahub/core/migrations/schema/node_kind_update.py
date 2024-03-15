@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Sequence
 
-from infrahub.core.constants import BranchSupportType, RelationshipStatus
+from infrahub.core.constants import RelationshipStatus
 from infrahub.core.graph.schema import GraphNodeRelationships, GraphRelDirection
 
 from ..shared import MigrationQuery, SchemaMigration
@@ -65,11 +65,7 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery):
 
         self.params["current_time"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
-
-        if self.branch.is_default:
-            self.params["branch_support"] = self.migration.new_schema.branch.value
-        else:
-            self.params["branch_support"] = BranchSupportType.LOCAL.value
+        self.params["branch_support"] = self.migration.new_schema.branch.value
 
         self.params["rel_props_new"] = {
             "branch": self.branch.name,

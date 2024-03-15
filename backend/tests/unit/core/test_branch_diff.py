@@ -1032,7 +1032,10 @@ async def test_diff_schema_changes(
     summary = await diff.get_schema_summary()
 
     assert list(summary.keys()) == ["branch2", "main"]
-    assert set([element.kind for elements in summary.values() for element in elements]) == {"SchemaNode"}
+    assert set([element.kind for elements in summary.values() for element in elements]) == {
+        "SchemaNode",
+        "SchemaAttribute",
+    }
 
 
 async def test_base_diff_element():
