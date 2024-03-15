@@ -303,13 +303,13 @@ class TestInfrahubNode:
         await client.schema.load(schemas=[schema_extension_01])
         rack = await client.create("InfraRack", name="rack-1")
         await rack.save()
-        tag = await client.create("BuiltinTag", name="blurple")
+        tag = await client.create("BuiltinTag", name="blizzow")
         # TODO: is it a bug that we need to save the object and fetch the tags before adding to a RelationshipManager now?
         await tag.save()
         await tag.racks.fetch()
         tag.racks.add(rack)
         await tag.save()
-        tag_2 = await client.create("BuiltinTag", name="blurple2")
+        tag_2 = await client.create("BuiltinTag", name="blizzow2")
         await tag_2.save()
 
         # the "rack" object has no link to the "tag" object here
