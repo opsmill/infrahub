@@ -41,12 +41,13 @@ The validations and the migrations will also be applied :
 #### Non Isolated Branches
 
 The default behavior for a branch has been updated to keep in sync with the main branch by default.  
-With this new behavior, all changes applied to the main branch will automatically be visible in the branches as well without the need for rebase.
+With this new behavior, all changes applied to the main branch will automatically be visible in the branches without the need for rebase.
 
-A new Isolated mode has been introduced to allow a branch to be isolated from main and to not be affected by the changes in main.
-With these changes, the `rebase` flag in the API and in the transformations has been deprecated
+A new isolated branch mode has been introduced. It allows a branch to be isolated from the main branch. Isolated branches are not kept in sync with the changes in the main branch.
+With these changes, the `rebase` flag in the API and in the transformations has been deprecated.
 
-The flag `data_only` on a branch has been renamed to `sync_with_git` to provide a better description of its intent.
+The flag `data_only` on a branch has been renamed to `sync_with_git` to provide a better description of its intent.  
+The meaning of this flag has been switched so `is_data_only=true` is the same as `sync_with_git=false`.
 
 #### Additional Constraints for the Schema
 
@@ -99,7 +100,7 @@ The page to display the progression and the results of the checks has been redes
 
 #### Background Tasks
 
-Also more information about the tasks running in the background during the Pipeline are available to the users in the `Tasks` tab.
+Information about background pipeline tasks are now available in the Tasks tab of the proposed change view.
 
 ![schema visualizer](../media/release_notes/infrahub_0_12_0/proposed_change_tasks.png)
 
@@ -114,7 +115,7 @@ All information are now accessible, in the future the page will be updated to mo
 
 #### Schema Documentation
 
-The internal schema has been refactor in order to generate better documentation and to be able to provide better validation of new schema.
+The internal schema has been refactored in order to generate better documentation and to be able to provide better validation of new schema.
 A new definition of the internal schema has been published in JSONSchema format and it's accessible at `https://schema.infrahub.app/develop/schema.schema.json`
 
 Multiple Editors are able to leverage this file to provide inline documentation and validation.
@@ -156,14 +157,14 @@ The processing of the schema internally has been significantly improved and as a
 
 #### Sync Engine
 
-The Synchronization Engine has been improved to be able to run in standalone mode and it has been integrated with the Dagster, to provide more visibility into the process and leverage its orchestration capabilitites.
-The project has been packaged as a dedicated Python package and it's now available on Pypi `infrahub-sync`.
+The Synchronization Engine has been improved to be able to run in standalone mode and it has been integrated with Dagster, to provide more visibility into the process and leverage its orchestration capabilitites.
+The project has been packaged as a dedicated Python package and it's now available on PyPI `infrahub-sync`.
 
 #### Documentation Update
 
 There's been multiple improvement to the documentation including:
 
-- A new Topic page about Immutability and Version Control
+- A new topic page about Immutability and Version Control
 - A new topic page about the Resources testing framework
 - A new guide on how to create your own schema
 - The Python SDK section has been reorganized to have Guides and Reference and it includes more information
