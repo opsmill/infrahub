@@ -148,7 +148,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_tag_no_persons(self, schema_tag_base) -> Dict[str, Any]:
         assert schema_tag_base["relationships"][1]["name"] == "persons"
-        schema_tag_base["relationships"][0]["state"] = "absent"
+        schema_tag_base["relationships"][1]["state"] = "absent"
         return schema_tag_base
 
     @pytest.fixture(scope="class")
@@ -269,7 +269,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                             "relationships": {
                                 "added": {},
                                 "changed": {},
-                                "removed": {"cars": None},
+                                "removed": {"persons": None},
                             },
                         },
                         "removed": {},
@@ -290,9 +290,8 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         tags = await john.tags.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(tags) == 2
 
-        # FIXME
-        # red_branch = await registry.manager.get_one(db=db, id=initial_dataset["red"], branch=self.branch1)
-        # assert not hasattr(red_branch, "persons")
+        red_branch = await registry.manager.get_one(db=db, id=initial_dataset["red"], branch=self.branch1)
+        assert not hasattr(red_branch, "persons")
 
         red_main = await registry.manager.get_one(db=db, id=initial_dataset["red"])
         assert red_main
@@ -318,3 +317,17 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert branch
 
         # Ensure that we can query the nodes with the new schema in MAIN
+        # Ensure that we can query the nodes with the new schema in BRANCH1
+        jane_cars = await registry.manager.query(db=db, schema=CAR_KIND, filters={"main_driver__name__value": "Jane"})
+        assert len(jane_cars) == 2
+        jane = await jane_cars[0].main_driver.get_peer(db=db)  # type: ignore[attr-defined]
+        assert jane.id == initial_dataset["jane"]
+        tags = await jane.tags.get_peers(db=db)
+        assert len(tags) == 1
+
+        john_cars = await registry.manager.query(db=db, schema=CAR_KIND, filters={"main_driver__name__value": "John"})
+        assert len(john_cars) == 2
+        john = await john_cars[0].main_driver.get_peer(db=db)  # type: ignore[attr-defined]
+        assert john.id == initial_dataset["john"]
+        tags = await john.tags.get_peers(db=db)
+        assert len(tags) == 2
