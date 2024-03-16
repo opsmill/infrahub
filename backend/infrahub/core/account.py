@@ -75,7 +75,7 @@ class AccountTokenValidateQuery(Query):
 
 
 async def validate_token(
-    token, db: InfrahubDatabase, branch: Union[Branch, str] = None, at=None
+    token, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
 ) -> Tuple[Optional[str], str]:
     branch = await get_branch(db=db, branch=branch)
     query = await AccountTokenValidateQuery.init(db=db, branch=branch, token=token, at=at)

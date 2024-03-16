@@ -8,7 +8,7 @@ from infrahub_sdk.client import NodeDiff  # noqa: TCH002
 from pydantic import BaseModel, Field
 
 from infrahub.core.constants import InfrahubKind
-from infrahub.exceptions import NodeNotFound
+from infrahub.exceptions import NodeNotFoundError
 
 SCHEMA_CHANGE = re.compile("^Schema[A-Z]")
 
@@ -52,6 +52,11 @@ class ProposedChangeRepository(BaseModel):
             return InfrahubKind.READONLYREPOSITORY
         return InfrahubKind.REPOSITORY
 
+    @property
+    def has_modifications(self) -> bool:
+        """Indicates if any of the files in the repository has been modified."""
+        return bool(self.files_added + self.files_changed + self.files_removed)
+
 
 class ProposedChangeSubscriber(BaseModel):
     subscriber_id: str
@@ -70,7 +75,6 @@ class ProposedChangeArtifactDefinition(BaseModel):
     content_type: str
     file_path: str = Field(default="")
     timeout: int
-    rebase: bool
 
     @property
     def transform_location(self) -> str:
@@ -91,7 +95,7 @@ class ProposedChangeBranchDiff(BaseModel):
         for repository in self.repositories:
             if repository_id == repository.repository_id:
                 return repository
-        raise NodeNotFound(node_type="Repository", identifier=repository_id)
+        raise NodeNotFoundError(node_type="Repository", identifier=repository_id)
 
     def get_subscribers_ids(self, kind: str) -> list[str]:
         return [subscriber.subscriber_id for subscriber in self.subscribers if subscriber.kind == kind]
@@ -110,10 +114,15 @@ class ProposedChangeBranchDiff(BaseModel):
         """Indicates if there are node or schema changes within the branch."""
         return bool([entry for entry in self.diff_summary if entry["branch"] == branch])
 
+    @property
+    def has_file_modifications(self) -> bool:
+        """Indicates modifications to any of the files in the Git repositories."""
+        return any(repository.has_modifications for repository in self.repositories)
+
     def modified_nodes(self, branch: str) -> list[str]:
         """Return a list of non schema nodes that have been modified on the branch"""
         return [
-            entry["node"]
+            entry["id"]
             for entry in self.diff_summary
             if entry["branch"] == branch and not SCHEMA_CHANGE.match(entry["kind"])
         ]

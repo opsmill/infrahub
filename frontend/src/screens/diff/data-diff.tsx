@@ -1,6 +1,13 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
-import { createContext, useCallback, useEffect, useState } from "react";
+import {
+  createContext,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useState,
+} from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -52,7 +59,7 @@ const constructChecksDictionnary = (checks: any[]) => {
   return dictionnary;
 };
 
-export const DataDiff = () => {
+export const DataDiff = forwardRef((props, ref) => {
   const { branchname, proposedchange } = useParams();
 
   const [branchOnly, setBranchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
@@ -63,7 +70,7 @@ export const DataDiff = () => {
   const [diff, setDiff] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const branch = branchname || proposedChangesDetails?.source_branch?.value;
+  const branch = proposedChangesDetails?.source_branch?.value || branchname; // Used in proposed changes view and branch view
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
 
@@ -132,7 +139,10 @@ export const DataDiff = () => {
     }
 
     setIsLoading(false);
-  }, [branchname, branchOnly, timeFrom, timeTo]);
+  }, [branch, branchOnly, timeFrom, timeTo]);
+
+  // Provide refetch function to parent
+  useImperativeHandle(ref, () => ({ refetch: fetchDiffDetails }));
 
   useEffect(() => {
     fetchDiffDetails();
@@ -167,7 +177,8 @@ export const DataDiff = () => {
       <div className="flex items-center p-4 bg-custom-white">
         <div className="mr-2">
           <Button onClick={() => setBranchOnly(branchOnly !== "false" ? "false" : "true")}>
-            Display main
+            <span className="mr-2">Display main</span>
+
             <Checkbox enabled={branchOnly === "false"} readOnly />
           </Button>
         </div>
@@ -190,4 +201,4 @@ export const DataDiff = () => {
       )}
     </>
   );
-};
+});

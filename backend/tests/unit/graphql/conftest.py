@@ -1,5 +1,12 @@
 import pytest
 
+from infrahub.dependencies.registry import build_component_registry
+
+
+@pytest.fixture(scope="module", autouse=True)
+def load_component_dependency_registry():
+    build_component_registry()
+
 
 @pytest.fixture
 def query_01() -> str:

@@ -30,19 +30,23 @@ from infrahub_sdk.schema import (
     InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
 )
-from infrahub_sdk.utils import YamlFile, compare_lists
+from infrahub_sdk.task_report import InfrahubTaskReportLogger  # noqa: TCH002
+from infrahub_sdk.utils import compare_lists
+from infrahub_sdk.yaml import SchemaFile
 from pydantic import ValidationError as PydanticValidationError
 from pydantic.v1 import BaseModel, Field
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.registry import registry
 from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
     Error,
-    FileNotFound,
+    InitializationError,
     RepositoryError,
+    RepositoryFileNotFoundError,
     TransformError,
 )
 from infrahub.log import get_logger
@@ -121,9 +125,6 @@ class CheckDefinitionInformation(BaseModel):
     check_class: Any
     """Python Class of the Check"""
 
-    rebase: bool
-    """Flag to indicate if the query need to be rebased."""
-
     timeout: int
     """Timeout for the Check."""
 
@@ -155,9 +156,6 @@ class TransformPythonInformation(BaseModel):
 
     transform_class: Any
     """Python Class of the Transform"""
-
-    rebase: bool
-    """Flag to indicate if the query need to be rebased."""
 
     timeout: int
     """Timeout for the function."""
@@ -248,7 +246,7 @@ class Worktree(BaseModel):
     branch: Optional[str] = None
 
     @classmethod
-    def init(cls, text):
+    def init(cls, text: str) -> Worktree:
         lines = text.split("\n")
 
         full_directory = lines[0].replace("worktree ", "")
@@ -287,7 +285,7 @@ class Worktree(BaseModel):
 class BranchInGraph(BaseModel):
     id: str
     name: str
-    is_data_only: bool
+    sync_with_git: bool
     commit: Optional[str] = None
 
 
@@ -334,13 +332,20 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         ..., description="Service object with access to the message queue, the database etc.."
     )
     is_read_only: bool = Field(False, description="If true, changes will not be synced to remote")
+    task_report: Optional[InfrahubTaskReportLogger] = Field(default=None)
 
     class Config:
         arbitrary_types_allowed = True
 
     @property
     def default_branch(self) -> str:
-        return self.default_branch_name or config.SETTINGS.main.default_branch
+        return self.default_branch_name or registry.default_branch
+
+    @property
+    def log(self) -> InfrahubTaskReportLogger:
+        if self.task_report:
+            return self.task_report
+        raise InitializationError("The repository has not been initialized with a TaskReport")
 
     @property
     def directory_root(self) -> str:
@@ -355,7 +360,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     @property
     def directory_default(self) -> str:
         """Return the path to the directory of the main branch."""
-        return os.path.join(self.directory_root, config.SETTINGS.main.default_branch)
+        return os.path.join(self.directory_root, registry.default_branch)
 
     @property
     def directory_branches(self) -> str:
@@ -581,7 +586,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             response[branch_name] = BranchInGraph(
                 id=branch.id,
                 name=branch.name,
-                is_data_only=branch.is_data_only,
+                sync_with_git=branch.sync_with_git,
                 commit=repository.branches[branch_name] or None,
             )
 
@@ -1104,7 +1109,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         try:
             data = yaml.safe_load(config_file_content)
         except yaml.YAMLError as exc:
-            log.error(
+            await self.log.error(
                 f"Unable to load the configuration file in YAML format {config_file_name} : {exc}",
                 repository=self.name,
                 branch=branch_name,
@@ -1112,10 +1117,15 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             )
             return
 
+        # Convert data to a dictionary to avoid it being `None` if the yaml file is just an empty document
+        data = data or {}
+
         try:
-            return InfrahubRepositoryConfig(**data)
+            configuration = InfrahubRepositoryConfig(**data)
+            await self.log.info(f"Successfully parsed {config_file_name}")
+            return configuration
         except PydanticValidationError as exc:
-            log.error(
+            await self.log.error(
                 f"Unable to load the configuration file {config_file_name}, the format is not valid  : {exc}",
                 repository=self.name,
                 branch=branch_name,
@@ -1127,18 +1137,18 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         # pylint: disable=too-many-branches
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
-        schemas_data: List[YamlFile] = []
+        schemas_data: List[SchemaFile] = []
 
         for schema in config_file.schemas:
             full_schema = Path(os.path.join(branch_wt.directory, schema))
             if not full_schema.exists():
-                log.warning(
+                await self.log.warning(
                     f"Unable to find the schema {schema}", repository=self.name, branch=branch_name, commit=commit
                 )
                 continue
 
             if full_schema.is_file():
-                schema_file = YamlFile(identifier=str(schema), location=full_schema)
+                schema_file = SchemaFile(identifier=str(schema), location=full_schema)
                 schema_file.load_content()
                 schemas_data.append(schema_file)
             elif full_schema.is_dir():
@@ -1151,7 +1161,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 )
                 for item in files:
                     identifier = item.replace(branch_wt.directory, "")
-                    schema_file = YamlFile(identifier=identifier, location=item)
+                    schema_file = SchemaFile(identifier=identifier, location=item)
                     schema_file.load_content()
                     schemas_data.append(schema_file)
 
@@ -1159,7 +1169,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         for schema_file in schemas_data:
             if schema_file.valid:
                 continue
-            log.error(
+            await self.log.error(
                 f"Unable to load the file {schema_file.identifier}, {schema_file.error_message}",
                 repository=self.name,
                 branch=branch_name,
@@ -1175,7 +1185,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             try:
                 self.client.schema.validate(schema_file.content)
             except PydanticValidationError as exc:
-                log.error(
+                await self.log.error(
                     f"Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}",
                     repository=self.name,
                     branch=branch_name,
@@ -1192,7 +1202,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             error_messages = []
 
             if "detail" in errors:
-                for error in errors.get("detail"):
+                for error in errors["detail"]:
                     loc_str = [str(item) for item in error["loc"][1:]]
                     error_messages.append(f"{'/'.join(loc_str)} | {error['msg']} ({error['type']})")
             elif "error" in errors:
@@ -1200,11 +1210,16 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             else:
                 error_messages.append(f"{errors}")
 
-            log.error(f"Unable to load the schema : {', '.join(error_messages)}", repository=self.name, commit=commit)
+            await self.log.error(
+                f"Unable to load the schema : {', '.join(error_messages)}", repository=self.name, commit=commit
+            )
 
-        else:
-            for schema_file in schemas_data:
-                log.info(f"schema '{schema_file.identifier}' loaded successfully!", repository=self.name, commit=commit)
+            return
+
+        for schema_file in schemas_data:
+            await self.log.info(
+                f"schema '{schema_file.identifier}' loaded successfully!", repository=self.name, commit=commit
+            )
 
     async def import_all_graphql_query(self, branch_name: str, commit: str) -> None:
         """Search for all .gql file and import them as GraphQL query."""
@@ -1228,7 +1243,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         for query_name in only_local:
             query = local_queries[query_name]
-            log.info(
+            await self.log.info(
                 f"New Graphql Query {query_name!r} found, creating",
                 repository=self.name,
                 branch=branch_name,
@@ -1240,7 +1255,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             local_query = local_queries[query_name]
             graph_query = queries_in_graph[query_name]
             if local_query.query != graph_query.query.value:
-                log.info(
+                await self.log.info(
                     f"New version of the Graphql Query {query_name!r} found, updating",
                     repository=self.name,
                     branch=branch_name,
@@ -1251,7 +1266,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         for query_name in only_graph:
             graph_query = queries_in_graph[query_name]
-            log.info(
+            await self.log.info(
                 f"Graphql Query {query_name!r} not found locally, deleting",
                 repository=self.name,
                 branch=branch_name,
@@ -1295,7 +1310,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             try:
                 module = importlib.import_module(file_info.module_name)
             except ModuleNotFoundError as exc:
-                log.warning(self.name, import_type="check_definition", file=check.file_path.as_posix(), error=str(exc))
+                await self.log.warning(
+                    self.name, import_type="check_definition", file=check.file_path.as_posix(), error=str(exc)
+                )
                 continue
 
             checks.extend(
@@ -1320,7 +1337,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         )
 
         for check_name in only_local:
-            log.info(
+            await self.log.info(
                 f"New CheckDefinition {check_name!r} found, creating",
                 repository=self.name,
                 branch=branch_name,
@@ -1335,7 +1352,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 check=local_check_definitions[check_name],
                 existing_check=check_definition_in_graph[check_name],
             ):
-                log.info(
+                await self.log.info(
                     f"New version of CheckDefinition {check_name!r} found, updating",
                     repository=self.name,
                     branch=branch_name,
@@ -1347,7 +1364,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 )
 
         for check_name in only_graph:
-            log.info(
+            await self.log.info(
                 f"CheckDefinition '{check_name!r}' not found locally, deleting",
                 repository=self.name,
                 branch=branch_name,
@@ -1377,7 +1394,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             try:
                 module = importlib.import_module(file_info.module_name)
             except ModuleNotFoundError as exc:
-                log.warning(
+                await self.log.warning(
                     self.name, import_type="python_transform", file=transform.file_path.as_posix(), error=str(exc)
                 )
                 continue
@@ -1404,7 +1421,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         )
 
         for transform_name in only_local:
-            log.info(
+            await self.log.info(
                 f"New TransformPython {transform_name!r} found, creating",
                 repository=self.name,
                 branch=branch_name,
@@ -1419,7 +1436,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 local_transform=local_transform_definitions[transform_name],
                 existing_transform=transform_definition_in_graph[transform_name],
             ):
-                log.info(
+                await self.log.info(
                     f"New version of TransformPython {transform_name!r} found, updating",
                     repository=self.name,
                     branch=branch_name,
@@ -1431,7 +1448,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 )
 
         for transform_name in only_graph:
-            log.info(
+            await self.log.info(
                 f"TransformPython {transform_name!r} not found locally, deleting",
                 repository=self.name,
                 branch=branch_name,
@@ -1464,14 +1481,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                     file_path=file_path,
                     query=str(graphql_query.id),
                     timeout=check_class.timeout,
-                    rebase=check_class.rebase,
                     parameters=check_definition.parameters,
                     targets=check_definition.targets,
                 )
             )
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            log.error(
+            await self.log.error(
                 f"An error occured while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} ",
                 repository=self.name,
                 branch=branch_name,
@@ -1499,12 +1515,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                     file_path=file_path,
                     query=str(graphql_query.id),
                     timeout=transform_class.timeout,
-                    rebase=transform_class.rebase,
                 )
             )
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            log.error(
+            await self.log.error(
                 f"An error occured while processing the PythonTransform {transform.name} from {file_path} : {exc} ",
                 repository=self.name,
                 branch=branch_name,
@@ -1519,7 +1534,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             "query": check.query,
             "file_path": check.file_path,
             "class_name": check.class_name,
-            "rebase": check.rebase,
             "timeout": check.timeout,
             "parameters": check.parameters,
         }
@@ -1551,9 +1565,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if existing_check.file_path.value != check.file_path:
             existing_check.file_path.value = check.file_path
 
-        if existing_check.rebase.value != check.rebase:
-            existing_check.rebase.value = check.rebase
-
         if existing_check.timeout.value != check.timeout:
             existing_check.timeout.value = check.timeout
 
@@ -1573,7 +1584,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             existing_check.query.id != check.query
             or existing_check.file_path.value != check.file_path
             or existing_check.timeout.value != check.timeout
-            or existing_check.rebase.value != check.rebase
             or existing_check.class_name.value != check.class_name
             or existing_check.parameters.value != check.parameters
         ):
@@ -1588,7 +1598,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             "query": transform.query,
             "file_path": transform.file_path,
             "class_name": transform.class_name,
-            "rebase": transform.rebase,
             "timeout": transform.timeout,
         }
         create_payload = self.client.schema.generate_payload_create(
@@ -1613,9 +1622,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if existing_transform.timeout.value != local_transform.timeout:
             existing_transform.timeout.value = local_transform.timeout
 
-        if existing_transform.rebase.value != local_transform.rebase:
-            existing_transform.rebase.value = local_transform.rebase
-
         await existing_transform.save()
 
     @classmethod
@@ -1626,7 +1632,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             existing_transform.query.id != local_transform.query
             or existing_transform.file_path.value != local_transform.file_path
             or existing_transform.timeout.value != local_transform.timeout
-            or existing_transform.rebase.value != local_transform.rebase
         ):
             return False
         return True
@@ -1703,7 +1708,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             template = templateEnv.get_template(location)
             return template.render(**data)
         except Exception as exc:
-            log.critical(exc, exc_info=True, repository=self.name, commit=commit, location=location)
+            log.error(exc, exc_info=True, repository=self.name, commit=commit, location=location)
             raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc)) from exc
 
     async def execute_python_check(
@@ -1855,7 +1860,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             subscribers=[artifact.id],
             tracker="artifact-query-graphql-data",
             branch_name=branch_name,
-            rebase=transformation.rebase.value,
             timeout=transformation.timeout.value,
         )
 
@@ -1905,7 +1909,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             subscribers=[artifact.id],
             tracker="artifact-query-graphql-data",
             branch_name=message.branch_name,
-            rebase=message.rebase,
             timeout=message.timeout,
         )
 
@@ -1945,7 +1948,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
     def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> None:
         if not os.path.exists(os.path.join(worktree_directory, file_path)):
-            raise FileNotFound(repository_name=self.name, commit=commit, location=file_path)
+            raise RepositoryFileNotFoundError(repository_name=self.name, commit=commit, location=file_path)
 
 
 class InfrahubRepository(InfrahubRepositoryBase):

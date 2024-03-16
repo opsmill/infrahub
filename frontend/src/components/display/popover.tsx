@@ -1,10 +1,10 @@
 // type PopOver = {}
 
 import { Popover } from "@headlessui/react";
+import { CSSProperties, forwardRef, useState } from "react";
+import { usePopper } from "react-popper";
 import { classNames } from "../../utils/common";
 import Transition from "../utils/transition";
-import { usePopper } from "react-popper";
-import { CSSProperties, forwardRef, useState } from "react";
 
 export enum POPOVER_SIZE {
   NONE,
@@ -80,7 +80,9 @@ const PopOverPanel = forwardRef<HTMLDivElement, PopOverProps>(
           <>
             {title && <div className="font-semibold text-center p-2">{title}</div>}
 
-            <div className="flex-1 p-2">{children({ close })}</div>
+            <div className="flex-1 p-2">
+              {typeof children === "function" ? children({ close }) : children}
+            </div>
           </>
         )}
       </Popover.Panel>

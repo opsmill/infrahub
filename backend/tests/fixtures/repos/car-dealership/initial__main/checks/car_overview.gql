@@ -1,0 +1,17 @@
+query CarOverview {
+  TestingCar {
+    edges {
+      node {
+        color {
+          value
+        }
+        description {
+          value
+        }
+        name {
+          value
+        }
+      }
+    }
+  }
+}

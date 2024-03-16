@@ -5,7 +5,7 @@ from typing import List, Optional
 import typer
 from infrahub_sdk import InfrahubClientSync
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.core.constants import InfrahubKind
 
 app = typer.Typer()
@@ -19,8 +19,7 @@ def askpass(
     text: Optional[List[str]] = typer.Argument(None),
     config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ):
-    if not config.SETTINGS:
-        config.load_and_exit(config_file_name=config_file)
+    config.SETTINGS.initialize_and_exit(config_file=config_file)
 
     text = text or sys.stdin.read().strip()
     request_type = None

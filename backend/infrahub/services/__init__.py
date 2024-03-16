@@ -1,6 +1,7 @@
 from typing import Awaitable, Callable, Optional
 
 from infrahub_sdk import InfrahubClient
+from infrahub_sdk.task_report import TaskReport
 
 from infrahub.components import ComponentType
 from infrahub.database import InfrahubDatabase
@@ -47,6 +48,24 @@ class InfrahubServices:
             raise InitializationError("Service is not initialized with a database")
 
         return self._database
+
+    def task_report(
+        self,
+        related_node: str,
+        title: str,
+        task_id: Optional[str] = None,
+        created_by: Optional[str] = None,
+        create_with_context: bool = True,
+    ) -> TaskReport:
+        return TaskReport(
+            related_node=related_node,
+            title=title,
+            task_id=task_id,
+            created_by=created_by,
+            create_with_context=create_with_context,
+            client=self.client,
+            logger=self.log,
+        )
 
     async def initialize(self) -> None:
         """Initialize the Services"""

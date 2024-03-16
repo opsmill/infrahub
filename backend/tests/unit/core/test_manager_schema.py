@@ -1,4 +1,5 @@
 import copy
+import uuid
 
 import pytest
 from deepdiff import DeepDiff
@@ -6,7 +7,13 @@ from infrahub_sdk.utils import compare_lists
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, FilterSchemaKind, InfrahubKind, UpdateValidationErrorType
+from infrahub.core.constants import (
+    BranchSupportType,
+    FilterSchemaKind,
+    HashableModelState,
+    InfrahubKind,
+    SchemaPathType,
+)
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
@@ -164,6 +171,54 @@ def schema_all_in_one():
     return FULL_SCHEMA
 
 
+@pytest.fixture
+def schema_criticality_tag():
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Builtin",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "tags",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Tags",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
+                    {
+                        "name": "primary_tag",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Primary Tag",
+                        "identifier": "primary_tag__criticality",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+            {
+                "name": "Tag",
+                "namespace": "Builtin",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ]
+    }
+    return FULL_SCHEMA
+
+
 def _get_schema_by_kind(full_schema, kind):
     for schema_dict in full_schema["nodes"] + full_schema["generics"]:
         schema_kind = schema_dict["namespace"] + schema_dict["name"]
@@ -287,8 +342,8 @@ async def test_schema_branch_add_groups(schema_all_in_one):
     assert criticality.get_relationship(name="subscriber_of_groups")
 
     std_group = schema.get(name=InfrahubKind.STANDARDGROUP)
-    assert std_group.get_relationship(name="member_of_groups", raise_on_error=False) is None
-    assert std_group.get_relationship(name="subscriber_of_groups", raise_on_error=False) is None
+    assert std_group.get_relationship_or_none(name="member_of_groups") is None
+    assert std_group.get_relationship_or_none(name="subscriber_of_groups") is None
 
 
 async def test_schema_branch_generate_weight(schema_all_in_one):
@@ -727,6 +782,140 @@ async def test_schema_branch_validate_menu_placement():
     assert str(exc.value) == "TestSubObject: NoSuchObject is not a valid menu placement"
 
 
+async def test_schema_branch_validate_same_node_menu_placement():
+    """Validate that menu placements points to objects that exists in the schema."""
+    FULL_SCHEMA = {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+            },
+            {
+                "name": "SubObject",
+                "namespace": "Test",
+                "menu_placement": "TestSubObject",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+            },
+        ],
+    }
+
+    schema = SchemaBranch(cache={})
+    schema.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_menu_placements()
+
+    assert str(exc.value) == "TestSubObject: cannot be placed under itself in the menu"
+
+
+async def test_schema_branch_validate_cyclic_menu_placement():
+    """Validate that menu placements points to objects that exists in the schema."""
+    FULL_SCHEMA = {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Test",
+                "menu_placement": "TestSubObject",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+            },
+            {
+                "name": "SubObject",
+                "namespace": "Test",
+                "menu_placement": "TestCriticality",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+            },
+        ],
+    }
+
+    schema = SchemaBranch(cache={})
+    schema.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_menu_placements()
+
+    assert str(exc.value) == "TestSubObject: cyclic menu placement with TestCriticality"
+
+
+@pytest.mark.parametrize(
+    "uniqueness_constraints",
+    [
+        [["my_generic_name__value"], ["mybool__value"]],
+        [["my_generic_name__value", "primary_tag"]],
+    ],
+)
+async def test_validate_uniqueness_constraints_success(schema_all_in_one, uniqueness_constraints):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["uniqueness_constraints"] = uniqueness_constraints
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.validate_uniqueness_constraints()
+
+
+@pytest.mark.parametrize(
+    "uniqueness_constraints,expected_error",
+    [
+        (
+            [["mybool__value", "notanattribute__value"]],
+            "InfraGenericInterface.uniqueness_constraints: notanattribute__value is invalid on schema InfraGenericInterface",
+        ),
+        (
+            [["my_generic_name__something"]],
+            "InfraGenericInterface.uniqueness_constraints: something is not a valid property of my_generic_name",
+        ),
+        (
+            [["status__value"]],
+            "InfraGenericInterface.uniqueness_constraints: value is not a valid attribute of BuiltinStatus",
+        ),
+        (
+            [["badges__name__value"]],
+            "InfraGenericInterface.uniqueness_constraints: cannot use badges relationship, relationship must be of cardinality one",
+        ),
+        (
+            [["mybool", "badges"]],
+            "InfraGenericInterface.uniqueness_constraints: cannot use badges relationship, relationship must be of cardinality one",
+        ),
+        (
+            [["primary_tag__name__value"]],
+            "InfraGenericInterface.uniqueness_constraints: cannot use attributes of related node in constraint, only the relationship",
+        ),
+        (
+            [["mybool__value", "status__name__value"]],
+            "InfraGenericInterface.uniqueness_constraints: cannot use attributes of related node in constraint, only the relationship",
+        ),
+    ],
+)
+async def test_validate_uniqueness_constraints_error(schema_all_in_one, uniqueness_constraints, expected_error):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["uniqueness_constraints"] = uniqueness_constraints
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValueError, match=expected_error):
+        schema.validate_uniqueness_constraints()
+
+
 @pytest.mark.parametrize(
     "display_labels",
     [
@@ -749,16 +938,18 @@ async def test_validate_display_labels_success(schema_all_in_one, display_labels
     [
         (
             ["mybool__value", "notanattribute__value"],
-            "InfraGenericInterface.display_labels: notanattribute is not an attribute of InfraGenericInterface",
+            "InfraGenericInterface.display_labels: notanattribute__value is invalid on schema InfraGenericInterface",
         ),
-        (["my_generic_name__something"], "InfraGenericInterface.display_labels: attribute property must be one of"),
+        (
+            ["my_generic_name__something"],
+            "InfraGenericInterface.display_labels: something is not a valid property of my_generic_name",
+        ),
         (
             ["status__value"],
-            "InfraGenericInterface.display_labels: status is not an attribute of InfraGenericInterface",
+            "InfraGenericInterface.display_labels: value is not a valid attribute of BuiltinStatus",
         ),
         (["badges__name__value"], "InfraGenericInterface.display_labels: this property only supports attributes"),
-        (["mybool"], "InfraGenericInterface.display_labels: mybool must be of the format"),
-        (["badges"], "InfraGenericInterface.display_labels: badges must be of the format"),
+        (["badges"], "InfraGenericInterface.display_labels: this property only supports attributes, not relationships"),
         (["primary_tag__name__value"], "InfraGenericInterface.display_labels: this property only supports attributes"),
         (
             ["mybool__value", "status__name__value"],
@@ -801,14 +992,19 @@ async def test_validate_order_by_success(schema_all_in_one, order_by):
     [
         (
             ["mybool__value", "notanattribute__value"],
-            "InfraGenericInterface.order_by: notanattribute is not an attribute of InfraGenericInterface",
+            "InfraGenericInterface.order_by: notanattribute__value is invalid on schema InfraGenericInterface",
         ),
-        (["my_generic_name__something"], "InfraGenericInterface.order_by: attribute property must be one of"),
-        (["status__value"], "InfraGenericInterface.order_by: status is not an attribute of InfraGenericInterface"),
+        (
+            ["my_generic_name__something"],
+            "InfraGenericInterface.order_by: something is not a valid property of my_generic_name",
+        ),
+        (["status__value"], "InfraGenericInterface.order_by: value is not a valid attribute of BuiltinStatus"),
         (["badges__name__value"], "InfraGenericInterface.order_by: cannot use badges relationship"),
-        (["mybool"], "InfraGenericInterface.order_by: mybool must be of the format"),
-        (["badges"], "InfraGenericInterface.order_by: badges must be of the format"),
-        (["status__name__nothing"], "InfraGenericInterface.order_by: attribute property must be one of"),
+        (
+            ["badges"],
+            "InfraGenericInterface.order_by: cannot use badges relationship, relationship must be of cardinality one",
+        ),
+        (["status__name__nothing"], "InfraGenericInterface.order_by: nothing is not a valid property of name"),
     ],
 )
 async def test_validate_order_by_error(schema_all_in_one, order_by, expected_error):
@@ -841,15 +1037,26 @@ async def test_validate_default_filter_success(schema_all_in_one, default_filter
     [
         (
             "notanattribute__value",
-            "InfraGenericInterface.default_filter: notanattribute is not an attribute of InfraGenericInterface",
+            "InfraGenericInterface.default_filter: notanattribute__value is invalid on schema InfraGenericInterface",
         ),
-        ("my_generic_name__something", "InfraGenericInterface.default_filter: attribute property must be one of"),
-        ("badges__name__value", "InfraGenericInterface.default_filter: this property only supports attributes"),
-        ("mybool", "InfraGenericInterface.default_filter: mybool must be of the format"),
-        ("badges", "InfraGenericInterface.default_filter: badges must be of the format"),
-        ("status__name__nothing", "InfraGenericInterface.default_filter: this property only supports attributes"),
-        ("primary_tag__name__value", "InfraGenericInterface.default_filter: this property only supports attributes"),
-        ("status__name__value", "InfraGenericInterface.default_filter: this property only supports attributes"),
+        (
+            "my_generic_name__something",
+            "InfraGenericInterface.default_filter: something is not a valid property of my_generic_name",
+        ),
+        (
+            "badges__name__value",
+            "InfraGenericInterface.default_filter: this property only supports attributes, not relationships",
+        ),
+        ("badges", "InfraGenericInterface.default_filter: this property only supports attributes, not relationships"),
+        ("status__name__nothing", "InfraGenericInterface.default_filter: nothing is not a valid property of name"),
+        (
+            "primary_tag__name__value",
+            "InfraGenericInterface.default_filter: this property only supports attributes, not relationship",
+        ),
+        (
+            "status__name__value",
+            "InfraGenericInterface.default_filter: this property only supports attributes, not relationship",
+        ),
     ],
 )
 async def test_validate_default_filter_error(schema_all_in_one, default_filter, expected_error):
@@ -1022,188 +1229,279 @@ async def test_schema_branch_process_filters(
     criticality_dict = schema_branch.get("BuiltinCriticality").model_dump()
 
     expected_filters = [
-        {"name": "ids", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
-        {"name": "name__value", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
-        {"name": "name__values", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
         {
+            "id": None,
+            "name": "ids",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "id": None,
+            "name": "name__value",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "id": None,
+            "name": "name__values",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "id": None,
             "name": "name__is_visible",
             "kind": FilterSchemaKind.BOOLEAN,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "name__is_protected",
             "kind": FilterSchemaKind.BOOLEAN,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "name__source__id",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "name__owner__id",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "level__value",
             "kind": FilterSchemaKind.NUMBER,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "level__values",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "level__is_visible",
             "kind": FilterSchemaKind.BOOLEAN,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "level__is_protected",
             "kind": FilterSchemaKind.BOOLEAN,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "level__source__id",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "level__owner__id",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
-        {"name": "color__value", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
         {
+            "id": None,
+            "name": "color__value",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "id": None,
             "name": "color__values",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "color__is_visible",
             "kind": FilterSchemaKind.BOOLEAN,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "color__is_protected",
             "kind": FilterSchemaKind.BOOLEAN,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "color__source__id",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "color__owner__id",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "description__value",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "description__values",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "description__is_visible",
             "kind": FilterSchemaKind.BOOLEAN,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "description__is_protected",
             "kind": FilterSchemaKind.BOOLEAN,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "description__source__id",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "description__owner__id",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
-        {"name": "any__value", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
         {
+            "id": None,
+            "name": "any__value",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+            "state": HashableModelState.PRESENT,
+        },
+        {
+            "id": None,
             "name": "any__is_visible",
             "kind": FilterSchemaKind.BOOLEAN,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "any__is_protected",
             "kind": FilterSchemaKind.BOOLEAN,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "any__source__id",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
         {
+            "id": None,
             "name": "any__owner__id",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
+            "state": HashableModelState.PRESENT,
         },
     ]
 
+    assert criticality_dict["filters"] == expected_filters
     assert not DeepDiff(criticality_dict["filters"], expected_filters, ignore_order=True)
 
 
@@ -1337,6 +1635,127 @@ async def test_schema_branch_diff_attribute(
                 },
                 "removed": {},
             },
+        },
+        "removed": {},
+    }
+
+
+async def test_schema_branch_diff_rename_element(
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+):
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Criticality",
+                "namespace": "Builtin",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "attributes": [
+                    {"id": str(uuid.uuid4()), "name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"id": str(uuid.uuid4()), "name": "level", "kind": "Number", "label": "Level"},
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": "color",
+                        "kind": "Text",
+                        "label": "Color",
+                        "default_value": "#444444",
+                    },
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": "description",
+                        "kind": "Text",
+                        "label": "Description",
+                        "optional": True,
+                    },
+                ],
+                "relationships": [
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": "tags",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Tags",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": "primary_tag",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Primary Tag",
+                        "identifier": "primary_tag__criticality",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Tag",
+                "namespace": "Builtin",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"id": str(uuid.uuid4()), "name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": "description",
+                        "kind": "Text",
+                        "label": "Description",
+                        "optional": True,
+                    },
+                ],
+            },
+        ]
+    }
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
+    new_schema = schema_branch.duplicate()
+
+    criticality = new_schema.get(name="BuiltinCriticality")
+    criticality.attributes[0].name = f"new-{criticality.attributes[0].name}"
+    criticality.relationships[0].name = f"new-{criticality.relationships[0].name}"
+    new_schema.set(name="BuiltinCriticality", schema=criticality)
+
+    tag = new_schema.get(name="BuiltinTag")
+    tag.name = "NewTag"
+    new_schema.delete(name="BuiltinTag")
+    new_schema.set(name="BuiltinNewTag", schema=tag)
+
+    diff = schema_branch.diff(other=new_schema)
+    assert diff.model_dump() == {
+        "added": {},
+        "changed": {
+            "BuiltinCriticality": {
+                "added": {},
+                "changed": {
+                    "attributes": {
+                        "added": {},
+                        "changed": {
+                            "new-name": {
+                                "added": {},
+                                "changed": {"name": None},
+                                "removed": {},
+                            },
+                        },
+                        "removed": {},
+                    },
+                    "relationships": {
+                        "added": {},
+                        "changed": {
+                            "new-tags": {
+                                "added": {},
+                                "changed": {"name": None},
+                                "removed": {},
+                            },
+                        },
+                        "removed": {},
+                    },
+                },
+                "removed": {},
+            },
+            "BuiltinNewTag": {"added": {}, "changed": {"name": None}, "removed": {}},
         },
         "removed": {},
     }
@@ -1483,25 +1902,19 @@ async def test_schema_branch_validate_check_missing(
 
     result = schema_branch.validate_update(other=new_schema)
     assert result.model_dump(exclude=["diff"]) == {
-        "checks": [
+        "constraints": [
             {
-                "check_name": "attribute.unique.update",
-                "field_name": "name",
-                "field_type": "attribute",
-                "prop_name": "unique",
-                "schema_name": "BuiltinCriticality",
-            }
-        ],
-        "errors": [
-            {
-                "error": UpdateValidationErrorType.CHECK_NOT_AVAILABLE,
-                "field_name": "name",
-                "field_type": "attribute",
-                "message": "'attribute.unique.update' is not available yet",
-                "prop_name": "unique",
-                "schema_name": "BuiltinCriticality",
+                "constraint_name": "attribute.unique.update",
+                "path": {
+                    "field_name": "name",
+                    "path_type": SchemaPathType.ATTRIBUTE,
+                    "property_name": "unique",
+                    "schema_id": None,
+                    "schema_kind": "BuiltinCriticality",
+                },
             },
         ],
+        "errors": [],
         "migrations": [],
     }
 
@@ -1571,7 +1984,7 @@ async def test_schema_branch_validate_add_node_relationships(
     new_schema.load_schema(schema=SchemaRoot(**SCHEMA2))
 
     result = schema_branch.validate_update(other=new_schema)
-    assert result.model_dump(exclude=["diff"]) == {"checks": [], "errors": [], "migrations": []}
+    assert result.model_dump(exclude=["diff"]) == {"constraints": [], "errors": [], "migrations": []}
 
 
 # -----------------------------------------------------------------

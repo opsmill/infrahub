@@ -6,3 +6,10 @@ class QueryValidationError(Error):
 
     def __init__(self, message: str):
         self.message = message
+
+
+class SchemaNotValidError(Error):
+    HTTP_CODE = 422
+
+    def __init__(self, message: str):
+        self.message = message

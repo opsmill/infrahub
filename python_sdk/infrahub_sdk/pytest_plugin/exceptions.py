@@ -8,6 +8,11 @@ class Error(Exception):
     """pytest-infrahub Base exception."""
 
 
+class InvalidResourceConfigError(Error):
+    def __init__(self, resource_name: str):
+        super().__init__(f"Improperly configured resource with name '{resource_name}'.")
+
+
 class DirectoryNotFoundError(Error):
     def __init__(self, name: str, message: str = ""):
         self.message = message or f"Unable to find directory {name!r}."
@@ -20,14 +25,14 @@ class FileNotValidError(Error):
         super().__init__(self.message)
 
 
-class OutputMatchException(Error):
+class OutputMatchError(Error):
     def __init__(self, name: str, message: str = "", differences: str = ""):
         self.message = message or f"Rendered output does not match expected output for {name!r}."
         self.differences = differences
         super().__init__(self.message)
 
 
-class Jinja2TransformException(Error):
+class Jinja2TransformError(Error):
     def __init__(self, name: str, message: str = ""):
         self.message = message or f"Unexpected error happened while processing {name!r}."
         super().__init__(self.message)

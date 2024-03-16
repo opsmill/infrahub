@@ -30,9 +30,11 @@ def branch01():
     return BranchData(
         id="6c915158-d8ef-4169-9b00-59f94716b8c3 ",
         name="branch01",
-        is_data_only=True,
+        sync_with_git=False,
         is_default=False,
         branched_from="main",
+        is_isolated=False,
+        has_schema_changes=False,
     )
 
 
@@ -41,9 +43,11 @@ def branch02():
     return BranchData(
         id="7708dcea-f7b4-4f5a-b5e9-a0605d4c11ba",
         name="branch02",
-        is_data_only=True,
+        sync_with_git=False,
         is_default=False,
         branched_from="main",
+        is_isolated=False,
+        has_schema_changes=False,
     )
 
 
@@ -52,9 +56,11 @@ def branch99():
     return BranchData(
         id="2e933717-086c-47cf-8242-21421dd3c2bb",
         name="branch99",
-        is_data_only=True,
+        sync_with_git=False,
         is_default=False,
         branched_from="main",
+        is_isolated=False,
+        has_schema_changes=False,
     )
 
 
@@ -215,7 +221,7 @@ async def git_repo_04(client, git_upstream_repo_03, git_repos_dir, branch01: Bra
     upstream.git.checkout("branch01")
 
     first_file = find_first_file_in_directory(git_upstream_repo_03["path"])
-    with open(os.path.join(git_upstream_repo_03["path"], first_file), "a") as file:
+    with open(os.path.join(git_upstream_repo_03["path"], first_file), "a", encoding="utf-8") as file:
         file.write("new line\n")
     upstream.index.add([first_file])
     upstream.index.commit("Change first file")
@@ -244,7 +250,7 @@ async def git_repo_05(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
     # Update the first file at the top level and commit the change in the branch
     upstream = Repo(git_upstream_repo_01["path"])
     first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
-    with open(os.path.join(git_upstream_repo_01["path"], first_file), "a") as file:
+    with open(os.path.join(git_upstream_repo_01["path"], first_file), "a", encoding="utf-8") as file:
         file.write("new line\n")
     upstream.index.add([first_file])
     upstream.index.commit("Change first file")
@@ -275,7 +281,7 @@ async def git_repo_06(client, git_upstream_repo_01, git_repos_dir, branch01: Bra
     upstream.git.checkout(branch01.name)
 
     first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
-    with open(os.path.join(git_upstream_repo_01["path"], first_file), "a") as file:
+    with open(os.path.join(git_upstream_repo_01["path"], first_file), "a", encoding="utf-8") as file:
         file.write("new line\n")
     upstream.index.add([first_file])
     upstream.index.commit("Change first file")
@@ -286,7 +292,7 @@ async def git_repo_06(client, git_upstream_repo_01, git_repos_dir, branch01: Bra
     branch_wt = repo.get_worktree(identifier=branch01.name)
     branch_repo = Repo(branch_wt.directory)
     first_file_in_repo = os.path.join(branch_wt.directory, first_file)
-    with open(first_file_in_repo, "a") as file:
+    with open(first_file_in_repo, "a", encoding="utf-8") as file:
         file.write("not the same line\n")
     branch_repo.index.add([first_file])
     branch_repo.index.commit("Change first file in main")
@@ -329,7 +335,7 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir, branch01: 
 
     for file_to_add in files_to_add:
         file_path = os.path.join(git_upstream_repo_02["path"], file_to_add["name"])
-        with open(file_path, "w") as file:
+        with open(file_path, "w", encoding="utf-8") as file:
             file.write(file_to_add["content"])
 
         upstream.index.add(file_to_add["name"])
@@ -347,7 +353,7 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir, branch01: 
  - {{ item }} -
 {% endfor %}
 """
-    with open(file_path, "w") as file:
+    with open(file_path, "w", encoding="utf-8") as file:
         file.write(new_content)
     upstream.index.add(file_to_add["name"])
     upstream.index.commit("Update the first jinja template in the branch")
@@ -457,18 +463,22 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                 {
                     "id": "eca306cf-662e-4e03-8180-2b788b191d3c",
                     "name": "main",
-                    "is_data_only": False,
+                    "sync_with_git": True,
                     "is_default": True,
                     "origin_branch": None,
                     "branched_from": "2023-02-17T09:30:17.811719Z",
+                    "is_isolated": False,
+                    "has_schema_changes": False,
                 },
                 {
                     "id": "7d9f817a-b958-4e76-8528-8afd0c689ada",
                     "name": "cr1234",
-                    "is_data_only": True,
+                    "sync_with_git": False,
                     "is_default": False,
                     "origin_branch": "main",
                     "branched_from": "2023-02-17T09:30:17.811719Z",
+                    "is_isolated": False,
+                    "has_schema_changes": False,
                 },
             ]
         }
@@ -530,9 +540,11 @@ async def mock_add_branch01_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                     "id": "8927425e-fd89-482a-bcec-aad267eb2c66",
                     "name": "branch01",
                     "is_default": False,
-                    "is_data_only": False,
+                    "sync_with_git": True,
                     "description": "",
                     "branched_from": "2023-02-17T09:30:17.811719Z",
+                    "is_isolated": False,
+                    "has_schema_changes": False,
                 },
             }
         }
@@ -563,7 +575,7 @@ async def mock_gql_query_my_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {"data": {"mock": []}}
 
     httpx_mock.add_response(
-        method="POST", json=response, url="http://mock/api/query/my_query?branch=main&rebase=true&update_group=false"
+        method="POST", json=response, url="http://mock/api/query/my_query?branch=main&update_group=false"
     )
     return httpx_mock
 
@@ -693,17 +705,6 @@ async def check_definition_data_01() -> dict:
             },
             "timeout": {
                 "value": 10,
-                "is_protected": True,
-                "is_visible": True,
-                "source": {
-                    "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
-                    "display_label": "infrahub-demo-edge",
-                    "__typename": "Repository",
-                },
-                "owner": None,
-            },
-            "rebase": {
-                "value": True,
                 "is_protected": True,
                 "is_visible": True,
                 "source": {
@@ -1183,15 +1184,6 @@ async def transformation_data_01() -> dict:
             "is_visible": True,
             "is_protected": False,
         },
-        "rebase": {
-            "id": "f557cafd-7da0-4c79-b582-378d9f02767e",
-            "__typename": "Boolean",
-            "value": False,
-            "source": None,
-            "owner": None,
-            "is_visible": True,
-            "is_protected": False,
-        },
         "__typename": "CoreTransformPython",
         "display_label": "transform01",
     }
@@ -1213,9 +1205,8 @@ async def transformation_data_02() -> dict:
         "template_path": {"value": "template01.tpl.j2", "__typename": "TextAttribute"},
         "name": {"value": "mytemplate", "__typename": "TextAttribute"},
         "label": {"value": "My Rendered File", "__typename": "TextAttribute"},
-        "description": {"value": "", "__typename": "TextAttribute"},
+        "description": {"value": "", "__typename": "TextAttri bute"},
         "timeout": {"value": 10, "__typename": "NumberAttribute"},
-        "rebase": {"value": False, "__typename": "CheckboxAttribute"},
         "query": {
             "node": {
                 "id": "47800bff-adf1-450d-8388-b04ef2ffb129",

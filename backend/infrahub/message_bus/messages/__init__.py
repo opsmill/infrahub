@@ -9,6 +9,7 @@ from .check_repository_usercheck import CheckRepositoryUserCheck
 from .event_branch_create import EventBranchCreate
 from .event_branch_delete import EventBranchDelete
 from .event_branch_merge import EventBranchMerge
+from .event_branch_rebased import EventBranchRebased
 from .event_node_mutated import EventNodeMutated
 from .event_schema_update import EventSchemaUpdate
 from .event_worker_newprimaryapi import EventWorkerNewPrimaryAPI
@@ -21,6 +22,7 @@ from .git_repository_merge import GitRepositoryMerge
 from .git_repository_read_only_add import GitRepositoryAddReadOnly
 from .git_repository_read_only_pull import GitRepositoryPullReadOnly
 from .refresh_registry_branches import RefreshRegistryBranches
+from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
 from .refresh_webhook_configuration import RefreshWebhookConfiguration
 from .request_artifact_generate import RequestArtifactGenerate
 from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
@@ -37,6 +39,9 @@ from .request_proposedchange_runtests import RequestProposedChangeRunTests
 from .request_proposedchange_schemaintegrity import RequestProposedChangeSchemaIntegrity
 from .request_repository_checks import RequestRepositoryChecks
 from .request_repository_userchecks import RequestRepositoryUserChecks
+from .schema_migration_path import SchemaMigrationPath, SchemaMigrationPathResponse
+from .schema_validator_path import SchemaValidatorPath, SchemaValidatorPathResponse
+from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
 from .send_webhook_event import SendWebhookEvent
 from .transform_jinja_template import TransformJinjaTemplate, TransformJinjaTemplateResponse
 from .transform_python_data import TransformPythonData, TransformPythonDataResponse
@@ -52,6 +57,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "event.branch.create": EventBranchCreate,
     "event.branch.delete": EventBranchDelete,
     "event.branch.merge": EventBranchMerge,
+    "event.branch.rebased": EventBranchRebased,
     "event.node.mutated": EventNodeMutated,
     "event.schema.update": EventSchemaUpdate,
     "event.worker.new_primary_api": EventWorkerNewPrimaryAPI,
@@ -63,7 +69,10 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "git.repository.merge": GitRepositoryMerge,
     "git.repository.add_read_only": GitRepositoryAddReadOnly,
     "git.repository.pull_read_only": GitRepositoryPullReadOnly,
+    "schema.migration.path": SchemaMigrationPath,
+    "schema.validator.path": SchemaValidatorPath,
     "refresh.registry.branches": RefreshRegistryBranches,
+    "refresh.registry.rebased_branch": RefreshRegistryRebasedBranch,
     "refresh.webhook.configuration": RefreshWebhookConfiguration,
     "request.artifact.generate": RequestArtifactGenerate,
     "request.artifact_definition.check": RequestArtifactDefinitionCheck,
@@ -80,6 +89,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "request.proposed_change.run_tests": RequestProposedChangeRunTests,
     "request.repository.checks": RequestRepositoryChecks,
     "request.repository.user_checks": RequestRepositoryUserChecks,
+    "send.echo.request": SendEchoRequest,
     "send.webhook.event": SendWebhookEvent,
     "transform.jinja.template": TransformJinjaTemplate,
     "transform.python.data": TransformPythonData,
@@ -93,6 +103,9 @@ RESPONSE_MAP: Dict[str, Type[InfrahubResponse]] = {
     "transform.python.data": TransformPythonDataResponse,
     "git.diff.names_only": GitDiffNamesOnlyResponse,
     "git.file.get": GitFileGetResponse,
+    "send.echo.request": SendEchoRequestResponse,
+    "schema.migration.path": SchemaMigrationPathResponse,
+    "schema.validator.path": SchemaValidatorPathResponse,
 }
 
 

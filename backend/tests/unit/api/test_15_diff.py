@@ -1,20 +1,12 @@
 import pytest
 from deepdiff import DeepDiff
 
-from infrahub.api.diff.diff import get_display_labels, get_display_labels_per_kind
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.diff.payload_builder import get_display_labels, get_display_labels_per_kind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus.rpc import InfrahubRpcClientTesting
-
-
-@pytest.fixture
-def patch_rpc_client():
-    import infrahub.message_bus.rpc
-
-    infrahub.message_bus.rpc.InfrahubRpcClient = InfrahubRpcClientTesting
 
 
 async def test_get_display_labels_per_kind(db: InfrahubDatabase, default_branch, car_person_data):

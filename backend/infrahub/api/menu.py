@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -9,7 +9,7 @@ from infrahub.api.dependencies import get_branch_dep
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.schema import NodeSchema
+from infrahub.core.schema import GenericSchema, NodeSchema
 from infrahub.log import get_logger
 
 log = get_logger()
@@ -44,13 +44,19 @@ def add_to_menu(structure: Dict[str, List[InterfaceMenu]], menu_item: InterfaceM
     menu_item.children.insert(0, all_items)
 
 
+def _extract_node_icon(model: Union[NodeSchema, GenericSchema]) -> str:
+    if not model.icon:
+        return ""
+    return model.icon
+
+
 @router.get("")
 async def get_menu(
     branch: Branch = Depends(get_branch_dep),
 ) -> List[InterfaceMenu]:
     log.info("menu_request", branch=branch.name)
 
-    full_schema = registry.schema.get_full(branch=branch)
+    full_schema = registry.schema.get_full(branch=branch, duplicate=False)
     objects = InterfaceMenu(
         title="Objects",
         children=[],
@@ -69,7 +75,11 @@ async def get_menu(
 
         if isinstance(model, NodeSchema) and InfrahubKind.GENERICGROUP in model.inherit_from:
             groups.children.append(
-                InterfaceMenu(title=model.menu_title, path=f"/objects/{model.kind}", icon="mdi:group")
+                InterfaceMenu(
+                    title=model.menu_title,
+                    path=f"/objects/{model.kind}",
+                    icon=_extract_node_icon(full_schema[InfrahubKind.GENERICGROUP]),
+                )
             )
             continue
 
@@ -89,18 +99,33 @@ async def get_menu(
 
     objects.children.sort()
     groups.children.sort()
-    groups.children.insert(0, InterfaceMenu(title="All Groups", path="/objects/CoreGroup", icon="mdi:group"))
+    groups.children.insert(
+        0,
+        InterfaceMenu(
+            title="All Groups",
+            path="/objects/CoreGroup",
+            icon=_extract_node_icon(full_schema[InfrahubKind.GENERICGROUP]),
+        ),
+    )
     unified_storage = InterfaceMenu(
         title="Unified Storage",
         children=[
             InterfaceMenu(title="Schema", path="/schema", icon="mdi:file-code"),
-            InterfaceMenu(title="Repository", path=f"/objects/{InfrahubKind.REPOSITORY}", icon="mdi:source-repository"),
+            InterfaceMenu(
+                title="Repository",
+                path=f"/objects/{InfrahubKind.REPOSITORY}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.REPOSITORY]),
+            ),
             InterfaceMenu(
                 title="Read-only Repository",
                 path=f"/objects/{InfrahubKind.READONLYREPOSITORY}",
                 icon="mdi:source-repository",
             ),
-            InterfaceMenu(title="GraphQL Query", path=f"/objects/{InfrahubKind.GRAPHQLQUERY}", icon="mdi:graphql"),
+            InterfaceMenu(
+                title="GraphQL Query",
+                path=f"/objects/{InfrahubKind.GRAPHQLQUERY}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.GRAPHQLQUERY]),
+            ),
         ],
     )
 
@@ -108,9 +133,15 @@ async def get_menu(
         title="Change Control",
         children=[
             InterfaceMenu(title="Branches", path="/branches", icon="mdi:layers-triple"),
-            InterfaceMenu(title="Proposed Changes", path="/proposed-changes", icon="mdi:file-replace-outline"),
             InterfaceMenu(
-                title="Check Definition", path=f"/objects/{InfrahubKind.CHECKDEFINITION}", icon="mdi:check-all"
+                title="Proposed Changes",
+                path="/proposed-changes",
+                icon=_extract_node_icon(full_schema[InfrahubKind.PROPOSEDCHANGE]),
+            ),
+            InterfaceMenu(
+                title="Check Definition",
+                path=f"/objects/{InfrahubKind.CHECKDEFINITION}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.CHECKDEFINITION]),
             ),
             InterfaceMenu(title="Tasks", path="/tasks", icon="mdi:shield-check"),
         ],
@@ -118,25 +149,43 @@ async def get_menu(
     deployment = InterfaceMenu(
         title="Deployment",
         children=[
-            InterfaceMenu(title="Artifact", path=f"/objects/{InfrahubKind.ARTIFACT}", icon="mdi:file-document-outline"),
+            InterfaceMenu(
+                title="Artifact",
+                path=f"/objects/{InfrahubKind.ARTIFACT}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.ARTIFACT]),
+            ),
             InterfaceMenu(
                 title="Artifact Definition",
                 path=f"/objects/{InfrahubKind.ARTIFACTDEFINITION}",
-                icon="mdi:file-document-multiple-outline",
+                icon=_extract_node_icon(full_schema[InfrahubKind.ARTIFACTDEFINITION]),
             ),
-            InterfaceMenu(title="Transformation", path="/objects/CoreTransformation", icon="mdi:cog-transfer"),
+            InterfaceMenu(
+                title="Transformation",
+                path=f"/objects/{InfrahubKind.TRANSFORM}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.TRANSFORM]),
+            ),
         ],
     )
     admin = InterfaceMenu(
         title="Admin",
         children=[
-            InterfaceMenu(title="Accounts", path=f"/objects/{InfrahubKind.ACCOUNT}", icon="mdi:account"),
+            InterfaceMenu(
+                title="Accounts",
+                path=f"/objects/{InfrahubKind.ACCOUNT}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.ACCOUNT]),
+            ),
             InterfaceMenu(
                 title="Webhooks",
                 children=[
-                    InterfaceMenu(title="Webhook", path=f"/objects/{InfrahubKind.STANDARDWEBHOOK}", icon="mdi:webhook"),
                     InterfaceMenu(
-                        title="Custom Webhook", path=f"/objects/{InfrahubKind.CUSTOMWEBHOOK}", icon="mdi:cog-outline"
+                        title="Webhook",
+                        path=f"/objects/{InfrahubKind.STANDARDWEBHOOK}",
+                        icon=_extract_node_icon(full_schema[InfrahubKind.STANDARDWEBHOOK]),
+                    ),
+                    InterfaceMenu(
+                        title="Custom Webhook",
+                        path=f"/objects/{InfrahubKind.CUSTOMWEBHOOK}",
+                        icon=_extract_node_icon(full_schema[InfrahubKind.CUSTOMWEBHOOK]),
                     ),
                 ],
             ),

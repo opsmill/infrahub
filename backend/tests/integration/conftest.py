@@ -1,13 +1,12 @@
 import asyncio
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, Optional
 
 import pytest
 import yaml
 from infrahub_sdk import UUIDT
 
-import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import first_time_initialization, initialization
@@ -29,7 +28,7 @@ def event_loop():
 
 
 @pytest.fixture(scope="module")
-async def db() -> InfrahubDatabase:
+async def db() -> AsyncGenerator[InfrahubDatabase, None]:
     driver = InfrahubDatabase(driver=await get_db(retry=1))
 
     yield driver
@@ -43,7 +42,7 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
     schema_txt = Path(os.path.join(models_dir, "infrastructure_base.yml")).read_text()
     infra_schema = yaml.safe_load(schema_txt)
 
-    default_branch_name = config.SETTINGS.main.default_branch
+    default_branch_name = registry.default_branch
     branch_schema = registry.schema.get_schema_branch(name=default_branch_name)
     tmp_schema = branch_schema.duplicate()
     tmp_schema.load_schema(schema=SchemaRoot(**infra_schema))
@@ -70,7 +69,7 @@ async def init_db_base(db: InfrahubDatabase):
 class IntegrationHelper:
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
-        self._admin_headers = {}
+        self._admin_headers: dict[str, Any] = {}
 
     async def admin_headers(self) -> Dict[str, Any]:
         if not self._admin_headers:

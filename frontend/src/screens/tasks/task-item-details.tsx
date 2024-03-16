@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 import { TASK_OBJECT } from "../../config/constants";
 import useQuery from "../../hooks/useQuery";
 
-import { useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { BADGE_TYPES, Badge } from "../../components/display/badge";
@@ -23,7 +23,7 @@ export const getConclusionBadge: { [key: string]: any } = {
   failure: <Badge type={BADGE_TYPES.CANCEL}>failure</Badge>,
 };
 
-export const TaskItemDetails = () => {
+export const TaskItemDetails = forwardRef((props, ref) => {
   const [taskId] = useQueryParam(QSP.TASK_ID, StringParam);
   const [search, setSearch] = useState("");
 
@@ -38,7 +38,10 @@ export const TaskItemDetails = () => {
     ${queryString}
   `;
 
-  const { loading, error, data = {} } = useQuery(query);
+  const { loading, error, data = {}, refetch } = useQuery(query);
+
+  // Provide refetch function to parent
+  useImperativeHandle(ref, () => ({ refetch }));
 
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching list." />;
@@ -116,7 +119,11 @@ export const TaskItemDetails = () => {
           <h2 className="flex-1 font-semibold text-gray-900 m-2 ml-0">Task Logs ({count})</h2>
 
           <div className="flex flex-1 justify-end">
-            <SearchInput onChange={setSearch} placeholder="Search logs from message or severity" />
+            <SearchInput
+              onChange={setSearch}
+              containerClassName="!z-0"
+              placeholder="Search logs from message or severity"
+            />
           </div>
         </div>
 
@@ -124,4 +131,4 @@ export const TaskItemDetails = () => {
       </div>
     </div>
   );
-};
+});

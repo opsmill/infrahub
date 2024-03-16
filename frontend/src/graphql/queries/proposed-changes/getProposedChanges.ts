@@ -41,7 +41,9 @@ query {
       }
     }
   }
+
   {{#if accountKind}}
+
   {{accountKind}} {
     edges {
       node {
@@ -50,6 +52,15 @@ query {
       }
     }
   }
+
+  {{/if}}
+
+  {{#if taskKind}}
+
+  {{taskKind}}(related_node__ids: ["{{id}}"]) {
+    count
+  }
+
   {{/if}}
 }
 `);

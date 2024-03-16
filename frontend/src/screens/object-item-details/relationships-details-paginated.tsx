@@ -1,6 +1,7 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
+import { forwardRef, useEffect, useImperativeHandle } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -27,7 +28,8 @@ interface RelationshipsDetailsProps {
   refetchObjectDetails: Function;
 }
 
-export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
+// Forward ref needed to provide ref to parent to refetch
+export const RelationshipsDetails = forwardRef((props: RelationshipsDetailsProps, ref) => {
   const { parentNode, refetchObjectDetails } = props;
 
   const { objectname, objectid } = useParams();
@@ -49,7 +51,6 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
   const generic = generics.find((s) => s.kind === relationshipSchemaData?.peer);
   const schemaData = schema || generic;
 
-  // TODO: doesn't work with generics (like members of group), columns are empty, default ones will be used
   const columns = getSchemaObjectColumns(schemaData, true);
 
   const filtersString = [
@@ -75,7 +76,16 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
     ${queryString}
   `;
 
+  useEffect(() => {
+    // Refetch on mount to update tab counter if needed
+    // TODO: improve test before refetching data
+    refetchObjectDetails();
+  }, []);
+
   const { loading, error, data, refetch } = useQuery(query, { skip: !relationshipTab });
+
+  // Provide refetch function to parent
+  useImperativeHandle(ref, () => ({ refetch }));
 
   const updatePageData = () => {
     return Promise.all([refetch(), refetchObjectDetails()]);
@@ -126,7 +136,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
   const relationshipsData = data[objectname]?.edges[0]?.node[relationshipTab]?.edges;
 
   return (
-    <div className="border-t border-gray-200 px-4 py-5 sm:p-0 flex flex-col flex-1 overflow-auto">
+    <div>
       <RelationshipDetails
         parentNode={parentNode}
         mode="TABLE"
@@ -140,4 +150,4 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
       <Pagination count={count} />
     </div>
   );
-}
+});

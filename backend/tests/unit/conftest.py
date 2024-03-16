@@ -1,16 +1,16 @@
 import os
 import shutil
 from itertools import islice
-from typing import Dict
+from typing import Any, Dict
 
 import pendulum
 import pytest
-from git.repo import Repo
 from infrahub_sdk import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
 from pytest_httpx import HTTPXMock
 
 from infrahub import config
+from infrahub.auth import AccountSession, AuthType
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, InfrahubKind
@@ -32,21 +32,16 @@ from infrahub.core.schema_manager import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
-from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub.test_data import dataset01 as ds01
-
-
-@pytest.fixture
-async def rpc_client() -> InfrahubRpcClientTesting:
-    return InfrahubRpcClientTesting()
+from tests.helpers.file_repo import FileRepo
 
 
 @pytest.fixture(params=["main", "branch2"])
 async def branch(request, db: InfrahubDatabase, default_branch: Branch):
     if request.param == "main":
         return default_branch
-    else:
-        return await create_branch(branch_name=str(request.param), db=db)
+
+    return await create_branch(branch_name=str(request.param), db=db)
 
 
 @pytest.fixture(scope="session")
@@ -63,7 +58,7 @@ def neo4j_factory():
 
 
 @pytest.fixture
-def git_sources_dir(tmp_path) -> str:
+def git_sources_dir(default_branch, tmp_path) -> str:
     source_dir = os.path.join(str(tmp_path), "sources")
 
     os.mkdir(source_dir)
@@ -83,14 +78,8 @@ def git_repos_dir(tmp_path) -> str:
 
 
 @pytest.fixture
-async def git_fixture_repo(git_sources_dir, git_repos_dir, helper) -> InfrahubRepository:
-    fixtures_dir = helper.get_fixtures_dir()
-    test_base = os.path.join(fixtures_dir, "repos/test_base")
-    shutil.copytree(test_base, f"{git_sources_dir}/test_base")
-    origin = Repo.init(f"{git_sources_dir}/test_base", initial_branch="main")
-    for untracked in origin.untracked_files:
-        origin.index.add(untracked)
-    origin.index.commit("First commit")
+async def git_fixture_repo(git_sources_dir, git_repos_dir) -> InfrahubRepository:
+    FileRepo(name="test_base", sources_directory=git_sources_dir)
 
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
@@ -145,8 +134,8 @@ async def simple_dataset_01(db: InfrahubDatabase, empty_database) -> dict:
     CREATE (c:Car { uuid: "5ffa45d4" })
     CREATE (c)-[r:IS_PART_OF {branch: $branch, branch_level: 1, from: $time1}]->(root)
 
-    CREATE (at1:Attribute:AttributeLocal { uuid: "ee04c93a", type: "Str", name: "name"})
-    CREATE (at2:Attribute:AttributeLocal { uuid: "924786c3", type: "Int", name: "nbr_seats"})
+    CREATE (at1:Attribute { uuid: "ee04c93a", name: "name"})
+    CREATE (at2:Attribute { uuid: "924786c3", name: "nbr_seats"})
     CREATE (c)-[:HAS_ATTRIBUTE {branch: $branch, branch_level: 1, from: $time1}]->(at1)
     CREATE (c)-[:HAS_ATTRIBUTE {branch: $branch, branch_level: 1, from: $time1}]->(at2)
 
@@ -219,7 +208,7 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
         status="OPEN",
         description="Second Branch",
         is_default=False,
-        is_data_only=True,
+        sync_with_git=False,
         branched_from=params["time_m45"],
         created_at=params["time_m45"],
     )
@@ -241,10 +230,10 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (atvt:AttributeValue { value: true })
     CREATE (atv44:AttributeValue { value: "#444444" })
 
-    CREATE (c1at1:Attribute:AttributeLocal { uuid: "c1at1", type: "Str", name: "name", branch_support: "aware"})
-    CREATE (c1at2:Attribute:AttributeLocal { uuid: "c1at2", type: "Int", name: "nbr_seats", branch_support: "aware"})
-    CREATE (c1at3:Attribute:AttributeLocal { uuid: "c1at3", type: "Bool", name: "is_electric", branch_support: "aware"})
-    CREATE (c1at4:Attribute:AttributeLocal { uuid: "c1at4", type: "Str", name: "color", branch_support: "aware"})
+    CREATE (c1at1:Attribute { uuid: "c1at1", name: "name", branch_support: "aware"})
+    CREATE (c1at2:Attribute { uuid: "c1at2", name: "nbr_seats", branch_support: "aware"})
+    CREATE (c1at3:Attribute { uuid: "c1at3", name: "is_electric", branch_support: "aware"})
+    CREATE (c1at4:Attribute { uuid: "c1at4", name: "color", branch_support: "aware"})
     CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at1)
     CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at2)
     CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at3)
@@ -277,10 +266,10 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (c2:Node:TestCar { uuid: "c2", namespace: "Test", kind: "TestCar", branch_support: "aware" })
     CREATE (c2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m20, status: "active"}]->(root)
 
-    CREATE (c2at1:Attribute:AttributeLocal { uuid: "c2at1", type: "Str", name: "name", branch_support: "aware"})
-    CREATE (c2at2:Attribute:AttributeLocal { uuid: "c2at2", type: "Int", name: "nbr_seats", branch_support: "aware"})
-    CREATE (c2at3:Attribute:AttributeLocal { uuid: "c2at3", type: "Bool", name: "is_electric", branch_support: "aware"})
-    CREATE (c2at4:Attribute:AttributeLocal { uuid: "c2at4", type: "Str", name: "color", branch_support: "aware"})
+    CREATE (c2at1:Attribute { uuid: "c2at1", name: "name", branch_support: "aware"})
+    CREATE (c2at2:Attribute { uuid: "c2at2", name: "nbr_seats", branch_support: "aware"})
+    CREATE (c2at3:Attribute { uuid: "c2at3", name: "is_electric", branch_support: "aware"})
+    CREATE (c2at4:Attribute { uuid: "c2at4", name: "color", branch_support: "aware"})
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at1)
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at2)
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at3)
@@ -308,10 +297,10 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (c3:Node:TestCar { uuid: "c3", namespace: "Test", kind: "TestCar", branch_support: "aware" })
     CREATE (c3)-[:IS_PART_OF {branch: $branch1, branch_level: 2, from: $time_m40, status: "active"}]->(root)
 
-    CREATE (c3at1:Attribute:AttributeLocal { uuid: "c3at1", type: "Str", name: "name", branch_support: "aware"})
-    CREATE (c3at2:Attribute:AttributeLocal { uuid: "c3at2", type: "Int", name: "nbr_seats", branch_support: "aware"})
-    CREATE (c3at3:Attribute:AttributeLocal { uuid: "c3at3", type: "Bool", name: "is_electric", branch_support: "aware"})
-    CREATE (c3at4:Attribute:AttributeLocal { uuid: "c3at4", type: "Str", name: "color", branch_support: "aware"})
+    CREATE (c3at1:Attribute { uuid: "c3at1", name: "name", branch_support: "aware"})
+    CREATE (c3at2:Attribute { uuid: "c3at2", name: "nbr_seats", branch_support: "aware"})
+    CREATE (c3at3:Attribute { uuid: "c3at3", name: "is_electric", branch_support: "aware"})
+    CREATE (c3at4:Attribute { uuid: "c3at4", name: "color", branch_support: "aware"})
     CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at1)
     CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at2)
     CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at3)
@@ -338,7 +327,7 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     CREATE (p1:Node:TestPerson { uuid: "p1", namespace: "Test", kind: "TestPerson", branch_support: "aware" })
     CREATE (p1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
-    CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "name", branch_support: "aware"})
+    CREATE (p1at1:Attribute { uuid: "p1at1", name: "name", branch_support: "aware"})
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p1at1)
     CREATE (p1av11:AttributeValue { uuid: "p1av11", value: "John Doe"})
     CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p1av11)
@@ -347,7 +336,7 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     CREATE (p2:Node:TestPerson { uuid: "p2", namespace: "Test", kind: "TestPerson", branch_support: "aware" })
     CREATE (p2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
-    CREATE (p2at1:Attribute:AttributeLocal { uuid: "p2at1", type: "Str", name: "name", branch_support: "aware"})
+    CREATE (p2at1:Attribute { uuid: "p2at1", name: "name", branch_support: "aware"})
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p2at1)
     CREATE (p2av11:AttributeValue { uuid: "p2av11", value: "Jane Doe"})
     CREATE (p2at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p2av11)
@@ -356,7 +345,7 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     CREATE (p3:Node:TestPerson { uuid: "p3", namespace: "Test", kind: "TestPerson", branch_support: "aware" })
     CREATE (p3)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
-    CREATE (p3at1:Attribute:AttributeLocal { uuid: "p3at1", type: "Str", name: "name", branch_support: "aware"})
+    CREATE (p3at1:Attribute { uuid: "p3at1", name: "name", branch_support: "aware"})
     CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p3at1)
     CREATE (p3av11:AttributeValue { uuid: "p3av11", value: "Bill"})
     CREATE (p3at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p3av11)
@@ -441,7 +430,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
         status="OPEN",
         description="Second Branch",
         is_default=False,
-        is_data_only=True,
+        sync_with_git=False,
         branched_from=params["time_m45"],
         created_at=params["time_m45"],
     )
@@ -461,10 +450,10 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (atvt:AttributeValue { value: true })
     CREATE (atv44:AttributeValue { value: "#444444" })
 
-    CREATE (c1at1:Attribute:AttributeLocal { uuid: "c1at1", type: "Str", name: "name", branch_support: "aware"})
-    CREATE (c1at2:Attribute:AttributeLocal { uuid: "c1at2", type: "Int", name: "nbr_seats", branch_support: "agnostic"})
-    CREATE (c1at3:Attribute:AttributeLocal { uuid: "c1at3", type: "Bool", name: "is_electric", branch_support: "aware"})
-    CREATE (c1at4:Attribute:AttributeLocal { uuid: "c1at4", type: "Str", name: "color", branch_support: "aware"})
+    CREATE (c1at1:Attribute { uuid: "c1at1", name: "name", branch_support: "aware"})
+    CREATE (c1at2:Attribute { uuid: "c1at2", name: "nbr_seats", branch_support: "agnostic"})
+    CREATE (c1at3:Attribute { uuid: "c1at3", name: "is_electric", branch_support: "aware"})
+    CREATE (c1at4:Attribute { uuid: "c1at4", name: "color", branch_support: "aware"})
     CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at1)
     CREATE (c1)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at2)
     CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at3)
@@ -497,10 +486,10 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (c2:Node:TestCar { uuid: "c2", namespace: "Test", kind: "TestCar", branch_support: "aware" })
     CREATE (c2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m20, status: "active"}]->(root)
 
-    CREATE (c2at1:Attribute:AttributeLocal { uuid: "c2at1", type: "Str", name: "name", branch_support: "aware"})
-    CREATE (c2at2:Attribute:AttributeLocal { uuid: "c2at2", type: "Int", name: "nbr_seats", branch_support: "agnostic"})
-    CREATE (c2at3:Attribute:AttributeLocal { uuid: "c2at3", type: "Bool", name: "is_electric", branch_support: "aware"})
-    CREATE (c2at4:Attribute:AttributeLocal { uuid: "c2at4", type: "Str", name: "color", branch_support: "aware"})
+    CREATE (c2at1:Attribute { uuid: "c2at1", name: "name", branch_support: "aware"})
+    CREATE (c2at2:Attribute { uuid: "c2at2", name: "nbr_seats", branch_support: "agnostic"})
+    CREATE (c2at3:Attribute { uuid: "c2at3", name: "is_electric", branch_support: "aware"})
+    CREATE (c2at4:Attribute { uuid: "c2at4", name: "color", branch_support: "aware"})
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at1)
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at2)
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at3)
@@ -528,10 +517,10 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (c3:Node:TestCar { uuid: "c3", namespace: "Test", kind: "TestCar", branch_support: "aware" })
     CREATE (c3)-[:IS_PART_OF {branch: $branch1, branch_level: 2, from: $time_m40, status: "active"}]->(root)
 
-    CREATE (c3at1:Attribute:AttributeLocal { uuid: "c3at1", type: "Str", name: "name", branch_support: "aware"})
-    CREATE (c3at2:Attribute:AttributeLocal { uuid: "c3at2", type: "Int", name: "nbr_seats", branch_support: "agnostic"})
-    CREATE (c3at3:Attribute:AttributeLocal { uuid: "c3at3", type: "Bool", name: "is_electric", branch_support: "aware"})
-    CREATE (c3at4:Attribute:AttributeLocal { uuid: "c3at4", type: "Str", name: "color", branch_support: "aware"})
+    CREATE (c3at1:Attribute { uuid: "c3at1", name: "name", branch_support: "aware"})
+    CREATE (c3at2:Attribute { uuid: "c3at2", name: "nbr_seats", branch_support: "agnostic"})
+    CREATE (c3at3:Attribute { uuid: "c3at3", name: "is_electric", branch_support: "aware"})
+    CREATE (c3at4:Attribute { uuid: "c3at4", name: "color", branch_support: "aware"})
     CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at1)
     CREATE (c3)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m40}]->(c3at2)
     CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at3)
@@ -558,7 +547,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     CREATE (p1:Node:TestPerson { uuid: "p1", namespace: "Test", kind: "TestPerson", branch_support: "agnostic" })
     CREATE (p1)-[:IS_PART_OF { branch: $global_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
-    CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "name", branch_support: "agnostic"})
+    CREATE (p1at1:Attribute { uuid: "p1at1", name: "name", branch_support: "agnostic"})
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60}]->(p1at1)
     CREATE (p1av11:AttributeValue { uuid: "p1av11", value: "John Doe"})
     CREATE (p1at1)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p1av11)
@@ -567,7 +556,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     CREATE (p2:Node:TestPerson { uuid: "p2", namespace: "Test", kind: "TestPerson", branch_support: "agnostic" })
     CREATE (p2)-[:IS_PART_OF {branch: $global_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
-    CREATE (p2at1:Attribute:AttributeLocal { uuid: "p2at1", type: "Str", name: "name", branch_support: "agnostic"})
+    CREATE (p2at1:Attribute { uuid: "p2at1", name: "name", branch_support: "agnostic"})
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60}]->(p2at1)
     CREATE (p2av11:AttributeValue { uuid: "p2av11", value: "Jane Doe"})
     CREATE (p2at1)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p2av11)
@@ -576,7 +565,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     CREATE (p3:Node:TestPerson { uuid: "p3", namespace: "Test", kind: "TestPerson", branch_support: "agnostic" })
     CREATE (p3)-[:IS_PART_OF {branch: $global_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
-    CREATE (p3at1:Attribute:AttributeLocal { uuid: "p3at1", type: "Str", name: "name", branch_support: "agnostic"})
+    CREATE (p3at1:Attribute { uuid: "p3at1", name: "name", branch_support: "agnostic"})
     CREATE (p3)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60}]->(p3at1)
     CREATE (p3av11:AttributeValue { uuid: "p3av11", value: "Bill"})
     CREATE (p3at1)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p3av11)
@@ -668,7 +657,7 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
             status="OPEN",
             description=description,
             is_default=False,
-            is_data_only=True,
+            sync_with_git=False,
             branched_from=params[branched_from],
             created_at=params[created_at],
         )
@@ -755,7 +744,7 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     CREATE (t1:Node:Tag { uuid: "t1", kind: "Tag", branch_support: "aware"})
     CREATE (t1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (t1at1:Attribute:AttributeLocal { uuid: "t1at1", type: "Str", name: "name", branch_support: "aware"})
+    CREATE (t1at1:Attribute { uuid: "t1at1", name: "name", branch_support: "aware"})
     CREATE (t1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(t1at1)
 
     CREATE (t1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(blue)
@@ -766,7 +755,7 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     CREATE (t2:Node:Tag { uuid: "t2", kind: "Tag", branch_support: "aware" })
     CREATE (t2)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (t2at1:Attribute:AttributeLocal { uuid: "t2at1", type: "Str", name: "name", branch_support: "aware"})
+    CREATE (t2at1:Attribute { uuid: "t2at1", name: "name", branch_support: "aware"})
     CREATE (t2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(t2at1)
 
     CREATE (t2at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(red)
@@ -777,7 +766,7 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     CREATE (t3:Node:Tag { uuid: "t3", kind: "Tag", branch_support: "aware" })
     CREATE (t3)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (t3at1:Attribute:AttributeLocal { uuid: "t3at1", type: "Str", name: "name", branch_support: "aware"})
+    CREATE (t3at1:Attribute { uuid: "t3at1", name: "name", branch_support: "aware"})
     CREATE (t3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(t3at1)
 
     CREATE (t3at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(green)
@@ -837,8 +826,8 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     CREATE (p1:Node:Person { uuid: "p1", kind: "Person", branch_support: "aware" })
     CREATE (p1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname", branch_support: "aware"})
-    CREATE (p1at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname", branch_support: "aware"})
+    CREATE (p1at1:Attribute { uuid: "p1at1", name: "firstname", branch_support: "aware"})
+    CREATE (p1at2:Attribute { uuid: "p1at2", name: "lastname", branch_support: "aware"})
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p1at1)
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p1at2)
 
@@ -890,8 +879,8 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     CREATE (p2:Node:Person { uuid: "p2", kind: "Person", branch_support: "aware" })
     CREATE (p2)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (p2at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname", branch_support: "aware"})
-    CREATE (p2at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname", branch_support: "aware"})
+    CREATE (p2at1:Attribute { uuid: "p1at1", name: "firstname", branch_support: "aware"})
+    CREATE (p2at2:Attribute { uuid: "p1at2", name: "lastname", branch_support: "aware"})
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p2at1)
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p2at2)
 
@@ -925,8 +914,8 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     CREATE (p3:Node:Person { uuid: "p3", kind: "Person", branch_support: "aware" })
     CREATE (p3)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (p3at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname", branch_support: "aware"})
-    CREATE (p3at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname", branch_support: "aware"})
+    CREATE (p3at1:Attribute { uuid: "p1at1", name: "firstname", branch_support: "aware"})
+    CREATE (p3at2:Attribute { uuid: "p1at2", name: "lastname", branch_support: "aware"})
     CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p3at1)
     CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p3at2)
 
@@ -1007,7 +996,7 @@ async def base_dataset_04(
 
 @pytest.fixture
 async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_group_schema) -> None:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "generics": [
             {
                 "name": "Choice",
@@ -1062,7 +1051,7 @@ async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_grou
 async def car_person_schema_global(
     db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema
 ) -> None:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Car",
@@ -1156,7 +1145,7 @@ async def car_person_data_generic(db: InfrahubDatabase, register_core_models_sch
 
 @pytest.fixture
 async def car_person_manufacturer_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Car",
@@ -1210,7 +1199,7 @@ async def car_person_manufacturer_schema(db: InfrahubDatabase, default_branch: B
 async def car_person_schema_generics(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, data_schema
 ) -> SchemaRoot:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "generics": [
             {
                 "name": "Car",
@@ -1365,7 +1354,7 @@ async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_gener
 
 @pytest.fixture
 async def person_tag_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
-    SCHEMA = {
+    SCHEMA: Dict[str, Any] = {
         "nodes": [
             {
                 "name": "Tag",
@@ -1627,7 +1616,7 @@ async def group_group2_subscribers_main(
 async def all_attribute_types_schema(
     db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema
 ) -> NodeSchema:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "AllAttributeTypes",
         "namespace": "Test",
         "branch": BranchSupportType.AWARE.value,
@@ -1649,7 +1638,7 @@ async def all_attribute_types_schema(
 
 @pytest.fixture
 async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema) -> NodeSchema:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "Criticality",
         "namespace": "Test",
         "default_filter": "name__value",
@@ -1711,7 +1700,7 @@ async def criticality_high(db: InfrahubDatabase, default_branch: Branch, critica
 
 @pytest.fixture
 async def generic_vehicule_schema(db: InfrahubDatabase, default_branch: Branch) -> GenericSchema:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "Vehicule",
         "namespace": "Test",
         "attributes": [
@@ -1728,7 +1717,7 @@ async def generic_vehicule_schema(db: InfrahubDatabase, default_branch: Branch) 
 
 @pytest.fixture
 async def car_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, data_schema) -> NodeSchema:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "Car",
         "namespace": "Test",
         "inherit_from": ["TestVehicule"],
@@ -1746,7 +1735,7 @@ async def car_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehic
 
 @pytest.fixture
 async def motorcycle_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "Motorcycle",
         "namespace": "Test",
         "attributes": [
@@ -1764,7 +1753,7 @@ async def motorcycle_schema(db: InfrahubDatabase, default_branch: Branch, generi
 
 @pytest.fixture
 async def truck_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "Truck",
         "namespace": "Test",
         "attributes": [
@@ -1784,7 +1773,7 @@ async def truck_schema(db: InfrahubDatabase, default_branch: Branch, generic_veh
 async def boat_schema(
     db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, person_schema
 ) -> NodeSchema:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "Boat",
         "namespace": "Test",
         "inherit_from": ["TestVehicule"],
@@ -1805,7 +1794,7 @@ async def boat_schema(
 
 @pytest.fixture
 async def person_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "Person",
         "namespace": "Test",
         "default_filter": "name__value",
@@ -1832,7 +1821,7 @@ async def vehicule_person_schema(
 
 @pytest.fixture
 async def fruit_tag_schema(db: InfrahubDatabase, group_schema, data_schema) -> SchemaRoot:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Tag",
@@ -1866,7 +1855,7 @@ async def fruit_tag_schema(db: InfrahubDatabase, group_schema, data_schema) -> S
 
 @pytest.fixture
 async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schema) -> SchemaRoot:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Tag",
@@ -1917,10 +1906,8 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
 
 
 @pytest.fixture
-async def hierarchical_location_schema(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
-) -> None:
-    SCHEMA = {
+async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_branch: Branch) -> None:
+    SCHEMA: dict[str, Any] = {
         "generics": [
             {
                 "name": "Generic",
@@ -1951,7 +1938,7 @@ async def hierarchical_location_schema(
                 "default_filter": "name__value",
                 "inherit_from": ["LocationGeneric"],
                 "parent": "LocationRegion",
-                "children": "LocationSite",
+                "children": "LocationRack",
             },
             {
                 "name": "Rack",
@@ -1980,9 +1967,27 @@ async def hierarchical_location_schema(
 
 
 @pytest.fixture
+async def hierarchical_location_schema(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple, register_core_models_schema
+) -> None:
+    ...
+
+
+@pytest.fixture
+async def hierarchical_location_data_simple(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple
+) -> Dict[str, Node]:
+    return await _build_hierarchical_location_data(db=db)
+
+
+@pytest.fixture
 async def hierarchical_location_data(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema
 ) -> Dict[str, Node]:
+    return await _build_hierarchical_location_data(db=db)
+
+
+async def _build_hierarchical_location_data(db: InfrahubDatabase) -> Dict[str, Node]:
     REGIONS = (
         ("north-america",),
         ("europe",),
@@ -2086,7 +2091,7 @@ async def hierarchical_groups_data(
 
 @pytest.fixture
 async def prefix_schema(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Prefix",
@@ -2137,7 +2142,7 @@ async def init_db(empty_database, db: InfrahubDatabase) -> None:
 
 @pytest.fixture
 async def organization_schema() -> SchemaRoot:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Organization",
@@ -2173,7 +2178,7 @@ async def organization_schema() -> SchemaRoot:
 
 @pytest.fixture
 async def builtin_schema() -> SchemaRoot:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Status",
@@ -2311,6 +2316,12 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
     await token.save(db=db)
 
     return account
+
+
+@pytest.fixture
+async def session_admin(db: InfrahubDatabase, create_test_admin) -> AccountSession:
+    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin.id, role="admin")
+    return session
 
 
 @pytest.fixture

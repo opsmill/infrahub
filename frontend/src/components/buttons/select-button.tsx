@@ -45,7 +45,7 @@ export const SelectButton = (props: any) => {
                     key={option.name}
                     className={({ active }) =>
                       classNames(
-                        active ? "text-custom-white bg-custom-blue-700" : "text-gray-900",
+                        active ? "text-custom-white bg-custom-blue-800" : "text-gray-900",
                         "cursor-pointer select-none p-4 text-sm"
                       )
                     }

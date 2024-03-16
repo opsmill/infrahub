@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Generator, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
 
 from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Relationship as Neo4jRelationship
@@ -215,6 +216,12 @@ class QueryResult:
     def get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship]:
         return self._get(label=label)
 
+    def get_as_str(self, label: str) -> Optional[str]:
+        item = self._get(label=label)
+        if item:
+            return str(item)
+        return None
+
     def get_node_collection(self, label: str) -> List[Neo4jNode]:
         entry = self._get(label=label)
         if isinstance(entry, list):
@@ -247,8 +254,42 @@ class QueryResult:
                 yield item
 
     def __iter__(self):
-        for item in self.data:
-            yield item
+        yield from self.data
+
+
+@dataclass
+class QueryStats:
+    stats: List[QueryStat] = field(default_factory=list)
+
+    def add(self, data: Optional[Dict[str, Any]]) -> None:
+        if data:
+            self.stats.append(QueryStat.from_metadata(data))
+
+    def get_counter(self, name: str) -> int:
+        cnt = 0
+        for stat in self.stats:
+            if not hasattr(stat, name):
+                raise ValueError(f"Counter {name} is not available")
+            cnt += getattr(stat, name)
+
+        return cnt
+
+
+@dataclass
+class QueryStat:
+    contains_updates: bool = False
+    labels_added: Optional[int] = None
+    labels_removed: Optional[int] = None
+    nodes_created: Optional[int] = None
+    nodes_deleted: Optional[int] = None
+    properties_set: Optional[int] = None
+    relationships_created: Optional[int] = None
+    relationships_deleted: Optional[int] = None
+
+    @classmethod
+    def from_metadata(cls, data: Dict[str, Any]) -> Self:
+        data = {key.replace("-", "_"): value for key, value in data.items()}
+        return cls(**data)
 
 
 class Query(ABC):
@@ -287,6 +328,8 @@ class Query(ABC):
 
         self.has_been_executed: bool = False
         self.has_errors: bool = False
+
+        self.stats: QueryStats = QueryStats()
 
     def update_return_labels(self, value: Union[str, List[str]]) -> None:
         if isinstance(value, str) and value not in self.return_labels:
@@ -359,7 +402,7 @@ class Query(ABC):
         query_str = "\n".join(tmp_query_lines)
 
         if var and not inline:
-            return "\n" + self.get_params_for_neo4j_shell() + "\n\n" + query_str
+            return "\n" + self.get_params_for_shell() + "\n\n" + query_str
         if var and inline:
             return self.insert_variables_in_query(query=query_str, variables=self.params)
 
@@ -378,15 +421,29 @@ class Query(ABC):
     @staticmethod
     def insert_variables_in_query(query: str, variables: dict) -> str:
         """Search for all the variables in a Query string and replace each variable with its value."""
+
+        def prep_value(v):
+            if isinstance(v, (int, list)):
+                return str(v)
+            return f'"{v}"'
+
         for key, value in variables.items():
-            if isinstance(value, (int, list)):
-                query = query.replace(f"${key}", str(value))
+            if isinstance(value, dict):
+                value_items = [f"{key1}: {prep_value(value1)}" for key1, value1 in value.items()]
+                value_str = "{ " + ", ".join(value_items) + " }"
+                query = query.replace(f"${key}", value_str)
             else:
-                query = query.replace(f"${key}", f'"{value}"')
+                query = query.replace(f"${key}", prep_value(value))
 
         return query
 
-    def get_params_for_neo4j_shell(self):
+    def get_params_for_shell(self):
+        if config.SETTINGS.database.db_type.value == "memgraph":
+            return json.dumps(self.params)
+
+        return self._get_params_for_neo4j_shell()
+
+    def _get_params_for_neo4j_shell(self):
         """Generate string to define some parameters in Neo4j browser interface.
         It's especially useful to later execute a query that includes some variables.
 
@@ -417,7 +474,11 @@ class Query(ABC):
                 results = await self.query_with_size_limit(db=db)
 
         elif self.type == QueryType.WRITE:
-            results = await db.execute_query(query=self.get_query(), params=self.params, name=self.name)
+            results, metadata = await db.execute_query_with_metadata(
+                query=self.get_query(), params=self.params, name=self.name
+            )
+            if "stats" in metadata:
+                self.stats.add(metadata.get("stats"))
         else:
             raise ValueError(f"unknown value for {self.type}")
 
@@ -435,11 +496,13 @@ class Query(ABC):
         results = []
         remaining = True
         while remaining:
-            offset_results = await db.execute_query(
+            offset_results, metadata = await db.execute_query_with_metadata(
                 query=self.get_query(limit=query_limit, offset=offset),
                 params=self.params,
                 name=self.name,
             )
+            if "stats" in metadata:
+                self.stats.add(metadata.get("stats"))
             results.extend(offset_results)
             offset += query_limit
 
@@ -471,16 +534,19 @@ class Query(ABC):
     def get_raw_results(self) -> List[QueryResult]:
         return self.results
 
-    def get_result(self) -> Union[QueryResult, None]:
+    def get_result(self) -> Optional[QueryResult]:
         """Return a single Result."""
 
-        if not self.num_of_results:
+        if not self.has_been_executed:
             return None
 
         if self.num_of_results == 1:
             return self.results[0]
 
-        return next(self.get_results())
+        try:
+            return next(self.get_results())
+        except StopIteration:
+            return None
 
     def get_results(self) -> Generator[QueryResult, None, None]:
         """Get all the results sorted by score."""
@@ -529,9 +595,9 @@ class Query(ABC):
             yield self.results[attr_info["idx"]]
 
     @property
-    def num_of_results(self) -> Optional[int]:
+    def num_of_results(self) -> int:
         if not self.has_been_executed:
-            return None
+            raise ValueError("The query hasn't been executed yet")
 
         return len([result for result in self.results if not result.has_deleted_rels])
 

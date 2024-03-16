@@ -18,7 +18,7 @@ from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import NodeNotFound, SchemaNotFound
+from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -155,6 +155,7 @@ class NodeManager:
     async def count_peers(
         cls,
         ids: List[str],
+        source_kind: str,
         schema: RelationshipSchema,
         filters: dict,
         db: InfrahubDatabase,
@@ -167,7 +168,7 @@ class NodeManager:
         rel = Relationship(schema=schema, branch=branch, node_id="PLACEHOLDER")
 
         query = await RelationshipGetPeerQuery.init(
-            db=db, source_ids=ids, schema=schema, filters=filters, rel=rel, at=at
+            db=db, source_ids=ids, source_kind=source_kind, schema=schema, filters=filters, rel=rel, at=at
         )
         return await query.count(db=db)
 
@@ -176,6 +177,7 @@ class NodeManager:
         cls,
         db: InfrahubDatabase,
         ids: List[str],
+        source_kind: str,
         schema: RelationshipSchema,
         filters: dict,
         fields: Optional[dict] = None,
@@ -192,6 +194,7 @@ class NodeManager:
         query = await RelationshipGetPeerQuery.init(
             db=db,
             source_ids=ids,
+            source_kind=source_kind,
             schema=schema,
             filters=filters,
             rel=rel,
@@ -207,7 +210,7 @@ class NodeManager:
 
         # if display_label has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields:
-            peer_schema = await schema.get_peer_schema(branch=branch)
+            peer_schema = schema.get_peer_schema(branch=branch)
             if peer_schema.display_labels:
                 display_label_fields = peer_schema.generate_fields_for_display_label()
                 fields = deep_merge_dict(fields, display_label_fields)
@@ -315,7 +318,7 @@ class NodeManager:
 
         node_schema = registry.schema.get(name=schema_name, branch=branch)
         if not node_schema.default_filter:
-            raise NodeNotFound(branch_name=branch.name, node_type=schema_name, identifier=id)
+            raise NodeNotFoundError(branch_name=branch.name, node_type=schema_name, identifier=id)
 
         items = await NodeManager.query(
             db=db,
@@ -332,7 +335,7 @@ class NodeManager:
         )
 
         if len(items) > 1:
-            raise NodeNotFound(
+            raise NodeNotFoundError(
                 branch_name=branch.name,
                 node_type=schema_name,
                 identifier=id,
@@ -385,7 +388,7 @@ class NodeManager:
             account=account,
         )
         if not node:
-            raise NodeNotFound(branch_name=branch.name, node_type=schema_name, identifier=id)
+            raise NodeNotFoundError(branch_name=branch.name, node_type=schema_name, identifier=id)
         return node
 
     @classmethod
@@ -421,7 +424,7 @@ class NodeManager:
         node = result[id]
 
         if kind and node.get_kind() != kind:
-            raise NodeNotFound(
+            raise NodeNotFoundError(
                 branch_name=branch.name,
                 node_type=kind,
                 identifier=id,
@@ -436,8 +439,8 @@ class NodeManager:
         db: InfrahubDatabase,
         ids: List[str],
         fields: Optional[dict] = None,
-        at: Union[Timestamp, str] = None,
-        branch: Union[Branch, str] = None,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
         include_source: bool = False,
         include_owner: bool = False,
         prefetch_relationships: bool = False,
@@ -503,7 +506,7 @@ class NodeManager:
             attrs = {"db_id": node.node_id, "id": node_id, "updated_at": node.updated_at}
 
             if not node.schema:
-                raise SchemaNotFound(
+                raise SchemaNotFoundError(
                     branch_name=branch.name,
                     identifier=node_id,
                     message=f"Unable to find the Schema associated with {node_id}, {node.labels}",
@@ -513,26 +516,25 @@ class NodeManager:
             # Attributes
             # --------------------------------------------------------
             for attr_name, attr in node_attributes.get(node_id, {}).get("attrs", {}).items():
-                if "AttributeLocal" in attr.attr_labels:
-                    attrs[attr_name] = {
-                        "db_id": attr.attr_id,
-                        "id": attr.attr_uuid,
-                        "name": attr_name,
-                        "value": attr.value,
-                        "updated_at": attr.updated_at,
-                    }
+                attrs[attr_name] = {
+                    "db_id": attr.attr_id,
+                    "id": attr.attr_uuid,
+                    "name": attr_name,
+                    "value": attr.value,
+                    "updated_at": attr.updated_at,
+                }
 
-                    if attr.is_protected is not None:
-                        attrs[attr_name]["is_protected"] = attr.is_protected
+                if attr.is_protected is not None:
+                    attrs[attr_name]["is_protected"] = attr.is_protected
 
-                    if attr.is_visible is not None:
-                        attrs[attr_name]["is_visible"] = attr.is_visible
+                if attr.is_visible is not None:
+                    attrs[attr_name]["is_visible"] = attr.is_visible
 
-                    if attr.source_uuid:
-                        attrs[attr_name]["source"] = attr.source_uuid
+                if attr.source_uuid:
+                    attrs[attr_name]["source"] = attr.source_uuid
 
-                    if attr.owner_uuid:
-                        attrs[attr_name]["owner"] = attr.owner_uuid
+                if attr.owner_uuid:
+                    attrs[attr_name]["owner"] = attr.owner_uuid
 
             # --------------------------------------------------------
             # Relationships

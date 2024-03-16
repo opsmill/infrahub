@@ -11,7 +11,7 @@ async def create(message: messages.EventBranchCreate, service: InfrahubServices)
     log.info("run_message", branch=message.branch)
 
     events: List[InfrahubMessage] = [messages.RefreshRegistryBranches()]
-    if not message.data_only:
+    if message.sync_with_git:
         events.append(messages.RequestGitCreateBranch(branch=message.branch, branch_id=message.branch_id))
 
     for event in events:
@@ -38,6 +38,18 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
     events: List[InfrahubMessage] = [
         messages.RefreshRegistryBranches(),
         messages.TriggerArtifactDefinitionGenerate(branch=message.target_branch),
+    ]
+
+    for event in events:
+        event.assign_meta(parent=message)
+        await service.send(message=event)
+
+
+async def rebased(message: messages.EventBranchRebased, service: InfrahubServices) -> None:
+    log.info("Branch rebased", branch=message.branch)
+
+    events: List[InfrahubMessage] = [
+        messages.RefreshRegistryRebasedBranch(branch=message.branch),
     ]
 
     for event in events:

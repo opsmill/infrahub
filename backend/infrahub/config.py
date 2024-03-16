@@ -14,12 +14,12 @@ from pydantic import AliasChoices, Field, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from infrahub.database.constants import DatabaseType
+from infrahub.exceptions import InitializationError
 
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
-SETTINGS: Settings = None
 
 VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
@@ -45,10 +45,10 @@ class TraceTransportProtocol(str, Enum):
 
 class MainSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_")
-    default_branch: str = "main"
-    # default_account: str = "default"
-    # default_account_perm: str = "CAN_READ"
-
+    docs_index_path: str = Field(
+        default="/opt/infrahub/docs/build/search-index.json",
+        description="Full path of saved json containing pre-indexed documentation",
+    )
     internal_address: str = "http://localhost:8000"
     allow_anonymous_access: bool = Field(
         default=True, description="Indicates if the system allows anonymous read access"
@@ -66,8 +66,8 @@ class FileSystemStorageSettings(BaseSettings):
 
 
 class S3StorageSettings(BaseSettings):
-    access_key_id: str = Field(default="", validation_alias="AWS_ACCESS_KEY_ID")
-    secret_access_key: str = Field(default="", validation_alias="AWS_SECRET_ACCESS_KEY")
+    access_key_id: str = Field(default="", alias="AWS_ACCESS_KEY_ID", validation_alias="AWS_ACCESS_KEY_ID")
+    secret_access_key: str = Field(default="", alias="AWS_SECRET_ACCESS_KEY", validation_alias="AWS_SECRET_ACCESS_KEY")
     bucket_name: str = Field(
         default="",
         alias="AWS_S3_BUCKET_NAME",
@@ -79,7 +79,9 @@ class S3StorageSettings(BaseSettings):
         validation_alias=AliasChoices("INFRAHUB_STORAGE_ENDPOINT_URL", "AWS_S3_ENDPOINT_URL"),
     )
     use_ssl: bool = Field(
-        default=True, alias="AWS_S3_US_SSL", validation_alias=AliasChoices("INFRAHUB_STORAGE_USE_SSL", "AWS_S3_US_SSL")
+        default=True,
+        alias="AWS_S3_USE_SSL",
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_USE_SSL", "AWS_S3_USE_SSL"),
     )
     default_acl: str = Field(
         default="",
@@ -127,6 +129,9 @@ class DatabaseSettings(BaseSettings):
         le=20,
         description="Maximum number of level to search in a hierarchy.",
     )
+    retry_limit: int = Field(
+        default=3, description="Maximumm number of time a transient issue in a transaction should be retried."
+    )
 
     @property
     def database_name(self) -> str:
@@ -145,6 +150,7 @@ class BrokerSettings(BaseSettings):
     maximum_message_retries: int = Field(
         default=10, description="The maximum number of retries that are attempted for failed messages"
     )
+    virtualhost: str = Field(default="/", description="The virtual host to connect to")
 
     @property
     def service_port(self) -> int:
@@ -178,6 +184,14 @@ class GitSettings(BaseSettings):
     repositories_directory: str = "repositories"
     sync_interval: int = Field(
         default=10, ge=0, description="Time (in seconds) between git repositories synchronizations"
+    )
+
+
+class InitialSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_INITIAL_")
+    default_branch: str = Field(
+        default="main",
+        description="Defines the name of the default branch within Infrahub, can only be set once during initialization of the system.",
     )
 
 
@@ -279,6 +293,95 @@ class Override:
     cache: Optional[InfrahubCache] = None
 
 
+@dataclass
+class ConfiguredSettings:
+    settings: Optional[Settings] = None
+
+    def initialize(self, config_file: Optional[str] = None) -> None:
+        """Initialize the settings if they have not been initialized."""
+        if self.initialized:
+            return
+        if not config_file:
+            config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
+            config_file = os.path.abspath(config_file_name)
+        load(config_file)
+
+    def initialize_and_exit(self, config_file: Optional[str] = None) -> None:
+        """Initialize the settings if they have not been initialized, exit on failures."""
+        if self.initialized:
+            return
+        if not config_file:
+            config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
+            config_file = os.path.abspath(config_file_name)
+        load_and_exit(config_file)
+
+    @property
+    def active_settings(self) -> Settings:
+        if self.settings:
+            return self.settings
+        raise InitializationError
+
+    @property
+    def initialized(self) -> bool:
+        return self.settings is not None
+
+    @property
+    def main(self) -> MainSettings:
+        return self.active_settings.main
+
+    @property
+    def api(self) -> ApiSettings:
+        return self.active_settings.api
+
+    @property
+    def git(self) -> GitSettings:
+        return self.active_settings.git
+
+    @property
+    def database(self) -> DatabaseSettings:
+        return self.active_settings.database
+
+    @property
+    def broker(self) -> BrokerSettings:
+        return self.active_settings.broker
+
+    @property
+    def cache(self) -> CacheSettings:
+        return self.active_settings.cache
+
+    @property
+    def miscellaneous(self) -> MiscellaneousSettings:
+        return self.active_settings.miscellaneous
+
+    @property
+    def initial(self) -> InitialSettings:
+        return self.active_settings.initial
+
+    @property
+    def logging(self) -> LoggingSettings:
+        return self.active_settings.logging
+
+    @property
+    def analytics(self) -> AnalyticsSettings:
+        return self.active_settings.analytics
+
+    @property
+    def security(self) -> SecuritySettings:
+        return self.active_settings.security
+
+    @property
+    def storage(self) -> StorageSettings:
+        return self.active_settings.storage
+
+    @property
+    def trace(self) -> TraceSettings:
+        return self.active_settings.trace
+
+    @property
+    def experimental_features(self) -> ExperimentalFeaturesSettings:
+        return self.active_settings.experimental_features
+
+
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
@@ -291,6 +394,7 @@ class Settings(BaseSettings):
     miscellaneous: MiscellaneousSettings = MiscellaneousSettings()
     logging: LoggingSettings = LoggingSettings()
     analytics: AnalyticsSettings = AnalyticsSettings()
+    initial: InitialSettings = InitialSettings()
     security: SecuritySettings = SecuritySettings()
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()
@@ -303,20 +407,19 @@ def load(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str
     Configuration is loaded from a config file in toml format that contains the settings,
     or from a dictionary of those settings passed in as "config_data"
     """
-    global SETTINGS  # pylint: disable=global-statement
 
     if config_data:
-        SETTINGS = Settings(**config_data)
+        SETTINGS.settings = Settings(**config_data)
         return
 
     if os.path.exists(config_file_name):
         config_string = Path(config_file_name).read_text(encoding="utf-8")
         config_tmp = toml.loads(config_string)
 
-        SETTINGS = Settings(**config_tmp)
+        SETTINGS.settings = Settings(**config_tmp)
         return
 
-    SETTINGS = Settings()
+    SETTINGS.settings = Settings()
 
 
 def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str, Any]] = None) -> None:
@@ -334,8 +437,10 @@ def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional
     except ValidationError as err:
         print(f"Configuration not valid, found {len(err.errors())} error(s)")
         for error in err.errors():
-            print(f"  {'/'.join(error['loc'])} | {error['msg']} ({error['type']})")
+            error_locations = [str(location) for location in error["loc"]]
+            print(f"  {'/'.join(error_locations)} | {error['msg']} ({error['type']})")
         sys.exit(1)
 
 
 OVERRIDE: Override = Override()
+SETTINGS: ConfiguredSettings = ConfiguredSettings()

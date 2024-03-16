@@ -3,7 +3,7 @@ import inspect
 import pytest
 
 from infrahub_sdk import InfrahubClient, InfrahubClientSync, ValidationError
-from infrahub_sdk.exceptions import SchemaNotFound
+from infrahub_sdk.exceptions import SchemaNotFoundError
 from infrahub_sdk.schema import (
     InfrahubCheckDefinitionConfig,
     InfrahubJinja2TransformConfig,
@@ -113,12 +113,12 @@ async def test_remove_enum_option(clients, client_type, mock_schema_query_01, mo
 @pytest.mark.parametrize("client_type", client_types)
 async def test_add_dropdown_option_raises(clients, client_type, mock_schema_query_01):
     if client_type == "standard":
-        with pytest.raises(SchemaNotFound):
+        with pytest.raises(SchemaNotFoundError):
             await clients.standard.schema.add_dropdown_option("DoesNotExist", "atribute", "option")
         with pytest.raises(ValueError):
             await clients.standard.schema.add_dropdown_option("BuiltinTag", "attribute", "option")
     else:
-        with pytest.raises(SchemaNotFound):
+        with pytest.raises(SchemaNotFoundError):
             clients.sync.schema.add_dropdown_option("DoesNotExist", "atribute", "option")
         with pytest.raises(ValueError):
             clients.sync.schema.add_dropdown_option("BuiltinTag", "attribute", "option")
@@ -127,12 +127,12 @@ async def test_add_dropdown_option_raises(clients, client_type, mock_schema_quer
 @pytest.mark.parametrize("client_type", client_types)
 async def test_add_enum_option_raises(clients, client_type, mock_schema_query_01):
     if client_type == "standard":
-        with pytest.raises(SchemaNotFound):
+        with pytest.raises(SchemaNotFoundError):
             await clients.standard.schema.add_enum_option("DoesNotExist", "atribute", "option")
         with pytest.raises(ValueError):
             await clients.standard.schema.add_enum_option("BuiltinTag", "attribute", "option")
     else:
-        with pytest.raises(SchemaNotFound):
+        with pytest.raises(SchemaNotFoundError):
             clients.sync.schema.add_enum_option("DoesNotExist", "atribute", "option")
         with pytest.raises(ValueError):
             clients.sync.schema.add_enum_option("BuiltinTag", "attribute", "option")
@@ -141,12 +141,12 @@ async def test_add_enum_option_raises(clients, client_type, mock_schema_query_01
 @pytest.mark.parametrize("client_type", client_types)
 async def test_remove_dropdown_option_raises(clients, client_type, mock_schema_query_01):
     if client_type == "standard":
-        with pytest.raises(SchemaNotFound):
+        with pytest.raises(SchemaNotFoundError):
             await clients.standard.schema.remove_dropdown_option("DoesNotExist", "atribute", "option")
         with pytest.raises(ValueError):
             await clients.standard.schema.remove_dropdown_option("BuiltinTag", "attribute", "option")
     else:
-        with pytest.raises(SchemaNotFound):
+        with pytest.raises(SchemaNotFoundError):
             clients.sync.schema.remove_dropdown_option("DoesNotExist", "atribute", "option")
         with pytest.raises(ValueError):
             clients.sync.schema.remove_dropdown_option("BuiltinTag", "attribute", "option")
@@ -155,12 +155,12 @@ async def test_remove_dropdown_option_raises(clients, client_type, mock_schema_q
 @pytest.mark.parametrize("client_type", client_types)
 async def test_remove_enum_option_raises(clients, client_type, mock_schema_query_01):
     if client_type == "standard":
-        with pytest.raises(SchemaNotFound):
+        with pytest.raises(SchemaNotFoundError):
             await clients.standard.schema.remove_enum_option("DoesNotExist", "atribute", "option")
         with pytest.raises(ValueError):
             await clients.standard.schema.remove_enum_option("BuiltinTag", "attribute", "option")
     else:
-        with pytest.raises(SchemaNotFound):
+        with pytest.raises(SchemaNotFoundError):
             clients.sync.schema.add_enum_option("DoesNotExist", "atribute", "option")
         with pytest.raises(ValueError):
             clients.sync.schema.add_enum_option("BuiltinTag", "attribute", "option")

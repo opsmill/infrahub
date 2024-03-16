@@ -1,0 +1,514 @@
+---
+name: from-nautobot-v2
+source:
+  name: nautobot
+  settings:
+    url: "https://demo.nautobot.com"
+
+destination:
+  name: infrahub
+  settings:
+    url: "http://localhost:8000"
+
+store:
+  type: redis
+  settings:
+    host: localhost
+    port: 6379
+
+order: [
+  "BuiltinTag",
+  "BuiltinRole",
+  # "BuiltinStatus",
+  "CoreStandardGroup",
+  "CoreOrganization",
+  "TemplateLocationType",
+  "BuiltinLocation",
+  "InfraRack",
+  "TemplateDeviceType",
+  "InfraPlatform",
+  "InfraProviderNetwork",
+  "TemplateCircuitType",
+  "InfraCircuit",
+  "NautobotNamespace",
+  "InfraRouteTarget",
+  "InfraVRF",
+  "InfraDevice",
+  "InfraVLAN",
+  "InfraPrefix",
+  "InfraInterfaceL2L3",
+  "InfraRearPort",
+  "InfraFrontPort",
+  "InfraIPAddress",
+]
+
+schema_mapping:
+  # Tags
+  - name: BuiltinTag
+    mapping: extras.tags
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+
+  # Roles (Device Role, Rack Role, IPAM Role, and IPAddressRoleChoices)
+  - name: BuiltinRole
+    mapping: extras.roles
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: label
+        mapping: display
+
+  # Status (Device Role, Rack Role, IPAM Role, and IPAddressRoleChoices)
+  # - name: BuiltinStatus
+  #   mapping: extras.statuses
+  #   identifiers: ["name"]
+  #   fields:
+  #     - name: name
+  #       mapping: name
+  #     - name: description
+  #       mapping: description
+  #     - name: label
+  #       mapping: display
+
+  # Tenancy (tenants, tenant groups)
+  - name: CoreStandardGroup
+    mapping: tenancy.tenant-groups
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+  - name: CoreOrganization
+    mapping: tenancy.tenants
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: type
+        static: "Tenant"
+      - name: group
+        mapping: tenant_group
+        reference: CoreStandardGroup
+
+  # Locations (Location Type, Locations)
+  - name: TemplateLocationType
+    mapping: dcim.location-types
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+  - name: BuiltinLocation
+    mapping: dcim.locations
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      # type should be removed to use location_type only, but need to change Core Schema for that
+      - name: type
+        mapping: location_type.name
+      - name: location_type
+        mapping: location_type
+        reference: TemplateLocationType
+      # - name: status
+      #   mapping: status
+      #   reference: BuiltinStatus
+      - name: tags
+        mapping: tags
+        reference: BuiltinTag
+
+  # Racks
+  - name: InfraRack
+    mapping: dcim.racks
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: location
+        mapping: location
+        reference: BuiltinLocation
+      - name: height
+        mapping: u_height
+      - name: serial_number
+        mapping: serial
+      - name: asset_tag
+        mapping: asset_tag
+      - name: facility_id
+        mapping: facility_id
+      - name: role
+        mapping: role
+        reference: BuiltinRole
+      - name: tags
+        mapping: tags
+        reference: BuiltinTag
+
+  # Device (manufacturer, device types, platform, devices)
+  - name: CoreOrganization
+    mapping: dcim.manufacturers
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: type
+        static: "Manufacturer"
+  - name: InfraPlatform
+    mapping: dcim.platforms
+    identifiers: ["name", "manufacturer"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: napalm_driver
+        mapping: napalm_driver
+      - name: manufacturer
+        mapping: manufacturer
+        reference: CoreOrganization
+  - name: TemplateDeviceType
+    mapping: dcim.device-types
+    identifiers: ["name", "manufacturer"]
+    fields:
+      - name: name
+        mapping: model
+      - name: part_number
+        mapping: part_number
+      - name: full_depth
+        mapping: is_full_depth
+      - name: height
+        mapping: u_height
+      - name: tags
+        mapping: tags
+        reference: BuiltinTag
+      - name: manufacturer
+        mapping: manufacturer
+        reference: CoreOrganization
+  # -> Device validate_unique()
+  # https://github.com/nautobot/nautobot/blob/develop/nautobot/dcim/models/devices.py#L541C9-L541C24
+  - name: InfraDevice
+    identifiers: ["location", "organization", "name"]
+    mapping: dcim.devices
+    fields:
+      - name: name
+        mapping: name
+      - name: serial_number
+        mapping: serial
+      - name: asset_tag
+        mapping: asset_tag
+      - name: model
+        mapping: device_type
+        reference: TemplateDeviceType
+      - name: platform
+        mapping: platform
+        reference: InfraPlatform
+      - name: organization
+        mapping: tenant
+        reference: CoreOrganization
+      - name: role
+        mapping: role
+        reference: BuiltinRole
+      # - name: status
+      #   mapping: status
+      #   reference: BuiltinStatus
+      - name: location
+        mapping: location
+        reference: BuiltinLocation
+      - name: rack
+        mapping: rack
+        reference: InfraRack
+      - name: tags
+        mapping: tags
+        reference: BuiltinTag
+
+  # Circuits (Provider, Provider Network, Circuits Types, Circuits)
+  - name: CoreOrganization
+    mapping: circuits.providers
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: type
+        static: "Provider"
+  - name: InfraProviderNetwork
+    mapping: circuits.provider-networks
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: vendor_id
+        mapping: service_id
+      - name: provider
+        mapping: provider.slug
+      - name: description
+        mapping: description
+      # - name: status
+      #   mapping: status
+      #   reference: BuiltinStatus
+      - name: tags
+        mapping: tags
+        reference: BuiltinTag
+      - name: provider
+        mapping: provider
+        reference: CoreOrganization
+  - name: TemplateCircuitType
+    mapping: circuits.circuit-types
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+  - name: InfraCircuit
+    mapping: circuits.circuits
+    identifiers: ["circuit_id"]
+    fields:
+      - name: circuit_id
+        mapping: cid
+      - name: vendor_id
+        mapping: cid
+      - name: provider
+        mapping: provider
+        reference: CoreOrganization
+      - name: description
+        mapping: description
+      # - name: status
+      #   mapping: status
+      #   reference: BuiltinStatus
+      - name: type
+        mapping: circuit_type
+        reference: TemplateCircuitType
+      # - name: tenant
+      #   mapping: tenant
+      #   reference: CoreOrganization
+      - name: tags
+        mapping: tags
+        reference: BuiltinTag
+
+  # BGP Plugin (Autonomous System, BGP Session, BGP Peer Group)
+  - name: InfraAutonomousSystem
+    mapping: plugin.bgp.autonomous-systems
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: asn
+      - name: asn
+        mapping: asn
+      - name: description
+        mapping: description
+      - name: organization
+        mapping: provider
+        reference: CoreOrganization
+
+# IPAM (Namepsace, VRF, VLANs Groups, VLANs, Prefixes, IPs)
+  - name: NautobotNamespace
+    mapping: ipam.namespaces
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+  - name: InfraRouteTarget
+    mapping: ipam.route-targets
+    identifiers: ["name", "organization"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: organization
+        mapping: tenant
+        reference: CoreOrganization
+  - name: InfraVRF
+    mapping: ipam.vrfs
+    identifiers: ["name", "namespace"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: organization
+        mapping: tenant
+        reference: CoreOrganization
+      - name: namespace
+        mapping: namespace
+        reference: NautobotNamespace
+      - name: vrf_rd
+        mapping: rd
+      - name: import_rt
+        mapping: import_targets
+        reference: InfraRouteTarget
+      - name: export_rt
+        mapping: export_targets
+        reference: InfraRouteTarget
+  - name: CoreStandardGroup
+    mapping: ipam.vlan-groups
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      # - name: location
+      #   mapping: location
+      #   reference: BuiltinLocation
+  - name: InfraVLAN
+    mapping: ipam.vlans
+    identifiers: ["name", "vlan_id", "location", "organization"]
+    fields:
+      - name: name
+        mapping: name
+      - name: vlan_id
+        mapping: vid
+      - name: organization
+        mapping: tenant
+        reference: CoreOrganization
+      - name: description
+        mapping: description
+      - name: location
+        mapping: location
+        reference: BuiltinLocation
+      - name: role
+        mapping: role
+        reference: BuiltinRole
+      # - name: status
+      #   mapping: status
+      #   reference: BuiltinStatus
+      - name: vlan_group
+        mapping: vlan_group
+        reference: CoreStandardGroup
+  - name: InfraPrefix
+    mapping: ipam.prefixes
+    identifiers: ["prefix", "namespace"]
+    fields:
+      - name: prefix
+        mapping: prefix
+      - name: description
+        mapping: description
+      - name: organization
+        mapping: tenant
+        reference: CoreOrganization
+      - name: namespace
+        mapping: namespace
+        reference: NautobotNamespace
+      - name: role
+        mapping: role
+        reference: BuiltinRole
+      # - name: status
+      #   mapping: status
+      #   reference: BuiltinStatus
+      - name: vlan
+        mapping: vlan
+        reference: InfraVLAN
+      - name: location
+        mapping: location
+        reference: BuiltinLocation
+  - name: InfraIPAddress
+    mapping: ipam.ip-addresses
+    identifiers: ["address", "prefix"]
+    fields:
+      - name: address
+        mapping: address
+      - name: description
+        mapping: description
+      - name: organization
+        mapping: tenant
+        reference: CoreOrganization
+      - name: prefix
+        mapping: parent
+        reference: InfraPrefix
+      - name: interfaces
+        mapping: interfaces
+        reference: InfraInterfaceL2L3
+      - name: role
+        mapping: role
+        reference: BuiltinRole
+      # - name: status
+      #   mapping: status
+      #   reference: BuiltinStatus
+
+  # Interfaces (interfaces, rear port, front port)
+  - name: InfraInterfaceL2L3
+    identifiers: ["name", "device"]
+    mapping: dcim.interfaces
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        maping: description
+      - name: interface_type
+        mapping: type.label
+      - name: l2_mode
+        mapping: mode.label
+      - name: mac_address
+        mapping: mac_address
+      # - name: ip_addresses
+      #   mapping: ip_addresses
+      #   reference: InfraIPAddress
+      - name: mgmt_only
+        mapping: mgmt_only
+      - name: untagged_vlan
+        mapping: untagged_vlan
+        reference: InfraVLAN
+      - name: tagged_vlan
+        mapping: tagged_vlans
+        reference: InfraVLAN
+      - name: device
+        mapping: device
+        reference: InfraDevice
+      - name: tags
+        mapping: tags
+        reference: BuiltinTag
+      # - name: status
+      #   mapping: status
+      #   reference: BuiltinStatus
+
+  - name: InfraFrontPort
+    identifiers: ["name", "device"]
+    mapping: dcim.front-ports
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        maping: description
+      - name: port_type
+        mapping: type.label
+      - name: rear_port
+        mapping: rear_port
+        reference: InfraRearPort
+      - name: device
+        mapping: device
+        reference: InfraDevice
+      # - name: status
+      #   mapping: status
+      #   reference: BuiltinStatus
+  - name: InfraRearPort
+    identifiers: ["name", "device"]
+    mapping: dcim.rear-ports
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        maping: description
+      - name: port_type
+        mapping: type.label
+      - name: device
+        mapping: device
+        reference: InfraDevice
+      # - name: status
+      #   mapping: status
+      #   reference: BuiltinStatus

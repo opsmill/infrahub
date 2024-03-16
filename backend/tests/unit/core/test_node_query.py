@@ -5,7 +5,16 @@ from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.node_attribute_remove import (
+    NodeAttributeRemoveMigration,
+    NodeAttributeRemoveMigrationQuery01,
+)
+from infrahub.core.migrations.schema.node_kind_update import (
+    NodeKindUpdateMigration,
+    NodeKindUpdateMigrationQuery01,
+)
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath, SchemaPathType
 from infrahub.core.query.node import (
     NodeCreateAllQuery,
     NodeDeleteQuery,
@@ -221,6 +230,36 @@ async def test_query_NodeListGetInfoQuery(
     assert len(list(query.get_results_group_by(("n", "uuid")))) == 3
 
 
+async def test_query_NodeListGetInfoQuery_renamed(
+    db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+):
+    schema = registry.schema.get_schema_branch(name=branch.name)
+    candidate_schema = schema.duplicate()
+    person_schema = candidate_schema.get(name="TestPerson")
+    candidate_schema.delete(name="TestPerson")
+    person_schema.name = "NewPerson"
+    person_schema.namespace = "Test2"
+    candidate_schema.set(name="Test2NewPerson", schema=person_schema)
+    assert person_schema.kind == "Test2NewPerson"
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestPerson"),
+        new_node_schema=person_schema,
+        schema_path=SchemaPath(
+            path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
+        ),
+    )
+    query = await NodeKindUpdateMigrationQuery01.init(db=db, branch=branch, migration=migration)
+    await query.execute(db=db)
+
+    ids = [person_john_main.id, person_jim_main.id, person_albert_main.id]
+    query = await NodeListGetInfoQuery.init(db=db, branch=branch, ids=ids)
+    await query.execute(db=db)
+    results = [node.labels async for node in query.get_nodes()]
+    for result in results:
+        assert sorted(result) == ["CoreNode", "Node", "Test2NewPerson"]
+
+
 async def test_query_NodeListGetAttributeQuery_all_fields(db: InfrahubDatabase, base_dataset_02):
     default_branch = await get_branch(db=db, branch="main")
     branch1 = await get_branch(db=db, branch="branch1")
@@ -234,8 +273,19 @@ async def test_query_NodeListGetAttributeQuery_all_fields(db: InfrahubDatabase, 
     assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 4
     assert len(query.get_attributes_group_by_node()["c2"]["attrs"]) == 4
 
-    # Query all the nodes in branch1, only c1 and c3 present
+    # Query all the nodes in branch1, c1, c2 and c3 present
+    # Expect 15 attributes because each node has 4 but c1at2 has a value both in Main and Branch1
+    query = await NodeListGetAttributeQuery.init(db=db, ids=["c1", "c2", "c3"], branch=branch1)
+    await query.execute(db=db)
+    assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c2", "c3"]
+    assert len(list(query.get_results())) == 15
+    assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 4
+    assert len(query.get_attributes_group_by_node()["c2"]["attrs"]) == 4
+    assert len(query.get_attributes_group_by_node()["c3"]["attrs"]) == 4
+
+    # Query all the nodes in branch1 in isolated mode, only c1 and c3 present
     # Expect 9 attributes because each node has 4 but c1at2 has a value both in Main and Branch1
+    branch1.is_isolated = True
     query = await NodeListGetAttributeQuery.init(db=db, ids=["c1", "c2", "c3"], branch=branch1)
     await query.execute(db=db)
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c3"]
@@ -289,24 +339,81 @@ async def test_query_NodeListGetAttributeQuery(db: InfrahubDatabase, base_datase
     assert len(query.get_attributes_group_by_node()["c2"]["attrs"]) == 2
     assert len(list(query.get_results())) == 4
 
-    # Query all the nodes in branch1, only c1 and c3 present
-    # Expect 5 attributes because each node has 1 but c1at2 has its value and its protected flag defined both in Main and Branch1
+    # Query all the nodes in branch1: c1, c2 and c3 present
+    # Expect 6 attributes because each node has 1 but c1at2 has its value and its protected flag defined both in Main and Branch1
     query = await NodeListGetAttributeQuery.init(
         db=db, ids=["c1", "c2", "c3"], branch=branch1, fields={"nbr_seats": True}
     )
     await query.execute(db=db)
-    assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c3"]
+    assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c2", "c3"]
     assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 1
+    assert len(query.get_attributes_group_by_node()["c2"]["attrs"]) == 1
     assert len(query.get_attributes_group_by_node()["c3"]["attrs"]) == 1
-    assert len(list(query.get_results())) == 5
+    assert len(list(query.get_results())) == 6
 
-    # Query all the nodes in branch1, only c1 and c3 present
+    # Query c1 in branch1
     # Expect 4 attributes because c1at2 has its value and its protected flag defined both in Main and Branch1
     query = await NodeListGetAttributeQuery.init(db=db, ids=["c1"], branch=branch1, fields={"nbr_seats": True})
     await query.execute(db=db)
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1"]
     assert len(list(query.get_results())) == 4
     assert query.results[0].branch_score != query.results[1].branch_score
+
+    # Query all the nodes in branch1 in isolated mode, only c1 and c3 present
+    # Expect 4 attributes because c1at2 has its value and its protected flag defined both in Main and Branch1
+    branch1.is_isolated = True
+    query = await NodeListGetAttributeQuery.init(db=db, ids=["c1"], branch=branch1, fields={"nbr_seats": True})
+    await query.execute(db=db)
+    assert sorted(query.get_attributes_group_by_node().keys()) == ["c1"]
+    assert len(list(query.get_results())) == 4
+    assert query.results[0].branch_score != query.results[1].branch_score
+
+
+async def test_query_NodeListGetAttributeQuery_deleted(db: InfrahubDatabase, base_dataset_02):
+    default_branch = await get_branch(db=db, branch="main")
+    branch1 = await get_branch(db=db, branch="branch1")
+
+    schema = registry.schema.get_schema_branch(name=branch1.name)
+    car_schema = schema.get(name="TestCar")
+
+    migration = NodeAttributeRemoveMigration(
+        previous_node_schema=car_schema,
+        new_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="is_electric"),
+    )
+    query = await NodeAttributeRemoveMigrationQuery01.init(db=db, branch=branch1, migration=migration)
+    await query.execute(db=db)
+
+    # Query all the nodes in main but only c1 and c2 present
+    # Expect 2 attributes per node(x2) = 4 attributes
+    query = await NodeListGetAttributeQuery.init(
+        db=db,
+        ids=["c1", "c2", "c3"],
+        branch=default_branch,
+    )
+    await query.execute(db=db)
+    assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c2"]
+
+    assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 4
+    assert len(query.get_attributes_group_by_node()["c2"]["attrs"]) == 4
+
+    # Query all the nodes in branch1: c1, c2 and c3 present
+    # Expect 6 attributes because each node has 1 but c1at2 has its value and its protected flag defined both in Main and Branch1
+    query = await NodeListGetAttributeQuery.init(db=db, ids=["c1", "c2", "c3"], branch=branch1)
+    await query.execute(db=db)
+    assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c2", "c3"]
+    assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 3
+    assert len(query.get_attributes_group_by_node()["c2"]["attrs"]) == 3
+    assert len(query.get_attributes_group_by_node()["c3"]["attrs"]) == 3
+
+    # Query c1 in branch1
+    # Expect 4 attributes because c1at2 has its value and its protected flag defined both in Main and Branch1
+    query = await NodeListGetAttributeQuery.init(
+        db=db, ids=["c1"], branch=branch1, fields={"nbr_seats": True, "is_electric": True}
+    )
+    await query.execute(db=db)
+    assert sorted(query.get_attributes_group_by_node().keys()) == ["c1"]
+    assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 1
 
 
 async def test_query_NodeListGetRelationshipsQuery(db: InfrahubDatabase, default_branch: Branch, person_jack_tags_main):

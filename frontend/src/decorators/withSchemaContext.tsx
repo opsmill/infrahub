@@ -17,6 +17,7 @@ import {
   namespacesState,
   schemaState,
 } from "../state/atoms/schema.atom";
+import { schemaKindLabelState } from "../state/atoms/schemaKindLabel.atom";
 import { schemaKindNameState } from "../state/atoms/schemaKindName.atom";
 import { findSelectedBranch } from "../utils/branches";
 import { sortByName, sortByOrderWeight } from "../utils/common";
@@ -35,6 +36,7 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
   const [currentSchemaHash, setCurrentSchemaHash] = useAtom(currentSchemaHashAtom);
   const [, setSchema] = useAtom(schemaState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
+  const [, setSchemaKindLabelState] = useAtom(schemaKindLabelState);
   const [, setGenerics] = useAtom(genericsState);
   const [, setNamespaces] = useAtom(namespacesState);
   const branches = useAtomValue(branchesState);
@@ -62,15 +64,21 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
         s.relationships = sortByOrderWeight(s.relationships || []);
       });
 
-      const schemaNames = [...schema.map((s) => s.name), ...generics.map((s) => s.name)];
       const schemaKinds = [...schema.map((s) => s.kind), ...generics.map((s) => s.kind)];
+
+      const schemaNames = [...schema.map((s) => s.name), ...generics.map((s) => s.name)];
       const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
       const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
+
+      const schemaLabels = [...schema.map((s) => s.label), ...generics.map((s) => s.label)];
+      const schemaKindLabelTuples = R.zip(schemaKinds, schemaLabels);
+      const schemaKindLabelMap = R.fromPairs(schemaKindLabelTuples);
 
       setGenerics(generics);
       setCurrentSchemaHash(hash);
       setSchema(schema);
       setSchemaKindNameState(schemaKindNameMap);
+      setSchemaKindLabelState(schemaKindLabelMap);
       setNamespaces(namespaces);
     } catch (error) {
       toast(

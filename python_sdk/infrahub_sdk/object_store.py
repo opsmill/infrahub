@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Dict, Optional
 
 import httpx
 
-from infrahub_sdk.exceptions import AuthenticationError, ServerNotReacheableError
+from infrahub_sdk.exceptions import AuthenticationError, ServerNotReachableError
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
@@ -29,7 +29,7 @@ class ObjectStore(ObjectStoreBase):
             resp = await self.client._get(url=url, headers=headers)
             resp.raise_for_status()
 
-        except ServerNotReacheableError:
+        except ServerNotReachableError:
             self.client.log.error(f"Unable to connect to {self.client.address} .. ")
             raise
         except httpx.HTTPStatusError as exc:
@@ -50,7 +50,7 @@ class ObjectStore(ObjectStoreBase):
         try:
             resp = await self.client._post(url=url, payload={"content": content}, headers=headers)
             resp.raise_for_status()
-        except ServerNotReacheableError:
+        except ServerNotReachableError:
             self.client.log.error(f"Unable to connect to {self.client.address} .. ")
             raise
         except httpx.HTTPStatusError as exc:
@@ -77,7 +77,7 @@ class ObjectStoreSync(ObjectStoreBase):
             resp = self.client._get(url=url, headers=headers)
             resp.raise_for_status()
 
-        except ServerNotReacheableError:
+        except ServerNotReachableError:
             self.client.log.error(f"Unable to connect to {self.client.address} .. ")
             raise
         except httpx.HTTPStatusError as exc:
@@ -98,7 +98,7 @@ class ObjectStoreSync(ObjectStoreBase):
         try:
             resp = self.client._post(url=url, payload={"content": content}, headers=headers)
             resp.raise_for_status()
-        except ServerNotReacheableError:
+        except ServerNotReachableError:
             self.client.log.error(f"Unable to connect to {self.client.address} .. ")
             raise
         except httpx.HTTPStatusError as exc:

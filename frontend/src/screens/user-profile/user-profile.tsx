@@ -15,7 +15,7 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import TabPassword from "./tab-account";
 import TabPreferences from "./tab-preferences";
 import TabProfile from "./tab-profile";
-// import TabTokens from "./tab-tokens";
+import Content from "../layout/content";
 
 const PROFILE_TABS = {
   PREFERENCES: "preferences",
@@ -116,7 +116,7 @@ export default function UserProfile() {
         <Tabs tabs={tabs} />
       </div>
 
-      <div data-cy="user-details">{renderContent(qspTab)}</div>
+      <Content data-cy="user-details">{renderContent(qspTab)}</Content>
     </div>
   );
 }

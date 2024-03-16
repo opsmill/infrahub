@@ -16,16 +16,17 @@ Below is the list of all available options to define a Generic in the schema
 | ---- | ---- | ---- | --------- |
 | [**branch**](#branch) | Attribute | Type of branch support for the model. | False |
 | [**default_filter**](#default_filter) | Attribute | Default filter used to search for a node in addition to its ID. | False |
-| [**description**](#description) | Attribute | Short description of the Generic. | False |
+| [**description**](#description) | Attribute | Short description of the model, will be visible in the frontend. | False |
 | [**display_labels**](#display_labels) | Attribute | List of attributes to use to generate the display label | False |
 | [**hierarchical**](#hierarchical) | Attribute | Defines if the Generic support the hierarchical mode. | False |
 | [**icon**](#icon) | Attribute | Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/ | False |
 | [**include_in_menu**](#include_in_menu) | Attribute | Defines if objects of this kind should be included in the menu. | False |
 | [**label**](#label) | Attribute | Human friendly representation of the name/kind | False |
 | [**menu_placement**](#menu_placement) | Attribute | Defines where in the menu this object should be placed. | False |
-| [**name**](#name) | Attribute | Generic name, must be unique within a namespace and must start with an uppercase letter. | True |
-| [**namespace**](#namespace) | Attribute | Generic Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions. | True |
+| [**name**](#name) | Attribute | Node name, must be unique within a namespace and must start with an uppercase letter. | True |
+| [**namespace**](#namespace) | Attribute | Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions. | True |
 | [**order_by**](#order_by) | Attribute | List of attributes to use to order the results by default | False |
+| [**state**](#state) | Attribute | Expected state of the node/generic after loading the schema | False |
 | [**uniqueness_constraints**](#uniqueness_constraints) | Attribute | List of multi-element uniqueness constraints that can combine relationships and attributes | False |
 | [**used_by**](#used_by) | Attribute | List of Nodes that are referencing this Generic | False |
 | [**attributes**](#attributes) | Relationship |  | False |
@@ -62,7 +63,7 @@ Below is the list of all available options to define a Generic in the schema
 | ---- | --------------- |
 | **Name** | description |
 | **Kind** | `Text` |
-| **Description** | Short description of the Generic. |
+| **Description** | Short description of the model, will be visible in the frontend. |
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  Length: min -, max 128 |
@@ -139,7 +140,7 @@ Below is the list of all available options to define a Generic in the schema
 | ---- | --------------- |
 | **Name** | name |
 | **Kind** | `Text` |
-| **Description** | Generic name, must be unique within a namespace and must start with an uppercase letter. |
+| **Description** | Node name, must be unique within a namespace and must start with an uppercase letter. |
 | **Optional** | False |
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br /> Length: min 2, max 32 |
@@ -150,7 +151,7 @@ Below is the list of all available options to define a Generic in the schema
 | ---- | --------------- |
 | **Name** | namespace |
 | **Kind** | `Text` |
-| **Description** | Generic Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions. |
+| **Description** | Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions. |
 | **Optional** | False |
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[A-Z][a-z0-9]+$`<br /> Length: min 3, max 32 |
@@ -165,6 +166,18 @@ Below is the list of all available options to define a Generic in the schema
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  |
+
+### state
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | state |
+| **Kind** | `Text` |
+| **Description** | Expected state of the node/generic after loading the schema |
+| **Optional** | True |
+| **Default Value** | present |
+| **Constraints** |  |
+| **Accepted Values** | `present` `absent`  |
 
 ### uniqueness_constraints
 

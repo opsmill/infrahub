@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import { Icon } from "@iconify-icon/react";
+import Content from "./layout/content";
 
 export const Homepage = () => {
   return (
-    <main className="bg-custom-white h-full p-8">
+    <Content className="bg-custom-white p-8">
       <div className="bg-white flex flex-col">
         <h1 className="text-2xl font-semibold">Welcome to Infrahub!</h1>
         <h2 className="text-2xl">
@@ -88,7 +89,7 @@ export const Homepage = () => {
           docTo="https://infrahub-ansible.readthedocs.io/en/latest/"
         />
       </div>
-    </main>
+    </Content>
   );
 };
 

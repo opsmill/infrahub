@@ -1,5 +1,5 @@
-import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
 import { useContext } from "react";
+import { MoreButton } from "../../components/buttons/more-button";
 import { POPOVER_SIZE, PopOver } from "../../components/display/popover";
 import { Id } from "../../components/utils/id";
 import { reduceArrays } from "../../utils/array";
@@ -38,12 +38,6 @@ export const DataDiffConflictInfo = (props: tDataDiffConflictInfo) => {
   const checks = matchingKeys
     .map((matchingKey: string) => checksDictionnary[matchingKey])
     .reduce(reduceArrays, []);
-
-  const MoreButton = (
-    <div className="p-1 cursor-pointer">
-      <QuestionMarkCircleIcon className="h-5 w-5 text-custom-blue-green" aria-hidden="true" />
-    </div>
-  );
 
   const renderContent = () => {
     return (

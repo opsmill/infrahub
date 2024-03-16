@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 from pytest_httpx import HTTPXMock
 
-from infrahub_sdk.exceptions import NodeNotFound
+from infrahub_sdk.exceptions import NodeNotFoundError
 from infrahub_sdk.node import (
     SAFE_VALUE,
     InfrahubNode,
@@ -1111,20 +1111,22 @@ async def test_update_input_data__with_relationships_01(
     tag_schema,
     tag_blue_data,
     tag_green_data,
+    tag_red_data,
     client_type,
 ):
     if client_type == "standard":
         location = InfrahubNode(client=client, schema=location_schema, data=location_data01)
         tag_green = InfrahubNode(client=client, schema=tag_schema, data=tag_green_data)
         tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
-
+        tag_red = InfrahubNode(client=client, schema=tag_schema, data=tag_red_data)
     else:
         location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
         tag_green = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_green_data)
-        tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
+        tag_blue = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_blue_data)
+        tag_red = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_red_data)
 
     location.primary_tag = tag_green_data
-    location.tags.add(tag_green)
+    location.tags.extend([tag_green, tag_red])
     location.tags.remove(tag_blue)
 
     assert location._generate_input_data()["data"] == {
@@ -1132,7 +1134,7 @@ async def test_update_input_data__with_relationships_01(
             "id": "llllllll-llll-llll-llll-llllllllllll",
             "name": {"is_protected": True, "is_visible": True, "value": "DFW"},
             "primary_tag": {"id": "gggggggg-gggg-gggg-gggg-gggggggggggg"},
-            "tags": [{"id": "gggggggg-gggg-gggg-gggg-gggggggggggg"}],
+            "tags": [{"id": "gggggggg-gggg-gggg-gggg-gggggggggggg"}, {"id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr"}],
             "type": {"is_protected": True, "is_visible": True, "value": "SITE"},
         },
     }
@@ -1243,10 +1245,10 @@ async def test_node_get_relationship_not_in_store(client, location_schema, locat
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
 
-    with pytest.raises(NodeNotFound):
+    with pytest.raises(NodeNotFoundError):
         node.primary_tag.peer  # pylint: disable=pointless-statement
 
-    with pytest.raises(NodeNotFound):
+    with pytest.raises(NodeNotFoundError):
         node.tags[0].peer  # pylint: disable=pointless-statement
 
 
@@ -1384,3 +1386,20 @@ async def test_read_only_attr(
         },
     }
     assert address.computed_address.value == "1234 Fake Street 123ABC"
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_relationships_excluded_input_data(client, location_schema, client_type):
+    data = {
+        "name": {"value": "JFK1"},
+        "description": {"value": "JFK Airport"},
+        "type": {"value": "SITE"},
+        "primary_tag": "pppppppp",
+        "tags": [{"id": "aaaaaa"}, {"id": "bbbb"}],
+    }
+    if client_type == "standard":
+        node = InfrahubNode(client=client, schema=location_schema, data=data)
+    else:
+        node = InfrahubNodeSync(client=client, schema=location_schema, data=data)
+
+    assert node.tags.has_update is True

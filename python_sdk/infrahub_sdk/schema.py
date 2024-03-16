@@ -6,12 +6,14 @@ from pathlib import Path  # noqa: TCH003
 from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Tuple, TypedDict, TypeVar, Union
 from urllib.parse import urlencode
 
+import httpx
+
 try:
     from pydantic import v1 as pydantic  # type: ignore[attr-defined]
 except ImportError:
     import pydantic  # type: ignore[no-redef]
 
-from infrahub_sdk.exceptions import SchemaNotFound, ValidationError
+from infrahub_sdk.exceptions import SchemaNotFoundError, ValidationError
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.utils import duplicates
 
@@ -198,7 +200,14 @@ class EnumMutation(str, Enum):
     remove = "SchemaEnumRemove"
 
 
+class SchemaState(str, Enum):
+    PRESENT = "present"
+    ABSENT = "absent"
+
+
 class AttributeSchema(pydantic.BaseModel):
+    id: Optional[str] = None
+    state: SchemaState = SchemaState.PRESENT
     name: str
     kind: str
     label: Optional[str] = None
@@ -209,11 +218,16 @@ class AttributeSchema(pydantic.BaseModel):
     branch: Optional[BranchSupportType] = None
     optional: bool = False
     read_only: bool = False
-    choices: Optional[List[Dict[str, str]]] = None
+    choices: Optional[List[Dict[str, Any]]] = None
     enum: Optional[List[Union[str, int]]] = None
+    max_length: Optional[int] = None
+    min_length: Optional[int] = None
+    regex: Optional[str] = None
 
 
 class RelationshipSchema(pydantic.BaseModel):
+    id: Optional[str] = None
+    state: SchemaState = SchemaState.PRESENT
     name: str
     peer: str
     kind: RelationshipKind = RelationshipKind.GENERIC
@@ -228,6 +242,8 @@ class RelationshipSchema(pydantic.BaseModel):
 
 
 class BaseNodeSchema(pydantic.BaseModel):
+    id: Optional[str] = None
+    state: SchemaState = SchemaState.PRESENT
     name: str
     label: Optional[str] = None
     namespace: str
@@ -241,10 +257,10 @@ class BaseNodeSchema(pydantic.BaseModel):
         return self.namespace + self.name
 
     def get_field(self, name: str, raise_on_error: bool = True) -> Union[AttributeSchema, RelationshipSchema, None]:
-        if attribute_field := self.get_attribute(name, raise_on_error=False):
+        if attribute_field := self.get_attribute_or_none(name=name):
             return attribute_field
 
-        if relationship_field := self.get_relationship(name, raise_on_error=False):
+        if relationship_field := self.get_relationship_or_none(name=name):
             return relationship_field
 
         if not raise_on_error:
@@ -252,25 +268,29 @@ class BaseNodeSchema(pydantic.BaseModel):
 
         raise ValueError(f"Unable to find the field {name}")
 
-    def get_attribute(self, name: str, raise_on_error: bool = True) -> Union[AttributeSchema, None]:
+    def get_attribute(self, name: str) -> AttributeSchema:
         for item in self.attributes:
             if item.name == name:
                 return item
-
-        if not raise_on_error:
-            return None
-
         raise ValueError(f"Unable to find the attribute {name}")
 
-    def get_relationship(self, name: str, raise_on_error: bool = True) -> Union[RelationshipSchema, None]:
+    def get_attribute_or_none(self, name: str) -> Optional[AttributeSchema]:
+        for item in self.attributes:
+            if item.name == name:
+                return item
+        return None
+
+    def get_relationship(self, name: str) -> RelationshipSchema:
         for item in self.relationships:
             if item.name == name:
                 return item
-
-        if not raise_on_error:
-            return None
-
         raise ValueError(f"Unable to find the relationship {name}")
+
+    def get_relationship_or_none(self, name: str) -> Optional[RelationshipSchema]:
+        for item in self.relationships:
+            if item.name == name:
+                return item
+        return None
 
     def get_relationship_by_identifier(self, id: str, raise_on_error: bool = True) -> Union[RelationshipSchema, None]:
         for item in self.relationships:
@@ -397,16 +417,23 @@ class InfrahubSchemaBase:
 
         return obj_data
 
+    @staticmethod
+    def _validate_response(response: httpx.Response) -> Tuple[bool, Optional[dict]]:
+        if response.status_code == httpx.codes.ACCEPTED:
+            return True, None
+
+        if response.status_code == httpx.codes.BAD_REQUEST:
+            return False, response.json()
+
+        if response.status_code == httpx.codes.UNPROCESSABLE_ENTITY:
+            return False, response.json()
+
+        response.raise_for_status()
+
+        return False, None
+
 
 class InfrahubSchema(InfrahubSchemaBase):
-    """
-    client.schema.get(branch="name", kind="xxx")
-    client.schema.all(branch="xxx")
-    client.schema.validate()
-    client.schema.add()
-    client.schema.node.add()
-    """
-
     def __init__(self, client: InfrahubClient):
         self.client = client
         self.cache: dict = defaultdict(lambda: dict)
@@ -430,7 +457,7 @@ class InfrahubSchema(InfrahubSchemaBase):
         if branch in self.cache and kind in self.cache[branch]:
             return self.cache[branch][kind]
 
-        raise SchemaNotFound(identifier=kind)
+        raise SchemaNotFoundError(identifier=kind)
 
     async def all(
         self, branch: Optional[str] = None, refresh: bool = False, namespaces: Optional[List[str]] = None
@@ -456,12 +483,23 @@ class InfrahubSchema(InfrahubSchemaBase):
     async def load(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
         url = f"{self.client.address}/api/schema/load?branch={branch}"
-        response = await self.client._post(url=url, timeout=120, payload={"schemas": schemas})
+        response = await self.client._post(
+            url=url, timeout=max(120, self.client.default_timeout), payload={"schemas": schemas}
+        )
 
-        if response.status_code == 202:
-            return True, None
+        return self._validate_response(response=response)
 
-        if response.status_code == 422:
+    async def check(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
+        branch = branch or self.client.default_branch
+        url = f"{self.client.address}/api/schema/check?branch={branch}"
+        response = await self.client._post(
+            url=url, timeout=max(120, self.client.default_timeout), payload={"schemas": schemas}
+        )
+
+        if response.status_code == httpx.codes.ACCEPTED:
+            return True, response.json()
+
+        if response.status_code == httpx.codes.UNPROCESSABLE_ENTITY:
             return False, response.json()
 
         response.raise_for_status()
@@ -472,7 +510,7 @@ class InfrahubSchema(InfrahubSchemaBase):
     ) -> Tuple[str, AttributeSchema]:
         node_kind: str = kind._schema.kind if not isinstance(kind, str) else kind
         node_schema = await self.client.schema.get(kind=node_kind, branch=branch)
-        schema_attr = node_schema.get_attribute(attribute, raise_on_error=True)
+        schema_attr = node_schema.get_attribute(name=attribute)
 
         if schema_attr is None:
             raise ValueError(f"Unable to find attribute {attribute}")
@@ -498,7 +536,10 @@ class InfrahubSchema(InfrahubSchemaBase):
 
         query = Mutation(mutation=mutation.value, input_data=input_data, query={"ok": None})
         await self.client.execute_graphql(
-            query=query.render(), branch_name=branch, tracker=f"mutation-{mutation.name}-add", timeout=60
+            query=query.render(),
+            branch_name=branch,
+            tracker=f"mutation-{mutation.name}-add",
+            timeout=max(60, self.client.default_timeout),
         )
 
     async def add_enum_option(
@@ -547,7 +588,10 @@ class InfrahubSchema(InfrahubSchemaBase):
 
         query = Mutation(mutation=mutation.value, input_data=input_data, query={"ok": None})
         await self.client.execute_graphql(
-            query=query.render(), branch_name=branch, tracker=f"mutation-{mutation.name}-remove", timeout=60
+            query=query.render(),
+            branch_name=branch,
+            tracker=f"mutation-{mutation.name}-remove",
+            timeout=max(60, self.client.default_timeout),
         )
 
     async def remove_dropdown_option(
@@ -654,14 +698,14 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         if branch in self.cache and kind in self.cache[branch]:
             return self.cache[branch][kind]
 
-        raise SchemaNotFound(identifier=kind)
+        raise SchemaNotFoundError(identifier=kind)
 
     def _get_kind_and_attribute_schema(
         self, kind: Union[str, InfrahubNodeTypes], attribute: str, branch: Optional[str] = None
     ) -> Tuple[str, AttributeSchema]:
         node_kind: str = kind._schema.kind if not isinstance(kind, str) else kind
         node_schema = self.client.schema.get(kind=node_kind, branch=branch)
-        schema_attr = node_schema.get_attribute(attribute, raise_on_error=True)
+        schema_attr = node_schema.get_attribute(name=attribute)
 
         if schema_attr is None:
             raise ValueError(f"Unable to find attribute {attribute}")
@@ -685,7 +729,10 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
         query = Mutation(mutation=mutation.value, input_data=input_data, query={"ok": None})
         self.client.execute_graphql(
-            query=query.render(), branch_name=branch, tracker=f"mutation-{mutation.name}-add", timeout=60
+            query=query.render(),
+            branch_name=branch,
+            tracker=f"mutation-{mutation.name}-add",
+            timeout=max(60, self.client.default_timeout),
         )
 
     def add_enum_option(
@@ -732,7 +779,10 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
         query = Mutation(mutation=mutation.value, input_data=input_data, query={"ok": None})
         self.client.execute_graphql(
-            query=query.render(), branch_name=branch, tracker=f"mutation-{mutation.name}-remove", timeout=60
+            query=query.render(),
+            branch_name=branch,
+            tracker=f"mutation-{mutation.name}-remove",
+            timeout=max(60, self.client.default_timeout),
         )
 
     def remove_dropdown_option(
@@ -798,12 +848,23 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
     def load(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
         url = f"{self.client.address}/api/schema/load?branch={branch}"
-        response = self.client._post(url=url, timeout=60, payload={"schemas": schemas})
+        response = self.client._post(
+            url=url, timeout=max(120, self.client.default_timeout), payload={"schemas": schemas}
+        )
 
-        if response.status_code == 202:
-            return True, None
+        return self._validate_response(response=response)
 
-        if response.status_code == 422:
+    def check(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
+        branch = branch or self.client.default_branch
+        url = f"{self.client.address}/api/schema/check?branch={branch}"
+        response = self.client._post(
+            url=url, timeout=max(120, self.client.default_timeout), payload={"schemas": schemas}
+        )
+
+        if response.status_code == httpx.codes.ACCEPTED:
+            return True, response.json()
+
+        if response.status_code == httpx.codes.UNPROCESSABLE_ENTITY:
             return False, response.json()
 
         response.raise_for_status()

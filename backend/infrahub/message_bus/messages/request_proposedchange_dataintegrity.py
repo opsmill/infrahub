@@ -11,6 +11,6 @@ class RequestProposedChangeDataIntegrity(InfrahubMessage):
 
     proposed_change: str = Field(..., description="The unique ID of the Proposed Change")
     source_branch: str = Field(..., description="The source branch of the proposed change")
-    source_branch_data_only: bool = Field(..., description="Indicates if the source branch is a data only branch")
+    source_branch_sync_with_git: bool = Field(..., description="Indicates if the source branch should sync with git")
     destination_branch: str = Field(..., description="The destination branch of the proposed change")
     branch_diff: ProposedChangeBranchDiff = Field(..., description="The calculated diff between the two branches")

@@ -15,12 +15,12 @@ class UpdateSupport(Enum):
     NOT_SUPPORTED = "not_supported"
     ALLOWED = "allowed"
     MIGRATION_REQUIRED = "migration_required"
-    CHECK_CONSTRAINTS = "check_constraints"
+    VALIDATE_CONSTRAINT = "validate_constraint"
     NOT_APPLICABLE = "not_applicable"
 
 
 class UpdateValidationErrorType(Enum):
     NOT_SUPPORTED = "not_supported"
-    CHECK_FAILED = "check_failed"
+    VALIDATOR_FAILED = "validator_failed"
     MIGRATION_NOT_AVAILABLE = "migration_not_available"
-    CHECK_NOT_AVAILABLE = "check_not_available"
+    VALIDATOR_NOT_AVAILABLE = "validator_not_available"

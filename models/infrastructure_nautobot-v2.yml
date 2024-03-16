@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://schema.infrahub.app/develop/schema.schema.json
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
 version: '1.0'
 generics:
@@ -79,6 +79,7 @@ generics:
     description: "Generic Choice"
     include_in_menu: false
     label: "Choice"
+    default_filter: name__value
     display_labels:
       - name__value
     order_by:
@@ -451,6 +452,7 @@ nodes:
     label: "Device Type"
     icon: "mdi:poll"
     menu_placement: "InfraDevice"
+    default_filter: name__value
     display_labels:
       - name__value
     order_by:

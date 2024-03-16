@@ -1,56 +1,96 @@
 import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
-import { AuthContext } from "../decorators/withAuth";
 import { Branch } from "../generated/graphql";
 import { BRANCH_CREATE } from "../graphql/mutations/branches/createBranch";
+import { useAuth } from "../hooks/useAuth";
+import { usePermission } from "../hooks/usePermission";
 import { DynamicFieldData } from "../screens/edit-form-hook/dynamic-control-types";
 import { Form } from "../screens/edit-form-hook/form";
 import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
 import { classNames } from "../utils/common";
-import { BUTTON_TYPES, Button } from "./buttons/button";
+import { BUTTON_TYPES } from "./buttons/button";
+import { ButtonWithTooltip } from "./buttons/button-with-tooltip";
 import { SelectButton } from "./buttons/select-button";
+import { DateDisplay } from "./display/date-display";
 import { POPOVER_SIZE, PopOver } from "./display/popover";
 import { SelectOption } from "./inputs/select";
+
+const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
+  branch && (
+    <>
+      {branch.is_isolated && (
+        <Icon
+          icon={"mdi:alpha-i-box"}
+          className={classNames(active ? "text-custom-white" : "text-gray-500")}
+        />
+      )}
+
+      {branch.has_schema_changes && (
+        <Icon
+          icon={"mdi:file-alert"}
+          className={classNames(active ? "text-custom-white" : "text-gray-500")}
+        />
+      )}
+
+      {branch.is_default && (
+        <Icon
+          icon={"mdi:shield-star"}
+          className={classNames(active ? "text-custom-white" : "text-gray-500")}
+        />
+      )}
+
+      {branch.sync_with_git && (
+        <Icon
+          icon={"mdi:git"}
+          className={classNames(active ? "text-custom-white" : "text-red-400")}
+        />
+      )}
+    </>
+  );
 
 export default function BranchSelector() {
   const [branches, setBranches] = useAtom(branchesState);
   const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const branch = useAtomValue(currentBranchAtom);
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
+  const permission = usePermission();
 
   const [createBranch, { loading }] = useMutation(BRANCH_CREATE);
 
   const valueLabel = (
-    <>
-      <Icon icon={"mdi:layers-triple"} />
+    <div className="flex items-center fill-custom-white">
+      {getBranchIcon(branch, true)}
+
       <p className="ml-2.5 text-sm font-medium truncate">{branch?.name}</p>
-    </>
+    </div>
   );
 
   const PopOverButton = (
-    <Button
-      disabled={!auth?.permissions?.write}
+    <ButtonWithTooltip
+      disabled={!permission.write.allow}
+      tooltipEnabled={!permission.write.allow}
+      tooltipContent={permission.write.message ?? undefined}
       buttonType={BUTTON_TYPES.MAIN}
       className="h-full rounded-r-md border border-transparent"
       type="submit"
       data-cy="create-branch-button"
       data-testid="create-branch-button">
       <Icon icon={"mdi:plus"} className="text-custom-white" />
-    </Button>
+    </ButtonWithTooltip>
   );
 
   const branchesOptions: SelectOption[] = branches
     .map((branch) => ({
       id: branch.id,
       name: branch.name,
-      is_data_only: branch.is_data_only,
+      sync_with_git: branch.sync_with_git,
       is_default: branch.is_default,
+      is_isolated: branch.is_isolated,
+      has_schema_changes: branch.has_schema_changes,
       created_at: branch.created_at,
     }))
     .sort((branch1, branch2) => {
@@ -86,23 +126,7 @@ export default function BranchSelector() {
 
   const renderOption = ({ option, active, selected }: any) => (
     <div className="flex relative flex-col">
-      {option.is_data_only && (
-        <div className="absolute bottom-0 right-0">
-          <Icon
-            icon={"mdi:database"}
-            className={classNames(active ? "text-custom-white" : "text-gray-500")}
-          />
-        </div>
-      )}
-
-      {option.is_default && (
-        <div className="absolute bottom-0 right-0">
-          <Icon
-            icon={"mdi:shield-check"}
-            className={classNames(active ? "text-custom-white" : "text-gray-500")}
-          />
-        </div>
-      )}
+      <div className="flex absolute bottom-0 right-0">{getBranchIcon(option, active)}</div>
 
       <div className="flex justify-between">
         <p className={selected ? "font-semibold" : "font-normal"}>{option.name}</p>
@@ -113,25 +137,15 @@ export default function BranchSelector() {
         ) : null}
       </div>
 
-      {option?.created_at && (
-        <p className={classNames(active ? "text-custom-white" : "text-gray-500", "mt-2")}>
-          {formatDistanceToNow(new Date(option?.created_at), {
-            addSuffix: true,
-          })}
-        </p>
-      )}
+      {option?.created_at && <DateDisplay date={option?.created_at} />}
     </div>
   );
 
   const handleSubmit = async (data: any, close: Function) => {
-    const { name, description, is_data_only } = data;
-
     try {
       const { data: response } = await createBranch({
         variables: {
-          name,
-          description,
-          is_data_only,
+          ...data,
         },
       });
 
@@ -191,10 +205,17 @@ export default function BranchSelector() {
       isOptional: true,
     },
     {
-      name: "is_data_only",
-      label: "Data only",
+      name: "sync_with_git",
+      label: "Sync with Git",
       type: "checkbox",
-      value: true,
+      value: false,
+      isOptional: true,
+    },
+    {
+      name: "is_isolated",
+      label: "Isolated mode",
+      type: "checkbox",
+      value: false,
       isOptional: true,
     },
   ];

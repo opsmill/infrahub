@@ -3,17 +3,17 @@ import { PlusIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import { BUTTON_TYPES } from "../../components/buttons/button";
+import { Retry } from "../../components/buttons/retry";
 import { RoundedButton } from "../../components/buttons/rounded-button";
 import SlideOver from "../../components/display/slide-over";
 import ModalDelete from "../../components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { Pagination } from "../../components/utils/pagination";
 import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST } from "../../config/constants";
-import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
@@ -40,6 +40,10 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
+import Content from "../layout/content";
+import { Tooltip } from "../../components/ui/tooltip";
+import { usePermission } from "../../hooks/usePermission";
+import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -52,7 +56,7 @@ export default function ObjectItems(props: any) {
 
   const objectname = objectnameFromProps || objectnameFromParams;
 
-  const auth = useContext(AuthContext);
+  const permission = usePermission();
 
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
@@ -118,11 +122,16 @@ export default function ObjectItems(props: any) {
     ${queryString}
   `;
 
-  const { loading, error, data = {}, refetch } = useQuery(query, { skip: !schemaData });
+  const {
+    loading,
+    error,
+    data = {},
+    refetch,
+  } = useQuery(query, { skip: !schemaData, notifyOnNetworkStatusChange: true });
 
   const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
-  const { count, edges } = result;
+  const { count = "...", edges } = result;
 
   useTitle(`${schemaKindName[objectname]} list`);
 
@@ -171,12 +180,14 @@ export default function ObjectItems(props: any) {
     setIsLoading(false);
   };
 
+  const handleRefetch = () => refetch();
+
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching list." />;
   }
 
   return (
-    <div className="bg-custom-white flex-1 flex flex-col">
+    <Content className="bg-custom-white">
       <div className="flex items-center p-4 w-full">
         {schemaData && (
           <div className="sm:flex-auto flex items-center">
@@ -185,17 +196,25 @@ export default function ObjectItems(props: any) {
             </h1>
 
             <div className="text-sm">{schemaData?.description}</div>
+
+            <div className="ml-2">
+              <Retry isLoading={loading} onClick={handleRefetch} />
+            </div>
           </div>
         )}
 
         {schema && (
-          <RoundedButton
-            data-cy="create"
-            data-testid="create-object-button"
-            disabled={!auth?.permissions?.write}
-            onClick={() => setShowCreateDrawer(true)}>
-            <PlusIcon className="w-4 h-4" aria-hidden="true" />
-          </RoundedButton>
+          <Tooltip
+            enabled={!permission.write.allow}
+            content={permission.write.message ?? undefined}>
+            <RoundedButton
+              data-cy="create"
+              data-testid="create-object-button"
+              disabled={!permission.write.allow}
+              onClick={() => setShowCreateDrawer(true)}>
+              <PlusIcon className="w-4 h-4" aria-hidden="true" />
+            </RoundedButton>
+          </Tooltip>
         )}
       </div>
 
@@ -204,7 +223,7 @@ export default function ObjectItems(props: any) {
       {loading && !rows && <LoadingScreen />}
 
       {rows && (
-        <div>
+        <div className="overflow-auto">
           <table className="table-auto border-spacing-0 w-full">
             <thead className="bg-gray-50 text-left border-b border-gray-300">
               <tr>
@@ -237,16 +256,18 @@ export default function ObjectItems(props: any) {
                   ))}
 
                   <td className="text-right w-8">
-                    <Button
+                    <ButtonWithTooltip
                       data-cy="delete"
-                      disabled={!auth?.permissions?.write}
+                      disabled={!permission.write.allow}
+                      tooltipEnabled={!permission.write.allow}
+                      tooltipContent={permission.write.message ?? undefined}
                       buttonType={BUTTON_TYPES.INVISIBLE}
                       onClick={() => {
                         setRowToDelete(row);
                         setDeleteModal(true);
                       }}>
                       <Icon icon="mdi:trash" className="text-red-500" />
-                    </Button>
+                    </ButtonWithTooltip>
                   </td>
                 </tr>
               ))}
@@ -307,6 +328,6 @@ export default function ObjectItems(props: any) {
         setOpen={() => setDeleteModal(false)}
         isLoading={isLoading}
       />
-    </div>
+    </Content>
   );
 }

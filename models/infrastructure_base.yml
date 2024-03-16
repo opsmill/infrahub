@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://schema.infrahub.app/develop/schema.schema.json
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
 version: '1.0'
 generics:
@@ -766,42 +766,3 @@ nodes:
         name: tags
         optional: true
         peer: BuiltinTag
-
-  - name: Status
-    namespace: Builtin
-    label: Status
-    description: "Status represents the current state of an object: active, maintenance"
-    default_filter: name__value
-    display_labels: [label__value]
-    icon: mdi:list-status
-    include_in_menu: false
-    attributes:
-      - kind: Text
-        name: name
-        unique: true
-      - kind: Text
-        name: label
-        optional: true
-      - kind: Text
-        name: description
-        optional: true
-
-  - name: Role
-    namespace: Builtin
-    label: Role
-    description: "Represents the role of an object"
-    default_filter: name__value
-    display_labels: [label__value]
-    order_by: [name__value]
-    icon: mdi:ballot
-    include_in_menu: false
-    attributes:
-      - kind: Text
-        name: name
-        unique: true
-      - kind: Text
-        name: label
-        optional: true
-      - kind: Text
-        name: description
-        optional: true

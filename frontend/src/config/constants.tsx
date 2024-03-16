@@ -1,3 +1,5 @@
+import { SchemaAttributeType } from "../screens/edit-form-hook/dynamic-control-types";
+
 export const DEFAULT_BRANCH_NAME = "main";
 
 export const ACCESS_TOKEN_KEY = "access_token";
@@ -5,6 +7,8 @@ export const ACCESS_TOKEN_KEY = "access_token";
 export const REFRESH_TOKEN_KEY = "refresh_token";
 
 export const NODE_OBJECT = "CoreNode";
+
+export const TASK_TARGET = "CoreTaskTarget";
 
 export const DATA_CHECK_OBJECT = "CoreDataCheck";
 
@@ -103,6 +107,15 @@ export const CHECK_CONCLUSIONS = {
   SUCCESS: "success",
 };
 
+export const CHECKS_LABEL = {
+  EMPTY: "Empty",
+  UNKOWN: "Unkown",
+  QUEUED: "Queued",
+  FAILURE: "Failure",
+  SUCCESS: "Success",
+  IN_PROGRESS: "In progress",
+};
+
 export const VALIDATIONS_ENUM_MAP: { [key: string]: string } = {
   CoreArtifactValidator: "ARTIFACT",
   CoreDataValidator: "DATA",
@@ -130,6 +143,32 @@ export const attributesKindForListView = [
   "DateTime",
 ];
 
+export const SCHEMA_ATTRIBUTE_KIND: Record<string, SchemaAttributeType> = {
+  ID: "ID",
+  DROPDOWN: "Dropdown",
+  TEXT: "Text",
+  TEXTAREA: "TextArea",
+  DATETIME: "DateTime",
+  EMAIL: "Email",
+  PASSWORD: "Password",
+  HASHED_PASSWORD: "HashedPassword",
+  URL: "URL",
+  FILE: "File",
+  MAC_ADDRESS: "MacAddress",
+  COLOR: "Color",
+  NUMBER: "Number",
+  BANDWIDTH: "Bandwidth",
+  IP_HOST: "IPHost",
+  IP_NETWORK: "IPNetwork",
+  CHECKBOX: "Checkbox",
+  LIST: "List",
+  JSON: "JSON",
+  ANY: "Any",
+  STRING: "String",
+  INTEGER: "Integer",
+  BOOLEAN: "Boolean",
+} as const;
+
 export const attributesKindForDetailsViewExclude = ["HashedPassword"];
 
 export const relationshipsForListView = {
@@ -150,3 +189,5 @@ export const relationshipsForTabs = {
 export const peersKindForForm = ["Attribute", "Parent"];
 
 export const PROPOSED_CHANGES_EDITABLE_STATE = ["open", "closed"];
+
+export const TASK_TAB = "tasks";

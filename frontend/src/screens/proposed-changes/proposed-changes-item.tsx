@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 import { ChevronLeftIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { RoundedButton } from "../../components/buttons/rounded-button";
@@ -13,9 +13,9 @@ import ModalDelete from "../../components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { Tooltip } from "../../components/utils/tooltip";
 import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
-import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
+import { useAuth } from "../../hooks/useAuth";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { constructPath } from "../../utils/fetch";
@@ -27,7 +27,7 @@ export const ProposedChange = (props: any) => {
 
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
 
@@ -85,7 +85,7 @@ export const ProposedChange = (props: any) => {
         <Icon icon="mdi:delete" height="16" width="16" className="text-red-600" />
       </RoundedButton>
 
-      <div className="flex w-full items-center justify-between space-x-6 p-6">
+      <div className="flex w-full items-center justify-between space-x-6 p-3">
         <div className="flex flex-1">
           <div className="flex flex-1 flex-col">
             <div className="flex flex-1 items-center space-x-3 mb-4">
@@ -137,7 +137,7 @@ export const ProposedChange = (props: any) => {
               ))}
             </div>
 
-            <div className="flex flex-1 items-center space-x-3 mb-4">
+            <div className="flex flex-1 items-center space-x-3">
               <div className="mr-2 min-w-[120px]">Approved by:</div>
 
               {approvers.map((approver: any, index: number) => (

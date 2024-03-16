@@ -165,13 +165,15 @@ def test_scale_env_destroy(context: Context, database: str = INFRAHUB_DATABASE):
         return execute_command(context=context, command=command)
 
 
-@task(optional=["schema", "stager", "amount", "test"])
+@task(optional=["schema", "stager", "amount", "test", "attrs", "rels"])
 def test_scale(
     context: Context,
     schema: Path = f"{ESCAPED_REPO_PATH}/backend/tests/scale/schema.yml",
     stager: str = None,
     amount: int = None,
     test: str = None,
+    attrs: int = None,
+    rels: int = None,
 ):
     args = []
     if stager:
@@ -186,6 +188,12 @@ def test_scale(
     if schema:
         args.extend(["--schema", schema])
 
+    if attrs:
+        args.extend(["--attrs", attrs])
+
+    if rels:
+        args.extend(["--rels", rels])
+
     with context.cd(ESCAPED_REPO_PATH):
         base_cmd = ["python", "backend/tests/scale/main.py"]
         cmd = " ".join(base_cmd + args)
@@ -197,3 +205,72 @@ def test_scale(
 def format_and_lint(context: Context):
     format_all(context)
     lint(context)
+
+
+# ----------------------------------------------------------------------------
+# Generate tasks
+# ----------------------------------------------------------------------------
+
+
+@task
+def generate(context: Context):
+    """Generate internal backend models."""
+    _generate(context=context)
+
+
+@task
+def validate_generated(context: Context, docker: bool = False):
+    """Validate that the generated documentation is committed to Git."""
+
+    _generate(context=context)
+    exec_cmd = "git diff --exit-code backend/infrahub/core/schema/generated"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+
+def _generate(context: Context):
+    from jinja2 import Environment, FileSystemLoader, StrictUndefined
+
+    from infrahub.core.schema.definitions.internal import (
+        attribute_schema,
+        base_node_schema,
+        generic_schema,
+        node_schema,
+        relationship_schema,
+    )
+
+    env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"), undefined=StrictUndefined)
+    generated = f"{ESCAPED_REPO_PATH}/backend/infrahub/core/schema/generated"
+    template = env.get_template("generate_schema.j2")
+
+    attributes_rendered = template.render(schema="AttributeSchema", node=attribute_schema, parent="HashableModel")
+    attribute_schema_output = f"{generated}/attribute_schema.py"
+    with open(attribute_schema_output, "w", encoding="utf-8") as fobj:
+        fobj.write(attributes_rendered)
+
+    base_node_rendered = template.render(schema="BaseNodeSchema", node=base_node_schema, parent="HashableModel")
+    base_node_schema_output = f"{generated}/base_node_schema.py"
+    with open(base_node_schema_output, "w", encoding="utf-8") as fobj:
+        fobj.write(base_node_rendered)
+
+    generic_schema_stripped = generic_schema.without_duplicates(base_node_schema)
+    generic_rendered = template.render(schema="GenericSchema", node=generic_schema_stripped, parent="BaseNodeSchema")
+    generic_schema_output = f"{generated}/genericnode_schema.py"
+    with open(generic_schema_output, "w", encoding="utf-8") as fobj:
+        fobj.write(generic_rendered)
+
+    node_schema_stripped = node_schema.without_duplicates(base_node_schema)
+    node_rendered = template.render(schema="NodeSchema", node=node_schema_stripped, parent="BaseNodeSchema")
+    node_schema_output = f"{generated}/node_schema.py"
+    with open(node_schema_output, "w", encoding="utf-8") as fobj:
+        fobj.write(node_rendered)
+
+    relationship_rendered = template.render(
+        schema="RelationshipSchema", node=relationship_schema, parent="HashableModel"
+    )
+    relationship_schema_output = f"{generated}/relationship_schema.py"
+    with open(relationship_schema_output, "w", encoding="utf-8") as fobj:
+        fobj.write(relationship_rendered)
+
+    execute_command(context=context, command=f"ruff format {generated}")
+    execute_command(context=context, command=f"ruff check --fix {generated}")

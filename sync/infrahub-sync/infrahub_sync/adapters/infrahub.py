@@ -1,17 +1,17 @@
 import copy
 from typing import Any, Dict, Mapping
 
-from diffsync import DiffSync, DiffSyncModel
 from infrahub_sdk import (
     Config,
     InfrahubClientSync,
     InfrahubNodeSync,
-    NodeNotFound,
     NodeSchema,
     NodeStoreSync,
 )
+from infrahub_sdk.exceptions import NodeNotFoundError
 from infrahub_sdk.utils import compare_lists
 
+from diffsync import DiffSync, DiffSyncModel
 from infrahub_sync import DiffSyncMixin, DiffSyncModelMixin, SyncAdapter, SyncConfig
 from infrahub_sync.generator import has_field
 
@@ -32,13 +32,13 @@ def update_node(node: InfrahubNodeSync, attrs: dict):
                     attr = getattr(node, attr_name)
                     existing_peer_ids = attr.peer_ids
                     new_peer_ids = [node._client.store.get(key=value, kind=rel.peer).id for value in list(attr_value)]
-                    in_both, existing_only, new_only = compare_lists(existing_peer_ids, new_peer_ids)  # noqa: F841
+                    _, existing_only, new_only = compare_lists(existing_peer_ids, new_peer_ids)  # noqa: F841
 
-                    for id in existing_only:
-                        attr.remove(id)
+                    for existing_id in existing_only:
+                        attr.remove(existing_id)
 
-                    for id in new_only:
-                        attr.add(id)
+                    for new_id in new_only:
+                        attr.add(new_id)
 
     return node
 
@@ -50,30 +50,26 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
         super().__init__(*args, **kwargs)
         self.target = target
         self.config = config
-        self.branch = branch
-        sdk_config = Config(timeout=60)
+        if branch:
+            sdk_config = Config(timeout=60, default_branch=branch)
+        else:
+            sdk_config = Config(timeout=60)
 
         if not isinstance(adapter.settings, dict) or "url" not in adapter.settings:
             raise ValueError("url must be specified!")
 
-        if self.branch:
-            self.client = InfrahubClientSync(
-                address=adapter.settings["url"], default_branch=self.branch, config=sdk_config
-            )
-        else:
-            self.client = InfrahubClientSync(address=adapter.settings["url"], config=sdk_config)
+        self.client = InfrahubClientSync(address=adapter.settings["url"], config=sdk_config)
 
         # We need to identify with an account until we have some auth in place
         remote_account = config.source.name
         try:
             self.account = self.client.get(kind="CoreAccount", name__value=remote_account)
-        except NodeNotFound:
-            self.account = self.client.create(kind="CoreAccount", name=remote_account, password="nopassword")
-            self.account.save()
+        except NodeNotFoundError:
+            self.account = None
 
     def model_loader(self, model_name: str, model):
         nodes = self.client.all(kind=model.__name__, populate_store=True)
-        print(f"-> Loading {len(nodes)} {model_name}")
+        print(f"{self.type}: Loading {len(nodes)} {model_name}")
         for node in nodes:
             data = self.infrahub_node_to_diffsync(node)
             item = model(**data)
@@ -156,12 +152,14 @@ class InfrahubModel(DiffSyncModelMixin, DiffSyncModel):
 
         data = diffsync_to_infrahub(ids=ids, attrs=attrs, schema=schema, store=diffsync.client.store)
         unique_id = cls(**ids, **attrs).get_unique_id()
-        source = diffsync.account
+        source_id = None
+        if diffsync.account:
+            source_id = diffsync.account.id
         create_data = diffsync.client.schema.generate_payload_create(
-            schema=schema, data=data, source=source.id, is_protected=True
+            schema=schema, data=data, source=source_id, is_protected=True
         )
         node = diffsync.client.create(kind=cls.__name__, data=create_data)
-        node.save()
+        node.save(allow_upsert=True)
         diffsync.client.store.set(key=unique_id, node=node)
         return super().create(diffsync, ids=ids, attrs=attrs)
 
@@ -169,6 +167,6 @@ class InfrahubModel(DiffSyncModelMixin, DiffSyncModel):
         node = self.diffsync.client.get(id=self.local_id, kind=self.__class__.__name__)
 
         node = update_node(node=node, attrs=attrs)
-        node.save()
+        node.save(allow_upsert=True)
 
         return super().update(attrs)

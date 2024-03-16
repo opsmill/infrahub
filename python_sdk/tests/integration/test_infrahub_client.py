@@ -3,11 +3,12 @@ from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.server import app
 
 from infrahub_sdk import Config, InfrahubClient
-from infrahub_sdk.exceptions import BranchNotFound
+from infrahub_sdk.constants import InfrahubClientMode
+from infrahub_sdk.exceptions import BranchNotFoundError
 from infrahub_sdk.node import InfrahubNode
-from infrahub_sdk.schema import SchemaRoot
 
 from .conftest import InfrahubTestClient
 
@@ -19,9 +20,6 @@ class TestInfrahubClient:
     async def test_client(self) -> InfrahubTestClient:
         registry.delete_all()
 
-        # pylint: disable=import-outside-toplevel
-        from infrahub.server import app
-
         return InfrahubTestClient(app)
 
     @pytest.fixture
@@ -30,10 +28,10 @@ class TestInfrahubClient:
         return await InfrahubClient.init(config=config)
 
     @pytest.fixture(scope="class")
-    async def base_dataset(self, db: InfrahubDatabase, test_client: InfrahubTestClient, builtin_org_schema: SchemaRoot):
+    async def base_dataset(self, db: InfrahubDatabase, test_client: InfrahubTestClient, builtin_org_schema):
         config = Config(username="admin", password="infrahub", requester=test_client.async_request)
         client = await InfrahubClient.init(config=config)
-        success, response = await client.schema.load(schemas=[builtin_org_schema.dict()])
+        success, response = await client.schema.load(schemas=[builtin_org_schema])
         assert response is None
         assert success
 
@@ -80,7 +78,6 @@ class TestInfrahubClient:
             class_name="Transform01",
             query=obj1,
             repository=obj2,
-            rebase=False,
         )
         await obj4.save(db=db)
 
@@ -88,7 +85,7 @@ class TestInfrahubClient:
         branches = await client.branch.all()
         main = await client.branch.get(branch_name="main")
 
-        with pytest.raises(BranchNotFound):
+        with pytest.raises(BranchNotFoundError):
             await client.branch.get(branch_name="not-found")
 
         assert main.name == "main"
@@ -162,3 +159,70 @@ class TestInfrahubClient:
         assert repo.transformations.peers == []  # type: ignore[attr-defined]
         await repo.transformations.fetch()  # type: ignore[attr-defined]
         assert len(repo.transformations.peers) == 2  # type: ignore[attr-defined]
+
+    async def test_tracking_mode(self, client: InfrahubClient, db: InfrahubDatabase, init_db_base, base_dataset):
+        tag_names = ["BLUE", "RED", "YELLOW"]
+        orgname = "Acme"
+
+        async def create_org_with_tag(clt: InfrahubClient, nbr_tags: int):
+            tags = []
+            for idx in range(0, nbr_tags):
+                obj = await clt.create(kind="BuiltinTag", name=f"tracking-{tag_names[idx]}")
+                await obj.save(allow_upsert=True)
+                tags.append(obj)
+
+            org = await clt.create(kind="CoreOrganization", name=orgname, tags=tags)
+            await org.save(allow_upsert=True)
+
+        # First execution, we create one org with 3 tags
+        nbr_tags = 3
+        async with client.start_tracking(params={"orgname": orgname}, delete_unused_nodes=True) as clt:
+            await create_org_with_tag(clt=clt, nbr_tags=nbr_tags)
+
+        assert client.mode == InfrahubClientMode.DEFAULT
+        group = await client.get(
+            kind="CoreStandardGroup", name__value=client.group_context._generate_group_name(), include=["members"]
+        )
+        assert len(group.members.peers) == 4
+        tags = await client.all(kind="BuiltinTag")
+        assert len(tags) == 3
+
+        # Second execution, we create one org with 2 tags but we don't delete the third one
+        nbr_tags = 2
+        async with client.start_tracking(params={"orgname": orgname}, delete_unused_nodes=False) as clt:
+            await create_org_with_tag(clt=clt, nbr_tags=nbr_tags)
+
+        assert client.mode == InfrahubClientMode.DEFAULT
+        group = await client.get(
+            kind="CoreStandardGroup", name__value=client.group_context._generate_group_name(), include=["members"]
+        )
+        assert len(group.members.peers) == 3
+        tags = await client.all(kind="BuiltinTag")
+        assert len(tags) == 3
+
+        # Third execution, we create one org with 1 tag and we delete the second one
+        nbr_tags = 1
+        async with client.start_tracking(params={"orgname": orgname}, delete_unused_nodes=True) as clt:
+            await create_org_with_tag(clt=clt, nbr_tags=nbr_tags)
+
+        assert client.mode == InfrahubClientMode.DEFAULT
+        group = await client.get(
+            kind="CoreStandardGroup", name__value=client.group_context._generate_group_name(), include=["members"]
+        )
+        assert len(group.members.peers) == 2
+
+        tags = await client.all(kind="BuiltinTag")
+        assert len(tags) == 2
+
+        # Forth one, validate that the group will not be updated if there is an exception
+        nbr_tags = 3
+        with pytest.raises(ValueError):
+            async with client.start_tracking(params={"orgname": orgname}, delete_unused_nodes=True) as clt:
+                await create_org_with_tag(clt=clt, nbr_tags=nbr_tags)
+                raise ValueError("something happened")
+
+        assert client.mode == InfrahubClientMode.DEFAULT
+        group = await client.get(
+            kind="CoreStandardGroup", name__value=client.group_context._generate_group_name(), include=["members"]
+        )
+        assert len(group.members.peers) == 2

@@ -10,7 +10,7 @@ import {
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
@@ -19,8 +19,8 @@ import SlideOver from "../../components/display/slide-over";
 import { Tabs } from "../../components/tabs";
 import { DEFAULT_BRANCH_NAME, GROUP_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { AuthContext } from "../../decorators/withAuth";
 import { getGroupDetails } from "../../graphql/queries/groups/getGroupDetails";
+import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
@@ -42,7 +42,7 @@ export default function GroupItemDetails() {
 
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const branch = useAtomValue(currentBranchAtom);
@@ -134,7 +134,7 @@ export default function GroupItemDetails() {
             onClick={() => setShowEditDrawer(true)}
             className="mr-4">
             Edit
-            <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+            <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
           </Button>
         }
       />

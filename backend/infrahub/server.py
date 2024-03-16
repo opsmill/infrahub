@@ -3,12 +3,14 @@ import os
 import time
 from contextlib import asynccontextmanager
 from functools import partial
-from typing import Awaitable, Callable
+from typing import AsyncGenerator, Awaitable, Callable
 
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
 from fastapi import FastAPI, Request, Response
 from fastapi.logger import logger
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from infrahub_sdk.timestamp import TimestampFormatError
@@ -22,11 +24,11 @@ from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode, get_db
+from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import Error
 from infrahub.graphql.api.endpoints import router as graphql_router
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
-from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
 from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.cache.redis import RedisCache
@@ -36,11 +38,7 @@ from infrahub.worker import WORKER_IDENTITY
 
 
 async def app_initialization(application: FastAPI) -> None:
-    if not config.SETTINGS:
-        config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
-        config_file_path = os.path.abspath(config_file_name)
-        log.info("application_init", config_file=config_file_path)
-        config.load_and_exit(config_file_path)
+    config.SETTINGS.initialize_and_exit()
 
     # Initialize trace
     if config.SETTINGS.trace.enable:
@@ -56,6 +54,7 @@ async def app_initialization(application: FastAPI) -> None:
 
     initialize_lock()
 
+    build_component_registry()
     async with application.state.db.start_session() as db:
         await initialization(db=db)
 
@@ -66,9 +65,6 @@ async def app_initialization(application: FastAPI) -> None:
     )
     await service.initialize()
     services.prepare(service=service)
-    # Initialize RPC Client
-    rpc_client = InfrahubRpcClient()
-    application.state.rpc_client = rpc_client
     application.state.service = service
 
 
@@ -78,7 +74,7 @@ async def shutdown(application: FastAPI) -> None:
 
 
 @asynccontextmanager
-async def lifespan(application: FastAPI):
+async def lifespan(application: FastAPI) -> AsyncGenerator:
     await app_initialization(application)
     yield
     await shutdown(application)
@@ -102,7 +98,10 @@ tracer = get_tracer()
 
 FRONTEND_DIRECTORY = os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", os.path.abspath("frontend"))
 FRONTEND_ASSET_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/assets"
+FRONTEND_FAVICONS_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/favicons"
 
+DOCS_DIRECTORY = os.environ.get("INFRAHUB_DOCS_DIRECTORY", os.path.abspath("docs"))
+DOCS_BUILD_DIRECTORY = f"{DOCS_DIRECTORY}/build"
 
 log = get_logger()
 gunicorn_logger = logging.getLogger("gunicorn.error")
@@ -117,7 +116,7 @@ templates = Jinja2Templates(directory=f"{FRONTEND_DIRECTORY}/dist")
 async def logging_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
     clear_log_context()
     request_id = correlation_id.get()
-    with tracer.start_as_current_span("processing request " + request_id):
+    with tracer.start_as_current_span(f"processing request {request_id}"):
         trace_id = get_traceid()
         set_log_data(key="request_id", value=request_id)
         set_log_data(key="app", value="infrahub.api")
@@ -158,6 +157,7 @@ app.add_middleware(
     skip_paths=["/health"],
 )
 app.add_middleware(InfrahubCORSMiddleware)
+app.add_middleware(GZipMiddleware, minimum_size=100_000)
 
 app.add_exception_handler(Error, generic_api_exception_handler)
 app.add_exception_handler(TimestampFormatError, partial(generic_api_exception_handler, http_code=400))
@@ -166,9 +166,22 @@ app.add_exception_handler(ValidationError, partial(generic_api_exception_handler
 app.add_route(path="/metrics", route=handle_metrics)
 app.include_router(graphql_router)
 
+
 if os.path.exists(FRONTEND_ASSET_DIRECTORY) and os.path.isdir(FRONTEND_ASSET_DIRECTORY):
     app.mount("/assets", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "assets")
-    app.mount("/favicons", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "favicons")
+
+
+if os.path.exists(FRONTEND_FAVICONS_DIRECTORY) and os.path.isdir(FRONTEND_FAVICONS_DIRECTORY):
+    app.mount("/favicons", StaticFiles(directory=FRONTEND_FAVICONS_DIRECTORY), "favicons")
+
+
+if os.path.exists(DOCS_BUILD_DIRECTORY) and os.path.isdir(DOCS_BUILD_DIRECTORY):
+    app.mount("/docs", StaticFiles(directory=DOCS_BUILD_DIRECTORY, html=True, check_dir=True), name="infrahub-docs")
+
+
+@app.get("/docs", include_in_schema=False)
+async def documentation() -> RedirectResponse:
+    return RedirectResponse("/docs/")
 
 
 @app.get("/{rest_of_path:path}", include_in_schema=False)

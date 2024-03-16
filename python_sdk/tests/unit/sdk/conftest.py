@@ -1,5 +1,8 @@
 import re
+import sys
 from dataclasses import dataclass
+from io import StringIO
+from typing import AsyncGenerator, Optional
 
 import pytest
 import ujson
@@ -16,6 +19,7 @@ from infrahub_sdk.utils import get_fixtures_dir
 class BothClients:
     sync: InfrahubClientSync
     standard: InfrahubClient
+    stdout: Optional[StringIO] = None
 
 
 @pytest.fixture
@@ -30,6 +34,54 @@ async def clients() -> BothClients:
         sync=InfrahubClientSync.init(address="http://mock", insert_tracker=True, pagination_size=3),
     )
     return both
+
+
+@pytest.fixture
+async def echo_clients(clients: BothClients) -> AsyncGenerator[BothClients, None]:
+    clients.standard.config.echo_graphql_queries = True
+    clients.sync.config.echo_graphql_queries = True
+    clients.stdout = StringIO()
+    backup_stdout = sys.stdout
+    sys.stdout = clients.stdout
+
+    yield clients
+
+    sys.stdout = backup_stdout
+
+    clients.standard.config.echo_graphql_queries = False
+    clients.sync.config.echo_graphql_queries = False
+
+
+@pytest.fixture
+def replace_async_return_annotation():
+    """Allows for comparison between sync and async return annotations."""
+
+    def replace_annotation(annotation: str) -> str:
+        replacements = {
+            "InfrahubClient": "InfrahubClientSync",
+            "InfrahubNode": "InfrahubNodeSync",
+            "List[InfrahubNode]": "List[InfrahubNodeSync]",
+            "Optional[InfrahubNode]": "Optional[InfrahubNodeSync]",
+        }
+        return replacements.get(annotation) or annotation
+
+    return replace_annotation
+
+
+@pytest.fixture
+def replace_sync_return_annotation() -> str:
+    """Allows for comparison between sync and async return annotations."""
+
+    def replace_annotation(annotation: str) -> str:
+        replacements = {
+            "InfrahubClientSync": "InfrahubClient",
+            "InfrahubNodeSync": "InfrahubNode",
+            "List[InfrahubNodeSync]": "List[InfrahubNode]",
+            "Optional[InfrahubNodeSync]": "Optional[InfrahubNode]",
+        }
+        return replacements.get(annotation) or annotation
+
+    return replace_annotation
 
 
 @pytest.fixture
@@ -63,6 +115,20 @@ async def location_schema() -> NodeSchema:
                 "cardinality": "many",
                 "kind": "Group",
             },
+        ],
+    }
+    return NodeSchema(**data)  # type: ignore
+
+
+@pytest.fixture
+async def std_group_schema() -> NodeSchema:
+    data = {
+        "name": "StandardGroup",
+        "namespace": "Core",
+        "default_filter": "name__value",
+        "attributes": [
+            {"name": "name", "kind": "String", "unique": True},
+            {"name": "description", "kind": "String", "optional": True},
         ],
     }
     return NodeSchema(**data)  # type: ignore
@@ -935,18 +1001,22 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                 {
                     "id": "eca306cf-662e-4e03-8180-2b788b191d3c",
                     "name": "main",
-                    "is_data_only": False,
+                    "sync_with_git": True,
                     "is_default": True,
                     "origin_branch": "main",
                     "branched_from": "2023-02-17T09:30:17.811719Z",
+                    "is_isolated": False,
+                    "has_schema_changes": False,
                 },
                 {
                     "id": "7d9f817a-b958-4e76-8528-8afd0c689ada",
                     "name": "cr1234",
-                    "is_data_only": True,
+                    "sync_with_git": False,
                     "is_default": False,
                     "origin_branch": "main",
                     "branched_from": "2023-02-17T09:30:17.811719Z",
+                    "is_isolated": True,
+                    "has_schema_changes": True,
                 },
             ]
         }
@@ -1577,25 +1647,25 @@ async def mock_rest_api_artifact_generate(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
-async def mock_query_mutation_schema_dropdown_add(httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_query_mutation_schema_dropdown_add(httpx_mock: HTTPXMock) -> None:
     response = {"data": {"SchemaDropdownAdd": {"ok": True}}}
     httpx_mock.add_response(method="POST", url="http://mock/graphql", json=response)
 
 
 @pytest.fixture
-async def mock_query_mutation_schema_dropdown_remove(httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_query_mutation_schema_dropdown_remove(httpx_mock: HTTPXMock) -> None:
     response = {"data": {"SchemaDropdownRemove": {"ok": True}}}
     httpx_mock.add_response(method="POST", url="http://mock/graphql", json=response)
 
 
 @pytest.fixture
-async def mock_query_mutation_schema_enum_add(httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_query_mutation_schema_enum_add(httpx_mock: HTTPXMock) -> None:
     response = {"data": {"SchemaEnumAdd": {"ok": True}}}
     httpx_mock.add_response(method="POST", url="http://mock/graphql", json=response)
 
 
 @pytest.fixture
-async def mock_query_mutation_schema_enum_remove(httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_query_mutation_schema_enum_remove(httpx_mock: HTTPXMock) -> None:
     response = {"data": {"SchemaEnumRemove": {"ok": True}}}
     httpx_mock.add_response(method="POST", url="http://mock/graphql", json=response)
 
@@ -1615,9 +1685,7 @@ async def mock_query_mutation_location_create_failed(httpx_mock: HTTPXMock) -> H
             }
         ],
     }
-    url_regex = re.compile(
-        r"http://mock/graphql/main\?at=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6}Z"
-    )
+    url_regex = re.compile(r"http://mock/graphql/main")
     httpx_mock.add_response(method="POST", url=url_regex, json=response1)
     httpx_mock.add_response(method="POST", url=url_regex, json=response2)
     return httpx_mock

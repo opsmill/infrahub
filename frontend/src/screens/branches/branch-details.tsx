@@ -4,7 +4,7 @@ import { ArrowPathIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline"
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
@@ -15,13 +15,13 @@ import ModalDelete from "../../components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteBranch } from "../../graphql/mutations/branches/deleteBranch";
 import { mergeBranch } from "../../graphql/mutations/branches/mergeBranch";
 import { rebaseBranch } from "../../graphql/mutations/branches/rebaseBranch";
 import { validateBranch } from "../../graphql/mutations/branches/validateBranch";
 import { getBranchDetails } from "../../graphql/queries/branches/getBranchDetails";
+import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -36,7 +36,7 @@ import { getFormStructure } from "../proposed-changes/conversations";
 export const BranchDetails = () => {
   const { branchname } = useParams();
   const date = useAtomValue(datetimeAtom);
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
   const [branches, setBranches] = useAtom(branchesState);
   const [schemaList] = useAtom(schemaState);
 
@@ -214,7 +214,7 @@ export const BranchDetails = () => {
                   }
                   buttonType={BUTTON_TYPES.VALIDATE}>
                   Merge
-                  <CheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                  <CheckIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
 
                 <Button
@@ -222,7 +222,7 @@ export const BranchDetails = () => {
                   className="mr-0 md:mr-3"
                   onClick={() => setShowCreateDrawer(true)}>
                   Propose change
-                  <PlusIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                  <PlusIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
 
                 <Button
@@ -239,7 +239,7 @@ export const BranchDetails = () => {
                     })
                   }>
                   Rebase
-                  <ArrowPathIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                  <ArrowPathIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
 
                 <Button
@@ -257,7 +257,7 @@ export const BranchDetails = () => {
                   }
                   buttonType={BUTTON_TYPES.WARNING}>
                   Validate
-                  <ShieldCheckIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                  <ShieldCheckIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
 
                 <Button
@@ -266,7 +266,7 @@ export const BranchDetails = () => {
                   onClick={() => setDisplayModal(true)}
                   buttonType={BUTTON_TYPES.CANCEL}>
                   Delete
-                  <TrashIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                  <TrashIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             </>

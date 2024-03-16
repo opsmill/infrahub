@@ -1,27 +1,10 @@
-import asyncio
-
 import pytest
-import pytest_asyncio
 
 from infrahub.core import registry
 from infrahub.core.manager import Node, NodeManager
 from infrahub.core.relationship import RelationshipManager
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-
-
-@pytest_asyncio.fixture
-async def aio_benchmark(benchmark, event_loop):
-    def _wrapper(func, *args, **kwargs):
-        if asyncio.iscoroutinefunction(func):
-
-            @benchmark
-            def _():
-                return event_loop.run_until_complete(func(*args, **kwargs))
-        else:
-            benchmark(func, *args, **kwargs)
-
-    return _wrapper
 
 
 @pytest.fixture
@@ -39,7 +22,7 @@ async def relm(db: InfrahubDatabase, default_branch, register_core_models_schema
     rel_schema = model.get_relationship("member_of_groups")
 
     relm = await RelationshipManager.init(
-        db=db, schema=rel_schema, branch=default_branch, at=Timestamp(), node=test_account, name="member_of_groups"
+        db=db, schema=rel_schema, branch=default_branch, at=Timestamp(), node=test_account
     )
 
     return relm
@@ -51,6 +34,7 @@ def test_nodemanager_querypeers(aio_benchmark, db: InfrahubDatabase, default_bra
         NodeManager().query_peers,
         db=db,
         ids=[test_account.id],
+        source_kind=model.kind,
         schema=model.get_relationship("member_of_groups"),
         filters=[],
     )

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from infrahub.auth import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-    from infrahub.message_bus.rpc import InfrahubRpcClient
+    from infrahub.services import InfrahubServices
 
 
 @dataclass
@@ -33,7 +33,7 @@ class GraphqlContext:
     types: dict
     at: Optional[Timestamp] = None
     related_node_ids: Optional[set] = None
-    rpc_client: Optional[InfrahubRpcClient] = None
+    service: Optional[InfrahubServices] = None
     account_session: Optional[AccountSession] = None
     background: Optional[BackgroundTasks] = None
     request: Optional[HTTPConnection] = None
@@ -45,7 +45,7 @@ def prepare_graphql_params(
     at: Optional[Union[Timestamp, str]] = None,
     account_session: Optional[AccountSession] = None,
     request: Optional[HTTPConnection] = None,
-    rpc_client: Optional[InfrahubRpcClient] = None,
+    service: Optional[InfrahubServices] = None,
     include_query: bool = True,
     include_mutation: bool = True,
     include_subscription: bool = True,
@@ -62,8 +62,8 @@ def prepare_graphql_params(
         include_types=include_types,
     )
 
-    if request and not rpc_client:
-        rpc_client = request.app.state.rpc_client
+    if request and not service:
+        service = request.app.state.service
 
     return GraphqlParams(
         schema=gql_schema,
@@ -75,7 +75,7 @@ def prepare_graphql_params(
             related_node_ids=set(),
             background=BackgroundTasks(),
             request=request,
-            rpc_client=rpc_client,
+            service=service,
             account_session=account_session,
         ),
     )

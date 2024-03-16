@@ -23,7 +23,7 @@ spec:
             - name: KUBERNETES_CLUSTER_DOMAIN
               value: {{ .Values.global.kubernetesClusterDomain }}
           image: {{ .Values.cache.cache.image.repository }}:{{ .Values.cache.cache.image.tag }}
-          imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.messageQueue.messageQueue.imagePullPolicy }}
+          imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.cache.cache.imagePullPolicy }}
           livenessProbe:
             exec:
               command:
@@ -37,7 +37,6 @@ spec:
           ports:
           {{- range .Values.cache.ports }}
             - containerPort: {{ .targetPort }}
-              hostPort: {{ .port }}
           {{- end }}
           resources: {}
       restartPolicy: Always

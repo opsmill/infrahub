@@ -1,0 +1,36 @@
+---
+title: Schema Update
+---
+
+<!-- vale off -->
+<!-- markdownlint-disable MD012 -->
+
+# Schema Update
+
+For each element* of the schema, when its value is being updated, Infrahub will determine what should be done from the list of possible actions:
+
+- **allowed** : Nothing is required, the update of this element is allowed
+- **migration_required** : The existing data must be migrated to the new schema
+- **validate_constraint** : The existing data needs to be validated to ensure that its compatible with the new schema
+- **not_supported** : The update of this element is not supported
+
+:::info
+
+In this context, an element represent either a Node, a Generic, an Attribute or a Relationship
+
+:::
+
+## Reference Guide
+
+{% for node in schema.nodes -%}
+### {{ node.name }}
+
+| Name | Status |
+| ---- | ---- |
+{% for attr in node.attributes  %}
+{%-  if attr.extra["update"].value != "not_applicable" -%}
+| **{{ attr.name }}** | {{ attr.extra["update"].value }} |
+{%  endif -%}
+{% endfor %}
+
+{% endfor %}

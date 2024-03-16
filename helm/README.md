@@ -54,7 +54,7 @@ The following table lists the configurable parameters in the `values.yaml` file 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
 | `global.kubernetesClusterDomain` | Kubernetes cluster domain | `cluster.local`  |
-| `global.imageRegistry` | Image registry for pulling images | `9r2s1098.c1.gra9.container-registry.ovh.net`  |
+| `global.imageRegistry` | Image registry for pulling images | `registry.opsmill.io`  |
 | `global.infrahubRepository` | Repository for Infrahub images | `opsmill/infrahub-py3.11`  |
 | `global.infrahubTag` | Tag for Infrahub images | `"0.8.2-helm"`  |
 | `global.imagePullPolicy` | Default image pull policy | `IfNotPresent`  |
@@ -88,7 +88,7 @@ helm delete infrahub
 
 ## Persistence
 
-The chart offers the ability to configure persistence for the database and other components. Check the `pvc` section in `values.yaml` for more details.
+The chart offers the ability to configure persistence for the database and other components. Check the `persistence` section of each component in `values.yaml` for more details.
 
 ## Customization
 

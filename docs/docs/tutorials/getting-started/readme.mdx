@@ -50,12 +50,6 @@ Refer to the [Installation Documentation](/guides/installation).
 
 ### First utilization
 
-Before the first utilization you need to build the images for Infrahub with the command:
-
-```bash
-invoke demo.build
-```
-
 Initialize the database and start the application
 
 ```bash
@@ -67,6 +61,8 @@ invoke demo.start
 - `invoke demo.start` : Start all the containers in detached mode.
 - `invoke demo.stop` : Stop All the containers
 - `invoke demo.destroy` : Destroy all containers and volumes.
+- `INFRAHUB_IMAGE_VER=local invoke demo.build demo.start`: Build and start Infrahub using the local version.
+- `INFRAHUB_IMAGE_VER=develop invoke demo.start`: Start Infrahub using the latest development image.
 
 :::info
 

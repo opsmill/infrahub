@@ -30,8 +30,38 @@ def build(context: Context):
 
 @task
 def generate(context: Context):
-    """Generate documentation output from code."""
+    """Generate all documentation output from code."""
     _generate(context=context)
+
+
+@task
+def generate_schema(context: Context):
+    """Generate documentation for the schema."""
+    _generate_infrahub_schema_documentation()
+
+
+@task
+def generate_infrahub_cli(context: Context):
+    """Generate documentation for the infrahub cli."""
+    _generate_infrahub_cli_documentation(context=context)
+
+
+@task
+def generate_infrahubctl(context: Context):
+    """Generate documentation for the infrahubctl cli."""
+    _generate_infrahubctl_documentation(context=context)
+
+
+@task
+def generate_repository(context: Context):
+    """Generate documentation for the repository configuration file."""
+    _generate_infrahub_repository_configuration_documentation(context=context)
+
+
+@task
+def generate_python_sdk(context: Context):
+    """Generate documentation for the Python SDK."""
+    _generate_infrahub_sdk_configuration_documentation(context=context)
 
 
 @task
@@ -135,6 +165,7 @@ def _generate(context: Context):
     _generate_infrahubctl_documentation(context=context)
     _generate_infrahub_schema_documentation()
     _generate_infrahub_repository_configuration_documentation()
+    _generate_infrahub_sdk_configuration_documentation()
 
 
 def _generate_infrahubctl_documentation(context: Context):
@@ -143,7 +174,7 @@ def _generate_infrahubctl_documentation(context: Context):
 
     print(" - Generate infrahubctl CLI documentation")
     for cmd in app.registered_commands:
-        exec_cmd = f'poetry run typer --func {cmd.name} infrahub_sdk.ctl.cli utils docs --name "infrahubctl {cmd.name}"'
+        exec_cmd = f'poetry run typer --func {cmd.name} infrahub_sdk.ctl.cli_commands utils docs --name "infrahubctl {cmd.name}"'
         exec_cmd += f" --output docs/docs/infrahubctl/infrahubctl-{cmd.name}.mdx"
         with context.cd(ESCAPED_REPO_PATH):
             context.run(exec_cmd)
@@ -159,11 +190,17 @@ def _generate_infrahub_schema_documentation() -> None:
     """Generate documentation for the schema"""
     import jinja2
 
-    from infrahub.core.schema import internal_schema
+    from infrahub.core.schema import internal, internal_schema
 
-    schemas_to_generate = ["node", "attribute", "relationship", "generic"]
+    schemas_to_generate = {
+        "node": internal_schema,
+        "attribute": internal_schema,
+        "relationship": internal_schema,
+        "generic": internal_schema,
+        "validator-migration": internal,
+    }
     print(" - Generate Infrahub schema documentation")
-    for schema_name in schemas_to_generate:
+    for schema_name, schema in schemas_to_generate.items():
         template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/schema/{schema_name}.j2"
         output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/schema/{schema_name}.mdx"
         output_label = f"docs/docs/reference/schema/{schema_name}.mdx"
@@ -175,12 +212,52 @@ def _generate_infrahub_schema_documentation() -> None:
 
         environment = jinja2.Environment()
         template = environment.from_string(template_text)
-        rendered_file = template.render(schema=internal_schema)
+        rendered_file = template.render(schema=schema)
 
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(rendered_file)
 
         print(f"Docs saved to: {output_label}")
+
+
+def _generate_infrahub_sdk_configuration_documentation() -> None:
+    """Generate documentation for the Infrahub SDK configuration"""
+    import jinja2
+    from infrahub_sdk.config import ConfigBase
+
+    schema = ConfigBase.schema()
+
+    definitions = schema["definitions"]
+    properties = [
+        {
+            "name": name,
+            "description": property.get("description", ""),
+            "type": property.get("type", "enum"),
+            "choices": definitions[property["allOf"][0]["$ref"].split("/")[-1]]["enum"] if "allOf" in property else [],
+            "default": property.get("default", ""),
+            "env_vars": list(property.get("env_names", set())),
+        }
+        for name, property in schema["properties"].items()
+    ]
+
+    template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/sdk_config.j2"
+    output_file = f"{DOCUMENTATION_DIRECTORY}/docs/python-sdk/reference/config.mdx"
+    output_label = "docs/docs/python-sdk/reference/config.mdx"
+
+    if not os.path.exists(template_file):
+        print(f"Unable to find the template file at {template_file}")
+        sys.exit(-1)
+
+    template_text = Path(template_file).read_text(encoding="utf-8")
+
+    environment = jinja2.Environment(trim_blocks=True)
+    template = environment.from_string(template_text)
+    rendered_file = template.render(properties=properties)
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(rendered_file)
+
+    print(f"Docs saved to: {output_label}")
 
 
 def _generate_infrahub_repository_configuration_documentation() -> None:

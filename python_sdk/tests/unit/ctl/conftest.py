@@ -10,18 +10,22 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                 {
                     "id": "eca306cf-662e-4e03-8180-2b788b191d3c",
                     "name": "main",
-                    "is_data_only": False,
+                    "sync_with_git": True,
                     "is_default": True,
                     "origin_branch": "main",
                     "branched_from": "2023-02-17T09:30:17.811719Z",
+                    "is_isolated": False,
+                    "has_schema_changes": False,
                 },
                 {
                     "id": "7d9f817a-b958-4e76-8528-8afd0c689ada",
                     "name": "cr1234",
-                    "is_data_only": True,
+                    "sync_with_git": False,
                     "is_default": False,
                     "origin_branch": "main",
                     "branched_from": "2023-02-17T09:30:17.811719Z",
+                    "is_isolated": True,
+                    "has_schema_changes": True,
                 },
             ]
         }

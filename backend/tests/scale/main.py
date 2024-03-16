@@ -3,38 +3,12 @@ from pathlib import Path
 
 import click
 import common.events
-import common.stagers
 import common.users
-from common.config import Config as ScaleTestConfig
-from infrahub_sdk import Config, InfrahubClientSync
+import gevent
+from common.config import config
 from locust import events
 from locust.env import Environment
-
-config = ScaleTestConfig()
-
-
-def stage_environment(function: str, amount: int, schema: Path):
-    if function == "":
-        return
-
-    if not hasattr(common.stagers, function):
-        raise ValueError(f"Invalid staging function provided: {function}")
-
-    stager = getattr(common.stagers, function)
-    if not callable(stager):
-        raise ValueError(f"Invalid staging function provided: {function}")
-
-    staging_client = InfrahubClientSync.init(address=config.url, config=Config(api_token=config.api_token))
-    print("--- loading load testing schema")
-    common.stagers.load_schema(staging_client, schema)
-    print("--- done")
-
-    time.sleep(5)
-    print("--- staging load testing environment")
-    stager(client=staging_client, amount=amount)
-
-    print("--- 20s cool down period")
-    time.sleep(20)
+from locust.stats import PERCENTILES_TO_REPORT, StatsCSVFileWriter
 
 
 @click.command()
@@ -49,21 +23,44 @@ def stage_environment(function: str, amount: int, schema: Path):
     "--amount",
     default=0,
     type=click.IntRange(min=0, max=1_000_000_000),
-    help="Amount of objects to be created the `staging function`",
+    help="Amount of objects to be created in the `staging function`",
+)
+@click.option(
+    "--attrs",
+    default=0,
+    type=click.IntRange(min=0, max=1_000_000_000),
+    help="Amount of attributes per object to be created in the `staging function`",
+)
+@click.option(
+    "--rels",
+    default=0,
+    type=click.IntRange(min=0, max=1_000_000_000),
+    help="Amount of relationships per object to be created in the `staging function`",
 )
 @click.option("--test", default="InfrahubClientUser", help="The Locust test user class")
-def main(schema: Path, stager: str, amount: int, test: str) -> int:
+def main(schema: Path, stager: str, amount: int, attrs: int, rels: int, test: str) -> int:
     if not hasattr(common.users, test):
         print(f"Invalid test class provided: {test}")
         return 1
 
     user_class = getattr(common.users, test)
 
-    stage_environment(function=stager, amount=amount, schema=schema)
+    config.node_amount = amount
+    config.attrs_amount = attrs
+    config.rels_amount = rels
 
-    print("--- starting test")
     env = Environment(user_classes=[user_class], events=events)
+    env.custom_options = {
+        "config": config,
+        "stager": stager,
+        "amount": amount,
+        "attrs": attrs,
+        "rels": rels,
+        "schema": schema,
+    }
     runner = env.create_local_runner()
+    stats_csv_writer = StatsCSVFileWriter(env, PERCENTILES_TO_REPORT, str(time.time()), True)
+    gevent.spawn(stats_csv_writer.stats_writer)
     runner.start(1, spawn_rate=1)
     runner.greenlet.join()
 

@@ -1,7 +1,7 @@
 import pytest
 from infrahub_sdk import UUIDT
 
-from infrahub.core import registry
+from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager, identify_node_class
@@ -360,6 +360,7 @@ async def test_identify_node_class(db: InfrahubDatabase, car_schema, default_bra
         node_uuid=str(UUIDT()),
         updated_at=Timestamp().to_string(),
         branch=default_branch,
+        labels=["Node", "TestCar"],
     )
 
     class Car(Node):
@@ -426,14 +427,37 @@ async def test_get_one_local_attribute_with_branch(db: InfrahubDatabase, default
 
 
 async def test_get_one_global(db: InfrahubDatabase, default_branch: Branch, base_dataset_12):
-    obj1 = await NodeManager.get_one(db=db, id="p1", branch="branch1")
+    branch1 = await get_branch(db=db, branch="branch1")
+
+    obj1 = await NodeManager.get_one(db=db, id="p1", branch=branch1)
 
     assert obj1.id == "p1"
     assert obj1.db_id
     assert obj1.name.value == "John Doe"
     assert obj1.height.value is None
 
-    obj2 = await NodeManager.get_one(db=db, id="c1", branch="branch1")
+    obj2 = await NodeManager.get_one(db=db, id="c1", branch=branch1)
+
+    assert obj2.id == "c1"
+    assert obj2.db_id
+    assert obj2.name.value == "volt"
+    assert obj2.nbr_seats.value == 4
+    assert obj2.color.value == "#444444"
+    assert obj2.is_electric.value is True
+
+
+async def test_get_one_global_isolated(db: InfrahubDatabase, default_branch: Branch, base_dataset_12):
+    branch1 = await get_branch(db=db, branch="branch1")
+    branch1.is_isolated = True
+
+    obj1 = await NodeManager.get_one(db=db, id="p1", branch=branch1)
+
+    assert obj1.id == "p1"
+    assert obj1.db_id
+    assert obj1.name.value == "John Doe"
+    assert obj1.height.value is None
+
+    obj2 = await NodeManager.get_one(db=db, id="c1", branch=branch1)
 
     assert obj2.id == "c1"
     assert obj2.db_id

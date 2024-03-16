@@ -7,30 +7,28 @@ from infrahub_sync.adapters.{{ adapter.name }} import {{ adapter.name.title() }}
 #  This file has been generated with the command `infrahub-sync generate`
 #  All modifications will be lost the next time you reexecute this command
 # -------------------------------------------------------
-{% for nodekind, node in schema.items() %}
-{%   if node | get_identifiers(config) and config | has_node(node.kind) %}
-
+{%- for nodekind, node in schema.items() -%}
+{%-   if node | get_identifiers(config) and config | has_node(node.kind) %}
 
 class {{ nodekind }}({{ adapter.name.title() }}Model):
     _modelname = "{{ node.kind }}"
     _identifiers = {{ node | get_identifiers(config) | list_to_set }}
     _attributes = {{ node | get_attributes(config) | list_to_set }}
-{% if node | has_children(config) %}
+{%- if node | has_children(config) %}
     _children = {{ node | get_children(config) }}
-{% endif %}
+{%- endif -%}
 
-{%     for attr in node.attributes %}
-{%       if config | has_field(node.kind, attr.name) %}
+{%-    for attr in node.attributes -%}
+{%-      if config | has_field(node.kind, attr.name) %}
     {{ attr.name }}: {{ attr | get_kind }}
-{%       endif %}
-{%     endfor %}
-{%     for rel in node.relationships %}
-{%       if config | has_field(node.kind, rel.name) %}
+{%-       endif -%}
+{%-    endfor %}
+{%-    for rel in node.relationships -%}
+{%-      if config | has_field(node.kind, rel.name) %}
     {{ rel.name }}: {{ rel | get_kind }}
-{%       endif %}
-{%     endfor %}
-
+{%-       endif -%}
+{%-    endfor %}
     local_id: Optional[str]
     local_data: Optional[Any]
-{%   endif %}
+{%-   endif -%}
 {% endfor %}

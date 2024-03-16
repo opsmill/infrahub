@@ -2,7 +2,7 @@ from itertools import chain
 from typing import Iterable, List, Mapping, Set
 
 
-class DependencyCycleExists(Exception):
+class DependencyCycleExistsError(Exception):
     ...
 
 
@@ -24,5 +24,5 @@ def topological_sort(dependency_dict: Mapping[str, Iterable[str]]) -> List[Set[s
         ordered.append(nondependant_nodes)
 
         if len(nondependant_nodes) == 0 and len(dependency_dict_to_sort) != 0:
-            raise DependencyCycleExists(dependency_dict_to_sort)
+            raise DependencyCycleExistsError(dependency_dict_to_sort)
     return ordered

@@ -2,9 +2,15 @@ import logoImage from "../../images/Infrahub-SVG-verti.svg";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import { Form } from "../edit-form-hook/form";
 import LoadingScreen from "../loading-screen/loading-screen";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 
-export default function SignIn(props: any) {
-  const { onSubmit, isLoading } = props;
+export default function SignIn() {
+  let navigate = useNavigate();
+  let location = useLocation();
+  const { isLoading, signIn } = useAuth();
+
+  const from = location.state?.from?.pathname || "/";
 
   const fields: DynamicFieldData[] = [
     {
@@ -40,7 +46,13 @@ export default function SignIn(props: any) {
               <div className="h-[300px] flex">
                 {isLoading && <LoadingScreen />}
 
-                {!isLoading && <Form fields={fields} onSubmit={onSubmit} submitLabel={"Sign in"} />}
+                {!isLoading && (
+                  <Form
+                    fields={fields}
+                    submitLabel="Sign in"
+                    onSubmit={(data) => signIn(data, () => navigate(from))}
+                  />
+                )}
               </div>
             </div>
           </div>

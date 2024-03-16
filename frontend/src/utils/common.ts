@@ -1,12 +1,10 @@
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 import * as R from "ramda";
+import { IModelSchema } from "../state/atoms/schema.atom";
 
-export const classNames = (...classes: string[]) => {
-  // Replcaa tabs and spaces to have multiline in code, but one ligne in output
-  return classes
-    .filter(Boolean)
-    .join(" ")
-    .replaceAll(/(\t|\s)+/g, " ")
-    .trim();
+export const classNames = (...classes: ClassValue[]) => {
+  return twMerge(clsx(classes));
 };
 
 export const objectToString = (object: any) =>
@@ -81,3 +79,16 @@ export const getTextColor = (background?: string) => {
 
   return isDarkBackground ? "white" : "black";
 };
+
+export const pluralize = (count: number, singular: string, suffix: string = "s") => {
+  return `${count} ${singular}${count > 1 ? suffix : ""}`;
+};
+
+// Raise TS error when not every case is handled
+export function warnUnexpectedType(x: never) {
+  console.warn(`unexpected type ${x}`);
+}
+
+export function isGeneric(schema: IModelSchema): boolean {
+  return "used_by" in schema;
+}

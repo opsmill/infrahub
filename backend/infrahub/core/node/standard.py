@@ -16,7 +16,7 @@ from infrahub.core.query.standard_node import (
     StandardNodeQuery,
     StandardNodeUpdateQuery,
 )
-from infrahub.exceptions import Error
+from infrahub.exceptions import Error, InitializationError
 
 # pylint: disable=redefined-builtin
 
@@ -57,8 +57,14 @@ class StandardNode(BaseModel):
 
         return annotation_origin or field.annotation
 
+    def get_uuid(self) -> UUID:
+        if self.uuid:
+            return self.uuid
+
+        raise InitializationError("The root node has not been initialized with a uuid")
+
     async def to_graphql(self, fields: dict) -> dict:
-        response = {"id": self.uuid}
+        response: dict[str, Any] = {"id": self.uuid}
 
         for field_name in fields.keys():
             if field_name in ["id"]:

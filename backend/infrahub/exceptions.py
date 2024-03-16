@@ -65,14 +65,18 @@ class CommitNotFoundError(Error):
         super().__init__(self.message)
 
 
-class DataTypeNotFound(Error):
+class DataTypeNotFoundError(Error):
+    HTTP_CODE: int = 400
+
     def __init__(self, name, message=None):
         self.name = name
         self.message = message or f"Unable to find the DataType '{name}'."
         super().__init__(self.message)
 
 
-class FileNotFound(Error):
+class RepositoryFileNotFoundError(Error):
+    HTTP_CODE: int = 404
+
     def __init__(self, repository_name, location, commit, message=None):
         self.repository_name = repository_name
         self.location = location
@@ -113,7 +117,7 @@ class TransformNotFoundError(TransformError):
         super().__init__(repository_name, location, commit, self.message)
 
 
-class BranchNotFound(Error):
+class BranchNotFoundError(Error):
     HTTP_CODE: int = 400
 
     def __init__(self, identifier, message=None):
@@ -122,7 +126,7 @@ class BranchNotFound(Error):
         super().__init__(self.message)
 
 
-class NodeNotFound(Error):
+class NodeNotFoundError(Error):
     HTTP_CODE: int = 404
 
     def __init__(
@@ -139,6 +143,14 @@ class NodeNotFound(Error):
         {self.message}
         {self.branch_name} | {self.node_type} | {self.identifier}
         """
+
+
+class ResourceNotFoundError(Error):
+    HTTP_CODE: int = 404
+
+    def __init__(self, message: Optional[str] = None):
+        self.message = message or "The requested resource was not found"
+        super().__init__(self.message)
 
 
 class AuthorizationError(Error):
@@ -167,7 +179,7 @@ class ProcessingError(Error):
         super().__init__(self.message)
 
 
-class SchemaNotFound(Error):
+class SchemaNotFoundError(Error):
     HTTP_CODE: int = 422
 
     def __init__(self, branch_name, identifier, message=None):
@@ -207,6 +219,8 @@ class QueryValidationError(Error):
 
 
 class ValidationError(Error):
+    HTTP_CODE = 422
+
     def __init__(self, input_value):
         self.message: Optional[str] = None
         self.location = None

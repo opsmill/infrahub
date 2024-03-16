@@ -1,8 +1,8 @@
 import { getTextColor } from "../../utils/common";
 
 type tColorDisplay = {
-  color?: string;
-  value?: string;
+  color?: string | null;
+  value?: string | null;
 };
 
 export const ColorDisplay = (props: tColorDisplay) => {

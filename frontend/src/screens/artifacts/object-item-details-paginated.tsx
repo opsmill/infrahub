@@ -4,7 +4,7 @@ import { LockClosedIcon, PencilSquareIcon, RectangleGroupIcon } from "@heroicons
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
@@ -15,8 +15,8 @@ import { Tabs } from "../../components/tabs";
 import { CONFIG } from "../../config/config";
 import { ARTIFACT_OBJECT, DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { AuthContext } from "../../decorators/withAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
+import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
@@ -38,7 +38,7 @@ import AddObjectToGroup from "../groups/add-object-to-group";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import RelationshipDetails from "../object-item-details/relationship-details-paginated";
-import RelationshipsDetails from "../object-item-details/relationships-details-paginated";
+import { RelationshipsDetails } from "../object-item-details/relationships-details-paginated";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { Generate } from "./generate";
@@ -49,7 +49,7 @@ export default function ArtifactsDetails() {
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [showAddToGroupDrawer, setShowAddToGroupDrawer] = useState(false);
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const branch = useAtomValue(currentBranchAtom);
@@ -158,7 +158,7 @@ export default function ArtifactsDetails() {
               onClick={() => setShowAddToGroupDrawer(true)}
               className="mr-4">
               Manage groups
-              <RectangleGroupIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+              <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
             </Button>
           </>
         }

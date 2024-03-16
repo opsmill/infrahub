@@ -20,6 +20,7 @@ export function getTemplate({
 
       <style>
         body > main {
+          margin: auto;
           display: flex;
           flex-direction: column;
           justify-content: center;

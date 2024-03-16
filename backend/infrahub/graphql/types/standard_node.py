@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict
 from graphene import ObjectType
 from graphene.types.objecttype import ObjectTypeOptions
 
-import infrahub.config as config
+from infrahub import config
 
 if TYPE_CHECKING:
     from infrahub.graphql import GraphqlContext

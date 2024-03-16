@@ -6,7 +6,7 @@ import pytest
 from infrahub_sdk import UUIDT
 
 from infrahub import config
-from infrahub.exceptions import NodeNotFound
+from infrahub.exceptions import NodeNotFoundError
 from infrahub.storage import InfrahubObjectStorage
 
 
@@ -30,7 +30,7 @@ async def test_retrieve_file(helper, local_storage_dir: str, file1_in_storage: s
 
 async def test_retrieve_file_does_not_exist(helper, local_storage_dir: str):
     storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
-    with pytest.raises(NodeNotFound):
+    with pytest.raises(NodeNotFoundError):
         storage.retrieve(identifier="doesnotexist")
 
 

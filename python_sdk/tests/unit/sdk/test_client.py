@@ -4,33 +4,13 @@ import pytest
 from pytest_httpx import HTTPXMock
 
 from infrahub_sdk import InfrahubClient, InfrahubClientSync
-from infrahub_sdk.exceptions import FilterNotFound, NodeNotFound
+from infrahub_sdk.exceptions import FilterNotFoundError, NodeNotFoundError
 from infrahub_sdk.node import InfrahubNode, InfrahubNodeSync
 
 async_client_methods = [method for method in dir(InfrahubClient) if not method.startswith("_")]
 sync_client_methods = [method for method in dir(InfrahubClientSync) if not method.startswith("_")]
 
 client_types = ["standard", "sync"]
-
-
-def replace_async_return_annotation(annotation: str) -> str:
-    """Allows for comparison between sync and async return annotations."""
-    replacements = {
-        "InfrahubClient": "InfrahubClientSync",
-        "InfrahubNode": "InfrahubNodeSync",
-        "List[InfrahubNode]": "List[InfrahubNodeSync]",
-    }
-    return replacements.get(annotation) or annotation
-
-
-def replace_sync_return_annotation(annotation: str) -> str:
-    """Allows for comparison between sync and async return annotations."""
-    replacements = {
-        "InfrahubClientSync": "InfrahubClient",
-        "InfrahubNodeSync": "InfrahubNode",
-        "List[InfrahubNodeSync]": "List[InfrahubNode]",
-    }
-    return replacements.get(annotation) or annotation
 
 
 async def test_method_sanity():
@@ -40,7 +20,7 @@ async def test_method_sanity():
 
 
 @pytest.mark.parametrize("method", async_client_methods)
-async def test_validate_method_signature(method):
+async def test_validate_method_signature(method, replace_async_return_annotation, replace_sync_return_annotation):
     async_method = getattr(InfrahubClient, method)
     sync_method = getattr(InfrahubClientSync, method)
     async_sig = inspect.signature(async_method)
@@ -182,7 +162,7 @@ async def test_method_get_by_id(httpx_mock: HTTPXMock, clients, mock_schema_quer
     if client_type == "standard":
         repo = await clients.standard.get(kind="CoreRepository", id=response_id)
         assert isinstance(repo, InfrahubNode)
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             assert clients.standard.store.get(key=response_id)
 
         repo = await clients.standard.get(kind="CoreRepository", id=response_id, populate_store=True)
@@ -190,7 +170,7 @@ async def test_method_get_by_id(httpx_mock: HTTPXMock, clients, mock_schema_quer
     else:
         repo = clients.sync.get(kind="CoreRepository", id=response_id)
         assert isinstance(repo, InfrahubNodeSync)
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             assert clients.sync.store.get(key=response_id)
 
         repo = clients.sync.get(kind="CoreRepository", id=response_id, populate_store=True)
@@ -227,7 +207,7 @@ async def test_method_get_by_default_filter(httpx_mock: HTTPXMock, clients, mock
     if client_type == "standard":
         repo = await clients.standard.get(kind="CoreRepository", id="infrahub-demo-core")
         assert isinstance(repo, InfrahubNode)
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             assert clients.standard.store.get(key=response_id)
 
         repo = await clients.standard.get(kind="CoreRepository", id="infrahub-demo-core", populate_store=True)
@@ -235,7 +215,7 @@ async def test_method_get_by_default_filter(httpx_mock: HTTPXMock, clients, mock
     else:
         repo = clients.sync.get(kind="CoreRepository", id="infrahub-demo-core")
         assert isinstance(repo, InfrahubNodeSync)
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             assert clients.sync.store.get(key="infrahub-demo-core")
 
         repo = clients.sync.get(kind="CoreRepository", id="infrahub-demo-core", populate_store=True)
@@ -279,7 +259,7 @@ async def test_method_get_by_name(httpx_mock: HTTPXMock, clients, mock_schema_qu
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_method_get_not_found(httpx_mock: HTTPXMock, clients, mock_query_repository_page1_empty, client_type):  # pylint: disable=unused-argument
-    with pytest.raises(NodeNotFound):
+    with pytest.raises(NodeNotFoundError):
         if client_type == "standard":
             await clients.standard.get(kind="CoreRepository", name__value="infrahub-demo-core")
         else:
@@ -303,7 +283,7 @@ async def test_method_get_found_many(
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_method_get_invalid_filter(httpx_mock: HTTPXMock, clients, mock_schema_query_01, client_type):  # pylint: disable=unused-argument
-    with pytest.raises(FilterNotFound) as excinfo:
+    with pytest.raises(FilterNotFoundError) as excinfo:
         if client_type == "standard":
             await clients.standard.get(kind="CoreRepository", name__name="infrahub-demo-core")
         else:
@@ -379,3 +359,56 @@ async def test_method_filters_empty(httpx_mock: HTTPXMock, clients, mock_query_r
             ],
         )
     assert len(repos) == 0
+
+
+EXPECTED_ECHO = """URL: http://mock/graphql
+QUERY:
+
+    query GetTags($name: String!) {
+    BuiltinTag(name__value: $name) {
+        edges {
+        node {
+            id
+            display_label
+        }
+        }
+    }
+    }
+
+VARIABLES:
+{
+    "name": "red"
+}
+
+"""
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_query_echo(httpx_mock: HTTPXMock, echo_clients, client_type):  # pylint: disable=unused-argument
+    httpx_mock.add_response(
+        method="POST",
+        json={"data": {"BuiltinTag": {"edges": []}}},
+    )
+
+    query = """
+    query GetTags($name: String!) {
+    BuiltinTag(name__value: $name) {
+        edges {
+        node {
+            id
+            display_label
+        }
+        }
+    }
+    }
+"""
+
+    variables = {"name": "red"}
+
+    if client_type == "standard":
+        response = await echo_clients.standard.execute_graphql(query=query, variables=variables)
+    else:
+        response = echo_clients.sync.execute_graphql(query=query, variables=variables)
+
+    assert response == {"BuiltinTag": {"edges": []}}
+    assert echo_clients.stdout.getvalue().splitlines() == EXPECTED_ECHO.splitlines()

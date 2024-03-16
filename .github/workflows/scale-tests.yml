@@ -1,0 +1,100 @@
+---
+# yamllint disable rule:truthy rule:truthy rule:line-length
+name: "Scale testing"
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      commit:
+        type: string
+        description: commit sha or branch name
+        default: ''
+        required: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  INFRAHUB_DB_USERNAME: neo4j
+  INFRAHUB_DB_PASSWORD: admin
+  INFRAHUB_DB_ADDRESS: localhost
+  INFRAHUB_DB_PORT: 7687
+  INFRAHUB_DB_PROTOCOL: bolt
+  INFRAHUB_BROKER_ADDRESS: message-queue
+  INFRAHUB_LOG_LEVEL: CRITICAL
+  INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
+  INFRAHUB_IMAGE_VER: "local"
+
+jobs:
+  scale-tests:
+    strategy:
+      matrix:
+        include:
+          - node-amount: 1000
+            attrs-amount: 0
+            rels-amount: 0
+          - node-amount: 10
+            attrs-amount: 100
+            rels-amount: 0
+          - node-amount: 10
+            attrs-amount: 0
+            rels-amount: 100
+    runs-on:
+      group: huge-runners
+    timeout-minutes: 60
+    env:
+      INFRAHUB_DB_TYPE: neo4j
+      METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+        with:
+          ref: ${{ inputs.commit == '' && 'develop' || inputs.commit }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+      - name: "Setup python environment"
+        run: |
+          pipx install poetry
+          poetry config virtualenvs.prefer-active-python true
+          pip install invoke toml
+      - name: "Install Package"
+        run: "poetry install --with test-scale"
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+      - name: Select infrahub port
+        run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+      - name: Set INFRAHUB_URL
+        run: echo "INFRAHUB_URL=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
+      - name: Select infrahub db port
+        run: echo "INFRAHUB_DB_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+      - name: Select infrahub db port
+        run: echo "INFRAHUB_DB_BACKUP_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+      - name: Select vmagent port
+        run: echo "VMAGENT_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+
+      - name: "Start scale environment"
+        run: "poetry run invoke backend.test-scale-env-start -g 1"
+      - name: "Store start time"
+        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
+      - name: "Run test"
+        run: "poetry run invoke backend.test-scale --amount ${{ matrix.node-amount }} --attrs ${{ matrix.attrs-amount }} --rels ${{ matrix.rels-amount }} -s backend/tests/scale/schema.yml --stager stage_infranode"
+      - name: "Push metrics"
+        run: 'curl -v --data-binary @metrics.csv "http://localhost:${VMAGENT_PORT}/api/v1/import/csv?format=1:metric:scale_test_response_time,2:time:unix_ms,3:label:operation_name,4:label:stage,5:label:node_amount,6:label:attrs_amount,7:label:rels_amount"'
+      - name: "Wait for vmagent to push metrics"
+        run: "sleep 10"
+      - name: "Show graph URL"
+        run: 'echo "https://grafana-prod.tailc018d.ts.net/d/ebf7ec72-db79-4fb7-9b46-4621ca9c407a/scale-tests?orgId=1&var-run_id=$GITHUB_RUN_ID&var-stage=test&var-node_amount=${{ matrix.node-amount }}&var-attrs_amount=${{ matrix.attrs-amount }}&var-rels_amount=${{ matrix.rels-amount }}&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
+      - name: "Destroy scale environment"
+        if: always()
+        run: "invoke backend.test-scale-env-destroy"
+      # - name: "Print results"
+      #   run: "cat *.csv"

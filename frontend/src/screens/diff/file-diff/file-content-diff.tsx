@@ -3,7 +3,7 @@ import { PencilIcon } from "@heroicons/react/24/outline";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Diff, Hunk, getChangeKey, parseDiff } from "react-diff-view";
 import "react-diff-view/style/index.css";
 import { useParams } from "react-router-dom";
@@ -22,7 +22,7 @@ import {
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "../../../config/constants";
 import { QSP } from "../../../config/qsp";
-import { AuthContext } from "../../../decorators/withAuth";
+import { useAuth } from "../../../hooks/useAuth";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { createObject } from "../../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
@@ -107,7 +107,7 @@ export const FileContentDiff = (props: any) => {
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
   const [schemaList] = useAtom(schemaState);
   const [isLoading, setIsLoading] = useState(false);
   const [previousFile, setPreviousFile] = useState(false);

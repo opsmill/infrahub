@@ -72,6 +72,7 @@ async def default_resolver(*args, **kwargs):
         objs = await NodeManager.query_peers(
             db=db,
             ids=[parent["id"]],
+            source_kind=node_schema.kind,
             schema=node_rel,
             filters=filters,
             fields=fields,
@@ -125,6 +126,7 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
         objs = await NodeManager.query_peers(
             db=db,
             ids=[parent["id"]],
+            source_kind=node_schema.kind,
             schema=node_rel,
             filters=filters,
             fields=node_fields,
@@ -181,6 +183,8 @@ async def many_relationship_resolver(
 
     response: Dict[str, Any] = {"edges": [], "count": None}
 
+    source_kind = node_schema.kind
+
     async with context.db.start_session() as db:
         ids = [parent["id"]]
         if include_descendants:
@@ -192,6 +196,8 @@ async def many_relationship_resolver(
                 at=context.at,
                 branch=context.branch,
             )
+            if node_schema.hierarchy:
+                source_kind = node_schema.hierarchy
             await query.execute(db=db)
             descendants_ids = list(query.get_peer_ids())
             ids.extend(descendants_ids)
@@ -200,6 +206,7 @@ async def many_relationship_resolver(
             response["count"] = await NodeManager.count_peers(
                 db=db,
                 ids=ids,
+                source_kind=source_kind,
                 schema=node_rel,
                 filters=filters,
                 at=context.at,
@@ -212,6 +219,7 @@ async def many_relationship_resolver(
         objs = await NodeManager.query_peers(
             db=db,
             ids=ids,
+            source_kind=source_kind,
             schema=node_rel,
             filters=filters,
             fields=node_fields,

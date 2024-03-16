@@ -9,6 +9,14 @@ from infrahub_sdk.ctl.utils import get_fixtures_dir
 runner = CliRunner()
 
 
+def test_schema_load_empty(httpx_mock: HTTPXMock):
+    fixture_file = get_fixtures_dir() / "models" / "empty.json"
+    result = runner.invoke(app=app, args=["load", str(fixture_file)])
+
+    assert result.exit_code == 2
+    assert "Empty YAML/JSON file" in result.stdout
+
+
 def test_schema_load_one_valid(httpx_mock: HTTPXMock):
     fixture_file = get_fixtures_dir() / "models" / "valid_model_01.json"
 

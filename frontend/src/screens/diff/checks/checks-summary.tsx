@@ -1,33 +1,37 @@
 import { gql } from "@apollo/client";
-import { ArrowPathIcon, CheckCircleIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
-import { useAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Retry } from "../../../components/buttons/retry";
-import { Badge } from "../../../components/display/badge";
+import { PieChart } from "../../../components/display/pie-chart";
 import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
 import {
+  CHECKS_LABEL,
   PROPOSED_CHANGES_VALIDATOR_OBJECT,
   VALIDATIONS_ENUM_MAP,
   VALIDATION_STATES,
 } from "../../../config/constants";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { runCheck } from "../../../graphql/mutations/diff/runCheck";
+import { useAuth } from "../../../hooks/useAuth";
 import { genericsState } from "../../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
+import { schemaKindLabelState } from "../../../state/atoms/schemaKindLabel.atom";
 import { getValidatorsStats } from "../../../utils/checks";
+import LoadingScreen from "../../loading-screen/loading-screen";
 
 type tChecksSummaryProps = {
   validators: any[];
+  isLoading: boolean;
   refetch: Function;
 };
 
 export const ChecksSummary = (props: tChecksSummaryProps) => {
-  const { validators, refetch } = props;
+  const { isLoading, validators, refetch } = props;
 
   const { proposedchange } = useParams();
-  const [schemaKindName] = useAtom(schemaKindNameState);
-  const [schemaList] = useAtom(genericsState);
+  const schemaKindLabel = useAtomValue(schemaKindLabelState);
+  const schemaList = useAtomValue(genericsState);
+  const auth = useAuth();
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_VALIDATOR_OBJECT);
 
@@ -64,38 +68,51 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
     }
   };
 
+  const canRetry = (stats: any) => {
+    // Can't retry if there is no check
+    if (!stats.length) return false;
+
+    // Can't retry if it's empty
+    if (stats.length === 1 && stats.find((stat: any) => stat.name === CHECKS_LABEL.EMPTY)) {
+      return false;
+    }
+
+    // Can retry if there is no in progress check
+    return !stats.find((stat: any) => stat.name === CHECKS_LABEL.IN_PROGRESS && !!stat.value);
+  };
+
   return (
-    <div className="flex p-4 pb-0 gap-2">
-      <div className="flex items-center justify-between p-2 rounded-md bg-custom-white">
-        Retry all:{" "}
-        <Retry onClick={() => handleRetry("all")} isInProgress={!!validatorsInProgress.length} />
-      </div>
+    <div className="flex justify-center m-4">
+      <div className="flex relative">
+        <div className="absolute top-1/2 -left-28 transform -translate-y-1/2 flex items-center justify-between p-2">
+          <span className="mr-1 text-xs">Retry all:</span>
 
-      <div className="flex-1 flex flex-wrap gap-2">
-        {Object.entries(validatorsCount).map(([kind, stats]: [string, any]) => (
-          <div
-            key={kind}
-            className="flex-1 flex items-center justify-between gap-2 p-2 rounded-md bg-custom-white">
-            <Badge className="!mr-0">{schemaKindName[kind]}</Badge>
+          <Retry
+            onClick={() => handleRetry("all")}
+            isLoading={isLoading || !!validatorsInProgress.length}
+            isDisabled={!auth?.permissions?.write}
+          />
+        </div>
 
-            <div className="flex items-center gap-2">
-              <div className="flex items-center">
-                {!!stats.failure && <ExclamationCircleIcon className="h-4 w-4 text-red-500" />}
+        {!Object.entries(validatorsCount).length && <LoadingScreen hideText />}
 
-                {!!stats.inProgress && (
-                  <ArrowPathIcon className="h-4 w-4 text-orange-500 animate-spin" />
+        {Object.entries(validatorsCount).map(([kind, data]: [string, any]) => (
+          <div key={kind} className="flex items-center justify-center gap-2 p-2">
+            <div className={"flex flex-col items-center group relative"}>
+              <PieChart data={data} onClick={() => canRetry(data) && handleRetry(kind)}>
+                {canRetry(data) && (
+                  <div className="absolute invisible group-hover:visible cursor-pointer">
+                    <Retry
+                      isLoading={isLoading || !!data.inProgress}
+                      isDisabled={!canRetry(data)}
+                    />
+                  </div>
                 )}
+              </PieChart>
 
-                {!stats.failure && !stats.inProgress && (
-                  <CheckCircleIcon className="h-4 w-4 text-green-500" />
-                )}
-
-                <span>
-                  {JSON.stringify(stats.success)}/{JSON.stringify(stats.total)}
-                </span>
-              </div>
-
-              <Retry onClick={() => handleRetry(kind)} isInProgress={!!stats.inProgress} />
+              <span className="text-xs">
+                {schemaKindLabel[kind]?.replace("Validator", "").trim()}
+              </span>
             </div>
           </div>
         ))}

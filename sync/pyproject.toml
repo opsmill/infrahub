@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-sync"
-version = "0.1.0"
+version = "0.2.2"
 description = ""
 authors = ["OpsMill <contact@opsmill.com>"]
 readme = "README.md"
@@ -21,15 +21,10 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.9"
-infrahub-sdk = {path = "../python_sdk", develop=true}
-dagster = "^1.1.19"
-dagit = "^1.1.19"
+python = ">=3.8, <3.12"
+infrahub-sdk = ">=0.7"
 structlog = "^22.3.0"
-pynetbox = "^7.0.1"
-pynautobot = "^1.5.0"
-diffsync = "^1.8.0"
-
+diffsync = "^1.10.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
@@ -48,9 +43,8 @@ types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
-ruff = "^0.1.5"
+ruff = "^0.1.8"
 pytest-xdist = "^3.3.1"
-buildkite-test-collector = "^0.1.7"
 types-python-slugify = "^8.0.0.3"
 
 [tool.poetry.scripts]
@@ -81,6 +75,8 @@ no-docstring-rgx="^(_|test_)"
 [tool.pylint.messages_control]
 # Line length is enforced by Black, so pylint doesn't need to check it.
 # Pylint and Black disagree about how to format multi-line arrays; Black wins.
+# assigning-non-slot,no-member,unsupported-membership-test,unsubscriptable-object,unsupported-assignment-operation,not-an-iterable
+# are disabled because of our move to pydantic 2, pylint does not seem to respect the type hint for pydantic 2 model fields.
 disable = """,
     line-too-long,
     missing-module-docstring,
@@ -98,6 +94,12 @@ disable = """,
     protected-access,
     import-self,
     wrong-import-order,
+    assigning-non-slot,
+    no-member,
+    unsupported-membership-test,
+    unsubscriptable-object,
+    unsupported-assignment-operation,
+    not-an-iterable,
     """
 
 [tool.pylint.miscellaneous]
@@ -150,21 +152,29 @@ task-tags = [
 preview = true
 
 select = [
-    "C90",  # mccabe complexity
-    "DJ",   # flake8-django
-    "DTZ",  # flake8-datetimez
-    "E",    # pycodestyle errors
-    "EXE",  # flake8-executable
-    "F",    # pyflakes
-    "I",    # isort-like checks
-    "ICN",  # flake8-import-conventions
-    "PL",   # pylint
-    "Q",    # flake8-quotes
-    "TCH",  # flake8-type-checking
-    "TRIO", # flake8-trio
-    "T10",  # flake8-debugger
-    "W",    # pycodestyle warnings
-    "YTT",  # flake8-2020
+   "ASYNC", # flake8-async
+    "B",     # flake8-bugbear
+    "C4",    # flake8-comprehensions
+    "C90",   # mccabe complexity
+    "DJ",    # flake8-django
+    "DTZ",   # flake8-datetimez
+    "E",     # pycodestyle errors
+    "EXE",   # flake8-executable
+    "F",     # pyflakes
+    "I",     # isort-like checks
+    "ICN",   # flake8-import-conventions
+    "INP",   # flake8-no-pep420
+    "N",     # pep8-naming
+    "PIE",   # flake8-pie
+    "PL",    # pylint
+    "PYI",   # flake8-pyi
+    "Q",     # flake8-quotes
+    "RET",   # flake8-return
+    "TCH",   # flake8-type-checking
+    "TRIO",  # flake8-trio
+    "T10",   # flake8-debugger
+    "W",     # pycodestyle warnings
+    "YTT",   # flake8-2020
 ]
 
 ignore = [
@@ -174,10 +184,14 @@ ignore = [
 # like this so that we can reactivate them one by one. Alternatively ignored after further       #
 # investigation if they are deemed to not make sense.                                            #
 ##################################################################################################
+    "B904",    # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    "C416",    # Unnecessary `list` comprehension (rewrite using `list()`)
+    "INP001",  # File is part of an implicit namespace package. Add an `__init__.py`.
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments in function definition
     "PLR0917", # Too many positional arguments
     "PLR6301", # Method could be a function, class method, or static method
+    "RET504",  # Unnecessary assignment to `ptd` before `return` statement
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/
@@ -188,7 +202,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.ruff.lint.isort]
-known-first-party = ["infrahub_sync", "potenda"]
+known-first-party = ["diffsync", "infrahub_sync", "potenda"]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 150

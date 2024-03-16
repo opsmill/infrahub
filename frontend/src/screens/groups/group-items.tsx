@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 import { TrashIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
@@ -10,7 +10,7 @@ import ModalDelete from "../../components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { Pagination } from "../../components/utils/pagination";
 import { GROUP_OBJECT } from "../../config/constants";
-import { AuthContext } from "../../decorators/withAuth";
+import { useAuth } from "../../hooks/useAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getGroups } from "../../graphql/queries/groups/getGroups";
@@ -36,7 +36,7 @@ export default function GroupItems() {
 
   const kind = groupname || GROUP_OBJECT;
 
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);

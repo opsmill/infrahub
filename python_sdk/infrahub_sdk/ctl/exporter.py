@@ -20,7 +20,7 @@ def directory_name_with_timestamp():
 
 def dump(
     namespace: List[str] = typer.Option([], help="Namespace(s) to export"),
-    directory: Path = typer.Option(directory_name_with_timestamp, help="Directory path to store export."),
+    directory: Path = typer.Option(directory_name_with_timestamp, help="Directory path to store export"),
     quiet: bool = typer.Option(False, help="No console output"),
     config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
     branch: str = typer.Option("main", help="Branch from which to export"),
@@ -30,21 +30,21 @@ def dump(
         envvar="INFRAHUBCTL_CONCURRENT_EXECUTION",
     ),
     timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
+    exclude: List[str] = typer.Option(
+        ["CoreAccount"],
+        help="Prevent node kind(s) from being exported, CoreAccount is excluded by default",
+    ),
 ) -> None:
-    """Export node(s)."""
+    """Export nodes and their relationships out of the database."""
     console = Console()
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
-    client = aiorun(initialize_client(timeout=timeout, max_concurrent_execution=concurrent, retry_on_failure=True))
+    client = aiorun(
+        initialize_client(branch=branch, timeout=timeout, max_concurrent_execution=concurrent, retry_on_failure=True)
+    )
     exporter = LineDelimitedJSONExporter(client, console=Console() if not quiet else None)
     try:
-        aiorun(
-            exporter.export(
-                export_directory=directory,
-                namespaces=namespace,
-                branch=branch,
-            )
-        )
+        aiorun(exporter.export(export_directory=directory, namespaces=namespace, branch=branch, exclude=exclude))
     except TransferError as exc:
         console.print(f"[red]{exc}")
         raise typer.Exit(1)

@@ -3,9 +3,10 @@ import { PlusIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import * as R from "ramda";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Retry } from "../../components/buttons/retry";
 import { RoundedButton } from "../../components/buttons/rounded-button";
 import SlideOver from "../../components/display/slide-over";
 import {
@@ -13,8 +14,8 @@ import {
   DEFAULT_BRANCH_NAME,
   PROPOSED_CHANGES_OBJECT,
 } from "../../config/constants";
-import { AuthContext } from "../../decorators/withAuth";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
+import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
@@ -22,6 +23,7 @@ import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
 import { getObjectRelationships } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
+import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "./conversations";
@@ -30,7 +32,7 @@ import { ProposedChange } from "./proposed-changes-item";
 export const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);
   const [branches] = useAtom(branchesState);
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
   const branch = useAtomValue(currentBranchAtom);
   const navigate = useNavigate();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
@@ -54,25 +56,28 @@ export const ProposedChanges = () => {
     ${queryString}
   `;
 
-  const { loading, error, data = {}, refetch } = useQuery(query, { skip: !schemaData });
+  const {
+    loading,
+    error,
+    data = {},
+    refetch,
+  } = useQuery(query, { skip: !schemaData, notifyOnNetworkStatusChange: true });
+
+  const handleRefetch = () => refetch();
 
   const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
-  const { count, edges } = result;
+  const { count = "...", edges = [] } = result;
 
   useTitle("Proposed changes list");
 
-  const rows = edges?.map((edge: any) => edge.node);
+  const rows = edges?.map((edge: any) => edge.node).reverse();
 
   const customObject = {
     created_by: {
       id: auth?.data?.sub,
     },
   };
-
-  if (!schemaData || loading) {
-    return <LoadingScreen />;
-  }
 
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching the proposed changes list." />;
@@ -98,15 +103,15 @@ export const ProposedChanges = () => {
   const formStructure = getFormStructure(branchesOptionsSortedByCreatedAt, reviewersOptions);
 
   return (
-    <div>
-      <div className="bg-white flex items-center p-4 w-full">
-        {schemaData && (
-          <div className="sm:flex-auto flex items-center">
-            <h1 className="text-md font-semibold text-gray-900">
-              {schemaData.name} ({count})
-            </h1>
+    <Content>
+      <div className="bg-white flex items-center justify-between p-4 w-full">
+        <div className="flex items-center">
+          <h1 className="text-base font-semibold">Proposed changes ({count})</h1>
+
+          <div className="mx-2">
+            <Retry isLoading={loading} onClick={handleRefetch} />
           </div>
-        )}
+        </div>
 
         <RoundedButton
           disabled={!auth?.permissions?.write}
@@ -118,6 +123,8 @@ export const ProposedChanges = () => {
       </div>
 
       <ul className="grid gap-6 grid-cols-1 p-6">
+        {!rows && loading && <LoadingScreen />}
+
         {rows.map((row: any, index: number) => (
           <ProposedChange key={index} row={row} refetch={refetch} />
         ))}
@@ -146,9 +153,7 @@ export const ProposedChanges = () => {
           </div>
         }
         open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}
-        // title={`Create ${objectname}`}
-      >
+        setOpen={setShowCreateDrawer}>
         <ObjectItemCreate
           onCreate={(response: any) => {
             setShowCreateDrawer(false);
@@ -164,6 +169,6 @@ export const ProposedChanges = () => {
           customObject={customObject}
         />
       </SlideOver>
-    </div>
+    </Content>
   );
 };

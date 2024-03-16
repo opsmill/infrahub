@@ -7,6 +7,7 @@ from infrahub.core.query import (
     QueryRel,
     QueryRelDirection,
     QueryResult,
+    QueryType,
     cleanup_return_labels,
     sort_results_by_time,
 )
@@ -25,6 +26,18 @@ class Query01(Query):
         self.return_labels = ["n", "at", "av", "r1", "r2"]
         self.params["uuid"] = "5ffa45d4"
 
+        self.add_to_query(query)
+
+
+class Query02(Query):
+    type: QueryType = QueryType.WRITE
+
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+        query = """
+        CREATE (n1:NewNode { name: "test1"})-[:IS_CONNECTED]->(n2:NewNode { name: "test2"})
+        """
+
+        self.return_labels = ["n1", "n2"]
         self.add_to_query(query)
 
 
@@ -47,6 +60,7 @@ async def test_insert_variables_in_query(db: InfrahubDatabase, simple_dataset_01
         "mylist1": ["1", "2", "3"],
         "mylist2": [1, 2, 3],
         "myint": 198,
+        "mydict": {"name": "myprop", "value": 12},
     }
 
     query_lines = [
@@ -54,6 +68,7 @@ async def test_insert_variables_in_query(db: InfrahubDatabase, simple_dataset_01
         "MATCH (n2) WHERE n2.uuid in $mylist1",
         "MATCH (n3) WHERE n3.uuid in $mylist2",
         "MATCH (n4) WHERE n4.uuid in $myint",
+        "CREATE (a)-[:HAS_VALUE $mydict ]->(av)",
     ]
 
     expected_query_lines = [
@@ -61,6 +76,7 @@ async def test_insert_variables_in_query(db: InfrahubDatabase, simple_dataset_01
         "MATCH (n2) WHERE n2.uuid in ['1', '2', '3']",
         "MATCH (n3) WHERE n3.uuid in [1, 2, 3]",
         "MATCH (n4) WHERE n4.uuid in 198",
+        'CREATE (a)-[:HAS_VALUE { name: "myprop", value: 12 } ]->(av)',
     ]
 
     result = Query.insert_variables_in_query(query="\n".join(query_lines), variables=params)
@@ -77,6 +93,16 @@ async def test_query_results(db: InfrahubDatabase, simple_dataset_01):
 
     assert query.num_of_results == 3
     assert query.results[0].get("at") is not None
+
+
+async def test_query_stats(db: InfrahubDatabase, simple_dataset_01):
+    query = await Query02.init(db=db)
+    await query.execute(db=db)
+
+    assert query.has_been_executed is True
+    assert query.stats.stats
+    assert query.stats.get_counter("nodes_created") == 2
+    assert query.stats.get_counter("relationships_created") == 1
 
 
 async def test_query_results_limit_offset(db: InfrahubDatabase, simple_dataset_01):

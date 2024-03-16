@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type
 
 from neo4j import (
     READ_ACCESS,
     WRITE_ACCESS,
     AsyncDriver,
     AsyncGraphDatabase,
+    AsyncResult,
     AsyncSession,
     AsyncTransaction,
     Record,
 )
-
-# from contextlib import asynccontextmanager
-from neo4j.exceptions import ClientError, ServiceUnavailable
+from neo4j.exceptions import ClientError, Neo4jError, ServiceUnavailable, TransientError
+from typing_extensions import Self
 
 from infrahub import config
 from infrahub.exceptions import DatabaseError
@@ -22,7 +22,7 @@ from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
 from .constants import DatabaseType
-from .metrics import QUERY_EXECUTION_METRICS
+from .metrics import QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -30,40 +30,6 @@ if TYPE_CHECKING:
 validated_database = {}
 
 log = get_logger()
-
-
-class InfrahubDriver:
-    def __init__(self, driver):
-        self.driver = driver
-
-    async def __aenter__(self):
-        raise NotImplementedError
-
-    async def __aexit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType):
-        raise NotImplementedError
-
-
-class InfrahubSession:
-    def __init__(self, driver: InfrahubDriver):
-        self.driver = driver
-
-    async def __aenter__(self):
-        raise NotImplementedError
-
-    async def __aexit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType):
-        raise NotImplementedError
-
-
-class InfrahubTransaction:
-    def __init__(self, driver: InfrahubDriver, session: InfrahubSession):
-        self.driver = driver
-        self.session = session
-
-    async def __aenter__(self):
-        raise NotImplementedError
-
-    async def __aexit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType):
-        raise NotImplementedError
 
 
 class InfrahubDatabaseMode(InfrahubStringEnum):
@@ -155,7 +121,7 @@ class InfrahubDatabase:
         self._transaction = await session.begin_transaction()
         return self._transaction
 
-    async def __aenter__(self) -> InfrahubDatabase:
+    async def __aenter__(self) -> Self:
         if self._mode == InfrahubDatabaseMode.SESSION:
             if self._session_mode == InfrahubDatabaseSessionMode.READ:
                 self._session = self._driver.session(
@@ -166,14 +132,18 @@ class InfrahubDatabase:
                     database=config.SETTINGS.database.database_name, default_access_mode=WRITE_ACCESS
                 )
 
-            return self
-
-        if self._mode == InfrahubDatabaseMode.TRANSACTION:
+        elif self._mode == InfrahubDatabaseMode.TRANSACTION:
             session = await self.session()
             self._transaction = await session.begin_transaction()
-            return self
 
-    async def __aexit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType):
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ):
         if self._mode == InfrahubDatabaseMode.SESSION:
             return await self._session.close()
 
@@ -181,7 +151,12 @@ class InfrahubDatabase:
             if exc_type is not None:
                 await self._transaction.rollback()
             else:
-                await self._transaction.commit()
+                try:
+                    await self._transaction.commit()
+                except Neo4jError as exc:
+                    raise exc
+                finally:
+                    await self._transaction.close()
 
             if self._is_session_local:
                 await self._session.close()
@@ -193,18 +168,30 @@ class InfrahubDatabase:
         self, query: str, params: Optional[Dict[str, Any]] = None, name: Optional[str] = "undefined"
     ) -> List[Record]:
         with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
-            if self.is_transaction:
-                execution_method = await self.transaction()
-            else:
-                execution_method = await self.session()
-
-            try:
-                response = await execution_method.run(query=query, parameters=params)
-            except ServiceUnavailable as exc:
-                log.error("Database Service unavailable", error=str(exc))
-                raise DatabaseError(message="Unable to connect to the database") from exc
-
+            response = await self.run_query(query=query, params=params)
             return [item async for item in response]
+
+    async def execute_query_with_metadata(
+        self, query: str, params: Optional[Dict[str, Any]] = None, name: Optional[str] = "undefined"
+    ) -> Tuple[List[Record], Dict[str, Any]]:
+        with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
+            response = await self.run_query(query=query, params=params)
+            results = [item async for item in response]
+            return results, response._metadata or {}
+
+    async def run_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> AsyncResult:
+        if self.is_transaction:
+            execution_method = await self.transaction()
+        else:
+            execution_method = await self.session()
+
+        try:
+            response = await execution_method.run(query=query, parameters=params)
+        except ServiceUnavailable as exc:
+            log.error("Database Service unavailable", error=str(exc))
+            raise DatabaseError(message="Unable to connect to the database") from exc
+
+        return response
 
     def render_list_comprehension(self, items: str, item_name: str) -> str:
         if self.db_type == DatabaseType.MEMGRAPH:
@@ -216,6 +203,15 @@ class InfrahubDatabase:
         if self.db_type == DatabaseType.MEMGRAPH:
             return f"extract(i in {items} | [{item_names_str}])"
         return f"[i IN {items} | [{item_names_str}]]"
+
+    def render_uuid_generation(self, node_label: str, node_attr: str) -> str:
+        generate_uuid_query = f"SET {node_label}.{node_attr} = randomUUID()"
+        if self.db_type == DatabaseType.MEMGRAPH:
+            generate_uuid_query = f"""
+            CALL uuid_generator.get() YIELD uuid
+            SET {node_label}.{node_attr} = uuid
+            """
+        return generate_uuid_query
 
 
 async def create_database(driver: AsyncDriver, database_name: str) -> None:
@@ -234,7 +230,6 @@ async def validate_database(
         retry (int, optional): Number of retry before raising an exception. Defaults to 0.
         retry_interval (int, optional): Time between retries in second. Defaults to 1.
     """
-    global validated_database  # pylint: disable=global-variable-not-assigned
 
     try:
         session = driver.session(database=database_name)
@@ -266,32 +261,19 @@ async def get_db(retry: int = 0) -> AsyncDriver:
     return driver
 
 
-async def execute_read_query_async(
-    db: InfrahubDatabase,
-    query: str,
-    params: Optional[Dict[str, Any]] = None,
-    name: Optional[str] = "undefined",
-) -> List[Record]:
-    with QUERY_EXECUTION_METRICS.labels("read", name).time():
-        if db.is_transaction:
-            tx = await db.transaction()
-            response = await tx.run(query=query, parameters=params or {})
-            return [item async for item in response]
+def retry_db_transaction(name: str):
+    def func_wrapper(func):
+        async def wrapper(*args, **kwargs):
+            for attempt in range(1, config.SETTINGS.database.retry_limit + 1):
+                try:
+                    return await func(*args, **kwargs)
+                except TransientError as exc:
+                    log.info(f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}")
+                    log.debug("database transaction failed", message=exc.message)
+                    TRANSACTION_RETRIES.labels(name).inc()
+                    if attempt == config.SETTINGS.database.retry_limit:
+                        raise
 
-        session = await db.session()
-        response = await session.run(query=query, parameters=params or {})
-        return [item async for item in response]
+        return wrapper
 
-
-async def execute_write_query_async(
-    query: str, db: InfrahubDatabase, params: Optional[Dict[str, Any]] = None, name: Optional[str] = "undefined"
-) -> List[Record]:
-    with QUERY_EXECUTION_METRICS.labels("write", name).time():
-        if db.is_transaction:
-            tx = await db.transaction()
-            response = await tx.run(query=query, parameters=params or {})
-            return [item async for item in response]
-
-        session = await db.session()
-        response = await session.run(query=query, parameters=params or {})
-        return [item async for item in response]
+    return func_wrapper

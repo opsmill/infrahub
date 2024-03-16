@@ -1,17 +1,17 @@
 import asyncio
 import importlib
+import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypeVar
+from tempfile import TemporaryDirectory
+from typing import Any, AsyncGenerator, Generator, List, Optional, TypeVar
 
 import pytest
 import ujson
-from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import str_to_bool
 
 from infrahub import config
-from infrahub.components import ComponentType
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind
@@ -29,12 +29,12 @@ from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.lock import initialize_lock
-from infrahub.message_bus import InfrahubMessage, InfrahubResponse, Meta
-from infrahub.message_bus.messages import ROUTING_KEY_MAP
-from infrahub.message_bus.operations import execute_message
+from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.types import MessageTTL
-from infrahub.services import InfrahubServices
+from infrahub.services import services
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
+from tests.adapters.log import FakeLogger
+from tests.adapters.message_bus import BusRecorder, BusSimulator
 
 BUILD_NAME = os.environ.get("INFRAHUB_BUILD_NAME", "infrahub")
 TEST_IN_DOCKER = str_to_bool(os.environ.get("INFRAHUB_TEST_IN_DOCKER", "false"))
@@ -46,8 +46,15 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
+    markexpr = getattr(config.option, "markexpr", "")
+
+    if not markexpr:
+        markexpr = "not neo4j"
+    else:
+        markexpr = f"not neo4j and ({markexpr})"
+
     if not config.option.neo4j:
-        setattr(config.option, "markexpr", "not neo4j")
+        setattr(config.option, "markexpr", markexpr)
 
 
 @pytest.fixture(scope="session")
@@ -60,7 +67,7 @@ def event_loop():
 
 
 @pytest.fixture(scope="module")
-async def db() -> InfrahubDatabase:
+async def db() -> AsyncGenerator[InfrahubDatabase, None]:
     driver = InfrahubDatabase(driver=await get_db(retry=1))
 
     yield driver
@@ -128,6 +135,7 @@ def execute_before_any_test(worker_id, tmpdir_factory):
 
         config.SETTINGS.cache.address = f"{BUILD_NAME}-cache-{db_id}"
         config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
+        config.SETTINGS.broker.address = f"{BUILD_NAME}-message-queue-{db_id}"
         config.SETTINGS.storage.local = config.FileSystemStorageSettings(path="/opt/infrahub/storage")
     else:
         storage_dir = tmpdir_factory.mktemp("storage")
@@ -145,7 +153,7 @@ def execute_before_any_test(worker_id, tmpdir_factory):
 
 @pytest.fixture
 async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "generics": [
             {
                 "name": "Owner",
@@ -173,7 +181,7 @@ async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
 
 @pytest.fixture
 async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "generics": [
             {
                 "name": "Group",
@@ -209,8 +217,8 @@ async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema
 
 
 @pytest.fixture
-async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema) -> None:
-    SCHEMA = {
+async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema, data_schema) -> SchemaRoot:
+    schema: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Car",
@@ -255,13 +263,17 @@ async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_g
         ],
     }
 
-    schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    return SchemaRoot(**schema)
+
+
+@pytest.fixture
+async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered) -> None:
+    registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
 
 
 @pytest.fixture
 async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "generics": [
             {
                 "name": "Node",
@@ -307,8 +319,41 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
+@pytest.fixture(scope="module")
+def tmp_path_module_scope() -> Generator[str, None, None]:
+    """Fixture similar to tmp_path but with scope=module"""
+    with TemporaryDirectory() as tmpdir:
+        if sys.platform == "darwin" and tmpdir.startswith("/var/"):
+            # On Mac /var is symlinked to /private/var. TemporaryDirectory uses the /var prefix
+            # however when using 'git worktree list --porcelain' the path is returned with
+            # /prefix/var and InfrahubRepository fails to initialize the repository as the
+            # relative path of the repository isn't handled correctly
+            tmpdir = f"/private{tmpdir}"
+        yield tmpdir
+
+
+@pytest.fixture(scope="module")
+def git_repos_dir_module_scope(tmp_path_module_scope: str) -> Generator[str, None, None]:
+    repos_dir = os.path.join(str(tmp_path_module_scope), "repositories")
+
+    os.mkdir(repos_dir)
+    old_repos_dir = config.SETTINGS.git.repositories_directory
+    config.SETTINGS.git.repositories_directory = repos_dir
+
+    yield repos_dir
+
+    config.SETTINGS.git.repositories_directory = old_repos_dir
+
+
+@pytest.fixture(scope="module")
+def git_repos_source_dir_module_scope(tmp_path_module_scope: str) -> str:
+    repos_dir = os.path.join(str(tmp_path_module_scope), "source")
+    os.mkdir(repos_dir)
+    return repos_dir
+
+
 class BusRPCMock(InfrahubMessageBus):
-    def __init__(self):
+    def __init__(self) -> None:
         self.response: List[InfrahubResponse] = []
         self.messages: List[InfrahubMessage] = []
 
@@ -320,57 +365,9 @@ class BusRPCMock(InfrahubMessageBus):
 
     async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
         self.messages.append(message)
-        return self.response.pop()
-
-
-class BusRecorder(InfrahubMessageBus):
-    def __init__(self, component_type: Optional[ComponentType] = None):
-        self.messages: List[InfrahubMessage] = []
-        self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
-
-    async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
-        self.messages.append(message)
-        if routing_key not in self.messages_per_routing_key:
-            self.messages_per_routing_key[routing_key] = []
-        self.messages_per_routing_key[routing_key].append(message)
-
-    @property
-    def seen_routing_keys(self) -> List[str]:
-        return list(self.messages_per_routing_key.keys())
-
-
-class BusSimulator(InfrahubMessageBus):
-    def __init__(self):
-        self.messages: List[InfrahubMessage] = []
-        self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
-        self.service: InfrahubServices = InfrahubServices(message_bus=self)
-        self.replies: List[InfrahubResponse] = []
-
-    async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
-        self.messages.append(message)
-        if routing_key not in self.messages_per_routing_key:
-            self.messages_per_routing_key[routing_key] = []
-        self.messages_per_routing_key[routing_key].append(message)
-        await execute_message(routing_key=routing_key, message_body=message.body, service=self.service)
-
-    async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
-        self.replies.append(message)
-
-    async def rpc(self, message: InfrahubMessage, response_class: ResponseClass) -> ResponseClass:  # type: ignore[override]
-        routing_key = ROUTING_KEY_MAP.get(type(message))
-
-        correlation_id = str(UUIDT())
-        message.meta = Meta(correlation_id=correlation_id, reply_to="ci-testing")
-
-        await self.publish(message=message, routing_key=routing_key)
-        assert len(self.replies) == 1
-        response = self.replies[0]
-        data = ujson.loads(response.body)
-        return response_class(**data)  # type: ignore[operator]
-
-    @property
-    def seen_routing_keys(self) -> List[str]:
-        return list(self.messages_per_routing_key.keys())
+        response = self.response.pop()
+        data = json.loads(response.body)
+        return response_class(**data)
 
 
 class TestHelper:
@@ -404,8 +401,8 @@ class TestHelper:
         return BusRecorder()
 
     @staticmethod
-    def get_message_bus_simulator() -> BusSimulator:
-        return BusSimulator()
+    def get_message_bus_simulator(db: Optional[InfrahubDatabase] = None) -> BusSimulator:
+        return BusSimulator(database=db)
 
     @staticmethod
     def get_message_bus_rpc() -> BusRPCMock:
@@ -413,5 +410,21 @@ class TestHelper:
 
 
 @pytest.fixture()
+def fake_log() -> FakeLogger:
+    return FakeLogger()
+
+
+@pytest.fixture()
 def helper() -> TestHelper:
     return TestHelper()
+
+
+@pytest.fixture
+def patch_services(helper):
+    original = services.service.message_bus
+    bus = helper.get_message_bus_rpc()
+    services.service.message_bus = bus
+    services.prepare(service=services.service)
+    yield bus
+    services.service.message_bus = original
+    services.prepare(service=services.service)

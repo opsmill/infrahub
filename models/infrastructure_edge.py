@@ -565,7 +565,7 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
 
     new_branch_name = f"{site_name}-add-transit"
     new_branch = await client.branch.create(
-        branch_name=new_branch_name, data_only=True, description=f"Add a new Transit link in {site_name}"
+        branch_name=new_branch_name, sync_with_git=False, description=f"Add a new Transit link in {site_name}"
     )
     log.info(f"- Creating branch: {new_branch_name!r}")
     # Querying the object for now, need to pull from the store instead
@@ -668,7 +668,7 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
     new_branch_name = f"{site_name}-update-edge-ips"
     new_branch = await client.branch.create(
         branch_name=new_branch_name,
-        data_only=True,
+        sync_with_git=False,
         description=f"Change the IP addresses between edge1 and edge2 in {site_name}",
     )
     log.info("Create a new Branch and Change the IP addresses between edge1 and edge2 on the selected site")
@@ -720,7 +720,7 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
     log.info("Create a new Branch and Delete Colt Transit Circuit")
     new_branch_name = f"{site_name}-delete-transit"
     new_branch = await client.branch.create(
-        branch_name=new_branch_name, data_only=True, description=f"Delete transit circuit with colt in {site_name}"
+        branch_name=new_branch_name, sync_with_git=False, description=f"Delete transit circuit with colt in {site_name}"
     )
     log.info(f"- Creating branch: {new_branch_name!r}")
 
@@ -789,7 +789,7 @@ async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.L
     new_branch_name = f"{site_name}-maintenance-conflict"
     new_branch = await client.branch.create(
         branch_name=new_branch_name,
-        data_only=True,
+        sync_with_git=False,
         description=f"Put {device1_name} in maintenance mode",
     )
     log.info(f"- Creating branch: {new_branch_name!r}")
@@ -829,7 +829,7 @@ async def branch_scenario_conflict_platform(client: InfrahubClient, log: logging
     new_branch_name = f"platform-conflict"
     new_branch = await client.branch.create(
         branch_name=new_branch_name,
-        data_only=True,
+        sync_with_git=False,
         description=f"Add new platform",
     )
     log.info(f"- Creating branch: {new_branch_name!r}")

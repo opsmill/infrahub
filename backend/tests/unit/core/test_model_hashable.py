@@ -2,6 +2,7 @@ from typing import List, Optional
 
 from deepdiff import DeepDiff
 
+from infrahub.core.constants import HashableModelState
 from infrahub.core.models import HashableModel, HashableModelDiff
 
 
@@ -105,11 +106,115 @@ def test_update():
     )
 
     expected_result = {
+        "id": None,
         "name": "node1",
+        "state": HashableModelState.PRESENT,
         "subs": [
-            {"name": "coconut", "value1": None, "value2": None},
-            {"name": "apple", "value1": None, "value2": None},
-            {"name": "orange", "value1": "toreplace", "value2": 22},
+            {"id": None, "state": HashableModelState.PRESENT, "name": "coconut", "value1": None, "value2": None},
+            {"id": None, "state": HashableModelState.PRESENT, "name": "apple", "value1": None, "value2": None},
+            {"id": None, "state": HashableModelState.PRESENT, "name": "orange", "value1": "toreplace", "value2": 22},
+        ],
+        "value1": "FIRST",
+        "value2": 2,
+        "value3": ["one", "two", "three"],
+    }
+
+    assert DeepDiff(expected_result, node1.update(node2).model_dump()).to_dict() == {}
+
+
+def test_update_element_absent():
+    class MySubElement(HashableModel):
+        _sort_by: List[str] = ["name"]
+        name: str
+        value1: Optional[str] = None
+        value2: Optional[int] = None
+
+    class MyTopElement(HashableModel):
+        _sort_by: List[str] = ["name"]
+        name: str
+        value1: Optional[str] = None
+        value2: Optional[int] = None
+        value3: List[str]
+        subs: List[MySubElement]
+
+    node1 = MyTopElement(
+        name="node1",
+        value1="first",
+        value2=2,
+        value3=["one", "two"],
+        subs=[MySubElement(name="orange", value1="tochange", value2=22), MySubElement(name="coconut")],
+    )
+    node2 = MyTopElement(
+        name="node1",
+        value1="FIRST",
+        value3=["one", "three"],
+        subs=[
+            MySubElement(name="apple", state=HashableModelState.ABSENT),
+            MySubElement(name="orange", value1="toreplace"),
+        ],
+    )
+
+    expected_result = {
+        "id": None,
+        "name": "node1",
+        "state": HashableModelState.PRESENT,
+        "subs": [
+            {"id": None, "state": HashableModelState.PRESENT, "name": "coconut", "value1": None, "value2": None},
+            {"id": None, "state": HashableModelState.PRESENT, "name": "orange", "value1": "toreplace", "value2": 22},
+        ],
+        "value1": "FIRST",
+        "value2": 2,
+        "value3": ["one", "two", "three"],
+    }
+
+    assert DeepDiff(expected_result, node1.update(node2).model_dump()).to_dict() == {}
+
+
+def test_update_rename():
+    class MySubElement(HashableModel):
+        _sort_by: List[str] = ["name"]
+        name: str
+        value1: Optional[str] = None
+        value2: Optional[int] = None
+
+    class MyTopElement(HashableModel):
+        _sort_by: List[str] = ["name"]
+        name: str
+        value1: Optional[str] = None
+        value2: Optional[int] = None
+        value3: List[str]
+        subs: List[MySubElement]
+
+    node1 = MyTopElement(
+        name="node1",
+        value1="first",
+        value2=2,
+        value3=["one", "two"],
+        subs=[MySubElement(id="123456", name="orange", value1="tochange", value2=22), MySubElement(name="coconut")],
+    )
+    node2 = MyTopElement(
+        name="node1",
+        value1="FIRST",
+        value3=["one", "three"],
+        subs=[
+            MySubElement(name="apple", state=HashableModelState.ABSENT),
+            MySubElement(id="123456", name="aa_orange", value1="toreplace"),
+        ],
+    )
+
+    expected_result = {
+        "id": None,
+        "name": "node1",
+        "state": HashableModelState.PRESENT,
+        "subs": [
+            {"id": None, "state": HashableModelState.PRESENT, "name": "coconut", "value1": None, "value2": None},
+            {
+                "id": "123456",
+                "state": HashableModelState.PRESENT,
+                "name": "aa_orange",
+                "value1": "toreplace",
+                "value2": 22,
+            },
         ],
         "value1": "FIRST",
         "value2": 2,

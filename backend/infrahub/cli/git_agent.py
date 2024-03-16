@@ -13,6 +13,7 @@ from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, get_db
+from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import initialize_repositories_directory
 from infrahub.git.actions import sync_remote_repositories
 from infrahub.lock import initialize_lock
@@ -78,10 +79,13 @@ async def _start(debug: bool, port: int) -> None:
         component_type=ComponentType.GIT_AGENT,
     )
     await service.initialize()
-    await initialize_git_agent(service=service)
 
     async with service.database.start_session() as db:
         await initialization(db=db)
+
+    await initialize_git_agent(service=service)
+
+    build_component_registry()
 
     await service.message_bus.subscribe()
 

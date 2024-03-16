@@ -13,7 +13,7 @@ import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../components/utils/alert";
 import { CONFIG } from "../config/config";
 import { ACCESS_TOKEN_KEY } from "../config/constants";
-import { getNewToken } from "../decorators/withAuth";
+import { getNewToken } from "../hooks/useAuth";
 
 export const defaultOptions: DefaultOptions = {
   watchQuery: {

@@ -11,8 +11,8 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import NodeNotFound, PermissionDeniedError
+from infrahub.database import InfrahubDatabase, retry_db_transaction
+from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
 
 from ..types import InfrahubObjectType
 
@@ -61,19 +61,20 @@ class AccountMixin:
             schema=InfrahubKind.ACCOUNT, filters={"ids": [context.account_session.account_id]}, db=context.db
         )
         if not results:
-            raise NodeNotFound(node_type=InfrahubKind.ACCOUNT, identifier=context.account_session.account_id)
+            raise NodeNotFoundError(node_type=InfrahubKind.ACCOUNT, identifier=context.account_session.account_id)
 
         account = results[0]
 
         mutation_map = {"CoreAccountTokenCreate": cls.create_token, "CoreAccountSelfUpdate": cls.update_self}
         response = await mutation_map[cls.__name__](db=context.db, account=account, data=data, info=info)
 
-        # Reset the time of the query to garantee that all resolvers executed after this point will account for the changes
+        # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
         context.at = Timestamp()
 
         return response
 
     @classmethod
+    @retry_db_transaction(name="account_token_create")
     async def create_token(
         cls, db: InfrahubDatabase, account: Node, data: Dict[str, Any], info: GraphQLResolveInfo
     ) -> Self:
@@ -87,13 +88,14 @@ class AccountMixin:
             expiration=data.get("expiration"),
         )
 
-        async with db.start_transaction() as db:
-            await obj.save(db=db)
+        async with db.start_transaction() as dbt:
+            await obj.save(db=dbt)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
         return cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=True)  # type: ignore[call-arg]
 
     @classmethod
+    @retry_db_transaction(name="account_update_self")
     async def update_self(
         cls, db: InfrahubDatabase, account: Node, data: Dict[str, Any], info: GraphQLResolveInfo
     ) -> Self:
@@ -101,8 +103,8 @@ class AccountMixin:
             if value := data.get(field):
                 getattr(account, field).value = value
 
-        async with db.start_transaction() as db:
-            await account.save(db=db)
+        async with db.start_transaction() as dbt:
+            await account.save(db=dbt)
 
         return cls(ok=True)  # type: ignore[call-arg]
 

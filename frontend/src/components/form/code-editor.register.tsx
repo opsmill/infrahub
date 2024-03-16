@@ -15,7 +15,7 @@ interface Props {
 
 export const CodeEditorRegister = (props: Props) => {
   const { name, value, register, setValue, config, ...propsToPass } = props;
-  const [currentValue, setCurrentValue] = useState(value);
+  const [currentValue, setCurrentValue] = useState(value ? JSON.stringify(value) : null);
 
   const inputRegister = register(name, {
     value: value ?? "",
@@ -26,12 +26,18 @@ export const CodeEditorRegister = (props: Props) => {
     <OpsCodeEditor
       {...propsToPass}
       value={currentValue}
-      onChange={(value?: string) => {
+      onChange={(value: string) => {
         // Set the JSON as string in state
         setCurrentValue(value);
+
+        if (!value) {
+          // Replace empty string with valid "null"
+          setValue(inputRegister.name, null);
+        }
+
         try {
-          // Update the value as JSON if possible
-          const newValue = JSON.parse(value ?? "");
+          // Store the value as JSON
+          const newValue = JSON.parse(value);
           setValue(inputRegister.name, newValue);
         } catch (e) {
           console.log("e: ", e);

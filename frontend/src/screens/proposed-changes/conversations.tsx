@@ -4,7 +4,7 @@ import { Icon } from "@iconify-icon/react";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Button, BUTTON_TYPES } from "../../components/buttons/button";
@@ -14,6 +14,7 @@ import { Avatar, AVATAR_SIZE } from "../../components/display/avatar";
 import { Badge } from "../../components/display/badge";
 import { DateDisplay } from "../../components/display/date-display";
 import SlideOver from "../../components/display/slide-over";
+import { List } from "../../components/table/list";
 import { Alert, ALERT_TYPES } from "../../components/utils/alert";
 import { Tooltip } from "../../components/utils/tooltip";
 import {
@@ -25,12 +26,12 @@ import {
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
   PROPOSED_CHANGES_THREAD_OBJECT,
 } from "../../config/constants";
-import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { getProposedChangesThreads } from "../../graphql/queries/proposed-changes/getProposedChangesThreads";
+import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
@@ -59,8 +60,21 @@ export const getFormStructure = (
     label: "Name",
     value: data?.name?.value ?? "",
     options: [],
+    config: {
+      validate: (value) => !!value || "Required",
+    },
+    isProtected: false,
+  },
+  {
+    name: "description.value",
+    kind: "Text",
+    type: "text",
+    label: "Description",
+    value: data?.description?.value ?? "",
+    options: [],
     config: {},
     isProtected: false,
+    isOptional: true,
   },
   {
     name: "source_branch.value",
@@ -69,7 +83,9 @@ export const getFormStructure = (
     label: "Source Branch",
     value: data?.source_branch?.value ?? "",
     options: branches,
-    config: {},
+    config: {
+      validate: (value) => !!value || "Required",
+    },
     isProtected: !!data?.source_branch?.value,
   },
   {
@@ -94,14 +110,14 @@ export const getFormStructure = (
   },
 ];
 
-export const Conversations = (props: tConversations) => {
+export const Conversations = forwardRef((props: tConversations, ref) => {
   const { refetch: detailsRefetch } = props;
   const { proposedchange } = useParams();
   const [branches] = useAtom(branchesState);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
   const [isLoadingApprove, setIsLoadingApprove] = useState(false);
   const [isLoadingMerge, setIsLoadingMerge] = useState(false);
   const [isLoadingClose, setIsLoadingClose] = useState(false);
@@ -121,6 +137,9 @@ export const Conversations = (props: tConversations) => {
   const { error, data, refetch, networkStatus } = useQuery(query, {
     notifyOnNetworkStatusChange: true,
   });
+
+  // Provide refetch function to parent
+  useImperativeHandle(ref, () => ({ refetch }));
 
   const isGetProposedChangesThreadsLoadingForthFistTime = networkStatus === NetworkStatus.loading;
   const isGetProposedChangesThreadsReloading = networkStatus === NetworkStatus.refetch;
@@ -406,8 +425,122 @@ export const Conversations = (props: tConversations) => {
 
   const formStructure = getFormStructure(branchesOptions, reviewersOptions, proposedChangesDetails);
 
+  const columns = [
+    {
+      label: "ID",
+      name: "id",
+    },
+    {
+      label: "Name",
+      name: "name",
+    },
+    {
+      label: "Description",
+      name: "description",
+    },
+    {
+      label: "State",
+      name: "state",
+    },
+    {
+      label: "Source branch",
+      name: "source_branch",
+    },
+    {
+      label: "Destination branch",
+      name: "desctination_branch",
+    },
+    {
+      label: "Created by",
+      name: "created_by",
+    },
+    {
+      label: "Approvers",
+      name: "approvers",
+    },
+    {
+      label: "Reviewers",
+      name: "reviewers",
+    },
+    {
+      label: "Updated",
+      name: "updated_at",
+    },
+    {
+      label: "Actions",
+      name: "actions",
+    },
+  ];
+
+  const row = {
+    values: {
+      id: proposedchange,
+      name: proposedChangesDetails?.name?.value,
+      description: proposedChangesDetails?.description?.value,
+      state: <Badge type={getProposedChangesStateBadgeType(state)}>{state}</Badge>,
+      source_branch: <Badge>{proposedChangesDetails?.source_branch?.value}</Badge>,
+      destination_branch: <Badge>{proposedChangesDetails?.destination_branch?.value}</Badge>,
+      created_by: (
+        <Tooltip message={proposedChangesDetails?.created_by?.node?.display_label}>
+          <Avatar
+            size={AVATAR_SIZE.SMALL}
+            name={proposedChangesDetails?.created_by?.node?.display_label}
+            className="mr-2 bg-custom-blue-green"
+          />
+        </Tooltip>
+      ),
+      reviewers: (
+        <>
+          {reviewers.map((reviewer: any, index: number) => (
+            <Tooltip key={index} message={reviewer.display_label}>
+              <Avatar size={AVATAR_SIZE.SMALL} name={reviewer.display_label} className="mr-2" />
+            </Tooltip>
+          ))}
+        </>
+      ),
+      approvers: (
+        <>
+          {approvers.map((approver: any, index: number) => (
+            <Tooltip key={index} message={approver.display_label}>
+              <Avatar size={AVATAR_SIZE.SMALL} name={approver.display_label} className="mr-2" />
+            </Tooltip>
+          ))}
+        </>
+      ),
+      updated_at: <DateDisplay date={proposedChangesDetails?._updated_at} />,
+      actions: (
+        <>
+          <Button
+            onClick={handleApprove}
+            isLoading={isLoadingApprove}
+            disabled={!auth?.permissions?.write || !approverId || !canApprove}
+            className="mr-2">
+            Approve
+          </Button>
+
+          <Button
+            onClick={handleMerge}
+            buttonType={BUTTON_TYPES.VALIDATE}
+            isLoading={isLoadingMerge}
+            disabled={!auth?.permissions?.write || state === "closed" || state === "merged"}
+            className="mr-2">
+            Merge
+          </Button>
+
+          <Button
+            onClick={handleClose}
+            buttonType={BUTTON_TYPES.CANCEL}
+            isLoading={isLoadingClose}
+            disabled={!auth?.permissions?.write || state === "merged"}>
+            {state === "closed" ? "Re-open" : "Close"}
+          </Button>
+        </>
+      ),
+    },
+  };
+
   return (
-    <div className="flex">
+    <div className="flex flex-col-reverse lg:flex-row">
       <div className="flex-1 p-4 min-w-[500px]">
         <div>
           {threads.map((item: any, index: number) => (
@@ -424,7 +557,7 @@ export const Conversations = (props: tConversations) => {
         </div>
       </div>
 
-      <div className="flex-3">
+      <div className="lg:max-w-[500px]">
         <div className="bg-custom-white flex flex-col justify-start rounded-bl-lg">
           <div className="py-4 px-4">
             <div className="flex items-center">
@@ -432,7 +565,7 @@ export const Conversations = (props: tConversations) => {
                 <div
                   onClick={() => navigate(path)}
                   className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
-                  Proposed changes
+                  Proposed change
                 </div>
               </div>
 
@@ -440,130 +573,19 @@ export const Conversations = (props: tConversations) => {
                 <Button
                   disabled={
                     !auth?.permissions?.write ||
-                    !PROPOSED_CHANGES_EDITABLE_STATE.includes(proposedChangesDetails.state.value)
+                    !PROPOSED_CHANGES_EDITABLE_STATE.includes(proposedChangesDetails?.state?.value)
                   }
                   onClick={() => setShowEditDrawer(true)}
                   className="mr-4">
                   Edit
-                  <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                  <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             </div>
           </div>
 
           <div className="border-t border-gray-200">
-            <dl className="divide-y divide-gray-200">
-              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
-                <dt className="text-sm font-medium text-gray-500">ID</dt>
-                <dd className="flex text-gray-900">{proposedchange}</dd>
-              </div>
-
-              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
-                <dt className="text-sm font-medium text-gray-500">Name</dt>
-                <dd className="flex text-gray-900">{proposedChangesDetails?.name.value}</dd>
-              </div>
-
-              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
-                <dt className="text-sm font-medium text-gray-500">State</dt>
-                <dd className="flex text-gray-900">
-                  <Badge type={getProposedChangesStateBadgeType(state)}>{state}</Badge>
-                </dd>
-              </div>
-
-              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
-                <dt className="text-sm font-medium text-gray-500">Source branch</dt>
-                <dd className="flex text-gray-900">
-                  <Badge>{proposedChangesDetails?.source_branch.value}</Badge>
-                </dd>
-              </div>
-
-              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
-                <dt className="text-sm font-medium text-gray-500">Destination branch</dt>
-                <dd className="flex text-gray-900">
-                  <Badge>{proposedChangesDetails?.destination_branch.value}</Badge>
-                </dd>
-              </div>
-
-              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
-                <dt className="text-sm font-medium text-gray-500">Created by</dt>
-                <dd className="flex text-gray-900">
-                  <Tooltip message={proposedChangesDetails?.created_by?.node?.display_label}>
-                    <Avatar
-                      size={AVATAR_SIZE.SMALL}
-                      name={proposedChangesDetails?.created_by?.node?.display_label}
-                      className="mr-2 bg-custom-blue-green"
-                    />
-                  </Tooltip>
-                </dd>
-              </div>
-
-              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
-                <dt className="text-sm font-medium text-gray-500">Reviewers</dt>
-                <dd className="flex text-gray-900">
-                  {reviewers.map((reviewer: any, index: number) => (
-                    <Tooltip key={index} message={reviewer.display_label}>
-                      <Avatar
-                        size={AVATAR_SIZE.SMALL}
-                        name={reviewer.display_label}
-                        className="mr-2"
-                      />
-                    </Tooltip>
-                  ))}
-                </dd>
-              </div>
-
-              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
-                <dt className="text-sm font-medium text-gray-500">Approved by</dt>
-                <dd className="flex text-gray-900">
-                  {approvers.map((approver: any, index: number) => (
-                    <Tooltip key={index} message={approver.display_label}>
-                      <Avatar
-                        size={AVATAR_SIZE.SMALL}
-                        name={approver.display_label}
-                        className="mr-2"
-                      />
-                    </Tooltip>
-                  ))}
-                </dd>
-              </div>
-
-              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
-                <dt className="text-sm font-medium text-gray-500">Updated</dt>
-                <dd className="flex text-gray-900">
-                  <DateDisplay date={proposedChangesDetails?._updated_at} />
-                </dd>
-              </div>
-
-              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
-                <dt className="text-sm font-medium text-gray-500">Actions</dt>
-                <dd className="flex text-gray-900">
-                  <Button
-                    onClick={handleApprove}
-                    isLoading={isLoadingApprove}
-                    disabled={!auth?.permissions?.write || !approverId || !canApprove}
-                    className="mr-2">
-                    Approve
-                  </Button>
-
-                  <Button
-                    onClick={handleMerge}
-                    buttonType={BUTTON_TYPES.VALIDATE}
-                    isLoading={isLoadingMerge}
-                    disabled={!auth?.permissions?.write || state === "closed" || state === "merged"}
-                    className="mr-2">
-                    Merge
-                  </Button>
-
-                  <Button
-                    onClick={handleClose}
-                    buttonType={BUTTON_TYPES.CANCEL}
-                    isLoading={isLoadingClose}
-                    disabled={!auth?.permissions?.write || state === "merged"}>
-                    {state === "closed" ? "Re-open" : "Close"}
-                  </Button>
-                </dd>
-              </div>
-            </dl>
+            <List columns={columns} row={row} />
           </div>
         </div>
       </div>
@@ -616,4 +638,4 @@ export const Conversations = (props: tConversations) => {
       </SlideOver>
     </div>
   );
-};
+});

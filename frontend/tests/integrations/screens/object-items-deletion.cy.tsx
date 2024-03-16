@@ -5,7 +5,6 @@ import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
-import { withAuth } from "../../../src/decorators/withAuth";
 import ObjectItems from "../../../src/screens/object-items/object-items-paginated";
 import { configState } from "../../../src/state/atoms/config.atom";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
@@ -19,6 +18,7 @@ import {
 } from "../../mocks/data/graphqlQueries";
 import { schemaMocks } from "../../mocks/data/schema";
 import { TestProvider } from "../../mocks/jotai/atom";
+import { AuthProvider } from "../../../src/hooks/useAuth";
 
 // URL for the current view
 const mockedUrl = "/objects/CoreGraphQLQuery";
@@ -52,7 +52,11 @@ const mocks: any[] = [
   },
 ];
 
-const AuthenticatedObjectItems = withAuth(ObjectItems);
+const AuthenticatedObjectItems = () => (
+  <AuthProvider>
+    <ObjectItems />
+  </AuthProvider>
+);
 
 // Provide the initial value for jotai
 const ObjectItemsProvider = () => {

@@ -1,0 +1,180 @@
+---
+title: Tests configuration file
+---
+
+# Tests configuration file
+
+The tests configuration file allows you to define multiple tests for Infrahub resources such as Jinja2 transforms, Python transforms, checks and GraphQL queries.
+
+The file should be formatted as a YAML file, have a filename prefixed with `test_` like `test_all.yml` and should be stored somewhere in the [repository](/topics/repository).
+
+:::info
+
+See [this topic](/topics/resources-testing-framework) for more details on the available repository configuration options
+
+:::
+
+<!-- vale off -->
+## Version
+<!-- vale on -->
+
+**Key**: `version`<br/>
+**Type**: string<br/>
+**Mandatory**: :x:<br/>
+**Default**: `1.0`<br/>
+
+<!-- vale off -->
+## Infrahub Tests
+<!-- vale on -->
+
+**Key**: `infrahub_tests`<br/>
+**Type**: array of tests<br/>
+**Mandatory**: :white_check_mark:<br/>
+
+Each test must define a kind of resource to test as well as the name of the resource which must be a valid resource name matching to the repository configuration.
+
+**Key**: `resource`<br/>
+**Type**: string<br/>
+**Mandatory**: :white_check_mark:<br/>
+**Possible value**: `Check` `Jinja2Transform` `PythonTransform` `GraphQLQuery`<br/>
+
+**Key**: `resource_name`<br/>
+**Type**: string<br/>
+**Mandatory**: :white_check_mark:<br/>
+
+An optional outcome value for the test can be specified.
+
+**Key**: `expect`<br/>
+**Type**: string<br/>
+**Mandatory**: :x:<br/>
+**Default**: `PASS`<br/>
+**Possible value**: `PASS` `FAIL`<br/>
+
+Each test must then defined a specification, using the `spec` key, which will set properties for the test itself.
+
+**Key**: `spec`<br/>
+**Type**: dictionary<br/>
+**Mandatory**: :white_check_mark:<br/>
+
+Depending on the test, the dictionary `spec` may contain the following keys.
+
+:::note
+
+When a test has an input or an output property, the value of these can be path to JSON (with the `.json` suffix), YAML (with the `.yaml` or `.yml` suffixes) or plain text files.
+
+:::
+
+<!-- vale off -->
+### Test kind `check-smoke`
+<!-- vale on -->
+
+| Spec     | Type | Description | Mandatory | Default |
+| -------- | ---- | ----------- |:---------:| ------- |
+| kind | string | Static value `check-smoke` | :white_check_mark: |  |
+
+<!-- vale off -->
+### Test kind `check-unit-process`
+<!-- vale on -->
+
+| Spec     | Type | Description | Mandatory | Default |
+| -------- | ---- | ----------- |:---------:| ------- |
+| directory | string | Path to the directory where the input and output files are located | :x: |  |
+| input | string | Path to the file with the input data for the test, can be a relative path from the configuration file or from the directory. | :x: | input.json |
+| output | string | Path to the file with the expected output for the test, can be a relative path from the configuration file or from the directory. | :x: |  |
+| kind | string | Static value `check-unit-process` | :white_check_mark: |  |
+
+<!-- vale off -->
+### Test kind `check-integration`
+<!-- vale on -->
+
+| Spec     | Type | Description | Mandatory | Default |
+| -------- | ---- | ----------- |:---------:| ------- |
+| directory | string | Path to the directory where the input and output files are located | :x: |  |
+| input | string | Path to the file with the input data for the test, can be a relative path from the configuration file or from the directory. | :x: | input.json |
+| output | string | Path to the file with the expected output for the test, can be a relative path from the configuration file or from the directory. | :x: |  |
+| variables | string or dictionary | Variables and corresponding values to pass to the GraphQL query | :x: | variables.json |
+| kind | string | Static value `check-integration` | :white_check_mark: |  |
+
+<!-- vale off -->
+### Test kind `graphql-query-smoke`
+<!-- vale on -->
+
+| Spec     | Type | Description | Mandatory | Default |
+| -------- | ---- | ----------- |:---------:| ------- |
+| kind | string | Static value `graphql-query-smoke` | :white_check_mark: |  |
+| path | string | Path to the file in which the GraphQL query is defined | :white_check_mark: |  |
+
+<!-- vale off -->
+### Test kind `graphql-query-integration`
+<!-- vale on -->
+
+| Spec     | Type | Description | Mandatory | Default |
+| -------- | ---- | ----------- |:---------:| ------- |
+| directory | string | Path to the directory where the input and output files are located | :x: |  |
+| input | string | Path to the file with the input data for the test, can be a relative path from the configuration file or from the directory. | :x: | input.json |
+| output | string | Path to the file with the expected output for the test, can be a relative path from the configuration file or from the directory. | :x: |  |
+| variables | string or dictionary | Variables and corresponding values to pass to the GraphQL query | :x: | variables.json |
+| kind | string | Static value `graphql-query-integration` | :white_check_mark: |  |
+| query | string | Name of a pre-defined GraphQL query to execute | :white_check_mark: |  |
+
+<!-- vale off -->
+### Test kind `jinja2-transform-smoke`
+<!-- vale on -->
+
+| Spec     | Type | Description | Mandatory | Default |
+| -------- | ---- | ----------- |:---------:| ------- |
+| kind | string | Static value `jinja2-transform-smoke` | :white_check_mark: |  |
+
+<!-- vale off -->
+### Test kind `jinja2-transform-unit-render`
+<!-- vale on -->
+
+| Spec     | Type | Description | Mandatory | Default |
+| -------- | ---- | ----------- |:---------:| ------- |
+| directory | string | Path to the directory where the input and output files are located | :x: |  |
+| input | string | Path to the file with the input data for the test, can be a relative path from the configuration file or from the directory. | :x: | input.json |
+| output | string | Path to the file with the expected output for the test, can be a relative path from the configuration file or from the directory. | :x: |  |
+| kind | string | Static value `jinja2-transform-unit-render` | :white_check_mark: |  |
+
+<!-- vale off -->
+### Test kind `jinja2-transform-integration`
+<!-- vale on -->
+
+| Spec     | Type | Description | Mandatory | Default |
+| -------- | ---- | ----------- |:---------:| ------- |
+| directory | string | Path to the directory where the input and output files are located | :x: |  |
+| input | string | Path to the file with the input data for the test, can be a relative path from the configuration file or from the directory. | :x: | input.json |
+| output | string | Path to the file with the expected output for the test, can be a relative path from the configuration file or from the directory. | :x: |  |
+| variables |  | Variables and corresponding values to pass to the GraphQL query | :x: | variables.json |
+| kind | string | Static value `jinja2-transform-integration` | :white_check_mark: |  |
+
+<!-- vale off -->
+### Test kind `python-transform-smoke`
+<!-- vale on -->
+
+| Spec     | Type | Description | Mandatory | Default |
+| -------- | ---- | ----------- |:---------:| ------- |
+| kind | string | Static value `python-transform-smoke` | :white_check_mark: |  |
+
+<!-- vale off -->
+### Test kind `python-transform-unit-process`
+<!-- vale on -->
+
+| Spec     | Type | Description | Mandatory | Default |
+| -------- | ---- | ----------- |:---------:| ------- |
+| directory | string | Path to the directory where the input and output files are located | :x: |  |
+| input | string | Path to the file with the input data for the test, can be a relative path from the configuration file or from the directory. | :x: | input.json |
+| output | string | Path to the file with the expected output for the test, can be a relative path from the configuration file or from the directory. | :x: |  |
+| kind | string | Static value `python-transform-unit-process` | :white_check_mark: |  |
+
+<!-- vale off -->
+### Test kind `python-transform-integration`
+<!-- vale on -->
+
+| Spec     | Type | Description | Mandatory | Default |
+| -------- | ---- | ----------- |:---------:| ------- |
+| directory | string | Path to the directory where the input and output files are located | :x: |  |
+| input | string | Path to the file with the input data for the test, can be a relative path from the configuration file or from the directory. | :x: | input.json |
+| output | string | Path to the file with the expected output for the test, can be a relative path from the configuration file or from the directory. | :x: |  |
+| variables | string or dictionary | Variables and corresponding values to pass to the GraphQL query | :x: | variables.json |
+| kind | string | Static value `python-transform-unit-process` | :white_check_mark: |  |

@@ -8,7 +8,6 @@ import { proposedChangesId } from "../../mocks/data/conversations";
 import { TestProvider } from "../../mocks/jotai/atom";
 import { MockedProvider } from "@apollo/client/testing";
 import { Route, Routes } from "react-router-dom";
-import { withAuth } from "../../../src/decorators/withAuth";
 import { DataDiff } from "../../../src/screens/diff/data-diff";
 import {
   DataDiffProposedChangesState,
@@ -26,6 +25,7 @@ import { profileId } from "../../mocks/data/profile";
 import { encodeJwt } from "../../../src/utils/common";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
 import graphqlClient from "../../../src/graphql/graphqlClientApollo";
+import { AuthProvider } from "../../../src/hooks/useAuth";
 
 const url = `/proposed-changes/${proposedChangesId}`;
 const path = "/proposed-changes/:proposedchange";
@@ -68,7 +68,11 @@ const mocksWithoutComments = [
   },
 ];
 
-const AuthDataDiff = withAuth(DataDiff);
+const AuthDataDiff = () => (
+  <AuthProvider>
+    <DataDiff />
+  </AuthProvider>
+);
 
 // Provide the initial value for jotai
 const DataDiffProvider = ({ loggedIn }: { loggedIn: boolean }) => {

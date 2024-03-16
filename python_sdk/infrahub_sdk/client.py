@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import json
 import logging
 from logging import Logger
 from time import sleep
 from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
 
 import httpx
+from typing_extensions import NotRequired, Self
 from typing_extensions import TypedDict as ExtensionTypedDict
 
 from infrahub_sdk.batch import InfrahubBatch
@@ -17,13 +19,14 @@ from infrahub_sdk.branch import (
     InfrahubBranchManagerSync,
 )
 from infrahub_sdk.config import Config
+from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.data import RepositoryData
 from infrahub_sdk.exceptions import (
     AuthenticationError,
     Error,
     GraphQLError,
-    NodeNotFound,
-    ServerNotReacheableError,
+    NodeNotFoundError,
+    ServerNotReachableError,
     ServerNotResponsiveError,
 )
 from infrahub_sdk.graphql import Query
@@ -48,9 +51,30 @@ if TYPE_CHECKING:
 
 class NodeDiff(ExtensionTypedDict):
     branch: str
-    actions: List[str]
     kind: str
-    node: str
+    id: str
+    action: str
+    display_label: str
+    elements: List[NodeDiffElement]
+
+
+class NodeDiffElement(ExtensionTypedDict):
+    name: str
+    element_type: str
+    action: str
+    summary: NodeDiffSummary
+    peers: NotRequired[List[NodeDiffPeer]]
+
+
+class NodeDiffSummary(ExtensionTypedDict):
+    added: int
+    updated: int
+    removed: int
+
+
+class NodeDiffPeer(ExtensionTypedDict):
+    action: str
+    summary: NodeDiffSummary
 
 
 class ProcessRelationsNode(TypedDict):
@@ -98,6 +122,7 @@ class BaseClient:
         self.default_timeout = self.config.timeout
         self.config.address = address or self.config.address
         self.address = self.config.address
+        self.mode = self.config.mode
 
         if self.config.api_token:
             self.headers["X-INFRAHUB-KEY"] = self.config.api_token
@@ -113,6 +138,33 @@ class BaseClient:
 
     def _record(self, response: httpx.Response) -> None:
         self.config.custom_recorder.record(response)
+
+    def _echo(self, url: str, query: str, variables: Optional[dict] = None) -> None:
+        if self.config.echo_graphql_queries:
+            print(f"URL: {url}")
+            print(f"QUERY:\n{query}")
+            if variables:
+                print(f"VARIABLES:\n{json.dumps(variables, indent=4)}\n")
+
+    def start_tracking(
+        self,
+        identifier: Optional[str] = None,
+        params: Optional[Dict[str, Any]] = None,
+        delete_unused_nodes: bool = False,
+    ) -> Self:
+        self.mode = InfrahubClientMode.TRACKING
+        identifier = identifier or self.identifier or "python-sdk"
+        self.set_context_properties(identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes)
+        return self
+
+    def set_context_properties(
+        self,
+        identifier: str,
+        params: Optional[Dict[str, str]] = None,
+        delete_unused_nodes: bool = True,
+        reset: bool = True,
+    ) -> None:
+        raise NotImplementedError()
 
 
 class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
@@ -131,8 +183,16 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     async def init(cls, *args: Any, **kwargs: Any) -> InfrahubClient:
         return cls(*args, **kwargs)
 
-    async def set_context_properties(self, identifier: str, params: Optional[Dict[str, str]] = None) -> None:
-        self.group_context.set_properties(identifier=identifier, params=params)
+    def set_context_properties(
+        self,
+        identifier: str,
+        params: Optional[Dict[str, str]] = None,
+        delete_unused_nodes: bool = True,
+        reset: bool = True,
+    ) -> None:
+        if reset:
+            self.group_context = InfrahubGroupContext(self)  # pylint: disable=attribute-defined-outside-init
+        self.group_context.set_properties(identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes)
 
     async def create(
         self,
@@ -148,6 +208,13 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             raise ValueError("Either data or a list of keywords but be provided")
 
         return InfrahubNode(client=self, schema=schema, branch=branch, data=data or kwargs)
+
+    async def delete(self, kind: str, id: str, branch: Optional[str] = None) -> None:
+        branch = branch or self.default_branch
+        schema = await self.schema.get(kind=kind, branch=branch)
+
+        node = InfrahubNode(client=self, schema=schema, branch=branch, data={"id": id})
+        await node.delete()
 
     async def get(
         self,
@@ -190,7 +257,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         )  # type: ignore[arg-type]
 
         if len(results) == 0:
-            raise NodeNotFound(branch_name=branch, node_type=kind, identifier=filters)
+            raise NodeNotFoundError(branch_name=branch, node_type=kind, identifier=filters)
         if len(results) > 1:
             raise IndexError("More than 1 node returned")
 
@@ -367,7 +434,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         variables: Optional[dict] = None,
         branch_name: Optional[str] = None,
         at: Optional[Union[str, Timestamp]] = None,
-        rebase: bool = False,
         timeout: Optional[int] = None,
         raise_for_error: bool = True,
         tracker: Optional[str] = None,
@@ -380,7 +446,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             variables (dict, optional): Variables to pass along with the GraphQL query. Defaults to None.
             branch_name (str, optional): Name of the branch on which the query will be executed. Defaults to None.
             at (str, optional): Time when the query should be executed. Defaults to None.
-            rebase (bool, optional): Flag to indicate if the branch should be rebased during the query. Defaults to False.
             timeout (int, optional): Timeout in second for the query. Defaults to None.
             raise_for_error (bool, optional): Flag to indicate that we need to raise an exception if the response has some errors. Defaults to True.
         Raises:
@@ -403,8 +468,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             at = Timestamp(at)
             url_params["at"] = at.to_string()
 
-        if rebase:
-            url_params["rebase"] = "true"
         if url_params:
             url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
@@ -412,7 +475,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         if self.insert_tracker and tracker:
             headers["X-Infrahub-Tracker"] = tracker
 
-        # self.log.error(payload)
+        self._echo(url=url, query=query, variables=variables)
 
         retry = True
         resp = None
@@ -425,7 +488,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                     resp.raise_for_status()
 
                 retry = False
-            except ServerNotReacheableError:
+            except ServerNotReachableError:
                 if retry:
                     self.log.warning(
                         f"Unable to connect to {self.address}, will retry in {self.retry_delay} seconds .."
@@ -463,7 +526,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         """Execute a HTTP POST with HTTPX.
 
         Raises:
-            ServerNotReacheableError if we are not able to connect to the server
+            ServerNotReachableError if we are not able to connect to the server
             ServerNotResponsiveError if the server didn't respond before the timeout expired
         """
         await self.login()
@@ -482,7 +545,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         """Execute a HTTP GET with HTTPX.
 
         Raises:
-            ServerNotReacheableError if we are not able to connect to the server
+            ServerNotReachableError if we are not able to connect to the server
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         await self.login()
@@ -529,7 +592,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                     **params,
                 )
             except httpx.NetworkError as exc:
-                raise ServerNotReacheableError(address=self.address) from exc
+                raise ServerNotReachableError(address=self.address) from exc
             except httpx.ReadTimeout as exc:
                 raise ServerNotResponsiveError(url=url, timeout=timeout) from exc
 
@@ -568,7 +631,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         params: Optional[dict] = None,
         branch_name: Optional[str] = None,
         at: Optional[str] = None,
-        rebase: bool = False,
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
@@ -588,7 +650,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         if subscribers:
             url_params["subscribers"] = subscribers
 
-        url_params["rebase"] = str(rebase).lower()
         url_params["update_group"] = str(update_group).lower()
 
         if url_params:
@@ -629,10 +690,31 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         query = """
             query {
                 DiffSummary {
-                    kind
-                    node
                     branch
-                    actions
+                    id
+                    kind
+                    action
+                    display_label
+                    elements {
+                        element_type
+                        name
+                        action
+                        summary {
+                            added
+                            updated
+                            removed
+                        }
+                        ... on DiffSummaryElementRelationshipMany {
+                            peers {
+                                action
+                                summary {
+                                    added
+                                    updated
+                                    removed
+                                }
+                            }
+                        }
+                    }
                 }
             }
         """
@@ -694,13 +776,19 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return True
 
-    async def __aenter__(self) -> InfrahubClient:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(
-        self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType
-    ) -> None:  # pylint: disable=unused-argument
-        await self.group_context.update_group()
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        if exc_type is None and self.mode == InfrahubClientMode.TRACKING:
+            await self.group_context.update_group()
+
+        self.mode = InfrahubClientMode.DEFAULT
 
 
 class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
@@ -716,8 +804,16 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
     def init(cls, *args: Any, **kwargs: Any) -> InfrahubClientSync:
         return cls(*args, **kwargs)
 
-    def set_context_properties(self, identifier: str, params: Optional[Dict[str, str]] = None) -> None:
-        self.group_context.set_properties(identifier=identifier, params=params)
+    def set_context_properties(
+        self,
+        identifier: str,
+        params: Optional[Dict[str, str]] = None,
+        delete_unused_nodes: bool = True,
+        reset: bool = True,
+    ) -> None:
+        if reset:
+            self.group_context = InfrahubGroupContextSync(self)  # pylint: disable=attribute-defined-outside-init
+        self.group_context.set_properties(identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes)
 
     def create(
         self,
@@ -734,6 +830,13 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         return InfrahubNodeSync(client=self, schema=schema, branch=branch, data=data or kwargs)
 
+    def delete(self, kind: str, id: str, branch: Optional[str] = None) -> None:
+        branch = branch or self.default_branch
+        schema = self.schema.get(kind=kind, branch=branch)
+
+        node = InfrahubNodeSync(client=self, schema=schema, branch=branch, data={"id": id})
+        node.delete()
+
     def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:
         raise NotImplementedError("This method hasn't been implemented in the sync client yet.")
 
@@ -743,7 +846,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         variables: Optional[dict] = None,
         branch_name: Optional[str] = None,
         at: Optional[Union[str, Timestamp]] = None,
-        rebase: bool = False,
         timeout: Optional[int] = None,
         raise_for_error: bool = True,
         tracker: Optional[str] = None,
@@ -756,7 +858,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             variables (dict, optional): Variables to pass along with the GraphQL query. Defaults to None.
             branch_name (str, optional): Name of the branch on which the query will be executed. Defaults to None.
             at (str, optional): Time when the query should be executed. Defaults to None.
-            rebase (bool, optional): Flag to indicate if the branch should be rebased during the query. Defaults to False.
             timeout (int, optional): Timeout in second for the query. Defaults to None.
             raise_for_error (bool, optional): Flag to indicate that we need to raise an exception if the response has some errors. Defaults to True.
         Raises:
@@ -779,14 +880,14 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             at = Timestamp(at)
             url_params["at"] = at.to_string()
 
-        if rebase:
-            url_params["rebase"] = "true"
         if url_params:
             url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
         headers = copy.copy(self.headers or {})
         if self.insert_tracker and tracker:
             headers["X-Infrahub-Tracker"] = tracker
+
+        self._echo(url=url, query=query, variables=variables)
 
         retry = True
         resp = None
@@ -799,7 +900,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                     resp.raise_for_status()
 
                 retry = False
-            except ServerNotReacheableError:
+            except ServerNotReachableError:
                 if retry:
                     self.log.warning(
                         f"Unable to connect to {self.address}, will retry in {self.retry_delay} seconds .."
@@ -1033,7 +1134,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         )  # type: ignore[arg-type]
 
         if len(results) == 0:
-            raise NodeNotFound(branch_name=branch, node_type=kind, identifier=filters)
+            raise NodeNotFoundError(branch_name=branch, node_type=kind, identifier=filters)
         if len(results) > 1:
             raise IndexError("More than 1 node returned")
 
@@ -1055,7 +1156,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         params: Optional[dict] = None,
         branch_name: Optional[str] = None,
         at: Optional[str] = None,
-        rebase: bool = False,
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
@@ -1074,7 +1174,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         if subscribers:
             url_params["subscribers"] = subscribers
 
-        url_params["rebase"] = str(rebase).lower()
         url_params["update_group"] = str(update_group).lower()
 
         if url_params:
@@ -1115,10 +1214,31 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         query = """
             query {
                 DiffSummary {
-                    kind
-                    node
                     branch
-                    actions
+                    id
+                    kind
+                    action
+                    display_label
+                    elements {
+                        element_type
+                        name
+                        action
+                        summary {
+                            added
+                            updated
+                            removed
+                        }
+                        ... on DiffSummaryElementRelationshipMany {
+                            peers {
+                                action
+                                summary {
+                                    added
+                                    updated
+                                    removed
+                                }
+                            }
+                        }
+                    }
                 }
             }
         """
@@ -1138,7 +1258,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         """Execute a HTTP GET with HTTPX.
 
         Raises:
-            ServerNotReacheableError if we are not able to connect to the server
+            ServerNotReachableError if we are not able to connect to the server
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         self.login()
@@ -1162,7 +1282,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         """Execute a HTTP POST with HTTPX.
 
         Raises:
-            ServerNotReacheableError if we are not able to connect to the server
+            ServerNotReachableError if we are not able to connect to the server
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         self.login()
@@ -1211,7 +1331,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                     **params,
                 )
             except httpx.NetworkError as exc:
-                raise ServerNotReacheableError(address=self.address) from exc
+                raise ServerNotReachableError(address=self.address) from exc
             except httpx.ReadTimeout as exc:
                 raise ServerNotResponsiveError(url=url, timeout=timeout) from exc
 
@@ -1241,8 +1361,16 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         self.refresh_token = response.json()["refresh_token"]
         self.headers["Authorization"] = f"Bearer {self.access_token}"
 
-    def __enter__(self) -> InfrahubClientSync:
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType) -> None:  # pylint: disable=unused-argument
-        self.group_context.update_group()
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        if exc_type is None and self.mode == InfrahubClientMode.TRACKING:
+            self.group_context.update_group()
+
+        self.mode = InfrahubClientMode.DEFAULT

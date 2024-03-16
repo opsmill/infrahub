@@ -1,13 +1,13 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
-import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
+import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -40,7 +40,7 @@ export default function ObjectItemEditComponent(props: Props) {
     formStructure: formStructureFromProps,
   } = props;
 
-  const user = useContext(AuthContext);
+  const user = useAuth();
 
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
@@ -130,7 +130,7 @@ export default function ObjectItemEditComponent(props: Props) {
     <div className="bg-custom-white flex-1 overflow-auto flex flex-col" data-cy="object-item-edit">
       {formStructure && (
         <EditFormHookComponent
-          onCancel={props.closeDrawer}
+          onCancel={closeDrawer}
           onSubmit={onSubmit}
           fields={formStructure}
           isLoading={isLoading}

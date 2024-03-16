@@ -13,7 +13,7 @@ test.describe("/proposed-changes diff data", () => {
       await expect(page.getByText("Create Proposed Change")).toBeVisible();
       await page.getByLabel("Name *").fill("pc-data-diff");
       await page
-        .locator("div:below(#Name)")
+        .locator("div:below(#Description)")
         .first()
         .getByTestId("select-open-option-button")
         .click();
@@ -26,6 +26,11 @@ test.describe("/proposed-changes diff data", () => {
       await expect(page.getByText("Namepc-data-diff")).toBeVisible();
       await expect(page.getByText("Source branchatl1-delete-transit")).toBeVisible();
       await expect(page.getByText("Stateopen")).toBeVisible();
+    });
+
+    await test.step("go to Tasks tab and do not see related node information", async () => {
+      await page.getByLabel("Tabs").getByText("Tasks").click();
+      await expect(page.locator("thead")).not.toContainText("Related node");
     });
 
     await test.step("go to Data tab and open comment form", async () => {

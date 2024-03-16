@@ -7,7 +7,7 @@ from infrahub_sdk.utils import extract_fields
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
-from infrahub.exceptions import NodeNotFound
+from infrahub.exceptions import NodeNotFoundError
 
 from .mutations import (
     BranchCreate,
@@ -28,7 +28,7 @@ from .mutations import (
     TaskCreate,
     TaskUpdate,
 )
-from .queries import BranchQueryList, DiffSummary, InfrahubInfo, Task
+from .queries import BranchQueryList, DiffSummary, DiffSummaryOld, InfrahubInfo, Relationship, Task
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo  # pylint: disable=no-name-in-module
@@ -56,7 +56,7 @@ async def account_resolver(root, info: GraphQLResolveInfo):
             account_profile = await results[0].to_graphql(db=db, fields=fields)
             return account_profile
 
-        raise NodeNotFound(
+        raise NodeNotFoundError(
             node_type=InfrahubKind.ACCOUNT,
             identifier=context.account_session.account_id,
         )
@@ -66,6 +66,9 @@ class InfrahubBaseQuery(ObjectType):
     Branch = BranchQueryList
 
     DiffSummary = DiffSummary
+    DiffSummaryOld = DiffSummaryOld
+
+    Relationship = Relationship
 
     InfrahubInfo = InfrahubInfo
 

@@ -9,8 +9,8 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
-    FileNotFound,
     RepositoryError,
+    RepositoryFileNotFoundError,
     TransformError,
 )
 from infrahub.git import (
@@ -54,7 +54,7 @@ async def test_new_empty_dir(git_upstream_repo_01, git_repos_dir):
 async def test_new_existing_directory(git_upstream_repo_01, git_repos_dir):
     # Create a directory and a file where the repository will be created
     os.mkdir(os.path.join(git_repos_dir, git_upstream_repo_01["name"]))
-    open(os.path.join(git_repos_dir, git_upstream_repo_01["name"], "file1.txt"), mode="w").close()
+    open(os.path.join(git_repos_dir, git_upstream_repo_01["name"], "file1.txt"), mode="w", encoding="utf-8").close()
 
     repo = await InfrahubRepository.new(
         id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
@@ -69,7 +69,7 @@ async def test_new_existing_directory(git_upstream_repo_01, git_repos_dir):
 
 async def test_new_existing_file(git_upstream_repo_01, git_repos_dir):
     # Create a file where the repository will be created
-    open(os.path.join(git_repos_dir, git_upstream_repo_01["name"]), mode="w").close()
+    open(os.path.join(git_repos_dir, git_upstream_repo_01["name"]), mode="w", encoding="utf-8").close()
 
     repo = await InfrahubRepository.new(
         id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
@@ -126,7 +126,7 @@ async def test_create_commit_worktree(git_repo_01: InfrahubRepository):
 
     # Modify the first file in the main branch to create a new commit
     first_file = find_first_file_in_directory(repo.directory_default)
-    with open(os.path.join(repo.directory_default, first_file), "a") as file:
+    with open(os.path.join(repo.directory_default, first_file), "a", encoding="utf-8") as file:
         file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
@@ -174,7 +174,7 @@ async def test_get_commit_worktree(git_repo_01: InfrahubRepository):
 
     # Modify the first file in the main branch to create a new commit
     first_file = find_first_file_in_directory(repo.directory_default)
-    with open(os.path.join(repo.directory_default, first_file), "a") as file:
+    with open(os.path.join(repo.directory_default, first_file), "a", encoding="utf-8") as file:
         file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
@@ -343,7 +343,7 @@ async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData):
     # Add a new commit in the main branch to have something to rebase.
     git_repo = repo.get_git_repo_main()
     first_file = find_first_file_in_directory(repo.directory_default)
-    with open(os.path.join(repo.directory_default, first_file), "a") as file:
+    with open(os.path.join(repo.directory_default, first_file), "a", encoding="utf-8") as file:
         file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
@@ -435,7 +435,7 @@ async def test_render_jinja2_template_missing(client, git_repo_jinja: InfrahubRe
 
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
-    with pytest.raises(FileNotFound):
+    with pytest.raises(RepositoryFileNotFoundError):
         await repo.render_jinja2_template(commit=commit_main, location="notthere.tpl.j2", data={})
 
 
@@ -454,7 +454,7 @@ async def test_execute_python_check_file_missing(client, git_repo_checks: Infrah
     repo = git_repo_checks
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
-    with pytest.raises(FileNotFound):
+    with pytest.raises(RepositoryFileNotFoundError):
         await repo.execute_python_check(
             branch_name="main", commit=commit_main, location="notthere.py", class_name="Check01", client=client
         )
@@ -641,7 +641,7 @@ async def test_execute_python_transform_file_missing(client, git_repo_transforms
     repo = git_repo_transforms
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
-    with pytest.raises(FileNotFound):
+    with pytest.raises(RepositoryFileNotFoundError):
         await repo.execute_python_transform(
             branch_name="main", commit=commit_main, location="transform99.py::Transform01", client=client
         )
@@ -707,7 +707,7 @@ async def test_calculate_diff_between_commits(
 
     # Add a file
     new_file = "mynewfile.txt"
-    with open(os.path.join(worktree.directory, new_file), "w") as file:
+    with open(os.path.join(worktree.directory, new_file), "w", encoding="utf-8") as file:
         file.writelines(["this is a new file\n"])
 
     # Remove a file
@@ -803,7 +803,6 @@ async def test_create_python_check_definition(
         file_path="checks/check01/check.py",
         query=str(query.id),
         timeout=check_class.timeout,
-        rebase=check_class.rebase,
     )
     obj = await repo.create_python_check_definition(branch_name="main", check=check)
 
@@ -838,7 +837,6 @@ async def test_compare_python_check(
         file_path="checks/check01/check.py",
         query=str(query_01.id),
         timeout=check_class.timeout,
-        rebase=check_class.rebase,
     )
 
     assert await repo.compare_python_check_definition(existing_check=existing_check, check=check01) is True
@@ -851,7 +849,6 @@ async def test_compare_python_check(
         file_path="checks/check01/newpath.py",
         query=str(query_01.id),
         timeout=check_class.timeout,
-        rebase=check_class.rebase,
     )
 
     assert (
@@ -870,7 +867,6 @@ async def test_compare_python_check(
         file_path="checks/check01/check.py",
         query=str(query_02.id),
         timeout=check_class.timeout,
-        rebase=check_class.rebase,
     )
 
     assert await repo.compare_python_check_definition(check=check03, existing_check=existing_check) is False

@@ -22,10 +22,11 @@ from typing import (
     cast,
 )
 
-from graphql import (  # pylint: disable=no-name-in-module
+from graphql import (
     ExecutionContext,
     ExecutionResult,
     GraphQLError,
+    GraphQLFormattedError,
     Middleware,
     OperationType,
     graphql,
@@ -33,7 +34,8 @@ from graphql import (  # pylint: disable=no-name-in-module
     subscribe,
     validate,
 )
-from graphql.utilities import (  # pylint: disable=no-name-in-module,import-error
+from graphql.error.graphql_error import format_error
+from graphql.utilities import (
     get_operation_ast,
 )
 from starlette.datastructures import UploadFile
@@ -41,26 +43,12 @@ from starlette.requests import HTTPConnection, Request
 from starlette.responses import JSONResponse, Response
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
-# pylint: disable=no-name-in-module,unused-argument,ungrouped-imports,raise-missing-from
-
-try:
-    # graphql-core==3.2.*
-    from graphql import GraphQLFormattedError
-    from graphql.error.graphql_error import format_error
-except ImportError:
-    # graphql-core==3.1.*
-    from graphql import format_error
-
-    GraphQLFormattedError = Dict[str, Any]
-
-from infrahub_sdk.utils import str_to_bool
-
-import infrahub.config as config
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
 from infrahub.core import get_branch
+from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import BranchNotFound
+from infrahub.exceptions import BranchNotFoundError, Error
 from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.log import get_logger
@@ -79,7 +67,7 @@ from .metrics import (
 if TYPE_CHECKING:
     import graphene
     from graphql import GraphQLSchema
-    from graphql.language.ast import (  # pylint: disable=no-name-in-module,import-error
+    from graphql.language.ast import (
         DocumentNode,
         OperationDefinitionNode,
     )
@@ -89,6 +77,8 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
     from .auth.query_permission_checker.checker import GraphQLQueryPermissionChecker
+
+# pylint: disable=unused-argument,raise-missing-from
 
 
 GQL_CONNECTION_ACK = "connection_ack"
@@ -146,10 +136,9 @@ class InfrahubGraphQLApp:
 
                 # Retrieve the branch name from the request and validate that it exist in the database
                 try:
-                    branch_name = request.path_params.get("branch_name", config.SETTINGS.main.default_branch)
+                    branch_name = request.path_params.get("branch_name", registry.default_branch)
                     branch = await get_branch(db=db, branch=branch_name)
-                    branch.ephemeral_rebase = str_to_bool(request.query_params.get("rebase", False))
-                except BranchNotFound as exc:
+                except BranchNotFoundError as exc:
                     response = JSONResponse({"errors": [exc.message]}, status_code=404)
 
                 if request.method == "POST" and not response:
@@ -172,9 +161,8 @@ class InfrahubGraphQLApp:
             db: InfrahubDatabase = websocket.app.state.db
 
             async with db.start_session() as db:
-                branch_name = websocket.path_params.get("branch_name", config.SETTINGS.main.default_branch)
+                branch_name = websocket.path_params.get("branch_name", registry.default_branch)
                 branch = await get_branch(db=db, branch=branch_name)
-                branch.ephemeral_rebase = str_to_bool(websocket.path_params.get("rebase", False))
 
                 await self._run_websocket_server(db=db, branch=branch, websocket=websocket)
 
@@ -251,10 +239,7 @@ class InfrahubGraphQLApp:
         if result.errors:
             for error in result.errors:
                 if error.original_error:
-                    self.logger.error(
-                        "An exception occurred in resolvers",
-                        exc_info=error.original_error,
-                    )
+                    self._log_error(error=error.original_error)
             response["errors"] = [self.error_formatter(error) for error in result.errors]
 
         json_response = JSONResponse(
@@ -277,6 +262,24 @@ class InfrahubGraphQLApp:
             GRAPHQL_QUERY_ERRORS_METRICS.labels(**labels).observe(len(errors))
 
         return json_response
+
+    def _log_error(self, error: Exception) -> None:
+        if isinstance(error, Error):
+            if 500 <= error.HTTP_CODE <= 500:
+                self.logger.error(
+                    "An exception occurred in resolvers",
+                    exc_info=error,
+                )
+            elif error.HTTP_CODE == 401:
+                self.logger.info("Permission denied within resolver", message=error.message)
+            else:
+                self.logger.debug("An exception occurred in resolvers", exc_info=error)
+
+        else:
+            self.logger.critical(
+                "Unhandled exception occurred in resolvers",
+                exc_info=error,
+            )
 
     async def _run_websocket_server(self, db: InfrahubDatabase, branch: Branch, websocket: WebSocket) -> None:
         subscriptions: Dict[str, AsyncGenerator[Any, None]] = {}

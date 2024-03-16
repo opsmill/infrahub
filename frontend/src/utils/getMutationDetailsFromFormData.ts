@@ -1,8 +1,10 @@
 import * as R from "ramda";
+import { SCHEMA_ATTRIBUTE_KIND } from "../config/constants";
 import { iNodeSchema } from "../state/atoms/schema.atom";
 
 export type MutationMode = "create" | "update";
 
+// TODO: refactor this important function for better maintenance
 const getMutationDetailsFromFormData = (
   schema: iNodeSchema | undefined,
   formData: any,
@@ -27,7 +29,13 @@ const getMutationDetailsFromFormData = (
     if (mode === "update" && existingObject) {
       const existingValue = existingObject[attribute.name]?.value;
 
-      if (mode === "update" && updatedValue === existingValue) {
+      if (existingValue && !updatedValue && attribute.kind === SCHEMA_ATTRIBUTE_KIND.DROPDOWN) {
+        // Set as null for dropdown attributes
+        updatedObject[attribute.name] = { value: null };
+        return;
+      }
+
+      if (mode === "update" && JSON.stringify(updatedValue) === JSON.stringify(existingValue)) {
         delete updatedObject[attribute.name];
       }
 
@@ -68,11 +76,7 @@ const getMutationDetailsFromFormData = (
 
         const updatedIds = updatedObject[relationship.name]?.list?.sort() ?? [];
 
-        if (
-          existingValue &&
-          updatedIds.length &&
-          JSON.stringify(updatedIds) === JSON.stringify(existingValue)
-        ) {
+        if (JSON.stringify(updatedIds) === JSON.stringify(existingValue)) {
           delete updatedObject[relationship.name];
           return;
         }
@@ -94,7 +98,9 @@ const getMutationDetailsFromFormData = (
     }
 
     if (isOneToOne && updatedObject[relationship.name] && !updatedObject[relationship.name].id) {
-      delete updatedObject[relationship.name];
+      // Set to null to remove the relationship
+      updatedObject[relationship.name] = null;
+      return;
     }
 
     if (isOneToMany && updatedObject[relationship.name] && updatedObject[relationship.name].list) {

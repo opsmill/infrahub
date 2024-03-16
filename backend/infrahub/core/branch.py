@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from pydantic import Field as FieldV2
 from pydantic import field_validator
 
-from infrahub import config
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
 )
@@ -18,18 +17,15 @@ from infrahub.core.query.branch import (
     RebaseBranchDeleteRelationshipQuery,
     RebaseBranchUpdateRelationshipQuery,
 )
-from infrahub.core.registry import get_branch, registry
+from infrahub.core.registry import get_branch_from_registry, registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import (
-    BranchNotFound,
-    ValidationError,
-)
+from infrahub.exceptions import BranchNotFoundError, InitializationError, ValidationError
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class Branch(StandardNode):
+class Branch(StandardNode):  # pylint: disable=too-many-public-methods
     name: str = FieldV2(
         max_length=250, min_length=3, description="Name of the branch (git ref standard)", validate_default=True
     )
@@ -42,17 +38,19 @@ class Branch(StandardNode):
     is_default: bool = False
     is_global: bool = False
     is_protected: bool = False
-    is_data_only: bool = False
+    sync_with_git: bool = FieldV2(
+        default=True,
+        description="Indicate if the branch should be extended to Git and if Infrahub should merge the branch in Git as part of a proposed change",
+    )
+    is_isolated: bool = False
     schema_changed_at: Optional[str] = None
     schema_hash: Optional[SchemaBranchHash] = None
 
-    ephemeral_rebase: bool = False
-
-    _exclude_attrs: List[str] = ["id", "uuid", "owner", "ephemeral_rebase"]
+    _exclude_attrs: List[str] = ["id", "uuid", "owner"]
 
     @field_validator("name", mode="before")
     @classmethod
-    def validate_branch_name(cls, value):
+    def validate_branch_name(cls, value: str) -> str:
         checks = [
             (r".*/\.", "/."),
             (r"\.\.", ".."),
@@ -83,13 +81,34 @@ class Branch(StandardNode):
 
     @field_validator("branched_from", mode="before")
     @classmethod
-    def set_branched_from(cls, value):
+    def set_branched_from(cls, value: str) -> str:
         return Timestamp(value).to_string()
 
     @field_validator("created_at", mode="before")
     @classmethod
-    def set_created_at(cls, value):
+    def set_created_at(cls, value: str) -> str:
         return Timestamp(value).to_string()
+
+    @property
+    def active_schema_hash(self) -> SchemaBranchHash:
+        if self.schema_hash:
+            return self.schema_hash
+
+        raise InitializationError("The schema_hash has not been loaded for this branch")
+
+    @property
+    def has_schema_changes(self) -> bool:
+        if not self.schema_hash:
+            return False
+
+        origin_branch = self.get_origin_branch()
+        if not origin_branch or not origin_branch.schema_hash:
+            return False
+
+        if self.schema_hash.main != origin_branch.schema_hash.main:
+            return True
+
+        return False
 
     def update_schema_hash(self, at: Optional[Union[Timestamp, str]] = None) -> bool:
         latest_schema = registry.schema.get_schema_branch(name=self.name)
@@ -114,7 +133,7 @@ class Branch(StandardNode):
         results = await db.execute_query(query=query, params=params, name="branch_get_by_name")
 
         if len(results) == 0:
-            raise BranchNotFound(identifier=name)
+            raise BranchNotFoundError(identifier=name)
 
         return cls.from_db(results[0].values()[0])
 
@@ -122,12 +141,12 @@ class Branch(StandardNode):
     def isinstance(cls, obj: Any) -> bool:
         return isinstance(obj, cls)
 
-    async def get_origin_branch(self, db: InfrahubDatabase) -> Optional[Branch]:
+    def get_origin_branch(self) -> Optional[Branch]:
         """Return the branch Object of the origin_branch."""
         if not self.origin_branch or self.origin_branch == self.name:
             return None
 
-        return await get_branch(branch=self.origin_branch, db=db)
+        return get_branch_from_registry(branch=self.origin_branch)
 
     def get_branches_in_scope(self) -> List[str]:
         """Return the list of all the branches that are constituing this branch.
@@ -135,7 +154,7 @@ class Branch(StandardNode):
         For now, either a branch is the default branch or it must inherit from it so we can only have 2 values at best
         But the idea is that it will change at some point in a future version.
         """
-        default_branch = config.SETTINGS.main.default_branch
+        default_branch = registry.default_branch
         if self.name == default_branch:
             return [self.name]
 
@@ -149,12 +168,11 @@ class Branch(StandardNode):
         if self.is_default:
             return {frozenset([self.name]): at.to_string()}
 
-        time_default_branch = Timestamp(self.branched_from)
+        time_default_branch = at
 
-        # If we are querying before the beginning of the branch
-        # the time for the main branch must be the time of the query
-        if self.ephemeral_rebase or at < time_default_branch:
-            time_default_branch = at
+        # If the branch is isolated, and if the time requested is after the creation of the branch
+        if self.is_isolated and at > Timestamp(self.branched_from):
+            time_default_branch = Timestamp(self.branched_from)
 
         return {
             frozenset([self.origin_branch]): time_default_branch.to_string(),
@@ -173,12 +191,11 @@ class Branch(StandardNode):
         if self.is_default:
             return {frozenset((GLOBAL_BRANCH_NAME, self.name)): at.to_string()}
 
-        time_default_branch = Timestamp(self.branched_from)
+        time_default_branch = at
 
-        # If we are querying before the beginning of the branch
-        # the time for the main branch must be the time of the query
-        if self.ephemeral_rebase or not is_isolated or at < time_default_branch:
-            time_default_branch = at
+        # If the branch is isolated, and if the time requested is after the creation of the branch
+        if self.is_isolated and is_isolated and at > Timestamp(self.branched_from):
+            time_default_branch = Timestamp(self.branched_from)
 
         return {
             frozenset((GLOBAL_BRANCH_NAME, self.origin_branch)): time_default_branch.to_string(),
@@ -233,7 +250,7 @@ class Branch(StandardNode):
         """
 
         filters = []
-        params = {}
+        params: dict[str, Any] = {}
 
         if not isinstance(rel_labels, list):
             raise TypeError(f"rel_labels must be a list, not a {type(rel_labels)}")
@@ -279,7 +296,7 @@ class Branch(StandardNode):
         at = Timestamp(at)
         branches_times = self.get_branches_and_times_to_query_global(at=at.to_string(), is_isolated=is_isolated)
 
-        params = {}
+        params: dict[str, Any] = {}
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
             params[f"branch{idx}"] = list(branch_name)
             params[f"time{idx}"] = time_to_query
@@ -411,7 +428,7 @@ class Branch(StandardNode):
 
         return filters, params
 
-    async def rebase(self, db: InfrahubDatabase, at: Optional[Union[str, Timestamp]] = None):
+    async def rebase(self, db: InfrahubDatabase, at: Optional[Union[str, Timestamp]] = None) -> None:
         """Rebase the current Branch with its origin branch"""
 
         at = Timestamp(at)
@@ -431,7 +448,7 @@ class Branch(StandardNode):
         # Update the branch in the registry after the rebase
         registry.branch[self.name] = self
 
-    async def rebase_graph(self, db: InfrahubDatabase, at: Optional[Timestamp] = None):
+    async def rebase_graph(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
 
         query = await GetAllBranchInternalRelationshipQuery.init(db=db, branch=self)

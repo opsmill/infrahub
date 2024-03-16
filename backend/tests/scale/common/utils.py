@@ -4,10 +4,11 @@ from dataclasses import dataclass
 from typing import Any, Dict
 
 import docker
+from infrahub_sdk import InfrahubClientSync
 from neo4j import GraphDatabase
 from neo4j.exceptions import DriverError, Neo4jError
 
-from .config import Config
+from .config import config
 
 
 @dataclass
@@ -21,9 +22,6 @@ class DbStats:
     node_count: int
     rel_count: int
     db_size: int
-
-
-config = Config()
 
 
 def random_ascii_string(length: int = 10) -> str:
@@ -97,3 +95,18 @@ RETURN 'relations' as label , count
             db_size = volume.get("UsageData", {}).get("Size")
 
     return DbStats(node_count=node_count, rel_count=rel_count, db_size=db_size)
+
+
+def prepare_node_attributes(client: InfrahubClientSync) -> dict:
+    extra_attributes = dict()
+    for i in range(config.attrs_amount):
+        extra_attributes[f"attr{i}"] = random_ascii_string()
+
+    # Create a tag to use for relationship
+    if config.rels_amount > 0:
+        tag = client.create(kind="BuiltinTag", data={"name": random_ascii_string()})
+        tag.save()
+        for i in range(config.rels_amount):
+            extra_attributes[f"rel{i}"] = tag.id
+
+    return extra_attributes

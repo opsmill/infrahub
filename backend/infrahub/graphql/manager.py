@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Type
 
 import graphene
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.core.attribute import String
 from infrahub.core.constants import InfrahubKind, RelationshipKind
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema
@@ -20,6 +20,11 @@ from .mutations import (
     InfrahubMutation,
     InfrahubProposedChangeMutation,
     InfrahubRepositoryMutation,
+)
+from .queries.diff.diff import (
+    DiffSummaryElementAttribute,
+    DiffSummaryElementRelationshipMany,
+    DiffSummaryElementRelationshipOne,
 )
 from .resolver import (
     ancestors_resolver,
@@ -64,6 +69,12 @@ def get_attr_kind(node_schema: Union[NodeSchema, GenericSchema], attr_schema: At
 
 
 class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
+    _extra_types: Dict[str, GraphQLTypes] = {
+        "DiffSummaryElementAttribute": DiffSummaryElementAttribute,
+        "DiffSummaryElementRelationshipOne": DiffSummaryElementRelationshipOne,
+        "DiffSummaryElementRelationshipMany": DiffSummaryElementRelationshipMany,
+    }
+
     def __init__(self, schema: SchemaBranch):
         self.schema = schema
 
@@ -134,7 +145,9 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         raise ValueError(f"Unable to find {name!r}")
 
     def get_all(self) -> Dict[str, GraphQLTypes]:
-        return self._graphql_types
+        infrahub_types = self._graphql_types
+        infrahub_types.update(self._extra_types)
+        return infrahub_types
 
     def set_type(self, name: str, graphql_type: GraphQLTypes) -> None:
         self._graphql_types[name] = graphql_type
@@ -195,7 +208,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def generate_object_types(self) -> None:  # pylint: disable=too-many-branches,too-many-statements
         """Generate all GraphQL objects for the schema and store them in the internal registry."""
 
-        full_schema = self.schema.get_all()
+        full_schema = self.schema.get_all(duplicate=False)
 
         # Generate all GraphQL Interface  Object first and store them in the registry
         for node_name, node_schema in full_schema.items():
@@ -259,7 +272,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             node_type = self.get_type(name=node_name)
 
             for rel in node_schema.relationships:
-                peer_schema = self.schema.get(name=rel.peer)
+                peer_schema = self.schema.get(name=rel.peer, duplicate=False)
                 if peer_schema.namespace == "Internal":
                     continue
                 peer_filters = self.generate_filters(schema=peer_schema, top_level=False)
@@ -281,7 +294,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                     )
 
             if isinstance(node_schema, NodeSchema) and node_schema.hierarchy:
-                schema = self.schema.get(name=node_schema.hierarchy)
+                schema = self.schema.get(name=node_schema.hierarchy, duplicate=False)
 
                 peer_filters = self.generate_filters(schema=schema, top_level=False)
                 peer_type = self.get_type(name=f"NestedPaginated{node_schema.hierarchy}")
@@ -296,7 +309,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def generate_query_mixin(self) -> Type[object]:
         class_attrs = {}
 
-        full_schema = self.schema.get_all()
+        full_schema = self.schema.get_all(duplicate=False)
 
         # Generate all Graphql objectType and store internally
         self.generate_object_types()
@@ -325,7 +338,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def generate_mutation_mixin(self) -> Type[object]:
         class_attrs: Dict[str, Any] = {}
 
-        full_schema = self.schema.get_all()
+        full_schema = self.schema.get_all(duplicate=False)
 
         for node_schema in full_schema.values():
             if not isinstance(node_schema, NodeSchema):
@@ -647,7 +660,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             return filters
 
         for rel in schema.relationships:
-            peer_schema = self.schema.get(name=rel.peer)
+            peer_schema = self.schema.get(name=rel.peer, duplicate=False)
 
             if peer_schema.namespace == "Internal":
                 continue

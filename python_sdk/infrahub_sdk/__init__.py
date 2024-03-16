@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import importlib.metadata
+
 from infrahub_sdk.analyzer import GraphQLOperation, GraphQLQueryAnalyzer, GraphQLQueryVariable
 from infrahub_sdk.batch import InfrahubBatch
 from infrahub_sdk.branch import InfrahubBranchManager, InfrahubBranchManagerSync
@@ -8,10 +10,10 @@ from infrahub_sdk.config import Config
 from infrahub_sdk.exceptions import (
     AuthenticationError,
     Error,
-    FilterNotFound,
+    FilterNotFoundError,
     GraphQLError,
-    NodeNotFound,
-    ServerNotReacheableError,
+    NodeNotFoundError,
+    ServerNotReachableError,
     ServerNotResponsiveError,
     ValidationError,
 )
@@ -45,13 +47,13 @@ __all__ = [
     "InfrahubNodeSync",
     "InfrahubRepositoryConfig",
     "InfrahubSchema",
-    "FilterNotFound",
+    "FilterNotFoundError",
     "generate_uuid",
     "GraphQLQueryAnalyzer",
     "GraphQLQueryVariable",
     "GraphQLError",
     "GraphQLOperation",
-    "NodeNotFound",
+    "NodeNotFoundError",
     "NodeSchema",
     "Mutation",
     "NodeStore",
@@ -61,9 +63,11 @@ __all__ = [
     "RelationshipCardinality",
     "RelationshipKind",
     "SchemaRoot",
-    "ServerNotReacheableError",
+    "ServerNotReachableError",
     "ServerNotResponsiveError",
     "Timestamp",
     "UUIDT",
     "ValidationError",
 ]
+
+__version__ = importlib.metadata.version("infrahub-sdk")

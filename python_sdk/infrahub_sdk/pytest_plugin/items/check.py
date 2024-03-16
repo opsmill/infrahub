@@ -15,6 +15,7 @@ from .base import InfrahubItem
 if TYPE_CHECKING:
     from pytest import ExceptionInfo
 
+    from infrahub_sdk.checks import InfrahubCheck
     from infrahub_sdk.pytest_plugin.models import InfrahubTest
     from infrahub_sdk.schema import InfrahubRepositoryConfigElement
 
@@ -30,16 +31,16 @@ class InfrahubCheckItem(InfrahubItem):
     ):
         super().__init__(*args, resource_name=resource_name, resource_config=resource_config, test=test, **kwargs)
 
+        self.check_instance: InfrahubCheck
+
+    def instantiate_check(self) -> None:
         self.check_instance = get_check_class_instance(
             check_config=self.resource_config,  # type: ignore[arg-type]
             search_path=self.session.infrahub_config_path.parent,  # type: ignore[attr-defined]
         )
 
-        for attr in ("query", "validate"):
-            if not hasattr(self.check_instance, attr):
-                raise CheckDefinitionError(f"Missing attribute or function {attr}")
-
     def run_check(self, variables: Dict[str, Any]) -> Any:
+        self.instantiate_check()
         return asyncio.run(self.check_instance.run(data=variables))
 
     def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
@@ -59,9 +60,18 @@ class InfrahubCheckItem(InfrahubItem):
         return super().repr_failure(excinfo, style=style)
 
 
+class InfrahubCheckSmokeItem(InfrahubCheckItem):
+    def runtest(self) -> None:
+        self.instantiate_check()
+
+        for attr in ("query", "validate"):
+            if not hasattr(self.check_instance, attr):
+                raise CheckDefinitionError(f"Missing attribute or function {attr}")
+
+
 class InfrahubCheckUnitProcessItem(InfrahubCheckItem):
     def runtest(self) -> None:
-        input_data = self.test.spec.get_input_data()
+        input_data = self.test.spec.get_input_data()  # type: ignore[union-attr]
         passed = self.run_check(input_data)
 
         if not passed and self.test.expect == InfrahubTestExpectedResult.PASS:
@@ -73,7 +83,6 @@ class InfrahubCheckIntegrationItem(InfrahubCheckItem):
         input_data = self.session.infrahub_client.query_gql_query(  # type: ignore[attr-defined]
             self.check_instance.query,
             variables=self.test.spec.get_variables_data(),  # type: ignore[union-attr]
-            rebase=self.test.spec.rebase,  # type: ignore[union-attr]
         )
         passed = self.run_check(input_data)
 

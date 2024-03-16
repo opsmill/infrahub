@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import TYPE_CHECKING, Awaitable, Callable, List, MutableMapping, Optional, TypeVar
+from typing import TYPE_CHECKING, Awaitable, Callable, List, MutableMapping, Optional, Type, TypeVar
 
 import aio_pika
 from infrahub_sdk import UUIDT
@@ -60,6 +60,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             login=self.settings.username,
             password=self.settings.password,
             port=self.settings.service_port,
+            virtualhost=self.settings.virtualhost,
         )
 
         self.channel = await self.connection.channel()
@@ -92,14 +93,12 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         await self.callback_queue.consume(self.on_callback, no_ack=True)
         await self.events_queue.consume(self.on_callback, no_ack=True)
         self.exchange = await self.channel.declare_exchange(
-            f"{config.SETTINGS.broker.namespace}.events", type="topic", durable=True
+            f"{self.settings.namespace}.events", type="topic", durable=True
         )
-        self.dlx = await self.channel.declare_exchange(
-            f"{config.SETTINGS.broker.namespace}.dlx", type="topic", durable=True
-        )
+        self.dlx = await self.channel.declare_exchange(f"{self.settings.namespace}.dlx", type="topic", durable=True)
 
         queue = await self.channel.declare_queue(
-            f"{config.SETTINGS.broker.namespace}.rpcs",
+            f"{self.settings.namespace}.rpcs",
             durable=True,
             arguments={"x-max-priority": 5},
         )
@@ -112,11 +111,12 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             "refresh.webhook.*",
             "request.*.*",
             "send.*.*",
+            "schema.*.*",
             "transform.*.*",
             "trigger.*.*",
         ]
         self.delayed_exchange = await self.channel.declare_exchange(
-            f"{config.SETTINGS.broker.namespace}.delayed", type="headers", durable=True
+            f"{self.settings.namespace}.delayed", type="headers", durable=True
         )
         for routing_key in worker_bindings:
             await queue.bind(self.exchange, routing_key=routing_key)
@@ -124,7 +124,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
         for ttl in MessageTTL.variations():
             ttl_queue = await self.channel.declare_queue(
-                f"{config.SETTINGS.broker.namespace}.delay.{ttl.name.lower()}_seconds",
+                f"{self.settings.namespace}.delay.{ttl.name.lower()}_seconds",
                 durable=True,
                 arguments={
                     "x-dead-letter-exchange": self.dlx.name,
@@ -146,12 +146,16 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         events_queue = await self.channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
 
         self.exchange = await self.channel.declare_exchange(
-            f"{config.SETTINGS.broker.namespace}.events", type="topic", durable=True
+            f"{self.settings.namespace}.events", type="topic", durable=True
         )
         await events_queue.bind(self.exchange, routing_key="refresh.registry.*")
-        self.delayed_exchange = await self.channel.get_exchange(name=f"{config.SETTINGS.broker.namespace}.delayed")
+        self.delayed_exchange = await self.channel.get_exchange(name=f"{self.settings.namespace}.delayed")
 
         await events_queue.consume(callback=self.on_callback, no_ack=True)
+        self.callback_queue = await self.channel.declare_queue(
+            name=f"worker-callback-{WORKER_IDENTITY}", exclusive=True
+        )
+        await self.callback_queue.consume(self.on_callback, no_ack=True)
 
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
         for enricher in self.message_enrichers:
@@ -166,7 +170,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         await self.channel.default_exchange.publish(self.format_message(message=message), routing_key=routing_key)
 
-    async def rpc(self, message: InfrahubMessage, response_class: ResponseClass) -> ResponseClass:  # type: ignore[override]
+    async def rpc(self, message: InfrahubMessage, response_class: Type[ResponseClass]) -> ResponseClass:
         correlation_id = str(UUIDT())
 
         future = self.loop.create_future()
@@ -180,10 +184,10 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
         response: AbstractIncomingMessage = await future
         data = json.loads(response.body)
-        return response_class(**data)  # type: ignore[operator]
+        return response_class(**data)
 
     async def subscribe(self) -> None:
-        queue = await self.channel.get_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
+        queue = await self.channel.get_queue(f"{self.settings.namespace}.rpcs")
         self.service.log.info("Waiting for RPC instructions to execute .. ")
         async with queue.iterator() as qiterator:
             async for message in qiterator:

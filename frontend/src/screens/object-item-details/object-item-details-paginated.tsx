@@ -9,10 +9,11 @@ import {
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import { BUTTON_TYPES } from "../../components/buttons/button";
+import { Retry } from "../../components/buttons/retry";
 import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
 import SlideOver from "../../components/display/slide-over";
 import { Tabs } from "../../components/tabs";
@@ -22,9 +23,10 @@ import {
   DEFAULT_BRANCH_NAME,
   MENU_EXCLUDELIST,
   TASK_OBJECT,
+  TASK_TAB,
+  TASK_TARGET,
 } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { AuthContext } from "../../decorators/withAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
@@ -34,7 +36,7 @@ import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { constructPath } from "../../utils/fetch";
-import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
+import { ObjectAttributeValue } from "../../utils/getObjectItemDisplayValue";
 import {
   getObjectAttributes,
   getObjectRelationships,
@@ -51,9 +53,12 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit-pagina
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { TaskItemDetails } from "../tasks/task-item-details";
 import { TaskItems } from "../tasks/task-items";
-import RelationshipDetails from "./relationship-details-paginated";
-import RelationshipsDetails from "./relationships-details-paginated";
 import { ObjectAttributeRow } from "./object-attribute-row";
+import RelationshipDetails from "./relationship-details-paginated";
+import { RelationshipsDetails } from "./relationships-details-paginated";
+import Content from "../layout/content";
+import { usePermission } from "../../hooks/usePermission";
+import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -69,7 +74,7 @@ export default function ObjectItemDetails(props: any) {
   const [qspTaskId, setQspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [showAddToGroupDrawer, setShowAddToGroupDrawer] = useState(false);
-  const auth = useContext(AuthContext);
+  const permission = usePermission();
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const branch = useAtomValue(currentBranchAtom);
@@ -79,6 +84,8 @@ export default function ObjectItemDetails(props: any) {
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
   const navigate = useNavigate();
+
+  const refetchRef = useRef(null);
 
   const schemaData = generic || schema;
 
@@ -115,7 +122,18 @@ export default function ObjectItemDetails(props: any) {
   `;
 
   // TODO: Find a way to avoid querying object details if we are on a tab
-  const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
+  const { loading, error, data, refetch } = useQuery(query, {
+    skip: !schemaData,
+    notifyOnNetworkStatusChange: true,
+  });
+
+  // TODO: refactor to not need the ref to refetch child query
+  const handleRefetch = () => {
+    refetch();
+    if (refetchRef?.current?.refetch) {
+      refetchRef?.current?.refetch();
+    }
+  };
 
   const objectDetailsData = schemaData && data && data[schemaData?.kind]?.edges[0]?.node;
 
@@ -129,11 +147,11 @@ export default function ObjectItemDetails(props: any) {
     return <ErrorScreen message="Something went wrong when fetching the object details." />;
   }
 
-  if (loading || !schemaData) {
+  if (!objectDetailsData && (loading || !schemaData)) {
     return <LoadingScreen />;
   }
 
-  if (!data || (data && !data[schemaData.kind]?.edges?.length)) {
+  if (!objectDetailsData) {
     return (
       <div className="flex column justify-center">
         <NoDataFound message="No item found for that id." />
@@ -147,205 +165,218 @@ export default function ObjectItemDetails(props: any) {
       name: schemaData?.label,
     },
     ...getObjectTabs(relationshipsTabs, objectDetailsData),
-    {
+    // Includes the task tab only for specific objects
+    schema?.inherit_from?.includes(TASK_TARGET) && {
       label: "Tasks",
-      name: "tasks",
+      name: TASK_TAB,
       count: data[TASK_OBJECT]?.count ?? 0,
       onClick: () => {
-        setQspTab("tasks");
+        setQspTab(TASK_TAB);
         setQspTaskId(undefined);
       },
     },
-  ];
+  ].filter(Boolean);
 
   if (!objectDetailsData) {
     return null;
   }
 
   return (
-    <div className="flex-1 overflow-auto flex flex-col">
-      <div className="bg-custom-white">
-        {!hideHeaders && (
-          <>
-            <div className="px-4 py-5 flex items-center">
-              <Link to={constructPath(`/objects/${objectname}`)}>
-                <h1 className="text-md font-semibold text-gray-900 mr-2">{schemaData.name}</h1>
-              </Link>
+    <Content>
+      {!hideHeaders && (
+        <div className="bg-custom-white">
+          <div className="px-4 py-5 flex items-center">
+            <Link to={constructPath(`/objects/${objectname}`)}>
+              <h1 className="text-md font-semibold text-gray-900 mr-2">{schemaData.name}</h1>
+            </Link>
 
-              <ChevronRightIcon
-                className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
-                aria-hidden="true"
-              />
-
-              <p className="max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
-            </div>
-
-            <div className="px-4 ">{schemaData?.description}</div>
-
-            <Tabs
-              tabs={tabs}
-              rightItems={
-                <>
-                  {schemaData.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
-
-                  <Button
-                    disabled={!auth?.permissions?.write}
-                    onClick={() => setShowEditDrawer(true)}
-                    className="mr-4">
-                    Edit
-                    <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                  </Button>
-
-                  {!schemaData.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
-                    <Button
-                      disabled={!auth?.permissions?.write}
-                      onClick={() => setShowAddToGroupDrawer(true)}
-                      className="mr-4">
-                      Manage groups
-                      <RectangleGroupIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                    </Button>
-                  )}
-                </>
-              }
+            <ChevronRightIcon
+              className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
+              aria-hidden="true"
             />
-          </>
-        )}
 
-        {!qspTab && (
-          <div className="px-4 py-5 sm:p-0 flex-1 overflow-auto">
-            <dl className="sm:divide-y sm:divide-gray-200">
-              <ObjectAttributeRow name="ID" value={objectDetailsData.id} />
-              {attributes?.map((attribute) => {
-                if (
-                  !objectDetailsData[attribute.name] ||
-                  !objectDetailsData[attribute.name].is_visible
-                ) {
-                  return null;
-                }
+            <p className="max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
 
-                return (
-                  <ObjectAttributeRow
-                    key={attribute.name}
-                    name={attribute.label as string}
-                    value={
-                      <>
-                        {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
-
-                        {objectDetailsData[attribute.name] && (
-                          <MetaDetailsTooltip
-                            items={[
-                              {
-                                label: "Updated at",
-                                value: objectDetailsData[attribute.name].updated_at,
-                                type: "date",
-                              },
-                              {
-                                label: "Update time",
-                                value: `${new Date(
-                                  objectDetailsData[attribute.name].updated_at
-                                ).toLocaleDateString()} ${new Date(
-                                  objectDetailsData[attribute.name].updated_at
-                                ).toLocaleTimeString()}`,
-                                type: "text",
-                              },
-                              {
-                                label: "Source",
-                                value: objectDetailsData[attribute.name].source,
-                                type: "link",
-                              },
-                              {
-                                label: "Owner",
-                                value: objectDetailsData[attribute.name].owner,
-                                type: "link",
-                              },
-                              {
-                                label: "Is protected",
-                                value: objectDetailsData[attribute.name].is_protected
-                                  ? "True"
-                                  : "False",
-                                type: "text",
-                              },
-                              {
-                                label: "Is inherited",
-                                value: objectDetailsData[attribute.name].is_inherited
-                                  ? "True"
-                                  : "False",
-                                type: "text",
-                              },
-                            ]}
-                            header={
-                              <div className="flex justify-between items-center w-full p-4">
-                                <div className="font-semibold">{attribute.label}</div>
-                                <Button
-                                  buttonType={BUTTON_TYPES.INVISIBLE}
-                                  disabled={!auth?.permissions?.write}
-                                  onClick={() => {
-                                    setMetaEditFieldDetails({
-                                      type: "attribute",
-                                      attributeOrRelationshipName: attribute.name,
-                                      label: attribute.label || attribute.name,
-                                    });
-                                    setShowMetaEditModal(true);
-                                  }}
-                                  data-testid="edit-metadata-button"
-                                  data-cy="metadata-edit-button">
-                                  <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
-                                </Button>
-                              </div>
-                            }
-                          />
-                        )}
-
-                        {objectDetailsData[attribute.name].is_protected && (
-                          <LockClosedIcon className="w-4 h-4" />
-                        )}
-                      </>
-                    }
-                  />
-                );
-              })}
-
-              {relationships?.map((relationship: any) => {
-                const relationshipSchema = schemaData?.relationships?.find(
-                  (relation) => relation?.name === relationship?.name
-                );
-
-                const relationshipData = relationship?.paginated
-                  ? objectDetailsData[relationship.name]?.edges
-                  : objectDetailsData[relationship.name];
-
-                return (
-                  <RelationshipDetails
-                    parentNode={objectDetailsData}
-                    mode="DESCRIPTION-LIST"
-                    parentSchema={schemaData}
-                    key={relationship.name}
-                    relationshipsData={relationshipData}
-                    relationshipSchema={relationshipSchema}
-                  />
-                );
-              })}
-            </dl>
+            <div className="ml-2">
+              <Retry isLoading={loading} onClick={handleRefetch} />
+            </div>
           </div>
-        )}
-      </div>
 
-      {qspTab && qspTab !== "tasks" && (
+          <div className="px-4 ">{schemaData?.description}</div>
+
+          <Tabs
+            tabs={tabs}
+            rightItems={
+              <>
+                {schemaData.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
+
+                <ButtonWithTooltip
+                  disabled={!permission.write.allow}
+                  tooltipEnabled={!permission.write.allow}
+                  tooltipContent={permission.write.message ?? undefined}
+                  onClick={() => setShowEditDrawer(true)}
+                  className="mr-4">
+                  Edit
+                  <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                </ButtonWithTooltip>
+
+                {!schemaData.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
+                  <ButtonWithTooltip
+                    disabled={!permission.write.allow}
+                    tooltipEnabled={!permission.write.allow}
+                    tooltipContent={permission.write.message ?? undefined}
+                    onClick={() => setShowAddToGroupDrawer(true)}
+                    className="mr-4">
+                    Manage groups
+                    <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                  </ButtonWithTooltip>
+                )}
+              </>
+            }
+          />
+        </div>
+      )}
+
+      {!qspTab && (
+        <dl className="bg-custom-white divide-y">
+          <ObjectAttributeRow name="ID" value={objectDetailsData.id} />
+          {attributes.map((attribute) => {
+            if (
+              !objectDetailsData[attribute.name] ||
+              !objectDetailsData[attribute.name].is_visible
+            ) {
+              return null;
+            }
+
+            return (
+              <ObjectAttributeRow
+                key={attribute.name}
+                name={attribute.label as string}
+                value={
+                  <>
+                    <ObjectAttributeValue
+                      attributeSchema={attribute}
+                      attributeValue={objectDetailsData[attribute.name]}
+                    />
+
+                    {objectDetailsData[attribute.name] && (
+                      <MetaDetailsTooltip
+                        items={[
+                          {
+                            label: "Updated at",
+                            value: objectDetailsData[attribute.name].updated_at,
+                            type: "date",
+                          },
+                          {
+                            label: "Update time",
+                            value: `${new Date(
+                              objectDetailsData[attribute.name].updated_at
+                            ).toLocaleDateString()} ${new Date(
+                              objectDetailsData[attribute.name].updated_at
+                            ).toLocaleTimeString()}`,
+                            type: "text",
+                          },
+                          {
+                            label: "Source",
+                            value: objectDetailsData[attribute.name].source,
+                            type: "link",
+                          },
+                          {
+                            label: "Owner",
+                            value: objectDetailsData[attribute.name].owner,
+                            type: "link",
+                          },
+                          {
+                            label: "Is protected",
+                            value: objectDetailsData[attribute.name].is_protected
+                              ? "True"
+                              : "False",
+                            type: "text",
+                          },
+                          {
+                            label: "Is inherited",
+                            value: objectDetailsData[attribute.name].is_inherited
+                              ? "True"
+                              : "False",
+                            type: "text",
+                          },
+                        ]}
+                        header={
+                          <div className="flex justify-between items-center w-full p-4">
+                            <div className="font-semibold">{attribute.label}</div>
+                            <ButtonWithTooltip
+                              buttonType={BUTTON_TYPES.INVISIBLE}
+                              disabled={!permission.write.allow}
+                              tooltipEnabled={!permission.write.allow}
+                              tooltipContent={permission.write.message ?? undefined}
+                              onClick={() => {
+                                setMetaEditFieldDetails({
+                                  type: "attribute",
+                                  attributeOrRelationshipName: attribute.name,
+                                  label: attribute.label || attribute.name,
+                                });
+                                setShowMetaEditModal(true);
+                              }}
+                              data-testid="edit-metadata-button"
+                              data-cy="metadata-edit-button">
+                              <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
+                            </ButtonWithTooltip>
+                          </div>
+                        }
+                      />
+                    )}
+
+                    {objectDetailsData[attribute.name].is_protected && (
+                      <LockClosedIcon className="w-4 h-4" />
+                    )}
+                  </>
+                }
+              />
+            );
+          })}
+
+          {relationships?.map((relationship: any) => {
+            const relationshipSchema = schemaData?.relationships?.find(
+              (relation) => relation?.name === relationship?.name
+            );
+
+            const relationshipData = relationship?.paginated
+              ? objectDetailsData[relationship.name]?.edges
+              : objectDetailsData[relationship.name];
+
+            return (
+              <RelationshipDetails
+                parentNode={objectDetailsData}
+                mode="DESCRIPTION-LIST"
+                parentSchema={schemaData}
+                key={relationship.name}
+                relationshipsData={relationshipData}
+                relationshipSchema={relationshipSchema}
+              />
+            );
+          })}
+        </dl>
+      )}
+
+      {qspTab && qspTab !== TASK_TAB && (
         <RelationshipsDetails
           parentNode={objectDetailsData}
           parentSchema={schemaData}
           refetchObjectDetails={refetch}
+          ref={refetchRef}
         />
       )}
 
-      {qspTab && qspTab === "tasks" && !qspTaskId && <TaskItems />}
+      {qspTab && qspTab === TASK_TAB && !qspTaskId && (
+        <TaskItems ref={refetchRef} hideRelatedNode />
+      )}
 
-      {qspTab && qspTab === "tasks" && qspTaskId && (
+      {qspTab && qspTab === TASK_TAB && qspTaskId && (
         <div>
           <div className="flex bg-custom-white text-sm">
             <Link
               to={constructPath(pathname, [
-                { name: QSP.TAB, value: "tasks" },
+                { name: QSP.TAB, value: TASK_TAB },
                 { name: QSP.TASK_ID, exclude: true },
               ])}
               className="flex items-center p-2 ">
@@ -354,30 +385,30 @@ export default function ObjectItemDetails(props: any) {
             </Link>
           </div>
 
-          <TaskItemDetails />
+          <TaskItemDetails ref={refetchRef} />
         </div>
       )}
 
       <SlideOver
         title={
           <div className="space-y-2">
-            <div className="flex items-center w-full">
-              <div className="flex items-center">
-                <div className="text-base font-semibold leading-6 text-gray-900">
-                  {schemaData.label}
-                </div>
+            <div className="flex items-start">
+              <div className="flex-grow flex items-center flex-wrap overflow-hidden">
+                <span className="font-semibold text-gray-900 truncate">{schemaData.label}</span>
+
                 <ChevronRightIcon
-                  className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
+                  className="w-4 h-4 flex-shrink-0 mx-2 text-gray-400"
                   aria-hidden="true"
                 />
-                <p className="max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
+
+                <span className="flex-grow text-gray-500 overflow-hidden break-words line-clamp-3">
+                  {objectDetailsData.display_label}
+                </span>
               </div>
 
-              <div className="flex-1"></div>
-
-              <div className="flex items-center">
-                <Icon icon={"mdi:layers-triple"} />
-                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+              <div className="flex items-center ml-3">
+                <Icon icon="mdi:layers-triple" />
+                <span className="ml-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</span>
               </div>
             </div>
 
@@ -495,6 +526,6 @@ export default function ObjectItemDetails(props: any) {
           row={objectDetailsData}
         />
       </SlideOver>
-    </div>
+    </Content>
   );
 }

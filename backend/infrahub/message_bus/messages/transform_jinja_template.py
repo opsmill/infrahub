@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import Field
 
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse, InfrahubResponseData
@@ -18,7 +20,7 @@ class TransformJinjaTemplate(InfrahubMessage):
 
 
 class TransformJinjaTemplateResponseData(InfrahubResponseData):
-    rendered_template: str = Field(..., description="Rendered template in string format")
+    rendered_template: Optional[str] = Field(None, description="Rendered template in string format")
 
 
 class TransformJinjaTemplateResponse(InfrahubResponse):

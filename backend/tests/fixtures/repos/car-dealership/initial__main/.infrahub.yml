@@ -1,0 +1,21 @@
+---
+
+check_definitions:
+  - name: "car_description_check"
+    file_path: "checks/car_overview.py"
+    class_name: "CarDescription"
+
+jinja2_transforms:
+  - name: person_with_cars
+    description: "Template to a report card showing a person and the cars they own"
+    query: "person_with_cars"
+    template_path: "templates/person_with_cars.j2"
+
+artifact_definitions:
+  - name: "Ownership report"
+    artifact_name: "car-owner"
+    parameters:
+      name: "name__value"
+    content_type: "text/plain"
+    targets: "people"
+    transformation: "person_with_cars"

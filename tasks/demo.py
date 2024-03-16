@@ -1,5 +1,6 @@
 """Replacement for Makefile."""
 import re
+import sys
 from time import sleep
 
 from invoke import Context, task
@@ -49,7 +50,7 @@ def build(
     print("Building images")
 
     if service and service not in AVAILABLE_SERVICES:
-        exit(f"{service} is not a valid service ({AVAILABLE_SERVICES})")
+        sys.exit(f"{service} is not a valid service ({AVAILABLE_SERVICES})")
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
@@ -191,6 +192,16 @@ def load_infra_data(context: Context, database: str = INFRAHUB_DATABASE):
 
 
 @task(optional=["database"])
+def fake_proposed_change(context: Context, database: str = INFRAHUB_DATABASE):
+    """Load some demo data."""
+    with context.cd(ESCAPED_REPO_PATH):
+        compose_files_cmd = build_compose_files_cmd(database=database)
+        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
+        command = f"{base_cmd} run infrahub-git infrahubctl run utilities/proposed_change_faker.py"
+        execute_command(context=context, command=command)
+
+
+@task(optional=["database"])
 def infra_git_import(context: Context, database: str = INFRAHUB_DATABASE):
     """Load some demo data."""
     REPO_NAME = "infrahub-demo-edge"
@@ -199,7 +210,7 @@ def infra_git_import(context: Context, database: str = INFRAHUB_DATABASE):
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
         execute_command(
             context=context,
-            command=f"{base_cmd} run infrahub-git cp -r backend/tests/fixtures/repos/{REPO_NAME} /remote/",
+            command=f"{base_cmd} run infrahub-git cp -r backend/tests/fixtures/repos/{REPO_NAME}/initial__main /remote/{REPO_NAME}",
         )
         execute_command(
             context=context,

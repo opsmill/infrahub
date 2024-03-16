@@ -1,23 +1,19 @@
 import { gql } from "@apollo/client";
-import {
-  ArrowTopRightOnSquareIcon,
-  CheckCircleIcon,
-  ExclamationCircleIcon,
-  ExclamationTriangleIcon,
-  QuestionMarkCircleIcon,
-} from "@heroicons/react/24/outline";
-import { useAtom } from "jotai";
-import { Badge } from "../../../components/display/badge";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { MoreButton } from "../../../components/buttons/more-button";
+import Accordion from "../../../components/display/accordion";
 import { DateDisplay } from "../../../components/display/date-display";
 import { PopOver } from "../../../components/display/popover";
-import { Link } from "../../../components/utils/link";
+import { CodeEditor } from "../../../components/editor/code-editor";
+import { Skeleton } from "../../../components/skeleton";
+import { List } from "../../../components/table/list";
 import { Tooltip } from "../../../components/utils/tooltip";
 import { getCheckDetails } from "../../../graphql/queries/diff/getCheckDetails";
 import useQuery from "../../../hooks/useQuery";
-import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
+import { schemaKindLabelState } from "../../../state/atoms/schemaKindLabel.atom";
 import { classNames } from "../../../utils/common";
 import ErrorScreen from "../../error-screen/error-screen";
-import LoadingScreen from "../../loading-screen/loading-screen";
 import { Conflict } from "./conflict";
 
 type tCheckProps = {
@@ -27,13 +23,25 @@ type tCheckProps = {
 const getCheckIcon = (conclusion?: string) => {
   switch (conclusion) {
     case "success": {
-      return <CheckCircleIcon className="mr-2 h-6 w-6 text-green-500" />;
+      return (
+        <Tooltip message={"Success"}>
+          <Icon icon={"mdi:check-circle-outline"} className="text-green-500 mr-2" />
+        </Tooltip>
+      );
     }
     case "failure": {
-      return <ExclamationCircleIcon className="mr-2 h-6 w-6 text-red-500" />;
+      return (
+        <Tooltip message={"Failure"}>
+          <Icon icon={"mdi:warning"} className="text-red-500 mr-2" />
+        </Tooltip>
+      );
     }
     default: {
-      return <ExclamationTriangleIcon className="mr-2 h-6 w-6 text-yellow-500" />;
+      return (
+        <Tooltip message={"In progress"}>
+          <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500 mr-2" />
+        </Tooltip>
+      );
     }
   }
 };
@@ -44,13 +52,13 @@ const getCheckBorderColor = (severity?: string) => {
       return "border-green-400";
     }
     case "info": {
-      return "border-yellow-500";
+      return "border-yellow-400";
     }
     case "warning": {
-      return "border-orange-500";
+      return "border-orange-400";
     }
     case "error": {
-      return "border-red-300";
+      return "border-red-400";
     }
     case "critical": {
       return "border-red-600";
@@ -67,6 +75,8 @@ const getCheckData = (check: any, refetch: Function) => {
   switch (__typename) {
     case "CoreDataCheck": {
       const { id, conflicts } = check;
+
+      if (!conflicts?.values?.length) return null;
 
       return (
         <div>
@@ -87,7 +97,7 @@ const getCheckData = (check: any, refetch: Function) => {
 export const Check = (props: tCheckProps) => {
   const { id } = props;
 
-  const [schemaKindName] = useAtom(schemaKindNameState);
+  const schemaKindLabel = useAtomValue(schemaKindLabelState);
 
   const queryString = getCheckDetails({
     id,
@@ -113,48 +123,6 @@ export const Check = (props: tCheckProps) => {
     conclusion,
   } = check;
 
-  const MoreButton = (
-    <div className="p-1 cursor-pointer">
-      <QuestionMarkCircleIcon className="h-6 w-6 text-custom-blue-green" aria-hidden="true" />
-    </div>
-  );
-
-  const url = "/";
-
-  const tooltipMessage = "Open validator in checks view";
-
-  const renderContent = () => {
-    return (
-      <div>
-        <div className="flex mb-1">
-          <span className="flex-1">Type:</span>
-
-          <Badge className="flex-1">{schemaKindName[__typename]}</Badge>
-        </div>
-
-        <div className="flex mb-1">
-          <span className="flex-1">Kind:</span>
-
-          <Badge className="flex-1">{kind?.value}</Badge>
-        </div>
-
-        <div className="flex">
-          <span className="flex-1">Origin:</span>
-
-          <Badge className="flex-1">{origin?.value}</Badge>
-        </div>
-      </div>
-    );
-  };
-
-  if (loading) {
-    return (
-      <div className={"flex flex-col rounded-md p-2 bg-custom-white border-l-4"}>
-        <LoadingScreen />
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className={"flex flex-col rounded-md p-2 bg-custom-white border-l-4"}>
@@ -163,49 +131,78 @@ export const Check = (props: tCheckProps) => {
     );
   }
 
+  const content = getCheckData(check, refetch);
+
+  const columns = [
+    {
+      name: "type",
+      label: "Type",
+    },
+    {
+      name: "kind",
+      label: "Kind",
+    },
+    {
+      name: "origin",
+      label: "Origin",
+    },
+  ];
+
+  const row = {
+    values: {
+      type: schemaKindLabel[__typename],
+      kind: kind?.value,
+      origin: origin?.value,
+    },
+  };
+
   return (
     <div
       className={classNames(
-        "flex flex-col rounded-md p-2 bg-custom-white border-l-4",
+        "flex flex-col rounded-md p-2 bg-gray-50 border border-l-4",
         getCheckBorderColor(severity?.value)
       )}>
       <div className="flex mb-2">
-        <div className="flex flex-1 flex-col mr-2">
+        <div className="flex flex-1 flex-col">
           <div className="flex items-center">
-            {getCheckIcon(conclusion?.value)}
+            {loading ? (
+              <Skeleton className="h-3 w-3 mr-2 rounded" />
+            ) : (
+              getCheckIcon(conclusion?.value)
+            )}
 
-            {name?.value || display_label}
+            {loading ? <Skeleton className="h-3 w-40" /> : name?.value || display_label}
 
-            <div className="ml-2">
-              <Tooltip message={tooltipMessage}>
-                <Link to={url} target="_blank">
-                  <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                </Link>
-              </Tooltip>
+            <div className="flex-1 flex items-center justify-end">
+              {loading ? (
+                <Skeleton className="h-3 w-24" />
+              ) : (
+                <DateDisplay date={created_at?.value} />
+              )}
+
+              <PopOver buttonComponent={MoreButton}>
+                <List columns={columns} row={row} />
+              </PopOver>
             </div>
           </div>
 
-          <div className="flex items-center min-h-[50px] text-gray-500">
-            {message?.value}
-
-            {!message?.value && <span className="italic text-center">Empty message</span>}
-          </div>
-        </div>
-
-        <div className="flex flex-col justify-start">
-          <div className="flex items-center">
-            <DateDisplay date={created_at?.value} />
-
-            <PopOver buttonComponent={MoreButton}>{renderContent}</PopOver>
-          </div>
+          {message?.value && (
+            <div className="mt-2">
+              <Accordion title={"Message"}>
+                <CodeEditor value={message?.value} disabled dark />
+              </Accordion>
+            </div>
+          )}
         </div>
       </div>
 
-      <div>
-        <div className="border-t-2 border-gray-100 mb-2 rounded-md" />
+      {content && (
+        <div>
+          <div className="border-t-2 border-gray-100 mb-2 rounded-md" />
 
-        {getCheckData(check, refetch)}
-      </div>
+          {content}
+        </div>
+      )}
     </div>
   );
 };

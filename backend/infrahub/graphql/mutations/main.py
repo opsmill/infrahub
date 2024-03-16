@@ -14,11 +14,14 @@ from infrahub.auth import (
 )
 from infrahub.core import registry
 from infrahub.core.constants import MutationAction
+from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import NodeNotFound, ValidationError
+from infrahub.database import retry_db_transaction
+from infrahub.dependencies.registry import get_component_registry
+from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
@@ -91,7 +94,7 @@ class InfrahubMutationMixin:
                 f"Unexpected class Name: {cls.__name__}, should end with Create, Update, Upsert, or Delete"
             )
 
-        # Reset the time of the query to garantee that all resolvers executed after this point will account for the changes
+        # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
         context.at = Timestamp()
 
         if config.SETTINGS.broker.enable and context.background:
@@ -113,6 +116,7 @@ class InfrahubMutationMixin:
         return mutation
 
     @classmethod
+    @retry_db_transaction(name="object_create")
     async def mutate_create(
         cls,
         root: dict,
@@ -124,6 +128,8 @@ class InfrahubMutationMixin:
     ) -> Tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
+        component_registry = get_component_registry()
+        node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
         node_class = Node
         if cls._meta.schema.kind in registry.node:
@@ -133,7 +139,7 @@ class InfrahubMutationMixin:
             obj = await node_class.init(db=db, schema=cls._meta.schema, branch=branch, at=at)
             await obj.new(db=db, **data)
             fields_to_validate = list(data)
-            await obj.validate_constraints(db=db, branch=branch, filters=fields_to_validate)
+            await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
 
             if db.is_transaction:
                 await obj.save(db=db)
@@ -152,6 +158,7 @@ class InfrahubMutationMixin:
         return obj, cls(**result)
 
     @classmethod
+    @retry_db_transaction(name="object_update")
     async def mutate_update(
         cls,
         root: dict,
@@ -164,6 +171,8 @@ class InfrahubMutationMixin:
     ):
         context: GraphqlContext = info.context
         db = database or context.db
+        component_registry = get_component_registry()
+        node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
         obj = node or await NodeManager.get_one_by_id_or_default_filter(
             db=db,
@@ -181,9 +190,11 @@ class InfrahubMutationMixin:
         try:
             await obj.from_graphql(db=db, data=data)
             fields_to_validate = list(data)
-            await obj.validate_constraints(db=db, branch=branch, at=at, filters=fields_to_validate)
-            node_id = data.pop("id", obj.id)
+            await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
+            node_id = data.get("id", obj.id)
             fields = list(data.keys())
+            if "id" in fields:
+                fields.remove("id")
             validate_mutation_permissions_update_node(
                 operation=cls.__name__, node_id=node_id, account_session=context.account_session, fields=fields
             )
@@ -205,6 +216,7 @@ class InfrahubMutationMixin:
         return obj, cls(**result)
 
     @classmethod
+    @retry_db_transaction(name="object_upsert")
     async def mutate_upsert(
         cls,
         root: dict,
@@ -233,6 +245,7 @@ class InfrahubMutationMixin:
         return created_obj, mutation, True
 
     @classmethod
+    @retry_db_transaction(name="object_delete")
     async def mutate_delete(
         cls,
         root,
@@ -244,7 +257,7 @@ class InfrahubMutationMixin:
         context: GraphqlContext = info.context
 
         if not (obj := await NodeManager.get_one(db=context.db, id=data.get("id"), branch=branch, at=at)):
-            raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
+            raise NodeNotFoundError(branch, cls._meta.schema.kind, data.get("id"))
 
         async with context.db.start_transaction() as db:
             await obj.delete(db=db, at=at)

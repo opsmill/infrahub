@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, String
 
@@ -20,8 +20,10 @@ class BranchType(InfrahubObjectType):
     origin_branch = String(required=False)
     branched_from = String(required=False)
     created_at = String(required=False)
-    is_data_only = Boolean(required=False)
+    sync_with_git = Boolean(required=False)
     is_default = Boolean(required=False)
+    is_isolated = Boolean(required=False)
+    has_schema_changes = Boolean(required=False)
 
     class Meta:
         description = "Branch"
@@ -29,7 +31,12 @@ class BranchType(InfrahubObjectType):
         model = Branch
 
     @classmethod
-    async def get_list(cls, fields: dict, context: GraphqlContext, *args, **kwargs):  # pylint: disable=unused-argument
+    async def get_list(
+        cls,
+        fields: dict,
+        context: GraphqlContext,
+        **kwargs: Any,
+    ) -> list[dict[str, Any]]:
         async with context.db.start_session() as db:
             objs = await Branch.get_list(db=db, **kwargs)
 

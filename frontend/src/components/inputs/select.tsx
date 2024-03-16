@@ -181,9 +181,11 @@ export const Select = (props: SelectProps) => {
         setOpen(true);
         return;
       }
-      setSelectedOption(newValue);
+
       setOpen(false);
+      setSelectedOption(newValue);
       onChange(newValue.map((item) => item.id));
+
       return;
     }
 
@@ -201,8 +203,8 @@ export const Select = (props: SelectProps) => {
 
     setLocalOptions([...localOptions, newItem]);
 
-    if (multiple && Array.isArray(value)) {
-      handleChange([...value, newItem]);
+    if (multiple) {
+      handleChange([...(selectedOption ?? []), newItem]);
 
       return;
     }
@@ -724,7 +726,7 @@ export const Select = (props: SelectProps) => {
         multiple={multiple}
         by={comparedOptions}
         {...otherProps}>
-        <div className="relative mt-1">
+        <div className="relative">
           <Combobox.Input
             as={multiple ? MultipleInput : Input}
             value={getInputValue()}

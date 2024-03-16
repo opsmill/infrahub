@@ -2,9 +2,10 @@ import pytest
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.server import app
 
-from infrahub_sdk import Config, InfrahubClient, SchemaRoot
-from infrahub_sdk.exceptions import NodeNotFound
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.exceptions import NodeNotFoundError, UninitializedError
 from infrahub_sdk.node import InfrahubNode
 
 from .conftest import InfrahubTestClient
@@ -15,10 +16,6 @@ from .conftest import InfrahubTestClient
 class TestInfrahubNode:
     @pytest.fixture(scope="class")
     async def test_client(self):
-        # pylint: disable=import-outside-toplevel
-
-        from infrahub.server import app
-
         return InfrahubTestClient(app)
 
     @pytest.fixture
@@ -27,12 +24,10 @@ class TestInfrahubNode:
         return await InfrahubClient.init(config=config)
 
     @pytest.fixture(scope="class")
-    async def load_builtin_schema(
-        self, db: InfrahubDatabase, test_client: InfrahubTestClient, builtin_org_schema: SchemaRoot
-    ):
+    async def load_builtin_schema(self, db: InfrahubDatabase, test_client: InfrahubTestClient, builtin_org_schema):
         config = Config(username="admin", password="infrahub", requester=test_client.async_request)
         client = await InfrahubClient.init(config=config)
-        success, response = await client.schema.load(schemas=[builtin_org_schema.dict()])
+        success, response = await client.schema.load(schemas=[builtin_org_schema])
         assert response is None
         assert success
 
@@ -85,7 +80,7 @@ class TestInfrahubNode:
         assert node_pre_delete
         assert node_pre_delete.id
         await node_pre_delete.delete()
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             await client.get(kind="CoreAccount", name__value="delete-my-account")
 
     async def test_node_create_with_relationships(
@@ -285,3 +280,58 @@ class TestInfrahubNode:
 
         # pylint: disable=no-member
         assert node.name.value == "cdg01"  # type: ignore[attr-defined]
+
+    async def test_relationship_manager_errors_without_fetch(self, client: InfrahubClient, load_builtin_schema):
+        organization = await client.create("CoreOrganization", name="organization-1")
+        await organization.save()
+        tag = await client.create("BuiltinTag", name="blurple")
+        await tag.save()
+
+        with pytest.raises(UninitializedError, match=r"Must call fetch"):
+            organization.tags.add(tag)
+
+        await organization.tags.fetch()
+        organization.tags.add(tag)
+        await organization.save()
+
+        organization = await client.get("CoreOrganization", name__value="organization-1")
+        assert [t.id for t in organization.tags.peers] == [tag.id]
+
+    async def test_relationships_not_overwritten(
+        self, client: InfrahubClient, load_builtin_schema, schema_extension_01
+    ):
+        await client.schema.load(schemas=[schema_extension_01])
+        rack = await client.create("InfraRack", name="rack-1")
+        await rack.save()
+        tag = await client.create("BuiltinTag", name="blizzow")
+        # TODO: is it a bug that we need to save the object and fetch the tags before adding to a RelationshipManager now?
+        await tag.save()
+        await tag.racks.fetch()
+        tag.racks.add(rack)
+        await tag.save()
+        tag_2 = await client.create("BuiltinTag", name="blizzow2")
+        await tag_2.save()
+
+        # the "rack" object has no link to the "tag" object here
+        # rack.tags.peers is empty
+        rack.name.value = "New Rack Name"
+        await rack.save()
+
+        # assert that the above rack.save() did not overwrite the existing Rack-Tag relationship
+        refreshed_rack = await client.get("InfraRack", id=rack.id)
+        await refreshed_rack.tags.fetch()
+        assert [t.id for t in refreshed_rack.tags.peers] == [tag.id]
+
+        # check that we can purposefully remove a tag
+        refreshed_rack.tags.remove(tag.id)
+        await refreshed_rack.save()
+        rack_without_tag = await client.get("InfraRack", id=rack.id)
+        await rack_without_tag.tags.fetch()
+        assert rack_without_tag.tags.peers == []
+
+        # check that we can purposefully add a tag
+        rack_without_tag.tags.add(tag_2)
+        await rack_without_tag.save()
+        refreshed_rack_with_tag = await client.get("InfraRack", id=rack.id)
+        await refreshed_rack_with_tag.tags.fetch()
+        assert [t.id for t in refreshed_rack_with_tag.tags.peers] == [tag_2.id]

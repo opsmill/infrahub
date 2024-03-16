@@ -3,45 +3,21 @@ from __future__ import annotations
 import glob
 import hashlib
 import json
-import linecache
 from itertools import groupby
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID, uuid4
 
 import httpx
-import yaml
 from git.repo import Repo
 from graphql import (  # pylint: disable=no-name-in-module
     FieldNode,
     InlineFragmentNode,
     SelectionSetNode,
 )
-from rich.syntax import Syntax
-from rich.traceback import Frame, Traceback
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
-
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
-
-
-class YamlFile(pydantic.BaseModel):
-    identifier: str
-    location: Path
-    content: Optional[dict] = None
-    valid: bool = True
-    error_message: Optional[str] = None
-
-    def load_content(self) -> None:
-        try:
-            self.content = yaml.safe_load(self.location.read_text())
-        except yaml.YAMLError:
-            self.error_message = "Invalid YAML/JSON file"
-            self.valid = False
 
 
 def base36encode(number: int) -> str:
@@ -321,32 +297,6 @@ async def extract_fields(selection_set: Optional[SelectionSetNode]) -> Optional[
                     fields[sub_node.name.value].update(value)
 
     return fields
-
-
-def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3) -> List[Tuple[Frame, Syntax]]:
-    """This function identifies the faulty Jinja2 code and beautify it to provide meaningful information to the user.
-
-    We use the rich's Traceback to parse the complete stack trace and extract Frames for each expection found in the trace.
-    """
-    response = []
-
-    # Extract only the Jinja related exception
-    for frame in [frame for frame in traceback.trace.stacks[0].frames if frame.filename.endswith(".j2")]:
-        code = "".join(linecache.getlines(frame.filename))
-        lexer_name = Traceback._guess_lexer(frame.filename, code)
-        syntax = Syntax(
-            code,
-            lexer_name,
-            line_numbers=True,
-            line_range=(frame.lineno - nbr_context_lines, frame.lineno + nbr_context_lines),
-            highlight_lines={frame.lineno},
-            code_width=88,
-            theme=traceback.theme,
-            dedent=False,
-        )
-        response.append((frame, syntax))
-
-    return response
 
 
 async def extract_fields_first_node(info: GraphQLResolveInfo) -> Dict[str, Dict]:

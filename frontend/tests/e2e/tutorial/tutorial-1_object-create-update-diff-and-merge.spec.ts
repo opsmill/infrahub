@@ -22,7 +22,9 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
 
     await test.step("confirm creation and update UI", async () => {
-      await expect(page.locator("#alert-success")).toContainText("Organization created");
+      await expect(page.locator("#alert-success-Organization-created")).toContainText(
+        "Organization created"
+      );
       await expect(page.locator("tbody")).toContainText("my-first-org");
       await expect(page.locator("tbody")).toContainText("My-First-Org");
       await expect(page.locator("tbody")).toContainText("Testing Infrahub");
@@ -125,14 +127,14 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await test.step("Row my-first-org is not visible when date prior to its creation is selected", async () => {
       const dateAt5MinAgo = format(subMinutes(new Date(), 50), "iiii, MMMM do,");
-      await page.getByTestId("date-picker").locator("input").click();
+      await page.getByTestId("timeframe-selector").click();
       await saveScreenshotForDocs(page, "tutorial_2_historical");
       await page.getByLabel(`Choose ${dateAt5MinAgo}`).click();
       await expect(page.locator("tbody")).not.toContainText("my-first-org");
     });
 
     await test.step("Row my-first-org is visible again when we reset date input", async () => {
-      await page.getByRole("button", { name: "Reset" }).click();
+      await page.getByTestId("reset-timeframe-selector").click();
       await expect(page.locator("tbody")).toContainText("my-first-org");
     });
   });

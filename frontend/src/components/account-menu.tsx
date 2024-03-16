@@ -1,11 +1,10 @@
 import { gql } from "@apollo/client";
 import { Menu, Transition } from "@headlessui/react";
 import { useAtom } from "jotai/index";
-import { Fragment, useContext, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Fragment, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../config/constants";
-import { AuthContext } from "../decorators/withAuth";
 import { getProfileDetails } from "../graphql/queries/profile/getProfileDetails";
 import { useLazyQuery } from "../hooks/useQuery";
 import { userNavigation } from "../screens/layout/navigation-list";
@@ -13,12 +12,14 @@ import { schemaState } from "../state/atoms/schema.atom";
 import { classNames, parseJwt } from "../utils/common";
 import { Avatar } from "./display/avatar";
 import { ALERT_TYPES, Alert } from "./utils/alert";
+import { useAuth } from "../hooks/useAuth";
 
 const customId = "profile-alert";
 
 export const AccountMenu = () => {
-  const auth = useContext(AuthContext);
+  const { isAuthenticated, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [schemaList] = useAtom(schemaState);
   const schema = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
 
@@ -55,14 +56,11 @@ export const AccountMenu = () => {
     });
 
     // Sign out because there is nothing from the API for that user id
-    if (auth?.signOut) {
-      auth?.signOut();
-    }
-
+    signOut();
     navigate("/");
   }
 
-  return auth?.accessToken ? (
+  return isAuthenticated ? (
     <Menu as="div">
       <Menu.Button
         className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2"
@@ -96,21 +94,20 @@ export const AccountMenu = () => {
           ))}
 
           <Menu.Item>
-            <Link
-              to={"/"}
-              className={"block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"}
-              onClick={() => auth?.signOut?.()}>
+            <button
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"
+              onClick={() => signOut()}>
               Sign out
-            </Link>
+            </button>
           </Menu.Item>
         </Menu.Items>
       </Transition>
     </Menu>
   ) : (
     <Link
-      to={window.location.pathname}
-      className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md whitespace-nowrap"
-      onClick={() => auth?.displaySignIn?.()}>
+      to="/signin"
+      state={{ from: location }}
+      className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md whitespace-nowrap">
       Sign in
     </Link>
   );

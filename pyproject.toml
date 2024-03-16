@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.11.2"
+version = "0.12.0"
 description = ""
 authors = ["OpsMill <info@opsmill.com>"]
 
@@ -13,25 +13,13 @@ packages = [
 optional = true
 
 [tool.poetry.dependencies]
-python = "^3.8, < 3.12"
-infrahub-sdk = {path = "python_sdk", develop=true}
-pydantic = "^2.5"
-pydantic-settings = "^2.1"
-fastapi-storages = "~0.2"
-pytest = "*"
-
-[tool.poetry.group.server.dependencies]
-fastapi = "~0.108"
-starlette-exporter = "^0.12.0"
-python-multipart = "^0.0.6"         # Required by FastAPI to upload large files
-asgi-correlation-id = "4.2.0"       # Middleware for FastAPI to generate ID per request
-bcrypt = "~4.1"                     # Used to hash and validate password
-pyjwt = "~2.8"                      # Used to manage JWT tokens
-uvicorn = {version = "~0.21", extras = ["standard"]}
-gunicorn = "^20.1"
-graphene = "~3.2"
-neo4j = "~5.15"
-aio-pika = "~9.3"
+python = "^3.8, < 3.13"
+neo4j = "~5.18"
+infrahub-sdk = {path = "python_sdk", extras = ["ctl","tests"], develop=true}
+pydantic = "~2.6"
+pydantic-settings = "~2.2"
+pytest = "~7.4"
+aio-pika = "~9.4"
 structlog = "^22.3.0"
 boto3 = "~1.33.11"
 email-validator = "~2.1"
@@ -41,6 +29,20 @@ opentelemetry-sdk = "~1.21"
 opentelemetry-instrumentation-fastapi = "^0.42b0"
 opentelemetry-exporter-otlp-proto-http = "~1.21"
 opentelemetry-exporter-otlp-proto-grpc = "~1.21"
+typer = "~0.7"
+
+# Dependencies specific to the API Server
+fastapi = "~0.110"
+fastapi-storages = "~0.3"
+graphene = "~3.3"
+gunicorn = "^21.2"
+lunr = "^0.7.0.post1"
+starlette-exporter = "~0.21"
+python-multipart = "^0.0.6"         # Required by FastAPI to upload large files
+asgi-correlation-id = "4.2.0"       # Middleware for FastAPI to generate ID per request
+bcrypt = "~4.1"                     # Used to hash and validate password
+pyjwt = "~2.8"                      # Used to manage JWT tokens
+uvicorn = {version = "~0.27", extras = ["standard"]}
 
 [tool.poetry.group.dev.dependencies]
 yamllint = "*"
@@ -60,10 +62,10 @@ types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
 ruff = "0.1.8"
-buildkite-test-collector = "^0.1.7"
 invoke = "2.2.0"
 pytest-benchmark = "^4.0.0"
 pytest-codspeed = "^2.2.0"
+deepdiff = "^6.2"
 
 [tool.poetry.group.test-scale.dependencies]
 locust = "^2.20.1"
@@ -125,6 +127,7 @@ disable = """,
     unsupported-assignment-operation,
     not-an-iterable,
     too-many-return-statements,
+    unnecessary-comprehension,
     """
 
 [tool.pylint.miscellaneous]
@@ -143,7 +146,6 @@ testpaths = [
 ]
 filterwarnings = [
     "ignore:Module already imported so cannot be rewritten",
-    "ignore:the imp module is deprecated",
     "ignore:Deprecated call to",
 ]
 addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope"
@@ -152,11 +154,31 @@ addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope"
 [tool.mypy]
 pretty = true
 ignore_missing_imports = true
-exclude = "^backend/tests/"
+disallow_untyped_defs = true
+exclude = [
+    "^backend/tests/scale",
+    "^backend/tests/unit",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.*"
 disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "tests.benchmark.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "tests.conftest"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "tests.fixtures.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "tests.integration.*"
+disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = "infrahub.api.artifact"
@@ -168,10 +190,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.api.exception_handlers"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.api.schema"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -188,14 +206,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.attribute"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.branch"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.initialization"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -251,11 +261,23 @@ module = "infrahub.core.registry"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.relationship"
+module = "infrahub.core.schema"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.schema"
+module = "infrahub.core.schema.attribute_schema"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.core.schema.basenode_schema"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.core.schema.node_schema"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.core.schema.relationship_schema"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -264,10 +286,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.utils"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.config"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -355,10 +373,6 @@ module = "infrahub.graphql.types.node"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.types.branch"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.graphql.types.interface"
 ignore_errors = true
 
@@ -372,10 +386,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.lock"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -427,21 +437,29 @@ task-tags = [
 preview = true
 
 select = [
-    "C90",  # mccabe complexity
-    "DJ",   # flake8-django
-    "DTZ",  # flake8-datetimez
-    "E",    # pycodestyle errors
-    "EXE",  # flake8-executable
-    "F",    # pyflakes
-    "I",    # isort-like checks
-    "ICN",  # flake8-import-conventions
-    "PL",   # pylint
-    "Q",    # flake8-quotes
-    "TCH",  # flake8-type-checking
-    "TRIO", # flake8-trio
-    "T10",  # flake8-debugger
-    "W",    # pycodestyle warnings
-    "YTT",  # flake8-2020
+    "ASYNC", # flake8-async
+    "B",     # flake8-bugbear
+    "C4",    # flake8-comprehensions
+    "C90",   # mccabe complexity
+    "DJ",    # flake8-django
+    "DTZ",   # flake8-datetimez
+    "E",     # pycodestyle errors
+    "EXE",   # flake8-executable
+    "F",     # pyflakes
+    "I",     # isort-like checks
+    "ICN",   # flake8-import-conventions
+    "INP",   # flake8-no-pep420
+    "N",     # pep8-naming
+    "PIE",   # flake8-pie
+    "PL",    # pylint
+    "PYI",   # flake8-pyi
+    "Q",     # flake8-quotes
+    "RET",   # flake8-return
+    "TCH",   # flake8-type-checking
+    "TRIO",  # flake8-trio
+    "T10",   # flake8-debugger
+    "W",     # pycodestyle warnings
+    "YTT",   # flake8-2020
 ]
 
 ignore = [
@@ -451,28 +469,48 @@ ignore = [
 # like this so that we can reactivate them one by one. Alternatively ignored after further       #
 # investigation if they are deemed to not make sense.                                            #
 ##################################################################################################
-    "PLC0415", # `import` should be at the top-level of a file
-    "PLC1901", # `display_label.strip() == ""` can be simplified to `not display_label.strip()` as an empty string is falsey
-    "PLR0402", # [*] Use `from infrahub import config` in lieu of alias
-    "PLR0904", # Too many public methods
-    "PLR0912", # Too many branches
-    "PLR0913", # Too many arguments in function definition
-    "PLR0915", # Too many statements
-    "PLR0916", # Too many Boolean expressions
-    "PLR0917", # Too many positional arguments
-    "PLR1704", # Redefining argument with the local name `db`
-    "PLR1706", # Consider using if-else expression
-    "PLR1722", # Use `sys.exit()` instead of `exit`
-    "PLR2004", # Magic value used in comparison this could possibly be fine in the tests folders
-    "PLR5501", # Use `elif` instead of `else` then `if`, to reduce indentation
-    "PLR6201", # Use a `set` literal when testing for membership
-    "PLR6301", # Method could be a function, class method, or static method
-    "PLW0602", # Using global for `validated_database` but no assignment is done
-    "PLW0603", # Using the global statement to update `SETTINGS` is discouraged
-    "PLW1508", # Invalid type for environment variable default; expected `str` or `None`
-    "PLW1514", # `open` in text mode without explicit `encoding` argument
-    "PLW2901", # `for` loop variable `path` overwritten by assignment target
-    "PLW3201", # Bad or misspelled dunder method name `__init_subclass_with_meta__`
+    "ASYNC101", # Async functions should not call `open`, `time.sleep`, or `subprocess` methods
+    "B006",     # Do not use mutable data structures for argument defaults
+    "B007",     # Loop control variable not used within loop body
+    "B008",     # Do not perform function call `Depends` in argument defaults;
+    "B009",     # [*] Do not call `getattr` with a constant attribute value. It is not any safer than normal property access.
+    "B010",     # [*] Do not call `setattr` with a constant attribute value. It is not any safer than normal property access.
+    "B015",     # Pointless comparison. Did you mean to assign a value? Otherwise, prepend `assert` or remove it
+    "B018",     # Found useless expression. Either assign it to a variable or remove it.
+    "B026",     # Star-arg unpacking after a keyword argument is strongly discouraged
+    "B904",     # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    "C403",     # Unnecessary `list` comprehension (rewrite as a `set` comprehension)
+    "C408",     # Unnecessary `dict` call (rewrite as a literal)
+    "C409",     # Unnecessary `list` literal passed to `tuple()` (rewrite as a `tuple` literal)
+    "C414",     # Unnecessary `list` call within `sorted()`
+    "C419",     # Unnecessary list comprehension.
+    "N801",     # Class name should use CapWords convention
+    "N802",     # Function name should be lowercase
+    "N805",     # First argument of a method should be named self
+    "N806",     # Variable in function should be lowercase
+    "N811",     # Constant imported as non-constant
+    "N812",     # Lowercase imported as non-lowercase
+    "PIE804",   # [*] Unnecessary `dict` kwargs
+    "PIE807",   # Prefer `dict` over useless lambda
+    "PIE808",   # [*] Unnecessary `start` argument in `range`
+    "PLC0415",  # `import` should be at the top-level of a file
+    "PLR0904",  # Too many public methods
+    "PLR0912",  # Too many branches
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0915",  # Too many statements
+    "PLR0916",  # Too many Boolean expressions
+    "PLR0917",  # Too many positional arguments
+    "PLR1706",  # Consider using if-else expression
+    "PLR2004",  # Magic value used in comparison this could possibly be fine in the tests folders
+    "PLR6201",  # Use a `set` literal when testing for membership
+    "PLR6301",  # Method could be a function, class method, or static method
+    "PLW0603",  # Using the global statement to update `SETTINGS` is discouraged
+    "PLW1508",  # Invalid type for environment variable default; expected `str` or `None`
+    "PLW2901",  # `for` loop variable `path` overwritten by assignment target
+    "PLW3201",  # Bad or misspelled dunder method name `__init_subclass_with_meta__`
+    "RET502",   # [*] Do not implicitly `return None` in function able to return non-`None` value
+    "RET503",   # Missing explicit `return` at the end of function able to return non-`None` value
+    "RET504",   # Unnecessary assignment before `return` statement
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/

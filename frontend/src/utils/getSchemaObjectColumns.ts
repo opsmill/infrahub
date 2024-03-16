@@ -9,7 +9,7 @@ import {
   relationshipsForTabs,
 } from "../config/constants";
 import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
-import { sortByOrderWeight } from "./common";
+import { isGeneric, sortByOrderWeight } from "./common";
 
 export const getObjectAttributes = (
   schema: iNodeSchema | iGenericSchema | undefined,
@@ -97,7 +97,14 @@ export const getSchemaObjectColumns = (
     return columns.slice(0, limit);
   }
 
-  return columns;
+  const kindColumn = {
+    label: "Kind",
+    name: "__typename",
+  };
+
+  // columns.length > 0 needed because of relationship-details-paginated.tsx
+  // Relationship needs refactoring to handle this better
+  return isGeneric(schema) && columns.length > 0 ? [kindColumn, ...columns] : columns;
 };
 
 export const getGroupColumns = (schema?: iNodeSchema | iGenericSchema) => {
@@ -170,6 +177,11 @@ export const getFieldValue = (row: any, attribute: any) => {
     return null;
   }
 
+  if (attribute.kind === "JSON") {
+    // Ensure we use objects as values
+    return typeof value === "string" ? JSON.parse(value) : value;
+  }
+
   return value ?? null;
 };
 
@@ -199,11 +211,7 @@ export const getRelationshipValue = (row: any, field: any) => {
 export const getRelationshipOptions = (row: any, field: any, schemas: any[], generics: any[]) => {
   const value = row && (row[field.name]?.node ?? row[field.name]);
 
-  if (!value) {
-    return [];
-  }
-
-  if (value.edges) {
+  if (value?.edges) {
     return value.edges.map((edge: any) => ({
       name: edge.node.display_label,
       id: edge.node.id,
@@ -225,6 +233,10 @@ export const getRelationshipOptions = (row: any, field: any, schemas: any[], gen
     });
 
     return options;
+  }
+
+  if (!value) {
+    return [];
   }
 
   const option = {

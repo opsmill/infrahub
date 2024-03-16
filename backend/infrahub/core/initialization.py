@@ -34,7 +34,7 @@ async def get_root_node(db: InfrahubDatabase, initialize: bool = False) -> Root:
     return roots[0]
 
 
-async def initialization(db: InfrahubDatabase):
+async def initialization(db: InfrahubDatabase) -> None:
     if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
         session = await db.session()
         await session.run(query="SET DATABASE SETTING 'log.level' TO 'INFO'")
@@ -48,7 +48,8 @@ async def initialization(db: InfrahubDatabase):
         log.debug("Checking Root Node")
 
         root = await get_root_node(db=db, initialize=True)
-        registry.id = root.uuid
+        registry.id = str(root.get_uuid())
+        registry.default_branch = root.default_branch
 
     # ---------------------------------------------------
     # Initialize the Storage Driver
@@ -72,14 +73,16 @@ async def initialization(db: InfrahubDatabase):
         registry.schema.register_schema(schema=schema)
 
         # Import the default branch
-        default_branch: Branch = registry.get_branch_from_registry(branch=config.SETTINGS.main.default_branch)
-        hash_in_db = default_branch.schema_hash.main
-        await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        default_branch: Branch = registry.get_branch_from_registry(branch=registry.default_branch)
+        hash_in_db = default_branch.active_schema_hash.main
+        schema_default_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
+
         if default_branch.update_schema_hash():
             log.warning(
                 "New schema detected after pulling the schema from the db",
                 hash_current=hash_in_db,
-                hash_new=default_branch.schema_hash.main,
+                hash_new=default_branch.active_schema_hash.main,
                 branch=default_branch.name,
             )
 
@@ -87,14 +90,14 @@ async def initialization(db: InfrahubDatabase):
             if branch.name in [default_branch.name, GLOBAL_BRANCH_NAME]:
                 continue
 
-            hash_in_db = branch.schema_hash.main
+            hash_in_db = branch.active_schema_hash.main
             log.info("Importing schema", branch=branch.name)
             await registry.schema.load_schema(db=db, branch=branch)
 
             if branch.update_schema_hash():
                 log.warning(
                     f"New schema detected after pulling the schema from the db :"
-                    f" {hash_in_db!r} >> {branch.schema_hash.main!r}",
+                    f" {hash_in_db!r} >> {branch.active_schema_hash.main!r}",
                     branch=branch.name,
                 )
 
@@ -118,23 +121,24 @@ async def initialization(db: InfrahubDatabase):
 
 
 async def create_root_node(db: InfrahubDatabase) -> Root:
-    root = Root(graph_version=GRAPH_VERSION)
+    root = Root(graph_version=GRAPH_VERSION, default_branch=config.SETTINGS.initial.default_branch)
     await root.save(db=db)
     log.info(f"Generated instance ID : {root.uuid} (v{GRAPH_VERSION})")
 
     registry.id = root.id
+    registry.default_branch = root.default_branch
 
     return root
 
 
 async def create_default_branch(db: InfrahubDatabase) -> Branch:
     branch = Branch(
-        name=config.SETTINGS.main.default_branch,
+        name=registry.default_branch,
         status="OPEN",
         description="Default Branch",
         hierarchy_level=1,
         is_default=True,
-        is_data_only=False,
+        sync_with_git=True,
     )
     await branch.save(db=db)
     registry.branch[branch.name] = branch
@@ -151,7 +155,7 @@ async def create_global_branch(db: InfrahubDatabase) -> Branch:
         description="Global Branch",
         hierarchy_level=1,
         is_global=True,
-        is_data_only=False,
+        sync_with_git=False,
     )
     await branch.save(db=db)
     registry.branch[branch.name] = branch
@@ -162,7 +166,7 @@ async def create_global_branch(db: InfrahubDatabase) -> Branch:
 
 
 async def create_branch(
-    branch_name: str, db: InfrahubDatabase, description: str = "", at: Optional[str] = None
+    branch_name: str, db: InfrahubDatabase, description: str = "", isolated: bool = False, at: Optional[str] = None
 ) -> Branch:
     """Create a new Branch, currently all the branches are based on Main
 
@@ -174,8 +178,10 @@ async def create_branch(
         hierarchy_level=2,
         description=description,
         is_default=False,
+        sync_with_git=False,
         created_at=at,
         branched_from=at,
+        is_isolated=isolated,
     )
 
     origin_schema = registry.schema.get_schema_branch(name=branch.origin_branch)
@@ -191,7 +197,38 @@ async def create_branch(
     return branch
 
 
-async def first_time_initialization(db: InfrahubDatabase):
+async def create_account(
+    db: InfrahubDatabase,
+    name: str = "admin",
+    role: str = "admin",
+    password: Optional[str] = None,
+    token_value: Optional[str] = None,
+) -> Node:
+    token_schema = registry.schema.get_node_schema(name=InfrahubKind.ACCOUNTTOKEN)
+    obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await obj.new(
+        db=db,
+        name=name,
+        type="User",
+        role=role,
+        password=password,
+    )
+    await obj.save(db=db)
+    log.info(f"Created Account: {name}", account_name=name)
+
+    if token_value:
+        token = await Node.init(db=db, schema=token_schema)
+        await token.new(
+            db=db,
+            token=token_value,
+            account=obj,
+        )
+        await token.save(db=db)
+
+    return obj
+
+
+async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create the default Branch
     # --------------------------------------------------
@@ -211,29 +248,15 @@ async def first_time_initialization(db: InfrahubDatabase):
     registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)
     default_branch.update_schema_hash()
     await default_branch.save(db=db)
-    log.info("Created the Schema in the database", hash=default_branch.schema_hash.main)
+    log.info("Created the Schema in the database", hash=default_branch.active_schema_hash.main)
 
     # --------------------------------------------------
     # Create Default Users and Groups
     # --------------------------------------------------
-    token_schema = registry.schema.get(name=InfrahubKind.ACCOUNTTOKEN)
-    obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-    await obj.new(
+
+    await create_account(
         db=db,
         name="admin",
-        type="User",
-        role="admin",
         password=config.SETTINGS.security.initial_admin_password,
-        # groups=[admin_grp],
+        token_value=config.SETTINGS.security.initial_admin_token,
     )
-    await obj.save(db=db)
-    log.info(f"Created Account: {obj.name.value}", account_name=obj.name.value)
-
-    if config.SETTINGS.security.initial_admin_token:
-        token = await Node.init(db=db, schema=token_schema)
-        await token.new(
-            db=db,
-            token=config.SETTINGS.security.initial_admin_token,
-            account=obj,
-        )
-        await token.save(db=db)

@@ -1,32 +1,12 @@
-from typing import Any, List, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from infrahub.services import InfrahubServices
 from infrahub.services.scheduler import InfrahubScheduler, Schedule, run_schedule
 
-
-class FakeLogger:
-    def __init__(self) -> None:
-        self.info_logs: List[Optional[str]] = []
-        self.error_logs: List[Optional[str]] = []
-
-    def debug(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        """Send a debug event"""
-
-    def info(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        self.info_logs.append(event)
-
-    def warning(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        """Send a warning event"""
-
-    def error(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        """Send an error event."""
-        self.error_logs.append(event)
-
-    def critical(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        """Send a critical event."""
-
-    def exception(self, event: Optional[str] = None, *args: Any, **kw: Any) -> Any:
-        """Send an exception event."""
+if TYPE_CHECKING:
+    from tests.adapters.log import FakeLogger
 
 
 async def nothing_to_see(service: InfrahubServices) -> None:
@@ -40,9 +20,8 @@ async def log_once_and_stop(service: InfrahubServices) -> None:
         service.scheduler.running = False
 
 
-async def test_scheduler_return_on_not_running():
+async def test_scheduler_return_on_not_running(fake_log: FakeLogger):
     """The scheduler should return without writing entries to the log if it is not running."""
-    fake_log = FakeLogger()
     schedule_manager = InfrahubScheduler()
     schedule_manager.running = False
     service = InfrahubServices(log=fake_log)
@@ -53,9 +32,9 @@ async def test_scheduler_return_on_not_running():
     assert len(fake_log.info_logs) == 0
 
 
-async def test_scheduler_exit_after_first():
+async def test_scheduler_exit_after_first(fake_log: FakeLogger):
     """The scheduler should return without writing entries to the log if it is not running."""
-    fake_log = FakeLogger()
+
     schedule_manager = InfrahubScheduler()
     schedule_manager.running = True
     service = InfrahubServices(log=fake_log)
@@ -69,9 +48,8 @@ async def test_scheduler_exit_after_first():
     assert fake_log.info_logs[2] == "Writing entry to the log"
 
 
-async def test_scheduler_task_with_error():
+async def test_scheduler_task_with_error(fake_log: FakeLogger):
     """The scheduler should return without writing entries to the log if it is not running."""
-    fake_log = FakeLogger()
     schedule_manager = InfrahubScheduler()
     schedule_manager.running = True
     service = InfrahubServices(log=fake_log)

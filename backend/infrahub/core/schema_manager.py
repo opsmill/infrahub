@@ -5,10 +5,9 @@ import hashlib
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from infrahub_sdk.utils import compare_lists, duplicates
-from pydantic import BaseModel, Field
+from infrahub_sdk.utils import compare_lists, duplicates, intersection
+from pydantic import BaseModel
 
-import infrahub.config as config
 from infrahub import lock
 from infrahub.core import get_branch, get_branch_from_registry
 from infrahub.core.constants import (
@@ -17,29 +16,39 @@ from infrahub.core.constants import (
     RESTRICTED_NAMESPACES,
     BranchSupportType,
     FilterSchemaKind,
+    HashableModelState,
     InfrahubKind,
     RelationshipCardinality,
     RelationshipDirection,
     RelationshipKind,
-    UpdateSupport,
-    UpdateValidationErrorType,
 )
 from infrahub.core.manager import NodeManager
-from infrahub.core.models import HashableModelDiff, SchemaBranchDiff, SchemaBranchHash
+from infrahub.core.migrations import MIGRATION_MAP
+from infrahub.core.models import (
+    HashableModelDiff,
+    SchemaBranchDiff,
+    SchemaBranchHash,
+    SchemaDiff,
+    SchemaUpdateValidationResult,
+)
 from infrahub.core.node import Node
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
+from infrahub.core.registry import registry
 from infrahub.core.schema import (
+    AttributePathParsingError,
     AttributeSchema,
     BaseNodeSchema,
     FilterSchema,
     GenericSchema,
     NodeSchema,
     RelationshipSchema,
+    SchemaAttributePath,
     SchemaRoot,
     internal_schema,
 )
 from infrahub.core.utils import parse_node_kind
-from infrahub.exceptions import SchemaNotFound
+from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
+from infrahub.exceptions import SchemaNotFoundError
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
 from infrahub.utils import format_label
@@ -52,15 +61,13 @@ if TYPE_CHECKING:
     from graphql import GraphQLSchema
 
     from infrahub.core.branch import Branch
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 # pylint: disable=redefined-builtin,too-many-public-methods,too-many-lines
 
 INTERNAL_SCHEMA_NODE_KINDS = [node["namespace"] + node["name"] for node in internal_schema["nodes"]]
-SUPPORTED_SCHEMA_NODE_TYPE = [
-    "SchemaGeneric",
-    "SchemaNode",
-]
+
 SUPPORTED_SCHEMA_EXTENSION_TYPE = ["NodeExtensionSchema"]
 
 KIND_FILTER_MAP = {
@@ -73,50 +80,7 @@ KIND_FILTER_MAP = {
     "Dropdown": FilterSchemaKind.TEXT,
 }
 
-
-class SchemaDiff(BaseModel):
-    added: Dict[str, HashableModelDiff] = Field(default_factory=dict)
-    changed: Dict[str, HashableModelDiff] = Field(default_factory=dict)
-    removed: Dict[str, HashableModelDiff] = Field(default_factory=dict)
-
-    @property
-    def all(self) -> List[str]:
-        return list(self.changed.keys()) + list(self.added.keys()) + list(self.removed.keys())
-
-
-class SchemaUpdateValidationError(BaseModel):
-    schema_name: str
-    field_name: str
-    field_type: Optional[str] = None
-    prop_name: Optional[str] = None
-    error: UpdateValidationErrorType
-    message: Optional[str] = None
-
-    def to_string(self) -> str:
-        return f"{self.error.value!r}: {self.schema_name} {self.field_name} {self.message}"
-
-
-class SchemaUpdateMigrationInfo(BaseModel):
-    schema_name: str
-    field_name: str
-    field_type: Optional[str] = None
-    prop_name: Optional[str] = None
-    migration_name: str
-
-
-class SchemaUpdateCheckInfo(BaseModel):
-    schema_name: str
-    field_name: str
-    field_type: Optional[str] = None
-    prop_name: Optional[str] = None
-    check_name: str
-
-
-class SchemaUpdateValidationResult(BaseModel):
-    errors: List[SchemaUpdateValidationError] = Field(default_factory=list)
-    checks: List[SchemaUpdateCheckInfo] = Field(default_factory=list)
-    migrations: List[SchemaUpdateMigrationInfo] = Field(default_factory=list)
-    diff: SchemaDiff
+IGNORE_FOR_NODE = {"id", "state", "filters", "relationships", "attributes"}
 
 
 class SchemaNamespace(BaseModel):
@@ -137,6 +101,25 @@ class SchemaBranch:
             self.nodes = data.get("nodes", {})
             self.generics = data.get("generics", {})
 
+    @property
+    def node_names(self) -> List[str]:
+        return list(self.nodes.keys())
+
+    @property
+    def generic_names(self) -> List[str]:
+        return list(self.generics.keys())
+
+    def get_all_kind_id_map(self) -> Dict[str, str]:
+        kind_id_map = {}
+        for name in self.all_names:
+            item = self.get(name=name, duplicate=False)
+            kind_id_map[name] = item.id
+        return kind_id_map
+
+    @property
+    def all_names(self) -> List[str]:
+        return self.node_names + self.generic_names
+
     def get_hash(self) -> str:
         """Calculate the hash for this objects based on the content of nodes and generics.
 
@@ -153,8 +136,13 @@ class SchemaBranch:
         return SchemaBranchHash(main=self.get_hash(), nodes=self.nodes, generics=self.generics)
 
     def to_dict(self) -> Dict[str, Any]:
-        # TODO need to implement a flag to return the real objects if needed
         return {"nodes": self.nodes, "generics": self.generics}
+
+    def to_dict_schema_object(self, duplicate: bool = False) -> Dict[str, Dict[str, Union[NodeSchema, GenericSchema]]]:
+        return {
+            "nodes": {name: self.get(name, duplicate=duplicate) for name in self.nodes},
+            "generics": {name: self.get(name, duplicate=duplicate) for name in self.generics},
+        }
 
     def clear_cache(self):
         self._graphql_manager = None
@@ -183,15 +171,22 @@ class SchemaBranch:
 
     def diff(self, other: SchemaBranch) -> SchemaDiff:
         # Identify the nodes or generics that have been added or removed
-        local_keys = list(self.nodes.keys()) + list(self.generics.keys())
-        other_keys = list(other.nodes.keys()) + list(other.generics.keys())
+        local_kind_id_map = self.get_all_kind_id_map()
+        other_kind_id_map = other.get_all_kind_id_map()
+        clean_local_ids = [id for id in local_kind_id_map.values() if id is not None]
+        clean_other_ids = [id for id in other_kind_id_map.values() if id is not None]
+        shared_ids = intersection(list1=clean_local_ids, list2=clean_other_ids)
+
+        local_keys = [kind for kind, id in local_kind_id_map.items() if id not in shared_ids]
+        other_keys = [kind for kind, id in other_kind_id_map.items() if id not in shared_ids]
+
         present_both, present_local_only, present_other_only = compare_lists(list1=local_keys, list2=other_keys)
 
         added_elements = {element: HashableModelDiff() for element in present_other_only}
         removed_elements = {element: HashableModelDiff() for element in present_local_only}
         schema_diff = SchemaDiff(added=added_elements, removed=removed_elements)
 
-        # Process of the one that have been updated to identify the list of fields impacted
+        # Process of the one that have been updated to identify the list of impacted fields
         for key in present_both:
             local_node = self.get(name=key, duplicate=False)
             other_node = other.get(name=key, duplicate=False)
@@ -199,135 +194,49 @@ class SchemaBranch:
             if diff_node.has_diff:
                 schema_diff.changed[key] = diff_node
 
+        reversed_map_local = dict(map(reversed, local_kind_id_map.items()))
+        reversed_map_other = dict(map(reversed, other_kind_id_map.items()))
+
+        for shared_id in shared_ids:
+            local_node = self.get(name=reversed_map_local[shared_id], duplicate=False)
+            other_node = other.get(name=reversed_map_other[shared_id], duplicate=False)
+            diff_node = other_node.diff(other=local_node)
+            if other_node.state == HashableModelState.ABSENT:
+                schema_diff.removed[reversed_map_other[shared_id]] = None
+            elif diff_node.has_diff:
+                schema_diff.changed[reversed_map_other[shared_id]] = diff_node
+
         return schema_diff
+
+    def update(self, schema: SchemaBranch) -> None:
+        """Update another SchemaBranch into this one."""
+
+        local_kinds = list(self.nodes.keys()) + list(self.generics.keys())
+        other_kinds = list(schema.nodes.keys()) + list(schema.generics.keys())
+
+        in_both, _, other_only = compare_lists(list1=local_kinds, list2=other_kinds)
+
+        for item_kind in in_both:
+            other_item = schema.get(name=item_kind)
+            new_item = self.get(name=item_kind)
+            new_item.update(other_item)
+            self.set(name=item_kind, schema=new_item)
+
+        for item_kind in other_only:
+            other_item = schema.get(name=item_kind)
+            self.set(name=item_kind, schema=other_item)
+
+        # for item_kind in local_only:
+        #     if item_kind in self.nodes:
+        #         del self.nodes[item_kind]
+        #     else:
+        #         del self.generics[item_kind]
 
     def validate_update(self, other: SchemaBranch) -> SchemaUpdateValidationResult:
         diff = self.diff(other=other)
-
-        result = SchemaUpdateValidationResult(diff=diff)
-
-        for schema_name, schema_diff in diff.changed.items():
-            schema = self.get(name=schema_name, duplicate=False)
-
-            # Nothing to do today if we add a new model in the schema
-            # for node_field_name, _ in schema_diff.added.items():
-            #     pass
-
-            # Not possible today, we need to add some specific mutations to support that
-            # for node_field_name, _ in schema_diff.removed.items():
-            #     pass
-
-            for node_field_name, node_field_diff in schema_diff.changed.items():
-                if node_field_diff and node_field_name in ["attributes", "relationships"]:
-                    field_type = node_field_name[:-1]  # Remove the trailing 's's
-
-                    for field_name, _ in node_field_diff.added.items():
-                        if field_type == "attribute":
-                            result.migrations.append(
-                                SchemaUpdateMigrationInfo(
-                                    schema_name=schema_name, field_name=field_name, migration_name="node.attribute.add"
-                                )
-                            )
-
-                    for field_name, _ in node_field_diff.removed.items():
-                        result.migrations.append(
-                            SchemaUpdateMigrationInfo(
-                                schema_name=schema_name,
-                                field_name=field_name,
-                                migration_name=f"node.{field_type}.remove",
-                            )
-                        )
-
-                    for field_name, sub_field_diff in node_field_diff.changed.items():
-                        field = schema.get_field(name=field_name)
-
-                        for prop_name, _ in sub_field_diff.changed.items():
-                            field_info = field.model_fields[prop_name]
-                            field_update = field_info.json_schema_extra.get("update")
-                            self._validate_field(
-                                schema_name=schema_name,
-                                field_name=field_name,
-                                field_type=field_type,
-                                prop_name=prop_name,
-                                field_update=field_update,
-                                result=result,
-                            )
-
-                else:
-                    field_info = schema.model_fields[node_field_name]
-                    field_update = field_info.json_schema_extra.get("update")
-                    self._validate_field(
-                        schema_name=schema_name,
-                        field_name=node_field_name,
-                        prop_name=node_field_name,
-                        field_type="node",
-                        field_update=field_update,
-                        result=result,
-                    )
-
+        result = SchemaUpdateValidationResult.init(diff=diff, schema=other)
+        result.validate_all(migration_map=MIGRATION_MAP, validator_map=CONSTRAINT_VALIDATOR_MAP)
         return result
-
-    def _validate_field(
-        self,
-        schema_name: str,
-        field_name: str,
-        field_type: str,
-        prop_name: str,
-        field_update: str,
-        result: SchemaUpdateValidationResult,
-    ) -> None:
-        if field_update == UpdateSupport.NOT_SUPPORTED.value:
-            result.errors.append(
-                SchemaUpdateValidationError(
-                    schema_name=schema_name,
-                    field_name=field_name,
-                    field_type=field_type,
-                    prop_name=prop_name,
-                    error=UpdateValidationErrorType.NOT_SUPPORTED,
-                )
-            )
-        elif field_update == UpdateSupport.MIGRATION_REQUIRED.value:
-            migration_name = f"{field_type}.{prop_name}.update"
-            result.migrations.append(
-                SchemaUpdateMigrationInfo(
-                    schema_name=schema_name,
-                    field_name=field_name,
-                    field_type=field_type,
-                    prop_name=prop_name,
-                    migration_name=migration_name,
-                )
-            )
-            result.errors.append(
-                SchemaUpdateValidationError(
-                    schema_name=schema_name,
-                    field_name=field_name,
-                    field_type=field_type,
-                    prop_name=prop_name,
-                    error=UpdateValidationErrorType.MIGRATION_NOT_AVAILABLE,
-                    message=f"'{migration_name}' is not available yet",
-                )
-            )
-        elif field_update == UpdateSupport.CHECK_CONSTRAINTS.value:
-            check_name = f"{field_type}.{prop_name}.update"
-            result.checks.append(
-                SchemaUpdateCheckInfo(
-                    schema_name=schema_name,
-                    field_name=field_name,
-                    prop_name=prop_name,
-                    field_type=field_type,
-                    check_name=check_name,
-                )
-            )
-            result.errors.append(
-                SchemaUpdateValidationError(
-                    schema_name=schema_name,
-                    field_name=field_name,
-                    field_type=field_type,
-                    prop_name=prop_name,
-                    error=UpdateValidationErrorType.CHECK_NOT_AVAILABLE,
-                    message=f"'{check_name}' is not available yet",
-                )
-            )
 
     def duplicate(self, name: Optional[str] = None) -> SchemaBranch:
         """Duplicate the current object but conserve the same cache."""
@@ -356,7 +265,7 @@ class SchemaBranch:
         To ensure that no-one will ever change an object in the cache,
         by default the function always returns a copy of the object, not the object itself
 
-        If duplicate is set to false, the real objet will be returned.
+        If duplicate is set to false, the real object will be returned.
         """
         key = None
         if name in self.nodes:
@@ -369,28 +278,95 @@ class SchemaBranch:
         if key and not duplicate:
             return self._cache[key]
 
-        raise SchemaNotFound(
-            branch_name=self.name, identifier=name, message=f"Unable to find the schema '{name}' in the registry"
+        raise SchemaNotFoundError(
+            branch_name=self.name, identifier=name, message=f"Unable to find the schema {name!r} in the registry"
+        )
+
+    def get_node(self, name: str, duplicate: bool = True) -> NodeSchema:
+        """Access a specific NodeSchema, defined by its kind."""
+        item = self.get(name=name, duplicate=duplicate)
+        if not isinstance(item, NodeSchema):
+            raise ValueError(f"{name!r} is not of type NodeSchema")
+        return item
+
+    def get_generic(self, name: str, duplicate: bool = True) -> GenericSchema:
+        """Access a specific GenericSchema, defined by its kind."""
+        item = self.get(name=name, duplicate=duplicate)
+        if not isinstance(item, GenericSchema):
+            raise ValueError(f"{name!r} is not of type GenericSchema")
+        return item
+
+    def delete(self, name: str) -> None:
+        if name in self.nodes:
+            del self.nodes[name]
+        elif name in self.generics:
+            del self.generics[name]
+        else:
+            raise SchemaNotFoundError(
+                branch_name=self.name, identifier=name, message=f"Unable to find the schema {name!r} in the registry"
+            )
+
+    def get_by_id(self, id: str, duplicate: bool = True) -> Union[NodeSchema, GenericSchema]:
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+            if node.id != id:
+                continue
+            if duplicate is False:
+                return node
+            return self.get(name=name, duplicate=True)
+
+        raise SchemaNotFoundError(
+            branch_name=self.name,
+            identifier=id,
+            message=f"Unable to find the schema with the id {id!r} in the registry",
+        )
+
+    def get_by_any_id(self, id: str) -> Union[NodeSchema, GenericSchema]:
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+            if node.id == id:
+                return node
+
+            # search in the attributes and the relationships
+            try:
+                node.get_attribute_by_id(id=id)
+                return node
+
+            except ValueError:
+                pass
+
+            try:
+                node.get_relationship_by_id(id=id)
+                return node
+            except ValueError:
+                pass
+
+        raise SchemaNotFoundError(
+            branch_name=self.name,
+            identifier=id,
+            message=f"Unable to find the schema with the id {id!r} or with an attribute or a relationship with this id",
         )
 
     def has(self, name: str) -> bool:
         try:
             self.get(name=name, duplicate=False)
             return True
-        except SchemaNotFound:
+        except SchemaNotFoundError:
             return False
 
-    def get_all(self, include_internal: bool = False) -> Dict[str, Union[NodeSchema, GenericSchema]]:
-        """Retrive everything in a single dictionary."""
+    def get_all(
+        self, include_internal: bool = False, duplicate: bool = True
+    ) -> Dict[str, Union[NodeSchema, GenericSchema]]:
+        """Retrieve everything in a single dictionary."""
 
         return {
-            name: self.get(name=name)
+            name: self.get(name=name, duplicate=duplicate)
             for name in list(self.nodes.keys()) + list(self.generics.keys())
             if include_internal or name not in INTERNAL_SCHEMA_NODE_KINDS
         }
 
     def get_namespaces(self, include_internal: bool = False) -> List[SchemaNamespace]:
-        all_schemas = self.get_all(include_internal=include_internal)
+        all_schemas = self.get_all(include_internal=include_internal, duplicate=False)
         namespaces: Dict[str, SchemaNamespace] = {}
         for schema in all_schemas.values():
             if schema.namespace in namespaces:
@@ -405,7 +381,7 @@ class SchemaBranch:
         self, namespaces: Optional[List[str]] = None, include_internal: bool = False
     ) -> List[Union[NodeSchema, GenericSchema]]:
         """Retrive everything in a single dictionary."""
-        all_schemas = self.get_all(include_internal=include_internal)
+        all_schemas = self.get_all(include_internal=include_internal, duplicate=False)
         if namespaces:
             return [schema for schema in all_schemas.values() if schema.namespace in namespaces]
         return list(all_schemas.values())
@@ -426,10 +402,15 @@ class SchemaBranch:
         """
         for item in schema.nodes + schema.generics:
             try:
-                new_item = self.get(name=item.kind)
+                if item.id:
+                    new_item = self.get_by_id(id=item.id)
+                    if new_item.kind != item.kind:
+                        self.delete(name=new_item.kind)
+                else:
+                    new_item = self.get(name=item.kind)
                 new_item.update(item)
                 self.set(name=item.kind, schema=new_item)
-            except SchemaNotFound:
+            except SchemaNotFoundError:
                 self.set(name=item.kind, schema=item)
 
         for node_extension in schema.extensions.nodes:
@@ -456,6 +437,7 @@ class SchemaBranch:
         self.validate_kinds()
         self.validate_count_against_cardinality()
         self.validate_identifiers()
+        self.validate_uniqueness_constraints()
         self.validate_display_labels()
         self.validate_order_by()
         self.validate_default_filters()
@@ -470,22 +452,24 @@ class SchemaBranch:
 
     def generate_identifiers(self) -> None:
         """Generate the identifier for all relationships if it's not already present."""
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name)
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+            rels_missing_identifier = [rel.name for rel in node.relationships if rel.identifier is None]
+            if not rels_missing_identifier:
+                continue
 
+            node = node.duplicate()
             for rel in node.relationships:
                 if rel.identifier:
                     continue
-
                 rel.identifier = str("__".join(sorted([node.kind, rel.peer]))).lower()
-
             self.set(name=name, schema=node)
 
     def validate_identifiers(self) -> None:
         """Validate that all relationships have a unique identifier for a given model."""
         # Organize all the relationships per identifier and node
         rels_per_identifier: Dict[str, Dict[str, List[RelationshipSchema]]] = defaultdict(lambda: defaultdict(list))
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+        for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
             for rel in node.relationships:
@@ -539,55 +523,86 @@ class SchemaBranch:
         self,
         node_schema: BaseNodeSchema,
         path: str,
+        schema_map_override: Dict[str, Union[NodeSchema, GenericSchema]],
         relationship_allowed: bool = False,
+        relationship_attribute_allowed: bool = False,
         schema_attribute_name: Optional[str] = None,
-    ) -> None:
+    ) -> SchemaAttributePath:
         error_header = f"{node_schema.kind}"
         error_header += f".{schema_attribute_name}" if schema_attribute_name else ""
         allowed_leaf_properties = ["value"]
-        path_parts = path.split("__")
-        if len(path_parts) == 3:
-            relationship_name, attribute_name, attribute_property_name = path_parts
-        elif len(path_parts) == 2:
-            relationship_name = None
-            attribute_name, attribute_property_name = path_parts
-        else:
-            relationship_prefix = "[<relationship>__]" if relationship_allowed else ""
-            raise ValueError(
-                f"{error_header}: {path} must be of the format {relationship_prefix}<attribute>__<property>, the separator is two underscores"
-            )
+        try:
+            schema_attribute_path = node_schema.parse_attribute_path(path, schema_map_override=schema_map_override)
+        except AttributePathParsingError as exc:
+            raise ValueError(f"{error_header}: {exc}") from exc
 
-        if relationship_name:
+        if schema_attribute_path.relationship_schema:
             if not relationship_allowed:
                 raise ValueError(f"{error_header}: this property only supports attributes, not relationships")
-            relationship_schema = node_schema.get_relationship(relationship_name, raise_on_error=False)
-            if relationship_schema.cardinality != RelationshipCardinality.ONE:
+            if schema_attribute_path.relationship_schema.cardinality != RelationshipCardinality.ONE:
                 raise ValueError(
-                    f"{error_header}: cannot use {relationship_name} relationship, relationship must be of cardinality one"
+                    f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
+                    " relationship must be of cardinality one"
                 )
-            node_schema = self.get(relationship_schema.peer)
+            if not relationship_attribute_allowed and schema_attribute_path.attribute_schema:
+                raise ValueError(
+                    f"{error_header}: cannot use attributes of related node in constraint, only the relationship"
+                )
 
-        attribute = node_schema.get_attribute(attribute_name, raise_on_error=False)
-        if not attribute:
-            raise ValueError(f"{error_header}: {attribute_name} is not an attribute of {node_schema.kind}")
-
-        if attribute_property_name not in allowed_leaf_properties:
+        if (
+            schema_attribute_path.attribute_property_name
+            and schema_attribute_path.attribute_property_name not in allowed_leaf_properties
+        ):
             raise ValueError(
-                f"{error_header}: attribute property must be one of {allowed_leaf_properties}, not {attribute_property_name}"
+                f"{error_header}: attribute property must be one of {allowed_leaf_properties}, not {schema_attribute_path.attribute_property_name}"
             )
+        return schema_attribute_path
 
-    def validate_display_labels(self) -> None:
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+    def validate_uniqueness_constraints(self) -> None:
+        full_schema_objects = self.to_dict_schema_object()
+        schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
+        for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
-            if not node_schema.display_labels:
+            if not node_schema.uniqueness_constraints:
                 continue
 
-            for display_label_path in node_schema.display_labels:
-                self._validate_attribute_path(node_schema, display_label_path, schema_attribute_name="display_labels")
+            for constraint_paths in node_schema.uniqueness_constraints:
+                for constraint_path in constraint_paths:
+                    self._validate_attribute_path(
+                        node_schema,
+                        constraint_path,
+                        schema_map,
+                        schema_attribute_name="uniqueness_constraints",
+                        relationship_allowed=True,
+                    )
+
+    def validate_display_labels(self) -> None:
+        full_schema_objects = self.to_dict_schema_object()
+        schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
+        for name in self.all_names:
+            node_schema = self.get(name=name, duplicate=False)
+
+            if node_schema.display_labels:
+                for display_label_path in node_schema.display_labels:
+                    self._validate_attribute_path(
+                        node_schema, display_label_path, schema_map, schema_attribute_name="display_labels"
+                    )
+            elif isinstance(node_schema, NodeSchema):
+                generic_display_labels = []
+                for generic in node_schema.inherit_from:
+                    generic_schema = self.get(name=generic, duplicate=False)
+                    if generic_schema.display_labels:
+                        generic_display_labels.append(generic_schema.display_labels)
+
+                if len(generic_display_labels) == 1:
+                    # Only assign node display labels if a single generic has them defined
+                    node_schema.display_labels = generic_display_labels[0]
 
     def validate_order_by(self) -> None:
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+        full_schema_objects = self.to_dict_schema_object()
+        schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
+        for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.order_by:
@@ -595,22 +610,29 @@ class SchemaBranch:
 
             for order_by_path in node_schema.order_by:
                 self._validate_attribute_path(
-                    node_schema, order_by_path, relationship_allowed=True, schema_attribute_name="order_by"
+                    node_schema,
+                    order_by_path,
+                    schema_map,
+                    relationship_allowed=True,
+                    relationship_attribute_allowed=True,
+                    schema_attribute_name="order_by",
                 )
 
     def validate_default_filters(self) -> None:
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+        full_schema_objects = self.to_dict_schema_object()
+        schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
+        for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.default_filter:
                 continue
 
             self._validate_attribute_path(
-                node_schema, node_schema.default_filter, schema_attribute_name="default_filter"
+                node_schema, node_schema.default_filter, schema_map, schema_attribute_name="default_filter"
             )
 
     def validate_names(self) -> None:
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+        for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
             if names_dup := duplicates(node.attribute_names + node.relationship_names):
@@ -633,13 +655,23 @@ class SchemaBranch:
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
 
     def validate_menu_placements(self) -> None:
+        menu_placements: Dict[str, str] = {}
+
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
             node = self.get(name=name, duplicate=False)
             if node.menu_placement:
                 try:
-                    self.get(name=node.menu_placement, duplicate=False)
-                except SchemaNotFound:
+                    placement_node = self.get(name=node.menu_placement, duplicate=False)
+                except SchemaNotFoundError:
                     raise ValueError(f"{node.kind}: {node.menu_placement} is not a valid menu placement") from None
+
+                if node == placement_node:
+                    raise ValueError(f"{node.kind}: cannot be placed under itself in the menu") from None
+
+                if menu_placements.get(placement_node.kind) == node.kind:
+                    raise ValueError(f"{node.kind}: cyclic menu placement with {placement_node.kind}") from None
+
+                menu_placements[node.kind] = placement_node.kind
 
     def validate_kinds(self) -> None:
         for name in list(self.nodes.keys()):
@@ -647,7 +679,7 @@ class SchemaBranch:
 
             for generic_kind in node.inherit_from:
                 if self.has(name=generic_kind):
-                    if not isinstance(self.get(name=generic_kind), GenericSchema):
+                    if not isinstance(self.get(name=generic_kind, duplicate=False), GenericSchema):
                         raise ValueError(
                             f"{node.kind}: Only generic model can be used as part of inherit_from, {generic_kind!r} is not a valid entry."
                         ) from None
@@ -666,8 +698,8 @@ class SchemaBranch:
 
     def validate_count_against_cardinality(self) -> None:
         """Validate every RelationshipSchema cardinality against the min_count and max_count."""
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name)
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
 
             for rel in node.relationships:
                 if rel.cardinality == RelationshipCardinality.ONE:
@@ -686,12 +718,16 @@ class SchemaBranch:
                         )
 
     def process_dropdowns(self) -> None:
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name)
-
-            changed = False
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
 
             attributes = [attr for attr in node.attributes if attr.kind == "Dropdown"]
+            if not attributes:
+                continue
+
+            node = node.duplicate()
+            changed = False
+
             for attr in attributes:
                 if not attr.choices:
                     continue
@@ -714,31 +750,37 @@ class SchemaBranch:
                 self.set(name=name, schema=node)
 
     def process_labels(self) -> None:
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name)
+        def check_if_need_to_update_label(node) -> bool:
+            if not node.label:
+                return True
+            for item in node.relationships + node.attributes:
+                if not item.label:
+                    return True
+            return False
 
-            changed = False
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
 
+            if not check_if_need_to_update_label(node):
+                continue
+
+            node = node.duplicate()
             if not node.label:
                 node.label = format_label(node.name)
-                changed = True
 
             for attr in node.attributes:
                 if not attr.label:
                     attr.label = format_label(attr.name)
-                    changed = True
 
             for rel in node.relationships:
                 if not rel.label:
                     rel.label = format_label(rel.name)
-                    changed = True
 
-            if changed:
-                self.set(name=name, schema=node)
+            self.set(name=name, schema=node)
 
     def process_hierarchy(self) -> None:
         for name in self.nodes.keys():
-            node = self.get(name=name)
+            node = self.get(name=name, duplicate=False)
 
             if not node.hierarchy and not node.parent and not node.children:
                 continue
@@ -746,10 +788,12 @@ class SchemaBranch:
             if not node.hierarchy and (node.parent is not None or node.children is not None):
                 raise ValueError(f"{node.kind} Hierarchy must be provided if either parent or children is defined.")
 
-            changed = False
             if node.hierarchy not in self.generics.keys():
                 # TODO add a proper exception for all schema related issue
                 raise ValueError(f"{node.kind} Unable to find the generic {node.hierarchy!r} provided in 'hierarchy'.")
+
+            node = node.duplicate()
+            changed = False
 
             if node.hierarchy not in node.inherit_from:
                 node.inherit_from.append(node.hierarchy)
@@ -758,16 +802,14 @@ class SchemaBranch:
             if node.parent is None:
                 node.parent = node.hierarchy
                 changed = True
-            elif node.parent != "":
-                if node.parent not in list(self.nodes.keys()) + list(self.generics.keys()):
-                    raise ValueError(f"{node.kind} Unable to find the node {node.parent!r} provided in 'parent'.")
+            elif node.parent and node.parent not in list(self.nodes.keys()) + list(self.generics.keys()):
+                raise ValueError(f"{node.kind} Unable to find the node {node.parent!r} provided in 'parent'.")
 
             if node.children is None:
                 node.children = node.hierarchy
                 changed = True
-            elif node.children != "":
-                if node.children not in list(self.nodes.keys()) + list(self.generics.keys()):
-                    raise ValueError(f"{node.kind} Unable to find the node {node.children!r} provided in 'children'.")
+            elif node.children and node.children not in list(self.nodes.keys()) + list(self.generics.keys()):
+                raise ValueError(f"{node.kind} Unable to find the node {node.children!r} provided in 'children'.")
 
             if changed:
                 self.set(name=name, schema=node)
@@ -781,9 +823,11 @@ class SchemaBranch:
 
         # For all node_schema, add the attributes & relationships from the generic / interface
         for name in self.nodes.keys():
-            node = self.get(name=name)
+            node = self.get(name=name, duplicate=False)
             if not node.inherit_from:
                 continue
+
+            node = node.duplicate()
 
             generics_used_by["CoreNode"].append(node.kind)
 
@@ -793,12 +837,13 @@ class SchemaBranch:
                     # TODO add a proper exception for all schema related issue
                     raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
 
-                if self.get(generic_kind).hierarchical:
+                generic_kind_schema = self.get(generic_kind, duplicate=False)
+                if generic_kind_schema.hierarchical:
                     generic_with_hierarchical_support.append(generic_kind)
 
                 # Store the list of node referencing a specific generics
                 generics_used_by[generic_kind].append(node.kind)
-                node.inherit_from_interface(interface=self.get(name=generic_kind))
+                node.inherit_from_interface(interface=generic_kind_schema)
 
             if len(generic_with_hierarchical_support) > 1:
                 raise ValueError(
@@ -825,8 +870,27 @@ class SchemaBranch:
 
         if either node on a relationship support branch, the relationship must be branch aware.
         """
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name)
+        # pylint: disable=too-many-branches
+
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            # Check if this node requires a change before duplicating
+            change_required = False
+            for attr in node.attributes:
+                if attr.branch is None:
+                    change_required = True
+                    break
+            if not change_required:
+                for rel in node.relationships:
+                    if rel.branch is None:
+                        change_required = True
+                        break
+
+            if not change_required:
+                continue
+
+            node = node.duplicate()
 
             for attr in node.attributes:
                 if attr.branch is not None:
@@ -838,7 +902,7 @@ class SchemaBranch:
                 if rel.branch is not None:
                     continue
 
-                peer_node = self.get(name=rel.peer)
+                peer_node = self.get(name=rel.peer, duplicate=False)
                 if node.branch == peer_node.branch:
                     rel.branch = node.branch
                 elif BranchSupportType.LOCAL in (node.branch, peer_node.branch):
@@ -850,26 +914,27 @@ class SchemaBranch:
 
     def process_default_values(self) -> None:
         """Ensure that all attributes with a default value are flagged as optional: True."""
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name)
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
 
-            for attr in node.attributes:
-                if attr.default_value is None:
-                    continue
+            attrs_to_update = [attr for attr in node.attributes if attr.default_value is not None and not attr.optional]
+            if not attrs_to_update:
+                continue
 
-                if attr.default_value is not None and not attr.optional:
-                    attr.optional = True
+            node = node.duplicate()
+            for attr in attrs_to_update:
+                attr.optional = True
 
             self.set(name=name, schema=node)
 
     def process_filters(self) -> Node:
         # Generate the filters for all nodes and generics, at the NodeSchema and at the relationships level.
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+        for name in self.all_names:
             node = self.get(name=name)
             node.filters = self.generate_filters(schema=node, include_relationships=True)
 
             for rel in node.relationships:
-                peer_schema = self.get(name=rel.peer)
+                peer_schema = self.get(name=rel.peer, duplicate=False)
                 if not peer_schema:
                     continue
 
@@ -879,50 +944,76 @@ class SchemaBranch:
 
     def process_cardinality_counts(self) -> None:
         """Ensure that all relationships with a cardinality of ONE have a min_count and max_count of 1."""
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name)
+        # pylint: disable=too-many-branches
 
-            changed = False
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            # Check if this node requires a change before duplicating
+            change_required = False
             for rel in node.relationships:
-                if rel.cardinality == RelationshipCardinality.ONE:
-                    # Handle default values of RelationshipSchema when cardinality is ONE and set to valid values (1)
-                    # RelationshipSchema default values 0 for min_count and max_count
-                    if rel.optional and rel.min_count != 0:
-                        rel.min_count = 0
-                        changed = True
-                    if rel.optional and rel.max_count != 1:
-                        rel.max_count = 1
-                        changed = True
-                    if not rel.optional and rel.min_count == 0:
-                        rel.min_count = 1
-                        changed = True
-                    if not rel.optional and rel.max_count == 0:
-                        rel.max_count = 1
-                        changed = True
+                if rel.cardinality != RelationshipCardinality.ONE:
+                    continue
+                # Handle default values of RelationshipSchema when cardinality is ONE and set to valid values (1)
+                # RelationshipSchema default values 0 for min_count and max_count
+                if rel.optional and rel.min_count != 0:
+                    change_required = True
+                    break
+                if rel.optional and rel.max_count != 1:
+                    change_required = True
+                    break
+                if not rel.optional and rel.min_count == 0:
+                    change_required = True
+                    break
+                if not rel.optional and rel.max_count == 0:
+                    change_required = True
+                    break
 
-            if changed:
-                self.set(name=name, schema=node)
+            if not change_required:
+                continue
+
+            node = node.duplicate()
+
+            for rel in node.relationships:
+                if rel.cardinality != RelationshipCardinality.ONE:
+                    continue
+                # Handle default values of RelationshipSchema when cardinality is ONE and set to valid values (1)
+                # RelationshipSchema default values 0 for min_count and max_count
+                if rel.optional and rel.min_count != 0:
+                    rel.min_count = 0
+                if rel.optional and rel.max_count != 1:
+                    rel.max_count = 1
+                if not rel.optional and rel.min_count == 0:
+                    rel.min_count = 1
+                if not rel.optional and rel.max_count == 0:
+                    rel.max_count = 1
+
+            self.set(name=name, schema=node)
 
     def generate_weight(self):
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name)
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+            items_to_update = [item for item in node.attributes + node.relationships if not item.order_weight]
+            if not items_to_update:
+                continue
+
+            node = node.duplicate()
+
             current_weight = 0
-            changed = False
             for item in node.attributes + node.relationships:
                 current_weight += 1000
                 if not item.order_weight:
                     item.order_weight = current_weight
-                    changed = True
 
-            if changed:
-                self.set(name=name, schema=node)
+            self.set(name=name, schema=node)
 
     def add_groups(self):
         if not self.has(name=InfrahubKind.GENERICGROUP):
             return
 
-        for node_name in list(self.nodes.keys()) + list(self.generics.keys()):
-            schema: Union[NodeSchema, GenericSchema] = self.get(name=node_name)
+        for node_name in self.all_names:
+            schema: Union[NodeSchema, GenericSchema] = self.get(name=node_name, duplicate=False)
+            changed = False
 
             if isinstance(schema, NodeSchema) and InfrahubKind.GENERICGROUP in schema.inherit_from:
                 continue
@@ -931,6 +1022,9 @@ class SchemaBranch:
                 continue
 
             if "member_of_groups" not in schema.relationship_names:
+                if not changed:
+                    schema = schema.duplicate()
+                    changed = True
                 schema.relationships.append(
                     RelationshipSchema(
                         name="member_of_groups",
@@ -943,6 +1037,9 @@ class SchemaBranch:
                 )
 
             if "subscriber_of_groups" not in schema.relationship_names:
+                if not changed:
+                    schema = schema.duplicate()
+                    changed = True
                 schema.relationships.append(
                     RelationshipSchema(
                         name="subscriber_of_groups",
@@ -954,14 +1051,17 @@ class SchemaBranch:
                     )
                 )
 
-            self.set(name=node_name, schema=schema)
+            if changed:
+                self.set(name=node_name, schema=schema)
 
     def add_hierarchy(self):
         for node_name in self.nodes.keys():
-            node: NodeSchema = self.get(name=node_name)
+            node = self.get_node(name=node_name, duplicate=False)
 
             if node.parent is None and node.children is None:
                 continue
+
+            node = node.duplicate()
 
             if node.parent and "parent" not in node.relationship_names:
                 node.relationships.append(
@@ -971,6 +1071,7 @@ class SchemaBranch:
                         peer=node.parent,
                         kind=RelationshipKind.HIERARCHY,
                         cardinality=RelationshipCardinality.ONE,
+                        max_count=1,
                         branch=BranchSupportType.AWARE,
                         direction=RelationshipDirection.OUTBOUND,
                         hierarchical=node.hierarchy,
@@ -1072,7 +1173,7 @@ class SchemaManager(NodeManager):
         return self._cache[key]
 
     def set(self, name: str, schema: Union[NodeSchema, GenericSchema], branch: Optional[str] = None) -> int:
-        branch = branch or config.SETTINGS.main.default_branch
+        branch = branch or registry.default_branch
 
         if branch not in self._branches:
             self._branches[branch] = SchemaBranch(cache=self._cache, name=branch)
@@ -1085,7 +1186,7 @@ class SchemaManager(NodeManager):
         try:
             self.get(name=name, branch=branch, duplicate=False)
             return True
-        except SchemaNotFound:
+        except SchemaNotFoundError:
             return False
 
     def get(
@@ -1097,22 +1198,33 @@ class SchemaManager(NodeManager):
         if branch.name in self._branches:
             try:
                 return self._branches[branch.name].get(name=name, duplicate=duplicate)
-            except SchemaNotFound:
+            except SchemaNotFoundError:
                 pass
 
-        default_branch = config.SETTINGS.main.default_branch
+        default_branch = registry.default_branch
         return self._branches[default_branch].get(name=name, duplicate=duplicate)
 
-    def get_full(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, Union[NodeSchema, GenericSchema]]:
+    def get_node_schema(
+        self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+    ) -> NodeSchema:
+        schema = self.get(name=name, branch=branch, duplicate=duplicate)
+        if isinstance(schema, NodeSchema):
+            return schema
+
+        raise ValueError("The selected node is not of type NodeSchema")
+
+    def get_full(
+        self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+    ) -> Dict[str, Union[NodeSchema, GenericSchema]]:
         branch = get_branch_from_registry(branch=branch)
 
         branch_name = None
         if branch.name in self._branches:
             branch_name = branch.name
         else:
-            branch_name = config.SETTINGS.main.default_branch
+            branch_name = registry.default_branch
 
-        return self._branches[branch_name].get_all()
+        return self._branches[branch_name].get_all(duplicate=duplicate)
 
     async def get_full_safe(
         self, branch: Optional[Union[Branch, str]] = None
@@ -1129,6 +1241,7 @@ class SchemaManager(NodeManager):
         return self._branches[name]
 
     def set_schema_branch(self, name: str, schema: SchemaBranch) -> None:
+        schema.name = name
         self._branches[name] = schema
 
     def process_schema_branch(self, name: str):
@@ -1140,6 +1253,7 @@ class SchemaManager(NodeManager):
         schema: SchemaBranch,
         db: InfrahubDatabase,
         branch: Optional[Union[Branch, str]] = None,
+        diff: Optional[SchemaDiff] = None,
         limit: Optional[List[str]] = None,
         update_db: bool = True,
     ):
@@ -1147,46 +1261,88 @@ class SchemaManager(NodeManager):
 
         updated_schema = None
         if update_db:
-            await self.load_schema_to_db(schema=schema, db=db, branch=branch, limit=limit)
-            # After updating the schema into the db
-            # we need to pull a fresh version because some default value are managed/generated within the node object
             schema_diff = None
-            if limit:
-                schema_diff = SchemaBranchDiff(
-                    nodes=[name for name in list(schema.nodes.keys()) if name in limit],
-                    generics=[name for name in list(schema.generics.keys()) if name in limit],
-                )
+            if diff:
+                schema_diff = await self.update_schema_to_db(schema=schema, db=db, branch=branch, diff=diff)
+            else:
+                await self.load_schema_to_db(schema=schema, db=db, branch=branch, limit=limit)
+                # After updating the schema into the db
+                # we need to pull a fresh version because some default value are managed/generated within the node object
+                schema_diff = None
+                if limit:
+                    schema_diff = SchemaBranchDiff(
+                        nodes=[name for name in list(schema.nodes.keys()) if name in limit],
+                        generics=[name for name in list(schema.generics.keys()) if name in limit],
+                    )
 
             updated_schema = await self.load_schema_from_db(
                 db=db, branch=branch, schema=schema, schema_diff=schema_diff
             )
 
-        self._branches[branch.name] = updated_schema or schema
+        self.set_schema_branch(name=branch.name, schema=updated_schema or schema)
 
     def register_schema(self, schema: SchemaRoot, branch: Optional[str] = None) -> SchemaBranch:
         """Register all nodes, generics & groups from a SchemaRoot object into the registry."""
 
-        branch = branch or config.SETTINGS.main.default_branch
+        branch = branch or registry.default_branch
         schema_branch = self.get_schema_branch(name=branch)
         schema_branch.load_schema(schema=schema)
         schema_branch.process()
         return schema_branch
 
+    async def update_schema_to_db(
+        self,
+        schema: SchemaBranch,
+        db: InfrahubDatabase,
+        diff: SchemaDiff,
+        branch: Optional[Union[str, Branch]] = None,
+    ) -> SchemaBranchDiff:
+        """Load all nodes, generics and groups from a SchemaRoot object into the database."""
+
+        branch = await get_branch(branch=branch, db=db)
+
+        item_kinds = []
+        for item_kind, item_diff in diff.added.items():
+            item = schema.get(name=item_kind, duplicate=False)
+            node = await self.load_node_to_db(node=item, branch=branch, db=db)
+            schema.set(name=item_kind, schema=node)
+            item_kinds.append(item_kind)
+
+        for item_kind, item_diff in diff.changed.items():
+            item = schema.get(name=item_kind, duplicate=False)
+            if item_diff:
+                node = await self.update_node_in_db_based_on_diff(node=item, branch=branch, db=db, diff=item_diff)
+            else:
+                node = await self.update_node_in_db(node=item, branch=branch, db=db)
+            schema.set(name=item_kind, schema=node)
+            item_kinds.append(item_kind)
+
+        for item_kind, item_diff in diff.removed.items():
+            item = schema.get(name=item_kind, duplicate=False)
+            node = await self.delete_node_in_db(node=item, branch=branch, db=db)
+            schema.delete(name=item_kind)
+
+        schema_diff = SchemaBranchDiff(
+            nodes=[name for name in schema.node_names if name in item_kinds],
+            generics=[name for name in schema.generic_names if name in item_kinds],
+        )
+        return schema_diff
+
     async def load_schema_to_db(
         self,
         schema: SchemaBranch,
         db: InfrahubDatabase,
-        branch: Union[str, Branch] = None,
+        branch: Optional[Union[str, Branch]] = None,
         limit: Optional[List[str]] = None,
     ) -> None:
         """Load all nodes, generics and groups from a SchemaRoot object into the database."""
 
         branch = await get_branch(branch=branch, db=db)
 
-        for item_kind in list(schema.generics.keys()) + list(schema.nodes.keys()):
+        for item_kind in schema.all_names:
             if limit and item_kind not in limit:
                 continue
-            item = schema.get(name=item_kind)
+            item = schema.get(name=item_kind, duplicate=False)
             if not item.id:
                 node = await self.load_node_to_db(node=item, branch=branch, db=db)
                 schema.set(name=item_kind, schema=node)
@@ -1198,30 +1354,24 @@ class SchemaManager(NodeManager):
         self,
         node: Union[NodeSchema, GenericSchema],
         db: InfrahubDatabase,
-        branch: Union[str, Branch] = None,
-    ) -> None:
-        """Load a Node with its attributes and its relationships to the database.
-
-        FIXME Currently this function only support adding new node, we need to update it to update existing nodes as well.
-        """
+        branch: Optional[Union[str, Branch]] = None,
+    ) -> Union[NodeSchema, GenericSchema]:
+        """Load a Node with its attributes and its relationships to the database."""
         branch = await get_branch(branch=branch, db=db)
 
         node_type = "SchemaNode"
         if isinstance(node, GenericSchema):
             node_type = "SchemaGeneric"
 
-        if node_type not in SUPPORTED_SCHEMA_NODE_TYPE:
-            raise ValueError(f"Only schema node of type {SUPPORTED_SCHEMA_NODE_TYPE} are supported: {node_type}")
-
-        node_schema = self.get(name=node_type, branch=branch)
-        attribute_schema = self.get(name="SchemaAttribute", branch=branch)
-        relationship_schema = self.get(name="SchemaRelationship", branch=branch)
+        node_schema = self.get_node_schema(name=node_type, branch=branch)
+        attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
+        relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
 
         # Duplicate the node in order to store the IDs after inserting them in the database
         new_node = node.duplicate()
 
         # Create the node first
-        schema_dict = node.model_dump(exclude={"id", "filters", "relationships", "attributes"})
+        schema_dict = node.model_dump(exclude={"id", "state", "filters", "relationships", "attributes"})
         obj = await Node.init(schema=node_schema, branch=branch, db=db)
         await obj.new(**schema_dict, db=db)
         await obj.save(db=db)
@@ -1252,36 +1402,25 @@ class SchemaManager(NodeManager):
         self,
         db: InfrahubDatabase,
         node: Union[NodeSchema, GenericSchema],
-        branch: Union[str, Branch] = None,
-    ) -> None:
+        branch: Optional[Union[str, Branch]] = None,
+    ) -> Union[NodeSchema, GenericSchema]:
         """Update a Node with its attributes and its relationships in the database."""
         branch = await get_branch(branch=branch, db=db)
 
-        if isinstance(node, GenericSchema):
-            node_type = "SchemaGeneric"
-        elif isinstance(node, NodeSchema):
-            node_type = "SchemaNode"
-
-        if node_type not in SUPPORTED_SCHEMA_NODE_TYPE:
-            raise ValueError(f"Only schema node of type {SUPPORTED_SCHEMA_NODE_TYPE} are supported: {node_type}")
-
-        # Update the node First
-        schema_dict = node.model_dump(exclude={"id", "filters", "relationships", "attributes"})
-        obj = await self.get_one(id=node.id, branch=branch, db=db, include_owner=True, include_source=True)
-
+        obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
         if not obj:
-            raise SchemaNotFound(
+            raise SchemaNotFoundError(
                 branch_name=branch.name,
                 identifier=node.id,
                 message=f"Unable to find the Schema associated with {node.id}, {node.kind}",
             )
 
-        attribute_schema = self.get(name="SchemaAttribute", branch=branch)
-        relationship_schema = self.get(name="SchemaRelationship", branch=branch)
-
-        # Update all direct attributes attributes
+        schema_dict = node.model_dump(exclude=IGNORE_FOR_NODE)
         for key, value in schema_dict.items():
             getattr(obj, key).value = value
+
+        attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
+        relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
 
         new_node = node.duplicate()
 
@@ -1291,54 +1430,185 @@ class SchemaManager(NodeManager):
         await obj.save(db=db)
 
         # Then Update the Attributes and the relationships
-        if isinstance(node, (NodeSchema, GenericSchema)):
-            items = await self.get_many(
-                ids=[item.id for item in node.local_attributes + node.local_relationships if item.id],
-                db=db,
-                branch=branch,
-                include_owner=True,
-                include_source=True,
-            )
 
-            for item in node.local_attributes:
-                if item.id and item.id in items:
-                    await self.update_attribute_in_db(item=item, attr=items[item.id], db=db)
-                elif not item.id:
-                    new_attr = await self.create_attribute_in_db(
-                        schema=attribute_schema, item=item, branch=branch, db=db, parent=obj
-                    )
-                    new_node.attributes.append(new_attr)
+        items = await self.get_many(
+            ids=[item.id for item in node.local_attributes + node.local_relationships if item.id],
+            db=db,
+            branch=branch,
+            include_owner=True,
+            include_source=True,
+        )
 
-            for item in node.local_relationships:
-                if item.id and item.id in items:
-                    await self.update_relationship_in_db(item=item, rel=items[item.id], db=db)
-                elif not item.id:
-                    new_rel = await self.create_relationship_in_db(
-                        schema=relationship_schema, item=item, branch=branch, db=db, parent=obj
-                    )
-                    new_node.relationships.append(new_rel)
+        for item in node.local_attributes:
+            if item.id and item.id in items:
+                await self.update_attribute_in_db(item=item, attr=items[item.id], db=db)
+            elif not item.id:
+                new_attr = await self.create_attribute_in_db(
+                    schema=attribute_schema, item=item, branch=branch, db=db, parent=obj
+                )
+                new_node.attributes.append(new_attr)
 
-        # Save back the node with the (potnetially) newly created IDs in the SchemaManager
+        for item in node.local_relationships:
+            if item.id and item.id in items:
+                await self.update_relationship_in_db(item=item, rel=items[item.id], db=db)
+            elif not item.id:
+                new_rel = await self.create_relationship_in_db(
+                    schema=relationship_schema, item=item, branch=branch, db=db, parent=obj
+                )
+                new_node.relationships.append(new_rel)
+
+        # Save back the node with the (potentially) newly created IDs in the SchemaManager
         self.set(name=new_node.kind, schema=new_node, branch=branch.name)
         return new_node
+
+    async def update_node_in_db_based_on_diff(  # pylint: disable=too-many-branches,too-many-statements
+        self,
+        db: InfrahubDatabase,
+        diff: HashableModelDiff,
+        node: Union[NodeSchema, GenericSchema],
+        branch: Optional[Union[str, Branch]] = None,
+    ) -> Union[NodeSchema, GenericSchema]:
+        """Update a Node with its attributes and its relationships in the database based on a HashableModelDiff."""
+        branch = await get_branch(branch=branch, db=db)
+
+        obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
+        if not obj:
+            raise SchemaNotFoundError(
+                branch_name=branch.name,
+                identifier=node.id,
+                message=f"Unable to find the Schema associated with {node.id}, {node.kind}",
+            )
+
+        properties_to_update = set(list(diff.added.keys()) + list(diff.changed.keys())) - IGNORE_FOR_NODE
+
+        if properties_to_update:
+            schema_dict = node.model_dump(exclude=IGNORE_FOR_NODE)
+            for key, value in schema_dict.items():
+                getattr(obj, key).value = value
+
+        attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
+        relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
+
+        new_node = node.duplicate()
+
+        # Update the attributes and the relationships nodes as well
+        if "attributes" in diff.changed:
+            await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id])
+
+        if "relationships" in diff.changed:
+            await obj.relationships.update(db=db, data=[item.id for item in node.local_relationships if item.id])
+
+        await obj.save(db=db)
+
+        # Then Update the Attributes and the relationships
+        def get_attrs_rels_to_update(diff: HashableModelDiff) -> List[str]:
+            items_to_update = []
+            if "attributes" in diff.changed.keys() and diff.changed["attributes"]:
+                items_to_update.extend(list(diff.changed["attributes"].added.keys()))
+                items_to_update.extend(list(diff.changed["attributes"].changed.keys()))
+                items_to_update.extend(list(diff.changed["attributes"].removed.keys()))
+            if "relationships" in diff.changed.keys() and diff.changed["relationships"]:
+                items_to_update.extend(list(diff.changed["relationships"].added.keys()))
+                items_to_update.extend(list(diff.changed["relationships"].changed.keys()))
+                items_to_update.extend(list(diff.changed["relationships"].removed.keys()))
+            return items_to_update
+
+        attrs_rels_to_update = get_attrs_rels_to_update(diff=diff)
+
+        items = await self.get_many(
+            ids=[
+                item.id
+                for item in node.local_attributes + node.local_relationships
+                if item.id and item.name in attrs_rels_to_update
+            ],
+            db=db,
+            branch=branch,
+            include_owner=True,
+            include_source=True,
+        )
+
+        if "attributes" in diff.changed.keys() and diff.changed["attributes"]:
+            for item in node.local_attributes:
+                if item.name in diff.changed["attributes"].added:
+                    created_item = await self.create_attribute_in_db(
+                        schema=attribute_schema, item=item, branch=branch, db=db, parent=obj
+                    )
+                    new_attr = new_node.get_attribute(name=item.name)
+                    new_attr.id = created_item.id
+                elif item.name in diff.changed["attributes"].changed and item.id and item.id in items:
+                    await self.update_attribute_in_db(item=item, attr=items[item.id], db=db)
+                elif item.name in diff.changed["attributes"].removed and item.id and item.id in items:
+                    await items[item.id].delete(db=db)
+                elif (
+                    (item.name in diff.changed["attributes"].removed or item.name in diff.changed["attributes"].changed)
+                    and item.id
+                    and item.id not in items
+                ):
+                    raise ValueError(f"Unable to find an attribute {item.name!r} to update or delete")
+
+        if "relationships" in diff.changed.keys() and diff.changed["relationships"]:
+            for item in node.local_relationships:
+                if item.name in diff.changed["relationships"].added:
+                    created_rel = await self.create_relationship_in_db(
+                        schema=relationship_schema, item=item, branch=branch, db=db, parent=obj
+                    )
+                    new_rel = new_node.get_relationship(name=item.name)
+                    new_rel.id = created_rel.id
+                elif item.name in diff.changed["relationships"].changed and item.id and item.id in items:
+                    await self.update_relationship_in_db(item=item, rel=items[item.id], db=db)
+                elif item.name in diff.changed["relationships"].removed and item.id and item.id in items:
+                    await items[item.id].delete(db=db)
+                elif (
+                    (
+                        item.name in diff.changed["relationships"].removed
+                        or item.name in diff.changed["relationships"].changed
+                    )
+                    and item.id
+                    and item.id not in items
+                ):
+                    raise ValueError(f"Unable to find an relationship {item.name!r} to update or delete")
+
+        # Save back the node with the (potentially) newly created IDs in the SchemaManager
+        self.set(name=new_node.kind, schema=new_node, branch=branch.name)
+        return new_node
+
+    async def delete_node_in_db(
+        self,
+        db: InfrahubDatabase,
+        node: Union[NodeSchema, GenericSchema],
+        branch: Optional[Union[str, Branch]] = None,
+    ) -> None:
+        """Delete the node with its attributes and relationships."""
+        branch = await get_branch(branch=branch, db=db)
+
+        obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
+        if not obj:
+            raise SchemaNotFoundError(
+                branch_name=branch.name,
+                identifier=node.id,
+                message=f"Unable to find the Schema associated with {node.id}, {node.kind}",
+            )
+
+        # First delete the attributes and the relationships
+        items = await self.get_many(
+            ids=[item.id for item in node.local_attributes + node.local_relationships if item.id],
+            db=db,
+            branch=branch,
+            include_owner=True,
+            include_source=True,
+        )
+
+        for item in items.values():
+            await item.delete(db=db)
+
+        await obj.delete(db=db)
 
     @staticmethod
     async def create_attribute_in_db(
         schema: NodeSchema, item: AttributeSchema, branch: Branch, parent: Node, db: InfrahubDatabase
     ) -> AttributeSchema:
         obj = await Node.init(schema=schema, branch=branch, db=db)
-        await obj.new(**item.model_dump(exclude={"id", "filters"}), node=parent, db=db)
-        await obj.save(db=db)
-        new_item = item.duplicate()
-        new_item.id = obj.id
-        return new_item
-
-    @staticmethod
-    async def create_relationship_in_db(
-        schema: NodeSchema, item: RelationshipSchema, branch: Branch, parent: Node, db: InfrahubDatabase
-    ) -> RelationshipSchema:
-        obj = await Node.init(schema=schema, branch=branch, db=db)
-        await obj.new(**item.model_dump(exclude={"id", "filters"}), node=parent, db=db)
+        await obj.new(**item.model_dump(exclude={"id", "state", "filters"}), node=parent, db=db)
         await obj.save(db=db)
         new_item = item.duplicate()
         new_item.id = obj.id
@@ -1346,14 +1616,25 @@ class SchemaManager(NodeManager):
 
     @staticmethod
     async def update_attribute_in_db(item: AttributeSchema, attr: Node, db: InfrahubDatabase) -> None:
-        item_dict = item.model_dump(exclude={"id", "filters"})
+        item_dict = item.model_dump(exclude={"id", "state", "filters"})
         for key, value in item_dict.items():
             getattr(attr, key).value = value
         await attr.save(db=db)
 
     @staticmethod
+    async def create_relationship_in_db(
+        schema: NodeSchema, item: RelationshipSchema, branch: Branch, parent: Node, db: InfrahubDatabase
+    ) -> RelationshipSchema:
+        obj = await Node.init(schema=schema, branch=branch, db=db)
+        await obj.new(**item.model_dump(exclude={"id", "state", "filters"}), node=parent, db=db)
+        await obj.save(db=db)
+        new_item = item.duplicate()
+        new_item.id = obj.id
+        return new_item
+
+    @staticmethod
     async def update_relationship_in_db(item: RelationshipSchema, rel: Node, db: InfrahubDatabase) -> None:
-        item_dict = item.model_dump(exclude={"id", "filters"})
+        item_dict = item.model_dump(exclude={"id", "state", "filters"})
         for key, value in item_dict.items():
             getattr(rel, key).value = value
         await rel.save(db=db)
@@ -1379,7 +1660,11 @@ class SchemaManager(NodeManager):
         current_schema = self.get_schema_branch(name=branch.name)
         current_schema.clear_cache()
         schema_diff = current_schema.get_hash_full().compare(branch.schema_hash)
-        return await self.load_schema_from_db(db=db, branch=branch, schema=current_schema, schema_diff=schema_diff)
+        branch_schema = await self.load_schema_from_db(
+            db=db, branch=branch, schema=current_schema, schema_diff=schema_diff
+        )
+        self.set_schema_branch(name=branch.name, schema=branch_schema)
+        return branch_schema
 
     async def load_schema_from_db(
         self,
@@ -1387,6 +1672,7 @@ class SchemaManager(NodeManager):
         branch: Optional[Union[str, Branch]] = None,
         schema: Optional[SchemaBranch] = None,
         schema_diff: Optional[SchemaBranchDiff] = None,
+        at: Optional[Timestamp] = None,
     ) -> SchemaBranch:
         """Query all the node of type NodeSchema and GenericSchema from the database and convert them to their respective type.
 
@@ -1407,6 +1693,11 @@ class SchemaManager(NodeManager):
         # the namespace and the name will be extracted from the kind with the function `parse_node_kind`
         filters = {"generics": {}, "nodes": {}}
         has_filters = False
+
+        # If a diff is provided but is empty there is nothing to query
+        if schema_diff is not None and not schema_diff:
+            return schema
+
         if schema_diff:
             log.info("Loading schema from DB", schema_to_update=schema_diff.to_list())
 
@@ -1425,7 +1716,12 @@ class SchemaManager(NodeManager):
         if not has_filters or filters["generics"]:
             generic_schema = self.get(name="SchemaGeneric", branch=branch)
             for schema_node in await self.query(
-                schema=generic_schema, branch=branch, filters=filters["generics"], prefetch_relationships=True, db=db
+                schema=generic_schema,
+                branch=branch,
+                at=at,
+                filters=filters["generics"],
+                prefetch_relationships=True,
+                db=db,
             ):
                 kind = f"{schema_node.namespace.value}{schema_node.name.value}"
                 schema.set(
@@ -1436,7 +1732,7 @@ class SchemaManager(NodeManager):
         if not has_filters or filters["nodes"]:
             node_schema = self.get(name="SchemaNode", branch=branch)
             for schema_node in await self.query(
-                schema=node_schema, branch=branch, filters=filters["nodes"], prefetch_relationships=True, db=db
+                schema=node_schema, branch=branch, at=at, filters=filters["nodes"], prefetch_relationships=True, db=db
             ):
                 kind = f"{schema_node.namespace.value}{schema_node.name.value}"
                 schema.set(
@@ -1445,7 +1741,6 @@ class SchemaManager(NodeManager):
                 )
 
         schema.process()
-        self._branches[branch.name] = schema
 
         return schema
 

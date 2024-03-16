@@ -1,12 +1,14 @@
 import os
 import platform
 import re
+import sys
 from enum import Enum
-from typing import Any, Union
+from typing import Optional, Union
 
 from invoke import Context, UnexpectedExit
+from invoke.runners import Result
 
-from .utils import project_ver, str_to_bool
+from .utils import str_to_bool
 
 
 class DatabaseType(str, Enum):
@@ -30,9 +32,9 @@ CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4")
 here = os.path.abspath(os.path.dirname(__file__))
 TOP_DIRECTORY_NAME = os.path.basename(os.path.abspath(os.path.join(here, "..")))
 BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", re.sub(r"[^a-zA-Z0-9_/.]", "", TOP_DIRECTORY_NAME))
-PYTHON_VER = os.getenv("PYTHON_VER", "3.11")
-IMAGE_NAME = os.getenv("IMAGE_NAME", f"opsmill/{BUILD_NAME}-py{PYTHON_VER}")
-IMAGE_VER = os.getenv("IMAGE_VER", project_ver())
+PYTHON_VER = os.getenv("PYTHON_VER", "3.12")
+IMAGE_NAME = os.getenv("IMAGE_NAME", "registry.opsmill.io/opsmill/infrahub")
+IMAGE_VER = os.getenv("IMAGE_VER", "stable")
 PWD = os.getcwd()
 
 NBR_WORKERS = os.getenv("PYTEST_XDIST_WORKER_COUNT", 1)
@@ -46,12 +48,14 @@ TEST_COMPOSE_FILES_MEMGRAPH = [
     "development/docker-compose-deps.yml",
     "development/docker-compose-test-database-memgraph.yml",
     "development/docker-compose-test-cache.yml",
+    "development/docker-compose-test-message-queue.yml",
     TEST_COMPOSE_FILE,
 ]
 TEST_COMPOSE_FILES_NEO4J = [
     "development/docker-compose-deps.yml",
     "development/docker-compose-test-database-neo4j.yml",
     "development/docker-compose-test-cache.yml",
+    "development/docker-compose-test-message-queue.yml",
     TEST_COMPOSE_FILE,
 ]
 
@@ -70,11 +74,12 @@ TEST_SCALE_COMPOSE_FILES_MEMGRAPH = [
 ]
 TEST_SCALE_OVERRIDE_FILE_NAME = "development/docker-compose-test-scale-override.yml"
 
-IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", f"opsmill/{BUILD_NAME}-py{PYTHON_VER}")
-IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER", project_ver())
+IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", "registry.opsmill.io/opsmill/infrahub")
+IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER", "stable")
 
 OVERRIDE_FILE_NAME = "development/docker-compose.override.yml"
 DEFAULT_FILE_NAME = "development/docker-compose.default.yml"
+LOCAL_FILE_NAME = "development/docker-compose.local-build.yml"
 COMPOSE_FILES_MEMGRAPH = [
     "development/docker-compose-deps.yml",
     "development/docker-compose-database-memgraph.yml",
@@ -161,7 +166,7 @@ def check_environment(context: Context) -> dict:
     return params
 
 
-def execute_command(context: Context, command: str, print_cmd: bool = False) -> Any:
+def execute_command(context: Context, command: str, print_cmd: bool = False) -> Optional[Result]:
     params = check_environment(context=context)
 
     if params["sudo"]:
@@ -186,7 +191,7 @@ def get_env_vars(context: Context) -> str:
 
 def build_compose_files_cmd(database: str) -> str:
     if database not in SUPPORTED_DATABASES:
-        exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
+        sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
     if database == DatabaseType.MEMGRAPH.value:
         COMPOSE_FILES = COMPOSE_FILES_MEMGRAPH
@@ -199,12 +204,15 @@ def build_compose_files_cmd(database: str) -> str:
     else:
         COMPOSE_FILES.append(DEFAULT_FILE_NAME)
 
+    if "local" in IMAGE_VER:
+        COMPOSE_FILES.append(LOCAL_FILE_NAME)
+
     return f"-f {' -f '.join(COMPOSE_FILES)}"
 
 
 def build_dev_compose_files_cmd(database: str) -> str:
     if database not in SUPPORTED_DATABASES:
-        exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
+        sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
     if database == DatabaseType.MEMGRAPH.value:
         DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_MEMGRAPH
@@ -225,7 +233,7 @@ def build_test_compose_files_cmd(
         return f"-f {TEST_COMPOSE_FILE}"
 
     if database not in SUPPORTED_DATABASES:
-        exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
+        sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
     if database == DatabaseType.MEMGRAPH.value:
         DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_MEMGRAPH
@@ -243,7 +251,7 @@ def build_test_scale_compose_files_cmd(
     database: str = DatabaseType.NEO4J.value,
 ) -> str:
     if database not in SUPPORTED_DATABASES:
-        exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
+        sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
     if database == DatabaseType.MEMGRAPH.value:
         TEST_SCALE_COMPOSE_FILES = TEST_SCALE_COMPOSE_FILES_MEMGRAPH

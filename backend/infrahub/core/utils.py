@@ -4,9 +4,9 @@ import re
 from inspect import isclass
 from typing import TYPE_CHECKING, List, Optional, Union
 
-import infrahub.config as config
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.models import NodeKind
+from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -37,7 +37,7 @@ async def add_relationship(
         "src_node_id": element_id_to_id(src_node_id),
         "dst_node_id": element_id_to_id(dst_node_id),
         "at": at.to_string(),
-        "branch": branch_name or config.SETTINGS.main.default_branch,
+        "branch": branch_name or registry.default_branch,
         "branch_level": branch_level or 1,
         "status": status.value,
     }
@@ -130,6 +130,18 @@ async def count_relationships(db: InfrahubDatabase) -> int:
 
     params: dict = {}
 
+    result = await db.execute_query(query=query, params=params)
+    return result[0][0]
+
+
+async def count_nodes(db: InfrahubDatabase, label: str) -> int:
+    """Return the total number of nodes of a given label in the database."""
+    query = """
+    MATCH (node)
+    WHERE $label IN LABELS(node)
+    RETURN count(node) as count
+    """
+    params: dict = {"label": label}
     result = await db.execute_query(query=query, params=params)
     return result[0][0]
 

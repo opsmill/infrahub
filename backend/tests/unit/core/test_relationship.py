@@ -6,7 +6,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
-from infrahub.core.relationship import Relationship, RelationshipValidatorList
+from infrahub.core.relationship.model import Relationship, RelationshipValidatorList
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 

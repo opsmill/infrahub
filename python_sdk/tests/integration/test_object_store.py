@@ -1,4 +1,5 @@
 import pytest
+from infrahub.server import app
 
 from infrahub_sdk import Config, InfrahubClient
 
@@ -13,10 +14,6 @@ FILE_CONTENT_01 = """
 class TestObjectStore:
     @pytest.fixture(scope="class")
     async def test_client(self):
-        # pylint: disable=import-outside-toplevel
-
-        from infrahub.server import app
-
         return InfrahubTestClient(app)
 
     @pytest.fixture

@@ -1,5 +1,5 @@
 import { ApolloProvider } from "@apollo/client";
-import { useAtom, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import queryString from "query-string";
 import { useEffect, useState } from "react";
 import { BrowserRouter } from "react-router-dom";
@@ -10,55 +10,33 @@ import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 import App from "./App";
 import { ALERT_TYPES, Alert } from "./components/utils/alert";
 import { CONFIG } from "./config/config";
-import SentryClient from "./config/sentry";
 import graphqlClient from "./graphql/graphqlClientApollo";
-import GET_BRANCHES from "./graphql/queries/branches/getBranches";
 import reportWebVitals from "./reportWebVitals";
-import { branchesState, currentBranchAtom } from "./state/atoms/branches.atom";
 import { Config, configState } from "./state/atoms/config.atom";
 
-import { QSP } from "./config/qsp";
-import { Branch } from "./generated/graphql";
 import LoadingScreen from "./screens/loading-screen/loading-screen";
 
+import { fetchUrl } from "./utils/fetch";
 import "./styles/index.css";
-import { findSelectedBranch } from "./utils/branches";
-import { fetchUrl, getCurrentQsp } from "./utils/fetch";
 
 export const Infrahub = () => {
-  const setBranches = useSetAtom(branchesState);
-  const setCurrentBranch = useSetAtom(currentBranchAtom);
-  const [config, setConfig] = useAtom(configState);
+  const setConfig = useSetAtom(configState);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
-  const [isLoadingBranches, setIsLoadingBranches] = useState(true);
-  const branchInQueryString = getCurrentQsp().get(QSP.BRANCH);
 
-  /**
-   * Sentry configuration
-   */
-  SentryClient(config);
-
-  /**
-   * Fetch config from the backend and return it
-   */
   const fetchConfig = async () => {
     try {
       return fetchUrl(CONFIG.CONFIG_URL);
     } catch (err) {
       toast(
-        <Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the config"} />
+        <Alert type={ALERT_TYPES.ERROR} message="Something went wrong when fetching the config" />
       );
       console.error("Error while fetching the config: ", err);
       return undefined;
     }
   };
 
-  /**
-   * Set config in state atom
-   */
   const setConfigInState = async () => {
     try {
-      setIsLoadingConfig(true);
       const config: Config = await fetchConfig();
 
       setConfig(config);
@@ -71,58 +49,19 @@ export const Infrahub = () => {
       }
 
       toast(
-        <Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the config"} />
+        <Alert type={ALERT_TYPES.ERROR} message="Something went wrong when fetching the config" />
       );
       console.error("Error while fetching the config: ", error);
     }
   };
 
-  /**
-   * Fetch branches from the backend, sort, and return them
-   */
-  const fetchBranches = async () => {
-    try {
-      const { data }: any = await graphqlClient.query({
-        query: GET_BRANCHES,
-        context: { branch: branchInQueryString },
-      });
-
-      return data.Branch ?? [];
-    } catch (err: any) {
-      console.log("err.message: ", err.message);
-
-      if (err?.message?.includes("Received status code 401")) {
-        return [];
-      }
-
-      console.error("Error while fetching branches: ", err);
-
-      return [];
-    }
-  };
-
-  /**
-   * Set branches in state atom
-   */
-  const setBranchesInState = async () => {
-    const branches: Branch[] = await fetchBranches();
-
-    const selectedBranch = findSelectedBranch(branches, branchInQueryString);
-
-    setBranches(branches);
-    setCurrentBranch(selectedBranch);
-    setIsLoadingBranches(false);
-  };
-
   useEffect(() => {
     setConfigInState();
-    setBranchesInState();
   }, []);
 
-  if (isLoadingConfig || isLoadingBranches) {
-    // Loading screen while loading the token from the local storage
+  if (isLoadingConfig) {
     return (
-      <div className="w-screen h-screen flex ">
+      <div className="w-screen h-screen flex">
         <LoadingScreen />;
       </div>
     );

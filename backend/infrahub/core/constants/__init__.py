@@ -99,6 +99,18 @@ class MutationAction(InfrahubStringEnum):
     UNDEFINED = "undefined"
 
 
+class PathResourceType(InfrahubStringEnum):
+    SCHEMA = "schema"
+    DATA = "data"
+    FILE = "file"
+
+
+class SchemaPathType(InfrahubStringEnum):
+    NODE = "node"
+    ATTRIBUTE = "attribute"
+    RELATIONSHIP = "relationship"
+
+
 class PathType(InfrahubStringEnum):
     NODE = "node"
     ATTRIBUTE = "attribute"
@@ -135,13 +147,16 @@ class ProposedChangeState(InfrahubStringEnum):
 
         raise ValidationError(input_value="Unable to trigger check on proposed changes that aren't in the open state")
 
+    def validate_editability(self) -> None:
+        if self in [ProposedChangeState.CANCELED, ProposedChangeState.MERGED]:
+            raise ValidationError(
+                input_value=f"A proposed change in the {self.value} state is not allowed to be updated"
+            )
+
     def validate_state_transition(self, updated_state: ProposedChangeState) -> None:
         if self == ProposedChangeState.OPEN:
             return
-        if self in [ProposedChangeState.CANCELED, ProposedChangeState.MERGED]:
-            raise ValidationError(
-                input_value=f"A proposed change is not allowed to transition from the {self.value} state"
-            )
+
         if self == ProposedChangeState.CLOSED and updated_state not in [
             ProposedChangeState.CANCELED,
             ProposedChangeState.OPEN,
@@ -149,6 +164,11 @@ class ProposedChangeState(InfrahubStringEnum):
             raise ValidationError(
                 input_value="A closed proposed change is only allowed to transition to the open state"
             )
+
+
+class HashableModelState(InfrahubStringEnum):
+    PRESENT = "present"
+    ABSENT = "absent"
 
 
 class RelationshipCardinality(InfrahubStringEnum):
@@ -174,6 +194,15 @@ class RelationshipDirection(InfrahubStringEnum):
     BIDIR = "bidirectional"
     OUTBOUND = "outbound"
     INBOUND = "inbound"
+
+    @property
+    def neighbor_direction(self) -> RelationshipDirection:
+        NEIGHBOR_MAP = {
+            RelationshipDirection.BIDIR: RelationshipDirection.BIDIR,
+            RelationshipDirection.INBOUND: RelationshipDirection.OUTBOUND,
+            RelationshipDirection.OUTBOUND: RelationshipDirection.INBOUND,
+        }
+        return NEIGHBOR_MAP[self]
 
 
 class RelationshipHierarchyDirection(InfrahubStringEnum):
@@ -219,3 +248,15 @@ RESTRICTED_NAMESPACES: List[str] = [
     "Lineage",
     "Schema",
 ]
+
+NODE_NAME_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
+DEFAULT_NAME_MIN_LENGTH = 2
+NAME_REGEX = r"^[a-z0-9\_]+$"
+DEFAULT_DESCRIPTION_LENGTH = 128
+
+DEFAULT_NAME_MAX_LENGTH = 32
+DEFAULT_KIND_MIN_LENGTH = 3
+DEFAULT_KIND_MAX_LENGTH = 32
+NAMESPACE_REGEX = r"^[A-Z][a-z0-9]+$"
+NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
+DEFAULT_REL_IDENTIFIER_LENGTH = 128

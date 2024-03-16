@@ -18,10 +18,11 @@ env:
   INFRAHUB_DB_ADDRESS: localhost
   INFRAHUB_DB_PORT: 7687
   INFRAHUB_DB_PROTOCOL: bolt
+  INFRAHUB_BROKER_ADDRESS: message-queue
   INFRAHUB_LOG_LEVEL: CRITICAL
   INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
-  INFRAHUB_IMAGE_VER: "testing"
-  PYTEST_XDIST_WORKER_COUNT: 3
+  INFRAHUB_IMAGE_VER: "local"
+  PYTEST_XDIST_WORKER_COUNT: 4
   INFRAHUB_TEST_IN_DOCKER: 1
   BUILDKITE_ANALYTICS_BRANCH: ${{ github.ref }}
   BUILDKITE_BRANCH: ${{ github.ref }}
@@ -201,15 +202,19 @@ jobs:
       - name: Set Version of Pydantic
         run: poetry add pydantic@${{ matrix.pydantic-version }}
       - name: "Install Package"
-        run: "poetry install"
+        run: "poetry install --all-extras"
       - name: "Pylint Tests"
         run: "poetry run pylint infrahub_sdk/"
       - name: "Mypy Tests"
         run: "poetry run mypy --show-error-codes infrahub_sdk/"
       - name: "Unit Tests"
-        run: "poetry run pytest -v --cov=infrahub_sdk tests/unit/"
+        run: "poetry --directory python_sdk run coverage run --source=infrahub_sdk -m pytest python_sdk/tests/unit/"
+        working-directory: ./
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
+      - name: "Create coverage file"
+        run: "poetry --directory python_sdk run coverage xml"
+        working-directory: ./
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         env:
@@ -225,7 +230,8 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
     needs: ["python-sdk-unit-tests"]
-    runs-on: ubuntu-latest
+    runs-on:
+      group: huge-runners
     timeout-minutes: 30
     env:
       INFRAHUB_DB_TYPE: memgraph
@@ -234,6 +240,14 @@ jobs:
         uses: "actions/checkout@v4"
       - name: "Install Invoke"
         run: "pip install toml invoke"
+
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
       - name: "Build Test Image"
         run: "invoke test.build"
       - name: "Pull External Docker Images"
@@ -306,7 +320,7 @@ jobs:
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
       - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build Test Image"
@@ -345,7 +359,7 @@ jobs:
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
       - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build Test Image"
@@ -388,7 +402,7 @@ jobs:
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
       - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build Test Image"
@@ -399,6 +413,31 @@ jobs:
         run: "invoke backend.test-unit"
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_UNIT_NEO4J }}
+
+  backend-validate-generated:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+      - name: "Setup environment"
+        run: |
+          pipx install poetry
+          poetry config virtualenvs.prefer-active-python true
+          pip install invoke toml
+      - name: "Install Package"
+        run: "poetry install"
+      - name: "Run validator"
+        run: "poetry run invoke backend.validate-generated"
 
   frontend-tests:
     if: |
@@ -491,7 +530,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - name: "Setup environment"
         run: "pip install invoke toml"
       - name: "Build Test Image"
@@ -532,7 +571,8 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
-    runs-on: "runner-ubuntu-8-32"
+    runs-on:
+      group: huge-runners
     timeout-minutes: 40
     env:
       INFRAHUB_DB_TYPE: memgraph
@@ -550,6 +590,17 @@ jobs:
         run: npm install
       - name: "Install Invoke"
         run: "pip install toml invoke"
+
+      - name: Select infrahub port
+        run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
       - name: Build Demo
         run: "invoke demo.build"
       - name: "Pull External Docker Images"
@@ -561,29 +612,17 @@ jobs:
         run: "invoke demo.status"
       - name: Load Data
         run: "invoke demo.load-infra-data"
+
+      - name: Set infrahub address
+        run: echo "INFRAHUB_ADDRESS=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
+      - name: Set cypress endpoint
+        run: echo "CYPRESS_BASE_URL=$INFRAHUB_ADDRESS" >> $GITHUB_ENV
+
       - name: Git Repository
         run: "invoke demo.infra-git-import demo.infra-git-create"
       - name: Run End to End Tests
         working-directory: ./frontend
         run: npm run cypress:run:e2e
-      - name: Upload JUnit to Buildkite
-        run: |
-          for REPORT in frontend/cypress/results/junit-*.xml; do
-            curl \
-              -X POST \
-              -H "Authorization: Token token=\"$BUILDKITE_ANALYTICS_TOKEN\"" \
-              -F "data=@$REPORT" \
-              -F "format=junit" \
-              -F "run_env[CI]=github_actions" \
-              -F "run_env[key]=$GITHUB_ACTION-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT" \
-              -F "run_env[number]=$GITHUB_RUN_NUMBER" \
-              -F "run_env[branch]=$GITHUB_REF" \
-              -F "run_env[commit_sha]=$GITHUB_SHA" \
-              -F "run_env[url]=https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-              https://analytics-api.buildkite.com/v1/uploads ;
-          done
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_E2E_CYPRESS }}
       - name: Containers after tests
         run: docker ps -a
       - name: Upload cypress screenshots
@@ -593,13 +632,13 @@ jobs:
           name: screenshots
           path: docs/media/*
       - name: Display server logs
-        run: docker logs infrahub-infrahub-server-1
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-server-1"
       - name: Display git 1 logs
-        run: docker logs infrahub-infrahub-git-1
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-1"
       - name: Display git 2 logs
-        run: docker logs infrahub-infrahub-git-2
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-2"
       - name: Display database logs
-        run: docker logs infrahub-database-1
+        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
       - name: Display server status
         run: invoke demo.status
 
@@ -642,7 +681,7 @@ jobs:
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
       - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
@@ -730,7 +769,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: 3.12
       - name: "Setup environment"
         run: |
           pipx install poetry
@@ -747,7 +786,7 @@ jobs:
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
       - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 

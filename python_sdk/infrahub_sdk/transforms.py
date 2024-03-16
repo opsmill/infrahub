@@ -24,7 +24,6 @@ class InfrahubTransform:
     name: Optional[str] = None
     query: str
     timeout: int = 10
-    rebase: bool = True
 
     def __init__(self, branch: str = "", root_directory: str = "", server_url: str = ""):
         self.git: Repo
@@ -76,7 +75,7 @@ class InfrahubTransform:
     async def collect_data(self) -> Dict:
         """Query the result of the GraphQL Query defined in self.query and return the result"""
 
-        return await self.client.query_gql_query(name=self.query, branch_name=self.branch_name, rebase=self.rebase)
+        return await self.client.query_gql_query(name=self.query, branch_name=self.branch_name)
 
     async def run(self, data: Optional[dict] = None) -> Any:
         """Execute the transformation after collecting the data from the GraphQL query.

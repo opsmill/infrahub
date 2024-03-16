@@ -4,8 +4,23 @@ import { ColorDisplay } from "../components/display/color-display";
 import { DateDisplay } from "../components/display/date-display";
 import { PasswordDisplay } from "../components/display/password-display";
 import { CodeEditor } from "../components/editor/code-editor";
-import { MAX_VALUE_LENGTH_DISPLAY } from "../config/constants";
+import { MAX_VALUE_LENGTH_DISPLAY, SCHEMA_ATTRIBUTE_KIND } from "../config/constants";
 import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
+import { MarkdownViewer } from "../components/editor/markdown-viewer";
+import { TextDisplay } from "../components/display/text-display";
+import { components } from "../infraops";
+import {
+  AnyAttribute,
+  CheckboxAttribute,
+  Dropdown,
+  IpHost,
+  IpNetwork,
+  JsonAttribute,
+  ListAttribute,
+  NumberAttribute,
+  TextAttribute,
+} from "../generated/graphql";
+import { SchemaAttributeType } from "../screens/edit-form-hook/dynamic-control-types";
 
 const getTextValue = (data: any) => {
   if (typeof data === "string" || typeof data === "number") {
@@ -23,7 +38,12 @@ const getTextValue = (data: any) => {
   );
 };
 
-export const getDisplayValue = (row: any, attribute: any, schemaKindName?: iSchemaKindNameMap) => {
+export const getDisplayValue = (
+  row: any,
+  attribute: any,
+  schemaKindName?: iSchemaKindNameMap,
+  schemaKindLabel?: iSchemaKindNameMap
+) => {
   if (!row) {
     return;
   }
@@ -37,11 +57,13 @@ export const getDisplayValue = (row: any, attribute: any, schemaKindName?: iSche
   }
 
   if (attribute?.kind === "TextArea") {
-    return <pre>{row[attribute?.name]?.value}</pre>;
+    return <MarkdownViewer markdownText={row[attribute?.name]?.value} />;
   }
 
   if (attribute?.kind === "JSON") {
-    return <CodeEditor value={JSON.stringify(row[attribute?.name]?.value ?? "")} disabled />;
+    return (
+      <CodeEditor value={JSON.stringify(row[attribute?.name]?.value ?? "", null, 2)} disabled />
+    );
   }
 
   if (attribute?.kind === "List") {
@@ -82,12 +104,17 @@ export const getDisplayValue = (row: any, attribute: any, schemaKindName?: iSche
     return <DateDisplay date={row[attribute?.name]?.value} />;
   }
 
-  if (schemaKindName && attribute?.name === "__typename" && row[attribute?.name]) {
-    // Use the schema kind name and the value of the __typename to display the type
-    return schemaKindName[row[attribute?.name]] ?? "-";
+  const textValue = getTextValue(row[attribute?.name]);
+
+  if (schemaKindLabel && attribute?.name === "__typename" && row[attribute?.name]) {
+    // Use the schema kind name and the value of the __typename to display the type, or use the value itself if not defined
+    return schemaKindLabel[row[attribute?.name]] ?? textValue;
   }
 
-  const textValue = getTextValue(row[attribute?.name]);
+  if (schemaKindName && attribute?.name === "__typename" && row[attribute?.name]) {
+    // Use the schema kind name and the value of the __typename to display the type, or use the value itself if not defined
+    return schemaKindName[row[attribute?.name]] ?? textValue;
+  }
 
   if (attribute?.kind === "Password") {
     return <PasswordDisplay value={textValue} />;
@@ -111,11 +138,83 @@ export const getDisplayValue = (row: any, attribute: any, schemaKindName?: iSche
 export const getObjectItemDisplayValue = (
   row: any,
   attribute: any,
-  schemaKindName?: iSchemaKindNameMap
+  schemaKindName?: iSchemaKindNameMap,
+  schemaKindLabel?: iSchemaKindNameMap
 ) => {
   return (
-    <div className="flex items-center min-w-[28px] min-h-[28px] truncate">
-      {getDisplayValue(row, attribute, schemaKindName)}
+    <div className="flex items-center min-w-7 min-h-7">
+      {getDisplayValue(row, attribute, schemaKindName, schemaKindLabel)}
     </div>
   );
+};
+
+export const ObjectAttributeValue = ({
+  attributeSchema,
+  attributeValue,
+}: {
+  attributeSchema: components["schemas"]["AttributeSchema"];
+  attributeValue:
+    | TextAttribute
+    | NumberAttribute
+    | CheckboxAttribute
+    | Dropdown
+    | IpHost
+    | IpNetwork
+    | JsonAttribute
+    | ListAttribute
+    | AnyAttribute;
+}) => {
+  if (!attributeValue.value) return "-";
+
+  switch (attributeSchema.kind as SchemaAttributeType) {
+    case SCHEMA_ATTRIBUTE_KIND.ID:
+    case SCHEMA_ATTRIBUTE_KIND.TEXT:
+    case SCHEMA_ATTRIBUTE_KIND.NUMBER:
+    case SCHEMA_ATTRIBUTE_KIND.BANDWIDTH:
+    case SCHEMA_ATTRIBUTE_KIND.EMAIL:
+    case SCHEMA_ATTRIBUTE_KIND.URL:
+    case SCHEMA_ATTRIBUTE_KIND.MAC_ADDRESS:
+    case SCHEMA_ATTRIBUTE_KIND.FILE:
+    case SCHEMA_ATTRIBUTE_KIND.IP_HOST:
+    case SCHEMA_ATTRIBUTE_KIND.IP_NETWORK:
+    case SCHEMA_ATTRIBUTE_KIND.ANY:
+      return <TextDisplay>{getTextValue(attributeValue).toString()}</TextDisplay>;
+    case SCHEMA_ATTRIBUTE_KIND.BOOLEAN:
+    case SCHEMA_ATTRIBUTE_KIND.CHECKBOX:
+      return attributeValue ? <CheckIcon className="h-4 w-4" /> : <XMarkIcon className="h-4 w-4" />;
+    case SCHEMA_ATTRIBUTE_KIND.DATETIME:
+      return <DateDisplay date={getTextValue(attributeValue)} />;
+    case SCHEMA_ATTRIBUTE_KIND.TEXTAREA:
+      return <MarkdownViewer markdownText={getTextValue(attributeValue)} />;
+    case SCHEMA_ATTRIBUTE_KIND.PASSWORD:
+    case SCHEMA_ATTRIBUTE_KIND.HASHED_PASSWORD:
+      return <PasswordDisplay value={getTextValue(attributeValue)} />;
+    case SCHEMA_ATTRIBUTE_KIND.DROPDOWN:
+      const dropdownAttribute = attributeValue as Dropdown;
+      return (
+        <ColorDisplay value={getTextValue(dropdownAttribute)} color={dropdownAttribute.color} />
+      );
+    case SCHEMA_ATTRIBUTE_KIND.COLOR:
+      return <ColorDisplay color={attributeValue.value} />;
+    case SCHEMA_ATTRIBUTE_KIND.LIST:
+      const items = attributeValue.value?.map((value?: string) => value ?? "-").slice(0, 5);
+
+      const rest = attributeValue.value.slice(5).length;
+
+      return (
+        <div className="flex flex-wrap items-center">
+          {items?.map((item: string, index: number) => (
+            <Badge key={index}>{item}</Badge>
+          ))}
+
+          {items?.length !== attributeValue.value?.length && <i>{`(${rest} more)`}</i>}
+        </div>
+      );
+    case SCHEMA_ATTRIBUTE_KIND.JSON:
+      return <CodeEditor value={JSON.stringify(attributeValue.value ?? "", null, 2)} disabled />;
+    default:
+      return (
+        <div className="flex items-center min-w-7 min-h-7">{getTextValue(attributeValue)}</div>
+      );
+  }
 };

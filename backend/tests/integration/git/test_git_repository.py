@@ -1,16 +1,10 @@
-import json
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
 
-import httpx
 import pytest
 import yaml
-from fastapi.testclient import TestClient
-from infrahub_sdk import Config, InfrahubClient, NodeNotFound
-from infrahub_sdk.types import HTTPMethod
+from infrahub_sdk import Config, InfrahubClient, NodeNotFoundError
 
-from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import first_time_initialization, initialization
@@ -19,7 +13,11 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import count_relationships, delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
+from infrahub.server import app, app_initialization
 from infrahub.utils import get_models_dir
+from tests.adapters.log import FakeTaskReportLogger
+from tests.helpers.file_repo import FileRepo
+from tests.helpers.test_client import InfrahubTestClient
 
 # pylint: disable=unused-argument
 
@@ -30,29 +28,13 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
     schema_txt = Path(os.path.join(models_dir, "infrastructure_base.yml")).read_text()
     infra_schema = yaml.safe_load(schema_txt)
 
-    default_branch_name = config.SETTINGS.main.default_branch
+    default_branch_name = registry.default_branch
     branch_schema = registry.schema.get_schema_branch(name=default_branch_name)
     tmp_schema = branch_schema.duplicate()
     tmp_schema.load_schema(schema=SchemaRoot(**infra_schema))
     tmp_schema.process()
 
     await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch_name, update_db=True)
-
-
-class InfrahubTestClient(TestClient):
-    def _request(
-        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
-    ) -> httpx.Response:
-        content = None
-        if payload:
-            content = str(json.dumps(payload)).encode("UTF-8")
-        with self as client:
-            return client.request(method=method.value, url=url, headers=headers, timeout=timeout, content=content)
-
-    async def async_request(
-        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
-    ) -> httpx.Response:
-        return self._request(url=url, method=method, headers=headers, timeout=timeout, payload=payload)
 
 
 class TestInfrahubClient:
@@ -67,14 +49,12 @@ class TestInfrahubClient:
     async def test_client(
         self,
         base_dataset,
-    ):
-        # pylint: disable=import-outside-toplevel
-        from infrahub.server import app
-
-        return InfrahubTestClient(app)
+    ) -> InfrahubTestClient:
+        await app_initialization(app)
+        return InfrahubTestClient(app=app)
 
     @pytest.fixture
-    async def client(self, test_client, integration_helper):
+    async def client(self, test_client: InfrahubTestClient, integration_helper):
         admin_token = await integration_helper.create_token()
         config = Config(api_token=admin_token, requester=test_client.async_request)
 
@@ -92,12 +72,14 @@ class TestInfrahubClient:
         return obj
 
     @pytest.fixture
-    async def repo(self, test_client, client, db: InfrahubDatabase, git_upstream_repo_10, git_repos_dir):
+    async def repo(
+        self, test_client, client, db: InfrahubDatabase, git_repo_infrahub_demo_edge: FileRepo, git_repos_dir
+    ):
         # Create the repository in the Graph
         obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
         await obj.new(
             db=db,
-            name=git_upstream_repo_10["name"],
+            name=git_repo_infrahub_demo_edge.name,
             description="test repository",
             location="git@github.com:mock/test.git",
         )
@@ -106,8 +88,9 @@ class TestInfrahubClient:
         # Initialize the repository on the file system
         repo = await InfrahubRepository.new(
             id=obj.id,
-            name=git_upstream_repo_10["name"],
-            location=git_upstream_repo_10["path"],
+            name=git_repo_infrahub_demo_edge.name,
+            location=git_repo_infrahub_demo_edge.path,
+            task_report=FakeTaskReportLogger(),
         )
 
         repo.client = client
@@ -156,7 +139,7 @@ class TestInfrahubClient:
         modified_query = await client.get(kind=InfrahubKind.GRAPHQLQUERY, id=queries[0].id)
         assert modified_query.query.value == value_before_change
 
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             await client.get(kind=InfrahubKind.GRAPHQLQUERY, id=obj.id)
 
     async def test_import_all_python_files(
@@ -231,10 +214,10 @@ class TestInfrahubClient:
         assert modified_transform1.query.id == transform_query_value_before_change
 
         # FIXME not implemented yet
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             await client.get(kind=InfrahubKind.CHECKDEFINITION, id=obj1.id)
 
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             await client.get(kind="CoreTransformPython", id=obj2.id)
 
     async def test_import_all_yaml_files(
@@ -278,5 +261,5 @@ class TestInfrahubClient:
         assert modified_rfile.query.id == rfile_query_value_before_change
 
         # FIXME not implemented yet
-        with pytest.raises(NodeNotFound):
+        with pytest.raises(NodeNotFoundError):
             await client.get(kind=InfrahubKind.TRANSFORMJINJA2, id=obj.id)

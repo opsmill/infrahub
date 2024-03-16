@@ -1,7 +1,7 @@
 ---
 global:
   kubernetesClusterDomain: cluster.local
-  imageRegistry: 9r2s1098.c1.gra9.container-registry.ovh.net
+  imageRegistry: registry.opsmill.io
   infrahubRepository: opsmill/infrahub
   infrahubTag: "0.10.1"
   imagePullPolicy: IfNotPresent
@@ -24,6 +24,13 @@ cache:
 # ----------- Databse -----------
 database:
   type: ClusterIP
+  persistence:
+    data:
+      enabled: true
+      size: 100Mi
+    logs:
+      enabled: true
+      size: 100Mi
   database:
     env:
       neo4JAuth: neo4j/admin
@@ -47,6 +54,9 @@ database:
 # ----------- Infrahub GIT -----------
 infrahubGit:
   replicas: 2
+  persistence:
+    enabled: true
+    size: 100Mi
   infrahubGit:
     args:
       - infrahub
@@ -54,14 +64,13 @@ infrahubGit:
       - start
       - --debug
     env:
-      infrahubAddress: http://infrahub-server:8000
-      infrahubCachePort: 6379
-      infrahubConfig: /config/infrahub.toml
-      infrahubDbType: neo4j
-      infrahubLogLevel: DEBUG
-      infrahubProduction: "false"
-      infrahubSdkApiToken: 06438eb2-8019-4776-878c-0941b1f1d1ec
-      infrahubSdkTimeout: "20"
+      INFRAHUB_CACHE_PORT: 6379
+      INFRAHUB_CONFIG: /config/infrahub.toml
+      INFRAHUB_DB_TYPE: neo4j
+      INFRAHUB_LOG_LEVEL: DEBUG
+      INFRAHUB_PRODUCTION: "false"
+      INFRAHUB_SDK_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
+      INFRAHUB_SDK_TIMEOUT: "20"
     imagePullPolicy: Always
   waitForInfrahubServer:
     image:
@@ -71,6 +80,11 @@ infrahubGit:
 # ----------- Infrahub Server -----------
 infrahubServer:
   type: ClusterIP
+  ingress:
+    hostname: infrahub-cluster.local
+  persistence:
+    enabled: true
+    size: 100Mi
   infrahubServer:
     args:
       - gunicorn
@@ -80,14 +94,14 @@ infrahubServer:
       - infrahub.serve.log.GunicornLogger
       - infrahub.server:app
     env:
-      infrahubAllowAnonymousAccess: "true"
-      infrahubCachePort: 6379
-      infrahubConfig: /config/infrahub.toml
-      infrahubDbType: neo4j
-      infrahubLogLevel: INFO
-      infrahubProduction: "false"
-      infrahubSecurityInitialAdminToken: 06438eb2-8019-4776-878c-0941b1f1d1ec
-      infrahubSecuritySecretKey: 327f747f-efac-42be-9e73-999f08f86b92
+      INFRAHUB_ALLOW_ANONYMOUS_ACCESS: "true"
+      INFRAHUB_CACHE_PORT: 6379
+      INFRAHUB_CONFIG: /config/infrahub.toml
+      INFRAHUB_DB_TYPE: neo4j
+      INFRAHUB_LOG_LEVEL: INFO
+      INFRAHUB_PRODUCTION: "false"
+      INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
+      INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
     imagePullPolicy: Always
   ports:
     - name: "interface"
@@ -105,7 +119,10 @@ infrahubServer:
     image:
       repository: busybox
       tag: latest
+
+
 infrahubServerDbInitJob:
+  enabled: false
   backoffLimit: 0
   infrahubServerDbInitJob:
     env:
@@ -115,6 +132,12 @@ infrahubServerDbInitJob:
     image:
       repository: busybox
       tag: latest
+
+infrahubDemoData:
+  enabled: false
+  backoffLimit: 4
+  env:
+    INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
 
 # ----------- Mesage Queue (Rabbit MQ) -----------
 messageQueue:
@@ -155,17 +178,3 @@ messageQueue:
     periodSeconds: 30
     failureThreshold: 6
     successThreshold: 1
-
-# ----------- Persistent Storage -----------
-pvc:
-  # Database
-  databaseData:
-    storageRequest: 100Mi
-  databaseLogs:
-    storageRequest: 100Mi
-  # Infrahub Git
-  gitData:
-    storageRequest: 100Mi
-  # Infrahub Server
-  infrahubServerStorageData:
-    storageRequest: 100Mi

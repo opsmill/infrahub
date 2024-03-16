@@ -15,6 +15,13 @@ def test_validate_schema_valid():
     assert "Schema is valid" in result.stdout
 
 
+def test_validate_schema_empty():
+    fixture_file = get_fixtures_dir() / "models" / "empty.json"
+
+    result = runner.invoke(app=app, args=["schema", str(fixture_file)])
+    assert result.exit_code == 1
+
+
 def test_validate_schema_non_valid():
     fixture_file = get_fixtures_dir() / "models" / "non_valid_model_01.json"
 

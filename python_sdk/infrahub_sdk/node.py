@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import ipaddress
 import re
+import warnings
 from copy import copy
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
     Dict,
+    Iterable,
     List,
     Optional,
     Tuple,
@@ -15,7 +17,14 @@ from typing import (
     get_args,
 )
 
-from infrahub_sdk.exceptions import Error, FeatureNotSupported, FilterNotFound, NodeNotFound
+from infrahub_sdk.constants import InfrahubClientMode
+from infrahub_sdk.exceptions import (
+    Error,
+    FeatureNotSupportedError,
+    FilterNotFoundError,
+    NodeNotFoundError,
+    UninitializedError,
+)
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.schema import GenericSchema, RelationshipCardinality, RelationshipKind
 from infrahub_sdk.timestamp import Timestamp
@@ -315,7 +324,7 @@ class RelatedNode(RelatedNodeBase):
         if self.id and self.typename:
             return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
 
-        raise NodeNotFound(
+        raise NodeNotFoundError(
             branch_name=self._branch,
             node_type=self.schema.peer,
             identifier={"key": [self.id]},
@@ -364,7 +373,7 @@ class RelatedNodeSync(RelatedNodeBase):
         if self.id and self.typename:
             return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
 
-        raise NodeNotFound(
+        raise NodeNotFoundError(
             branch_name=self._branch,
             node_type=self.schema.peer,
             identifier={"key": [self.id]},
@@ -374,8 +383,6 @@ class RelatedNodeSync(RelatedNodeBase):
 class RelationshipManagerBase:
     """Base class for RelationshipManager and RelationshipManagerSync"""
 
-    initialized: bool = False
-
     def __init__(self, name: str, branch: str, schema: RelationshipSchema):
         """
         Args:
@@ -383,6 +390,8 @@ class RelationshipManagerBase:
             branch (str): The branch where the relationship resides.
             schema (RelationshipSchema): The schema of the relationship.
         """
+        self.initialized: bool = False
+        self._has_update: bool = False
         self.name = name
         self.schema = schema
         self.branch = branch
@@ -396,6 +405,10 @@ class RelationshipManagerBase:
     @property
     def peer_ids(self) -> List[str]:
         return [peer.id for peer in self.peers if peer.id]
+
+    @property
+    def has_update(self) -> bool:
+        return self._has_update
 
     def _generate_input_data(self) -> List[Dict]:
         return [peer._generate_input_data() for peer in self.peers]
@@ -460,9 +473,10 @@ class RelationshipManager(RelationshipManagerBase):
         self.client = client
         self.node = node
 
-        self.initialized = data is not None
-
         super().__init__(name=name, schema=schema, branch=branch)
+
+        self.initialized = data is not None
+        self._has_update = data is not None
 
         if data is None:
             return
@@ -517,19 +531,22 @@ class RelationshipManager(RelationshipManagerBase):
 
     def add(self, data: Union[str, RelatedNode, dict]) -> None:
         """Add a new peer to this relationship."""
+        if not self.initialized:
+            raise UninitializedError("Must call fetch() on RelationshipManager before editing members")
         new_node = RelatedNode(schema=self.schema, client=self.client, branch=self.branch, data=data)
 
         if new_node.id and new_node.id not in self.peer_ids:
-            self.peers.append(
-                RelatedNode(
-                    schema=self.schema,
-                    client=self.client,
-                    branch=self.branch,
-                    data=data,
-                )
-            )
+            self.peers.append(new_node)
+            self._has_update = True
+
+    def extend(self, data: Iterable[Union[str, RelatedNode, dict]]) -> None:
+        """Add new peers to this relationship."""
+        for d in data:
+            self.add(d)
 
     def remove(self, data: Union[str, RelatedNode, dict]) -> None:
+        if not self.initialized:
+            raise UninitializedError("Must call fetch() on RelationshipManager before editing members")
         node_to_remove = RelatedNode(schema=self.schema, client=self.client, branch=self.branch, data=data)
 
         if node_to_remove.id and node_to_remove.id in self.peer_ids:
@@ -538,6 +555,7 @@ class RelationshipManager(RelationshipManagerBase):
                 raise IndexError(f"Unexpected situation, the node with the index {idx} should be {node_to_remove.id}")
 
             self.peers.pop(idx)
+            self._has_update = True
 
 
 class RelationshipManagerSync(RelationshipManagerBase):
@@ -564,9 +582,10 @@ class RelationshipManagerSync(RelationshipManagerBase):
         self.client = client
         self.node = node
 
-        self.initialized = data is not None
-
         super().__init__(name=name, schema=schema, branch=branch)
+
+        self.initialized = data is not None
+        self._has_update = data is not None
 
         if data is None:
             return
@@ -621,19 +640,22 @@ class RelationshipManagerSync(RelationshipManagerBase):
 
     def add(self, data: Union[str, RelatedNodeSync, dict]) -> None:
         """Add a new peer to this relationship."""
+        if not self.initialized:
+            raise UninitializedError("Must call fetch() on RelationshipManager before editing members")
         new_node = RelatedNodeSync(schema=self.schema, client=self.client, branch=self.branch, data=data)
 
         if new_node.id and new_node.id not in self.peer_ids:
-            self.peers.append(
-                RelatedNodeSync(
-                    schema=self.schema,
-                    client=self.client,
-                    branch=self.branch,
-                    data=data,
-                )
-            )
+            self.peers.append(new_node)
+            self._has_update = True
+
+    def extend(self, data: Iterable[Union[str, RelatedNodeSync, dict]]) -> None:
+        """Add new peers to this relationship."""
+        for d in data:
+            self.add(d)
 
     def remove(self, data: Union[str, RelatedNodeSync, dict]) -> None:
+        if not self.initialized:
+            raise UninitializedError("Must call fetch() on RelationshipManager before editing members")
         node_to_remove = RelatedNodeSync(schema=self.schema, client=self.client, branch=self.branch, data=data)
 
         if node_to_remove.id and node_to_remove.id in self.peer_ids:
@@ -642,6 +664,7 @@ class RelationshipManagerSync(RelationshipManagerBase):
                 raise IndexError(f"Unexpected situation, the node with the index {idx} should be {node_to_remove.id}")
 
             self.peers.pop(idx)
+            self._has_update = True
 
 
 class InfrahubNodeBase:
@@ -690,6 +713,15 @@ class InfrahubNodeBase:
                 attr_name,
                 Attribute(name=attr_name, schema=attr_schema, data=attr_data),
             )
+
+    def _deprecated_parameter(self, **kwargs: Any) -> None:
+        for param_name, param_value in kwargs.items():
+            if param_value is not None:
+                warnings.warn(
+                    f"{param_name} has been deprecated and will be removed completely in a future version",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
 
     def _init_relationships(self, data: Optional[dict] = None) -> None:
         pass
@@ -766,7 +798,7 @@ class InfrahubNodeBase:
                 if variable_names := rel_data.get("variables"):
                     variables.update(variable_names)
 
-            elif rel_data and isinstance(rel_data, list):
+            elif isinstance(rel_data, list):
                 data[item_name] = rel_data
             elif rel_schema.cardinality == RelationshipCardinality.MANY:
                 data[item_name] = []
@@ -787,7 +819,8 @@ class InfrahubNodeBase:
 
     @staticmethod
     def _strip_unmodified_dict(data: dict, original_data: dict, variables: dict, item: str) -> None:
-        if item in original_data and isinstance(original_data[item], dict) and isinstance(data.get(item), dict):
+        data_item = data.get(item)
+        if item in original_data and isinstance(original_data[item], dict) and isinstance(data_item, dict):
             for item_key in original_data[item].keys():
                 for property_name in PROPERTIES_OBJECT:
                     if item_key == property_name and isinstance(original_data[item][property_name], dict):
@@ -813,15 +846,21 @@ class InfrahubNodeBase:
                         data[item].pop(item_key)
                         variables.pop(variable_key)
 
-        if not data[item]:
+        # TODO: I do not feel _great_ about this
+        if not data_item and data_item != []:
             data.pop(item)
 
     def _strip_unmodified(self, data: dict, variables: dict) -> Tuple[dict, dict]:
         original_data = self._data or {}
         for relationship in self._relationships:
             relationship_property = getattr(self, relationship)
-            if relationship_property and not relationship_property.initialized and relationship in data:
+            if not relationship_property or relationship not in data:
+                continue
+            if not relationship_property.initialized:
                 data.pop(relationship)
+            elif isinstance(relationship_property, RelationshipManagerBase) and not relationship_property.has_update:
+                data.pop(relationship)
+
         for item in original_data.keys():
             if item in data.keys():
                 if data[item] == original_data[item]:
@@ -878,11 +917,11 @@ class InfrahubNodeBase:
 
     def _validate_artifact_support(self, message: str) -> None:
         if not self._artifact_support:
-            raise FeatureNotSupported(message)
+            raise FeatureNotSupportedError(message)
 
     def _validate_artifact_definition_support(self, message: str) -> None:
         if not self._artifact_definition_support:
-            raise FeatureNotSupported(message)
+            raise FeatureNotSupportedError(message)
 
     def generate_query_data_init(
         self,
@@ -924,7 +963,7 @@ class InfrahubNodeBase:
                     break
             if not found:
                 valid_filters = [entry.name for entry in self._schema.filters]
-                raise FilterNotFound(
+                raise FilterNotFoundError(
                     identifier=filter_name,
                     kind=self._schema.kind,
                     filters=valid_filters,
@@ -1074,11 +1113,14 @@ class InfrahubNode(InfrahubNodeBase):
     async def save(
         self, at: Optional[Timestamp] = None, allow_upsert: bool = False, update_group_context: Optional[bool] = None
     ) -> None:
-        at = Timestamp(at)
+        self._deprecated_parameter(at=at)
         if self._existing is False or allow_upsert is True:
-            await self.create(at=at, allow_upsert=allow_upsert)
+            await self.create(allow_upsert=allow_upsert)
         else:
-            await self.update(at=at)
+            await self.update()
+
+        if update_group_context is None and self._client.mode == InfrahubClientMode.TRACKING:
+            update_group_context = True
 
         if not isinstance(self._schema, GenericSchema):
             if "CoreGroup" in self._schema.inherit_from:
@@ -1089,9 +1131,9 @@ class InfrahubNode(InfrahubNodeBase):
                 await self._client.group_context.add_related_nodes(
                     ids=[self.id], update_group_context=update_group_context
                 )
-
         else:
             await self._client.group_context.add_related_nodes(ids=[self.id], update_group_context=update_group_context)
+
         self._client.store.set(key=self.id, node=self)
 
     async def generate_query_data(
@@ -1237,7 +1279,8 @@ class InfrahubNode(InfrahubNodeBase):
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipremove-{relation_to_update}"
         await self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
-    async def create(self, at: Timestamp, allow_upsert: bool = False) -> None:
+    async def create(self, at: Optional[Timestamp] = None, allow_upsert: bool = False) -> None:
+        self._deprecated_parameter(at=at)
         input_data = self._generate_input_data()
         mutation_query = {"ok": None, "object": {"id": None}}
         if allow_upsert:
@@ -1253,7 +1296,7 @@ class InfrahubNode(InfrahubNodeBase):
             variables=input_data["mutation_variables"],
         )
         response = await self._client.execute_graphql(
-            query=query.render(), branch_name=self._branch, at=at, tracker=tracker, variables=input_data["variables"]
+            query=query.render(), branch_name=self._branch, tracker=tracker, variables=input_data["variables"]
         )
         self._existing = True
 
@@ -1261,7 +1304,8 @@ class InfrahubNode(InfrahubNodeBase):
         if allow_upsert:
             self.id = response[mutation_name]["object"]["id"]
 
-    async def update(self, at: Timestamp, do_full_update: bool = False) -> None:
+    async def update(self, at: Optional[Timestamp] = None, do_full_update: bool = False) -> None:
+        self._deprecated_parameter(at=at)
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(
@@ -1273,7 +1317,6 @@ class InfrahubNode(InfrahubNodeBase):
         await self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
-            at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
             variables=input_data["variables"],
         )
@@ -1391,7 +1434,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
         return content
 
     def delete(self, at: Optional[Timestamp] = None) -> None:
-        at = Timestamp(at)
+        self._deprecated_parameter(at=at)
         input_data = {"data": {"id": self.id}}
         mutation_query = {"ok": None}
         query = Mutation(
@@ -1402,27 +1445,29 @@ class InfrahubNodeSync(InfrahubNodeBase):
         self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
-            at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-delete",
         )
 
     def save(
         self, at: Optional[Timestamp] = None, allow_upsert: bool = False, update_group_context: Optional[bool] = None
     ) -> None:
-        at = Timestamp(at)
+        self._deprecated_parameter(at=at)
         if self._existing is False or allow_upsert is True:
-            self.create(at=at, allow_upsert=allow_upsert)
+            self.create(allow_upsert=allow_upsert)
         else:
-            self.update(at=at)
+            self.update()
+
+        if update_group_context is None and self._client.mode == InfrahubClientMode.TRACKING:
+            update_group_context = True
 
         if not isinstance(self._schema, GenericSchema):
             if "CoreGroup" in self._schema.inherit_from:
                 self._client.group_context.add_related_groups(ids=[self.id], update_group_context=update_group_context)
             else:
                 self._client.group_context.add_related_nodes(ids=[self.id], update_group_context=update_group_context)
-
         else:
             self._client.group_context.add_related_nodes(ids=[self.id], update_group_context=update_group_context)
+
         self._client.store.set(key=self.id, node=self)
 
     def generate_query_data(
@@ -1571,7 +1616,8 @@ class InfrahubNodeSync(InfrahubNodeBase):
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipremove-{relation_to_update}"
         self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
-    def create(self, at: Timestamp, allow_upsert: bool = False) -> None:
+    def create(self, at: Optional[Timestamp] = None, allow_upsert: bool = False) -> None:
+        self._deprecated_parameter(at=at)
         input_data = self._generate_input_data()
         mutation_query = {"ok": None, "object": {"id": None}}
         if allow_upsert:
@@ -1596,7 +1642,8 @@ class InfrahubNodeSync(InfrahubNodeBase):
         if allow_upsert:
             self.id = response[mutation_name]["object"]["id"]
 
-    def update(self, at: Timestamp, do_full_update: bool = False) -> None:
+    def update(self, at: Optional[Timestamp] = None, do_full_update: bool = False) -> None:
+        self._deprecated_parameter(at=at)
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(

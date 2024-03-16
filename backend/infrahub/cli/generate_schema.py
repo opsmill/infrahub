@@ -23,8 +23,7 @@ def generate_schema(
         SchemaLoadAPI,
     )
 
-    schema_str = SchemaLoadAPI.schema_json()
-    schema = json.loads(schema_str)
+    schema = SchemaLoadAPI.model_json_schema()
 
     schema["title"] = "InfrahubSchema"
 

@@ -56,6 +56,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         _meta.default_filter = default_filter
         super(Node, cls).__init_subclass_with_meta__(_meta=_meta, **options)
 
+    def get_schema(self) -> NodeSchema:
+        return self._schema
+
     def get_kind(self) -> str:
         """Return the main Kind of the Object."""
         return self._schema.kind
@@ -416,58 +419,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at)
         await query.execute(db=db)
 
-    async def validate_constraints(
-        self, db: InfrahubDatabase, branch: Branch, at: Optional[Timestamp] = None, filters: Optional[List[str]] = None
-    ):
-        at = Timestamp(at)
-        await self.validate_constraint_node_uniqueness(db=db, branch=branch, at=at, filters=filters)
-        await self.validate_constraint_relationship_count(db=db, branch=branch, at=at, filters=filters)
-
-    async def validate_constraint_node_uniqueness(
-        self, db: InfrahubDatabase, branch: Branch, at: Optional[Timestamp] = None, filters: Optional[List[str]] = None
-    ):
-        at = Timestamp(at)
-        for unique_attr in self._schema.unique_attributes:
-            if filters and unique_attr.name not in filters:
-                continue
-
-            comparison_schema = self._schema
-            attr = getattr(self, unique_attr.name)
-            if unique_attr.inherited:
-                for generic_parent_schema_name in self._schema.inherit_from:
-                    generic_parent_schema = registry.schema.get(generic_parent_schema_name, branch=branch)
-                    parent_attr = generic_parent_schema.get_attribute(unique_attr.name, raise_on_error=False)
-                    if parent_attr is None:
-                        continue
-                    if parent_attr.unique is True:
-                        comparison_schema = generic_parent_schema
-                        break
-            nodes = await registry.manager.query(
-                schema=comparison_schema,
-                filters={f"{unique_attr.name}__value": attr.value},
-                fields={},
-                db=db,
-                branch=branch,
-                at=at,
-            )
-
-            other_nodes = [n for n in nodes if n.id != self.id]
-            if other_nodes:
-                raise ValidationError(
-                    {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
-                )
-
-    async def validate_constraint_relationship_count(
-        self, db: InfrahubDatabase, branch: Branch, at: Optional[Timestamp] = None, filters: Optional[List[str]] = None
-    ):
-        at = Timestamp(at)
-
-        for rel_name in self._schema.relationship_names:
-            if filters and rel_name not in filters:
-                continue
-            relm: RelationshipManager = getattr(self, rel_name)
-            await relm.validate_constraints(db=db, branch=branch)
-
     async def to_graphql(
         self,
         db: InfrahubDatabase,
@@ -546,7 +497,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return changed
 
-    async def render_display_label(self, db: InfrahubDatabase):  # pylint: disable=unused-argument
+    async def render_display_label(self, db: Optional[InfrahubDatabase] = None):  # pylint: disable=unused-argument
         if not self._schema.display_labels:
             return repr(self)
 
@@ -563,6 +514,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             display_elements.append(str(getattr(attr, item_elements[1])))
 
         display_label = " ".join(display_elements)
-        if display_label.strip() == "":
+        if not display_label.strip():
             return repr(self)
         return display_label.strip()

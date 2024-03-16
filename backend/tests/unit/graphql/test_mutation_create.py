@@ -2,6 +2,7 @@ import pytest
 from graphql import graphql
 
 from infrahub import config
+from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -863,3 +864,42 @@ async def test_create_with_attribute_not_valid(db: InfrahubDatabase, default_bra
 
     assert len(result.errors) == 1
     assert "#44444444 must have a maximum length of 7 at color" in result.errors[0].message
+
+
+async def test_create_with_uniqueness_constraint_violation(db: InfrahubDatabase, default_branch, car_person_schema):
+    car_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
+    car_schema.uniqueness_constraints = [["owner", "color"]]
+
+    p1 = await Node.init(db=db, schema="TestPerson")
+    await p1.new(db=db, name="Bruce Wayne", height=180)
+    await p1.save(db=db)
+    c1 = await Node.init(db=db, schema="TestCar")
+    await c1.new(db=db, name="Batmobile", is_electric=False, nbr_seats=3, color="#123456", owner=p1)
+    await c1.save(db=db)
+
+    query = """
+    mutation {
+        TestCarCreate(data: {
+            name: { value: "Batcycle" },
+            nbr_seats: { value: 1 },
+            color: { value: "#123456" },
+            is_electric: { value: true },
+            owner: { id: "Bruce Wayne" },
+        }) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert len(result.errors) == 1
+    assert "Violates uniqueness constraint 'owner-color'" in result.errors[0].message

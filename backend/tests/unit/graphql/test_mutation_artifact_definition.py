@@ -10,7 +10,7 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
 from infrahub.message_bus import messages
-from infrahub.message_bus.rpc import InfrahubRpcClientTesting
+from infrahub.services import services
 
 
 @pytest.fixture
@@ -33,7 +33,6 @@ async def transformation1(
         repository=str(car_person_data_generic["r1"].id),
         file_path="transform01.py",
         class_name="Transform01",
-        rebase=False,
     )
     await t1.save(db=db)
     return t1
@@ -69,9 +68,8 @@ async def test_create_artifact_definition(
     group1: Node,
     transformation1: Node,
     branch: Branch,
+    patch_services,
 ):
-    rpc_client = InfrahubRpcClientTesting()
-
     query = """
     mutation {
         CoreArtifactDefinitionCreate(data: {
@@ -92,7 +90,7 @@ async def test_create_artifact_definition(
         group1.id,
         transformation1.id,
     )
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch, rpc_client=rpc_client)
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch, service=services.service)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -111,7 +109,7 @@ async def test_create_artifact_definition(
 
     assert (
         messages.RequestArtifactDefinitionGenerate(artifact_definition=ad_id, branch=branch.name, limit=[])
-        in rpc_client.sent
+        in services.service.message_bus.messages
     )
 
 
@@ -123,8 +121,6 @@ async def test_update_artifact_definition(
     definition1: Node,
     branch: Branch,
 ):
-    rpc_client = InfrahubRpcClientTesting()
-
     query = """
     mutation {
         CoreArtifactDefinitionUpdate(data: {
@@ -139,7 +135,7 @@ async def test_update_artifact_definition(
     }
     """ % (definition1.id)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch, rpc_client=rpc_client)
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch, service=services.service)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -159,5 +155,5 @@ async def test_update_artifact_definition(
 
     assert (
         messages.RequestArtifactDefinitionGenerate(artifact_definition=definition1.id, branch=branch.name, limit=[])
-        in rpc_client.sent
+        in services.service.message_bus.messages
     )

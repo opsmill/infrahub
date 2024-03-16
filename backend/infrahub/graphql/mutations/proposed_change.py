@@ -4,15 +4,16 @@ from graphene import Boolean, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 
 from infrahub import config, lock
-from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, ValidatorConclusion
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge import BranchMerger
+from infrahub.core.migrations.schema.runner import schema_migrations_runner
 from infrahub.core.node import Node
+from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
-from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import BranchNotFound, ValidationError
+from infrahub.database import InfrahubDatabase, retry_db_transaction
+from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
 from infrahub.log import get_log_data
@@ -40,6 +41,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
     @classmethod
+    @retry_db_transaction(name="proposed_change_create")
     async def mutate_create(
         cls,
         root: dict,
@@ -65,17 +67,19 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     input_value="Currently only the 'main' branch is supported as a destination for a proposed change"
                 )
 
-        message = messages.RequestProposedChangePipeline(
-            proposed_change=proposed_change.id,
-            source_branch=source_branch.name,
-            source_branch_data_only=source_branch.is_data_only,
-            destination_branch=destination_branch,
-        )
-        await context.rpc_client.send(message)
+        if context.service:
+            message = messages.RequestProposedChangePipeline(
+                proposed_change=proposed_change.id,
+                source_branch=source_branch.name,
+                source_branch_sync_with_git=source_branch.sync_with_git,
+                destination_branch=destination_branch,
+            )
+            await context.service.send(message=message)
 
         return proposed_change, result
 
     @classmethod
+    @retry_db_transaction(name="proposed_change_update")
     async def mutate_update(
         cls,
         root: dict,
@@ -98,11 +102,14 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             include_source=True,
         )
         state = ProposedChangeState(obj.state.value)
+        state.validate_editability()
+
         updated_state = None
         if state_update := data.get("state", {}).get("value"):
             updated_state = ProposedChangeState(state_update)
             state.validate_state_transition(updated_state)
 
+        merger: Optional[BranchMerger] = None
         async with context.db.start_transaction() as dbt:
             proposed_change, result = await super().mutate_update(
                 root=root, info=info, data=data, branch=branch, at=at, database=dbt, node=obj
@@ -132,26 +139,30 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                                 conflict_resolution[check.conflicts.value[0]["path"]] = keep_source_value
 
                 async with lock.registry.global_graph_lock():
-                    merger = BranchMerger(branch=source_branch)
-                    await merger.merge(rpc_client=context.rpc_client, db=dbt, conflict_resolution=conflict_resolution)
-
-                    # Copy the schema from the origin branch and set the hash and the schema_changed_at value
-                    origin_branch = await source_branch.get_origin_branch(db=dbt)
-                    updated_schema = await registry.schema.load_schema_from_db(db=dbt, branch=origin_branch)
-                    registry.schema.set_schema_branch(name=origin_branch.name, schema=updated_schema)
-                    origin_branch.update_schema_hash()
-
-                    await origin_branch.save(db=dbt)
+                    merger = BranchMerger(db=dbt, source_branch=source_branch, service=context.service)
+                    await merger.merge(conflict_resolution=conflict_resolution)
+                    await merger.update_schema()
 
                 if config.SETTINGS.broker.enable and context.background:
                     log_data = get_log_data()
                     request_id = log_data.get("request_id", "")
                     message = messages.EventBranchMerge(
                         source_branch=source_branch.name,
-                        target_branch=config.SETTINGS.main.default_branch,
+                        target_branch=registry.default_branch,
                         meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
                     )
                     context.background.add_task(services.send, message)
+
+        if merger and merger.migrations:
+            errors = await schema_migrations_runner(
+                branch=merger.destination_branch,
+                new_schema=merger.destination_schema,
+                previous_schema=merger.initial_source_schema,
+                migrations=merger.migrations,
+                service=context.service,
+            )
+            for error in errors:
+                context.service.log.error(error)
 
         return proposed_change, result
 
@@ -191,11 +202,12 @@ class ProposedChangeRequestRunCheck(Mutation):
         message = messages.RequestProposedChangePipeline(
             proposed_change=proposed_change.id,
             source_branch=source_branch.name,
-            source_branch_data_only=source_branch.is_data_only,
+            source_branch_sync_with_git=source_branch.sync_with_git,
             destination_branch=destination_branch,
             check_type=check_type,
         )
-        await context.rpc_client.send(message)
+        if context.service:
+            await context.service.send(message=message)
 
         return {"ok": True}
 
@@ -203,7 +215,7 @@ class ProposedChangeRequestRunCheck(Mutation):
 async def _get_source_branch(db: InfrahubDatabase, name: str) -> Branch:
     try:
         return await Branch.get_by_name(name=name, db=db)
-    except BranchNotFound:
+    except BranchNotFoundError:
         raise ValidationError(
             input_value="The specified source branch for this proposed change was not found."
         ) from None

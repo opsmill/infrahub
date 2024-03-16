@@ -59,9 +59,9 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
             messages.RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch=branch.name),
         ]
 
-        if context.rpc_client:
+        if context.service:
             for event in events:
-                await context.rpc_client.send(event)
+                await context.service.send(message=event)
 
         return artifact_definition, result
 
@@ -84,8 +84,8 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
             messages.RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch=branch.name),
         ]
 
-        if context.rpc_client:
+        if context.service:
             for event in events:
-                await context.rpc_client.send(event)
+                await context.service.send(message=event)
 
         return artifact_definition, result

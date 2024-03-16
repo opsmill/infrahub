@@ -124,23 +124,23 @@ def has_children(node: NodeSchema, config: SyncConfig) -> bool:
     return False
 
 
-def render_template(template_dir: str, template_file: str, output_dir: str, output_file: str, context):
-    template_path = os.path.join(template_dir, template_file)
-    output_filename = Path(os.path.join(output_dir, output_file))
+def render_template(template_file: str, output_dir: str, output_file: str, context):
+    template_loader = jinja2.PackageLoader("infrahub_sync", "generator/templates")
+    template_env = jinja2.Environment(
+        loader=template_loader,
+    )
+    template_env.filters["get_identifiers"] = get_identifiers
+    template_env.filters["get_attributes"] = get_attributes
+    template_env.filters["get_children"] = get_children
+    template_env.filters["list_to_set"] = list_to_set
+    template_env.filters["list_to_str"] = list_to_str
+    template_env.filters["has_node"] = has_node
+    template_env.filters["has_field"] = has_field
+    template_env.filters["has_children"] = has_children
+    template_env.filters["get_kind"] = get_kind
 
-    templateLoader = jinja2.FileSystemLoader(searchpath=".")
-    templateEnv = jinja2.Environment(loader=templateLoader, trim_blocks=True, lstrip_blocks=True)
-    templateEnv.filters["get_identifiers"] = get_identifiers
-    templateEnv.filters["get_attributes"] = get_attributes
-    templateEnv.filters["get_children"] = get_children
-    templateEnv.filters["list_to_set"] = list_to_set
-    templateEnv.filters["list_to_str"] = list_to_str
-    templateEnv.filters["has_node"] = has_node
-    templateEnv.filters["has_field"] = has_field
-    templateEnv.filters["has_children"] = has_children
-    templateEnv.filters["get_kind"] = get_kind
-
-    template = templateEnv.get_template(str(template_path))
+    template = template_env.get_template(template_file)
 
     rendered_tpl = template.render(**context)  # type: ignore[arg-type]
+    output_filename = Path(os.path.join(output_dir, output_file))
     output_filename.write_text(rendered_tpl, encoding="utf-8")

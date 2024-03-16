@@ -2,19 +2,10 @@ import hashlib
 import os
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus.rpc import InfrahubRpcClientTesting
-
-
-@pytest.fixture
-def patch_rpc_client():
-    import infrahub.message_bus.rpc
-
-    infrahub.message_bus.rpc.InfrahubRpcClient = InfrahubRpcClientTesting
 
 
 async def test_file_upload(

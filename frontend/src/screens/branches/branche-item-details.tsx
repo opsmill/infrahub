@@ -7,6 +7,7 @@ import { useTitle } from "../../hooks/useTitle";
 import { constructPath } from "../../utils/fetch";
 import { Diff } from "../diff/diff";
 import { BranchDetails } from "./branch-details";
+import Content from "../layout/content";
 
 export const BRANCH_TABS = {
   DETAILS: "details",
@@ -63,7 +64,7 @@ export const BrancheItemDetails = () => {
 
       <TabsButtons tabs={tabs} qsp={QSP.BRANCH_TAB} />
 
-      <div className="flex flex-col flex-1">{renderContent(qspTab)}</div>
+      <Content>{renderContent(qspTab)}</Content>
     </>
   );
 };

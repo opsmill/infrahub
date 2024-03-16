@@ -98,6 +98,16 @@ class RelationshipPeerData:
         return response
 
 
+@dataclass
+class RelationshipPeersData:
+    id: UUID
+    identifier: str
+    source_id: UUID
+    source_kind: str
+    destination_id: UUID
+    destination_kind: str
+
+
 class RelationshipQuery(Query):
     def __init__(
         self,
@@ -456,6 +466,7 @@ class RelationshipGetPeerQuery(Query):
         filters: Optional[dict] = None,
         source: Optional[Node] = None,
         source_ids: Optional[List[str]] = None,
+        source_kind: Optional[str] = None,
         rel: Union[Type[Relationship], Relationship] = None,
         rel_type: Optional[str] = None,
         schema: RelationshipSchema = None,
@@ -476,6 +487,10 @@ class RelationshipGetPeerQuery(Query):
         self.filters = filters or {}
         self.source_ids = source_ids or [source.id]
         self.source = source
+
+        self.source_kind = source_kind or "Node"
+        if source and not source_kind:
+            self.source_kind = source.get_kind()
 
         self.rel = rel
         self.rel_type = rel_type or self.rel.rel_type
@@ -498,10 +513,12 @@ class RelationshipGetPeerQuery(Query):
         self.params.update(branch_params)
         self.order_by = []
 
-        peer_schema = await self.schema.get_peer_schema(branch=self.branch)
+        peer_schema = self.schema.get_peer_schema(branch=self.branch)
 
         self.params["source_ids"] = self.source_ids
         self.params["rel_identifier"] = self.schema.identifier
+        self.params["peer_kind"] = self.schema.peer
+        self.params["source_kind"] = self.source_kind
 
         arrows = self.schema.get_query_arrows()
 
@@ -516,7 +533,12 @@ class RelationshipGetPeerQuery(Query):
         CALL {
             WITH rl
             MATCH path = (source_node:Node)%(path)s(peer:Node)
-            WHERE source_node.uuid IN $source_ids AND peer.uuid <> source_node.uuid AND all(r IN relationships(path) WHERE (%(branch_filter)s))
+            WHERE
+                source_node.uuid IN $source_ids AND
+                $source_kind IN LABELS(source_node) AND
+                peer.uuid <> source_node.uuid AND
+                $peer_kind IN LABELS(peer) AND
+                all(r IN relationships(path) WHERE (%(branch_filter)s))
             WITH source_node, peer, rl, relationships(path) as rels, %(branch_level)s AS branch_level, %(froms)s AS froms
             RETURN source_node, peer as peer, rels, rl as rl1
             ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
@@ -715,6 +737,66 @@ class RelationshipGetQuery(RelationshipQuery):
 
         self.add_to_query(query)
         self.return_labels = ["s", "d", "rl", "r1", "r2"]
+
+
+class RelationshipGetByIdentifierQuery(Query):
+    name = "relationship_get_identifier"
+
+    type: QueryType = QueryType.READ
+
+    def __init__(self, identifiers: List[str], excluded_namespaces: List[str], *args, **kwargs) -> None:
+        if not identifiers:
+            raise ValueError("identifiers cannot be an empty list")
+
+        self.identifiers = identifiers
+        self.excluded_namespaces = excluded_namespaces
+
+        # Always exclude relationships with internal nodes
+        if "Internal" not in self.excluded_namespaces:
+            self.excluded_namespaces.append("Internal")
+
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
+        self.params["identifiers"] = self.identifiers
+        self.params["excluded_namespaces"] = self.excluded_namespaces
+        self.params["branch"] = self.branch.name
+        self.params["at"] = self.at.to_string()
+
+        rels_filter, rels_params = self.branch.get_query_filter_relationships(
+            rel_labels=["r1", "r2"], at=self.at.to_string(), include_outside_parentheses=True
+        )
+        self.params.update(rels_params)
+
+        query = """
+        MATCH (rl:Relationship)
+        WHERE rl.name IN $identifiers
+        CALL {
+            WITH rl
+            MATCH (src:Node)-[r1:IS_RELATED]-(rl:Relationship)-[r2:IS_RELATED]-(dst:Node)
+            WHERE NOT src.namespace IN $excluded_namespaces AND NOT dst.namespace IN $excluded_namespaces AND %s
+            RETURN src, dst, r1, r2, rl as rl1
+            ORDER BY r1.branch_level DESC, r2.branch_level DESC, r1.from DESC, r2.from DESC
+            LIMIT 1
+        }
+        WITH src, dst, r1, r2, rl1 as rl
+        WHERE r1.status = "active" AND r2.status = "active"
+        """ % ("\n AND ".join(rels_filter),)
+
+        self.add_to_query(query)
+        self.return_labels = ["src", "dst", "rl"]
+
+    def get_peers(self) -> Generator[RelationshipPeersData, None, None]:
+        for result in self.get_results():
+            data = RelationshipPeersData(
+                id=result.get("rl").get("uuid"),
+                identifier=result.get("rl").get("name"),
+                source_id=result.get("src").get("uuid"),
+                source_kind=result.get("src").get("kind"),
+                destination_id=result.get("dst").get("uuid"),
+                destination_kind=result.get("dst").get("kind"),
+            )
+            yield data
 
 
 class RelationshipCountPerNodeQuery(Query):

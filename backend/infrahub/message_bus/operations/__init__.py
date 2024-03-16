@@ -8,6 +8,7 @@ from infrahub.message_bus.operations import (
     git,
     refresh,
     requests,
+    schema,
     send,
     transform,
     trigger,
@@ -24,6 +25,7 @@ COMMAND_MAP = {
     "event.branch.create": event.branch.create,
     "event.branch.delete": event.branch.delete,
     "event.branch.merge": event.branch.merge,
+    "event.branch.rebased": event.branch.rebased,
     "event.node.mutated": event.node.mutated,
     "event.schema.update": event.schema.update,
     "event.worker.new_primary_api": event.worker.new_primary_api,
@@ -36,6 +38,7 @@ COMMAND_MAP = {
     "git.repository.pull_read_only": git.repository.pull_read_only,
     "git.repository.merge": git.repository.merge,
     "refresh.registry.branches": refresh.registry.branches,
+    "refresh.registry.rebased_branch": refresh.registry.rebased_branch,
     "refresh.webhook.configuration": refresh.webhook.configuration,
     "request.git.create_branch": requests.git.create_branch,
     "request.git.sync": requests.git.sync,
@@ -52,7 +55,10 @@ COMMAND_MAP = {
     "request.proposed_change.schema_integrity": requests.proposed_change.schema_integrity,
     "request.repository.checks": requests.repository.checks,
     "request.repository.user_checks": requests.repository.user_checks,
+    "send.echo.request": send.echo.request,
     "send.webhook.event": send.webhook.event,
+    "schema.migration.path": schema.migration.path,
+    "schema.validator.path": schema.validator.path,
     "transform.jinja.template": transform.jinja.template,
     "transform.python.data": transform.python.data,
     "trigger.artifact_definition.generate": trigger.artifact_definition.generate,
@@ -69,11 +75,11 @@ async def execute_message(routing_key: str, message_body: bytes, service: Infrah
         await COMMAND_MAP[routing_key](message=message, service=service)
     except Exception as exc:  # pylint: disable=broad-except
         if message.reply_requested:
-            response = RPCErrorResponse(data={"error": str(exc)})
+            response = RPCErrorResponse(errors=[str(exc)], initial_message=message.model_dump())
             await service.reply(message=response, initiator=message)
             return
         if message.reached_max_retries:
-            service.log.error("Message failed after maximum number of retries", error=str(exc))
+            service.log.exception("Message failed after maximum number of retries", error=exc)
             await set_check_status(message, conclusion="failure", service=service)
             return
         message.increase_retry_count()

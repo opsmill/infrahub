@@ -41,7 +41,7 @@ const sidebars: SidebarsConfig = {
       link: {type: 'doc', id: 'guides/readme'},
       items: [
         'guides/installation',
-        'guides/schema',
+        'guides/create-schema',
         'guides/repository',
         'guides/jinja2-transform',
         'guides/python-transform',
@@ -56,18 +56,21 @@ const sidebars: SidebarsConfig = {
       items: [
         'topics/infrahub-yml',
         'topics/architecture',
+
         'topics/artifact',
         'topics/check',
-	'topics/hardware-requirements',
+	      'topics/hardware-requirements',
         'topics/local-demo-environment',
         'topics/graphql',
         'topics/object-storage',
+        'topics/version-control',
         'topics/proposed-change',
         'topics/repository',
         'topics/schema',
         'topics/transformation',
         'topics/auth',
         'topics/database-backup',
+        'topics/resources-testing-framework',
       ],
     },
     {
@@ -91,6 +94,7 @@ const sidebars: SidebarsConfig = {
             'reference/schema/attribute',
             'reference/schema/relationship',
             'reference/schema/generic',
+            'reference/schema/validator-migration',
           ],
         },
         {
@@ -109,7 +113,8 @@ const sidebars: SidebarsConfig = {
         'reference/configuration',
         'reference/git-agent',
         'reference/api-server',
-        'reference/dotinfrahub'
+        'reference/dotinfrahub',
+        'reference/infrahub-tests'
       ],
     },
     {
@@ -117,9 +122,25 @@ const sidebars: SidebarsConfig = {
       label: 'Python SDK',
       link: {type: 'doc', id: 'python-sdk/readme'},
       items: [
-        'python-sdk/query',
-        'python-sdk/create-update-delete',
-        'python-sdk/branches',
+        {
+          type: 'category',
+          label: 'Guides',
+          items: [
+	    'python-sdk/guides/installation',
+	    'python-sdk/guides/client',
+            'python-sdk/guides/query_data',
+	    'python-sdk/guides/create_update_delete',
+	    'python-sdk/guides/branches',
+	    'python-sdk/guides/store'
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Reference',
+          items: [
+	    'python-sdk/reference/config'
+          ],
+        },
       ],
     },
     {
@@ -148,7 +169,14 @@ const sidebars: SidebarsConfig = {
       ],
     },
     {
-      'Release Notes': ['release-notes/release-0_7_0', 'release-notes/release-0_6_0'],
+      'Release Notes': [
+        'release-notes/release-0_12',
+        'release-notes/release-0_11',
+        'release-notes/release-0_10',
+        'release-notes/release-0_9',
+        'release-notes/release-0_8',
+        'release-notes/release-0_7',
+        'release-notes/release-0_6'],
     },
   ],
 };
