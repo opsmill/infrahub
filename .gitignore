@@ -31,3 +31,6 @@ python_sdk/dist/*
 
 # Test reports
 **/*.csv
+
+# Generated files
+generated/
