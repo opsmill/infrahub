@@ -162,6 +162,13 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         raise ValueError(f"Unable to find the field {name}")
 
+    def get_field_or_raise(self, name: str) -> Union[AttributeSchema, RelationshipSchema]:
+        field = self.get_field(name=name)
+        if field:
+            return field
+
+        raise ValueError(f"Unable to find the field {name}")
+
     def get_attribute(self, name: str) -> AttributeSchema:
         for item in self.attributes:
             if item.name == name:

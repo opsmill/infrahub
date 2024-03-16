@@ -165,7 +165,7 @@ class RelationshipSchema(GeneratedRelationshipSchema):
                 ]
             )
 
-        field = peer_schema.get_field(filter_field_name)
+        field = peer_schema.get_field_or_raise(filter_field_name)
 
         field_filter, field_params, field_where = await field.get_query_filter(
             db=db,
