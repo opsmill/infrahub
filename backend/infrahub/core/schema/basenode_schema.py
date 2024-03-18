@@ -150,24 +150,21 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         return elements_diff
 
-    def get_field(self, name: str, raise_on_error: bool = True) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
+    def get_field(self, name: str) -> Union[AttributeSchema, RelationshipSchema]:
+        field = self.get_field_or_none(name=name)
+        if field:
+            return field
+
+        raise ValueError(f"Unable to find the field {name}")
+
+    def get_field_or_none(self, name: str) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
         if field := self.get_attribute_or_none(name=name):
             return field
 
         if field := self.get_relationship_or_none(name=name):
             return field
 
-        if not raise_on_error:
-            return None
-
-        raise ValueError(f"Unable to find the field {name}")
-
-    def get_field_or_raise(self, name: str) -> Union[AttributeSchema, RelationshipSchema]:
-        field = self.get_field(name=name)
-        if field:
-            return field
-
-        raise ValueError(f"Unable to find the field {name}")
+        return None
 
     def get_attribute(self, name: str) -> AttributeSchema:
         for item in self.attributes:
