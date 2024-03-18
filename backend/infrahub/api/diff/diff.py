@@ -78,7 +78,7 @@ async def get_diff_schema(
         branch_only=query.branch_only,
         kinds_include=INTERNAL_SCHEMA_NODE_KINDS,
     )
-    diff_payload_builder = DiffPayloadBuilder(db=db, diff=diff)
+    diff_payload_builder = DiffPayloadBuilder(db=db, diff=diff, kinds_to_include=INTERNAL_SCHEMA_NODE_KINDS)
     return await diff_payload_builder.get_branch_diff()
 
 
