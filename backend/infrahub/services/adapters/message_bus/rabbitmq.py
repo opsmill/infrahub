@@ -165,7 +165,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         await self.callback_queue.consume(self.on_callback, no_ack=True)
 
         message_channel = await self.connection.channel()
-        await message_channel.set_qos(prefetch_count=2)
+        await message_channel.set_qos(prefetch_count=self.settings.maximum_concurrent_messages)
 
         queue = await message_channel.get_queue(f"{self.settings.namespace}.rpcs")
         await queue.consume(callback=self.on_message, no_ack=False)
