@@ -13,15 +13,15 @@ def load_schema(
     client: InfrahubClientSync,
     schema: Path,
     branch: Optional[str] = None,
-    extra_attributes: Optional[List[dict]] = None,
+    attributes: Optional[List[dict]] = None,
     relationships: Optional[List[dict]] = None,
 ):
-    extra_attributes = extra_attributes or []
+    attributes = attributes or []
     relationships = relationships or []
     branch = branch or "main"
     data = yaml.safe_load(schema.read_text())
 
-    data["nodes"][0]["attributes"] += extra_attributes
+    data["nodes"][0]["attributes"] += attributes
 
     if "relationships" not in data["nodes"][0]:
         data["nodes"][0]["relationships"] = list()
