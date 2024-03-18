@@ -26,7 +26,7 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         self.branch = branch
 
     async def check(self, relm: RelationshipManager) -> None:
-        branch = await registry.get_branch() if not self.branch else self.branch
+        branch = await registry.get_branch(db=self.db) if not self.branch else self.branch
         (
             _,
             peer_ids_present_local_only,
