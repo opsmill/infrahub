@@ -1,4 +1,5 @@
 """Replacement for Makefile."""
+
 import re
 import sys
 from time import sleep

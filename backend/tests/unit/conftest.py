@@ -1969,8 +1969,7 @@ async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_bran
 @pytest.fixture
 async def hierarchical_location_schema(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple, register_core_models_schema
-) -> None:
-    ...
+) -> None: ...
 
 
 @pytest.fixture

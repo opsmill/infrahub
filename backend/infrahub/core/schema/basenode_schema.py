@@ -407,5 +407,4 @@ class SchemaAttributePathValue(SchemaAttributePath):
         return cls(**asdict(schema_attribute_path), value=value)
 
 
-class AttributePathParsingError(Exception):
-    ...
+class AttributePathParsingError(Exception): ...

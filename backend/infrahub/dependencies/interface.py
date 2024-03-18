@@ -17,5 +17,4 @@ class DependencyBuilderContext:
 class DependencyBuilder(ABC, Generic[T]):
     @classmethod
     @abstractmethod
-    def build(cls, context: DependencyBuilderContext) -> T:
-        ...
+    def build(cls, context: DependencyBuilderContext) -> T: ...

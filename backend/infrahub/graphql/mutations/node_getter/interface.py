@@ -16,5 +16,4 @@ class MutationNodeGetterInterface(ABC):
         data: InputObjectType,
         branch: Branch,
         at: str,
-    ) -> Optional[Node]:
-        ...
+    ) -> Optional[Node]: ...

@@ -90,16 +90,13 @@ def run_utility(parsed_args: argparse.Namespace) -> None:
         restore_runner.restore(backup_path)
 
 
-class DatabaseContainerNotFoundError(Exception):
-    ...
+class DatabaseContainerNotFoundError(Exception): ...
 
 
-class DatabaseRestoreError(Exception):
-    ...
+class DatabaseRestoreError(Exception): ...
 
 
-class MissingCredentialsError(Exception):
-    ...
+class MissingCredentialsError(Exception): ...
 
 
 @dataclass
