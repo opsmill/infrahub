@@ -100,6 +100,7 @@ disable = """,
     unsubscriptable-object,
     unsupported-assignment-operation,
     not-an-iterable,
+    multiple-statements,
     """
 
 [tool.pylint.miscellaneous]
@@ -142,14 +143,15 @@ exclude = [
         "examples",
 ]
 
+
+[tool.ruff.lint]
+preview = true
+
 task-tags = [
     "FIXME",
     "TODO",
     "XXX",
 ]
-
-[tool.ruff.lint]
-preview = true
 
 select = [
    "ASYNC", # flake8-async
@@ -190,6 +192,7 @@ ignore = [
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments in function definition
     "PLR0917", # Too many positional arguments
+    "PLR1702", # Too many nested blocks
     "PLR6301", # Method could be a function, class method, or static method
     "RET504",  # Unnecessary assignment to `ptd` before `return` statement
 ]
@@ -207,11 +210,11 @@ known-first-party = ["diffsync", "infrahub_sync", "potenda"]
 [tool.ruff.lint.pycodestyle]
 max-line-length = 150
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 # Target max-complexity=10
 max-complexity = 17
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 
 
 [build-system]

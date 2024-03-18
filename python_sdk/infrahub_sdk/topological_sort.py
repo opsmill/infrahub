@@ -2,8 +2,7 @@ from itertools import chain
 from typing import Iterable, List, Mapping, Set
 
 
-class DependencyCycleExistsError(Exception):
-    ...
+class DependencyCycleExistsError(Exception): ...
 
 
 def topological_sort(dependency_dict: Mapping[str, Iterable[str]]) -> List[Set[str]]:

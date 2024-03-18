@@ -36,8 +36,8 @@ pendulum = [
 gitpython = "^3"
 Jinja2 = { version = "^3", optional = true }
 numpy = [
-    { version = "^1.24.2", optional = true , python = ">=3.8,<3.12" },
-    { version = "^1.26.2", optional = true , python = ">=3.12" }
+    { version = "^1.24.2", optional = true,  python = ">=3.8,<3.12" },
+    { version = "^1.26.2", optional = true,  python = ">=3.12" }
 ]
 pyarrow = { version = "^14", optional = true }
 rich = { version = "^13", optional = true }
@@ -64,7 +64,7 @@ types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
-ruff = "^0.1.5"
+ruff = "0.3.3"
 pytest-xdist = "^3.3.1"
 types-python-slugify = "^8.0.0.3"
 
@@ -137,6 +137,7 @@ disable = """,
     protected-access,
     import-self,
     wrong-import-order,
+    multiple-statements,
     """
 
 [tool.pylint.miscellaneous]
@@ -190,14 +191,16 @@ exclude = [
         "examples",
 ]
 
+
+[tool.ruff.lint]
+preview = true
+
 task-tags = [
     "FIXME",
     "TODO",
     "XXX",
 ]
 
-[tool.ruff.lint]
-preview = true
 
 select = [
     "ASYNC", # flake8-async
@@ -266,11 +269,11 @@ known-first-party = ["infrahub_sdk", "infrahub_ctl"]
 [tool.ruff.lint.pycodestyle]
 max-line-length = 150
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 # Target max-complexity=10
 max-complexity = 17
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 
 "tests/**/*.py" = [
     "PLR2004", # Magic value used in comparison

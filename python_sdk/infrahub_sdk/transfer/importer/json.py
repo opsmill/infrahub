@@ -104,9 +104,9 @@ class LineDelimitedJSONImporter(ImporterInterface):
             # Build a relationship name to relationship schema map, so we can retrieve the schema based on the name of a relationship later
             for relationship_schema in self.schemas_by_kind[node_kind].relationships:
                 if relationship_schema.optional:
-                    self.optional_relationships_schemas_by_node_kind[node_kind][
-                        relationship_schema.name
-                    ] = relationship_schema
+                    self.optional_relationships_schemas_by_node_kind[node_kind][relationship_schema.name] = (
+                        relationship_schema
+                    )
 
             for relationship_name in self.optional_relationships_schemas_by_node_kind[node_kind].keys():
                 relationship_value = getattr(node, relationship_name)

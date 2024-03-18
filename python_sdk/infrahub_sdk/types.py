@@ -23,8 +23,7 @@ class SyncRequester(Protocol):
         headers: Dict[str, Any],
         timeout: int,
         payload: Optional[Dict] = None,
-    ) -> httpx.Response:
-        ...
+    ) -> httpx.Response: ...
 
 
 @runtime_checkable
@@ -36,5 +35,4 @@ class AsyncRequester(Protocol):
         headers: Dict[str, Any],
         timeout: int,
         payload: Optional[Dict] = None,
-    ) -> httpx.Response:
-        ...
+    ) -> httpx.Response: ...

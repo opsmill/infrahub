@@ -660,9 +660,9 @@ class BranchDiffer:
             self._results[branch_name]["nodes"][node_id].attributes[attr_name].origin_rel_id = result.get(
                 "r1"
             ).element_id
-            self._results[branch_name]["nodes"][node_id].attributes[attr_name].properties[
-                prop_type
-            ] = PropertyDiffElement(**item)
+            self._results[branch_name]["nodes"][node_id].attributes[attr_name].properties[prop_type] = (
+                PropertyDiffElement(**item)
+            )
 
         self._calculated_diff_nodes_at = Timestamp()
 
