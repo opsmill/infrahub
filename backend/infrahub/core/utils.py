@@ -42,10 +42,7 @@ async def add_relationship(
         "status": status.value,
     }
 
-    results = await db.execute_query(
-        query=create_rel_query,
-        params=params,
-    )
+    results = await db.execute_query(query=create_rel_query, params=params, name="add_relationship")
     if not results:
         return None
     return results[0][0]
@@ -57,7 +54,7 @@ async def delete_all_relationships_for_branch(branch_name: str, db: InfrahubData
     """
     params = {"branch_name": branch_name}
 
-    await db.execute_query(query=query, params=params)
+    await db.execute_query(query=query, params=params, name="delete_all_relationships_for_branch")
 
 
 async def update_relationships_to(
@@ -82,7 +79,7 @@ async def update_relationships_to(
 
     params = {"to": to.to_string()}
 
-    return await db.execute_query(query=query, params=params)
+    return await db.execute_query(query=query, params=params, name="update_relationships_to")
 
 
 async def get_paths_between_nodes(
@@ -130,7 +127,7 @@ async def count_relationships(db: InfrahubDatabase) -> int:
 
     params: dict = {}
 
-    result = await db.execute_query(query=query, params=params)
+    result = await db.execute_query(query=query, params=params, name="count_relationships")
     return result[0][0]
 
 
@@ -142,7 +139,7 @@ async def count_nodes(db: InfrahubDatabase, label: str) -> int:
     RETURN count(node) as count
     """
     params: dict = {"label": label}
-    result = await db.execute_query(query=query, params=params)
+    result = await db.execute_query(query=query, params=params, name="count_nodes")
     return result[0][0]
 
 
@@ -154,7 +151,7 @@ async def delete_all_nodes(db: InfrahubDatabase):
 
     params: dict = {}
 
-    return await db.execute_query(query=query, params=params)
+    return await db.execute_query(query=query, params=params, name="delete_all_nodes")
 
 
 def element_id_to_id(element_id: Union[str, int]) -> int:
