@@ -663,7 +663,7 @@ class NodeGetListQuery(Query):
 
             filter_cnt += 1
 
-            field = self.schema.get_field(field_name, raise_on_error=False)
+            field = self.schema.get_field_or_none(field_name)
 
             for field_attr_name, field_attr_value in attr_filters.items():
                 subquery, subquery_params, subquery_result_name = await build_subquery_filter(
