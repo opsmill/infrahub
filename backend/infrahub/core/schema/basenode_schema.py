@@ -387,5 +387,4 @@ class SchemaAttributePath:
     attribute_property_name: Optional[str] = None
 
 
-class AttributePathParsingError(Exception):
-    ...
+class AttributePathParsingError(Exception): ...

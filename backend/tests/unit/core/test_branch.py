@@ -48,7 +48,7 @@ async def test_branch_name_validator(db: InfrahubDatabase):
 
     # Test DEL character
     with pytest.raises(ValidationError):
-        Branch(name="new\x7Fbranch")
+        Branch(name="new\x7fbranch")
 
     # Test space character
     with pytest.raises(ValidationError):

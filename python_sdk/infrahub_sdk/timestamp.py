@@ -13,8 +13,7 @@ REGEX_MAPPING = {
 }
 
 
-class TimestampFormatError(ValueError):
-    ...
+class TimestampFormatError(ValueError): ...
 
 
 class Timestamp:
