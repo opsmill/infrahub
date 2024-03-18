@@ -1,5 +1,6 @@
 import pytest
 
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.node.constraints.grouped_uniqueness import NodeGroupedUniquenessConstraint
@@ -129,3 +130,32 @@ class TestNodeGroupedUniquenessConstraint:
         car_node_3.get_schema().uniqueness_constraints = [["nbr_seats", "name"], ["previous_owner", "nbr_seats"]]
 
         await self.__call_system_under_test(db=db, branch=default_branch, node=car_node_3)
+
+    async def test_generic_constraints_success(
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple
+    ):
+        car_generic_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
+        car_generic_schema.uniqueness_constraints = [["color", "owner"]]
+        car_node_1: Node = car_person_generics_data_simple["c1"]
+        car_node_1.color.value = "#123456"
+        await car_node_1.save(db=db)
+        car_node_2: Node = car_person_generics_data_simple["c2"]
+        car_node_2.color.value = "#654321"
+        await car_node_2.save(db=db)
+        car_node_3: Node = car_person_generics_data_simple["c3"]
+        car_node_3.color.value = "#abcdef"
+        await car_node_3.save(db=db)
+
+        await self.__call_system_under_test(db=db, branch=default_branch, node=car_person_generics_data_simple["c1"])
+
+    async def test_generic_constraints_failure(
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple
+    ):
+        car_generic_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
+        car_generic_schema.uniqueness_constraints = [["color", "owner"]]
+        car_node_1 = car_person_generics_data_simple["c1"]
+        person_node_2 = car_person_generics_data_simple["p2"]
+        await car_node_1.owner.update(db=db, data=person_node_2)
+
+        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'color-owner'"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=car_node_1)
