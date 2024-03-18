@@ -56,7 +56,7 @@ class InfrahubClientUser(User):
             for i in range(self.custom_options["rels"])
         ]
         common.stagers.load_schema(
-            self.client, self.custom_options["schema"], extra_attributes=attributes, relationships=relationships
+            self.client, self.custom_options["schema"], attributes=attributes, relationships=relationships
         )
         time.sleep(5)
         print("--- staging nodes, attributes and relations")
