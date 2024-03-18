@@ -13,19 +13,25 @@ import { CSSProperties } from "react";
 
 export const SchemaViewerStack = ({ className = "" }: { className: string }) => {
   const [selectedKind, setKinds] = useQueryParam(QSP.KIND, ArrayParam);
+  const nodes = useAtomValue(schemaState);
+  const generics = useAtomValue(genericsState);
 
   if (!selectedKind) return null;
+
+  const schemas = [...nodes, ...generics];
 
   return (
     <div className={classNames("relative", className)}>
       {selectedKind.map((kind, index) => {
         const position = selectedKind.length - index - 1;
+        const schema = schemas.find((s) => s.kind === kind);
+        if (!schema) return null;
 
         return kind ? (
           <SchemaViewer
             key={kind + index}
             className="absolute top-0 w-full max-h-full"
-            selectedKind={kind}
+            schema={schema}
             onClose={() => {
               const nextKinds = [...selectedKind];
               delete nextKinds[index];
@@ -45,22 +51,15 @@ export const SchemaViewerStack = ({ className = "" }: { className: string }) => 
 
 export const SchemaViewer = ({
   className = "",
-  selectedKind,
+  schema,
   onClose,
   style,
 }: {
   className: string;
-  selectedKind: string;
+  schema: IModelSchema;
   onClose: () => void;
   style?: CSSProperties;
 }) => {
-  const nodes = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
-  const schemas = [...nodes, ...generics];
-
-  const schema = schemas.find(({ kind }) => kind === selectedKind);
-  if (!schema) return null;
-
   return (
     <section
       style={style}
