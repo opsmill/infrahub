@@ -64,6 +64,7 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
             "name": "Car",
             "namespace": "Testing",
             "include_in_menu": True,
+            "default_filter": "name__value",
             "label": "Car",
             "attributes": [
                 {"name": "name", "kind": "Text"},

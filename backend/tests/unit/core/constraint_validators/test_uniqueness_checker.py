@@ -482,3 +482,26 @@ class TestUniquenessChecker:
             )
             in all_data_paths
         )
+
+    async def test_relationship_no_violation_with_overlaps(
+        self,
+        db: InfrahubDatabase,
+        car_accord_main,
+        car_prius_main,
+        car_camry_main,
+        default_branch: Branch,
+    ):
+        car_accord_main.color.value = "#111111"
+        await car_accord_main.save(db=db)
+        car_prius_main.color.value = "#222222"
+        await car_prius_main.save(db=db)
+        car_camry_main.color.value = "#111111"
+        await car_camry_main.save(db=db)
+
+        schema = registry.schema.get("TestCar", branch=default_branch)
+        schema.uniqueness_constraints = [["owner", "color"]]
+        grouped_data_paths = await self.__call_system_under_test(db, default_branch, schema)
+
+        assert len(grouped_data_paths) == 1
+        all_data_paths = grouped_data_paths[0].get_all_data_paths()
+        assert len(all_data_paths) == 0
