@@ -85,6 +85,17 @@ tests = [
     "pyyaml",
     "rich"
 ]
+all = [
+    "Jinja2",
+    "numpy",
+    "pyarrow",
+    "pytest",
+    "pyyaml",
+    "rich",
+    "toml",
+    "typer",
+    "ujson"
+]
 
 [tool.poetry.scripts]
 infrahubctl = "infrahub_sdk.ctl.cli:app"
