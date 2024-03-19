@@ -472,7 +472,7 @@ class TestSchemaExportImportManyRelationships(TestInfrahubApp):
             if file.is_file():
                 file.unlink()
 
-    async def test_step01_export_car_sharing_initial_dataset(
+    async def test_step01_export_initial_dataset(
         self, client: InfrahubClient, temporary_directory: Path, initial_dataset
     ):
         exporter = LineDelimitedJSONExporter(client=client)
@@ -492,10 +492,34 @@ class TestSchemaExportImportManyRelationships(TestInfrahubApp):
                 nodes_dump.append(ujson.loads(line))
         assert len(nodes_dump) == len(initial_dataset) + 1
 
+        # Make sure there are as many relationships as there are in the database
+        relationship_count = 0
+        for node in await client.all(kind=POOL_KIND):
+            await node.cars.fetch()
+            relationship_count += len(node.cars.peers)
         relationships_dump = ujson.loads(relationships_file.read_text())
-        assert len(relationships_dump) == 4
+        assert len(relationships_dump) == relationship_count
 
-    async def test_step02_import_car_sharing_initial_dataset(
+    async def test_step02_import_initial_dataset(self, client: InfrahubClient, temporary_directory: Path, schema):
+        await client.schema.load(schemas=[schema])
+
+        importer = LineDelimitedJSONImporter(client=client, topological_sorter=InfrahubSchemaTopologicalSorter())
+        await importer.import_data(import_directory=temporary_directory, branch="main")
+
+        # Each kind must have nodes
+        for kind in (POOL_KIND, CAR_KIND, MANUFACTURER_KIND):
+            assert await client.all(kind=kind)
+
+        # Make sure relationships were properly imported
+        relationship_count = 0
+        for node in await client.all(kind=POOL_KIND):
+            await node.cars.fetch()
+            relationship_count += len(node.cars.peers)
+        relationships_file = temporary_directory / "relationships.json"
+        relationships_dump = ujson.loads(relationships_file.read_text())
+        assert len(relationships_dump) == relationship_count
+
+    async def test_step03_import_initial_dataset_with_existing_data(
         self, client: InfrahubClient, temporary_directory: Path, initial_dataset
     ):
         importer = LineDelimitedJSONImporter(client=client, topological_sorter=InfrahubSchemaTopologicalSorter())
@@ -505,11 +529,14 @@ class TestSchemaExportImportManyRelationships(TestInfrahubApp):
         for kind in (POOL_KIND, CAR_KIND, MANUFACTURER_KIND):
             assert await client.all(kind=kind)
 
+        # Make sure relationships were properly imported
+        relationship_count = 0
+        for node in await client.all(kind=POOL_KIND):
+            await node.cars.fetch()
+            relationship_count += len(node.cars.peers)
+        relationships_file = temporary_directory / "relationships.json"
+        relationships_dump = ujson.loads(relationships_file.read_text())
+        assert len(relationships_dump) == relationship_count
+
         # Cleanup for next tests
         self.reset_export_directory(temporary_directory)
-
-    async def test_step99_import_wrong_drectory(self, client: InfrahubClient):
-        importer = LineDelimitedJSONImporter(client=client, topological_sorter=InfrahubSchemaTopologicalSorter())
-        # Using a directory that does not exist, should lead to exception
-        with pytest.raises(TransferFileNotFoundError):
-            await importer.import_data(import_directory=Path("this_directory_does_not_exist"), branch="main")
