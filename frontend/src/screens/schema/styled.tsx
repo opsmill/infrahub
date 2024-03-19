@@ -125,7 +125,7 @@ export const NullDisplay = () => <div className="text-xs text-gray-500">null</di
 export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
   const [selectedKinds, setKinds] = useQueryParam(QSP.KIND, ArrayParam);
   if (!kinds) return null;
-  if (kinds.length === 0) return "empty";
+  if (kinds.length === 0) return <span>empty</span>;
 
   return (
     <div className="space-y-1 flex flex-col items-end">
