@@ -2,8 +2,6 @@ from collections import defaultdict
 from typing import Dict, List, Optional, Type, TypeVar
 
 import ujson
-from infrahub_sdk import UUIDT
-
 from infrahub.components import ComponentType
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
@@ -13,6 +11,8 @@ from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
+
+from infrahub_sdk import UUIDT
 
 ResponseClass = TypeVar("ResponseClass")
 
