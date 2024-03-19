@@ -7,6 +7,8 @@ import ujson
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.ctl.exporter import LineDelimitedJSONExporter
 from infrahub_sdk.ctl.importer import LineDelimitedJSONImporter
+from infrahub_sdk.exceptions import SchemaNotFoundError
+from infrahub_sdk.transfer.exceptions import TransferFileNotFoundError
 from infrahub_sdk.transfer.schema_sorter import InfrahubSchemaTopologicalSorter
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -187,47 +189,116 @@ class TestSchemaExportImportBase(TestInfrahubApp):
 
         return objs
 
-    async def test_step01_export_empty_dataset(self, client: InfrahubClient, temporary_directory: Path):
+    def reset_export_directory(self, temporary_directory: Path):
+        for file in temporary_directory.iterdir():
+            if file.is_file():
+                file.unlink()
+
+    async def test_step01_export_no_schema(self, client: InfrahubClient, temporary_directory: Path):
         exporter = LineDelimitedJSONExporter(client=client)
         await exporter.export(export_directory=temporary_directory, branch="main", namespaces=[])
 
-        assert (temporary_directory / "nodes.json").exists()
-        assert (temporary_directory / "relationships.json").exists()
+        nodes_file = temporary_directory / "nodes.json"
+        relationships_file = temporary_directory / "relationships.json"
 
-        assert (temporary_directory / "nodes.json").read_text()  # Only export the admin account
-        assert ujson.loads((temporary_directory / "relationships.json").read_text()) == []
+        # Export should create files even if they do not really hold any data
+        assert nodes_file.exists()
+        assert relationships_file.exists()
 
-    async def test_step02_import_empty_dataset(self, client: InfrahubClient, temporary_directory: Path):
+        # Verify that only the admin account has been exported
+        admin_account_node_dump = ujson.loads(nodes_file.read_text())
+        assert admin_account_node_dump
+        assert admin_account_node_dump["kind"] == "CoreAccount"
+        assert ujson.loads(admin_account_node_dump["graphql_json"])["name"]["value"] == "admin"
+
+        relationships_dump = ujson.loads(relationships_file.read_text())
+        assert not relationships_dump
+
+    async def test_step02_import_no_schema(self, client: InfrahubClient, temporary_directory: Path):
         importer = LineDelimitedJSONImporter(client=client, topological_sorter=InfrahubSchemaTopologicalSorter())
         await importer.import_data(import_directory=temporary_directory, branch="main")
 
-        assert (temporary_directory / "nodes.json").exists()
-        assert (temporary_directory / "relationships.json").exists()
+        # Schema should not be present
+        for kind in (PERSON_KIND, CAR_KIND, MANUFACTURER_KIND, TAG_KIND):
+            with pytest.raises(SchemaNotFoundError):
+                await client.all(kind=kind)
 
-        assert (temporary_directory / "nodes.json").read_text()
-        assert ujson.loads((temporary_directory / "relationships.json").read_text()) == []
+        # Cleanup for next tests
+        self.reset_export_directory(temporary_directory)
 
-    async def test_step03_export_with_dataset(self, client: InfrahubClient, temporary_directory: Path, initial_dataset):
-        # FIXME: Find a a way to make a temp directory only for some steps
-        for f in temporary_directory.iterdir():
-            if f.is_file():
-                f.unlink()
+    async def test_step03_export_empty_dataset(self, client: InfrahubClient, temporary_directory: Path, schema):
+        await client.schema.load(schemas=[schema])
 
         exporter = LineDelimitedJSONExporter(client=client)
         await exporter.export(export_directory=temporary_directory, branch="main", namespaces=[])
 
-        assert (temporary_directory / "nodes.json").exists()
-        assert (temporary_directory / "relationships.json").exists()
+        nodes_file = temporary_directory / "nodes.json"
+        relationships_file = temporary_directory / "relationships.json"
 
-        assert (temporary_directory / "nodes.json").read_text()  # Only export the admin account
-        assert ujson.loads((temporary_directory / "relationships.json").read_text()) == []
+        # Export should create files even if they do not really hold any data
+        assert nodes_file.exists()
+        assert relationships_file.exists()
 
-    async def test_step04_import_with_dataset(self, client: InfrahubClient, temporary_directory: Path, initial_dataset):
+        # Verify that only the admin account has been exported
+        admin_account_node_dump = ujson.loads(nodes_file.read_text())
+        assert admin_account_node_dump
+        assert admin_account_node_dump["kind"] == "CoreAccount"
+        assert ujson.loads(admin_account_node_dump["graphql_json"])["name"]["value"] == "admin"
+
+        relationships_dump = ujson.loads(relationships_file.read_text())
+        assert not relationships_dump
+
+    async def test_step04_import_empty_dataset(self, client: InfrahubClient, temporary_directory: Path, schema):
+        await client.schema.load(schemas=[schema])
+
         importer = LineDelimitedJSONImporter(client=client, topological_sorter=InfrahubSchemaTopologicalSorter())
         await importer.import_data(import_directory=temporary_directory, branch="main")
 
-        assert (temporary_directory / "nodes.json").exists()
-        assert (temporary_directory / "relationships.json").exists()
+        # No data for any kind should be retrieved
+        for kind in (PERSON_KIND, CAR_KIND, MANUFACTURER_KIND, TAG_KIND):
+            assert not await client.all(kind=kind)
 
-        assert (temporary_directory / "nodes.json").read_text()
-        assert ujson.loads((temporary_directory / "relationships.json").read_text()) == []
+        # Cleanup for next tests
+        self.reset_export_directory(temporary_directory)
+
+    async def test_step05_export_initial_dataset(
+        self, client: InfrahubClient, temporary_directory: Path, initial_dataset
+    ):
+        exporter = LineDelimitedJSONExporter(client=client)
+        await exporter.export(export_directory=temporary_directory, branch="main", namespaces=[])
+
+        nodes_file = temporary_directory / "nodes.json"
+        relationships_file = temporary_directory / "relationships.json"
+
+        # Export should create files even if they do not really hold any data
+        assert nodes_file.exists()
+        assert relationships_file.exists()
+
+        # Verify that nodes have been exported
+        nodes_dump = []
+        with nodes_file.open() as reader:
+            while line := reader.readline():
+                nodes_dump.append(ujson.loads(line))
+        assert len(nodes_dump) == 10
+
+        relationships_dump = ujson.loads(relationships_file.read_text())
+        assert not relationships_dump
+
+    async def test_step06_import_initial_dataset(
+        self, client: InfrahubClient, temporary_directory: Path, initial_dataset
+    ):
+        importer = LineDelimitedJSONImporter(client=client, topological_sorter=InfrahubSchemaTopologicalSorter())
+        await importer.import_data(import_directory=temporary_directory, branch="main")
+
+        # Each kind must have nodes
+        for kind in (PERSON_KIND, CAR_KIND, MANUFACTURER_KIND, TAG_KIND):
+            assert await client.all(kind=kind)
+
+        # Cleanup for next tests
+        self.reset_export_directory(temporary_directory)
+
+    async def test_step99_import_wrong_drectory(self, client: InfrahubClient):
+        importer = LineDelimitedJSONImporter(client=client, topological_sorter=InfrahubSchemaTopologicalSorter())
+        # Using a directory that does not exist, should lead to exception
+        with pytest.raises(TransferFileNotFoundError):
+            await importer.import_data(import_directory=Path("this_directory_does_not_exist"), branch="main")
