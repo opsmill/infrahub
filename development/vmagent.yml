@@ -3,9 +3,10 @@ global:
   scrape_interval: 2s
 
 scrape_configs:
-  - job_name: "scale-test"
+  - job_name: "ci"
     static_configs:
       - targets:
           - "database:2004"
+          # - "memgraph-exporter:2004" # requires enterprise license
           - "infrahub-server:8000/metrics"
           - "infrahub-git:8000"
