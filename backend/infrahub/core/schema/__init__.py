@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-import enum
 from typing import Any, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.core.constants import RESTRICTED_NAMESPACES
 from infrahub.core.models import HashableModel
-from infrahub.core.relationship import Relationship
-from infrahub.types import ATTRIBUTE_KIND_LABELS
 
 from .attribute_schema import AttributeSchema
 from .basenode_schema import AttributePathParsingError, BaseNodeSchema, SchemaAttributePath, SchemaAttributePathValue
@@ -19,14 +16,6 @@ from .filter import FilterSchema
 from .generic_schema import GenericSchema
 from .node_schema import NodeSchema
 from .relationship_schema import RelationshipSchema
-
-# pylint: disable=redefined-builtin
-
-# Generate an Enum for Pydantic based on a List of String
-attribute_dict = {attr.upper(): attr for attr in ATTRIBUTE_KIND_LABELS}
-AttributeKind = enum.Enum("AttributeKind", dict(attribute_dict))
-
-RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
 
 # -----------------------------------------------------
