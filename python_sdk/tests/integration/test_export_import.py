@@ -13,6 +13,7 @@ from infrahub_sdk.transfer.schema_sorter import InfrahubSchemaTopologicalSorter
 from tests.helpers.test_app import TestInfrahubApp
 
 PERSON_KIND = "TestingPerson"
+POOL_KIND = "TestingPool"
 CAR_KIND = "TestingCar"
 MANUFACTURER_KIND = "TestingManufacturer"
 TAG_KIND = "TestingTag"
@@ -319,6 +320,190 @@ class TestSchemaExportImportBase(TestInfrahubApp):
         # Using a directory that does not exist, should lead to exception
         with pytest.raises(TransferFileNotFoundError):
             await importer.import_data(import_directory=Path("this_directory_does_not_exist"), branch="main")
+
+
+class TestSchemaExportImportManyRelationships(TestInfrahubApp):
+    @pytest.fixture(scope="class")
+    def temporary_directory(self, tmp_path_factory) -> Path:
+        return tmp_path_factory.mktemp("infrahub-integration-tests")
+
+    @pytest.fixture(scope="class")
+    def schema_pool_base(self) -> Dict[str, Any]:
+        return {
+            "name": "Pool",
+            "namespace": "Testing",
+            "include_in_menu": True,
+            "label": "Pool",
+            "attributes": [{"name": "name", "kind": "Text"}, {"name": "description", "kind": "Text", "optional": True}],
+            "relationships": [
+                {
+                    "name": "cars",
+                    "kind": "Attribute",
+                    "optional": True,
+                    "peer": "TestingCar",
+                    "cardinality": "many",
+                    "identifier": "car__pool",
+                }
+            ],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_car_base(self) -> Dict[str, Any]:
+        return {
+            "name": "Car",
+            "namespace": "Testing",
+            "include_in_menu": True,
+            "label": "Car",
+            "attributes": [
+                {"name": "name", "kind": "Text"},
+                {"name": "description", "kind": "Text", "optional": True},
+                {"name": "color", "kind": "Text"},
+            ],
+            "relationships": [
+                {
+                    "name": "pools",
+                    "kind": "Attribute",
+                    "optional": True,
+                    "peer": "TestingPool",
+                    "cardinality": "many",
+                },
+                {
+                    "name": "manufacturer",
+                    "kind": "Attribute",
+                    "optional": False,
+                    "peer": "TestingManufacturer",
+                    "cardinality": "one",
+                    "identifier": "car__manufacturer",
+                },
+            ],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_manufacturer_base(self) -> Dict[str, Any]:
+        return {
+            "name": "Manufacturer",
+            "namespace": "Testing",
+            "include_in_menu": True,
+            "label": "Manufacturer",
+            "attributes": [{"name": "name", "kind": "Text"}, {"name": "description", "kind": "Text", "optional": True}],
+            "relationships": [
+                {
+                    "name": "cars",
+                    "kind": "Generic",
+                    "optional": True,
+                    "peer": "TestingCar",
+                    "cardinality": "many",
+                    "identifier": "car__manufacturer",
+                }
+            ],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema(self, schema_car_base, schema_pool_base, schema_manufacturer_base) -> Dict[str, Any]:
+        return {
+            "version": "1.0",
+            "nodes": [schema_pool_base, schema_car_base, schema_manufacturer_base],
+        }
+
+    @pytest.fixture(scope="class")
+    async def initial_dataset(self, client: InfrahubClient, schema):  # noqa: PLR0914
+        await client.schema.load(schemas=[schema])
+
+        bmw = await client.create(
+            kind=MANUFACTURER_KIND,
+            data=dict(
+                name="BMW",
+                description="Bayerische Motoren Werke AG is a German multinational manufacturer of luxury vehicles and motorcycles",
+            ),
+        )
+        await bmw.save()
+
+        fiat = await client.create(
+            kind=MANUFACTURER_KIND,
+            data=dict(name="Fiat", description="Fiat Automobiles S.p.A. is an Italian automobile manufacturer"),
+        )
+        await fiat.save()
+
+        five_series = await client.create(
+            kind=CAR_KIND, data=dict(name="5 series", description="BMW 5 series", color="#000000", manufacturer=bmw)
+        )
+        await five_series.save()
+
+        five_hundred = await client.create(
+            kind=CAR_KIND, data=dict(name="500", description="Fiat 500", color="#540302", manufacturer=fiat)
+        )
+        await five_hundred.save()
+
+        premium = await client.create(
+            kind=POOL_KIND, data=dict(name="Premium", description="Premium cars", cars=[five_series])
+        )
+        await premium.save()
+
+        compact = await client.create(
+            kind=POOL_KIND, data=dict(name="Compact", description="Compact cars", cars=[five_hundred])
+        )
+        await compact.save()
+
+        sedan = await client.create(
+            kind=POOL_KIND, data=dict(name="Sedan", description="Sedan cars", cars=[five_series])
+        )
+        await sedan.save()
+
+        city_cars = await client.create(
+            kind=POOL_KIND, data=dict(name="City", description="City cars", cars=[five_hundred])
+        )
+        await city_cars.save()
+
+        objs = {
+            "bmw": bmw.id,
+            "fiat": fiat.id,
+            "5series": five_series.id,
+            "500": five_hundred.id,
+            "premium": premium.id,
+            "compact": compact.id,
+            "sedan": sedan.id,
+            "city_cars": city_cars.id,
+        }
+
+        return objs
+
+    def reset_export_directory(self, temporary_directory: Path):
+        for file in temporary_directory.iterdir():
+            if file.is_file():
+                file.unlink()
+
+    async def test_step01_export_car_sharing_initial_dataset(
+        self, client: InfrahubClient, temporary_directory: Path, initial_dataset
+    ):
+        exporter = LineDelimitedJSONExporter(client=client)
+        await exporter.export(export_directory=temporary_directory, branch="main", namespaces=[])
+
+        nodes_file = temporary_directory / "nodes.json"
+        relationships_file = temporary_directory / "relationships.json"
+
+        # Export should create files
+        assert nodes_file.exists()
+        assert relationships_file.exists()
+
+        # Verify that nodes have been exported
+        nodes_dump = []
+        with nodes_file.open() as reader:
+            while line := reader.readline():
+                nodes_dump.append(ujson.loads(line))
+        assert len(nodes_dump) == len(initial_dataset) + 1
+
+        relationships_dump = ujson.loads(relationships_file.read_text())
+        assert len(relationships_dump) == 4
+
+    async def test_step02_import_car_sharing_initial_dataset(
+        self, client: InfrahubClient, temporary_directory: Path, initial_dataset
+    ):
+        importer = LineDelimitedJSONImporter(client=client, topological_sorter=InfrahubSchemaTopologicalSorter())
+        await importer.import_data(import_directory=temporary_directory, branch="main")
+
+        # Each kind must have nodes
+        for kind in (POOL_KIND, CAR_KIND, MANUFACTURER_KIND):
+            assert await client.all(kind=kind)
 
         # Cleanup for next tests
         self.reset_export_directory(temporary_directory)
