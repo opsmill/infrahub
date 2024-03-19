@@ -149,8 +149,8 @@ filterwarnings = [
     "ignore:Module already imported so cannot be rewritten",
     "ignore:Deprecated call to",
 ]
-addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope"
-
+addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope --junitxml=pytest-junit.xml"
+junit_duration_report = "call"
 
 [tool.mypy]
 pretty = true

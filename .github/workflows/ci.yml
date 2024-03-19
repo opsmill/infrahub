@@ -338,6 +338,14 @@ jobs:
         with:
           flag-name: backend-unit
           parallel: true
+      - name: Generate tracing spans
+        uses: inception-health/otel-upload-test-artifact-action@v1
+        with:
+          jobName: "backend-tests-unit"
+          stepName: "Unit Tests"
+          path: "pytest-junit.xml"
+          type: "junit"
+          githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
 
   backend-tests-integration:
     if: |
@@ -717,6 +725,15 @@ jobs:
         run: npm run ci:test:e2e
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_E2E_PLAYWRIGHT }}
+
+      - name: Generate tracing spans
+        uses: inception-health/otel-upload-test-artifact-action@v1
+        with:
+          jobName: "E2E-testing-playwright"
+          stepName: "Run Playwright tests"
+          path: "frontend/playwright-junit.xml"
+          type: "junit"
+          githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
 
       - name: playwright-report
         if: always()
