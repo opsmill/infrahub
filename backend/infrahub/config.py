@@ -150,6 +150,9 @@ class BrokerSettings(BaseSettings):
     maximum_message_retries: int = Field(
         default=10, description="The maximum number of retries that are attempted for failed messages"
     )
+    maximum_concurrent_messages: int = Field(
+        default=2, description="The maximum number of concurrent messages fetched by each worker", ge=1
+    )
     virtualhost: str = Field(default="/", description="The virtual host to connect to")
 
     @property

@@ -86,6 +86,14 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         else:
             self.service.log.error("Invalid message received", message=f"{message!r}")
 
+    async def on_message(self, message: AbstractIncomingMessage) -> None:
+        async with message.process():
+            clear_log_context()
+            if message.routing_key in messages.MESSAGE_MAP:
+                await execute_message(routing_key=message.routing_key, message_body=message.body, service=self.service)
+            else:
+                self.service.log.error("Invalid message received", message=f"{message!r}")
+
     async def _initialize_api_server(self) -> None:
         self.callback_queue = await self.channel.declare_queue(name=f"api-callback-{WORKER_IDENTITY}", exclusive=True)
         self.events_queue = await self.channel.declare_queue(name=f"api-events-{WORKER_IDENTITY}", exclusive=True)
@@ -142,7 +150,6 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.message_enrichers.append(_add_request_id)
 
     async def _initialize_git_worker(self) -> None:
-        await self.channel.set_qos(prefetch_count=1)
         events_queue = await self.channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
 
         self.exchange = await self.channel.declare_exchange(
@@ -156,6 +163,12 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             name=f"worker-callback-{WORKER_IDENTITY}", exclusive=True
         )
         await self.callback_queue.consume(self.on_callback, no_ack=True)
+
+        message_channel = await self.connection.channel()
+        await message_channel.set_qos(prefetch_count=self.settings.maximum_concurrent_messages)
+
+        queue = await message_channel.get_queue(f"{self.settings.namespace}.rpcs")
+        await queue.consume(callback=self.on_message, no_ack=False)
 
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
         for enricher in self.message_enrichers:
@@ -185,28 +198,6 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         response: AbstractIncomingMessage = await future
         data = json.loads(response.body)
         return response_class(**data)
-
-    async def subscribe(self) -> None:
-        queue = await self.channel.get_queue(f"{self.settings.namespace}.rpcs")
-        self.service.log.info("Waiting for RPC instructions to execute .. ")
-        async with queue.iterator() as qiterator:
-            async for message in qiterator:
-                try:
-                    async with message.process(requeue=False):
-                        clear_log_context()
-                        if message.routing_key in messages.MESSAGE_MAP:
-                            await execute_message(
-                                routing_key=message.routing_key, message_body=message.body, service=self.service
-                            )
-                        else:
-                            self.service.log.error(
-                                "Unhandled routing key for message",
-                                routing_key=message.routing_key,
-                                message=message.body,
-                            )
-
-                except Exception:  # pylint: disable=broad-except
-                    self.service.log.exception("Processing error for message %r" % message)
 
     @staticmethod
     def format_message(message: InfrahubMessage) -> aio_pika.Message:
