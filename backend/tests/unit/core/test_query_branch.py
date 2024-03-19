@@ -1,11 +1,11 @@
-from infrahub.core import get_branch
 from infrahub.core.branch import Branch
 from infrahub.core.query.branch import GetAllBranchInternalRelationshipQuery
+from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
 
 
 async def test_GetAllBranchInternalRelationshipQuery(db: InfrahubDatabase, default_branch: Branch, base_dataset_02):
-    branch1 = await get_branch(branch="branch1", db=db)
+    branch1 = await registry.get_branch(branch="branch1", db=db)
 
     query = await GetAllBranchInternalRelationshipQuery.init(db=db, branch=branch1)
     await query.execute(db=db)

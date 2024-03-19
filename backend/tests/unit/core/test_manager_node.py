@@ -1,12 +1,12 @@
 import pytest
 from infrahub_sdk import UUIDT
 
-from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager, identify_node_class
 from infrahub.core.node import Node
 from infrahub.core.query.node import NodeToProcess
+from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -427,7 +427,7 @@ async def test_get_one_local_attribute_with_branch(db: InfrahubDatabase, default
 
 
 async def test_get_one_global(db: InfrahubDatabase, default_branch: Branch, base_dataset_12):
-    branch1 = await get_branch(db=db, branch="branch1")
+    branch1 = await registry.get_branch(db=db, branch="branch1")
 
     obj1 = await NodeManager.get_one(db=db, id="p1", branch=branch1)
 
@@ -447,7 +447,7 @@ async def test_get_one_global(db: InfrahubDatabase, default_branch: Branch, base
 
 
 async def test_get_one_global_isolated(db: InfrahubDatabase, default_branch: Branch, base_dataset_12):
-    branch1 = await get_branch(db=db, branch="branch1")
+    branch1 = await registry.get_branch(db=db, branch="branch1")
     branch1.is_isolated = True
 
     obj1 = await NodeManager.get_one(db=db, id="p1", branch=branch1)

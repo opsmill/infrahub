@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
 
 from infrahub_sdk.utils import deep_merge_dict
 
-from infrahub.core import get_branch, registry
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
     NodeGetHierarchyQuery,
@@ -15,6 +14,7 @@ from infrahub.core.query.node import (
     NodeToProcess,
 )
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
+from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
@@ -79,7 +79,7 @@ class NodeManager:
             List[Node]: List of Node object
         """
 
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         if isinstance(schema, str):
@@ -143,7 +143,7 @@ class NodeManager:
             int: The number of responses found
         """
 
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         query = await NodeGetListQuery.init(
@@ -162,7 +162,7 @@ class NodeManager:
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
     ) -> int:
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         rel = Relationship(schema=schema, branch=branch, node_id="PLACEHOLDER")
@@ -186,7 +186,7 @@ class NodeManager:
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
     ) -> List[Relationship]:
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         rel = Relationship(schema=schema, branch=branch, node_id="PLACEHOLDER")
@@ -237,7 +237,7 @@ class NodeManager:
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
     ) -> int:
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         query = await NodeGetHierarchyQuery.init(
@@ -266,7 +266,7 @@ class NodeManager:
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
     ) -> Dict[str, Node]:
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         query = await NodeGetHierarchyQuery.init(
@@ -313,7 +313,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
     ) -> Node:
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         node_schema = registry.schema.get(name=schema_name, branch=branch)
@@ -358,7 +358,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
     ) -> Node:
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         node = await cls.get_one(
@@ -448,7 +448,7 @@ class NodeManager:
     ) -> Dict[str, Node]:
         """Return a list of nodes based on their IDs."""
 
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         # Query all nodes

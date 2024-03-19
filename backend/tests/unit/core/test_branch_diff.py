@@ -5,7 +5,6 @@ import pytest
 from deepdiff import DeepDiff
 from pydantic.v1 import Field
 
-from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, InfrahubKind
 from infrahub.core.diff.branch_differ import BranchDiffer
@@ -13,6 +12,7 @@ from infrahub.core.diff.model import BaseDiffElement
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -880,7 +880,7 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
 
 
 async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Branch, base_dataset_04):
-    branch1 = await get_branch(branch="branch1", db=db)
+    branch1 = await registry.get_branch(branch="branch1", db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
     rels = await diff.get_relationships()

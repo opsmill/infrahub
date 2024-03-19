@@ -8,8 +8,8 @@ from pydantic.v1 import BaseModel
 
 from infrahub import config
 from infrahub.auth import AccountSession, authentication_token, validate_jwt_access_token, validate_jwt_refresh_token
-from infrahub.core import get_branch
 from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import AuthorizationError, PermissionDeniedError
@@ -84,7 +84,7 @@ async def get_branch_params(
     branch_name: Optional[str] = Query(None, alias="branch", description="Name of the branch to use for the query"),
     at: Optional[str] = Query(None, description="Time to use for the query, in absolute or relative format"),
 ) -> BranchParams:
-    branch = await get_branch(db=db, branch=branch_name)
+    branch = await registry.get_branch(db=db, branch=branch_name)
     at = Timestamp(at)
 
     return BranchParams(branch=branch, at=at)
@@ -94,7 +94,7 @@ async def get_branch_dep(
     db: InfrahubDatabase = Depends(get_db),
     branch_name: Optional[str] = Query(None, alias="branch", description="Name of the branch to use for the query"),
 ) -> Branch:
-    return await get_branch(db=db, branch=branch_name)
+    return await registry.get_branch(db=db, branch=branch_name)
 
 
 async def get_current_user(

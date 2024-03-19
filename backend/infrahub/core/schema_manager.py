@@ -9,7 +9,6 @@ from infrahub_sdk.utils import compare_lists, duplicates, intersection
 from pydantic import BaseModel
 
 from infrahub import lock
-from infrahub.core import get_branch, get_branch_from_registry
 from infrahub.core.constants import (
     RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
@@ -1193,7 +1192,7 @@ class SchemaManager(NodeManager):
         self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
     ) -> Union[NodeSchema, GenericSchema]:
         # For now we assume that all branches are present, will see how we need to pull new branches later.
-        branch = get_branch_from_registry(branch=branch)
+        branch = registry.get_branch_from_registry(branch=branch)
 
         if branch.name in self._branches:
             try:
@@ -1216,7 +1215,7 @@ class SchemaManager(NodeManager):
     def get_full(
         self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
     ) -> Dict[str, Union[NodeSchema, GenericSchema]]:
-        branch = get_branch_from_registry(branch=branch)
+        branch = registry.get_branch_from_registry(branch=branch)
 
         branch_name = None
         if branch.name in self._branches:
@@ -1257,7 +1256,7 @@ class SchemaManager(NodeManager):
         limit: Optional[List[str]] = None,
         update_db: bool = True,
     ):
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
 
         updated_schema = None
         if update_db:
@@ -1299,7 +1298,7 @@ class SchemaManager(NodeManager):
     ) -> SchemaBranchDiff:
         """Load all nodes, generics and groups from a SchemaRoot object into the database."""
 
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
 
         item_kinds = []
         for item_kind, item_diff in diff.added.items():
@@ -1337,7 +1336,7 @@ class SchemaManager(NodeManager):
     ) -> None:
         """Load all nodes, generics and groups from a SchemaRoot object into the database."""
 
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
 
         for item_kind in schema.all_names:
             if limit and item_kind not in limit:
@@ -1357,7 +1356,7 @@ class SchemaManager(NodeManager):
         branch: Optional[Union[str, Branch]] = None,
     ) -> Union[NodeSchema, GenericSchema]:
         """Load a Node with its attributes and its relationships to the database."""
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
 
         node_type = "SchemaNode"
         if isinstance(node, GenericSchema):
@@ -1405,7 +1404,7 @@ class SchemaManager(NodeManager):
         branch: Optional[Union[str, Branch]] = None,
     ) -> Union[NodeSchema, GenericSchema]:
         """Update a Node with its attributes and its relationships in the database."""
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
 
         obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
         if not obj:
@@ -1469,7 +1468,7 @@ class SchemaManager(NodeManager):
         branch: Optional[Union[str, Branch]] = None,
     ) -> Union[NodeSchema, GenericSchema]:
         """Update a Node with its attributes and its relationships in the database based on a HashableModelDiff."""
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
 
         obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
         if not obj:
@@ -1579,7 +1578,7 @@ class SchemaManager(NodeManager):
         branch: Optional[Union[str, Branch]] = None,
     ) -> None:
         """Delete the node with its attributes and relationships."""
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
 
         obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
         if not obj:
@@ -1645,10 +1644,10 @@ class SchemaManager(NodeManager):
         branch: Optional[Union[str, Branch]] = None,
     ) -> SchemaBranch:
         """Load the schema either from the cache or from the database"""
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
 
         if not branch.is_default and branch.origin_branch:
-            origin_branch: Branch = await get_branch(branch=branch.origin_branch, db=db)
+            origin_branch: Branch = await registry.get_branch(branch=branch.origin_branch, db=db)
 
             if origin_branch.schema_hash.main == branch.schema_hash.main:
                 origin_schema = self.get_schema_branch(name=origin_branch.name)
@@ -1686,7 +1685,7 @@ class SchemaManager(NodeManager):
             SchemaBranch
         """
 
-        branch = await get_branch(branch=branch, db=db)
+        branch = await registry.get_branch(branch=branch, db=db)
         schema = schema or SchemaBranch(cache=self._cache, name=branch.name)
 
         # If schema_diff has been provided, we need to build the proper filters for the queries based on the namespace and the name of the object.
