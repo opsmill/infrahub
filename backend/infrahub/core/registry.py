@@ -59,7 +59,7 @@ class Registry:
         return self._default_branch
 
     @default_branch.setter
-    def default_branch(self, value: str):
+    def default_branch(self, value: str) -> None:
         self._default_branch = value
 
     @property
@@ -70,7 +70,7 @@ class Registry:
         return self._schema
 
     @schema.setter
-    def schema(self, value: SchemaManager):
+    def schema(self, value: SchemaManager) -> None:
         self._schema = value
 
     @property
@@ -81,7 +81,7 @@ class Registry:
         return self._manager
 
     @manager.setter
-    def manager(self, value: Type[NodeManager]):
+    def manager(self, value: Type[NodeManager]) -> None:
         self._manager = value
 
     @property
@@ -92,7 +92,7 @@ class Registry:
         return self._storage
 
     @storage.setter
-    def storage(self, value: InfrahubObjectStorage):
+    def storage(self, value: InfrahubObjectStorage) -> None:
         self._storage = value
 
     def schema_has_been_initialized(self) -> bool:
@@ -100,47 +100,8 @@ class Registry:
             return True
         return False
 
-    def set_item(self, kind: str, name: str, item, branch: Optional[str] = None) -> bool:
-        branch = branch or registry.default_branch
-        getattr(self, kind)[branch][name] = item
-        return True
-
-    def has_item(self, kind: str, name: str, branch=None) -> bool:
-        try:
-            self.get_item(kind=kind, name=name, branch=branch)
-            return True
-        except ValueError:
-            return False
-
-    def get_item(self, kind: str, name: str, branch: Optional[Union[Branch, str]] = None):
-        branch = get_branch_from_registry(branch=branch)
-
-        attr = getattr(self, kind)
-
-        if branch.name in attr and name in attr[branch.name]:
-            return attr[branch.name][name]
-
-        default_branch = registry.default_branch
-        if name in attr[default_branch]:
-            return attr[default_branch][name]
-
-        raise ValueError(f"Unable to find the {kind} {name} for the branch {branch.name} in the registry")
-
-    def get_all_item(self, kind: str, branch: Optional[Union[Branch, str]] = None) -> dict:
-        """Return all the nodes in the schema for a given branch.
-        The current implementation is a bit simplistic, will need to re-evaluate."""
-        branch = get_branch_from_registry(branch=branch)
-
-        attr = getattr(self, kind)
-
-        if branch.name in attr:
-            return attr[branch.name]
-
-        default_branch = registry.default_branch
-        return attr[default_branch]
-
     def get_node_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> NodeSchema:
-        return self.schema.get(name=name, branch=branch)
+        return self.schema.get_node_schema(name=name, branch=branch)
 
     def get_data_type(
         self,
@@ -156,14 +117,10 @@ class Registry:
         """Return all the nodes in the schema for a given branch."""
         return self.schema.get_full(branch=branch)
 
-    def get_all_graphql_type(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, InfrahubObject]:
-        """Return all the graphql_type for a given branch."""
-        return self.get_all_item(kind="graphql_type", branch=branch)
-
-    def delete_all(self):
+    def delete_all(self) -> None:
         self.branch = {}
         self.node = {}
-        self.schema = None
+        self._schema = None
         self.account = {}
         self.account_id = {}
         self.node_group = {}
@@ -203,8 +160,8 @@ class Registry:
 
     async def get_branch(
         self,
+        db: InfrahubDatabase,
         session: Optional[AsyncSession] = None,
-        db: Optional[InfrahubDatabase] = None,
         branch: Optional[Union[Branch, str]] = None,
     ) -> Branch:
         """Return a branch object based on its name.
@@ -224,11 +181,15 @@ class Registry:
             Branch: A Branch Object
         """
 
+        branch_name = ""
+        if not isinstance(branch, str) and branch is not None:
+            branch_name = branch.name
+
         if self.branch_object and branch:
             if self.branch_object.isinstance(branch) and not isinstance(branch, str):
                 return branch
 
-        if (self.branch_object.isinstance(branch) and branch.name == GLOBAL_BRANCH_NAME) or (
+        if (self.branch_object and self.branch_object.isinstance(branch) and branch_name == GLOBAL_BRANCH_NAME) or (
             isinstance(branch, str) and branch == GLOBAL_BRANCH_NAME
         ):
             raise BranchNotFoundError(identifier=GLOBAL_BRANCH_NAME)
