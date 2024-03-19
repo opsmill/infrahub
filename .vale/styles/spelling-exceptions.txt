@@ -3,7 +3,6 @@ APIs
 artifact_definitions
 artifact_name
 async
-autoflake
 check_definitions
 class_name
 codespaces
