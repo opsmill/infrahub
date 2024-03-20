@@ -189,10 +189,6 @@ module = "infrahub.api.diff.diff"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.api.exception_handlers"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.api.storage"
 ignore_errors = true
 
