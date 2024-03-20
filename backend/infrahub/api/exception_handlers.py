@@ -1,10 +1,12 @@
+from typing import Any
+
 from fastapi.responses import JSONResponse
 from pydantic.v1 import ValidationError
 
 from infrahub.exceptions import Error
 
 
-async def generic_api_exception_handler(_, exc: Exception, http_code: int = 500) -> JSONResponse:
+async def generic_api_exception_handler(_: Any, exc: Exception, http_code: int = 500) -> JSONResponse:
     """Generic API Exception handler."""
     if isinstance(exc, Error):
         if exc.HTTP_CODE:
