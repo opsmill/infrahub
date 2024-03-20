@@ -17,7 +17,7 @@ from infrahub.core.query.branch import (
     RebaseBranchDeleteRelationshipQuery,
     RebaseBranchUpdateRelationshipQuery,
 )
-from infrahub.core.registry import get_branch_from_registry, registry
+from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, InitializationError, ValidationError
 
@@ -146,7 +146,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
         if not self.origin_branch or self.origin_branch == self.name:
             return None
 
-        return get_branch_from_registry(branch=self.origin_branch)
+        return registry.get_branch_from_registry(branch=self.origin_branch)
 
     def get_branches_in_scope(self) -> List[str]:
         """Return the list of all the branches that are constituing this branch.

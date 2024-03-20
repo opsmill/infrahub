@@ -62,9 +62,9 @@ class TestProposedChangePipeline(TestInfrahubApp):
         await client_repository.save()
 
     @pytest.fixture(scope="class")
-    async def happy_dataset(self, db: InfrahubDatabase, initial_dataset: None) -> None:
-        branch1 = await create_branch(db=db, branch_name="conflict_free")
-        richard = await Node.init(schema=TestKind.PERSON, db=db, branch=branch1)
+    async def happy_dataset(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> None:
+        branch1 = await client.branch.create(branch_name="conflict_free")
+        richard = await Node.init(schema=TestKind.PERSON, db=db, branch=branch1.name)
         await richard.new(db=db, name="Richard", height=180, description="The less famous Richard Doe")
         await richard.save(db=db)
 

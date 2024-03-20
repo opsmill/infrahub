@@ -1,12 +1,12 @@
 import pytest
 from pydantic import ValidationError as PydanticValidationError
 
-from infrahub.core import get_branch
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import BranchNotFoundError, ValidationError
@@ -116,7 +116,7 @@ async def test_branch_branched_form_format_validator(db: InfrahubDatabase):
 
 
 async def test_get_query_filter_relationships_main(db: InfrahubDatabase, base_dataset_02):
-    default_branch = await get_branch(branch="main", db=db)
+    default_branch = await registry.get_branch(branch="main", db=db)
 
     filters, params = default_branch.get_query_filter_relationships(
         rel_labels=["r1", "r2"], at=Timestamp().to_string(), include_outside_parentheses=False
@@ -135,7 +135,7 @@ async def test_get_query_filter_relationships_main(db: InfrahubDatabase, base_da
 
 
 async def test_get_query_filter_relationships_branch1(db: InfrahubDatabase, base_dataset_02):
-    branch1 = await get_branch(branch="branch1", db=db)
+    branch1 = await registry.get_branch(branch="branch1", db=db)
 
     filters, params = branch1.get_query_filter_relationships(
         rel_labels=["r1", "r2"], at=Timestamp().to_string(), include_outside_parentheses=False
@@ -150,7 +150,7 @@ async def test_get_query_filter_relationships_branch1(db: InfrahubDatabase, base
 async def test_get_branches_and_times_to_query_main(db: InfrahubDatabase, base_dataset_02):
     now = Timestamp("1s")
 
-    main_branch = await get_branch(branch="main", db=db)
+    main_branch = await registry.get_branch(branch="main", db=db)
 
     results = main_branch.get_branches_and_times_to_query(at=Timestamp())
     assert Timestamp(results[frozenset(["main"])]) > now
@@ -163,7 +163,7 @@ async def test_get_branches_and_times_to_query_main(db: InfrahubDatabase, base_d
 async def test_get_branches_and_times_to_query_branch1(db: InfrahubDatabase, base_dataset_02):
     now = Timestamp("1s")
 
-    branch1 = await get_branch(branch="branch1", db=db)
+    branch1 = await registry.get_branch(branch="branch1", db=db)
 
     t0 = Timestamp()
     results = branch1.get_branches_and_times_to_query(at=t0)
@@ -184,7 +184,7 @@ async def test_get_branches_and_times_to_query_branch1(db: InfrahubDatabase, bas
 async def test_get_branches_and_times_to_query_global_main(db: InfrahubDatabase, base_dataset_02):
     now = Timestamp("1s")
 
-    main_branch = await get_branch(branch="main", db=db)
+    main_branch = await registry.get_branch(branch="main", db=db)
 
     results = main_branch.get_branches_and_times_to_query_global(at=Timestamp())
     assert Timestamp(results[frozenset((GLOBAL_BRANCH_NAME, "main"))]) > now
@@ -197,7 +197,7 @@ async def test_get_branches_and_times_to_query_global_main(db: InfrahubDatabase,
 async def test_get_branches_and_times_to_query_global_branch1(db: InfrahubDatabase, base_dataset_02):
     now = Timestamp("1s")
 
-    branch1 = await get_branch(branch="branch1", db=db)
+    branch1 = await registry.get_branch(branch="branch1", db=db)
 
     t0 = Timestamp()
     results = branch1.get_branches_and_times_to_query_global(at=t0)
@@ -217,7 +217,7 @@ async def test_get_branches_and_times_to_query_global_branch1(db: InfrahubDataba
 
 async def test_get_branches_and_times_for_range_main(db: InfrahubDatabase, base_dataset_02):
     now = Timestamp()
-    main_branch = await get_branch(branch="main", db=db)
+    main_branch = await registry.get_branch(branch="main", db=db)
 
     start_times, end_times = main_branch.get_branches_and_times_for_range(start_time=Timestamp("1h"), end_time=now)
     assert list(start_times.keys()) == ["main"]
@@ -236,7 +236,7 @@ async def test_get_branches_and_times_for_range_main(db: InfrahubDatabase, base_
 
 async def test_get_branches_and_times_for_range_branch1(db: InfrahubDatabase, base_dataset_02):
     now = Timestamp()
-    branch1 = await get_branch(branch="branch1", db=db)
+    branch1 = await registry.get_branch(branch="branch1", db=db)
 
     start_times, end_times = branch1.get_branches_and_times_for_range(start_time=Timestamp("1h"), end_time=now)
     assert sorted(list(start_times.keys())) == ["branch1", "main"]
@@ -259,7 +259,7 @@ async def test_get_branches_and_times_for_range_branch1(db: InfrahubDatabase, ba
 
 async def test_get_branches_and_times_for_range_branch2(db: InfrahubDatabase, base_dataset_03):
     now = Timestamp()
-    branch2 = await get_branch(branch="branch2", db=db)
+    branch2 = await registry.get_branch(branch="branch2", db=db)
 
     start_times, end_times = branch2.get_branches_and_times_for_range(start_time=Timestamp("1h"), end_time=now)
     assert sorted(list(start_times.keys())) == ["branch2", "main"]

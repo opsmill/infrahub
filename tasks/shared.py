@@ -26,7 +26,7 @@ MEMGRAPH_DOCKER_IMAGE = os.getenv(
     "MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-platform:2.14.0-memgraph2.14.0-lab2.11.1-mage1.14"
 )
 NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.16.0-enterprise")
-MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv("MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.12.12-management")
+MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv("MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.13.0-management")
 CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4")
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -100,6 +100,8 @@ DEV_COMPOSE_FILES_NEO4J = [
     "development/docker-compose-database-neo4j.yml",
 ]
 DEV_OVERRIDE_FILE_NAME = "development/docker-compose.dev-override.yml"
+
+TEST_METRICS_OVERRIDE_FILE_NAME = "development/docker-compose-test-metrics.yml"
 
 ENV_VARS_DICT = {
     "IMAGE_NAME": IMAGE_NAME,
@@ -207,6 +209,9 @@ def build_compose_files_cmd(database: str) -> str:
     if "local" in IMAGE_VER:
         COMPOSE_FILES.append(LOCAL_FILE_NAME)
 
+    if os.getenv("CI") is not None:
+        COMPOSE_FILES.append(TEST_METRICS_OVERRIDE_FILE_NAME)
+
     return f"-f {' -f '.join(COMPOSE_FILES)}"
 
 
@@ -261,6 +266,9 @@ def build_test_scale_compose_files_cmd(
     if os.path.exists(TEST_SCALE_OVERRIDE_FILE_NAME):
         print("!! Found a test scale override file for docker-compose !!")
         TEST_SCALE_COMPOSE_FILES.append(TEST_SCALE_OVERRIDE_FILE_NAME)
+
+    if os.getenv("CI") is not None:
+        TEST_SCALE_COMPOSE_FILES.append(TEST_METRICS_OVERRIDE_FILE_NAME)
 
     return f"-f {' -f '.join(TEST_SCALE_COMPOSE_FILES)}"
 

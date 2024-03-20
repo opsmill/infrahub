@@ -28,6 +28,7 @@ env:
   BUILDKITE_BRANCH: ${{ github.ref }}
   BUILDKITE_COMMIT: ${{ github.sha }}
   VALE_VERSION: "3.0.7"
+  GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
 
 jobs:
    # ------------------------------------------ Check Files Changes  ------------------------------------------
@@ -342,6 +343,15 @@ jobs:
         with:
           flag-name: backend-unit
           parallel: true
+      - name: Generate tracing spans
+        if: always()
+        uses: inception-health/otel-upload-test-artifact-action@v1
+        with:
+          jobName: "backend-tests-unit"
+          stepName: "Unit Tests"
+          path: "pytest-junit.xml"
+          type: "junit"
+          githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
 
   backend-tests-integration:
     if: |
@@ -579,7 +589,8 @@ jobs:
       group: huge-runners
     timeout-minutes: 40
     env:
-      INFRAHUB_DB_TYPE: memgraph
+      INFRAHUB_DB_TYPE: neo4j
+      METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -597,6 +608,12 @@ jobs:
 
       - name: Select infrahub port
         run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+      - name: Select infrahub db port
+        run: echo "INFRAHUB_DB_BACKUP_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+      - name: Select vmagent port
+        run: echo "VMAGENT_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+      - name: "Store start time"
+        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
 
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
@@ -645,6 +662,13 @@ jobs:
         run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
       - name: Display server status
         run: invoke demo.status
+      - name: "Clear docker environment and force vmagent to stop"
+        if: always()
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+      - name: "Wait for vmagent to push metrics"
+        run: "sleep 10"
+      - name: "Show graph URL"
+        run: 'echo "https://grafana-prod.tailc018d.ts.net/d/a4461039-bb27-4f57-9b2a-2c7f4e0a3459/e2e-tests?orgId=1&var-pr=$GITHUB_PR_NUMBER&var-job=$GITHUB_JOB&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
 
   E2E-testing-playwright:
     defaults:
@@ -663,8 +687,8 @@ jobs:
       group: huge-runners
     timeout-minutes: 40
     env:
-      INFRAHUB_DB_TYPE: memgraph
-      INFRAHUB_ADDRESS: "http://localhost:8000"
+      INFRAHUB_DB_TYPE: neo4j
+      METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -681,6 +705,12 @@ jobs:
 
       - name: Select infrahub port
         run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+      - name: Select infrahub db port
+        run: echo "INFRAHUB_DB_BACKUP_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+      - name: Select vmagent port
+        run: echo "VMAGENT_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+      - name: "Store start time"
+        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
 
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
@@ -722,6 +752,16 @@ jobs:
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_E2E_PLAYWRIGHT }}
 
+      - name: Generate tracing spans
+        if: always()
+        uses: inception-health/otel-upload-test-artifact-action@v1
+        with:
+          jobName: "E2E-testing-playwright"
+          stepName: "Run Playwright tests"
+          path: "frontend/playwright-junit.xml"
+          type: "junit"
+          githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
+
       - name: playwright-report
         if: always()
         uses: actions/upload-artifact@v4
@@ -752,6 +792,18 @@ jobs:
       - name: Display server status
         if: always()
         run: invoke demo.status
+
+      - name: "Clear docker environment and force vmagent to stop"
+        if: always()
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+      - name: "Wait for vmagent to push metrics"
+        if: always()
+        run: "sleep 10"
+      - name: "Show graph URL"
+        if: always()
+        run: 'echo "https://grafana-prod.tailc018d.ts.net/d/a4461039-bb27-4f57-9b2a-2c7f4e0a3459/e2e-tests?orgId=1&var-pr=$GITHUB_PR_NUMBER&var-job=$GITHUB_JOB&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
+
   # ------------------------------------------ Benchmarks ------------------------------------------------
   backend-benchmark:
     needs:

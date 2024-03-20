@@ -1,5 +1,6 @@
 .coverage
 coverage.xml
+*junit*
 *.pyc
 *.env
 script.py
