@@ -340,6 +340,7 @@ jobs:
           flag-name: backend-unit
           parallel: true
       - name: Generate tracing spans
+        if: always()
         uses: inception-health/otel-upload-test-artifact-action@v1
         with:
           jobName: "backend-tests-unit"
@@ -748,6 +749,7 @@ jobs:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_E2E_PLAYWRIGHT }}
 
       - name: Generate tracing spans
+        if: always()
         uses: inception-health/otel-upload-test-artifact-action@v1
         with:
           jobName: "E2E-testing-playwright"
