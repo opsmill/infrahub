@@ -261,10 +261,6 @@ module = "infrahub.core.schema.basenode_schema"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.schema.node_schema"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.schema.relationship_schema"
 ignore_errors = true
 
