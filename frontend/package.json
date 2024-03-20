@@ -20,7 +20,7 @@
     "cypress:run:spec": "ELECTRON_ENABLE_LOGGING=1 cypress run --spec",
     "codegen": "graphql-codegen --config graphql.config.ts",
     "codegen:openapi": "npx openapi-typescript http://localhost:8000/api/openapi.json --output src/infraops.d.ts",
-    "ci:test:e2e": "CI=1 PLAYWRIGHT_JUNIT_OUTPUT_NAME=playwright-junit.xml playwright test --reporter=junit",
+    "ci:test:e2e": "CI=1 npm run test:e2e",
     "test:e2e": "playwright test",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:headed": "playwright test --headed",
