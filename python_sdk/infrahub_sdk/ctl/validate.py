@@ -15,12 +15,13 @@ from rich.console import Console
 from ujson import JSONDecodeError
 
 from infrahub_sdk.async_typer import AsyncTyper
-from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.client import initialize_client, initialize_client_sync
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
 from infrahub_sdk.ctl.utils import find_graphql_query, parse_cli_vars
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.utils import get_branch, write_to_file
+
+from .parameters import CONFIG_PARAM
 
 app = AsyncTyper()
 
@@ -35,12 +36,9 @@ def callback() -> None:
 @app.command(name="schema")
 async def validate_schema(
     schema: Path,
-    config_file: Path = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
+    _: str = CONFIG_PARAM,
 ) -> None:
     """Validate the format of a schema file either in JSON or YAML"""
-
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
 
     console = Console()
 
@@ -72,13 +70,10 @@ def validate_graphql(
     ),
     debug: bool = typer.Option(False, help="Display more troubleshooting information."),
     branch: str = typer.Option(None, help="Branch on which to validate the GraphQL Query."),
-    config_file: Path = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
+    _: str = CONFIG_PARAM,
     out: str = typer.Option(None, help="Path to a file to save the result."),
 ) -> None:
     """Validate the format of a GraphQL Query stored locally by executing it on a remote GraphQL endpoint"""
-
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
 
     console = Console()
 
