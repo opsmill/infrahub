@@ -83,8 +83,8 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
 
   return (
     <div className="flex justify-center m-4">
-      <div className="flex relative">
-        <div className="absolute top-1/2 -left-28 transform -translate-y-1/2 flex items-center justify-between p-2">
+      <div className="flex flex-col-reverse items-center relative">
+        <div className="lg:absolute lg:top-1/2 lg:-left-28 lg:transform lg:-translate-y-1/2 flex items-center justify-between p-2">
           <span className="mr-1 text-xs">Retry all:</span>
 
           <Retry
@@ -94,28 +94,30 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
           />
         </div>
 
-        {!Object.entries(validatorsCount).length && <LoadingScreen hideText />}
+        <div className="flex">
+          {!Object.entries(validatorsCount).length && <LoadingScreen hideText />}
 
-        {Object.entries(validatorsCount).map(([kind, data]: [string, any]) => (
-          <div key={kind} className="flex items-center justify-center gap-2 p-2">
-            <div className={"flex flex-col items-center group relative"}>
-              <PieChart data={data} onClick={() => canRetry(data) && handleRetry(kind)}>
-                {canRetry(data) && (
-                  <div className="absolute invisible group-hover:visible cursor-pointer">
-                    <Retry
-                      isLoading={isLoading || !!data.inProgress}
-                      isDisabled={!canRetry(data)}
-                    />
-                  </div>
-                )}
-              </PieChart>
+          {Object.entries(validatorsCount).map(([kind, data]: [string, any]) => (
+            <div key={kind} className="flex items-center justify-center gap-2 p-2">
+              <div className={"flex flex-col items-center group relative"}>
+                <PieChart data={data} onClick={() => canRetry(data) && handleRetry(kind)}>
+                  {canRetry(data) && (
+                    <div className="absolute invisible group-hover:visible cursor-pointer">
+                      <Retry
+                        isLoading={isLoading || !!data.inProgress}
+                        isDisabled={!canRetry(data)}
+                      />
+                    </div>
+                  )}
+                </PieChart>
 
-              <span className="text-xs">
-                {schemaKindLabel[kind]?.replace("Validator", "").trim()}
-              </span>
+                <span className="text-xs">
+                  {schemaKindLabel[kind]?.replace("Validator", "").trim()}
+                </span>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
