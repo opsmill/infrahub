@@ -1,11 +1,12 @@
 import asyncio
 from itertools import chain
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import List, Optional, Set, Tuple, Union
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
+from infrahub.core.validators.uniqueness.index import UniquenessQueryResultsIndex
 from infrahub.database import InfrahubDatabase
 
 from ..interface import ConstraintCheckerInterface
@@ -115,27 +116,51 @@ class UniquenessChecker(ConstraintCheckerInterface):
         async with self.semaphore:
             query_results = await query.execute(db=self.db.start_session(read_only=True))
 
-        non_unique_nodes_by_id: Dict[str, NonUniqueNode] = {}
-        for result in query_results.results:
-            node_id = str(result.get("node_id"))
-            if node_id not in non_unique_nodes_by_id:
-                non_unique_nodes_by_id[node_id] = NonUniqueNode(node_schema=schema, node_id=node_id)
-            non_unique_node = non_unique_nodes_by_id[node_id]
-            relationship_identifier = result.get("relationship_identifier")
-            attribute_name = str(result.get("attr_name"))
-            attribute_value = str(result.get("attr_value"))
-            deepest_branch_name = str(result.get("deepest_branch_name"))
-            if relationship_identifier:
-                relationship_schema = relationship_schema_by_identifier[str(relationship_identifier)]
-                non_unique_node.non_unique_related_attributes.append(
-                    NonUniqueRelatedAttribute(
-                        relationship=relationship_schema,
-                        attribute_name=attribute_name,
-                        attribute_value=attribute_value,
-                        deepest_branch_name=deepest_branch_name,
+        all_non_unique_nodes: List[NonUniqueNode] = []
+        results_index = UniquenessQueryResultsIndex(query_results=query_results.results)
+        path_groups = schema.get_unique_constraint_schema_attribute_paths(include_unique_attributes=True)
+        for constraint_group in path_groups:
+            non_unique_nodes_by_id: dict[str, NonUniqueNode] = {}
+            constraint_group_relationship_identifiers = [
+                schema_attribute_path.relationship_schema.get_identifier()
+                for schema_attribute_path in constraint_group
+                if schema_attribute_path.relationship_schema
+            ]
+            constraint_group_attribute_names = [
+                schema_attribute_path.attribute_schema.name
+                for schema_attribute_path in constraint_group
+                if schema_attribute_path.attribute_schema
+            ]
+            node_ids_in_violation = results_index.get_node_ids_for_path_group(path_group=constraint_group)
+            for result in query_results.results:
+                node_id = str(result.get("node_id"))
+                if node_id not in node_ids_in_violation:
+                    continue
+                if node_id not in non_unique_nodes_by_id:
+                    non_unique_nodes_by_id[node_id] = NonUniqueNode(node_schema=schema, node_id=node_id)
+                non_unique_node = non_unique_nodes_by_id[node_id]
+
+                relationship_identifier = result.get("relationship_identifier")
+                attribute_name = str(result.get("attr_name"))
+                attribute_value = str(result.get("attr_value"))
+                deepest_branch_name = str(result.get("deepest_branch_name"))
+                if relationship_identifier:
+                    if relationship_identifier not in constraint_group_relationship_identifiers:
+                        continue
+                    relationship_schema = relationship_schema_by_identifier[str(relationship_identifier)]
+                    non_unique_node.non_unique_related_attributes.append(
+                        NonUniqueRelatedAttribute(
+                            relationship=relationship_schema,
+                            attribute_name=attribute_name,
+                            attribute_value=attribute_value,
+                            deepest_branch_name=deepest_branch_name,
+                        )
                     )
-                )
-            else:
+                    continue
+                if not attribute_name:
+                    continue
+                if attribute_name not in constraint_group_attribute_names:
+                    continue
                 non_unique_node.non_unique_attributes.append(
                     NonUniqueAttribute(
                         attribute=schema.get_attribute(attribute_name),
@@ -144,7 +169,9 @@ class UniquenessChecker(ConstraintCheckerInterface):
                         deepest_branch_name=deepest_branch_name,
                     )
                 )
-        return list(non_unique_nodes_by_id.values())
+            all_non_unique_nodes.extend(non_unique_nodes_by_id.values())
+
+        return all_non_unique_nodes
 
     def get_uniqueness_violations(
         self, non_unique_node: NonUniqueNode

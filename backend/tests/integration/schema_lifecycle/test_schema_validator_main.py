@@ -8,13 +8,13 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
+from ..shared import load_schema
 from .shared import (
     CAR_KIND,
     MANUFACTURER_KIND_01,
     PERSON_KIND,
     TAG_KIND,
     TestSchemaLifecycleBase,
-    load_schema,
 )
 
 # pylint: disable=unused-argument
