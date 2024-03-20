@@ -45,7 +45,6 @@ from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
-from infrahub.core import get_branch
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, Error
@@ -137,7 +136,7 @@ class InfrahubGraphQLApp:
                 # Retrieve the branch name from the request and validate that it exist in the database
                 try:
                     branch_name = request.path_params.get("branch_name", registry.default_branch)
-                    branch = await get_branch(db=db, branch=branch_name)
+                    branch = await registry.get_branch(db=db, branch=branch_name)
                 except BranchNotFoundError as exc:
                     response = JSONResponse({"errors": [exc.message]}, status_code=404)
 
@@ -162,7 +161,7 @@ class InfrahubGraphQLApp:
 
             async with db.start_session() as db:
                 branch_name = websocket.path_params.get("branch_name", registry.default_branch)
-                branch = await get_branch(db=db, branch=branch_name)
+                branch = await registry.get_branch(db=db, branch=branch_name)
 
                 await self._run_websocket_server(db=db, branch=branch, websocket=websocket)
 

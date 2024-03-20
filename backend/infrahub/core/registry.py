@@ -220,6 +220,3 @@ class Registry:
 
 
 registry = Registry()
-
-get_branch_from_registry = registry.get_branch_from_registry
-get_branch = registry.get_branch

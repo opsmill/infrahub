@@ -10,11 +10,11 @@ import jwt
 from pydantic.v1 import BaseModel
 
 from infrahub import config, models
-from infrahub.core import get_branch
 from infrahub.core.account import validate_token
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.registry import registry
 from infrahub.exceptions import AuthorizationError, NodeNotFoundError
 
 if TYPE_CHECKING:
@@ -44,7 +44,7 @@ class AccountSession(BaseModel):
 async def authenticate_with_password(
     db: InfrahubDatabase, credentials: models.PasswordCredential, branch: Optional[str] = None
 ) -> models.UserToken:
-    selected_branch = await get_branch(db=db, branch=branch)
+    selected_branch = await registry.get_branch(db=db, branch=branch)
     response = await NodeManager.query(
         schema=InfrahubKind.ACCOUNT,
         db=db,
@@ -88,7 +88,7 @@ async def create_db_refresh_token(db: InfrahubDatabase, account_id: str, expirat
 async def create_fresh_access_token(
     db: InfrahubDatabase, refresh_data: models.RefreshTokenData
 ) -> models.AccessTokenResponse:
-    selected_branch = await get_branch(db=db)
+    selected_branch = await registry.get_branch(db=db)
 
     refresh_token = await NodeManager.get_one(
         id=str(refresh_data.session_id),

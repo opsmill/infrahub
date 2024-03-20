@@ -1,7 +1,6 @@
 import time
 from typing import Dict
 
-from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
@@ -24,6 +23,7 @@ from infrahub.core.query.node import (
     NodeListGetInfoQuery,
     NodeListGetRelationshipsQuery,
 )
+from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
 
 
@@ -261,8 +261,8 @@ async def test_query_NodeListGetInfoQuery_renamed(
 
 
 async def test_query_NodeListGetAttributeQuery_all_fields(db: InfrahubDatabase, base_dataset_02):
-    default_branch = await get_branch(db=db, branch="main")
-    branch1 = await get_branch(db=db, branch="branch1")
+    default_branch = await registry.get_branch(db=db, branch="main")
+    branch1 = await registry.get_branch(db=db, branch="branch1")
 
     # Query all the nodes in main but only c1 and c2 present
     # Expect 4 attributes per node(x2) = 8 attributes
@@ -312,7 +312,7 @@ async def test_query_NodeListGetAttributeQuery_with_source(
     )
     await obj2.save(db=db)
 
-    default_branch = await get_branch(db=db, branch="main")
+    default_branch = await registry.get_branch(db=db, branch="main")
 
     query = await NodeListGetAttributeQuery.init(
         db=db, ids=[obj1.id, obj2.id], branch=default_branch, include_source=True
@@ -325,8 +325,8 @@ async def test_query_NodeListGetAttributeQuery_with_source(
 
 
 async def test_query_NodeListGetAttributeQuery(db: InfrahubDatabase, base_dataset_02):
-    default_branch = await get_branch(db=db, branch="main")
-    branch1 = await get_branch(db=db, branch="branch1")
+    default_branch = await registry.get_branch(db=db, branch="main")
+    branch1 = await registry.get_branch(db=db, branch="branch1")
 
     # Query all the nodes in main but only c1 and c2 present
     # Expect 2 attributes per node(x2) = 4 attributes
@@ -370,8 +370,8 @@ async def test_query_NodeListGetAttributeQuery(db: InfrahubDatabase, base_datase
 
 
 async def test_query_NodeListGetAttributeQuery_deleted(db: InfrahubDatabase, base_dataset_02):
-    default_branch = await get_branch(db=db, branch="main")
-    branch1 = await get_branch(db=db, branch="branch1")
+    default_branch = await registry.get_branch(db=db, branch="main")
+    branch1 = await registry.get_branch(db=db, branch="branch1")
 
     schema = registry.schema.get_schema_branch(name=branch1.name)
     car_schema = schema.get(name="TestCar")
@@ -417,7 +417,7 @@ async def test_query_NodeListGetAttributeQuery_deleted(db: InfrahubDatabase, bas
 
 
 async def test_query_NodeListGetRelationshipsQuery(db: InfrahubDatabase, default_branch: Branch, person_jack_tags_main):
-    default_branch = await get_branch(db=db, branch="main")
+    default_branch = await registry.get_branch(db=db, branch="main")
     query = await NodeListGetRelationshipsQuery.init(
         db=db,
         ids=[person_jack_tags_main.id],
