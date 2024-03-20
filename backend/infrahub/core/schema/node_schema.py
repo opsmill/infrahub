@@ -5,10 +5,8 @@ from typing import TYPE_CHECKING, List, Optional, Union
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 
-from .attribute_schema import AttributeSchema
 from .generated.node_schema import GeneratedNodeSchema
 from .generic_schema import GenericSchema
-from .relationship_schema import RelationshipSchema
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -24,25 +22,35 @@ class NodeSchema(GeneratedNodeSchema):
             existing_inherited_relationships.keys()
         )
 
-        for item in interface.attributes + interface.relationships:
-            if item.name in self.valid_input_names:
+        for attribute in interface.attributes:
+            if attribute.name in self.valid_input_names:
                 continue
 
-            new_item = item.duplicate()
-            new_item.inherited = True
+            new_attribute = attribute.duplicate()
+            new_attribute.inherited = True
 
-            if isinstance(item, AttributeSchema) and item.name not in existing_inherited_fields:
-                self.attributes.append(new_item)
-            elif isinstance(item, AttributeSchema) and item.name in existing_inherited_fields:
-                item_idx = existing_inherited_attributes[item.name]
-                self.attributes[item_idx] = new_item
-            elif isinstance(item, RelationshipSchema) and item.name not in existing_inherited_fields:
-                self.relationships.append(new_item)
-            elif isinstance(item, RelationshipSchema) and item.name in existing_inherited_fields:
-                item_idx = existing_inherited_relationships[item.name]
-                self.relationships[item_idx] = new_item
+            if attribute.name not in existing_inherited_fields:
+                self.attributes.append(new_attribute)
+            elif attribute.name in existing_inherited_fields:
+                item_idx = existing_inherited_attributes[attribute.name]
+                self.attributes[item_idx] = new_attribute
+
+        for relationship in interface.relationships:
+            if relationship.name in self.valid_input_names:
+                continue
+
+            new_relationship = relationship.duplicate()
+            new_relationship.inherited = True
+
+            if relationship.name not in existing_inherited_fields:
+                self.relationships.append(new_relationship)
+            elif relationship.name in existing_inherited_fields:
+                item_idx = existing_inherited_relationships[relationship.name]
+                self.relationships[item_idx] = new_relationship
 
     def get_hierarchy_schema(self, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:
+        if not self.hierarchy:
+            raise ValueError("The node is not part of a hierarchy")
         schema = registry.schema.get(name=self.hierarchy, branch=branch)
         if not isinstance(schema, GenericSchema):
             raise TypeError
