@@ -1,7 +1,6 @@
 import asyncio
 import functools
 import importlib
-import json
 import logging
 import os
 import sys
@@ -10,6 +9,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import jinja2
 import typer
+import ujson
 from httpx import HTTPError
 from rich.console import Console
 from rich.logging import RichHandler
@@ -269,7 +269,7 @@ def transform(
         query=transform_instance.query, variables=variables_dict, transformer=transformer, branch=branch, debug=debug
     )
 
-    json_string = json.dumps(result, indent=2, sort_keys=True)
+    json_string = ujson.dumps(result, indent=2, sort_keys=True)
     if out:
         write_to_file(Path(out), json_string)
     else:

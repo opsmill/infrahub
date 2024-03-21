@@ -1,7 +1,7 @@
-import json
 from pathlib import Path
 
 import typer
+import ujson
 
 app = typer.Typer()
 
@@ -27,5 +27,5 @@ def generate_schema(
 
     schema["title"] = "InfrahubSchema"
 
-    output_file.write_text(json.dumps(schema, indent=4))
+    output_file.write_text(ujson.dumps(schema, indent=4))
     print(f"JSONSchema file saved in '{output_file}'")

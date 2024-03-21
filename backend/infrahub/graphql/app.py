@@ -5,7 +5,6 @@ This code has been forked from https://github.com/ciscorn/starlette-graphene3 in
 from __future__ import annotations
 
 import asyncio
-import json
 from inspect import isawaitable
 from typing import (
     TYPE_CHECKING,
@@ -22,6 +21,7 @@ from typing import (
     cast,
 )
 
+import ujson
 from graphql import (
     ExecutionContext,
     ExecutionResult,
@@ -453,14 +453,14 @@ async def _get_operation_from_multipart(
         raise ValueError("Request body is not a valid multipart/form-data")
 
     try:
-        operations = json.loads(request_body.get("operations"))
+        operations = ujson.loads(request_body.get("operations"))
     except (TypeError, ValueError):
         raise ValueError("'operations' must be a valid JSON")
     if not isinstance(operations, (dict, list)):
         raise ValueError("'operations' field must be an Object or an Array")
 
     try:
-        name_path_map = json.loads(request_body.get("map"))
+        name_path_map = ujson.loads(request_body.get("map"))
     except (TypeError, ValueError):
         raise ValueError("'map' field must be a valid JSON")
     if not isinstance(name_path_map, dict):

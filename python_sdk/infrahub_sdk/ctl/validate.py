@@ -1,9 +1,9 @@
-import json
 import sys
 from pathlib import Path
 from typing import List, Optional
 
 import typer
+import ujson
 import yaml
 
 try:
@@ -122,5 +122,5 @@ def validate_graphql(
         console.print("-" * 40)
 
     if out:
-        json_string = json.dumps(response, indent=2, sort_keys=True)
+        json_string = ujson.dumps(response, indent=2, sort_keys=True)
         write_to_file(Path(out), json_string)

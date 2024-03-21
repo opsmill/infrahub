@@ -1,7 +1,7 @@
-import json
 from typing import Any, Dict, Optional
 
 import httpx
+import ujson
 
 try:
     from pydantic import v1 as pydantic  # type: ignore[attr-defined]
@@ -45,12 +45,12 @@ class JSONPlayback(pydantic.BaseSettings):
     ) -> httpx.Response:
         content: Optional[bytes] = None
         if payload:
-            content = str(json.dumps(payload)).encode("UTF-8")
+            content = str(ujson.dumps(payload)).encode("UTF-8")
         request = httpx.Request(method=method.value, url=url, headers=headers, content=content)
 
         filename = generate_request_filename(request)
         with open(f"{self.directory}/{filename}.json", "r", encoding="UTF-8") as fobj:
-            data = json.load(fobj)
+            data = ujson.load(fobj)
 
         response = httpx.Response(
             status_code=data["status_code"],

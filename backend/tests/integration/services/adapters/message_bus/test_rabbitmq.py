@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
@@ -10,6 +9,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
+import ujson
 from aio_pika import Message
 
 from infrahub import config
@@ -351,8 +351,8 @@ async def test_rabbitmq_publish(rabbitmq_api: RabbitMQManager) -> None:
     delayed_queue = await bus.channel.get_queue(name=f"{bus.settings.namespace}.delay.five_seconds")
     message_from_queue = await queue.get()
     delayed_message_from_queue = await delayed_queue.get()
-    parsed_message = json.loads(message_from_queue.body)
-    parsed_delayed_message = json.loads(delayed_message_from_queue.body)
+    parsed_message = ujson.loads(message_from_queue.body)
+    parsed_delayed_message = ujson.loads(delayed_message_from_queue.body)
 
     await bus.shutdown()
 

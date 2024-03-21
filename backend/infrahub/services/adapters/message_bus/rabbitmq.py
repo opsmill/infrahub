@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from typing import TYPE_CHECKING, Awaitable, Callable, List, MutableMapping, Optional, Type, TypeVar
 
 import aio_pika
+import ujson
 from infrahub_sdk import UUIDT
 
 from infrahub import config
@@ -196,7 +196,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         await self.service.send(message=message)
 
         response: AbstractIncomingMessage = await future
-        data = json.loads(response.body)
+        data = ujson.loads(response.body)
         return response_class(**data)
 
     @staticmethod

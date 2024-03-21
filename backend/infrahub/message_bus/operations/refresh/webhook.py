@@ -1,4 +1,4 @@
-import json
+import ujson
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.message_bus import messages
@@ -25,7 +25,7 @@ async def configuration(
                 "validate_certificates": webhook.validate_certificates.value,
             },
         }
-        await service.cache.set(key=webhook_key, value=json.dumps(payload))
+        await service.cache.set(key=webhook_key, value=ujson.dumps(payload))
 
     for webhook in custom_webhooks:
         webhook_key = f"webhook:active:{webhook.id}"
@@ -52,7 +52,7 @@ async def configuration(
             payload["webhook_configuration"]["repository_id"] = transform.repository.id
             payload["webhook_configuration"]["repository_name"] = transform.repository.peer.name.value
 
-        await service.cache.set(key=webhook_key, value=json.dumps(payload))
+        await service.cache.set(key=webhook_key, value=ujson.dumps(payload))
 
     cached_webhooks = await service.cache.list_keys(filter_pattern="webhook:active:*")
     for cached_webhook in cached_webhooks:
