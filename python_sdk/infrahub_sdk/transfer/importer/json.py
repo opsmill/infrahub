@@ -1,6 +1,5 @@
 from collections import defaultdict
 from contextlib import contextmanager
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Mapping, Optional, Sequence
 
@@ -78,7 +77,6 @@ class LineDelimitedJSONImporter(ImporterInterface):
         with self.wrapped_task_output("Preparing nodes for import"):
             await self.remove_and_store_optional_relationships()
 
-        right_now = datetime.now(timezone.utc).astimezone()
         with self.wrapped_task_output("Building import batches"):
             save_batch = await self.client.create_batch(return_exceptions=True)
             for group in ordered_schema_names:
@@ -87,14 +85,14 @@ class LineDelimitedJSONImporter(ImporterInterface):
                     if not schema_import_nodes:
                         continue
                     for node in schema_import_nodes:
-                        save_batch.add(task=node.create, node=node, at=right_now, allow_upsert=True)
+                        save_batch.add(task=node.create, node=node, allow_upsert=True)
 
         await self.execute_batches([save_batch], "Creating and/or updating nodes")
 
         if not self.optional_relationships_by_node:
             return
 
-        await self.update_optional_relationships(at=right_now)
+        await self.update_optional_relationships()
         await self.update_many_to_many_relationships(file=relationship_file)
 
     async def remove_and_store_optional_relationships(self) -> None:
@@ -119,7 +117,7 @@ class LineDelimitedJSONImporter(ImporterInterface):
                         self.optional_relationships_by_node[node.id][relationship_name] = relationship_value
                         setattr(node, relationship_name, None)
 
-    async def update_optional_relationships(self, at: datetime) -> None:
+    async def update_optional_relationships(self) -> None:
         update_batch = await self.client.create_batch(return_exceptions=True)
         for node in self.all_nodes.values():
             node_kind = node.get_kind()
@@ -137,7 +135,7 @@ class LineDelimitedJSONImporter(ImporterInterface):
 
                 if not ignore:
                     setattr(node, relationship_attr, relationship_value)
-            update_batch.add(task=node.update, node=node, at=at)
+            update_batch.add(task=node.update, node=node)
         await self.execute_batches([update_batch], "Adding optional relationships to nodes")
 
     async def update_many_to_many_relationships(self, file: Path) -> None:
