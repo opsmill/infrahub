@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import json
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
 
+import ujson
 from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Relationship as Neo4jRelationship
 
@@ -439,7 +439,7 @@ class Query(ABC):
 
     def get_params_for_shell(self):
         if config.SETTINGS.database.db_type.value == "memgraph":
-            return json.dumps(self.params)
+            return ujson.dumps(self.params)
 
         return self._get_params_for_neo4j_shell()
 

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import glob
-import json
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union
 
+import ujson
 import yaml
 
 try:
@@ -59,7 +59,7 @@ class InfrahubInputOutputTest(InfrahubBaseTest):
         text = path.read_text()
 
         if suffix and suffix == "json":
-            return json.loads(text)
+            return ujson.loads(text)
         if suffix in ("yml", "yaml"):
             return yaml.safe_load(text)
 
