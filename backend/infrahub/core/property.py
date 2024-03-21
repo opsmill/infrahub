@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 from uuid import UUID
 
 from pydantic.v1 import BaseModel
@@ -9,7 +9,9 @@ from infrahub.core.constants.schema import FlagProperty, NodeProperty
 from infrahub.core.registry import registry
 
 if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -30,7 +32,7 @@ class FlagPropertyMixin:
     is_visible = True
     is_protected = False
 
-    def _init_flag_property_mixin(self, kwargs: dict = None) -> None:
+    def _init_flag_property_mixin(self, kwargs: Optional[dict] = None) -> None:
         if not kwargs:
             return
 
@@ -42,7 +44,10 @@ class FlagPropertyMixin:
 class NodePropertyMixin:
     _node_properties: List[str] = [v.value for v in NodeProperty]
 
-    def _init_node_property_mixin(self, kwargs: dict = None) -> None:
+    branch: Branch
+    at: Timestamp
+
+    def _init_node_property_mixin(self, kwargs: Optional[dict] = None) -> None:
         for node in self._node_properties:
             setattr(self, f"_{node}", None)
             setattr(self, f"{node}_id", None)
@@ -57,31 +62,31 @@ class NodePropertyMixin:
                 setattr(self, f"{node}_id", kwargs.get(f"{node}_id"))
 
     @property
-    def source(self):
+    def source(self) -> Node:
         return self._get_node_property_from_cache(name="source")
 
     @source.setter
-    def source(self, value):
+    def source(self, value: Union[str, Node, UUID]) -> None:
         self._set_node_property(name="source", value=value)
 
     @property
-    def owner(self):
+    def owner(self) -> Node:
         return self._get_node_property_from_cache(name="owner")
 
     @owner.setter
-    def owner(self, value):
+    def owner(self, value: Union[str, Node, UUID]) -> None:
         self._set_node_property(name="owner", value=value)
 
-    async def get_source(self, db: InfrahubDatabase):
+    async def get_source(self, db: InfrahubDatabase) -> Optional[Node]:
         return await self._get_node_property(name="source", db=db)
 
-    def set_source(self, value) -> None:
+    def set_source(self, value: Union[str, Node, UUID]) -> None:
         self._set_node_property(name="source", value=value)
 
-    async def get_owner(self, db: InfrahubDatabase):
+    async def get_owner(self, db: InfrahubDatabase) -> Optional[Node]:
         return await self._get_node_property(name="owner", db=db)
 
-    def set_owner(self, value):
+    def set_owner(self, value: Union[str, Node, UUID]) -> None:
         self._set_node_property(name="owner", value=value)
 
     def _get_node_property_from_cache(self, name: str) -> Node:
@@ -96,7 +101,7 @@ class NodePropertyMixin:
 
         return item
 
-    async def _get_node_property(self, db: InfrahubDatabase, name: str) -> Node:
+    async def _get_node_property(self, db: InfrahubDatabase, name: str) -> Optional[Node]:
         """Return the node attribute.
         If the node is already present in cache, serve from the cache
         If the node is not present, query it on the fly using the node_id
