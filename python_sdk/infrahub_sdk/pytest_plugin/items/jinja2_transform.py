@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import difflib
-import json
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 import jinja2
+import ujson
 from httpx import HTTPStatusError
 from rich.console import Console
 from rich.traceback import Traceback
@@ -64,8 +64,8 @@ class InfrahubJinja2Item(InfrahubItem):
     def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
         if isinstance(excinfo.value, HTTPStatusError):
             try:
-                response_content = json.dumps(excinfo.value.response.json(), indent=4, sort_keys=True)
-            except json.JSONDecodeError:
+                response_content = ujson.dumps(excinfo.value.response.json(), indent=4, sort_keys=True)
+            except ujson.JSONDecodeError:
                 response_content = excinfo.value.response.text
             return "\n".join(
                 [

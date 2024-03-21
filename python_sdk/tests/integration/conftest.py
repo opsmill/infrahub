@@ -1,10 +1,10 @@
 import asyncio
-import json
 import os
 from typing import Any, Dict, List, Optional
 
 import httpx
 import pytest
+import ujson
 from fastapi.testclient import TestClient
 from infrahub import config
 from infrahub.components import ComponentType
@@ -40,7 +40,7 @@ class InfrahubTestClient(TestClient):
     ) -> httpx.Response:
         content = None
         if payload:
-            content = str(json.dumps(payload)).encode("UTF-8")
+            content = str(ujson.dumps(payload)).encode("UTF-8")
         with self as client:
             return client.request(
                 method=method.value,

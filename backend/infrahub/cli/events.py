@@ -1,8 +1,8 @@
 import asyncio
-import json
 from asyncio import run as aiorun
 
 import typer
+import ujson
 from aio_pika.abc import AbstractIncomingMessage
 from rich import print as rprint
 
@@ -14,7 +14,7 @@ app = typer.Typer()
 
 
 async def print_event(event: AbstractIncomingMessage) -> None:
-    message = {"routing_key": event.routing_key, "message": json.loads(event.body)}
+    message = {"routing_key": event.routing_key, "message": ujson.loads(event.body)}
     rprint(message)
 
 

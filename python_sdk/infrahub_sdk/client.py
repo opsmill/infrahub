@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import copy
-import json
 import logging
 from logging import Logger
 from time import sleep
 from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
 
 import httpx
+import ujson
 from typing_extensions import NotRequired, Self
 from typing_extensions import TypedDict as ExtensionTypedDict
 
@@ -144,7 +144,7 @@ class BaseClient:
             print(f"URL: {url}")
             print(f"QUERY:\n{query}")
             if variables:
-                print(f"VARIABLES:\n{json.dumps(variables, indent=4)}\n")
+                print(f"VARIABLES:\n{ujson.dumps(variables, indent=4)}\n")
 
     def start_tracking(
         self,
