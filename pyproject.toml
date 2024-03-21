@@ -20,7 +20,7 @@ pydantic = "~2.6"
 pydantic-settings = "~2.2"
 pytest = "~7.4"
 aio-pika = "~9.4"
-structlog = "^22.3.0"
+structlog = "24.1.0"
 boto3 = "~1.33.11"
 email-validator = "~2.1"
 redis = { version = "^5.0.0", extras = ["hiredis"]}
