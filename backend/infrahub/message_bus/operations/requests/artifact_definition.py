@@ -174,7 +174,7 @@ async def generate(message: messages.RequestArtifactDefinitionGenerate, service:
 
     if transform.typename == InfrahubKind.TRANSFORMJINJA2:
         transform_location = transform.template_path.value
-    elif transform.typename == "CoreTransformPython":
+    elif transform.typename == InfrahubKind.TRANSFORMPYTHON:
         transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
 
     events = []

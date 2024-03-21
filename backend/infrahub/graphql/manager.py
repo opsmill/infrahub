@@ -221,8 +221,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             self.generate_graphql_paginated_object(schema=node_schema, edge=edged_interface, populate_cache=True)
 
         # Define LineageSource and LineageOwner
-        data_source = self.get_type(name="LineageSource")
-        data_owner = self.get_type(name="LineageOwner")
+        data_source = self.get_type(name=InfrahubKind.LINEAGESOURCE)
+        data_owner = self.get_type(name=InfrahubKind.LINEAGEOWNER)
         self.define_relationship_property(data_source=data_source, data_owner=data_owner)
         relationship_property = self.get_type(name="RelationshipProperty")
         for data_type in ATTRIBUTE_TYPES.values():
