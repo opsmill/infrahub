@@ -138,8 +138,8 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
         with pytest.raises(GraphQLError) as exc:
             await client.branch.rebase(branch_name=branch_2.name)
 
-            assert little_john.id in exc.value
-            assert "attribute.regex.update" in exc.value
+        assert little_john.id in exc.value.message
+        assert "attribute.regex.update" in exc.value.message
 
     async def test_step_02_node_unique_rebase_failure(
         self, client: InfrahubClient, db: InfrahubDatabase, initial_dataset, schema_02_node_unique, branch_2
@@ -165,5 +165,5 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
         with pytest.raises(GraphQLError) as exc:
             await client.branch.rebase(branch_name=branch_2.name)
 
-        assert initial_dataset["honda"] in exc.value
-        assert "node.uniqueness_constraints.update" in exc.value
+        assert initial_dataset["honda"] in exc.value.message
+        assert "node.uniqueness_constraints.update" in exc.value.message
