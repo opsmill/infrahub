@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import keyword
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Literal, Optional, Type, Union, overload
 
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import field_validator
@@ -150,19 +150,25 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         return elements_diff
 
-    def get_field(self, name: str) -> Union[AttributeSchema, RelationshipSchema]:
-        field = self.get_field_or_none(name=name)
-        if field:
-            return field
+    @overload
+    def get_field(
+        self, name: str, raise_on_error: Literal[True] = True
+    ) -> Union[AttributeSchema, RelationshipSchema]: ...
 
-        raise ValueError(f"Unable to find the field {name}")
+    @overload
+    def get_field(
+        self, name: str, raise_on_error: Literal[False] = False
+    ) -> Optional[Union[AttributeSchema, RelationshipSchema]]: ...
 
-    def get_field_or_none(self, name: str) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
+    def get_field(self, name: str, raise_on_error: bool = True) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
         if field := self.get_attribute_or_none(name=name):
             return field
 
         if field := self.get_relationship_or_none(name=name):
             return field
+
+        if raise_on_error:
+            raise ValueError(f"Unable to find the field {name}")
 
         return None
 
