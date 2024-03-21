@@ -223,7 +223,7 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,dis
         else:
             if partial_match:
                 query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
-                query_where.append(f"toString(av.value) CONTAINS toString(${param_prefix}_value)")
+                query_where.append(f"toLower(toString(av.value)) CONTAINS toLower(toString(${param_prefix}_value))")
             else:
                 query_filter.append(
                     QueryNode(name="av", labels=["AttributeValue"], params={"value": f"${param_prefix}_value"})
