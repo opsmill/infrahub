@@ -7,6 +7,8 @@ const SEARCHED_AMOUNT = "4";
 
 test.describe("Object list search", async () => {
   test("verify the search", async ({ page }) => {
+    await page.goto("/objects/InfraDevice");
+
     await test.step("should access object list and verify the total amount of results", async () => {
       await expect(page.locator("tbody")).toContainText(OBJECT_NAME);
       await page.getByText(INITIAL_AMOUNT, { exact: true }).click();
