@@ -15,8 +15,6 @@
     "cypress:screenshots": "cypress open --env SCREENSHOTS=true",
     "cypress:run": "npm run cypress:run:component",
     "cypress:run:component": "cypress run --component",
-    "cypress:run:e2e": "ELECTRON_ENABLE_LOGGING=1 cypress run --e2e",
-    "cypress:run:e2e:screenshots": "cypress run --e2e --env SCREENSHOTS=true",
     "cypress:run:spec": "ELECTRON_ENABLE_LOGGING=1 cypress run --spec",
     "codegen": "graphql-codegen --config graphql.config.ts",
     "codegen:openapi": "npx openapi-typescript http://localhost:8000/api/openapi.json --output src/infraops.d.ts",
