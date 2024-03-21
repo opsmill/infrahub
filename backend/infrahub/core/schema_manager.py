@@ -1362,9 +1362,9 @@ class SchemaManager(NodeManager):
         if isinstance(node, GenericSchema):
             node_type = "SchemaGeneric"
 
-        node_schema = self.get_node_schema(name=node_type, branch=branch)
-        attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
-        relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
+        node_schema = self.get_node_schema(name=node_type, branch=branch, duplicate=False)
+        attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch, duplicate=False)
+        relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch, duplicate=False)
 
         # Duplicate the node in order to store the IDs after inserting them in the database
         new_node = node.duplicate()
