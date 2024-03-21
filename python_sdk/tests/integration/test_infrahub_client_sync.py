@@ -1,15 +1,26 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
-from infrahub.database import InfrahubDatabase
 from infrahub.server import app
 
 from infrahub_sdk import Config, InfrahubClientSync
 from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.exceptions import BranchNotFoundError
 from infrahub_sdk.node import InfrahubNodeSync
+from infrahub_sdk.playback import JSONPlayback
+from infrahub_sdk.recorder import JSONRecorder
 
 from .conftest import InfrahubTestClient
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from infrahub.database import InfrahubDatabase
+
 
 # pylint: disable=unused-argument
 
@@ -228,3 +239,21 @@ class TestInfrahubClientSync:
             kind="CoreStandardGroup", name__value=client.group_context._generate_group_name(), include=["members"]
         )
         assert len(group.members.peers) == 2
+
+    def test_recorder_with_playback(
+        self, client: InfrahubClientSync, db: InfrahubDatabase, init_db_base, base_dataset, tmp_path: Path
+    ):
+        client.config.custom_recorder = JSONRecorder(directory=str(tmp_path))
+        nodes = client.all(kind="CoreRepository")
+
+        playback_config = JSONPlayback(directory=str(tmp_path))
+        config = Config(
+            address=client.config.address,
+            sync_requester=playback_config.sync_request,
+        )
+        playback = InfrahubClientSync(config=config)
+        recorded_nodes = playback.all(kind="CoreRepository")
+
+        assert len(nodes) == 1
+        assert nodes == recorded_nodes
+        assert recorded_nodes[0].name.value == "repository1"

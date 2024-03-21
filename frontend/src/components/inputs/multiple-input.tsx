@@ -66,6 +66,7 @@ export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: a
           value={item}
           onDelete={handleDelete}
           className="mt-2"
+          data-testid="multi-select-input-badge"
           disabled={disabled}>
           {typeof item === "object" ? item.name : item}
         </Badge>

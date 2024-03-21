@@ -442,7 +442,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           onClick={() => {
                             setRelatedRowToDelete(node);
                           }}
-                          data-cy="relationship-delete-button">
+                          data-testid="relationship-delete-button">
                           <Icon icon="mdi:link-variant-remove" className="text-base text-red-600" />
                         </ButtonWithTooltip>
                       </td>
@@ -525,7 +525,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             disabled={!permission.write.allow}
             onClick={() => setShowAddDrawer(true)}
             className="p-3 ml-2 bg-custom-blue-500 hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2"
-            data-cy="open-relationship-form-button">
+            data-testid="open-relationship-form-button">
             <PlusIcon className="h-7 w-7 text-custom-white" aria-hidden="true" />
           </RoundedButton>
         </div>
