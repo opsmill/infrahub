@@ -150,7 +150,7 @@ async def get_diff_artifacts(
 
     targets = await registry.manager.query(
         db=db,
-        schema="CoreArtifactTarget",
+        schema=InfrahubKind.ARTIFACTTARGET,
         filters={"artifacts__ids": artifact_ids_branch},
         prefetch_relationships=True,
         branch=branch,
@@ -159,7 +159,7 @@ async def get_diff_artifacts(
     if only_in_main:
         targets_in_main = await registry.manager.query(
             db=db,
-            schema="CoreArtifactTarget",
+            schema=InfrahubKind.ARTIFACTTARGET,
             filters={"artifacts__ids": only_in_main},
             prefetch_relationships=True,
             branch=default_branch_name,

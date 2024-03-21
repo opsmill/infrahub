@@ -39,7 +39,7 @@ async def configuration(
         }
         if webhook.transformation.id:
             transform = await service.client.get(
-                kind="CoreTransformPython",
+                kind=InfrahubKind.TRANSFORMPYTHON,
                 id=webhook.transformation.id,
                 prefetch_relationships=True,
                 populate_store=True,
