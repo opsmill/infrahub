@@ -45,7 +45,6 @@ import {
 } from "../../utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
-import DeviceFilterBar from "../device-list/device-filter-bar-paginated";
 import ErrorScreen from "../error-screen/error-screen";
 import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -217,8 +216,8 @@ export default function ObjectItems(props: any) {
   }
 
   return (
-    <Content className="bg-custom-white">
-      <div className="flex items-center p-4 w-full">
+    <Content className="">
+      <div className="flex items-center p-4 w-full bg-custom-white shadow-sm">
         {schemaData && (
           <div className="sm:flex-auto flex items-center">
             <h1 className="text-md font-semibold text-gray-900 mr-2">
@@ -248,78 +247,79 @@ export default function ObjectItems(props: any) {
         )}
       </div>
 
-      {schemaData?.filters && <DeviceFilterBar objectname={objectname} />}
-
-      <div className="flex justify-center items-center p-2">
-        <SearchInput
-          loading={loading}
-          onChange={debouncedHandleSearch}
-          placeholder="Search an object"
-          testId="object-list-search-bar"
-          className="!shadow-none !ring-0"
-        />
-      </div>
-
-      {loading && !rows && <LoadingScreen />}
-
-      {/* TODO: use new Table component for lsit */}
-      {rows && (
-        <div className="overflow-auto">
-          <table className="table-auto border-spacing-0 w-full">
-            <thead className="bg-gray-50 text-left border-y border-gray-300">
-              <tr>
-                {columns?.map((attribute) => (
-                  <th
-                    key={attribute.name}
-                    scope="col"
-                    className="p-2 text-xs font-semibold text-gray-900">
-                    {attribute.label}
-                  </th>
-                ))}
-                <th scope="col"></th>
-              </tr>
-            </thead>
-
-            <tbody className="bg-custom-white text-left">
-              {rows?.map((row: any, index: number) => (
-                <tr
-                  key={index}
-                  className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer h-[36px]"
-                  data-cy="object-table-row">
-                  {columns?.map((attribute) => (
-                    <td key={row.id + "-" + attribute.name} className="p-0">
-                      <Link
-                        className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
-                        to={constructPath(getObjectDetailsUrl(row.id, row.__typename))}>
-                        <div>{getObjectItemDisplayValue(row, attribute)}</div>
-                      </Link>
-                    </td>
-                  ))}
-
-                  <td className="text-right w-8">
-                    <ButtonWithTooltip
-                      data-cy="delete"
-                      disabled={!permission.write.allow}
-                      tooltipEnabled={!permission.write.allow}
-                      tooltipContent={permission.write.message ?? undefined}
-                      buttonType={BUTTON_TYPES.INVISIBLE}
-                      onClick={() => {
-                        setRowToDelete(row);
-                        setDeleteModal(true);
-                      }}>
-                      <Icon icon="mdi:trash" className="text-red-500" />
-                    </ButtonWithTooltip>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {!rows?.length && <NoDataFound message="No items found." />}
-
-          <Pagination count={count} />
+      <div className="m-2 rounded-md border overflow-hidden bg-custom-white shadow-sm">
+        <div className="flex items-cente">
+          <SearchInput
+            loading={loading}
+            onChange={debouncedHandleSearch}
+            placeholder="Search an object"
+            testId="object-list-search-bar"
+            className="!shadow-none !ring-0"
+            containerClassName="!max-w-[300px] !z-0"
+          />
         </div>
-      )}
+
+        {loading && !rows && <LoadingScreen />}
+
+        {/* TODO: use new Table component for lsit */}
+        {rows && (
+          <div className="overflow-auto">
+            <table className="table-auto border-spacing-0 w-full">
+              <thead className="bg-gray-50 text-left border-y border-gray-300">
+                <tr>
+                  {columns?.map((attribute) => (
+                    <th
+                      key={attribute.name}
+                      scope="col"
+                      className="p-2 text-xs font-semibold text-gray-900">
+                      {attribute.label}
+                    </th>
+                  ))}
+                  <th scope="col"></th>
+                </tr>
+              </thead>
+
+              <tbody className="bg-custom-white text-left">
+                {rows?.map((row: any, index: number) => (
+                  <tr
+                    key={index}
+                    className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer h-[36px]"
+                    data-cy="object-table-row">
+                    {columns?.map((attribute) => (
+                      <td key={row.id + "-" + attribute.name} className="p-0">
+                        <Link
+                          className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
+                          to={constructPath(getObjectDetailsUrl(row.id, row.__typename))}>
+                          <div>{getObjectItemDisplayValue(row, attribute)}</div>
+                        </Link>
+                      </td>
+                    ))}
+
+                    <td className="text-right w-8">
+                      <ButtonWithTooltip
+                        data-cy="delete"
+                        disabled={!permission.write.allow}
+                        tooltipEnabled={!permission.write.allow}
+                        tooltipContent={permission.write.message ?? undefined}
+                        buttonType={BUTTON_TYPES.INVISIBLE}
+                        onClick={() => {
+                          setRowToDelete(row);
+                          setDeleteModal(true);
+                        }}>
+                        <Icon icon="mdi:trash" className="text-red-500" />
+                      </ButtonWithTooltip>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {!rows?.length && <NoDataFound message="No items found." />}
+
+            <Pagination count={count} />
+          </div>
+        )}
+      </div>
 
       <SlideOver
         title={
