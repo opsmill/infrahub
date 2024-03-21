@@ -60,7 +60,9 @@ class UniquenessQueryResultsIndex:
     def get_node_ids_for_value_group(self, path_value_group: List[SchemaAttributePathValue]) -> Set[str]:
         matching_node_ids = self._all_node_ids.copy()
         for schema_attribute_path_value in path_value_group:
-            value = schema_attribute_path_value.value
+            if schema_attribute_path_value.value is None:
+                return set()
+            value = str(schema_attribute_path_value.value)
             if schema_attribute_path_value.relationship_schema:
                 relationship_identifier = schema_attribute_path_value.relationship_schema.get_identifier()
                 matching_node_ids &= self._relationship_index.get(relationship_identifier, {}).get(value, set())
