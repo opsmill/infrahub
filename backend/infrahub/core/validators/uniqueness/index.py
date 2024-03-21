@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set
+from typing import TYPE_CHECKING, Any, Iterable, Optional
 
 if TYPE_CHECKING:
     from infrahub.core.query import QueryResult
@@ -29,11 +29,11 @@ class GroupedIndexKey:
 
 
 class UniquenessQueryResultsIndex:
-    def __init__(self, query_results: Iterable[QueryResult], exclude_node_ids: Optional[Set[str]] = None):
-        self._relationship_index: Dict[str, Dict[str, Set[str]]] = {}
-        self._attribute_index: Dict[str, Dict[Any, Set[str]]] = {}
-        self._node_index: Dict[str, Dict[str, Any]] = {}
-        self._all_node_ids: Set[str] = set()
+    def __init__(self, query_results: Iterable[QueryResult], exclude_node_ids: Optional[set[str]] = None):
+        self._relationship_index: dict[str, dict[str, set[str]]] = {}
+        self._attribute_index: dict[str, dict[Any, set[str]]] = {}
+        self._node_index: dict[str, dict[str, Any]] = {}
+        self._all_node_ids: set[str] = set()
         for query_result in query_results:
             node_id = query_result.get_as_str("node_id")
             if not node_id or (exclude_node_ids and node_id in exclude_node_ids):
@@ -57,7 +57,7 @@ class UniquenessQueryResultsIndex:
                     self._attribute_index[attr_name][attr_value].add(node_id)
                     self._node_index[node_id][attr_name] = attr_value
 
-    def get_node_ids_for_value_group(self, path_value_group: List[SchemaAttributePathValue]) -> Set[str]:
+    def get_node_ids_for_value_group(self, path_value_group: list[SchemaAttributePathValue]) -> set[str]:
         matching_node_ids = self._all_node_ids.copy()
         for schema_attribute_path_value in path_value_group:
             if schema_attribute_path_value.value is None:
@@ -73,7 +73,7 @@ class UniquenessQueryResultsIndex:
                 return matching_node_ids
         return matching_node_ids
 
-    def get_node_ids_for_path_group(self, path_group: List[SchemaAttributePath]) -> Set[str]:
+    def get_node_ids_for_path_group(self, path_group: list[SchemaAttributePath]) -> set[str]:
         node_ids_by_attr_name_and_value: dict[GroupedIndexKey, set[str]] = {}
         key_group = []
         for schema_attribute_path in path_group:

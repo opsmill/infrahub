@@ -1,10 +1,11 @@
 import asyncio
 from itertools import chain
-from typing import List, Optional, Set, Tuple, Union
+from typing import Optional, Union
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.path import DataPath, GroupedDataPaths
+from infrahub.core.query import QueryResult
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.core.validators.uniqueness.index import UniquenessQueryResultsIndex
 from infrahub.database import InfrahubDatabase
@@ -24,7 +25,7 @@ from .query import NodeUniqueAttributeConstraintQuery
 
 def get_attribute_path_from_string(
     path: str, schema: Union[NodeSchema, GenericSchema]
-) -> Tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]:
+) -> tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]:
     if "__" in path:
         name, property_name = path.split("__")
     else:
@@ -58,7 +59,7 @@ class UniquenessChecker(ConstraintCheckerInterface):
             self.branch = await registry.get_branch(db=self.db, branch=self.branch)
         return self.branch
 
-    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]:
+    async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         schema_objects = [request.node_schema]
 
         non_unique_nodes_lists = await asyncio.gather(*[self.check_one_schema(schema) for schema in schema_objects])
@@ -105,10 +106,8 @@ class UniquenessChecker(ConstraintCheckerInterface):
     async def check_one_schema(
         self,
         schema: Union[NodeSchema, GenericSchema],
-    ) -> List[NonUniqueNode]:
+    ) -> list[NonUniqueNode]:
         query_request = await self.build_query_request(schema)
-
-        relationship_schema_by_identifier = {rel.identifier: rel for rel in schema.relationships}
 
         query = await NodeUniqueAttributeConstraintQuery.init(
             db=self.db, branch=await self.get_branch(), query_request=query_request
@@ -116,8 +115,14 @@ class UniquenessChecker(ConstraintCheckerInterface):
         async with self.semaphore:
             query_results = await query.execute(db=self.db.start_session(read_only=True))
 
-        all_non_unique_nodes: List[NonUniqueNode] = []
-        results_index = UniquenessQueryResultsIndex(query_results=query_results.results)
+        return await self._parse_results(schema=schema, query_results=query_results.results)
+
+    async def _parse_results(
+        self, schema: Union[NodeSchema, GenericSchema], query_results: list[QueryResult]
+    ) -> list[NonUniqueNode]:
+        relationship_schema_by_identifier = {rel.identifier: rel for rel in schema.relationships}
+        all_non_unique_nodes: list[NonUniqueNode] = []
+        results_index = UniquenessQueryResultsIndex(query_results=query_results)
         path_groups = schema.get_unique_constraint_schema_attribute_paths(include_unique_attributes=True)
         for constraint_group in path_groups:
             non_unique_nodes_by_id: dict[str, NonUniqueNode] = {}
@@ -132,7 +137,7 @@ class UniquenessChecker(ConstraintCheckerInterface):
                 if schema_attribute_path.attribute_schema
             ]
             node_ids_in_violation = results_index.get_node_ids_for_path_group(path_group=constraint_group)
-            for result in query_results.results:
+            for result in query_results:
                 node_id = str(result.get("node_id"))
                 if node_id not in node_ids_in_violation:
                     continue
@@ -175,14 +180,14 @@ class UniquenessChecker(ConstraintCheckerInterface):
 
     def get_uniqueness_violations(
         self, non_unique_node: NonUniqueNode
-    ) -> Set[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]]:
-        constraint_violations: Set[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]] = set()
+    ) -> set[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]]:
+        constraint_violations: set[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]] = set()
         for attribute_schema in non_unique_node.node_schema.unique_attributes:
             violation = non_unique_node.get_attribute_violation(attribute_schema.name)
             if violation:
                 constraint_violations.add(violation)
         for uniqueness_constraint in non_unique_node.node_schema.uniqueness_constraints or []:
-            constraint_spec: List[Tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]] = []
+            constraint_spec: list[tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]] = []
             for element in uniqueness_constraint:
                 sub_schema, property_name = get_attribute_path_from_string(element, non_unique_node.node_schema)
                 constraint_spec.append((sub_schema, property_name))
