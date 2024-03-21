@@ -15,7 +15,13 @@ import { SearchInput } from "../../components/search/search-bar";
 import { Tooltip } from "../../components/ui/tooltip";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { Pagination } from "../../components/utils/pagination";
-import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST } from "../../config/constants";
+import {
+  DEFAULT_BRANCH_NAME,
+  MENU_EXCLUDELIST,
+  SEARCH_ANY_FILTER,
+  SEARCH_FILTERS,
+  SEARCH_PARTIAL_MATCH,
+} from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
@@ -183,9 +189,7 @@ export default function ObjectItems(props: any) {
 
   const handleSearch = (value: string) => {
     if (!value) {
-      const newFilters = filters.filter(
-        (filter: Filter) => filter.name !== "any__value" && filter.name !== "partial_match"
-      );
+      const newFilters = filters.filter((filter: Filter) => !SEARCH_FILTERS.includes(filter.name));
 
       setFilters(newFilters);
 
@@ -194,11 +198,11 @@ export default function ObjectItems(props: any) {
     const newFilters = [
       ...filters,
       {
-        name: "partial_match",
+        name: SEARCH_PARTIAL_MATCH,
         value: true,
       },
       {
-        name: "any__value",
+        name: SEARCH_ANY_FILTER,
         value: value,
       },
     ];
