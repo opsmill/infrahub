@@ -480,25 +480,25 @@ class HashableModel(BaseModel):
                 continue
 
             if attr_local is None or isinstance(attr_other, (int, str, bool, float)):
-                setattr(self, field_name, getattr(other, field_name))
+                setattr(self, field_name, attr_other)
                 continue
 
             if isinstance(attr_local, list) and isinstance(attr_other, list):
-                if self.is_list_composed_of_hashable_model(attr_local) and self.is_list_composed_of_hashable_model(
-                    attr_other
-                ):
-                    new_attr = self.update_list_hashable_model(
-                        field_name=field_name, attr_local=attr_local, attr_other=attr_other
-                    )
-                    setattr(self, field_name, new_attr)
-
-                elif self.is_list_composed_of_standard_type(attr_local) and self.is_list_composed_of_standard_type(
-                    attr_other
-                ):
-                    new_attr = list(dict.fromkeys(attr_local + attr_other))
-                    setattr(self, field_name, new_attr)
+                new_attr = self._get_updated_list_value(
+                    field_name=field_name, attr_local=attr_local, attr_other=attr_other
+                )
+                setattr(self, field_name, new_attr)
 
         return self
+
+    def _get_updated_list_value(self, field_name: str, attr_local: list[Any], attr_other: list[Any]) -> list[Any]:
+        if self.is_list_composed_of_hashable_model(attr_local) and self.is_list_composed_of_hashable_model(attr_other):
+            return self.update_list_hashable_model(field_name=field_name, attr_local=attr_local, attr_other=attr_other)
+
+        if self.is_list_composed_of_standard_type(attr_local) and self.is_list_composed_of_standard_type(attr_other):
+            return list(dict.fromkeys(attr_local + attr_other))
+
+        return attr_other
 
     def diff(self, other: Self) -> HashableModelDiff:
         in_both, local_only, other_only = compare_lists(
