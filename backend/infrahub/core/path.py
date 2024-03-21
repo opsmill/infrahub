@@ -138,7 +138,7 @@ class SchemaPath(InfrahubPath):
         field_name: Optional[str] = None,
         property_name: Optional[str] = None,
     ) -> Self:
-        if field_name and not schema.get_field_or_none(name=field_name):
+        if field_name and not schema.get_field(name=field_name, raise_on_error=False):
             raise ValueError(f"Field : {field_name} is not valid for {schema.kind}")
 
         path_type = SchemaPathType.NODE
