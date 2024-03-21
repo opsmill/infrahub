@@ -256,6 +256,7 @@ export default function ObjectItems(props: any) {
           onChange={debouncedHandleSearch}
           placeholder="Search an object"
           testId="object-list-search-bar"
+          className="!shadow-none !ring-0"
         />
       </div>
 
@@ -265,7 +266,7 @@ export default function ObjectItems(props: any) {
       {rows && (
         <div className="overflow-auto">
           <table className="table-auto border-spacing-0 w-full">
-            <thead className="bg-gray-50 text-left border-b border-gray-300">
+            <thead className="bg-gray-50 text-left border-y border-gray-300">
               <tr>
                 {columns?.map((attribute) => (
                   <th
