@@ -21,7 +21,7 @@ export default function DeviceFilterBar(props: any) {
   const [filters, setFilters] = useFilters();
 
   const handleClickReset = () => {
-    setFilters();
+    setFilters([]);
   };
 
   const handleClickRemoveFilter = (filter: any) => {
