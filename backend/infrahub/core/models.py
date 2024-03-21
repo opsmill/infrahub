@@ -387,17 +387,7 @@ class HashableModel(BaseModel):
 
     @staticmethod
     def is_list_composed_of_hashable_model(items: List[Any]) -> bool:
-        for item in items:
-            if not isinstance(item, HashableModel):
-                return False
-        return True
-
-    @staticmethod
-    def is_list_composed_of_standard_type(items: List[Any]) -> bool:
-        for item in items:
-            if not isinstance(item, (int, str, bool, float)):
-                return False
-        return True
+        return all((isinstance(item, HashableModel) for item in items))
 
     @staticmethod
     def _organize_sub_items(items: List[HashableModel], shared_ids: Set[str]) -> Dict[Tuple[Any], HashableModel]:
@@ -494,9 +484,6 @@ class HashableModel(BaseModel):
     def _get_updated_list_value(self, field_name: str, attr_local: list[Any], attr_other: list[Any]) -> list[Any]:
         if self.is_list_composed_of_hashable_model(attr_local) and self.is_list_composed_of_hashable_model(attr_other):
             return self.update_list_hashable_model(field_name=field_name, attr_local=attr_local, attr_other=attr_other)
-
-        if self.is_list_composed_of_standard_type(attr_local) and self.is_list_composed_of_standard_type(attr_other):
-            return list(dict.fromkeys(attr_local + attr_other))
 
         return attr_other
 
