@@ -324,7 +324,7 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
             branch_name=message.source_branch,
         )
         artifact_definitions = _parse_artifact_definitions(
-            definitions=definition_information["CoreArtifactDefinition"]["edges"]
+            definitions=definition_information[InfrahubKind.ARTIFACTDEFINITION]["edges"]
         )
 
         await task_report.info(
@@ -616,7 +616,7 @@ def _parse_repositories(repositories: list[dict]) -> list[Repository]:
             Repository(
                 repository_id=repo["node"]["id"],
                 repository_name=repo["node"]["name"]["value"],
-                read_only=repo["node"]["__typename"] == "CoreReadOnlyRepository",
+                read_only=repo["node"]["__typename"] == InfrahubKind.READONLYREPOSITORY,
                 commit=repo["node"]["commit"]["value"] or "",
             )
         )
@@ -664,8 +664,10 @@ async def _get_proposed_change_repositories(
         query=SOURCE_READONLY_REPOSITORIES, branch_name=message.source_branch
     )
 
-    destination_all = destination_all["CoreGenericRepository"]["edges"]
-    source_all = source_managed["CoreRepository"]["edges"] + source_readonly["CoreReadOnlyRepository"]["edges"]
+    destination_all = destination_all[InfrahubKind.GENERICREPOSITORY]["edges"]
+    source_all = (
+        source_managed[InfrahubKind.REPOSITORY]["edges"] + source_readonly[InfrahubKind.READONLYREPOSITORY]["edges"]
+    )
 
     return _parse_proposed_change_repositories(message=message, source=source_all, destination=destination_all)
 
@@ -705,7 +707,7 @@ async def _populate_subscribers(branch_diff: ProposedChangeBranchDiff, service: 
         variables={"members": branch_diff.modified_nodes(branch=branch)},
     )
 
-    for group in result["CoreGraphQLQueryGroup"]["edges"]:
+    for group in result[InfrahubKind.GRAPHQLQUERYGROUP]["edges"]:
         for subscriber in group["node"]["subscribers"]["edges"]:
             branch_diff.subscribers.append(
                 ProposedChangeSubscriber(subscriber_id=subscriber["node"]["id"], kind=subscriber["node"]["__typename"])

@@ -1,4 +1,5 @@
 from infrahub import lock
+from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import RepositoryError
 from infrahub.services import InfrahubServices
 
@@ -7,7 +8,7 @@ from .repository import InfrahubRepository
 
 async def sync_remote_repositories(service: InfrahubServices) -> None:
     branches = await service.client.branch.all()
-    repositories = await service.client.get_list_repositories(branches=branches, kind="CoreRepository")
+    repositories = await service.client.get_list_repositories(branches=branches, kind=InfrahubKind.REPOSITORY)
 
     for repo_name, repository_data in repositories.items():
         async with service.task_report(
