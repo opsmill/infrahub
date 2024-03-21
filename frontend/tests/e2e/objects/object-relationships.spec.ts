@@ -22,15 +22,36 @@ test.describe("/objects/:objectname/:objectid - relationship tab", () => {
     test.describe.configure({ mode: "serial" });
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-    test("should be add a new relationship", async ({ page }) => {
+    test("should delete the relationship", async ({ page }) => {
       await test.step("Navigate to relationship tab of an object", async () => {
         await page.goto("/objects/InfraPlatform");
         await page.getByRole("link", { name: "Juniper JunOS" }).click();
         await page.getByText("Devices10").click();
       });
 
-      await test.step("Verify existing relationships", async () => {
-        await expect(page.getByText("Showing 1 to 10 of 10 results")).toBeVisible();
+      await test.step("Delete the relationship", async () => {
+        await page
+          .getByRole("row", { name: "dfw1-core1" })
+          .getByTestId("relationship-delete-button")
+          .click();
+        await expect(page.getByRole("paragraph")).toContainText(
+          "Are you sure you want to remove the association between `Juniper JunOS` and `dfw1-core1`? The `InfraDevice` `dfw1-core1` won't be deleted in the process."
+        );
+        await page.getByTestId("modal-delete-confirm").click();
+      });
+
+      await test.step("Verify deletion of relationship", async () => {
+        await expect(page.getByRole("alert")).toContainText("Item removed from the group");
+        await expect(page.getByRole("main")).toContainText("Showing 1 to 9 of 9 results");
+        await expect(page.getByLabel("Tabs")).toContainText("Devices9");
+      });
+    });
+
+    test("should be add a new relationship", async ({ page }) => {
+      await test.step("Navigate to relationship tab of an object", async () => {
+        await page.goto("/objects/InfraPlatform");
+        await page.getByRole("link", { name: "Juniper JunOS" }).click();
+        await page.getByText("Devices9").click();
       });
 
       await test.step("Add a new relationship", async () => {
@@ -38,42 +59,15 @@ test.describe("/objects/:objectname/:objectid - relationship tab", () => {
         await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
         await page.getByRole("option", { name: "Device" }).click();
         await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
-        await page.getByRole("option", { name: "atl1-edge2" }).click();
+        await page.getByRole("option", { name: "dfw1-core1" }).click();
         await page.getByRole("button", { name: "Save" }).click();
       });
 
       await test.step("Verify new relationship addition", async () => {
         await expect(page.getByRole("alert")).toContainText("Association with InfraDevice added");
-        await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 11 results");
-        await expect(page.getByLabel("Tabs")).toContainText("Devices11");
-        await page.getByTestId("select-open-option-button").click();
-        await page.getByRole("option", { name: "20" }).click();
-        await expect(page.getByRole("cell", { name: "atl1-edge2" })).toBeVisible();
-      });
-    });
-
-    test("should delete the relationship", async ({ page }) => {
-      await test.step("Navigate to relationship tab of an object", async () => {
-        await page.goto("/objects/InfraPlatform");
-        await page.getByRole("link", { name: "Juniper JunOS" }).click();
-        await page.getByText("Devices11").click();
-      });
-
-      await test.step("Delete the relationship", async () => {
-        await page
-          .getByRole("row", { name: "atl1-edge2" })
-          .getByTestId("relationship-delete-button")
-          .click();
-        await expect(page.getByRole("paragraph")).toContainText(
-          "Are you sure you want to remove the association between `Juniper JunOS` and `atl1-edge2`? The `InfraDevice` `atl1-edge2` won't be deleted in the process."
-        );
-        await page.getByTestId("modal-delete-confirm").click();
-      });
-
-      await test.step("Verify deletion of relationship", async () => {
-        await expect(page.getByRole("alert")).toContainText("Item removed from the group");
         await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 10 results");
         await expect(page.getByLabel("Tabs")).toContainText("Devices10");
+        await expect(page.getByRole("cell", { name: "dfw1-core1" })).toBeVisible();
       });
     });
   });
