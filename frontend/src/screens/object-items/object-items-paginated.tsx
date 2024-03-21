@@ -1,24 +1,27 @@
 import { gql } from "@apollo/client";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { BUTTON_TYPES } from "../../components/buttons/button";
+import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 import { Retry } from "../../components/buttons/retry";
 import { RoundedButton } from "../../components/buttons/rounded-button";
 import SlideOver from "../../components/display/slide-over";
 import ModalDelete from "../../components/modals/modal-delete";
+import { SearchInput } from "../../components/search/search-bar";
+import { Tooltip } from "../../components/ui/tooltip";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { Pagination } from "../../components/utils/pagination";
 import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
-import useFilters from "../../hooks/useFilters";
+import useFilters, { Filter } from "../../hooks/useFilters";
 import usePagination from "../../hooks/usePagination";
+import { usePermission } from "../../hooks/usePermission";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
@@ -26,6 +29,7 @@ import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
+import { debounce } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import {
@@ -37,13 +41,10 @@ import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import DeviceFilterBar from "../device-list/device-filter-bar-paginated";
 import ErrorScreen from "../error-screen/error-screen";
+import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
-import Content from "../layout/content";
-import { Tooltip } from "../../components/ui/tooltip";
-import { usePermission } from "../../hooks/usePermission";
-import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -56,20 +57,22 @@ export default function ObjectItems(props: any) {
 
   const objectname = objectnameFromProps || objectnameFromParams;
 
-  const permission = usePermission();
+  const navigate = useNavigate();
 
-  const [schemaList] = useAtom(schemaState);
-  const [genericList] = useAtom(genericsState);
+  const permission = usePermission();
+  const [filters, setFilters] = useFilters();
+  const [pagination] = usePagination();
+
+  const schemaKindName = useAtomValue(schemaKindNameState);
+  const schemaList = useAtomValue(schemaState);
+  const genericList = useAtomValue(genericsState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const [schemaKindName] = useAtom(schemaKindNameState);
-  const [filters] = useFilters();
-  const [pagination] = usePagination();
+
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
   const [rowToDelete, setRowToDelete] = useState<any>();
   const [deleteModal, setDeleteModal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const navigate = useNavigate();
 
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
@@ -107,16 +110,12 @@ export default function ObjectItems(props: any) {
   const attributes = getObjectAttributes(schemaData, true);
   const relationships = getObjectRelationships(schemaData, true);
 
-  const queryString = schemaData
-    ? getObjectItemsPaginated({
-        kind: schemaData.kind,
-        attributes,
-        relationships,
-        filters: filtersString,
-      })
-    : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schemaData
-      "query { ok }";
+  const queryString = getObjectItemsPaginated({
+    kind: objectname,
+    attributes,
+    relationships,
+    filters: filtersString,
+  });
 
   const query = gql`
     ${queryString}
@@ -182,6 +181,33 @@ export default function ObjectItems(props: any) {
 
   const handleRefetch = () => refetch();
 
+  const handleSearch = (value: string) => {
+    if (!value) {
+      const newFilters = filters.filter(
+        (filter: Filter) => filter.name !== "any__value" && filter.name !== "partial_match"
+      );
+
+      setFilters(newFilters);
+
+      return;
+    }
+    const newFilters = [
+      ...filters,
+      {
+        name: "partial_match",
+        value: true,
+      },
+      {
+        name: "any__value",
+        value: value,
+      },
+    ];
+
+    setFilters(newFilters);
+  };
+
+  const debouncedHandleSearch = debounce(handleSearch);
+
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching list." />;
   }
@@ -220,8 +246,18 @@ export default function ObjectItems(props: any) {
 
       {schemaData?.filters && <DeviceFilterBar objectname={objectname} />}
 
+      <div className="flex justify-center items-center p-2">
+        <SearchInput
+          loading={loading}
+          onChange={debouncedHandleSearch}
+          placeholder="Search an object"
+          testId="object-list-search-bar"
+        />
+      </div>
+
       {loading && !rows && <LoadingScreen />}
 
+      {/* TODO: use new Table component for lsit */}
       {rows && (
         <div className="overflow-auto">
           <table className="table-auto border-spacing-0 w-full">
