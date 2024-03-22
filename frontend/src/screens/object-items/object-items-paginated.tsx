@@ -259,7 +259,7 @@ export default function ObjectItems(props: any) {
 
         {loading && !rows && <LoadingScreen />}
 
-        {/* TODO: use new Table component for lsit */}
+        {/* TODO: use new Table component for list */}
         {rows && (
           <div className="overflow-auto">
             <table className="table-auto border-spacing-0 w-full">
