@@ -184,8 +184,8 @@ class SchemaUpdateValidationResult(BaseModel):
         for field_name, sub_field_diff in node_field_diff.changed.items():
             field = schema.get_field(name=field_name)
 
-            if not sub_field_diff or not field:
-                raise ValueError("sub_field_diff and field must be defined, unexpected situation")
+            if not sub_field_diff:
+                raise ValueError("sub_field_diff must be defined, unexpected situation")
 
             for prop_name in sub_field_diff.changed:
                 field_info = field.model_fields[prop_name]
