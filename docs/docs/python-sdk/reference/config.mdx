@@ -82,7 +82,7 @@ The following settings can be defined in the Config class
 
 **Property**: mode<br />
 **Description**: Default mode for the client<br />
-**Type**: `enum`<br />
+**Type**: `string`<br />
 **Default value**: default<br />
 **Choices**: default, tracking<br />
 **Environment variable**: `INFRAHUB_SDK_MODE`<br />
@@ -99,10 +99,24 @@ The following settings can be defined in the Config class
 
 **Property**: transport<br />
 **Description**: Set an alternate transport using a predefined option<br />
-**Type**: `enum`<br />
+**Type**: `string`<br />
 **Default value**: httpx<br />
 **Choices**: httpx, json<br />
 **Environment variable**: `INFRAHUB_SDK_TRANSPORT`<br />
+
+## proxy
+
+**Property**: proxy<br />
+**Description**: Proxy address<br />
+**Type**: `string`<br />
+**Environment variable**: `INFRAHUB_SDK_PROXY`<br />
+
+## proxy_mounts
+
+**Property**: proxy_mounts<br />
+**Description**: Proxy mounts configuration<br />
+**Type**: `object`<br />
+**Environment variable**: `INFRAHUB_SDK_PROXY_MOUNTS`<br />
 
 ## recorder
 
