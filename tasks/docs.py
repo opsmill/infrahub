@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+from typing import Any, Dict, List
 
 from invoke import Context, task
 
@@ -228,17 +229,24 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
     schema = ConfigBase.schema()
 
     definitions = schema["definitions"]
-    properties = [
-        {
-            "name": name,
-            "description": property.get("description", ""),
-            "type": property.get("type", "enum"),
-            "choices": definitions[property["allOf"][0]["$ref"].split("/")[-1]]["enum"] if "allOf" in property else [],
-            "default": property.get("default", ""),
-            "env_vars": list(property.get("env_names", set())),
-        }
-        for name, property in schema["properties"].items()
-    ]
+
+    properties = []
+    for name, prop in schema["properties"].items():
+        choices: List[Dict[str, Any]] = []
+        kind = ""
+        if "allOf" in prop:
+            choices = definitions[prop["allOf"][0]["$ref"].split("/")[-1]].get("enum", [])
+            kind = definitions[prop["allOf"][0]["$ref"].split("/")[-1]].get("type", "")
+        properties.append(
+            {
+                "name": name,
+                "description": prop.get("description", ""),
+                "type": prop.get("type", kind),
+                "choices": choices,
+                "default": prop.get("default", ""),
+                "env_vars": list(prop.get("env_names", set())),
+            }
+        )
 
     template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/sdk_config.j2"
     output_file = f"{DOCUMENTATION_DIRECTORY}/docs/python-sdk/reference/config.mdx"
