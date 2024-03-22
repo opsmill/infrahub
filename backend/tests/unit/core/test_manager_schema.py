@@ -2325,3 +2325,105 @@ async def test_load_schema(
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name=InfrahubKind.TAG).get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
+
+
+def test_schema_branch_load_schema_append_to_list(schema_all_in_one):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    core_group_schema = _get_schema_by_kind(schema_all_in_one, "CoreGroup")
+    core_group_schema["display_labels"] = ["label__value", "name__value"]
+
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    updated_core_group_schema = schema_branch.get(name="CoreGroup", duplicate=False)
+    assert updated_core_group_schema.display_labels == ["label__value", "name__value"]
+
+
+def test_schema_branch_load_schema_remove_from_list(schema_all_in_one):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    core_group_schema = _get_schema_by_kind(schema_all_in_one, "CoreGroup")
+    core_group_schema["display_labels"] = ["name__value"]
+
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    updated_core_group_schema = schema_branch.get(name="CoreGroup", duplicate=False)
+    assert updated_core_group_schema.display_labels == ["name__value"]
+
+
+def test_schema_branch_load_schema_empty_list(schema_all_in_one):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    core_group_schema = _get_schema_by_kind(schema_all_in_one, "CoreGroup")
+    core_group_schema["display_labels"] = []
+
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    updated_core_group_schema = schema_branch.get(name="CoreGroup", duplicate=False)
+    assert updated_core_group_schema.display_labels == []
+
+
+def test_schema_branch_load_schema_set_nested_list(schema_all_in_one):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    generic_interface_schema = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    generic_interface_schema["uniqueness_constraints"] = [["my_generic_name", "mybool"], ["primary_tag", "status"]]
+
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    updated_core_group_schema = schema_branch.get(name="InfraGenericInterface", duplicate=False)
+    assert updated_core_group_schema.uniqueness_constraints == [
+        ["my_generic_name", "mybool"],
+        ["primary_tag", "status"],
+    ]
+
+
+def test_schema_branch_load_schema_append_to_nested_list(schema_all_in_one):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    generic_interface_schema = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    generic_interface_schema["uniqueness_constraints"] = [["primary_tag", "status"]]
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    generic_interface_schema["uniqueness_constraints"] = [["primary_tag", "status"], ["my_generic_name", "mybool"]]
+
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    updated_core_group_schema = schema_branch.get(name="InfraGenericInterface", duplicate=False)
+    assert updated_core_group_schema.uniqueness_constraints == [
+        ["primary_tag", "status"],
+        ["my_generic_name", "mybool"],
+    ]
+
+
+def test_schema_branch_load_schema_remove_from_nested_list(schema_all_in_one):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    generic_interface_schema = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    generic_interface_schema["uniqueness_constraints"] = [["primary_tag", "status"], ["my_generic_name", "mybool"]]
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    generic_interface_schema["uniqueness_constraints"] = [["primary_tag", "status"]]
+
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    updated_core_group_schema = schema_branch.get(name="InfraGenericInterface", duplicate=False)
+    assert updated_core_group_schema.uniqueness_constraints == [["primary_tag", "status"]]
+
+
+def test_schema_branch_load_schema_update_nested_list(schema_all_in_one):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    generic_interface_schema = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    generic_interface_schema["uniqueness_constraints"] = [
+        ["primary_tag", "status", "mybool"],
+        ["my_generic_name", "mybool"],
+    ]
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    generic_interface_schema["uniqueness_constraints"] = [
+        ["primary_tag", "status"],
+        ["my_generic_name", "mybool", "status"],
+    ]
+
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    updated_core_group_schema = schema_branch.get(name="InfraGenericInterface", duplicate=False)
+    assert updated_core_group_schema.uniqueness_constraints == [
+        ["primary_tag", "status"],
+        ["my_generic_name", "mybool", "status"],
+    ]
