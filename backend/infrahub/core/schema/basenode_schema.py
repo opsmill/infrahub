@@ -2,13 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import keyword
-<<<<<<< HEAD
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Dict, List, Literal, Optional, Type, Union, overload
-=======
 from dataclasses import asdict, dataclass
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, Union
->>>>>>> stable
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Type, Union, overload
 
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import field_validator
@@ -422,5 +417,4 @@ class SchemaAttributePathValue(SchemaAttributePath):
         return cls(**asdict(schema_attribute_path), value=value)
 
 
-class AttributePathParsingError(Exception):
-    ...
+class AttributePathParsingError(Exception): ...
