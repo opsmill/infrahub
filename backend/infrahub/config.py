@@ -177,10 +177,21 @@ class CacheSettings(BaseSettings):
 
 
 class ApiSettings(BaseSettings):
-    cors_allow_origins: List[str] = ["*"]
-    cors_allow_credentials: bool = True
-    cors_allow_methods: List[str] = ["*"]
-    cors_allow_headers: List[str] = ["*"]
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_API_")
+    cors_allow_origins: List[str] = Field(
+        default=[], description="A list of origins that are authorized to make cross-site HTTP requests"
+    )
+    cors_allow_methods: List[str] = Field(
+        default=["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"],
+        description="A list of HTTP verbs that are allowed for the actual request",
+    )
+    cors_allow_headers: List[str] = Field(
+        default=["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with"],
+        description="The list of non-standard HTTP headers allowed in requests from the browser",
+    )
+    cors_allow_credentials: bool = Field(
+        default=True, description="If True, cookies will be allowed to be included in cross-site HTTP requests"
+    )
 
 
 class GitSettings(BaseSettings):
