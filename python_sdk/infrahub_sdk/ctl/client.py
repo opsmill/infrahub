@@ -10,8 +10,8 @@ async def initialize_client(
 ) -> InfrahubClient:
     client_config = {}
 
-    if config.SETTINGS.api_token:
-        client_config["api_token"] = config.SETTINGS.api_token
+    if config.SETTINGS.active.api_token:
+        client_config["api_token"] = config.SETTINGS.active.api_token
 
     if timeout:
         client_config["timeout"] = timeout
@@ -20,7 +20,7 @@ async def initialize_client(
         client_config["default_branch"] = branch
 
     client = await InfrahubClient.init(
-        address=config.SETTINGS.server_address,
+        address=config.SETTINGS.active.server_address,
         config=Config(**client_config),
         insert_tracker=True,
         identifier=identifier,
@@ -35,8 +35,8 @@ def initialize_client_sync(
 ) -> InfrahubClientSync:
     client_config = {}
 
-    if config.SETTINGS.api_token:
-        client_config["api_token"] = config.SETTINGS.api_token
+    if config.SETTINGS.active.api_token:
+        client_config["api_token"] = config.SETTINGS.active.api_token
 
     if timeout:
         client_config["timeout"] = timeout
@@ -45,7 +45,7 @@ def initialize_client_sync(
         client_config["default_branch"] = branch
 
     client = InfrahubClientSync.init(
-        address=config.SETTINGS.server_address,
+        address=config.SETTINGS.active.server_address,
         config=Config(**client_config),
         insert_tracker=True,
         identifier=identifier,
