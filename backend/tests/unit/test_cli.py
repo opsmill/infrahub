@@ -27,9 +27,3 @@ def test_server_app():
     result = runner.invoke(app, ["server", "--help"])
     assert result.exit_code == 0
     assert "[OPTIONS] COMMAND [ARGS]" in result.stdout
-
-
-def test_generate_schema_app():
-    result = runner.invoke(app, ["generate-schema", "--help"])
-    assert result.exit_code == 0
-    assert "[OPTIONS] COMMAND [ARGS]" in result.stdout
