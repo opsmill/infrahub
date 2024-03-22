@@ -53,7 +53,7 @@ const QSP_TO_INCLUDE = [QSP.BRANCH, QSP.DATETIME];
 
 type overrideQueryParams = {
   name: string;
-  value?: string;
+  value?: string | null;
   exclude?: boolean;
 };
 
