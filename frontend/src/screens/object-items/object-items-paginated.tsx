@@ -248,16 +248,14 @@ export default function ObjectItems(props: any) {
       </div>
 
       <div className="m-2 rounded-md border overflow-hidden bg-custom-white shadow-sm">
-        <div className="flex items-cente">
-          <SearchInput
-            loading={loading}
-            onChange={debouncedHandleSearch}
-            placeholder="Search an object"
-            testId="object-list-search-bar"
-            className="!shadow-none !ring-0"
-            containerClassName="!max-w-[300px] !z-0"
-          />
-        </div>
+        <SearchInput
+          loading={loading}
+          onChange={debouncedHandleSearch}
+          placeholder="Search an object"
+          testId="object-list-search-bar"
+          className="!shadow-none !ring-0"
+          containerClassName="!max-w-[300px] !z-0"
+        />
 
         {loading && !rows && <LoadingScreen />}
 
