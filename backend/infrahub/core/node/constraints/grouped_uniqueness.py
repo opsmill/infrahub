@@ -4,6 +4,7 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Union
 
+from infrahub.core import registry
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaAttributePath
 from infrahub.core.validators.uniqueness.model import (
     NodeUniquenessQueryRequest,
@@ -78,6 +79,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
     def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
         self.db = db
         self.branch = branch
+        self.schema_branch = registry.schema.get_schema_branch(branch.name)
 
     def _build_query_request(
         self,
@@ -180,8 +182,13 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                 schema_attribute_path_values=schema_attribute_path_values, results_index=results_index
             )
 
-    async def check(self, node: Node, at: Optional[Timestamp] = None, filters: Optional[List[str]] = None) -> None:
-        node_schema = node.get_schema()
+    async def _check_one_schema(
+        self,
+        node: Node,
+        node_schema: Union[NodeSchema, GenericSchema],
+        at: Optional[Timestamp] = None,
+        filters: Optional[List[str]] = None,
+    ) -> None:
         path_groups = node_schema.get_unique_constraint_schema_attribute_paths()
         query_request = self._build_query_request(
             updated_node=node, node_schema=node_schema, path_groups=path_groups, filters=filters
@@ -191,3 +198,14 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         )
         await query.execute(db=self.db)
         await self._check_results(updated_node=node, path_groups=path_groups, query_results=query.get_results())
+
+    async def check(self, node: Node, at: Optional[Timestamp] = None, filters: Optional[List[str]] = None) -> None:
+        node_schema = node.get_schema()
+        schemas_to_check: List[Union[NodeSchema, GenericSchema]] = [node_schema]
+        if node_schema.inherit_from:
+            for parent_schema_name in node_schema.inherit_from:
+                parent_schema = self.schema_branch.get(name=parent_schema_name, duplicate=False)
+                if parent_schema.uniqueness_constraints:
+                    schemas_to_check.append(parent_schema)
+        for schema in schemas_to_check:
+            await self._check_one_schema(node=node, node_schema=schema, at=at, filters=filters)
