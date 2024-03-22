@@ -67,9 +67,9 @@ type ActionOnMenuProps = {
 const ActionOnMenu = ({ menuItem }: ActionOnMenuProps) => {
   return (
     <SearchResultItem to={constructPath(menuItem.path)}>
-      <span className="font-medium">{menuItem.title}</span>
+      <span className="font-medium">Menu</span>
       <Icon icon="mdi:chevron-right" />
-      <span className="font-semibold text-custom-blue-700">View</span>
+      <span className="font-semibold">{menuItem.title}</span>
     </SearchResultItem>
   );
 };
@@ -80,12 +80,14 @@ const ActionOnSchema = ({ model }: { model: IModelSchema }) => {
 
   return (
     <SearchResultItem to={constructPath("/schema", [{ name: "kind", value: kind }])}>
-      <span className="font-medium">
-        <Badge className="text-xxs mr-1">{model.namespace}</Badge>
+      <span className="font-medium">Schema</span>
+      <Icon icon="mdi:chevron-right" />
+      <span className="font-semibold">
+        <Badge variant="blue" className="text-xxs mr-1 py-0">
+          {model.namespace}
+        </Badge>
         {label || name || kind}
       </span>
-      <Icon icon="mdi:chevron-right" />
-      <span className="font-semibold text-custom-blue-700">Schema</span>
     </SearchResultItem>
   );
 };
