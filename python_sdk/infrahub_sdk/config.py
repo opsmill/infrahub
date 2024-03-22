@@ -12,6 +12,18 @@ from infrahub_sdk.types import AsyncRequester, RequesterTransport, SyncRequester
 from infrahub_sdk.utils import get_branch, is_valid_url
 
 
+class ProxyMountsConfig(pydantic.BaseSettings):
+    http: str = pydantic.Field(
+        default=None, description="Proxy for HTTP requests", alias="http://", env="INFRAHUB_SDK_PROXY_MOUNTS_HTTP"
+    )
+    https: str = pydantic.Field(
+        default=None, description="Proxy for HTTPS requests", alias="https://", env="INFRAHUB_SDK_PROXY_MOUNTS_HTTPS"
+    )
+
+    class Config:
+        allow_population_by_field_name = True
+
+
 class ConfigBase(pydantic.BaseSettings):
     address: str = pydantic.Field(
         default="http://localhost:8000",
@@ -38,6 +50,8 @@ class ConfigBase(pydantic.BaseSettings):
         default=RequesterTransport.HTTPX,
         description="Set an alternate transport using a predefined option",
     )
+    proxy: Optional[str] = pydantic.Field(default=None, description="Proxy address")
+    proxy_mounts: Optional[ProxyMountsConfig] = pydantic.Field(default=None, description="Proxy mounts configuration")
 
     class Config:
         env_prefix = "INFRAHUB_SDK_"
@@ -79,6 +93,15 @@ class ConfigBase(pydantic.BaseSettings):
             return value
 
         raise ValueError("The configured address is not a valid url")
+
+    @pydantic.root_validator(pre=True)
+    @classmethod
+    def validate_proxy_config(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        has_proxy = values.get("proxy") is not None
+        has_proxy_mounts = values.get("proxy_mounts") is not None
+        if has_proxy and has_proxy_mounts:
+            raise ValueError("'proxy' and 'proxy_mounts' are mutually exclusive")
+        return values
 
     @property
     def default_infrahub_branch(self) -> str:
