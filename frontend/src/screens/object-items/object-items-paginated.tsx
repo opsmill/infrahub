@@ -216,7 +216,7 @@ export default function ObjectItems(props: any) {
   }
 
   return (
-    <Content className="">
+    <Content>
       <div className="flex items-center p-4 w-full bg-custom-white shadow-sm">
         {schemaData && (
           <div className="sm:flex-auto flex items-center">
