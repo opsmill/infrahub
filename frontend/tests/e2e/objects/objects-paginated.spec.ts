@@ -29,10 +29,6 @@ test.describe("/objects/:objectname", () => {
       await expect(page.getByRole("row", { name: "blue" }).getByRole("button")).toBeDisabled();
     });
 
-    // test("should filter the table", async ({ page }) => {
-    //   // TODO: add filters test after redesign
-    // });
-
     test("should be able to open object details in a new tab", async ({ page, context }) => {
       await page.goto("/objects/BuiltinTag");
 
