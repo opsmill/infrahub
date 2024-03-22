@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from collections import defaultdict
-from dataclasses import asdict, dataclass
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Union
+from typing import TYPE_CHECKING, Iterable, List, Optional, Set, Union
 
 from infrahub.core import registry
-from infrahub.core.schema import GenericSchema, NodeSchema, SchemaAttributePath
+from infrahub.core.schema import GenericSchema, NodeSchema, SchemaAttributePath, SchemaAttributePathValue
+from infrahub.core.validators.uniqueness.index import UniquenessQueryResultsIndex
 from infrahub.core.validators.uniqueness.model import (
     NodeUniquenessQueryRequest,
     QueryAttributePath,
@@ -23,56 +22,6 @@ if TYPE_CHECKING:
     from infrahub.core.relationship.model import RelationshipManager
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-
-
-@dataclass
-class SchemaAttributePathValue(SchemaAttributePath):
-    value: Any = None
-
-    @classmethod
-    def from_schema_attribute_path(
-        cls, schema_attribute_path: SchemaAttributePath, value: Any
-    ) -> SchemaAttributePathValue:
-        return cls(**asdict(schema_attribute_path), value=value)
-
-
-class UniquenessQueryResultsIndex:
-    def __init__(self, query_results: Iterable[QueryResult], exclude_node_ids: Set[str]):
-        self._relationship_index: Dict[str, Dict[str, Set[str]]] = {}
-        self._attribute_index: Dict[str, Dict[Any, Set[str]]] = {}
-        self._all_node_ids: Set[str] = set()
-        for query_result in query_results:
-            node_id = query_result.get_as_str("node_id")
-            if not node_id or node_id in exclude_node_ids:
-                continue
-            self._all_node_ids.add(node_id)
-            relationship_identifier = query_result.get_as_str("relationship_identifier")
-            attr_name = query_result.get_as_str("attr_name")
-            attr_value = query_result.get_as_str("attr_value")
-            if relationship_identifier:
-                if relationship_identifier not in self._relationship_index:
-                    self._relationship_index[relationship_identifier] = defaultdict(set)
-                if attr_value and node_id:
-                    self._relationship_index[relationship_identifier][attr_value].add(node_id)
-            elif attr_name:
-                if attr_name not in self._attribute_index:
-                    self._attribute_index[attr_name] = defaultdict(set)
-                if attr_value and node_id:
-                    self._attribute_index[attr_name][attr_value].add(node_id)
-
-    def get_matching_node_ids(self, path_value_group: List[SchemaAttributePathValue]) -> Set[str]:
-        matching_node_ids = self._all_node_ids.copy()
-        for schema_attribute_path_value in path_value_group:
-            value = schema_attribute_path_value.value
-            if schema_attribute_path_value.relationship_schema:
-                relationship_identifier = schema_attribute_path_value.relationship_schema.get_identifier()
-                matching_node_ids &= self._relationship_index.get(relationship_identifier, {}).get(value, set())
-            elif schema_attribute_path_value.attribute_schema:
-                attribute_name = schema_attribute_path_value.attribute_schema.name
-                matching_node_ids &= self._attribute_index.get(attribute_name, {}).get(value, set())
-            if not matching_node_ids:
-                return matching_node_ids
-        return matching_node_ids
 
 
 class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
@@ -151,7 +100,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         if any((sapv.value is None for sapv in schema_attribute_path_values)):
             return
 
-        matching_node_ids = results_index.get_matching_node_ids(schema_attribute_path_values)
+        matching_node_ids = results_index.get_node_ids_for_value_group(schema_attribute_path_values)
         if not matching_node_ids:
             return
         uniqueness_constraint_fields = []

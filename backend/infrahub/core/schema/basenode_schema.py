@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import keyword
+<<<<<<< HEAD
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Dict, List, Literal, Optional, Type, Union, overload
+=======
+from dataclasses import asdict, dataclass
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, Union
+>>>>>>> stable
 
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import field_validator
@@ -374,11 +379,20 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
             schema_path.attribute_property_name = property_piece
         return schema_path
 
-    def get_unique_constraint_schema_attribute_paths(self) -> List[List[SchemaAttributePath]]:
-        if not self.uniqueness_constraints:
-            return []
-
+    def get_unique_constraint_schema_attribute_paths(
+        self, include_unique_attributes: bool = False
+    ) -> List[List[SchemaAttributePath]]:
         constraint_paths_groups = []
+
+        if include_unique_attributes:
+            for attribute_schema in self.unique_attributes:
+                constraint_paths_groups.append(
+                    [SchemaAttributePath(attribute_schema=attribute_schema, attribute_property_name="value")]
+                )
+
+        if not self.uniqueness_constraints:
+            return constraint_paths_groups
+
         for uniqueness_path_group in self.uniqueness_constraints:
             constraint_paths_groups.append(
                 [
@@ -397,4 +411,16 @@ class SchemaAttributePath:
     attribute_property_name: Optional[str] = None
 
 
-class AttributePathParsingError(Exception): ...
+@dataclass
+class SchemaAttributePathValue(SchemaAttributePath):
+    value: Any = None
+
+    @classmethod
+    def from_schema_attribute_path(
+        cls, schema_attribute_path: SchemaAttributePath, value: Any
+    ) -> SchemaAttributePathValue:
+        return cls(**asdict(schema_attribute_path), value=value)
+
+
+class AttributePathParsingError(Exception):
+    ...
