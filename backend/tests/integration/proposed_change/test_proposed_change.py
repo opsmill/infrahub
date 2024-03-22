@@ -109,6 +109,12 @@ class TestProposedChangePipeline(TestInfrahubApp):
             validator for validator in peers.values() if validator.label.value == "Check: car_description_check"
         ][0]
         assert description_check.conclusion.value == ValidatorConclusion.SUCCESS.value
+        age_check = [validator for validator in peers.values() if validator.label.value == "Check: owner_age_check"][0]
+        assert age_check.conclusion.value == ValidatorConclusion.SUCCESS.value
+        repository_merge_conflict = [
+            validator for validator in peers.values() if validator.label.value == "Repository Validator: car-dealership"
+        ][0]
+        assert repository_merge_conflict.conclusion.value == ValidatorConclusion.SUCCESS.value
 
     async def test_conflict_pipeline(
         self, db: InfrahubDatabase, conflict_dataset: None, client: InfrahubClient
