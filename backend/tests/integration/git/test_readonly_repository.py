@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.lock import InfrahubLockRegistry
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema
@@ -19,6 +21,14 @@ if TYPE_CHECKING:
 
 
 class TestCreateReadOnlyRepository(TestInfrahubApp):
+    def setup_method(self):
+        lock_patcher = patch("infrahub.message_bus.operations.git.repository.lock")
+        self.mock_infra_lock = lock_patcher.start()
+        self.mock_infra_lock.registry = AsyncMock(spec=InfrahubLockRegistry)
+
+    def teardown_method(self):
+        patch.stopall()
+
     @pytest.fixture(scope="class")
     async def initial_dataset(
         self,
