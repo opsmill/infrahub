@@ -221,10 +221,6 @@ module = "infrahub.core.node.standard"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.property"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.query"
 ignore_errors = true
 
