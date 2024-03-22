@@ -482,3 +482,168 @@ class TestUniquenessChecker:
             )
             in all_data_paths
         )
+
+    async def test_relationship_no_violation_with_overlaps(
+        self,
+        db: InfrahubDatabase,
+        car_accord_main,
+        car_prius_main,
+        car_camry_main,
+        default_branch: Branch,
+    ):
+        car_accord_main.color.value = "#111111"
+        await car_accord_main.save(db=db)
+        car_prius_main.color.value = "#222222"
+        await car_prius_main.save(db=db)
+        car_camry_main.color.value = "#111111"
+        await car_camry_main.save(db=db)
+
+        schema = registry.schema.get("TestCar", branch=default_branch)
+        schema.uniqueness_constraints = [["owner", "color"]]
+        grouped_data_paths = await self.__call_system_under_test(db, default_branch, schema)
+
+        assert len(grouped_data_paths) == 1
+        all_data_paths = grouped_data_paths[0].get_all_data_paths()
+        assert len(all_data_paths) == 0
+
+    async def test_relationship_violations_with_overlaps(
+        self,
+        db: InfrahubDatabase,
+        car_accord_main,
+        car_prius_main,
+        car_camry_main,
+        person_john_main,
+        person_jane_main,
+        branch: Branch,
+        default_branch: Branch,
+    ):
+        await branch.rebase(db=db)
+        car_accord_main.color.value = "#111111"
+        car_accord_main.nbr_seats.value = 3
+        await car_accord_main.save(db=db)
+        car_prius_main.color.value = "#222222"  # violation
+        car_prius_main.nbr_seats.value = 4
+        await car_prius_main.save(db=db)
+        car_camry_main.color.value = "#111111"
+        car_camry_main.nbr_seats.value = 5
+        await car_camry_main.save(db=db)
+
+        car_1_branch = await Node.init(db=db, schema="TestCar", branch=branch)
+        await car_1_branch.new(
+            db=db, name="lightcycle", nbr_seats=1, is_electric=True, owner=person_john_main.id, color="#333333"
+        )
+        await car_1_branch.save(db=db)
+        car_2_branch = await Node.init(db=db, schema="TestCar", branch=branch)
+        await car_2_branch.new(
+            db=db, name="batcycle", nbr_seats=1, is_electric=False, owner=person_jane_main.id, color="#222222"
+        )  # violation
+        await car_2_branch.save(db=db)
+        car_3_branch = await Node.init(db=db, schema="TestCar", branch=branch)
+        await car_3_branch.new(
+            db=db, name="robincycle", nbr_seats=1, is_electric=True, owner=person_john_main.id, color="#222222"
+        )  # violation
+        await car_3_branch.save(db=db)
+
+        schema = registry.schema.get("TestCar", branch=branch)
+        schema.uniqueness_constraints = [["owner", "color"], ["color", "nbr_seats"]]
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
+
+        assert len(grouped_data_paths) == 1
+        all_data_paths = grouped_data_paths[0].get_all_data_paths()
+        assert len(all_data_paths) == 8
+        assert (
+            DataPath(
+                branch=default_branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=car_prius_main.id,
+                kind="TestCar",
+                field_name="owner",
+                property_name="id",
+                value=person_john_main.id,
+            )
+            in all_data_paths
+        )
+        assert (
+            DataPath(
+                branch=default_branch.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=car_prius_main.id,
+                kind="TestCar",
+                field_name="color",
+                property_name="value",
+                value="#222222",
+            )
+            in all_data_paths
+        )
+        assert (
+            DataPath(
+                branch=branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=car_3_branch.id,
+                kind="TestCar",
+                field_name="owner",
+                property_name="id",
+                value=person_john_main.id,
+            )
+            in all_data_paths
+        )
+        assert (
+            DataPath(
+                branch=branch.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=car_3_branch.id,
+                kind="TestCar",
+                field_name="color",
+                property_name="value",
+                value="#222222",
+            )
+            in all_data_paths
+        )
+        assert (
+            DataPath(
+                branch=branch.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=car_3_branch.id,
+                kind="TestCar",
+                field_name="nbr_seats",
+                property_name="value",
+                value="1",
+            )
+            in all_data_paths
+        )
+        assert (
+            DataPath(
+                branch=branch.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=car_2_branch.id,
+                kind="TestCar",
+                field_name="color",
+                property_name="value",
+                value="#222222",
+            )
+            in all_data_paths
+        )
+        assert (
+            DataPath(
+                branch=branch.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=car_2_branch.id,
+                kind="TestCar",
+                field_name="nbr_seats",
+                property_name="value",
+                value="1",
+            )
+            in all_data_paths
+        )
+        assert (
+            DataPath(
+                branch=branch.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=car_3_branch.id,
+                kind="TestCar",
+                field_name="color",
+                property_name="value",
+                value="#222222",
+            )
+            in all_data_paths
+        )

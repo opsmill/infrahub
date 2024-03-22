@@ -8,7 +8,7 @@ from infrahub.core.constants import RESTRICTED_NAMESPACES
 from infrahub.core.models import HashableModel
 
 from .attribute_schema import AttributeSchema
-from .basenode_schema import AttributePathParsingError, BaseNodeSchema, SchemaAttributePath
+from .basenode_schema import AttributePathParsingError, BaseNodeSchema, SchemaAttributePath, SchemaAttributePathValue
 from .definitions.core import core_models
 from .definitions.internal import internal
 from .dropdown import DropdownChoice
@@ -78,5 +78,6 @@ __all__ = [
     "GenericSchema",
     "RelationshipSchema",
     "SchemaAttributePath",
+    "SchemaAttributePathValue",
     "SchemaRoot",
 ]
