@@ -26,6 +26,4 @@ class InfrahubSchemaTopologicalSorter:
         try:
             return topological_sort(relationship_graph)
         except DependencyCycleExistsError as exc:
-            raise SchemaImportError(
-                "Cannot import nodes. There are cycles in the dependency graph."
-            ) from exc
+            raise SchemaImportError("Cannot import nodes. There are cycles in the dependency graph.") from exc
