@@ -6,6 +6,13 @@ from infrahub.core.constants import (
 )
 
 
+def _get_schema_by_kind(full_schema, kind):
+    for schema_dict in full_schema["nodes"] + full_schema["generics"]:
+        schema_kind = schema_dict["namespace"] + schema_dict["name"]
+        if schema_kind == kind:
+            return schema_dict
+
+
 @pytest.fixture
 def schema_all_in_one():
     FULL_SCHEMA = {
@@ -193,5 +200,69 @@ def schema_criticality_tag():
                 ],
             },
         ]
+    }
+    return FULL_SCHEMA
+
+
+@pytest.fixture
+def schema_parent_component() -> dict:
+    FULL_SCHEMA = {
+        "generics": [
+            {
+                "name": "ComponentGenericOne",
+                "namespace": "Test",
+                "attributes": [
+                    {"name": "smell", "kind": "Text", "label": "Name"},
+                ],
+                "relationships": [],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "ParentNodeOne",
+                "namespace": "Test",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "component_ones",
+                        "peer": "TestComponentNodeOne",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
+                ],
+            },
+            {
+                "name": "ParentNodeTwo",
+                "namespace": "Test",
+                "attributes": [
+                    {"name": "height", "kind": "Number", "label": "Height"},
+                    {"name": "width", "kind": "Number", "label": "Width"},
+                ],
+                "relationships": [],
+            },
+            {
+                "name": "ComponentNodeOne",
+                "namespace": "Test",
+                "inherit_from": ["TestComponentGenericOne"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "parent_one",
+                        "peer": "TestParentNodeOne",
+                        "kind": "Parent",
+                        "optional": False,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+        ],
     }
     return FULL_SCHEMA

@@ -419,7 +419,7 @@ nodes:
     relationships:
       - name: interface
         peer: InfraInterfaceL3
-        optional: true
+        optional: false
         cardinality: one
         kind: Parent
   - name: VLAN

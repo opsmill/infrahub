@@ -462,6 +462,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                         branch=branch,
                         kind="InfraIPAddress",
                         address=peer_address,
+                        interface={"id": intf.id},
                     )
                     await peer_ip.save()
 
@@ -590,6 +591,7 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
         branch=new_branch_name,
         kind="InfraIPAddress",
         address=peer_address,
+        interface={"id": intf.id},
     )
     await peer_ip.save()
 

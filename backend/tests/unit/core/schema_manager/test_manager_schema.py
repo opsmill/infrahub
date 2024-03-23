@@ -24,12 +24,7 @@ from infrahub.core.schema import (
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.database import InfrahubDatabase
 
-
-def _get_schema_by_kind(full_schema, kind):
-    for schema_dict in full_schema["nodes"] + full_schema["generics"]:
-        schema_kind = schema_dict["namespace"] + schema_dict["name"]
-        if schema_kind == kind:
-            return schema_dict
+from .conftest import _get_schema_by_kind
 
 
 async def test_schema_branch_set():
