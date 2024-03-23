@@ -13,6 +13,7 @@ from neo4j.graph import Relationship as Neo4jRelationship
 from infrahub import config
 from infrahub.core.constants import PermissionLevel
 from infrahub.core.timestamp import Timestamp
+from infrahub.database.constants import DatabaseType, Neo4jRuntime
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
@@ -380,7 +381,11 @@ class Query(ABC):
             self.add_to_query(f"WITH {with_clause}")
 
     def get_query(
-        self, var: bool = False, inline: bool = False, limit: Optional[int] = None, offset: Optional[int] = None
+        self,
+        var: bool = False,
+        inline: bool = False,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
     ) -> str:
         # Make a local copy of the _query_lines
         limit = limit or self.limit
@@ -460,22 +465,32 @@ class Query(ABC):
 
         return ":params { " + ", ".join(params) + " }"
 
-    async def execute(self, db: InfrahubDatabase) -> Self:
+    async def execute(
+        self, db: InfrahubDatabase, profile: bool = False, runtime: Neo4jRuntime = Neo4jRuntime.DEFAULT
+    ) -> Self:
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
 
         if config.SETTINGS.miscellaneous.print_query_details:
             self.print(include_var=True)
 
+        query_str = self.get_query()
+
+        if profile:
+            query_str = "PROFILE\n" + query_str
+
+        if runtime != Neo4jRuntime.DEFAULT and db.db_type == DatabaseType.NEO4J:
+            query_str = f"CYPHER runtime={runtime.value}\n" + query_str
+
         if self.type == QueryType.READ:
             if self.limit or self.offset:
-                results = await db.execute_query(query=self.get_query(), params=self.params, name=self.name)
+                results = await db.execute_query(query=query_str, params=self.params, name=self.name)
             else:
                 results = await self.query_with_size_limit(db=db)
 
         elif self.type == QueryType.WRITE:
             results, metadata = await db.execute_query_with_metadata(
-                query=self.get_query(), params=self.params, name=self.name
+                query=query_str, params=self.params, name=self.name
             )
             if "stats" in metadata:
                 self.stats.add(metadata.get("stats"))
@@ -483,7 +498,7 @@ class Query(ABC):
             raise ValueError(f"unknown value for {self.type}")
 
         if not results and self.raise_error_if_empty:
-            raise QueryError(self.get_query(), self.params)
+            raise QueryError(query_str, self.params)
 
         self.results = [QueryResult(data=result, labels=self.return_labels) for result in results]
         self.has_been_executed = True
