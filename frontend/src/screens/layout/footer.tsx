@@ -54,20 +54,17 @@ export const Footer = () => {
   return (
     <div className="bg-custom-white flex items-center p-3">
       <div className="flex space-x-2">
-        {ICONS.map((item: any, index: number) => {
-          console.log("item.content: ", item.content);
-          return (
-            <Tooltip key={index} content={item.message} side="top" enabled>
-              <a
-                href={item.link}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center cursor-pointer">
-                {item.component}
-              </a>
-            </Tooltip>
-          );
-        })}
+        {ICONS.map((item: any, index: number) => (
+          <Tooltip key={index} content={item.message} side="top" enabled>
+            <a
+              href={item.link}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center cursor-pointer">
+              {item.component}
+            </a>
+          </Tooltip>
+        ))}
       </div>
 
       <AppVersionInfo />
