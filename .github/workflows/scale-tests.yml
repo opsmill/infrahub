@@ -155,15 +155,15 @@ jobs:
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
       - name: Select infrahub port
-        run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+        run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
       - name: Set INFRAHUB_URL
         run: echo "INFRAHUB_URL=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
       - name: Select infrahub db port
-        run: echo "INFRAHUB_DB_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+        run: echo "INFRAHUB_DB_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
       - name: Select infrahub db port
-        run: echo "INFRAHUB_DB_BACKUP_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+        run: echo "INFRAHUB_DB_BACKUP_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
       - name: Select vmagent port
-        run: echo "VMAGENT_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+        run: echo "VMAGENT_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
 
       - name: "Start scale environment"
         run: "poetry run invoke backend.test-scale-env-start -g 1"
