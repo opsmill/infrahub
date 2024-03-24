@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from prometheus_client import Counter, Histogram
 
 METRIC_PREFIX = "infrahub_db"
