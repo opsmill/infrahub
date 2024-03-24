@@ -14,22 +14,22 @@ const ICONS = [
   {
     component: <Icon icon="mdi:git" className="text-3xl text-custom-blue-50" />,
     link: INFRAHUB_GITHUB_URL,
-    content: "OK",
+    message: "Git repository",
   },
   {
     component: <Icon icon="mdi:file-document" className="text-3xl text-custom-blue-50" />,
     link: INFRAHUB_DOC_URL,
-    content: "OK",
+    message: "Infrahub documentation",
   },
   {
     component: <Icon icon="mdi:graphql" className="text-3xl text-custom-blue-50" />,
     link: `${INFRAHUB_API_SERVER_URL}/graphql`,
-    content: "OK",
+    message: "GraphQL sandbox",
   },
   {
     component: <Icon icon="mdi:code-json" className="text-3xl text-custom-blue-50" />,
     link: `${INFRAHUB_API_SERVER_URL}/api/docs`,
-    content: "OK",
+    message: "Swagger documentation",
   },
 ];
 
@@ -57,7 +57,7 @@ export const Footer = () => {
         {ICONS.map((item: any, index: number) => {
           console.log("item.content: ", item.content);
           return (
-            <Tooltip key={index} content={item.content}>
+            <Tooltip key={index} content={item.message} side="top" enabled>
               <a
                 href={item.link}
                 target="_blank"
