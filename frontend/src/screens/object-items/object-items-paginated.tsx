@@ -10,6 +10,7 @@ import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip"
 import { Retry } from "../../components/buttons/retry";
 import { RoundedButton } from "../../components/buttons/rounded-button";
 import SlideOver from "../../components/display/slide-over";
+import { Filters } from "../../components/filters/filters";
 import ModalDelete from "../../components/modals/modal-delete";
 import { SearchInput } from "../../components/search/search-bar";
 import { Tooltip } from "../../components/ui/tooltip";
@@ -248,14 +249,18 @@ export default function ObjectItems(props: any) {
       </div>
 
       <div className="m-2 rounded-md border overflow-hidden bg-custom-white shadow-sm">
-        <SearchInput
-          loading={loading}
-          onChange={debouncedHandleSearch}
-          placeholder="Search an object"
-          testId="object-list-search-bar"
-          className="!shadow-none !ring-0"
-          containerClassName="!max-w-[300px] !z-0"
-        />
+        <div className="flex items-center">
+          <SearchInput
+            loading={loading}
+            onChange={debouncedHandleSearch}
+            placeholder="Search an object"
+            testId="object-list-search-bar"
+            className="!shadow-none !ring-0"
+            containerClassName="!max-w-[300px] !z-0"
+          />
+
+          <Filters />
+        </div>
 
         {loading && !rows && <LoadingScreen />}
 
