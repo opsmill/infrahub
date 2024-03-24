@@ -11,3 +11,15 @@ class Neo4jRuntime(str, Enum):
     INTERPRETED = "interpreted"
     SLOTTED = "slotted"
     PIPELINED = "pipelined"
+
+
+class IndexType(str, Enum):
+    TEXT = "text"
+    RANGE = "range"
+    LOOKUP = "lookup"
+    NOT_APPLICABLE = "not_applicable"
+
+
+class EntityType(str, Enum):
+    NODE = "node"
+    RELATIONSHIP = "relationship"
