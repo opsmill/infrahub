@@ -13,6 +13,7 @@ from infrahub.message_bus.types import MessageTTL
 
 from .adapters.cache import InfrahubCache
 from .adapters.message_bus import InfrahubMessageBus
+from .component import InfrahubComponent
 from .protocols import InfrahubLogger
 from .scheduler import InfrahubScheduler
 
@@ -34,6 +35,7 @@ class InfrahubServices:
         self.log = log or get_logger()
         self.component_type = component_type or ComponentType.NONE
         self.scheduler = InfrahubScheduler()
+        self.component = InfrahubComponent()
 
     @property
     def client(self) -> InfrahubClient:
@@ -69,6 +71,7 @@ class InfrahubServices:
 
     async def initialize(self) -> None:
         """Initialize the Services"""
+        await self.component.initialize(service=self)
         await self.message_bus.initialize(service=self)
         await self.scheduler.initialize(service=self)
 
