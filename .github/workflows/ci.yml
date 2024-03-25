@@ -24,9 +24,6 @@ env:
   INFRAHUB_IMAGE_VER: "local"
   PYTEST_XDIST_WORKER_COUNT: 4
   INFRAHUB_TEST_IN_DOCKER: 1
-  BUILDKITE_ANALYTICS_BRANCH: ${{ github.ref }}
-  BUILDKITE_BRANCH: ${{ github.ref }}
-  BUILDKITE_COMMIT: ${{ github.sha }}
   VALE_VERSION: "3.0.7"
   GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
 
@@ -211,8 +208,6 @@ jobs:
       - name: "Unit Tests"
         run: "poetry --directory python_sdk run coverage run --source=infrahub_sdk -m pytest python_sdk/tests/unit/"
         working-directory: ./
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
       - name: "Create coverage file"
         run: "poetry --directory python_sdk run coverage xml"
         working-directory: ./
@@ -255,8 +250,6 @@ jobs:
         run: "invoke test.pull"
       - name: "Integration Tests"
         run: "invoke sdk.test-integration"
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_INTEGRATION }}
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2
         env:
@@ -330,8 +323,6 @@ jobs:
         run: "invoke test.pull"
       - name: "Unit Tests"
         run: "invoke backend.test-unit"
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_UNIT_DEFAULT }}
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         env:
@@ -382,8 +373,6 @@ jobs:
         run: "invoke backend.mypy --docker"
       - name: "Integration Tests"
         run: "invoke backend.test-integration"
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_INTEGRATION }}
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2
         env:
@@ -421,8 +410,6 @@ jobs:
         run: "invoke test.pull"
       - name: "Unit Tests"
         run: "invoke backend.test-unit"
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_UNIT_NEO4J }}
 
   backend-validate-generated:
     if: |
@@ -650,8 +637,6 @@ jobs:
 
       - name: Run Playwright tests
         run: npm run ci:test:e2e
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_E2E_PLAYWRIGHT }}
 
       - name: Generate tracing spans
         if: always()
