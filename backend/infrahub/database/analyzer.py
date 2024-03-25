@@ -103,7 +103,7 @@ class QueryAnalyzer:
         self, query_name: str, metric: str = "duration", prefix: Optional[str] = None, output_dir: Optional[Path] = None
     ) -> None:
         df = self.get_df()
-        df_query = df[(df["query_name"] == query_name) & (df["profile"] is False)]
+        df_query = df[(df["query_name"] == query_name) & (df["profile"] == False)]  # noqa: E712
 
         name = f"{query_name}_{metric}"
         plt.figure(name)
@@ -133,7 +133,7 @@ class QueryAnalyzer:
         self, query_name: str, metric: str = "memory", prefix: Optional[str] = None, output_dir: Optional[Path] = None
     ) -> None:
         df = self.get_df()
-        df_query = df[(df["query_name"] == query_name) & (df["profile"] is True)]
+        df_query = df[(df["query_name"] == query_name) & (df["profile"] == True)]  # noqa: E712
 
         plt.figure(query_name)
 
