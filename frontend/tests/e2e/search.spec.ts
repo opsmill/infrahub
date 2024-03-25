@@ -32,7 +32,7 @@ test.describe("when searching an object", () => {
     await test.step("find a matching result", async () => {
       await page.getByTestId("search-anywhere").getByPlaceholder("Search anywhere").fill("devi");
       await expect(page.getByTestId("search-anywhere")).toContainText("Go to");
-      await page.getByRole("option", { name: "All Device(s) View" }).click();
+      await page.getByRole("option", { name: "All Device(s)" }).click();
       expect(page.url()).toContain("/objects/InfraDevice");
     });
   });
