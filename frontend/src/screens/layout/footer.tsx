@@ -12,22 +12,22 @@ import { fetchUrl } from "../../utils/fetch";
 
 const ICONS = [
   {
-    component: <Icon icon="mdi:git" className="text-3xl text-custom-blue-50" />,
+    component: <Icon icon="mdi:git" className="text-xl text-custom-blue-50" />,
     link: INFRAHUB_GITHUB_URL,
     message: "Git repository",
   },
   {
-    component: <Icon icon="mdi:file-document" className="text-3xl text-custom-blue-50" />,
+    component: <Icon icon="mdi:file-document" className="text-xl text-custom-blue-50" />,
     link: INFRAHUB_DOC_URL,
     message: "Infrahub documentation",
   },
   {
-    component: <Icon icon="mdi:graphql" className="text-3xl text-custom-blue-50" />,
+    component: <Icon icon="mdi:graphql" className="text-xl text-custom-blue-50" />,
     link: `${INFRAHUB_API_SERVER_URL}/graphql`,
     message: "GraphQL sandbox",
   },
   {
-    component: <Icon icon="mdi:code-json" className="text-3xl text-custom-blue-50" />,
+    component: <Icon icon="mdi:code-json" className="text-xl text-custom-blue-50" />,
     link: `${INFRAHUB_API_SERVER_URL}/api/docs`,
     message: "Swagger documentation",
   },
