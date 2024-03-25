@@ -12,7 +12,7 @@ interface DropDownMenuItemProps {
 
 export const DropDownMenuItem = ({ path, icon, title }: DropDownMenuItemProps) => {
   const [, setFilters] = useFilters();
-  const onClickMenuItem = () => setFilters();
+  const onClickMenuItem = () => setFilters([]);
 
   return (
     <NavLink
