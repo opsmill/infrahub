@@ -109,3 +109,36 @@ async def test_hierarchy_cannot_contain_loop(schema_parent_component):
         ),
     ):
         schema.validate_parent_component()
+
+
+async def test_hierarchy_cannot_contain_implied_loop(schema_parent_component):
+    component_schema_dict = _get_schema_by_kind(schema_parent_component, "TestComponentNodeOne")
+    component_schema_dict["relationships"].append(
+        {
+            "name": "component_two",
+            "peer": "TestParentNodeTwo",
+            "kind": "Component",
+            "optional": True,
+            "cardinality": "many",
+        }
+    )
+    node_schema_dict = _get_schema_by_kind(schema_parent_component, "TestParentNodeOne")
+    node_schema_dict["relationships"].append(
+        {
+            "name": "parent_two",
+            "peer": "TestParentNodeTwo",
+            "kind": "Parent",
+            "optional": False,
+            "cardinality": "one",
+        }
+    )
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_parent_component))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_parent_component()
+
+    error_msg = str(exc.value)
+    assert "Cycles exist among parents and components in schema" in error_msg
+    assert "['TestParentNodeOne --> TestComponentNodeOne --> TestParentNodeTwo --> TestParentNodeOne']" in error_msg

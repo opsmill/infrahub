@@ -233,6 +233,7 @@ def schema_parent_component() -> dict:
                         "peer": "TestComponentNodeOne",
                         "optional": True,
                         "cardinality": "many",
+                        "kind": "Component",
                     },
                 ],
             },

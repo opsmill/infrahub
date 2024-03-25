@@ -364,7 +364,6 @@ nodes:
         peer: InfraIPAddress
         optional: true
         cardinality: many
-        kind: Component
   - name: InterfaceL2
     namespace: Infra
     description: "Network Layer 2 Interface"
@@ -419,9 +418,9 @@ nodes:
     relationships:
       - name: interface
         peer: InfraInterfaceL3
-        optional: false
+        optional: true
         cardinality: one
-        kind: Parent
+        kind: Attribute
   - name: VLAN
     namespace: Infra
     description: "A VLAN is a logical grouping of devices in the same broadcast domain"
