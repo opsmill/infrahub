@@ -5,6 +5,7 @@ import hashlib
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
+from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, duplicates, intersection
 from pydantic import BaseModel
 
@@ -440,6 +441,7 @@ class SchemaBranch:
         self.validate_display_labels()
         self.validate_order_by()
         self.validate_default_filters()
+        self.validate_parent_component()
 
     def process_post_validation(self) -> None:
         self.add_groups()
@@ -628,6 +630,68 @@ class SchemaBranch:
 
             self._validate_attribute_path(
                 node_schema, node_schema.default_filter, schema_map, schema_attribute_name="default_filter"
+            )
+
+    def validate_parent_component(self) -> None:
+        # {parent_kind: {component_kind_1, component_kind_2, ...}}
+        dependency_map: dict[str, set[str]] = defaultdict(set)
+        for name in self.generic_names + self.node_names:
+            node_schema = self.get(name=name, duplicate=False)
+
+            parent_relationships: list[RelationshipSchema] = []
+            component_relationships: list[RelationshipSchema] = []
+            for rel_schema in node_schema.relationships:
+                if rel_schema.kind == RelationshipKind.PARENT and rel_schema.inherited is False:
+                    parent_relationships.append(rel_schema)
+                    dependency_map[rel_schema.peer].add(node_schema.kind)
+                elif rel_schema.kind == RelationshipKind.COMPONENT:
+                    component_relationships.append(rel_schema)
+                    dependency_map[node_schema.kind].add(rel_schema.peer)
+
+            if isinstance(node_schema, NodeSchema) and node_schema.inherit_from:
+                for generic_schema_name in node_schema.inherit_from:
+                    generic_schema = self.get_generic(name=generic_schema_name, duplicate=False)
+                    generic_parent_relationships = generic_schema.get_relationships_of_kind(
+                        relationship_kinds=[RelationshipKind.PARENT]
+                    )
+                    for gpr in generic_parent_relationships:
+                        dependency_map[gpr.peer].add(node_schema.kind)
+                    parent_relationships.extend(generic_parent_relationships)
+                    generic_component_relationships = generic_schema.get_relationships_of_kind(
+                        relationship_kinds=[RelationshipKind.COMPONENT]
+                    )
+                    for gcr in generic_component_relationships:
+                        dependency_map[node_schema.kind].add(gcr.peer)
+
+            if not parent_relationships and not component_relationships:
+                continue
+
+            self._validate_parents_one_schema(node_schema=node_schema, parent_relationships=parent_relationships)
+
+        try:
+            topological_sort(dependency_map)
+        except DependencyCycleExistsError as exc:
+            raise ValueError(f"Cycles exist among parents and components in schema: {exc.get_cycle_strings()}") from exc
+
+    def _validate_parents_one_schema(
+        self, node_schema: Union[NodeSchema, GenericSchema], parent_relationships: list[RelationshipSchema]
+    ) -> None:
+        if not parent_relationships:
+            return
+        if len(parent_relationships) > 1:
+            parent_names = [pr.name for pr in parent_relationships]
+            raise ValueError(
+                f"{node_schema.kind}: Only one relationship of type parent is allowed, but all the following are of type parent: {parent_names}"
+            )
+
+        parent_relationship = parent_relationships[0]
+        if parent_relationship.cardinality != RelationshipCardinality.ONE:
+            raise ValueError(
+                f"{node_schema.kind}.{parent_relationship.name}: Relationship of type parent must be cardinality=one"
+            )
+        if parent_relationship.optional is True:
+            raise ValueError(
+                f"{node_schema.kind}.{parent_relationship.name}: Relationship of type parent must not be optional"
             )
 
     def validate_names(self) -> None:
