@@ -2,9 +2,6 @@ from typing import Any, Dict
 
 import pytest
 
-from infrahub.core import registry
-from infrahub.core.schema import SchemaRoot
-from infrahub.database import InfrahubDatabase
 from tests.helpers.test_app import TestInfrahubApp
 
 PERSON_KIND = "TestingPerson"
@@ -12,16 +9,6 @@ CAR_KIND = "TestingCar"
 MANUFACTURER_KIND_01 = "TestingManufacturer"
 MANUFACTURER_KIND_03 = "TestingCarMaker"
 TAG_KIND = "TestingTag"
-
-
-async def load_schema(db: InfrahubDatabase, schema: Dict[str, Any]):
-    default_branch_name = registry.default_branch
-    branch_schema = registry.schema.get_schema_branch(name=default_branch_name)
-    tmp_schema = branch_schema.duplicate()
-    tmp_schema.load_schema(schema=SchemaRoot(**schema))
-    tmp_schema.process()
-
-    await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch_name, update_db=True)
 
 
 class TestSchemaLifecycleBase(TestInfrahubApp):
@@ -64,6 +51,7 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
             "name": "Car",
             "namespace": "Testing",
             "include_in_menu": True,
+            "default_filter": "name__value",
             "label": "Car",
             "attributes": [
                 {"name": "name", "kind": "Text"},

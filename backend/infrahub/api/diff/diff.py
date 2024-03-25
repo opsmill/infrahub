@@ -78,7 +78,7 @@ async def get_diff_schema(
         branch_only=query.branch_only,
         kinds_include=INTERNAL_SCHEMA_NODE_KINDS,
     )
-    diff_payload_builder = DiffPayloadBuilder(db=db, diff=diff)
+    diff_payload_builder = DiffPayloadBuilder(db=db, diff=diff, kinds_to_include=INTERNAL_SCHEMA_NODE_KINDS)
     return await diff_payload_builder.get_branch_diff()
 
 
@@ -150,7 +150,7 @@ async def get_diff_artifacts(
 
     targets = await registry.manager.query(
         db=db,
-        schema="CoreArtifactTarget",
+        schema=InfrahubKind.ARTIFACTTARGET,
         filters={"artifacts__ids": artifact_ids_branch},
         prefetch_relationships=True,
         branch=branch,
@@ -159,7 +159,7 @@ async def get_diff_artifacts(
     if only_in_main:
         targets_in_main = await registry.manager.query(
             db=db,
-            schema="CoreArtifactTarget",
+            schema=InfrahubKind.ARTIFACTTARGET,
             filters={"artifacts__ids": only_in_main},
             prefetch_relationships=True,
             branch=default_branch_name,

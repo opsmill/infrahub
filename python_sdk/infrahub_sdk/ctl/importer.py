@@ -4,11 +4,12 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.transfer.exceptions import TransferError
 from infrahub_sdk.transfer.importer.json import LineDelimitedJSONImporter
 from infrahub_sdk.transfer.schema_sorter import InfrahubSchemaTopologicalSorter
+
+from .parameters import CONFIG_PARAM
 
 
 def local_directory():
@@ -22,7 +23,7 @@ def load(
         False, help="Allow exceptions during loading and display them when complete"
     ),
     quiet: bool = typer.Option(False, help="No console output"),
-    config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
+    _: str = CONFIG_PARAM,
     branch: str = typer.Option("main", help="Branch from which to export"),
     concurrent: int = typer.Option(
         4,
@@ -33,8 +34,7 @@ def load(
 ) -> None:
     """Import nodes and their relationships into the database."""
     console = Console()
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
+
     client = aiorun(
         initialize_client(branch=branch, timeout=timeout, max_concurrent_execution=concurrent, retry_on_failure=True)
     )

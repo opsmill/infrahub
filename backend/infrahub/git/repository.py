@@ -579,7 +579,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         branches = await self.client.branch.all()
 
         # TODO Need to optimize this query, right now we are querying everything unnecessarily
-        repositories = await self.client.get_list_repositories(branches=branches, kind="CoreRepository")
+        repositories = await self.client.get_list_repositories(branches=branches, kind=InfrahubKind.REPOSITORY)
         repository = repositories[self.name]
 
         for branch_name, branch in branches.items():
@@ -1412,7 +1412,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         transform_definition_in_graph = {
             transform.name.value: transform
             for transform in await self.client.filters(
-                kind="CoreTransformPython", branch=branch_name, repository__ids=[str(self.id)]
+                kind=InfrahubKind.TRANSFORMPYTHON, branch=branch_name, repository__ids=[str(self.id)]
             )
         }
 
@@ -1591,7 +1591,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         return True
 
     async def create_python_transform(self, branch_name: str, transform: TransformPythonInformation) -> InfrahubNode:
-        schema = await self.client.schema.get(kind="CoreTransformPython", branch=branch_name)
+        schema = await self.client.schema.get(kind=InfrahubKind.TRANSFORMPYTHON, branch=branch_name)
         data = {
             "name": transform.name,
             "repository": transform.repository,
@@ -1606,7 +1606,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             source=self.id,
             is_protected=True,
         )
-        obj = await self.client.create(kind="CoreTransformPython", branch=branch_name, **create_payload)
+        obj = await self.client.create(kind=InfrahubKind.TRANSFORMPYTHON, branch=branch_name, **create_payload)
         await obj.save()
         return obj
 
@@ -1867,7 +1867,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             artifact_content = await self.render_jinja2_template(
                 commit=commit, location=transformation.template_path.value, data=response
             )
-        elif transformation.typename == "CoreTransformPython":
+        elif transformation.typename == InfrahubKind.TRANSFORMPYTHON:
             transformation_location = f"{transformation.file_path.value}::{transformation.class_name.value}"
             artifact_content = await self.execute_python_transform(
                 branch_name=branch_name,
@@ -1916,7 +1916,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             artifact_content = await self.render_jinja2_template(
                 commit=message.commit, location=message.transform_location, data=response
             )
-        elif message.transform_type == "CoreTransformPython":
+        elif message.transform_type == InfrahubKind.TRANSFORMPYTHON:
             artifact_content = await self.execute_python_transform(
                 branch_name=message.branch_name,
                 commit=message.commit,

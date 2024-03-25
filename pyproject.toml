@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.12.0"
+version = "0.13.0-dev"
 description = ""
 authors = ["OpsMill <info@opsmill.com>"]
 
@@ -20,7 +20,7 @@ pydantic = "~2.6"
 pydantic-settings = "~2.2"
 pytest = "~7.4"
 aio-pika = "~9.4"
-structlog = "^22.3.0"
+structlog = "24.1.0"
 boto3 = "~1.33.11"
 email-validator = "~2.1"
 redis = { version = "^5.0.0", extras = ["hiredis"]}
@@ -221,10 +221,6 @@ module = "infrahub.core.node.standard"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.property"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.query"
 ignore_errors = true
 
@@ -258,10 +254,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.schema.basenode_schema"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.schema.relationship_schema"
 ignore_errors = true
 
 [[tool.mypy.overrides]]

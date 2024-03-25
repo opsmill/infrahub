@@ -199,6 +199,7 @@ class InitialSettings(BaseSettings):
 
 
 class MiscellaneousSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_MISC_")
     print_query_details: bool = False
     start_background_runner: bool = True
     maximum_validator_execution_time: int = Field(

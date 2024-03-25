@@ -37,8 +37,14 @@ from locust.stats import PERCENTILES_TO_REPORT, StatsCSVFileWriter
     type=click.IntRange(min=0, max=1_000_000_000),
     help="Amount of relationships per object to be created in the `staging function`",
 )
+@click.option(
+    "--changes",
+    default=0,
+    type=click.IntRange(min=0, max=1_000_000_000),
+    help="Amount of changes to apply to a single node",
+)
 @click.option("--test", default="InfrahubClientUser", help="The Locust test user class")
-def main(schema: Path, stager: str, amount: int, attrs: int, rels: int, test: str) -> int:
+def main(schema: Path, stager: str, amount: int, attrs: int, rels: int, changes: int, test: str) -> int:
     if not hasattr(common.users, test):
         print(f"Invalid test class provided: {test}")
         return 1
@@ -48,6 +54,7 @@ def main(schema: Path, stager: str, amount: int, attrs: int, rels: int, test: st
     config.node_amount = amount
     config.attrs_amount = attrs
     config.rels_amount = rels
+    config.changes_amount = changes
 
     env = Environment(user_classes=[user_class], events=events)
     env.custom_options = {
@@ -56,6 +63,7 @@ def main(schema: Path, stager: str, amount: int, attrs: int, rels: int, test: st
         "amount": amount,
         "attrs": attrs,
         "rels": rels,
+        "changes": changes,
         "schema": schema,
     }
     runner = env.create_local_runner()

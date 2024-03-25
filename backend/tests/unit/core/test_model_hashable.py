@@ -116,7 +116,7 @@ def test_update():
         ],
         "value1": "FIRST",
         "value2": 2,
-        "value3": ["one", "two", "three"],
+        "value3": ["one", "three"],
     }
 
     assert DeepDiff(expected_result, node1.update(node2).model_dump()).to_dict() == {}
@@ -164,7 +164,7 @@ def test_update_element_absent():
         ],
         "value1": "FIRST",
         "value2": 2,
-        "value3": ["one", "two", "three"],
+        "value3": ["one", "three"],
     }
 
     assert DeepDiff(expected_result, node1.update(node2).model_dump()).to_dict() == {}
@@ -218,7 +218,7 @@ def test_update_rename():
         ],
         "value1": "FIRST",
         "value2": 2,
-        "value3": ["one", "two", "three"],
+        "value3": ["one", "three"],
     }
 
     assert DeepDiff(expected_result, node1.update(node2).model_dump()).to_dict() == {}

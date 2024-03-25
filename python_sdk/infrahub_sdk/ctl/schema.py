@@ -14,12 +14,13 @@ from rich.console import Console
 
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.async_typer import AsyncTyper
-from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.ctl.exceptions import FileNotValidError
 from infrahub_sdk.ctl.utils import init_logging
 from infrahub_sdk.utils import find_files
 from infrahub_sdk.yaml import SchemaFile
+
+from .parameters import CONFIG_PARAM
 
 app = AsyncTyper()
 
@@ -106,11 +107,9 @@ async def load(
     schemas: List[Path],
     debug: bool = False,
     branch: str = typer.Option("main", help="Branch on which to load the schema."),
-    config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
+    _: str = CONFIG_PARAM,
 ) -> None:
     """Load one or multiple schema files into Infrahub."""
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
 
     init_logging(debug=debug)
 
@@ -136,11 +135,9 @@ async def check(
     schemas: List[Path],
     debug: bool = False,
     branch: str = typer.Option("main", help="Branch on which to check the schema."),
-    config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
+    _: str = CONFIG_PARAM,
 ) -> None:
     """Check if schema files are valid and what would be the impact of loading them with Infrahub."""
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
 
     init_logging(debug=debug)
 

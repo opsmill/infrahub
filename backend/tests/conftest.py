@@ -1,6 +1,5 @@
 import asyncio
 import importlib
-import json
 import os
 import sys
 from pathlib import Path
@@ -366,7 +365,7 @@ class BusRPCMock(InfrahubMessageBus):
     async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
         self.messages.append(message)
         response = self.response.pop()
-        data = json.loads(response.body)
+        data = ujson.loads(response.body)
         return response_class(**data)
 
 
