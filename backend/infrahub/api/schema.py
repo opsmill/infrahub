@@ -254,6 +254,7 @@ async def load_schema(
             )
             background_tasks.add_task(services.send, message)
 
+    await service.component.refresh_schema_hash(branches=[branch.name])
     return JSONResponse(status_code=202, content={})
 
 

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, List
 
 from infrahub import config
 from infrahub.components import ComponentType
-from infrahub.tasks.keepalive import refresh_api_server_components
+from infrahub.tasks.keepalive import refresh_heartbeat
 from infrahub.tasks.recurring import resync_repositories, trigger_branch_refresh
 
 if TYPE_CHECKING:
@@ -37,7 +37,7 @@ class InfrahubScheduler:
             random_number = 30 + random.randint(1, 4) - 2
 
             schedules = [
-                Schedule(name="refresh_api_components", interval=10, function=refresh_api_server_components),
+                Schedule(name="refresh_api_components", interval=10, function=refresh_heartbeat, start_delay=0),
                 Schedule(
                     name="branch_refresh", interval=10, function=trigger_branch_refresh, start_delay=random_number
                 ),
@@ -52,6 +52,11 @@ class InfrahubScheduler:
                         function=resync_repositories,
                     )
                 )
+        if self.service.component_type == ComponentType.GIT_AGENT:
+            schedules = [
+                Schedule(name="refresh_components", interval=10, function=refresh_heartbeat),
+            ]
+            self.schedules.extend(schedules)
 
         await self.start_schedule()
 
