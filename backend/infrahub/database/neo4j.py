@@ -38,6 +38,7 @@ class IndexManagerNeo4j(IndexManagerBase):
     def init(self, nodes: List[IndexItem], rels: List[IndexItem]) -> None:
         self.nodes = [IndexNodeNeo4j(**item.model_dump()) for item in nodes]
         self.rels = [IndexRelNeo4j(**item.model_dump()) for item in rels]
+        self.initialized = True
 
     async def list(self) -> List[IndexInfo]:
         query = "SHOW INDEXES"
