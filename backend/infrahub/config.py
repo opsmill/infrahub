@@ -416,12 +416,11 @@ class Settings(BaseSettings):
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
 
     @model_validator(mode="after")
-    @classmethod
-    def set_cors_allow_origins(cls, settings: Settings) -> Settings:
+    def set_cors_allow_origins(self) -> Settings:
         # Force CORS allow origins to be set to Infrahub internal address if left empty
-        if not settings.api.cors_allow_origins:
-            settings.api.cors_allow_origins = [settings.main.internal_address]
-        return settings
+        if not self.api.cors_allow_origins:
+            self.api.cors_allow_origins = [self.main.internal_address]
+        return self
 
 
 def load(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str, Any]] = None) -> None:
