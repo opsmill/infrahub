@@ -2,6 +2,7 @@ import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 import { Button } from "../../components/buttons/button";
 import { BADGE_TYPES, Badge } from "../../components/display/badge";
+import { SEARCH_FILTERS } from "../../config/constants";
 import { iComboBoxFilter } from "../../graphql/variables/filtersVar";
 import useFilters from "../../hooks/useFilters";
 import DeviceFilterBarContent from "./device-filter-bar-content";
@@ -21,7 +22,7 @@ export default function DeviceFilterBar(props: any) {
   const [filters, setFilters] = useFilters();
 
   const handleClickReset = () => {
-    setFilters();
+    setFilters([]);
   };
 
   const handleClickRemoveFilter = (filter: any) => {
@@ -51,15 +52,17 @@ export default function DeviceFilterBar(props: any) {
             <div aria-hidden="true" className="hidden h-5 w-px bg-gray-300 sm:ml-4 sm:block" />
             <div className="mt-2 flex-1 sm:mt-0 sm:ml-4">
               <div className="-m-1 flex flex-wrap items-center">
-                {filters.map((filter: iComboBoxFilter, index: number) => (
-                  <Badge
-                    key={index}
-                    onDelete={() => handleClickRemoveFilter(filter)}
-                    vaue={filter}
-                    type={BADGE_TYPES.LIGHT}>
-                    {filter.display_label}: {filter.value}
-                  </Badge>
-                ))}
+                {filters
+                  .filter((filter: iComboBoxFilter) => !SEARCH_FILTERS.includes(filter.name))
+                  .map((filter: iComboBoxFilter, index: number) => (
+                    <Badge
+                      key={index}
+                      onDelete={() => handleClickRemoveFilter(filter)}
+                      value={filter}
+                      type={BADGE_TYPES.LIGHT}>
+                      {filter.display_label}: {filter.value}
+                    </Badge>
+                  ))}
               </div>
             </div>
 
