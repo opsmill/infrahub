@@ -23,6 +23,7 @@ class IndexNodeMemgraph(IndexItem):
 class IndexManagerMemgraph(IndexManagerBase):
     def init(self, nodes: List[IndexItem], rels: List[IndexItem]) -> None:
         self.nodes = [IndexNodeMemgraph(**item.model_dump()) for item in nodes]
+        self.initialized = True
 
     async def add(self) -> None:
         for item in self.items:
