@@ -19,8 +19,8 @@ from infrahub.database import InfrahubDatabaseMode, get_db
 from infrahub.database.analyzer import InfrahubDatabaseAnalyzer, query_stats
 from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
-from infrahub.test_data.gen_isolated_node import GenerateIsolatedNodes
 from infrahub.test_data.gen_connected_nodes import GenerateConnectedNodes
+from infrahub.test_data.gen_isolated_node import GenerateIsolatedNodes
 
 app = AsyncTyper()
 
@@ -56,6 +56,7 @@ async def isolated_node(
         await loader.load_data(nbr_tags=count, nbr_repository=count)
 
     query_stats.create_graphs()
+
 
 @app.command()
 async def connected_nodes(
