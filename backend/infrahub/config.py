@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import toml
 from infrahub_sdk import generate_uuid
-from pydantic import AliasChoices, Field, ValidationError
+from pydantic import AliasChoices, Field, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from infrahub.database.constants import DatabaseType
@@ -414,6 +414,14 @@ class Settings(BaseSettings):
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
+
+    @model_validator(mode="after")
+    @classmethod
+    def set_cors_allow_origins(cls, settings: Settings) -> Settings:
+        # Force CORS allow origins to be set to Infrahub internal address if left empty
+        if not settings.api.cors_allow_origins:
+            settings.api.cors_allow_origins = [settings.main.internal_address]
+        return settings
 
 
 def load(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str, Any]] = None) -> None:
