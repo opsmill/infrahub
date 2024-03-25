@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import keyword
 from dataclasses import asdict, dataclass
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Type, Union, overload
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Literal, Optional, Type, Union, overload
 
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import field_validator
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
+    from infrahub.core.constants import RelationshipKind
     from infrahub.core.schema import GenericSchema, NodeSchema
 
 # pylint: disable=redefined-builtin
@@ -239,6 +240,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
                 rels.append(item)
 
         return rels
+
+    def get_relationships_of_kind(self, relationship_kinds: Iterable[RelationshipKind]) -> list[RelationshipSchema]:
+        return [r for r in self.relationships if r.kind in relationship_kinds]
 
     def get_attributes_name_id_map(self) -> Dict[str, str]:
         name_id_map = {}
