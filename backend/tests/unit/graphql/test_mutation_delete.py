@@ -40,3 +40,34 @@ async def test_delete_object(db: InfrahubDatabase, default_branch, car_person_sc
     assert result.data["TestPersonDelete"]["ok"] is True
 
     assert not await NodeManager.get_one(db=db, id=obj1.id)
+
+
+async def test_delete_prevented(
+    db: InfrahubDatabase, default_branch, car_person_schema, car_camry_main, person_jane_main
+):
+    query = (
+        """
+    mutation {
+        TestPersonDelete(data: {id: "%s"}) {
+            ok
+        }
+    }
+    """
+        % person_jane_main.id
+    )
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert "Cannot delete. Node is linked to mandatory relationship" in result.errors[0].message
+    assert f"{car_camry_main.id} at TestCar.owner" in result.errors[0].message
+    assert result.data["TestPersonDelete"] is None
+
+    assert await NodeManager.get_one(db=db, id=person_jane_main.id) is not None

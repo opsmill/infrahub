@@ -17,6 +17,7 @@ from infrahub.core.constants import MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.node.constraints.delete import NodeDeleteConstraint
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
@@ -258,6 +259,12 @@ class InfrahubMutationMixin:
 
         if not (obj := await NodeManager.get_one(db=context.db, id=data.get("id"), branch=branch, at=at)):
             raise NodeNotFoundError(branch, cls._meta.schema.kind, data.get("id"))
+
+        constraint = NodeDeleteConstraint(db=context.db, branch=branch)
+        try:
+            await constraint.check(node=obj, at=at)
+        except ValidationError as exc:
+            raise ValueError(str(exc)) from exc
 
         async with context.db.start_transaction() as db:
             await obj.delete(db=db, at=at)
