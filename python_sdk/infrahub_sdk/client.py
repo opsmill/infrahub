@@ -582,7 +582,17 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         params: Dict[str, Any] = {}
         if payload:
             params["json"] = payload
-        async with httpx.AsyncClient() as client:
+
+        proxy_config: Dict[str, Union[str, Dict[str, httpx.HTTPTransport]]] = {}
+        if self.config.proxy:
+            proxy_config["proxy"] = self.config.proxy
+        elif self.config.proxy_mounts:
+            proxy_config["mounts"] = {
+                key: httpx.HTTPTransport(proxy=value)
+                for key, value in self.config.proxy_mounts.dict(by_alias=True).items()
+            }
+
+        async with httpx.AsyncClient(**proxy_config) as client:  # type: ignore[arg-type]
             try:
                 response = await client.request(
                     method=method.value,
@@ -1321,7 +1331,17 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         params: Dict[str, Any] = {}
         if payload:
             params["json"] = payload
-        with httpx.Client() as client:
+
+        proxy_config: Dict[str, Union[str, Dict[str, httpx.HTTPTransport]]] = {}
+        if self.config.proxy:
+            proxy_config["proxy"] = self.config.proxy
+        elif self.config.proxy_mounts:
+            proxy_config["mounts"] = {
+                key: httpx.HTTPTransport(proxy=value)
+                for key, value in self.config.proxy_mounts.dict(by_alias=True).items()
+            }
+
+        with httpx.Client(**proxy_config) as client:  # type: ignore[arg-type]
             try:
                 response = client.request(
                     method=method.value,
