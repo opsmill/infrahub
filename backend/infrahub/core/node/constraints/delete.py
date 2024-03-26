@@ -32,7 +32,9 @@ class NodeDeleteConstraint(NodeConstraintInterface):
         validation_errors = []
         for rel_id, source_id, source_kind in relationships_to_check:
             source_schema = schema_branch.get(name=source_kind, duplicate=False)
-            relationship_schema = source_schema.get_relationship_by_identifier(id=rel_id)
+            relationship_schema = source_schema.get_relationship_by_identifier(id=rel_id, raise_on_error=False)
+            if not relationship_schema:
+                continue
             if relationship_schema.optional is False:
                 location = f"{source_schema.kind}.{relationship_schema.name}"
                 validation_errors.append(
