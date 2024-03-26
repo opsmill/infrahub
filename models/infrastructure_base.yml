@@ -12,7 +12,7 @@ generics:
     order_by:
       - name__value
     uniqueness_constraints:
-        - [ "device", "name__value"]
+      - ["device", "name__value"]
     attributes:
       - name: name
         kind: Text
