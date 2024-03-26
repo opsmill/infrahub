@@ -30,6 +30,9 @@ services:
     volumes:
       - "storage_data:/opt/infrahub/storage"
     tty: true
+    labels:
+      com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
+      com.github.job: "${GITHUB_JOB:-unknown}"
     healthcheck:
       test: wget -O /dev/null http://localhost:8000/api/schema/summary || exit 1
       interval: 5s
@@ -62,6 +65,9 @@ services:
       - "git_data:/opt/infrahub/git"
       - "git_remote_data:/remote"
     tty: true
+    labels:
+      com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
+      com.github.job: "${GITHUB_JOB:-unknown}"
 
 volumes:
   git_data:
