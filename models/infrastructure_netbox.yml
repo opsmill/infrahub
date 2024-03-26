@@ -13,7 +13,7 @@ generics:
     order_by:
       - name__value
     uniqueness_constraints:
-        - [ "device", "name__value"]
+      - ["device", "name__value"]
     attributes:
       - name: name
         kind: Text
@@ -511,7 +511,7 @@ nodes:
     display_labels:
       - address__value
     uniqueness_constraints:
-        - [ "prefix", "address__value"]
+      - ["prefix", "address__value"]
     attributes:
       - name: address
         kind: IPHost
@@ -630,7 +630,7 @@ nodes:
     display_labels:
       - prefix__value
     uniqueness_constraints:
-        - [ "vrf", "prefix__value"]
+      - ["vrf", "prefix__value"]
     attributes:
       - name: prefix
         kind: IPNetwork
@@ -772,7 +772,7 @@ nodes:
       - name__value
       - vlan_id__value
     uniqueness_constraints:
-        - [ "location", "vlan_group", "vlan_id__value"]
+      - ["location", "vlan_group", "vlan_id__value"]
     attributes:
       - name: name
         kind: Text
