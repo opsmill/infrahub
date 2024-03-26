@@ -11,7 +11,10 @@ generics:
     display_labels:
       - name__value
     order_by:
+      - device__name__value
       - name__value
+    uniqueness_constraints:
+        - [ "device", "name__value"]
     attributes:
       - name: name
         kind: Text
@@ -107,7 +110,10 @@ generics:
     display_labels:
       - name__value
     order_by:
+      - device__name__value
       - name__value
+    uniqueness_constraints:
+        - [ "device", "name__value"]
     attributes:
       - name: name
         kind: Text
@@ -149,7 +155,7 @@ nodes:
         optional: true
     relationships:
       - name: organization
-        peer: CoreOrganization
+        peer: OrganizationGeneric
         optional: false
         cardinality: one
         kind: Attribute
@@ -288,7 +294,7 @@ nodes:
         cardinality: one
         kind: Attribute
       - name: provider
-        peer: CoreOrganization
+        peer: OrganizationGeneric
         identifier: circuit__provider
         optional: false
         cardinality: one
@@ -441,7 +447,7 @@ nodes:
         cardinality: one
         kind: Attribute
       - name: organization
-        peer: CoreOrganization
+        peer: OrganizationGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -454,7 +460,10 @@ nodes:
     display_labels:
       - name__value
     order_by:
+      - manufacturer__name__value
       - name__value
+    uniqueness_constraints:
+        - [ "manufacturer", "name__value"]
     inherit_from:
       - "TemplateChoice"
     attributes:
@@ -477,7 +486,7 @@ nodes:
         optional: true
         peer: InfraDevice
       - name: manufacturer
-        peer: CoreOrganization
+        peer: OrganizationGeneric
         optional: false
         cardinality: one
         kind: Attribute
@@ -558,7 +567,7 @@ nodes:
         optional: true
     relationships:
       - name: organization
-        peer: CoreOrganization
+        peer: OrganizationGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -566,13 +575,11 @@ nodes:
         peer: InfraInterfaceL2L3
         optional: true
         cardinality: one
-        kind: Parent
       - name: prefix
         peer: InfraPrefix
         identifier: "prefix__address"
         optional: true
         cardinality: one
-        kind: Parent
       - name: vrf
         identifier: "vrf__address"
         peer: InfraVRF
@@ -610,9 +617,12 @@ nodes:
     menu_placement: "InfraDevice"
     default_filter: name__value
     order_by:
+      - manufacturer__name__value
       - name__value
     display_labels:
       - name__value
+    uniqueness_constraints:
+        - [ "manufacturer", "name__value"]
     attributes:
       - name: name
         kind: Text
@@ -634,7 +644,7 @@ nodes:
         optional: true
     relationships:
       - name: manufacturer
-        peer: CoreOrganization
+        peer: OrganizationGeneric
         optional: false
         cardinality: one
   - name: ProviderNetwork
@@ -667,7 +677,7 @@ nodes:
         cardinality: one
         kind: Attribute
       - name: provider
-        peer: CoreOrganization
+        peer: OrganizationGeneric
         optional: false
         cardinality: one
         kind: Attribute
@@ -694,7 +704,7 @@ nodes:
         optional: true
     relationships:
       - name: organization
-        peer: CoreOrganization
+        peer: OrganizationGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -830,7 +840,7 @@ nodes:
         optional: true
     relationships:
       - name: organization
-        peer: CoreOrganization
+        peer: OrganizationGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -839,7 +849,6 @@ nodes:
         peer: InfraVRF
         optional: true
         cardinality: many
-        kind: Parent
   - name: VLAN
     namespace: Infra
     description: "A VLAN is isolated layer two domain"
@@ -861,7 +870,7 @@ nodes:
         kind: Number
     relationships:
       - name: organization
-        peer: CoreOrganization
+        peer: OrganizationGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -891,7 +900,6 @@ nodes:
         peer: CoreStandardGroup
         optional: true
         cardinality: one
-        kind: Parent
   - name: VRF
     namespace: Infra
     description: "A VRF is isolated layer three domain"
@@ -914,7 +922,7 @@ nodes:
         optional: true
     relationships:
       - name: organization
-        peer: CoreOrganization
+        peer: OrganizationGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -949,8 +957,8 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-  - name: Organization
-    namespace: Core
+  - name: Generic
+    namespace: Organization
     label: Organization
     description: An organization represent a legal entity, a company.
     default_filter: name__value
@@ -1045,7 +1053,7 @@ nodes:
         cardinality: many
         kind: Generic
       - name: organization
-        peer: CoreOrganization
+        peer: OrganizationGeneric
         optional: true
         cardinality: one
         kind: Attribute
