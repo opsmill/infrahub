@@ -120,7 +120,7 @@ class Neo4jBackupRestoreBase:
         self.keep_helper_container = keep_helper_container
         self.docker_client = docker.from_env()
         self.use_host_network = use_host_network
-        self.neo4j_docker_image = os.getenv("NEO4J_BACKUP_DOCKER_IMAGE", "neo4j/neo4j-admin:5.16.0-enterprise")
+        self.neo4j_docker_image = os.getenv("NEO4J_BACKUP_DOCKER_IMAGE", "neo4j/neo4j-admin:5.18.1-enterprise")
 
     def _print_message(self, message: str, force_print: bool = False, with_timestamp: bool = True) -> None:
         if self.be_quiet and not force_print:
