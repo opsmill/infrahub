@@ -65,32 +65,37 @@ async def pull_read_only(message: messages.GitRepositoryPullReadOnly, service: I
         ref=message.ref,
         commit=message.commit,
     )
-    async with lock.registry.get(name=message.repository_name, namespace="repository"):
-        init_failed = False
-        try:
-            repo = await InfrahubReadOnlyRepository.init(
-                id=message.repository_id,
-                name=message.repository_name,
-                location=message.location,
-                client=service.client,
-                ref=message.ref,
-                infrahub_branch_name=message.infrahub_branch_name,
-            )
-        except RepositoryError:
-            init_failed = True
+    async with service.task_report(
+        related_node=message.repository_id, title="Pulling read-only repository"
+    ) as task_report:
+        async with lock.registry.get(name=message.repository_name, namespace="repository"):
+            init_failed = False
+            try:
+                repo = await InfrahubReadOnlyRepository.init(
+                    id=message.repository_id,
+                    name=message.repository_name,
+                    location=message.location,
+                    client=service.client,
+                    ref=message.ref,
+                    infrahub_branch_name=message.infrahub_branch_name,
+                    task_report=task_report,
+                )
+            except RepositoryError:
+                init_failed = True
 
-        if init_failed:
-            repo = await InfrahubReadOnlyRepository.new(
-                id=message.repository_id,
-                name=message.repository_name,
-                location=message.location,
-                client=service.client,
-                ref=message.ref,
-                infrahub_branch_name=message.infrahub_branch_name,
-            )
+            if init_failed:
+                repo = await InfrahubReadOnlyRepository.new(
+                    id=message.repository_id,
+                    name=message.repository_name,
+                    location=message.location,
+                    client=service.client,
+                    ref=message.ref,
+                    infrahub_branch_name=message.infrahub_branch_name,
+                    task_report=task_report,
+                )
 
-        await repo.import_objects_from_files(branch_name=message.infrahub_branch_name, commit=message.commit)
-        await repo.sync_from_remote(commit=message.commit)
+            await repo.import_objects_from_files(branch_name=message.infrahub_branch_name, commit=message.commit)
+            await repo.sync_from_remote(commit=message.commit)
 
 
 async def merge(message: messages.GitRepositoryMerge, service: InfrahubServices) -> None:

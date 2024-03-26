@@ -220,7 +220,9 @@ class TestAddReadOnly:
 class TestPullReadOnly:
     def setup_method(self):
         self.client = AsyncMock(spec=InfrahubClient)
+        self.task_report = AsyncContextManagerMock()
         self.services = InfrahubServices(client=self.client)
+        self.services.task_report = self.task_report
         self.commit = str(UUIDT())
         self.infrahub_branch_name = "read-only-branch"
         self.repo_id = str(UUIDT())
@@ -271,6 +273,7 @@ class TestPullReadOnly:
             client=self.client,
             ref=self.ref,
             infrahub_branch_name=self.infrahub_branch_name,
+            task_report=self.task_report,
         )
         self.mock_repo.import_objects_from_files.assert_awaited_once_with(
             branch_name=self.infrahub_branch_name, commit=self.commit
@@ -290,6 +293,7 @@ class TestPullReadOnly:
             client=self.client,
             ref=self.ref,
             infrahub_branch_name=self.infrahub_branch_name,
+            task_report=self.task_report,
         )
         self.mock_repo_class.new.assert_awaited_once_with(
             id=self.repo_id,
@@ -298,6 +302,7 @@ class TestPullReadOnly:
             client=self.client,
             ref=self.ref,
             infrahub_branch_name=self.infrahub_branch_name,
+            task_report=self.task_report,
         )
         self.mock_repo.import_objects_from_files.assert_awaited_once_with(
             branch_name=self.infrahub_branch_name, commit=self.commit
