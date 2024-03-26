@@ -14,7 +14,7 @@ generics:
       - device__name__value
       - name__value
     uniqueness_constraints:
-        - [ "device", "name__value"]
+      - ["device", "name__value"]
     attributes:
       - name: name
         kind: Text
@@ -115,7 +115,7 @@ generics:
       - device__name__value
       - name__value
     uniqueness_constraints:
-        - [ "device", "name__value"]
+      - ["device", "name__value"]
     attributes:
       - name: name
         kind: Text
@@ -465,7 +465,7 @@ nodes:
       - manufacturer__name__value
       - name__value
     uniqueness_constraints:
-        - [ "manufacturer", "name__value"]
+      - ["manufacturer", "name__value"]
     inherit_from:
       - "TemplateChoice"
     attributes:
@@ -648,7 +648,7 @@ nodes:
     display_labels:
       - name__value
     uniqueness_constraints:
-        - [ "manufacturer", "name__value"]
+      - ["manufacturer", "name__value"]
     attributes:
       - name: name
         kind: Text
@@ -723,7 +723,7 @@ nodes:
     display_labels:
       - prefix__value
     uniqueness_constraints:
-        - [ "nautobot_namespace", "prefix__value"]
+      - ["nautobot_namespace", "prefix__value"]
     attributes:
       - name: prefix
         kind: IPNetwork
@@ -939,7 +939,7 @@ nodes:
     display_labels:
       - name__value
     uniqueness_constraints:
-        - [ "nautobot_namespace", "name__value"]
+      - ["nautobot_namespace", "name__value"]
     attributes:
       - name: name
         kind: Text
