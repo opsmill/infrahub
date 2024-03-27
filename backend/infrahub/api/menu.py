@@ -78,7 +78,7 @@ async def get_menu(
                 InterfaceMenu(
                     title=model.menu_title,
                     path=f"/objects/{model.kind}",
-                    icon=_extract_node_icon(full_schema[InfrahubKind.GENERICGROUP]),
+                    icon=model.icon or _extract_node_icon(full_schema[InfrahubKind.GENERICGROUP]),
                 )
             )
             continue
@@ -158,6 +158,16 @@ async def get_menu(
                 title="Artifact Definition",
                 path=f"/objects/{InfrahubKind.ARTIFACTDEFINITION}",
                 icon=_extract_node_icon(full_schema[InfrahubKind.ARTIFACTDEFINITION]),
+            ),
+            InterfaceMenu(
+                title="Generator Definition",
+                path=f"/objects/{InfrahubKind.GENERATORDEFINITION}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.GENERATORDEFINITION]),
+            ),
+            InterfaceMenu(
+                title="Generator Instance",
+                path=f"/objects/{InfrahubKind.GENERATORINSTANCE}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.GENERATORINSTANCE]),
             ),
             InterfaceMenu(
                 title="Transformation",
