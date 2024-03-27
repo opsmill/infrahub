@@ -11,6 +11,7 @@ import { branchesState } from "../../state/atoms/branches.atom";
 import { TextareaWithEditor } from "../../components/inputs/textarea-with-editor";
 import { BUTTON_TYPES } from "../../components/buttons/button";
 import { branchesToSelectOptions } from "../../utils/branches";
+import { Input } from "../../components/inputs/input";
 
 export const ProposedChangesCreate = () => {
   const permission = usePermission();
@@ -48,8 +49,21 @@ export const ProposedChangesCreate = () => {
         </div>
 
         <div>
+          <h2 className="font-semibold  mb-1">Name *</h2>
+          <Input />
+        </div>
+
+        <div>
           <h2 className="font-semibold mb-1">Description</h2>
-          <TextareaWithEditor className="w-full" />
+          <TextareaWithEditor
+            placeholder="Add your description here..."
+            className="w-full min-h-48"
+          />
+        </div>
+
+        <div>
+          <h2 className="font-semibold mb-1">Reviewers</h2>
+          <Input />
         </div>
 
         <ButtonWithTooltip
@@ -57,7 +71,7 @@ export const ProposedChangesCreate = () => {
           disabled={!permission.write.allow}
           buttonType={BUTTON_TYPES.MAIN}
           tooltipContent={permission.write.message ?? undefined}>
-          Continue
+          Create proposed change
         </ButtonWithTooltip>
       </div>
     </Content>
