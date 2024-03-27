@@ -60,20 +60,12 @@ export const RoundedButton = forwardRef<HTMLButtonElement, ButtonProps>((props: 
 
   const customClassName = getClassName(type);
 
-  const handleClick = (event: any) => {
-    if (type !== "submit") {
-      event.stopPropagation();
-    }
-
-    onClick && onClick(event);
-  };
-
   return (
     <button
       ref={ref}
       type="button"
       className={classNames(DEFAULT_CLASS(className), customClassName, className)}
-      onClick={handleClick}
+      onClick={onClick}
       {...propsToPass}>
       {props.children}
     </button>
