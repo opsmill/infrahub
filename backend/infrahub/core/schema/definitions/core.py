@@ -462,13 +462,6 @@ core_models: dict[str, Any] = {
                     "cardinality": "many",
                 },
                 {
-                    "name": "container",
-                    "peer": InfrahubKind.IPPREFIX,
-                    "identifier": "prefix__container",
-                    "optional": True,
-                    "cardinality": "one",
-                },
-                {
                     "name": "subnets",
                     "peer": InfrahubKind.IPPREFIX,
                     "identifier": "prefix__prefix",
@@ -518,7 +511,7 @@ core_models: dict[str, Any] = {
                     "cardinality": "many",
                 },
                 {
-                    "name": "prefix",
+                    "name": "ip_prefix",
                     "peer": InfrahubKind.IPPREFIX,
                     "identifier": "ip_address__prefix",
                     "optional": True,

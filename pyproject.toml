@@ -208,6 +208,10 @@ module = "infrahub.core.attribute"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
+module = "infrahub.core.ipam"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
 module = "infrahub.core.manager"
 ignore_errors = true
 

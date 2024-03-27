@@ -573,13 +573,7 @@ class RelationshipValidatorList:
 
 
 class RelationshipManager:
-    def __init__(  # pylint: disable=unused-argument
-        self,
-        schema: RelationshipSchema,
-        branch: Branch,
-        at: Timestamp,
-        node: Node,
-    ) -> None:
+    def __init__(self, schema: RelationshipSchema, branch: Branch, at: Timestamp, node: Node) -> None:
         self.schema: RelationshipSchema = schema
         self.name: str = schema.name
         self.node: Node = node
