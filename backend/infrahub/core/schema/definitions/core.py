@@ -437,6 +437,7 @@ core_models: dict[str, Any] = {
             "order_by": ["prefix__value"],
             "display_labels": ["prefix__value"],
             "branch": BranchSupportType.AWARE.value,
+            "hierarchical": True,
             "attributes": [
                 {
                     "name": "prefix",
@@ -458,13 +459,6 @@ core_models: dict[str, Any] = {
                     "name": "tags",
                     "peer": InfrahubKind.TAG,
                     "kind": "Attribute",
-                    "optional": True,
-                    "cardinality": "many",
-                },
-                {
-                    "name": "subnets",
-                    "peer": InfrahubKind.IPPREFIX,
-                    "identifier": "prefix__prefix",
                     "optional": True,
                     "cardinality": "many",
                 },
