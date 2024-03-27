@@ -24,206 +24,7 @@ from infrahub.core.schema import (
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.database import InfrahubDatabase
 
-
-# -----------------------------------------------------------------
-# SchemaBranch
-# -----------------------------------------------------------------
-@pytest.fixture
-def schema_all_in_one():
-    FULL_SCHEMA = {
-        "nodes": [
-            {
-                "name": "Criticality",
-                "namespace": "Builtin",
-                "inherit_from": ["InfraGenericInterface"],
-                "default_filter": "name__value",
-                "branch": BranchSupportType.AGNOSTIC.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "level", "kind": "Number", "branch": BranchSupportType.AWARE.value},
-                    {"name": "color", "kind": "Text", "default_value": "#444444"},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
-                "relationships": [
-                    {
-                        "name": "tags",
-                        "peer": InfrahubKind.TAG,
-                        "label": "Tags",
-                        "optional": True,
-                        "cardinality": "many",
-                    },
-                ],
-            },
-            {
-                "name": "Tag",
-                "namespace": "Builtin",
-                "label": "Tag",
-                "default_filter": "name__value",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-                    {
-                        "name": "description",
-                        "kind": "Text",
-                        "label": "Description",
-                        "optional": True,
-                        "branch": BranchSupportType.AGNOSTIC.value,
-                    },
-                ],
-            },
-            {
-                "name": "Status",
-                "namespace": "Builtin",
-                "branch": BranchSupportType.AGNOSTIC.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-                ],
-            },
-            {
-                "name": "Badge",
-                "namespace": "Builtin",
-                "branch": BranchSupportType.LOCAL.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-                ],
-            },
-            {
-                "name": "StandardGroup",
-                "namespace": "Core",
-                "inherit_from": [InfrahubKind.GENERICGROUP],
-                "attributes": [
-                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-                ],
-            },
-        ],
-        "generics": [
-            {
-                "name": "GenericInterface",
-                "namespace": "Infra",
-                "attributes": [
-                    {"name": "my_generic_name", "kind": "Text"},
-                    {"name": "mybool", "kind": "Boolean", "default_value": False},
-                    {"name": "local_attr", "kind": "Number", "branch": BranchSupportType.LOCAL.value},
-                ],
-                "relationships": [
-                    {
-                        "name": "primary_tag",
-                        "peer": InfrahubKind.TAG,
-                        "label": "Primary Tag",
-                        "identifier": "primary_tag__criticality",
-                        "optional": True,
-                        "cardinality": "one",
-                        "branch": BranchSupportType.AGNOSTIC.value,
-                    },
-                    {
-                        "name": "status",
-                        "peer": "BuiltinStatus",
-                        "optional": True,
-                        "cardinality": "one",
-                    },
-                    {
-                        "name": "badges",
-                        "peer": "BuiltinBadge",
-                        "optional": True,
-                        "cardinality": "many",
-                    },
-                ],
-            },
-            {
-                "name": "Node",
-                "namespace": "Core",
-                "description": "Base Node in Infrahub.",
-                "label": "Node",
-            },
-            {
-                "name": "Group",
-                "namespace": "Core",
-                "description": "Generic Group Object.",
-                "label": "Group",
-                "default_filter": "name__value",
-                "order_by": ["name__value"],
-                "display_labels": ["label__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "label", "kind": "Text", "optional": True},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
-                "relationships": [
-                    {
-                        "name": "members",
-                        "peer": "CoreNode",
-                        "optional": True,
-                        "identifier": "group_member",
-                        "cardinality": "many",
-                    },
-                    {
-                        "name": "subscribers",
-                        "peer": "CoreNode",
-                        "optional": True,
-                        "identifier": "group_subscriber",
-                        "cardinality": "many",
-                    },
-                ],
-            },
-        ],
-    }
-
-    return FULL_SCHEMA
-
-
-@pytest.fixture
-def schema_criticality_tag():
-    FULL_SCHEMA = {
-        "nodes": [
-            {
-                "name": "Criticality",
-                "namespace": "Builtin",
-                "default_filter": "name__value",
-                "label": "Criticality",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-                    {"name": "level", "kind": "Number", "label": "Level"},
-                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
-                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
-                ],
-                "relationships": [
-                    {
-                        "name": "tags",
-                        "peer": InfrahubKind.TAG,
-                        "label": "Tags",
-                        "optional": True,
-                        "cardinality": "many",
-                    },
-                    {
-                        "name": "primary_tag",
-                        "peer": InfrahubKind.TAG,
-                        "label": "Primary Tag",
-                        "identifier": "primary_tag__criticality",
-                        "optional": True,
-                        "cardinality": "one",
-                    },
-                ],
-            },
-            {
-                "name": "Tag",
-                "namespace": "Builtin",
-                "label": "Tag",
-                "default_filter": "name__value",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
-                ],
-            },
-        ]
-    }
-    return FULL_SCHEMA
-
-
-def _get_schema_by_kind(full_schema, kind):
-    for schema_dict in full_schema["nodes"] + full_schema["generics"]:
-        schema_kind = schema_dict["namespace"] + schema_dict["name"]
-        if schema_kind == kind:
-            return schema_dict
+from .conftest import _get_schema_by_kind
 
 
 async def test_schema_branch_set():
@@ -2325,3 +2126,105 @@ async def test_load_schema(
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name=InfrahubKind.TAG).get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
+
+
+def test_schema_branch_load_schema_append_to_list(schema_all_in_one):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    core_group_schema = _get_schema_by_kind(schema_all_in_one, "CoreGroup")
+    core_group_schema["display_labels"] = ["label__value", "name__value"]
+
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    updated_core_group_schema = schema_branch.get(name="CoreGroup", duplicate=False)
+    assert updated_core_group_schema.display_labels == ["label__value", "name__value"]
+
+
+def test_schema_branch_load_schema_remove_from_list(schema_all_in_one):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    core_group_schema = _get_schema_by_kind(schema_all_in_one, "CoreGroup")
+    core_group_schema["display_labels"] = ["name__value"]
+
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    updated_core_group_schema = schema_branch.get(name="CoreGroup", duplicate=False)
+    assert updated_core_group_schema.display_labels == ["name__value"]
+
+
+def test_schema_branch_load_schema_empty_list(schema_all_in_one):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    core_group_schema = _get_schema_by_kind(schema_all_in_one, "CoreGroup")
+    core_group_schema["display_labels"] = []
+
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    updated_core_group_schema = schema_branch.get(name="CoreGroup", duplicate=False)
+    assert updated_core_group_schema.display_labels == []
+
+
+def test_schema_branch_load_schema_set_nested_list(schema_all_in_one):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    generic_interface_schema = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    generic_interface_schema["uniqueness_constraints"] = [["my_generic_name", "mybool"], ["primary_tag", "status"]]
+
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    updated_core_group_schema = schema_branch.get(name="InfraGenericInterface", duplicate=False)
+    assert updated_core_group_schema.uniqueness_constraints == [
+        ["my_generic_name", "mybool"],
+        ["primary_tag", "status"],
+    ]
+
+
+def test_schema_branch_load_schema_append_to_nested_list(schema_all_in_one):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    generic_interface_schema = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    generic_interface_schema["uniqueness_constraints"] = [["primary_tag", "status"]]
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    generic_interface_schema["uniqueness_constraints"] = [["primary_tag", "status"], ["my_generic_name", "mybool"]]
+
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    updated_core_group_schema = schema_branch.get(name="InfraGenericInterface", duplicate=False)
+    assert updated_core_group_schema.uniqueness_constraints == [
+        ["primary_tag", "status"],
+        ["my_generic_name", "mybool"],
+    ]
+
+
+def test_schema_branch_load_schema_remove_from_nested_list(schema_all_in_one):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    generic_interface_schema = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    generic_interface_schema["uniqueness_constraints"] = [["primary_tag", "status"], ["my_generic_name", "mybool"]]
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    generic_interface_schema["uniqueness_constraints"] = [["primary_tag", "status"]]
+
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    updated_core_group_schema = schema_branch.get(name="InfraGenericInterface", duplicate=False)
+    assert updated_core_group_schema.uniqueness_constraints == [["primary_tag", "status"]]
+
+
+def test_schema_branch_load_schema_update_nested_list(schema_all_in_one):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    generic_interface_schema = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    generic_interface_schema["uniqueness_constraints"] = [
+        ["primary_tag", "status", "mybool"],
+        ["my_generic_name", "mybool"],
+    ]
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    generic_interface_schema["uniqueness_constraints"] = [
+        ["primary_tag", "status"],
+        ["my_generic_name", "mybool", "status"],
+    ]
+
+    schema_branch.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    updated_core_group_schema = schema_branch.get(name="InfraGenericInterface", duplicate=False)
+    assert updated_core_group_schema.uniqueness_constraints == [
+        ["primary_tag", "status"],
+        ["my_generic_name", "mybool", "status"],
+    ]

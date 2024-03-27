@@ -5,6 +5,11 @@ check_definitions:
   - name: "car_description_check"
     file_path: "checks/car_overview.py"
     class_name: "CarDescription"
+  - name: "owner_age_check"
+    file_path: "checks/car_owner_age.py"
+    parameters:
+      owner: "name__value"
+    targets: "people"
 
 jinja2_transforms:
   - name: person_with_cars

@@ -191,3 +191,9 @@ export const peersKindForForm = ["Attribute", "Parent"];
 export const PROPOSED_CHANGES_EDITABLE_STATE = ["open", "closed"];
 
 export const TASK_TAB = "tasks";
+
+export const SEARCH_ANY_FILTER = "any__value";
+
+export const SEARCH_PARTIAL_MATCH = "partial_match";
+
+export const SEARCH_FILTERS = [SEARCH_ANY_FILTER, SEARCH_PARTIAL_MATCH];

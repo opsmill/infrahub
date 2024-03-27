@@ -1,7 +1,6 @@
 import asyncio
 import functools
 import importlib
-import json
 import logging
 import os
 import sys
@@ -10,6 +9,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import jinja2
 import typer
+import ujson
 from httpx import HTTPError
 from rich.console import Console
 from rich.logging import RichHandler
@@ -22,6 +22,7 @@ from infrahub_sdk.ctl.branch import app as branch_app
 from infrahub_sdk.ctl.check import run as run_check
 from infrahub_sdk.ctl.client import initialize_client, initialize_client_sync
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
+from infrahub_sdk.ctl.render import list_jinja2_transforms
 from infrahub_sdk.ctl.repository import get_repository_config
 from infrahub_sdk.ctl.schema import app as schema
 from infrahub_sdk.ctl.transform import list_transforms
@@ -40,6 +41,7 @@ from infrahub_sdk.utils import get_branch, write_to_file
 
 from .exporter import dump
 from .importer import load
+from .parameters import CONFIG_PARAM
 
 app = AsyncTyper(pretty_exceptions_show_locals=False)
 
@@ -59,7 +61,7 @@ def check(
     path: str = typer.Option(".", help="Root directory"),
     debug: bool = False,
     format_json: bool = False,
-    config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
+    _: str = CONFIG_PARAM,
     list_available: bool = typer.Option(False, "--list", help="Show available Python checks"),
     variables: Optional[List[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
@@ -73,7 +75,6 @@ def check(
         debug=debug,
         branch=branch,
         format_json=format_json,
-        config_file=config_file,
         list_available=list_available,
         name=check_name,
         variables=variables_dict,
@@ -85,7 +86,7 @@ async def run(
     script: Path,
     method: str = "run",
     debug: bool = False,
-    config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
+    _: str = CONFIG_PARAM,
     branch: str = typer.Option("main", help="Branch on which to run the script."),
     concurrent: int = typer.Option(
         4,
@@ -98,9 +99,6 @@ async def run(
     ),
 ) -> None:
     """Execute a script."""
-
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
 
     logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
     logging.getLogger("httpx").setLevel(logging.ERROR)
@@ -193,27 +191,30 @@ def _run_transform(query: str, variables: Dict[str, Any], transformer: Callable,
 
 @app.command(name="render")
 def render(
-    transform_name: str,
+    transform_name: str = typer.Argument(default="", help="Name of the Python transformation", show_default=False),
     variables: Optional[List[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
     ),
     branch: str = typer.Option(None, help="Branch on which to render the transform."),
     debug: bool = False,
-    config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
+    _: str = CONFIG_PARAM,
+    list_available: bool = typer.Option(False, "--list", help="Show available transforms"),
     out: str = typer.Option(None, help="Path to a file to save the result."),
 ) -> None:
     """Render a local Jinja2 Transform for debugging purpose."""
 
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
-
     variables_dict = parse_cli_vars(variables)
     repository_config = get_repository_config(Path(config.INFRAHUB_REPO_CONFIG_FILE))
+
+    if list_available:
+        list_jinja2_transforms(config=repository_config)
+        return
 
     try:
         transform_config = repository_config.get_jinja2_transform(name=transform_name)
     except KeyError as exc:
-        console.print(f"[red]Unable to find {transform_name} in {config.INFRAHUB_REPO_CONFIG_FILE}")
+        console.print(f'[red]Unable to find "{transform_name}" in {config.INFRAHUB_REPO_CONFIG_FILE}')
+        list_jinja2_transforms(config=repository_config)
         raise typer.Exit(1) from exc
 
     transformer = functools.partial(render_jinja2_template, transform_config.template_path, variables_dict)
@@ -233,14 +234,11 @@ def transform(
     ),
     branch: str = typer.Option(None, help="Branch on which to run the transformation"),
     debug: bool = False,
-    config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
+    _: str = CONFIG_PARAM,
     list_available: bool = typer.Option(False, "--list", help="Show available transforms"),
     out: str = typer.Option(None, help="Path to a file to save the result."),
 ) -> None:
     """Render a local transform (TransformPython) for debugging purpose."""
-
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
 
     variables_dict = parse_cli_vars(variables)
     repository_config = get_repository_config(Path(config.INFRAHUB_REPO_CONFIG_FILE))
@@ -269,7 +267,7 @@ def transform(
         query=transform_instance.query, variables=variables_dict, transformer=transformer, branch=branch, debug=debug
     )
 
-    json_string = json.dumps(result, indent=2, sort_keys=True)
+    json_string = ujson.dumps(result, indent=2, sort_keys=True)
     if out:
         write_to_file(Path(out), json_string)
     else:
@@ -277,10 +275,9 @@ def transform(
 
 
 @app.command(name="version")
-def version(config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE)):
+def version(_: str = CONFIG_PARAM):
     """Display the version of Infrahub and the version of the Python SDK in use."""
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
+
     client = initialize_client_sync()
 
     query = "query { InfrahubInfo { version }}"

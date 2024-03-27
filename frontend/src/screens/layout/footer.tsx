@@ -1,56 +1,37 @@
-import { DocumentTextIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { useEffect, useState } from "react";
-import { components } from "../../infraops";
+import { Tooltip } from "../../components/ui/tooltip";
 import {
   CONFIG,
   INFRAHUB_API_SERVER_URL,
   INFRAHUB_DOC_URL,
   INFRAHUB_GITHUB_URL,
 } from "../../config/config";
-import { ReactComponent as GitIcon } from "../../images/icons/git-icon-2.svg";
-import { ReactComponent as GraphqlIcon } from "../../images/icons/graphql-icon.svg";
-import { ReactComponent as SwaggerIcon } from "../../images/icons/swagger-icon.svg";
+import { components } from "../../infraops";
 import { fetchUrl } from "../../utils/fetch";
 
 const ICONS = [
   {
-    component: <GitIcon className="w-4 h-4 fill-custom-blue-50 text-custom-blue-50" />,
+    component: <Icon icon="mdi:git" className="text-xl text-custom-blue-50" />,
     link: INFRAHUB_GITHUB_URL,
+    message: "Git repository",
   },
   {
-    component: <DocumentTextIcon className="w-4 h-4 text-custom-blue-50" />,
+    component: <Icon icon="mdi:file-document" className="text-xl text-custom-blue-50" />,
     link: INFRAHUB_DOC_URL,
+    message: "Infrahub documentation",
   },
   {
-    component: <GraphqlIcon className="w-4 h-4 fill-custom-blue-50 text-custom-blue-50" />,
+    component: <Icon icon="mdi:graphql" className="text-xl text-custom-blue-50" />,
     link: `${INFRAHUB_API_SERVER_URL}/graphql`,
+    message: "GraphQL sandbox",
   },
   {
-    component: <SwaggerIcon className="w-4 h-4  fill-custom-blue-50" />,
+    component: <Icon icon="mdi:code-json" className="text-xl text-custom-blue-50" />,
     link: `${INFRAHUB_API_SERVER_URL}/api/docs`,
+    message: "Swagger documentation",
   },
 ];
-
-export const Footer = () => {
-  return (
-    <div className="bg-custom-white flex items-center p-3">
-      <div className="flex space-x-2">
-        {ICONS.map((item: any, index: number) => (
-          <a
-            key={index}
-            href={item.link}
-            target="_blank"
-            rel="noreferrer"
-            className="cursor-pointer">
-            {item.component}
-          </a>
-        ))}
-      </div>
-
-      <AppVersionInfo />
-    </div>
-  );
-};
 
 const AppVersionInfo = () => {
   const [info, setInfo] = useState<components["schemas"]["InfoAPI"] | null>(null);
@@ -67,4 +48,26 @@ const AppVersionInfo = () => {
 
   if (!info) return null;
   return <div className="flex-grow text-right text-xs text-gray-400">version {info.version}</div>;
+};
+
+export const Footer = () => {
+  return (
+    <div className="bg-custom-white flex items-center p-3">
+      <div className="flex space-x-2">
+        {ICONS.map((item: any, index: number) => (
+          <Tooltip key={index} content={item.message} side="top" enabled>
+            <a
+              href={item.link}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center cursor-pointer">
+              {item.component}
+            </a>
+          </Tooltip>
+        ))}
+      </div>
+
+      <AppVersionInfo />
+    </div>
+  );
 };

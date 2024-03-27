@@ -25,6 +25,14 @@ VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
 
 
+def default_cors_allow_methods() -> List[str]:
+    return ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
+
+
+def default_cors_allow_headers() -> List[str]:
+    return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with"]
+
+
 class StorageDriver(str, Enum):
     FileSystemStorage = "local"
     InfrahubS3ObjectStorage = "s3"
@@ -177,10 +185,21 @@ class CacheSettings(BaseSettings):
 
 
 class ApiSettings(BaseSettings):
-    cors_allow_origins: List[str] = ["*"]
-    cors_allow_credentials: bool = True
-    cors_allow_methods: List[str] = ["*"]
-    cors_allow_headers: List[str] = ["*"]
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_API_")
+    cors_allow_origins: List[str] = Field(
+        default_factory=list, description="A list of origins that are authorized to make cross-site HTTP requests"
+    )
+    cors_allow_methods: List[str] = Field(
+        default_factory=default_cors_allow_methods,
+        description="A list of HTTP verbs that are allowed for the actual request",
+    )
+    cors_allow_headers: List[str] = Field(
+        default_factory=default_cors_allow_headers,
+        description="The list of non-standard HTTP headers allowed in requests from the browser",
+    )
+    cors_allow_credentials: bool = Field(
+        default=True, description="If True, cookies will be allowed to be included in cross-site HTTP requests"
+    )
 
 
 class GitSettings(BaseSettings):
@@ -199,6 +218,7 @@ class InitialSettings(BaseSettings):
 
 
 class MiscellaneousSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_MISC_")
     print_query_details: bool = False
     start_background_runner: bool = True
     maximum_validator_execution_time: int = Field(

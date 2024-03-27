@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-sdk"
-version = "0.9.1"
+version = "0.10.0-dev"
 description = "Python Client to interact with Infrahub"
 authors = ["OpsMill <contact@opsmill.com>"]
 readme = "README.md"
@@ -52,7 +52,10 @@ pytest = "*"
 pytest-asyncio = "<0.23"
 pytest-clarity = "^1.0.1"
 pytest-cov = "^4.0.0"
-pytest-httpx = "*"
+pytest-httpx = [
+    { version = "~0.21", python = "<3.9"},
+    { version = ">=0.30", python = ">=3.9"},
+]
 yamllint = "*"
 pylint = "*"
 mypy = "*"

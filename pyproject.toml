@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.12.0"
+version = "0.13.0-dev"
 description = ""
 authors = ["OpsMill <info@opsmill.com>"]
 
@@ -20,7 +20,7 @@ pydantic = "~2.6"
 pydantic-settings = "~2.2"
 pytest = "~7.4"
 aio-pika = "~9.4"
-structlog = "^22.3.0"
+structlog = "24.1.0"
 boto3 = "~1.33.11"
 email-validator = "~2.1"
 redis = { version = "^5.0.0", extras = ["hiredis"]}
@@ -38,7 +38,7 @@ graphene = "~3.3"
 gunicorn = "^21.2"
 lunr = "^0.7.0.post1"
 starlette-exporter = "~0.21"
-python-multipart = "^0.0.6"         # Required by FastAPI to upload large files
+python-multipart = "0.0.9"          # Required by FastAPI to upload large files
 asgi-correlation-id = "4.2.0"       # Middleware for FastAPI to generate ID per request
 bcrypt = "~4.1"                     # Used to hash and validate password
 pyjwt = "~2.8"                      # Used to manage JWT tokens
@@ -50,7 +50,10 @@ pylint = "*"
 mypy = "*"
 ipython = "~8"
 pytest-asyncio = "^0.21.1"
-pytest-httpx = "~0.21"      # Latest version with Python 3.8 support
+pytest-httpx = [
+    { version = "~0.21", python = "<3.9"},
+    { version = ">=0.30", python = ">=3.9"},
+]
 pytest-clarity = "~1.0"
 pytest-cov = "~4.1"
 pytest-xdist = "~3.4"
@@ -189,10 +192,6 @@ module = "infrahub.api.diff.diff"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.api.exception_handlers"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.api.storage"
 ignore_errors = true
 
@@ -222,10 +221,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.node.standard"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.property"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -262,14 +257,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.schema.basenode_schema"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.schema.node_schema"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.schema.relationship_schema"
 ignore_errors = true
 
 [[tool.mypy.overrides]]

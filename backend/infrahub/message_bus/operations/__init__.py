@@ -1,4 +1,4 @@
-import json
+import ujson
 
 from infrahub.message_bus import RPCErrorResponse, messages
 from infrahub.message_bus.operations import (
@@ -68,7 +68,7 @@ COMMAND_MAP = {
 
 
 async def execute_message(routing_key: str, message_body: bytes, service: InfrahubServices):
-    message_data = json.loads(message_body)
+    message_data = ujson.loads(message_body)
     message = messages.MESSAGE_MAP[routing_key](**message_data)
     message.set_log_data(routing_key=routing_key)
     try:

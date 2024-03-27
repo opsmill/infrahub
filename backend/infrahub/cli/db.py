@@ -1,10 +1,10 @@
 import importlib
 import logging
-from asyncio import run as aiorun
 from enum import Enum
 from typing import Optional
 
 import typer
+from infrahub_sdk.async_typer import AsyncTyper
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.table import Table
@@ -19,7 +19,7 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import DatabaseType, InfrahubDatabase, get_db
 from infrahub.log import get_logger
 
-app = typer.Typer()
+app = AsyncTyper()
 
 PERMISSIONS_AVAILABLE = ["read", "write", "admin"]
 
@@ -37,7 +37,12 @@ def callback() -> None:
     """
 
 
-async def _init() -> None:
+@app.command()
+async def init(
+    config_file: str = typer.Option(
+        "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
+    ),
+) -> None:
     """Erase the content of the database and initialize it with the core schema."""
 
     log = get_logger()
@@ -48,6 +53,9 @@ async def _init() -> None:
     #   TODO, if possible try to implement this in an idempotent way
     # --------------------------------------------------
 
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    config.load_and_exit(config_file_name=config_file)
+
     dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
     async with dbdriver.start_transaction() as db:
         log.info("Delete All Nodes")
@@ -57,8 +65,17 @@ async def _init() -> None:
     await dbdriver.close()
 
 
-async def _load_test_data(dataset: str) -> None:
-    """Load test data into the database from the test_data directory."""
+@app.command()
+async def load_test_data(
+    config_file: str = typer.Option(
+        "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
+    ),
+    dataset: str = "dataset01",
+) -> None:
+    """Load test data into the database from the `test_data` directory."""
+
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    config.load_and_exit(config_file_name=config_file)
 
     dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
     async with dbdriver.start_session() as db:
@@ -76,8 +93,15 @@ async def _load_test_data(dataset: str) -> None:
     await dbdriver.close()
 
 
-async def _migrate(check: bool) -> None:
+@app.command()
+async def migrate(
+    check: bool = typer.Option(False, help="Check the state of the database without applying the migrations."),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Check the current format of the internal graph and apply the necessary migrations"""
     log = get_logger()
+
+    config.load_and_exit(config_file_name=config_file)
 
     dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
     async with dbdriver.start_session() as db:
@@ -116,7 +140,14 @@ async def _migrate(check: bool) -> None:
     await dbdriver.close()
 
 
-async def _constraint(action: ConstraintAction) -> None:
+@app.command()
+async def constraint(
+    action: ConstraintAction = typer.Argument(ConstraintAction.SHOW),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Manage Database Constraints"""
+    config.load_and_exit(config_file_name=config_file)
+
     dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
 
     manager: Optional[ConstraintManagerBase] = None
@@ -149,58 +180,3 @@ async def _constraint(action: ConstraintAction) -> None:
     console.print(table)
 
     await dbdriver.close()
-
-
-@app.command()
-def init(
-    config_file: str = typer.Option(
-        "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
-    ),
-) -> None:
-    """Erase the content of the database and initialize it with the core schema."""
-
-    logging.getLogger("neo4j").setLevel(logging.ERROR)
-
-    config.load_and_exit(config_file_name=config_file)
-
-    aiorun(_init())
-
-
-@app.command()
-def load_test_data(
-    config_file: str = typer.Option(
-        "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
-    ),
-    dataset: str = "dataset01",
-) -> None:
-    """Load test data into the database from the `test_data` directory."""
-
-    logging.getLogger("neo4j").setLevel(logging.ERROR)
-
-    config.load_and_exit(config_file_name=config_file)
-
-    aiorun(_load_test_data(dataset=dataset))
-
-
-@app.command()
-def migrate(
-    check: bool = typer.Option(False, help="Check the state of the database without applying the migrations."),
-    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
-) -> None:
-    """Check the current format of the internal graph and apply the necessary migrations"""
-
-    config.load_and_exit(config_file_name=config_file)
-
-    aiorun(_migrate(check=check))
-
-
-@app.command()
-def constraint(
-    action: ConstraintAction = typer.Argument(ConstraintAction.SHOW),
-    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
-) -> None:
-    """Manage Database Constraints"""
-
-    config.load_and_exit(config_file_name=config_file)
-
-    aiorun(_constraint(action=action))

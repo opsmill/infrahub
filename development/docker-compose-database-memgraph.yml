@@ -21,6 +21,8 @@ services:
       start_period: 3s
     labels:
       infrahub_role: "database"
+      com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
+      com.github.job: "${GITHUB_JOB:-unknown}"
 
 
 volumes:

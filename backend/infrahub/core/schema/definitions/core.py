@@ -433,14 +433,14 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.LOCAL.value,
-            "inherit_from": ["CoreGroup"],
+            "inherit_from": [InfrahubKind.GENERICGROUP],
             "attributes": [
                 {"name": "parameters", "kind": "JSON", "optional": True},
             ],
             "relationships": [
                 {
                     "name": "query",
-                    "peer": "CoreGraphQLQuery",
+                    "peer": InfrahubKind.GRAPHQLQUERY,
                     "optional": False,
                     "cardinality": "one",
                     "kind": "Attribute",
@@ -474,7 +474,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["LineageOwner", "LineageSource"],
+            "inherit_from": [InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "password", "kind": "HashedPassword", "unique": False},
@@ -731,7 +731,12 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["LineageOwner", "LineageSource", InfrahubKind.GENERICREPOSITORY, InfrahubKind.TASKTARGET],
+            "inherit_from": [
+                InfrahubKind.LINEAGEOWNER,
+                InfrahubKind.LINEAGESOURCE,
+                InfrahubKind.GENERICREPOSITORY,
+                InfrahubKind.TASKTARGET,
+            ],
             "attributes": [
                 {"name": "default_branch", "kind": "Text", "default_value": "main", "order_weight": 6000},
                 {
@@ -753,7 +758,12 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["LineageOwner", "LineageSource", InfrahubKind.GENERICREPOSITORY, InfrahubKind.TASKTARGET],
+            "inherit_from": [
+                InfrahubKind.LINEAGEOWNER,
+                InfrahubKind.LINEAGESOURCE,
+                InfrahubKind.GENERICREPOSITORY,
+                InfrahubKind.TASKTARGET,
+            ],
             "attributes": [
                 {
                     "name": "ref",

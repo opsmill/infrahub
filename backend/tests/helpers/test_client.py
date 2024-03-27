@@ -1,8 +1,8 @@
 import asyncio
-import json
 from typing import Any, Dict, Optional
 
 import httpx
+import ujson
 from fastapi import FastAPI
 from infrahub_sdk.types import HTTPMethod
 
@@ -17,7 +17,7 @@ class InfrahubTestClient(httpx.AsyncClient):
     ) -> httpx.Response:
         content = None
         if payload:
-            content = str(json.dumps(payload)).encode("UTF-8")
+            content = str(ujson.dumps(payload)).encode("UTF-8")
         return await self.request(method=method.value, url=url, headers=headers, timeout=timeout, content=content)
 
     async def async_request(

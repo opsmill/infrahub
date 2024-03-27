@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import keyword
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Type, Union
+from dataclasses import asdict, dataclass
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Literal, Optional, Type, Union, overload
 
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import field_validator
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
+    from infrahub.core.constants import RelationshipKind
     from infrahub.core.schema import GenericSchema, NodeSchema
 
 # pylint: disable=redefined-builtin
@@ -150,6 +151,16 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         return elements_diff
 
+    @overload
+    def get_field(
+        self, name: str, raise_on_error: Literal[True] = True
+    ) -> Union[AttributeSchema, RelationshipSchema]: ...
+
+    @overload
+    def get_field(
+        self, name: str, raise_on_error: Literal[False] = False
+    ) -> Optional[Union[AttributeSchema, RelationshipSchema]]: ...
+
     def get_field(self, name: str, raise_on_error: bool = True) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
         if field := self.get_attribute_or_none(name=name):
             return field
@@ -157,10 +168,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         if field := self.get_relationship_or_none(name=name):
             return field
 
-        if not raise_on_error:
-            return None
+        if raise_on_error:
+            raise ValueError(f"Unable to find the field {name}")
 
-        raise ValueError(f"Unable to find the field {name}")
+        return None
 
     def get_attribute(self, name: str) -> AttributeSchema:
         for item in self.attributes:
@@ -229,6 +240,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
                 rels.append(item)
 
         return rels
+
+    def get_relationships_of_kind(self, relationship_kinds: Iterable[RelationshipKind]) -> list[RelationshipSchema]:
+        return [r for r in self.relationships if r.kind in relationship_kinds]
 
     def get_attributes_name_id_map(self) -> Dict[str, str]:
         name_id_map = {}
@@ -364,11 +378,20 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
             schema_path.attribute_property_name = property_piece
         return schema_path
 
-    def get_unique_constraint_schema_attribute_paths(self) -> List[List[SchemaAttributePath]]:
-        if not self.uniqueness_constraints:
-            return []
-
+    def get_unique_constraint_schema_attribute_paths(
+        self, include_unique_attributes: bool = False
+    ) -> List[List[SchemaAttributePath]]:
         constraint_paths_groups = []
+
+        if include_unique_attributes:
+            for attribute_schema in self.unique_attributes:
+                constraint_paths_groups.append(
+                    [SchemaAttributePath(attribute_schema=attribute_schema, attribute_property_name="value")]
+                )
+
+        if not self.uniqueness_constraints:
+            return constraint_paths_groups
+
         for uniqueness_path_group in self.uniqueness_constraints:
             constraint_paths_groups.append(
                 [
@@ -385,6 +408,17 @@ class SchemaAttributePath:
     related_schema: Optional[Union[NodeSchema, GenericSchema]] = None
     attribute_schema: Optional[AttributeSchema] = None
     attribute_property_name: Optional[str] = None
+
+
+@dataclass
+class SchemaAttributePathValue(SchemaAttributePath):
+    value: Any = None
+
+    @classmethod
+    def from_schema_attribute_path(
+        cls, schema_attribute_path: SchemaAttributePath, value: Any
+    ) -> SchemaAttributePathValue:
+        return cls(**asdict(schema_attribute_path), value=value)
 
 
 class AttributePathParsingError(Exception): ...

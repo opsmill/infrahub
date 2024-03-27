@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from invoke.context import Context
@@ -6,7 +7,7 @@ from invoke.tasks import task
 from .utils import REPO_BASE
 
 SDK_DIRECTORY = f"{REPO_BASE}/generated/python-sdk"
-INFRAHUB_DIRECTORY = f"{REPO_BASE}/generated/python-sdk"
+INFRAHUB_DIRECTORY = f"{REPO_BASE}/generated/infrahub"
 
 
 @task
@@ -14,6 +15,22 @@ def generate_jsonschema(context: Context):
     """Generate JSON schemas into ./generated"""
 
     generate_sdk_repository_config()
+    generate_infrahub_node_schema()
+
+
+def generate_infrahub_node_schema():
+    from infrahub.api.schema import SchemaLoadAPI
+
+    schema_dir = f"{INFRAHUB_DIRECTORY}/schema"
+    Path(schema_dir).mkdir(parents=True, exist_ok=True)
+
+    schema = SchemaLoadAPI.model_json_schema()
+
+    schema["title"] = "InfrahubSchema"
+
+    content = json.dumps(schema, indent=4)
+
+    write(filename=f"{schema_dir}/develop.json", content=content)
 
 
 def generate_sdk_repository_config():

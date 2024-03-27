@@ -10,12 +10,13 @@ services:
   #   image: memgraph-exporter
   #   hostname: "memgraph_exp"
   vmagent:
-    image: victoriametrics/vmagent:v1.97.1
+    image: victoriametrics/vmagent:v1.99.0
     volumes:
       - vmagentdata:/vmagentdata
       - ./vmagent.yml:/etc/prometheus/prometheus.yml:ro
     command:
       - "--promscrape.config=/etc/prometheus/prometheus.yml"
+      - "--remoteWrite.sendTimeout=0s"  # https://github.com/golang/go/issues/59017
       - "--remoteWrite.url=${METRICS_ENDPOINT:-http://127.0.0.1:8424}"
       - "--remoteWrite.label=job=${GITHUB_JOB}"
       - "--remoteWrite.label=run_id=${GITHUB_RUN_ID}"
