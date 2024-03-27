@@ -488,17 +488,61 @@ class NodeListGetRelationshipsQuery(Query):
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
 
-        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
-        self.params.update(rels_params)
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(branch_params)
 
-        query = (
-            """
-        MATCH (n) WHERE n.uuid IN $ids
-        MATCH p = ((n)-[r1:IS_RELATED]-(rel:Relationship)-[r2:IS_RELATED]-(peer))
-        WHERE all(r IN relationships(p) WHERE (%s))
-        """
-            % rels_filter
-        )
+        query = """
+        MATCH (n:Node)
+        WHERE n.uuid IN $ids
+        CALL {
+            WITH n
+            MATCH path = (root:Root)<-[rroot:IS_PART_OF]-(n)
+            WHERE all(r in relationships(path) WHERE %(branch_filter)s)
+            RETURN path as full_path, n as active_node
+            ORDER BY rroot.branch_level DESC, rroot.from DESC
+            LIMIT 1
+        }
+        WITH full_path, active_node
+        WITH full_path, active_node
+        WHERE all(r in relationships(full_path) WHERE r.status = "active")
+        CALL {
+            WITH active_node
+            MATCH path = (active_node)-[rrel1:IS_RELATED]-(rel:Relationship)-[rrel2:IS_RELATED]-(peer:Node)-[rrootp:IS_PART_OF]->(:Root)
+            WHERE all(
+                r in relationships(path)
+                WHERE (%(branch_filter)s)
+            )
+            RETURN
+                path as relationship_path,
+                active_node as start_node,
+                rrel1 as node_rel,
+                rel as relationship,
+                rrel2 as peer_rel,
+                peer as peer_node
+        }
+        WITH
+            collect([relationship_path, node_rel, relationship, peer_rel]) as enriched_paths,
+            start_node,
+            peer_node
+        CALL {
+            WITH enriched_paths, start_node, peer_node
+            UNWIND enriched_paths as path_to_check
+            RETURN
+                path_to_check[0] as current_path,
+                start_node as n,
+                path_to_check[1] as r1,
+                path_to_check[2] as rel,
+                path_to_check[3] as r2,
+                peer_node as peer
+            ORDER BY
+                (path_to_check[1]).from DESC,
+                (path_to_check[3]).from DESC
+            LIMIT 1
+        }
+        WITH n, r1, rel, r2, peer, current_path
+        WITH n, r1, rel, r2, peer, current_path
+        WHERE all(r in relationships(current_path) WHERE r.status = "active")
+        """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
 

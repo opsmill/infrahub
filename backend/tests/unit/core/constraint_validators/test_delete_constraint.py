@@ -57,3 +57,13 @@ async def test_one_sided_relationship(
 
     assert "Cannot delete. Node is linked to mandatory relationship" in str(exc.value)
     assert f"{car_camry_main.id} at TestCar.owner" in str(exc.value)
+
+
+async def test_source_node_deleted(
+    db, default_branch, car_camry_main, car_accord_main, person_albert_main, person_jane_main
+):
+    car = await NodeManager.get_one(db=db, id=car_camry_main.id)
+    await car.delete(db=db)
+    constraint = NodeDeleteConstraint(db=db, branch=default_branch)
+
+    await constraint.check(node=person_jane_main)
