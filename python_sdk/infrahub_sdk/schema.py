@@ -55,6 +55,9 @@ class InfrahubRepositoryArtifactDefinitionConfig(InfrahubRepositoryConfigElement
     targets: str = pydantic.Field(..., description="The group to target when creating artifacts")
     transformation: str = pydantic.Field(..., description="The transformation to use.")
 
+    class Config:
+        extra = "forbid"
+
 
 class InfrahubJinja2TransformConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the transform")
@@ -72,6 +75,9 @@ class InfrahubJinja2TransformConfig(InfrahubRepositoryConfigElement):
         data["template_path"] = self.template_path_value
         return data
 
+    class Config:
+        extra = "forbid"
+
 
 class InfrahubCheckDefinitionConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the Check Definition")
@@ -84,11 +90,17 @@ class InfrahubCheckDefinitionConfig(InfrahubRepositoryConfigElement):
     )
     class_name: str = pydantic.Field(default="Check", description="The name of the check class to run.")
 
+    class Config:
+        extra = "forbid"
+
 
 class InfrahubPythonTransformConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the Transform")
     file_path: Path = pydantic.Field(..., description="The file within the repository with the transform code.")
     class_name: str = pydantic.Field(default="Transform", description="The name of the transform class to run.")
+
+    class Config:
+        extra = "forbid"
 
 
 RESOURCE_MAP: Dict[Any, str] = {
@@ -159,6 +171,9 @@ class InfrahubRepositoryConfig(pydantic.BaseModel):
 
     def get_python_transform(self, name: str) -> InfrahubPythonTransformConfig:
         return self._get_resource(resource_id=name, resource_type=InfrahubPythonTransformConfig)
+
+    class Config:
+        extra = "forbid"
 
 
 # ---------------------------------------------------------------------------------
