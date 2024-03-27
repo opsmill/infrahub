@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
 import { usePermission } from "../../hooks/usePermission";
 import { constructPath } from "../../utils/fetch";
+import Content from "../layout/content";
 
 export const ProposedChangesCreate = () => {
   const permission = usePermission();
@@ -9,5 +10,10 @@ export const ProposedChangesCreate = () => {
     return <Navigate to={constructPath("/proposed-changes")} replace />;
   }
 
-  return <div>create</div>;
+  return (
+    <Content>
+      <Content.Title title="New proposed change" />
+      create
+    </Content>
+  );
 };
