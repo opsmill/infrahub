@@ -134,7 +134,7 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
 
     async def update_group(self) -> None:
         """
-        Create or update (using upsert) a CoreStandGroup to store all the Nodes and Groups used during an execution.
+        Create or update (using upsert) a CoreStandardGroup to store all the Nodes and Groups used during an execution.
         """
         children: List[str] = []
         members: List[str] = []
@@ -240,7 +240,7 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
 
     def update_group(self) -> None:
         """
-        Create or update (using upsert) a CoreStandGroup to store all the Nodes and Groups used during an execution.
+        Create or update (using upsert) a CoreStandardGroup to store all the Nodes and Groups used during an execution.
         """
         children: List[str] = []
         members: List[str] = []
