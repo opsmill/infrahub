@@ -94,6 +94,7 @@ async def test_get_models_in_use(
 
     gqa = InfrahubGraphQLQueryAnalyzer(query=query_02, schema=gql_params.schema, branch=default_branch)
     assert await gqa.get_models_in_use(types=gql_params.context.types) == {
+        InfrahubKind.GENERATORGROUP,
         InfrahubKind.GRAPHQLQUERYGROUP,
         InfrahubKind.GENERICGROUP,
         InfrahubKind.STANDARDGROUP,

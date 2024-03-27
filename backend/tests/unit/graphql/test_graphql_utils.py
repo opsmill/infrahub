@@ -34,6 +34,7 @@ async def test_schema_models_generics(
     fields = await extract_fields(document.definitions[0].selection_set)
 
     expected_response = {
+        InfrahubKind.GENERATORGROUP,
         InfrahubKind.GRAPHQLQUERYGROUP,
         InfrahubKind.GENERICGROUP,
         InfrahubKind.STANDARDGROUP,
