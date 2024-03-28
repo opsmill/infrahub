@@ -17,6 +17,7 @@ Below is the list of all available options to define a Relationship in the schem
 | ---- | ---- | ---- | --------- |
 | [**branch**](#branch) | Attribute | Type of branch support for the relatioinship, if not defined it will be determine based both peers. | False |
 | [**cardinality**](#cardinality) | Attribute | Defines how many objects are expected on the other side of the relationship. | False |
+| [**delete_behavior**](#delete_behavior) | Attribute | If cascade, related node(s) are deleted when this node is deleted | False |
 | [**description**](#description) | Attribute | Short description of the relationship. | False |
 | [**direction**](#direction) | Attribute | Defines the direction of the relationship,  Unidirectional relationship are required when the same model is on both side. | False |
 | [**hierarchical**](#hierarchical) | Attribute | Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind | False |
@@ -56,6 +57,18 @@ Below is the list of all available options to define a Relationship in the schem
 | **Default Value** | many |
 | **Constraints** |  |
 | **Accepted Values** | `one` `many`  |
+
+### delete_behavior
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | delete_behavior |
+| **Kind** | `Text` |
+| **Description** | If cascade, related node(s) are deleted when this node is deleted |
+| **Optional** | True |
+| **Default Value** | no-action |
+| **Constraints** |  |
+| **Accepted Values** | `no-action` `cascade`  |
 
 ### description
 
