@@ -28,6 +28,7 @@ from .branch import (
     BranchUpdate,
     BranchValidate,
 )
+from .ipam import InfrahubIPPrefixMutation
 from .main import InfrahubMutation, InfrahubMutationMixin, InfrahubMutationOptions
 from .proposed_change import (
     InfrahubProposedChangeMutation,
@@ -56,6 +57,7 @@ __all__ = [
     "CoreAccountSelfUpdate",
     "CoreAccountTokenCreate",
     "InfrahubArtifactDefinitionMutation",
+    "InfrahubIPPrefixMutation",
     "InfrahubRepositoryMutation",
     "InfrahubMutationOptions",
     "InfrahubMutation",

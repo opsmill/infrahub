@@ -300,6 +300,10 @@ module = "infrahub.graphql.mutations.attribute"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
+module = "infrahub.graphql.mutations.ipam"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.main"
 ignore_errors = true
 
