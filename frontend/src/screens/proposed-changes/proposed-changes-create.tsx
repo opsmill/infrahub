@@ -31,7 +31,7 @@ export const ProposedChangesCreate = () => {
         <div className="flex flex-wrap md:flex-nowrap items-center gap-2 justify-center w-full ">
           <Card className="w-full">
             <h2 className="font-semibold">Source branch</h2>
-            <p className="text-gray-600">Select a branch to compare</p>
+            <p className="text-gray-600 text-sm mb-1">Select a branch to compare</p>
             <Select options={branchesToSelectOptions(sourceBranches)} />
           </Card>
 
@@ -39,7 +39,7 @@ export const ProposedChangesCreate = () => {
 
           <Card className="w-full">
             <h2 className="font-semibold">Destination branch</h2>
-            <p className="text-gray-600">It targets the default branch</p>
+            <p className="text-gray-600 text-sm mb-1">It targets the default branch</p>
             <Select
               disabled
               value={defaultBranch[0].id}
@@ -49,7 +49,7 @@ export const ProposedChangesCreate = () => {
         </div>
 
         <div>
-          <h2 className="font-semibold  mb-1">Name *</h2>
+          <h2 className="font-semibold mb-1">Name *</h2>
           <Input />
         </div>
 
