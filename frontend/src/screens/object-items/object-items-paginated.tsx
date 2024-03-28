@@ -100,9 +100,17 @@ export default function ObjectItems(props: any) {
   // This will not work if the type of filter value is not string.
   const filtersString = [
     // Add object filters
-    ...filters.map((row: iComboBoxFilter) =>
-      typeof row.value === "string" ? `${row.name}: "${row.value}"` : `${row.name}: ${row.value}`
-    ),
+    ...filters.map((row: iComboBoxFilter) => {
+      if (typeof row.value === "string") {
+        return `${row.name}: "${row.value}"`;
+      }
+
+      if (Array.isArray(row.value)) {
+        return `${row.name}: ${JSON.stringify(row.value)}`;
+      }
+
+      return `${row.name}: ${row.value}`;
+    }),
     // Add pagination filters
     ...[
       { name: "offset", value: pagination?.offset },
@@ -195,6 +203,7 @@ export default function ObjectItems(props: any) {
 
       return;
     }
+
     const newFilters = [
       ...filters,
       {
@@ -210,7 +219,7 @@ export default function ObjectItems(props: any) {
     setFilters(newFilters);
   };
 
-  const debouncedHandleSearch = debounce(handleSearch);
+  const debouncedHandleSearch = debounce(handleSearch, 500);
 
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching list." />;
@@ -259,7 +268,7 @@ export default function ObjectItems(props: any) {
             containerClassName="!max-w-[300px] !z-0"
           />
 
-          <Filters />
+          <Filters schema={schemaData} />
         </div>
 
         {loading && !rows && <LoadingScreen />}
