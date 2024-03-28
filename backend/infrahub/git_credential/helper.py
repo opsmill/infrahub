@@ -1,7 +1,7 @@
 import sys
 
 import typer
-from infrahub_sdk import InfrahubClientSync
+from infrahub_sdk import Config, InfrahubClientSync
 
 from infrahub import config
 from infrahub.core.constants import InfrahubKind
@@ -50,7 +50,7 @@ def get(
 
     # FIXME currently we are only querying the repo in the main branch,
     # this will not work if a new repository is added in a branch first.
-    client = InfrahubClientSync.init(address=config.SETTINGS.main.internal_address, insert_tracker=True)
+    client = InfrahubClientSync.init(config=Config(address=config.SETTINGS.main.internal_address, insert_tracker=True))
     repo = client.get(kind=InfrahubKind.GENERICREPOSITORY, location__value=location)
 
     if not repo:
