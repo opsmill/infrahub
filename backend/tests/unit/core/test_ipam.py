@@ -8,7 +8,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind
 from infrahub.core.ipam import get_container, get_ip_addresses, get_subnets
 from infrahub.core.node import Node
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.query.ipam import get_container, get_ip_addresses, get_subnets
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
 

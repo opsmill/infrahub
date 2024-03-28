@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, List, Optional, Union
 
 from infrahub.core.constants import InfrahubKind
@@ -8,8 +9,22 @@ from infrahub.core.query import Query
 from infrahub.core.registry import registry
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
+
+@dataclass
+class IPPrefixData:
+    id: UUID
+    prefix: Union[ipaddress.IPv6Network, ipaddress.IPv4Network]
+
+
+@dataclass
+class IPAddressData:
+    id: UUID
+    address: Union[ipaddress.IPv6Interface, ipaddress.IPv4Interface]
 
 
 class IPPrefixSubnetFetch(Query):
@@ -30,28 +45,36 @@ class IPPrefixSubnetFetch(Query):
     def get_container(self):
         """Return the more specific prefix that contains this one."""
         prefix = ipaddress.ip_network(self.ip_prefix.prefix.value)
-        candidates: List[Union[ipaddress.IPv6Network, ipaddress.IPv4Network]] = []
+        candidates: List[IPPrefixData] = []
 
         for result in self.get_results():
-            candidate = ipaddress.ip_network(result.get("av").get("value"))
-            if prefix.version == candidate.version and prefix != candidate and prefix.subnet_of(candidate):
-                candidates.append(candidate)  # FIXME: these should be nodes
+            candidate = IPPrefixData(
+                id=result.get("pfx").get("uuid"), prefix=ipaddress.ip_network(result.get("av").get("value"))
+            )
+            if (
+                prefix.version == candidate.prefix.version
+                and prefix != candidate.prefix
+                and prefix.subnet_of(candidate.prefix)
+            ):
+                candidates.append(candidate)
 
-        container: Union[ipaddress.IPv6Network, ipaddress.IPv4Network] = None
+        container: Optional[IPPrefixData] = None
         for candidate in candidates:
-            if not container or candidate.prefixlen > container.prefixlen:
+            if not container or candidate.prefix.prefixlen > container.prefix.prefixlen:
                 container = candidate
         return container
 
     def get_subnets(self):
         """Return a list of all subnets fitting in the prefix."""
         prefix = ipaddress.ip_network(self.ip_prefix.prefix.value)
-        subnets: List[Union[ipaddress.IPv6Network, ipaddress.IPv4Network]] = []
+        subnets: List[IPPrefixData] = []
 
         for result in self.get_results():
-            subnet = ipaddress.ip_network(result.get("av").get("value"))
-            if prefix.version == subnet.version and prefix != subnet and subnet.subnet_of(prefix):
-                subnets.append(subnet)  # FIXME: these should be nodes
+            subnet = IPPrefixData(
+                id=result.get("pfx").get("uuid"), prefix=ipaddress.ip_network(result.get("av").get("value"))
+            )
+            if prefix.version == subnet.prefix.version and prefix != subnet.prefix and subnet.prefix.subnet_of(prefix):
+                subnets.append(subnet)
 
         return subnets
 
@@ -74,12 +97,14 @@ class IPPrefixIPAddressFetch(Query):
     def get_addresses(self):
         """Return a list of all addresses fitting in the prefix."""
         prefix = ipaddress.ip_network(self.ip_prefix.prefix.value)
-        addresses: List[Union[ipaddress.IPv6Interface, ipaddress.IPv4Interface]] = []
+        addresses: List[IPAddressData] = []
 
         for result in self.get_results():
-            address = ipaddress.ip_interface(result.get("av").get("value"))
-            if prefix.version == address.version and address in prefix:
-                addresses.append(address)  # FIXME: these should be nodes
+            address = IPAddressData(
+                id=result.get("addr").get("uuid"), address=ipaddress.ip_interface(result.get("av").get("value"))
+            )
+            if prefix.version == address.address.version and address.address in prefix:
+                addresses.append(address)
 
         return addresses
 
@@ -109,3 +134,4 @@ async def get_ip_addresses(
     query = await IPPrefixIPAddressFetch.init(db=db, branch=branch, ip_prefix=ip_prefix, at=at)
     await query.execute(db=db)
     return query.get_addresses()
+
