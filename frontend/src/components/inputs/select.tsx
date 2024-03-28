@@ -31,6 +31,7 @@ import ModalDelete from "../modals/modal-delete";
 import { Input } from "./input";
 import { MultipleInput } from "./multiple-input";
 
+import { getObjectDisplayLabel } from "../../graphql/queries/objects/getObjectDisplayLabel";
 import LoadingScreen from "../../screens/loading-screen/loading-screen";
 import { getOptionsFromRelationship } from "../../utils/getSchemaObjectColumns";
 
@@ -122,6 +123,14 @@ export const Select = (props: SelectProps) => {
   `;
 
   const [fetchOptions, { loading, data }] = useLazyQuery(optionsQuery);
+
+  const labelQueryString = peer ? getObjectDisplayLabel({ kind: peer }) : "query { ok }";
+
+  const labelQuery = gql`
+    ${labelQueryString}
+  `;
+
+  const [fetchLabel] = useLazyQuery(labelQuery);
 
   const optionsResult = peer && data ? data[peer].edges.map((edge: any) => edge.node) : [];
 
@@ -711,6 +720,37 @@ export const Select = (props: SelectProps) => {
       : options?.find((option) => option?.id === value || option.name === value);
 
     setSelectedOption(newOption ?? "");
+  }, [value]);
+
+  // Fetch option display label if not defined by current selected option
+  const handleFetchLabel = async () => {
+    if (!multiple && peer && value && !selectedOption?.name) {
+      const { data } = await fetchLabel({ variables: value });
+
+      const label = data[peer]?.edges[0]?.node?.display_label;
+
+      const newSelectedOption = {
+        ...selectedOption,
+        name: label ?? "Unkown",
+      } as SelectOption;
+
+      setSelectedOption(newSelectedOption);
+    }
+
+    if (multiple && peer && value?.length) {
+      const { data } = await fetchLabel({ variables: { ids: value } });
+
+      const newSelectedOptions = data[peer]?.edges.map((edge) => ({
+        name: edge.node.display_label,
+        id: edge.node.id,
+      }));
+
+      setSelectedOption(newSelectedOptions);
+    }
+  };
+
+  useEffect(() => {
+    handleFetchLabel();
   }, [value]);
 
   // Needed for async options to avoid duplicates issues
