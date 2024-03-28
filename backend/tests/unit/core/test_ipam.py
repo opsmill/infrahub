@@ -1,49 +1,18 @@
 import ipaddress
-from typing import Any
-
-import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, InfrahubKind
-from infrahub.core.ipam import get_container, get_ip_addresses, get_subnets
 from infrahub.core.node import Node
 from infrahub.core.query.ipam import get_container, get_ip_addresses, get_subnets
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 
-@pytest.fixture
-async def register_ipam_schema(db: InfrahubDatabase, default_branch: Branch, data_schema: None) -> None:
-    SCHEMA: dict[str, Any] = {
-        "nodes": [
-            {
-                "name": "IPPrefix",
-                "namespace": "Ipam",
-                "default_filter": "prefix__value",
-                "order_by": ["prefix__value"],
-                "display_labels": ["prefix__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "inherit_from": [InfrahubKind.IPPREFIX],
-            },
-            {
-                "name": "IPAddress",
-                "namespace": "Ipam",
-                "default_filter": "address__value",
-                "order_by": ["address__value"],
-                "display_labels": ["address__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "inherit_from": [InfrahubKind.IPADDRESS],
-            },
-        ],
-    }
-
-    schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
-
-
 async def test_validate_prefix_create(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, register_ipam_schema: None
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
 ):
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
@@ -57,7 +26,10 @@ async def test_validate_prefix_create(
 
 
 async def test_validate_address_create(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, register_ipam_schema: None
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
 ):
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
@@ -71,7 +43,10 @@ async def test_validate_address_create(
 
 
 async def test_validate_prefix_within_container(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, register_ipam_schema: None
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
 ):
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
@@ -92,11 +67,14 @@ async def test_validate_prefix_within_container(
 
     prefix_container = await get_container(db=db, branch=default_branch, ip_prefix=prefix)
     assert prefix_container
-    assert prefix_container == ipaddress.ip_network("2001:db8::/32")
+    assert prefix_container.prefix == ipaddress.ip_network(container.prefix.value)
 
 
 async def test_validate_subnets_of_prefix(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, register_ipam_schema: None
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
 ):
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
@@ -114,14 +92,17 @@ async def test_validate_subnets_of_prefix(
 
     subnets = await get_subnets(db=db, branch=default_branch, ip_prefix=container)
     assert len(subnets) == 1
-    assert subnets[0] == ipaddress.ip_network("2001:db8::/48")
+    assert subnets[0].prefix == ipaddress.ip_network(prefix.prefix.value)
 
     subnets = await get_subnets(db=db, branch=default_branch, ip_prefix=prefix)
     assert len(subnets) == 0
 
 
 async def test_validate_address_within_prefix(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, register_ipam_schema: None
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
 ):
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
@@ -140,4 +121,4 @@ async def test_validate_address_within_prefix(
 
     ip_addresses = await get_ip_addresses(db=db, branch=default_branch, ip_prefix=prefix)
     assert len(ip_addresses) == 1
-    assert ip_addresses[0] == ipaddress.ip_interface("2001:db8::1/64")
+    assert ip_addresses[0].address == ipaddress.ip_interface(address.address.value)
