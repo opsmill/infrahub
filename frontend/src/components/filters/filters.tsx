@@ -139,7 +139,10 @@ export const Filters = (props: tFilters) => {
         <span className="text-xs">Filters: {currentFilters.length}</span>
 
         {!!currentFilters.length && (
-          <Button onClick={removeFilters} buttonType={BUTTON_TYPES.INVISIBLE}>
+          <Button
+            onClick={removeFilters}
+            buttonType={BUTTON_TYPES.INVISIBLE}
+            data-testid="remove-filters">
             <Icon icon="mdi:close" className="text-gray-400" />
           </Button>
         )}
