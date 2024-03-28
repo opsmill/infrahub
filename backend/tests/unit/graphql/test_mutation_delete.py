@@ -66,8 +66,11 @@ async def test_delete_prevented(
 
     assert result.errors
     assert len(result.errors) == 1
-    assert "Cannot delete. Node is linked to mandatory relationship" in result.errors[0].message
-    assert f"{car_camry_main.id} at TestCar.owner" in result.errors[0].message
+    assert f"Cannot delete TestPerson '{person_jane_main.id}'." in result.errors[0].message
+    assert (
+        f"It is linked to mandatory relationship owner on node TestCar '{car_camry_main.id}'"
+        in result.errors[0].message
+    )
     assert result.data["TestPersonDelete"] is None
 
     assert await NodeManager.get_one(db=db, id=person_jane_main.id) is not None

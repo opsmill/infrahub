@@ -104,6 +104,7 @@ core_models: dict[str, Any] = {
                     "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
+                    "delete_behavior": "cascade",
                 },
                 {
                     "name": "created_by",
@@ -190,6 +191,7 @@ core_models: dict[str, Any] = {
                     "optional": True,
                     "cardinality": "many",
                     "identifier": "validator__check",
+                    "delete_behavior": "cascade",
                 },
             ],
         },
@@ -618,6 +620,7 @@ core_models: dict[str, Any] = {
                     "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
+                    "delete_behavior": "cascade",
                 },
                 {
                     "name": "threads",
@@ -626,6 +629,7 @@ core_models: dict[str, Any] = {
                     "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
+                    "delete_behavior": "cascade",
                 },
                 {
                     "name": "validations",
@@ -634,6 +638,7 @@ core_models: dict[str, Any] = {
                     "identifier": "proposed_change__validator",
                     "optional": True,
                     "cardinality": "many",
+                    "delete_behavior": "cascade",
                 },
             ],
         },

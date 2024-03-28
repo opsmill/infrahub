@@ -521,8 +521,9 @@ class NodeListGetRelationshipsQuery(Query):
                 peer as peer_node
         }
         WITH
-            collect([relationship_path, node_rel, relationship, peer_rel]) as enriched_paths,
+            collect([relationship_path, node_rel, peer_rel]) as enriched_paths,
             start_node,
+            relationship,
             peer_node
         CALL {
             WITH enriched_paths, start_node, peer_node
@@ -530,23 +531,21 @@ class NodeListGetRelationshipsQuery(Query):
             RETURN
                 path_to_check[0] as current_path,
                 start_node as n,
-                path_to_check[1] as r1,
-                path_to_check[2] as rel,
-                path_to_check[3] as r2,
+                relationship as rel,
                 peer_node as peer
             ORDER BY
                 (path_to_check[1]).from DESC,
-                (path_to_check[3]).from DESC
+                (path_to_check[2]).from DESC
             LIMIT 1
         }
-        WITH n, r1, rel, r2, peer, current_path
-        WITH n, r1, rel, r2, peer, current_path
+        WITH n, rel, peer, current_path
+        WITH n, rel, peer, current_path
         WHERE all(r in relationships(current_path) WHERE r.status = "active")
         """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
 
-        self.return_labels = ["n", "rel", "peer", "r1", "r2"]
+        self.return_labels = ["n", "rel", "peer"]
 
     def get_peers_group_by_node(self) -> Dict[str, Dict[str, List[str]]]:
         peers_by_node = defaultdict(lambda: defaultdict(list))
