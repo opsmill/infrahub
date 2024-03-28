@@ -22,6 +22,7 @@ from infrahub_sdk.ctl.branch import app as branch_app
 from infrahub_sdk.ctl.check import run as run_check
 from infrahub_sdk.ctl.client import initialize_client, initialize_client_sync
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
+from infrahub_sdk.ctl.generator import run as run_generator
 from infrahub_sdk.ctl.render import list_jinja2_transforms
 from infrahub_sdk.ctl.repository import get_repository_config
 from infrahub_sdk.ctl.schema import app as schema
@@ -78,6 +79,29 @@ def check(
         list_available=list_available,
         name=check_name,
         variables=variables_dict,
+    )
+
+
+@app.command(name="generator")
+async def generator(
+    generator_name: str = typer.Argument(default="", help="Name of the Generator"),
+    branch: Optional[str] = None,
+    path: str = typer.Option(".", help="Root directory"),
+    debug: bool = False,
+    _: str = CONFIG_PARAM,
+    list_available: bool = typer.Option(False, "--list", help="Show available Generators"),
+    variables: Optional[List[str]] = typer.Argument(
+        None, help="Variables to pass along with the query. Format key=value key=value."
+    ),
+) -> None:
+    """Run a generator script."""
+    await run_generator(
+        generator_name=generator_name,
+        branch=branch,
+        path=path,
+        debug=debug,
+        list_available=list_available,
+        variables=variables,
     )
 
 

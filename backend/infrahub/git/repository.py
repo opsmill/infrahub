@@ -25,8 +25,10 @@ from infrahub_sdk import (
     InfrahubRepositoryConfig,
     ValidationError,
 )
+from infrahub_sdk.exceptions import ModuleImportError
 from infrahub_sdk.schema import (
     InfrahubCheckDefinitionConfig,
+    InfrahubGeneratorDefinitionConfig,
     InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
 )
@@ -1372,6 +1374,108 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             )
             await check_definition_in_graph[check_name].delete()
 
+    async def import_generator_definitions(
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
+    ) -> None:
+        commit_wt = self.get_worktree(identifier=commit)
+        branch_wt = self.get_worktree(identifier=commit or branch_name)
+
+        generators = []
+        for generator in config_file.generator_definitions:
+            log.debug(self.name, import_type="generator_definition", file=generator.file_path)
+            file_info = extract_repo_file_information(
+                full_filename=os.path.join(branch_wt.directory, generator.file_path.as_posix()),
+                repo_directory=self.directory_root,
+                worktree_directory=commit_wt.directory,
+            )
+
+            try:
+                generator.load_class(import_root=self.directory_root, relative_path=file_info.relative_repo_path_dir)
+                generators.append(generator)
+            except ModuleImportError as exc:
+                await self.log.warning(
+                    self.name, import_type="generator_definition", file=generator.file_path.as_posix(), error=str(exc)
+                )
+                continue
+
+        local_generator_definitions = {generator.name: generator for generator in generators}
+        generator_definition_in_graph = {
+            generator.name.value: generator
+            for generator in await self.client.filters(
+                kind=InfrahubKind.GENERATORDEFINITION, branch=branch_name, repository__ids=[str(self.id)]
+            )
+        }
+
+        present_in_both, only_graph, only_local = compare_lists(
+            list1=list(generator_definition_in_graph.keys()), list2=list(local_generator_definitions.keys())
+        )
+
+        for generator_name in only_local:
+            await self.log.info(
+                f"New GeneratorDefinition {generator_name!r} found, creating",
+                repository=self.name,
+                branch=branch_name,
+                commit=commit,
+            )
+            await self._create_generator_definition(
+                branch_name=branch_name, generator=local_generator_definitions[generator_name]
+            )
+
+        for generator_name in present_in_both:
+            if await self._generator_requires_update(
+                generator=local_generator_definitions[generator_name],
+                existing_generator=generator_definition_in_graph[generator_name],
+                branch_name=branch_name,
+            ):
+                await self.log.info(
+                    f"New version of GeneratorDefinition {generator_name!r} found, updating",
+                    repository=self.name,
+                    branch=branch_name,
+                    commit=commit,
+                )
+
+                await self._update_generator_definition(
+                    generator=local_generator_definitions[generator_name],
+                    existing_generator=generator_definition_in_graph[generator_name],
+                )
+
+        for generator_name in only_graph:
+            await self.log.info(
+                f"GeneratorDefinition '{generator_name!r}' not found locally, deleting",
+                repository=self.name,
+                branch=branch_name,
+                commit=commit,
+            )
+            await generator_definition_in_graph[generator_name].delete()
+
+    async def _generator_requires_update(
+        self, generator: InfrahubGeneratorDefinitionConfig, existing_generator: InfrahubNode, branch_name: str
+    ) -> bool:
+        graphql_queries = await self.client.filters(
+            kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, name__value=generator.query, populate_store=True
+        )
+        if graphql_queries:
+            generator.query = graphql_queries[0].id
+        targets = await self.client.filters(
+            kind=InfrahubKind.GENERICGROUP,
+            branch=branch_name,
+            name__value=generator.targets,
+            populate_store=True,
+            fragment=True,
+        )
+        if targets:
+            generator.targets = targets[0].id
+
+        if (
+            existing_generator.query.id != generator.query
+            or existing_generator.file_path.value != str(generator.file_path)
+            or existing_generator.class_name.value != generator.class_name
+            or existing_generator.parameters.value != generator.parameters
+            or existing_generator.targets.id != generator.targets
+        ):
+            return True
+        return False
+
     async def import_python_transforms(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
@@ -1527,6 +1631,48 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return transforms
 
+    async def _create_generator_definition(
+        self, generator: InfrahubGeneratorDefinitionConfig, branch_name: str
+    ) -> InfrahubNode:
+        data = generator.dict(exclude_none=True, exclude={"file_path"})
+        data["file_path"] = str(generator.file_path)
+        data["repository"] = self.id
+
+        schema = await self.client.schema.get(kind=InfrahubKind.GENERATORDEFINITION, branch=branch_name)
+
+        create_payload = self.client.schema.generate_payload_create(
+            schema=schema,
+            data=data,
+            source=str(self.id),
+            is_protected=True,
+        )
+        obj = await self.client.create(kind=InfrahubKind.GENERATORDEFINITION, branch=branch_name, **create_payload)
+        await obj.save()
+
+        return obj
+
+    async def _update_generator_definition(
+        self,
+        generator: InfrahubGeneratorDefinitionConfig,
+        existing_generator: InfrahubNode,
+    ) -> None:
+        if existing_generator.query.id != generator.query:
+            existing_generator.query = {"id": generator.query, "source": str(self.id), "is_protected": True}
+
+        if existing_generator.class_name.value != generator.class_name:
+            existing_generator.class_name.value = generator.class_name
+
+        if existing_generator.file_path.value != str(generator.file_path):
+            existing_generator.file_path.value = str(generator.file_path)
+
+        if existing_generator.parameters.value != generator.parameters:
+            existing_generator.parameters.value = generator.parameters
+
+        if existing_generator.targets.id != generator.targets:
+            existing_generator.targets = {"id": generator.targets, "source": str(self.id), "is_protected": True}
+
+        await existing_generator.save()
+
     async def create_python_check_definition(self, branch_name: str, check: CheckDefinitionInformation) -> InfrahubNode:
         data = {
             "name": check.name,
@@ -1639,6 +1785,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     async def import_all_python_files(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig):
         await self.import_python_check_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
         await self.import_python_transforms(branch_name=branch_name, commit=commit, config_file=config_file)
+        await self.import_generator_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
 
     async def find_files(
         self,
