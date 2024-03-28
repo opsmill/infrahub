@@ -27,18 +27,31 @@ class IPPrefixSubnetFetch(Query):
         self.add_to_query(query)
         self.return_labels = ["pfx", "av"]
 
-    def get_subnets(self):
-        """Return a list of all subnets fitting in the prefix."""
-        subnets = []
+    def get_container(self):
+        """Return the more specific prefix that contains this one."""
+        prefix = ipaddress.ip_network(self.ip_prefix.prefix.value)
+        candidates: List[Union[ipaddress.IPv6Network, ipaddress.IPv4Network]] = []
 
         for result in self.get_results():
-            prefix = ipaddress.ip_network(result.get("av").get("value"))
-            if self.ip_prefix.prefix.version != prefix.version:
-                continue
-            if not prefix.subnet_of(ipaddress.ip_network(self.ip_prefix.prefix.value)):
-                continue
+            candidate = ipaddress.ip_network(result.get("av").get("value"))
+            if prefix.version == candidate.version and prefix != candidate and prefix.subnet_of(candidate):
+                candidates.append(candidate)  # FIXME: these should be nodes
 
-            subnets.append(prefix)  # FIXME: these should be nodes
+        container: Union[ipaddress.IPv6Network, ipaddress.IPv4Network] = None
+        for candidate in candidates:
+            if not container or candidate.prefixlen > container.prefixlen:
+                container = candidate
+        return container
+
+    def get_subnets(self):
+        """Return a list of all subnets fitting in the prefix."""
+        prefix = ipaddress.ip_network(self.ip_prefix.prefix.value)
+        subnets: List[Union[ipaddress.IPv6Network, ipaddress.IPv4Network]] = []
+
+        for result in self.get_results():
+            subnet = ipaddress.ip_network(result.get("av").get("value"))
+            if prefix.version == subnet.version and prefix != subnet and subnet.subnet_of(prefix):
+                subnets.append(subnet)  # FIXME: these should be nodes
 
         return subnets
 
@@ -60,18 +73,24 @@ class IPPrefixIPAddressFetch(Query):
 
     def get_addresses(self):
         """Return a list of all addresses fitting in the prefix."""
-        addresses = []
+        prefix = ipaddress.ip_network(self.ip_prefix.prefix.value)
+        addresses: List[Union[ipaddress.IPv6Interface, ipaddress.IPv4Interface]] = []
 
         for result in self.get_results():
             address = ipaddress.ip_interface(result.get("av").get("value"))
-            if self.ip_prefix.prefix.version != address.version:
-                continue
-            if address not in ipaddress.ip_network(self.ip_prefix.prefix.value):
-                continue
-
-            addresses.append(address)  # FIXME: these should be nodes
+            if prefix.version == address.version and address in prefix:
+                addresses.append(address)  # FIXME: these should be nodes
 
         return addresses
+
+
+async def get_container(
+    ip_prefix, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
+) -> List[str]:
+    branch = await registry.get_branch(db=db, branch=branch)
+    query = await IPPrefixSubnetFetch.init(db=db, branch=branch, ip_prefix=ip_prefix, at=at)
+    await query.execute(db=db)
+    return query.get_container()
 
 
 async def get_subnets(
