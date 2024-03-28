@@ -27,8 +27,16 @@ export const ProposedChangesCreate = () => {
     <Content>
       <Content.Title title="New proposed change" />
 
-      <div className="flex flex-col p-2 items-stretch gap-4 max-w-2xl m-auto">
+      <div className="flex flex-col p-2 py-4 items-stretch gap-4 max-w-2xl m-auto">
         <div className="flex flex-wrap md:flex-nowrap items-center gap-2 justify-center w-full ">
+          <Card className="w-full">
+            <h2 className="font-semibold">Source branch</h2>
+            <p className="text-gray-600">Select a branch to compare</p>
+            <Select options={branchesToSelectOptions(sourceBranches)} />
+          </Card>
+
+          <Icon icon="mdi:arrow-bottom" className="text-xl shrink-0 md:-rotate-90 text-gray-500" />
+
           <Card className="w-full">
             <h2 className="font-semibold">Destination branch</h2>
             <p className="text-gray-600">It targets the default branch</p>
@@ -37,14 +45,6 @@ export const ProposedChangesCreate = () => {
               value={defaultBranch[0].id}
               options={branchesToSelectOptions(defaultBranch)}
             />
-          </Card>
-
-          <Icon icon="mdi:arrow-top" className="text-xl shrink-0 md:-rotate-90" />
-
-          <Card className="w-full">
-            <h2 className="font-semibold">Source branch</h2>
-            <p className="text-gray-600">Select a branch to compare</p>
-            <Select options={branchesToSelectOptions(sourceBranches)} />
           </Card>
         </div>
 
