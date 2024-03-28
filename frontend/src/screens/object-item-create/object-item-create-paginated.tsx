@@ -24,6 +24,7 @@ interface iProps {
   formStructure?: DynamicFieldData[];
   customObject?: any;
   preventObjectsCreation?: boolean;
+  submitLabel?: string;
 }
 
 export default function ObjectItemCreate(props: iProps) {
@@ -35,6 +36,7 @@ export default function ObjectItemCreate(props: iProps) {
     formStructure,
     customObject = {},
     preventObjectsCreation,
+    submitLabel,
   } = props;
 
   const [schemaList] = useAtom(schemaState);
@@ -46,7 +48,13 @@ export default function ObjectItemCreate(props: iProps) {
 
   const schema = schemaList.find((s) => s.kind === objectname);
 
-  const fields = formStructure ?? getFormStructureForCreateEdit(schema, schemaList, genericsList);
+  const fields =
+    formStructure ??
+    getFormStructureForCreateEdit({
+      schema,
+      schemas: schemaList,
+      generics: genericsList,
+    });
 
   async function onSubmit(data: any) {
     setIsLoading(true);
@@ -105,7 +113,7 @@ export default function ObjectItemCreate(props: iProps) {
             onCancel={onCancel}
             fields={fields}
             isLoading={isLoading}
-            submitLabel={"Create"}
+            submitLabel={submitLabel ?? "Create"}
             preventObjectsCreation={preventObjectsCreation}
           />
         </div>
