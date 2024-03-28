@@ -119,6 +119,6 @@ class GeneratedRelationshipSchema(HashableModel):
     )
     delete_behavior: RelationshipDeleteBehavior = Field(
         default=RelationshipDeleteBehavior.NO_ACTION,
-        description="If set to CASCADE, when this node is deleted, node(s) on the other side of this relationship are also deleted",
+        description="If cascade, related node(s) are deleted when this node is deleted",
         json_schema_extra={"update": "allowed"},
     )
