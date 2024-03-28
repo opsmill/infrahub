@@ -127,11 +127,11 @@ export const Filters = (props: tFilters) => {
       <div className="flex flex-1 items-center">
         <ButtonWithTooltip
           tooltipEnabled
-          tooltipContent="Add relationship filter"
+          tooltipContent="Apply filters"
           buttonType={BUTTON_TYPES.INVISIBLE}
           className="h-full rounded-r-md border border-transparent"
           type="submit"
-          data-testid="add-relationship-filter"
+          data-testid="apply-filters"
           onClick={handleShowFilters}>
           <Icon icon={"mdi:filter-outline"} className="text-custom-blue-100" />
         </ButtonWithTooltip>
