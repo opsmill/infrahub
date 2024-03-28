@@ -83,6 +83,8 @@ async def _start(debug: bool, port: int) -> None:
     async with service.database.start_session() as db:
         await initialization(db=db)
 
+    await service.component.refresh_schema_hash()
+
     await initialize_git_agent(service=service)
 
     build_component_registry()

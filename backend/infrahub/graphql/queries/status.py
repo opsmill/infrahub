@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, Field, Int, ObjectType
+from graphene import Boolean, Field, List, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.services import InfrahubServices, services
@@ -14,90 +14,57 @@ if TYPE_CHECKING:
     from infrahub.graphql import GraphqlContext
 
 
-class StatusWorkerCount(ObjectType):
-    api_servers = Int(required=True)
-    git_agents = Int(required=True)
+class StatusWorker(ObjectType):
+    id = Field(String, required=True)
+    active = Field(Boolean, required=True)
+    schema_hash = Field(String, required=False)
 
 
-class StatusSchemaHash(ObjectType):
-    synced = Field(Boolean, required=True)
+class StatusWorkerEdge(ObjectType):
+    node = Field(StatusWorker, required=True)
 
 
-class StatusSchemaHashOverview(ObjectType):
-    all = Field(
-        Boolean,
-        required=True,
-        description="Indicates if all workers and agents are using the same schema hash for this branch",
-    )
-    api_workers = Field(
-        Boolean,
-        required=True,
-        description="Indicates if all api workers are using the same schema hash for this branch",
-    )
-    git_agents = Field(
-        Boolean, required=True, description="Indicates if all git agents are using the same schema hash for this branch"
-    )
-
-
-class StatusOverview(ObjectType):
-    online = Field(StatusWorkerCount, required=True)
-    schema_hash = Field(StatusSchemaHashOverview, required=True)
+class StatusWorkerEdges(ObjectType):
+    edges = Field(List(of_type=StatusWorkerEdge), required=True)
 
 
 class Status(ObjectType):
-    overview = Field(StatusOverview, required=True)
+    workers = Field(StatusWorkerEdges, required=True)
 
 
-async def resolve_overview(overview: dict, service: InfrahubServices, branch: Branch) -> dict:
+async def resolve_workers(workers: dict, service: InfrahubServices, branch: Branch) -> dict:
     response: dict[str, Any] = {}
-
-    if schema_hash := overview.get("schema_hash"):
-        response["schema_hash"] = {}
-        if "all" in schema_hash:
-            response["schema_hash"]["all"] = await service.component.schema_hash_synced(branch=branch.name)
-        if "api_workers" in schema_hash:
-            response["schema_hash"]["api_workers"] = await service.component.schema_hash_synced(
-                branch=branch.name, component="api_server"
-            )
-        if "git_agents" in schema_hash:
-            response["schema_hash"]["git_agents"] = await service.component.schema_hash_synced(
-                branch=branch.name, component="git_agent"
-            )
-
-    if online := overview.get("online"):
-        response["online"] = await resolve_online_count(
-            api_servers="api_servers" in online,
-            git_agents="git_agents" in online,
-            service=service,
-        )
+    if edges := workers.get("edges"):
+        response["edges"] = []
+        if node := edges.get("node"):
+            response["edges"] = await resolve_worker_node(node=node, service=service, branch=branch)
 
     return response
 
 
-async def resolve_online_count(api_servers: bool, git_agents: bool, service: InfrahubServices) -> dict:
-    response = {}
+async def resolve_worker_node(node: dict, service: InfrahubServices, branch: Branch) -> list[dict]:
+    response: list[dict] = []
 
-    if api_servers:
-        response["api_servers"] = await service.component.count_component(component="api_server")
-
-    if git_agents:
-        response["git_agents"] = await service.component.count_component(component="git_agent")
+    schema_hash = "schema_hash" in node
+    workers = await service.component.list_workers(branch=branch.name, schema_hash=schema_hash)
+    for worker in workers:
+        response.append({"node": worker.to_dict()})
 
     return response
 
 
 async def resolve_status(
     root: dict,  # pylint: disable=unused-argument
-    info: GraphQLResolveInfo,  # pylint: disable=unused-argument
+    info: GraphQLResolveInfo,
 ) -> dict:
     context: GraphqlContext = info.context
     service = context.service or services.service
     fields = await extract_fields_first_node(info)
     response = {}
 
-    if overview := fields.get("overview"):
-        response["overview"] = await resolve_overview(
-            overview=overview,
+    if workers := fields.get("workers"):
+        response["workers"] = await resolve_workers(
+            workers=workers,
             service=service,
             branch=context.branch,
         )
