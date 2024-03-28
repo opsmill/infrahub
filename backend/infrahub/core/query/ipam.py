@@ -134,4 +134,3 @@ async def get_ip_addresses(
     query = await IPPrefixIPAddressFetch.init(db=db, branch=branch, ip_prefix=ip_prefix, at=at)
     await query.execute(db=db)
     return query.get_addresses()
-
