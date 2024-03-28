@@ -24,6 +24,7 @@ test.describe("Object filters", () => {
         .getByTestId("select-open-option-button")
         .click();
       await page.getByTestId("side-panel-container").getByText("red").click();
+      await page.getByRole("button", { name: "Apply filters" }).scrollIntoViewIfNeeded();
       await page.getByRole("button", { name: "Apply filters" }).click();
     });
 
