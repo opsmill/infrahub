@@ -8,7 +8,7 @@ except ImportError:
 from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.playback import JSONPlayback
 from infrahub_sdk.recorder import JSONRecorder, NoRecorder, Recorder, RecorderType
-from infrahub_sdk.types import AsyncRequester, RequesterTransport, SyncRequester
+from infrahub_sdk.types import AsyncRequester, InfrahubLoggers, RequesterTransport, SyncRequester
 from infrahub_sdk.utils import get_branch, is_valid_url
 
 
@@ -44,7 +44,13 @@ class ConfigBase(pydantic.BaseSettings):
         default=False,
         description="Indicates if the default Infrahub branch to target should come from the active branch in the local Git repository.",
     )
+    identifier: Optional[str] = pydantic.Field(default=None, description="Tracker identifier")
+    insert_tracker: bool = pydantic.Field(default=False, description="Insert a tracker on queries to the server")
+    max_concurrent_execution: int = pydantic.Field(default=5, description="Max concurrent execution in batch mode")
     mode: InfrahubClientMode = pydantic.Field(InfrahubClientMode.DEFAULT, description="Default mode for the client")
+    pagination_size: int = pydantic.Field(default=50, description="Page size for queries to the server")
+    retry_delay: int = pydantic.Field(default=5, description="Number of seconds to wait until attempting a retry.")
+    retry_on_failure: bool = pydantic.Field(default=False, description="Retry operation in case of failure")
     timeout: int = pydantic.Field(default=10, description="Default connection timeout in seconds")
     transport: RequesterTransport = pydantic.Field(
         default=RequesterTransport.HTTPX,
@@ -52,6 +58,7 @@ class ConfigBase(pydantic.BaseSettings):
     )
     proxy: Optional[str] = pydantic.Field(default=None, description="Proxy address")
     proxy_mounts: Optional[ProxyMountsConfig] = pydantic.Field(default=None, description="Proxy mounts configuration")
+    update_group_context: bool = pydantic.Field(default=False, description="Update GraphQL query groups")
 
     class Config:
         env_prefix = "INFRAHUB_SDK_"
@@ -129,6 +136,15 @@ class Config(ConfigBase):
     )
     requester: Optional[AsyncRequester] = None
     sync_requester: Optional[SyncRequester] = None
+    log_: Optional[Any] = pydantic.Field(default=None, alias="log")
+
+    @property
+    def log(self) -> InfrahubLoggers:
+        # We expect the log to adhere to the definitions defined by the InfrahubLoggers object
+        # When using structlog the logger doesn't expose the expected methods by looking at the
+        # object to pydantic rejects them. This is a workaround to allow structlog to be used
+        # as a logger
+        return self.log_  # type: ignore
 
     @pydantic.root_validator(pre=True)
     @classmethod
