@@ -148,7 +148,7 @@ async def test_cannot_upsert_new_object_without_required_fields(db: InfrahubData
     )
 
     expected_error = "Field 'TestPersonCreateInput.name' of required type 'TextAttributeInput!' was not provided."
-    assert any([expected_error in error.message for error in result.errors])
+    assert any(expected_error in error.message for error in result.errors)
 
     assert await NodeManager.get_one(db=db, id=fresh_id, branch=branch) is None
 
@@ -176,7 +176,7 @@ async def test_id_for_other_schema_raises_error(
     )
 
     expected_error = f"Node with id {car_accord_main.id} exists, but it is a TestCar, not TestPerson"
-    assert any([expected_error in error.message for error in result.errors])
+    assert any(expected_error in error.message for error in result.errors)
 
 
 async def test_update_by_id_to_nonunique_value_raises_error(
@@ -202,4 +202,4 @@ async def test_update_by_id_to_nonunique_value_raises_error(
     )
 
     expected_error = "An object already exist with this value: name: Jim at name"
-    assert any([expected_error in error.message for error in result.errors])
+    assert any(expected_error in error.message for error in result.errors)
