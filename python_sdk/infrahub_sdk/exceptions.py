@@ -54,6 +54,12 @@ class SchemaNotFoundError(Error):
         super().__init__(self.message)
 
 
+class ModuleImportError(Error):
+    def __init__(self, message: Optional[str] = None):
+        self.message = message or "Unable to import the module"
+        super().__init__(self.message)
+
+
 class NodeNotFoundError(Error):
     def __init__(
         self,

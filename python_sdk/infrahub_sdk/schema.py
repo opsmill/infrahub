@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from enum import Enum
 from pathlib import Path  # noqa: TCH003
-from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Tuple, TypedDict, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Tuple, Type, TypedDict, TypeVar, Union
 from urllib.parse import urlencode
 
 import httpx
@@ -13,7 +13,9 @@ try:
 except ImportError:
     import pydantic  # type: ignore[no-redef]
 
-from infrahub_sdk.exceptions import SchemaNotFoundError, ValidationError
+from infrahub_sdk._importer import import_module
+from infrahub_sdk.exceptions import ModuleImportError, SchemaNotFoundError, ValidationError
+from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.utils import duplicates
 
@@ -94,6 +96,35 @@ class InfrahubCheckDefinitionConfig(InfrahubRepositoryConfigElement):
         extra = "forbid"
 
 
+class InfrahubGeneratorDefinitionConfig(InfrahubRepositoryConfigElement):
+    name: str = pydantic.Field(..., description="The name of the Generator Definition")
+    file_path: Path = pydantic.Field(..., description="The file within the repository with the generator code.")
+    query: str = pydantic.Field(..., description="The GraphQL query to use as input.")
+    parameters: Dict[str, Any] = pydantic.Field(
+        default_factory=dict, description="The input parameters required to run this check"
+    )
+    targets: str = pydantic.Field(..., description="The group to target when running this generator")
+    class_name: str = pydantic.Field(default="Generator", description="The name of the generator class to run.")
+
+    class Config:
+        extra = "forbid"
+
+    def load_class(
+        self, import_root: Optional[str] = None, relative_path: Optional[str] = None
+    ) -> Type[InfrahubGenerator]:
+        module = import_module(module_path=self.file_path, import_root=import_root, relative_path=relative_path)
+
+        if self.class_name not in dir(module):
+            raise ModuleImportError(message=f"The specified class {self.class_name} was not found within the module")
+
+        generator_class = getattr(module, self.class_name)
+
+        if not issubclass(generator_class, InfrahubGenerator):
+            raise ModuleImportError(message=f"The specified class {self.class_name} is not an Infrahub Generator")
+
+        return generator_class
+
+
 class InfrahubPythonTransformConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the Transform")
     file_path: Path = pydantic.Field(..., description="The file within the repository with the transform code.")
@@ -108,6 +139,7 @@ RESOURCE_MAP: Dict[Any, str] = {
     InfrahubCheckDefinitionConfig: "check_definitions",
     InfrahubRepositoryArtifactDefinitionConfig: "artifact_definitions",
     InfrahubPythonTransformConfig: "python_transforms",
+    InfrahubGeneratorDefinitionConfig: "generator_definitions",
 }
 
 
@@ -125,8 +157,13 @@ class InfrahubRepositoryConfig(pydantic.BaseModel):
     python_transforms: List[InfrahubPythonTransformConfig] = pydantic.Field(
         default_factory=list, description="Python data transformations"
     )
+    generator_definitions: List[InfrahubGeneratorDefinitionConfig] = pydantic.Field(
+        default_factory=list, description="Generator definitions"
+    )
 
-    @pydantic.validator("jinja2_transforms", "check_definitions", "artifact_definitions", "python_transforms")
+    @pydantic.validator(
+        "jinja2_transforms", "check_definitions", "artifact_definitions", "python_transforms", "generator_definitions"
+    )
     @classmethod
     def unique_items(cls, v: Any, **kwargs: Dict[str, Any]) -> Any:  # pylint: disable=unused-argument
         names = [item.name for item in v]
@@ -165,6 +202,12 @@ class InfrahubRepositoryConfig(pydantic.BaseModel):
 
     def get_artifact_definition(self, name: str) -> InfrahubRepositoryArtifactDefinitionConfig:
         return self._get_resource(resource_id=name, resource_type=InfrahubRepositoryArtifactDefinitionConfig)
+
+    def has_generator_definition(self, name: str) -> bool:
+        return self._has_resource(resource_id=name, resource_type=InfrahubGeneratorDefinitionConfig)
+
+    def get_generator_definition(self, name: str) -> InfrahubGeneratorDefinitionConfig:
+        return self._get_resource(resource_id=name, resource_type=InfrahubGeneratorDefinitionConfig)
 
     def has_python_transform(self, name: str) -> bool:
         return self._has_resource(resource_id=name, resource_type=InfrahubPythonTransformConfig)
