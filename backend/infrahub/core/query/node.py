@@ -526,7 +526,7 @@ class NodeListGetRelationshipsQuery(Query):
             relationship,
             peer_node
         CALL {
-            WITH enriched_paths, start_node, peer_node
+            WITH enriched_paths, start_node, relationship, peer_node
             UNWIND enriched_paths as path_to_check
             RETURN
                 path_to_check[0] as current_path,
