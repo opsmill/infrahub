@@ -84,7 +84,14 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const formStructure =
     formStructureFromProps ??
-    getFormStructureForCreateEdit(schema, schemaList, genericsList, objectDetailsData, user, true);
+    getFormStructureForCreateEdit({
+      schema,
+      schemas: schemaList,
+      generics: genericsList,
+      row: objectDetailsData,
+      user,
+      isUpdate: true,
+    });
 
   async function onSubmit(data: any) {
     const updatedObject = getMutationDetailsFromFormData(schema, data, "update", objectDetailsData);
