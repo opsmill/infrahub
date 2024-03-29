@@ -11,6 +11,7 @@ from infrahub.core.node import Node
 from infrahub.core.query.ipam import get_container, get_ip_addresses, get_subnets
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import NodeNotFoundError
 from infrahub.log import get_logger
 
 from .main import InfrahubMutationMixin, InfrahubMutationOptions
@@ -104,9 +105,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ) -> Tuple[Node, Self]:
-        context: GraphqlContext = info.context
-
-        data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch))
+        # context: GraphqlContext = info.context
 
         prefix, result = await super().mutate_update(root=root, info=info, data=data, branch=branch, at=at)
 
@@ -116,5 +115,33 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             # Find if children relationshps already exist, create them if not, update them if incorrect
             # Find if some IP addresses relationships already exist, create them if not, update them if incorrect
             pass
+
+        return prefix, result
+
+    @classmethod
+    async def mutate_delete(
+        cls,
+        root,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+        at: str,
+    ):
+        context: GraphqlContext = info.context
+
+        prefix = await NodeManager.get_one(db=context.db, id=data.get("id"), branch=branch, at=at)
+        if not prefix:
+            raise NodeNotFoundError(branch, cls._meta.schema.kind, data.get("id"))
+
+        # Attach children to the current parent of the node before deleting the node
+        node_parent = await prefix.parent.get_peer(db=context.db)
+        if node_parent:
+            node_children = await prefix.children.get_peers(db=context.db)
+            for child in node_children.values():
+                await node_parent.children.update(db=context.db, data=child)
+            await node_parent.children.save(db=context.db)
+
+        # Proceed to node deletion
+        prefix, result = await super().mutate_delete(root=root, info=info, data=data, branch=branch, at=at)
 
         return prefix, result

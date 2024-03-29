@@ -24,6 +24,18 @@ mutation CreatePrefix($prefix: String!) {
 }
 """
 
+DELETE_IPPREFIX = """
+mutation DeletePrefix($id: String!) {
+    IpamIPPrefixDelete(
+        data: {
+            id: $id
+        }
+    ) {
+        ok
+    }
+}
+"""
+
 GET_IPPREFIX = """
 query GetPrefixWithParent($prefix: String!) {
     IpamIPPrefix(prefix__value: $prefix) {
@@ -145,3 +157,76 @@ async def test_ipprefix_create_reverse(
     assert not result.errors
     assert len(result.data["IpamIPPrefix"]["edges"]) == 1
     assert result.data["IpamIPPrefix"]["edges"][0]["node"]["parent"]["node"]["prefix"]["value"] == str(supernet)
+
+
+async def test_ipprefix_delete(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    """Make sure parent/children relationship are set when creating a parent after a child."""
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    networks = [
+        ipaddress.ip_network("2001:db8::/32"),
+        ipaddress.ip_network("2001:db8::/48"),
+        ipaddress.ip_network("2001:db8::/56"),
+        ipaddress.ip_network("2001:db8::/64"),
+    ]
+    network_nodes = []
+    for n in networks:
+        result = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_IPPREFIX,
+            context_value=gql_params.context,
+            variable_values={"prefix": str(n)},
+        )
+
+        assert not result.errors
+        assert result.data["IpamIPPrefixCreate"]["ok"]
+        network_nodes.append(result.data["IpamIPPrefixCreate"]["object"]["id"])
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=DELETE_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"id": network_nodes[0]},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPPrefixDelete"]["ok"]
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=GET_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(networks[1])},
+    )
+
+    # Removing the parent prefix means this prefix' parent should now be null
+    assert not result.errors
+    assert len(result.data["IpamIPPrefix"]["edges"]) == 1
+    assert not result.data["IpamIPPrefix"]["edges"][0]["node"]["parent"]["node"]
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=DELETE_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"id": network_nodes[2]},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPPrefixDelete"]["ok"]
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=GET_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(networks[3])},
+    )
+
+    # Removing a node in the mddle should relocate children prefixes to a new parent prefix
+    assert not result.errors
+    assert len(result.data["IpamIPPrefix"]["edges"]) == 1
+    assert result.data["IpamIPPrefix"]["edges"][0]["node"]["parent"]["node"]["id"] == network_nodes[1]
