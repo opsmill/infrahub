@@ -47,13 +47,13 @@ class UniquenessQueryResultsIndex:
             if relationship_identifier:
                 if relationship_identifier not in self._relationship_index:
                     self._relationship_index[relationship_identifier] = defaultdict(set)
-                if attr_value and node_id:
+                if attr_value and attr_value != "NULL" and node_id:
                     self._relationship_index[relationship_identifier][attr_value].add(node_id)
                     self._node_index[node_id][relationship_identifier] = attr_value
             elif attr_name:
                 if attr_name not in self._attribute_index:
                     self._attribute_index[attr_name] = defaultdict(set)
-                if attr_value and node_id:
+                if attr_value and attr_value != "NULL" and node_id:
                     self._attribute_index[attr_name][attr_value].add(node_id)
                     self._node_index[node_id][attr_name] = attr_value
 
@@ -84,9 +84,16 @@ class UniquenessQueryResultsIndex:
             else:
                 continue
         for node_id, attribute_details in self._node_index.items():
+            node_includes_none = False
             grouped_key = GroupedIndexKey()
             for element_key in key_group:
-                grouped_key.add_key((element_key, attribute_details.get(element_key)))
+                element_value = attribute_details.get(element_key)
+                if element_value is None:
+                    node_includes_none = True
+                    break
+                grouped_key.add_key((element_key, element_value))
+            if node_includes_none:
+                continue
             if grouped_key not in node_ids_by_attr_name_and_value:
                 node_ids_by_attr_name_and_value[grouped_key] = set()
             node_ids_by_attr_name_and_value[grouped_key].add(node_id)
