@@ -6,6 +6,13 @@ const config: Config = {
   title: "Infrahub Documentation",
   tagline: "Explore our guides and examples to use Infrahub.",
   favicon: "img/favicon.ico",
+  scripts: process.env.ANALYTICS ? [
+    {
+      src: 'https://plausible.io/js/script.js',
+      defer: true,
+      'data-domain': 'docs.infrahub.app'
+    }
+  ] : [],
 
   // Set the production url of your site here
   url: process.env.DOCS_IN_APP ? "http://localhost:8000" : "https://docs.infrahub.app",
