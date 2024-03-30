@@ -4,7 +4,6 @@ from typing import Iterable, Optional, Union
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipDeleteBehavior
-from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.relationship import (
     FullRelationshipIdentifier,
@@ -97,7 +96,7 @@ class NodeDeleteIndex:
         return relationship_types
 
 
-class NodeDeleter:
+class NodeDeleteValidator:
     def __init__(self, db: InfrahubDatabase, branch: Branch):
         self.db = db
         self.branch = branch
@@ -105,16 +104,12 @@ class NodeDeleter:
         self._all_schemas_map = schema_branch.get_all(duplicate=False)
         self.index: NodeDeleteIndex = NodeDeleteIndex(all_schemas_map=self._all_schemas_map)
 
-    async def delete(self, nodes: Iterable[Node], at: Optional[Union[Timestamp, str]] = None) -> None:
+    async def get_ids_to_delete(self, nodes: Iterable[Node], at: Optional[Union[Timestamp, str]] = None) -> set[str]:
         start_schemas = {node.get_schema() for node in nodes}
         self.index.index(start_schemas=start_schemas)
         at = Timestamp(at)
 
-        node_ids_to_delete = await self._analyze_delete_dependencies(start_nodes=nodes, at=at)
-
-        nodes_by_id = await NodeManager.get_many(db=self.db, ids=list(node_ids_to_delete), at=at, branch=self.branch)
-        for node in nodes_by_id.values():
-            await node.delete(db=self.db, at=at)
+        return await self._analyze_delete_dependencies(start_nodes=nodes, at=at)
 
     async def _analyze_delete_dependencies(
         self, start_nodes: Iterable[Node], at: Optional[Union[Timestamp, str]]
