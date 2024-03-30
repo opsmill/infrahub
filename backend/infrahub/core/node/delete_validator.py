@@ -50,7 +50,7 @@ class NodeDeleteIndex:
                 break
             node_schema = self._all_schemas_map[kind_to_check]
             for relationship_schema in node_schema.relationships:
-                if relationship_schema.delete_behavior != RelationshipDeleteBehavior.CASCADE:
+                if relationship_schema.on_delete != RelationshipDeleteBehavior.CASCADE:
                     continue
                 self._add_to_dependency_graph(
                     kind=kind_to_check,

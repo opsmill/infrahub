@@ -752,7 +752,7 @@ relationship_schema = SchemaNode(
             extra={"update": UpdateSupport.NOT_APPLICABLE},
         ),
         SchemaAttribute(
-            name="delete_behavior",
+            name="on_delete",
             kind="Text",
             internal_kind=RelationshipDeleteBehavior,
             description="If cascade, related node(s) are deleted when this node is deleted",

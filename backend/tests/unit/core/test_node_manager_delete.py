@@ -95,7 +95,7 @@ async def test_cascade_delete_not_prevented(
 ):
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     person_schema = schema_branch.get(name="TestPerson", duplicate=False)
-    person_schema.get_relationship("cars").delete_behavior = RelationshipDeleteBehavior.CASCADE
+    person_schema.get_relationship("cars").on_delete = RelationshipDeleteBehavior.CASCADE
 
     await NodeManager.delete(db=db, branch=default_branch, nodes=[person_jane_main])
 
@@ -108,7 +108,7 @@ async def test_delete_with_cascade_on_many_relationship(
 ):
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     person_schema = schema_branch.get(name="TestPerson", duplicate=False)
-    person_schema.get_relationship("cars").delete_behavior = RelationshipDeleteBehavior.CASCADE
+    person_schema.get_relationship("cars").on_delete = RelationshipDeleteBehavior.CASCADE
 
     await NodeManager.delete(db=db, branch=default_branch, nodes=[person_john_main])
 
@@ -121,7 +121,7 @@ async def test_delete_with_cascade_on_one_relationship(
 ):
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema_branch.get(name="TestCar", duplicate=False)
-    car_schema.get_relationship("owner").delete_behavior = RelationshipDeleteBehavior.CASCADE
+    car_schema.get_relationship("owner").on_delete = RelationshipDeleteBehavior.CASCADE
 
     await NodeManager.delete(db=db, branch=default_branch, nodes=[car_accord_main])
 
@@ -134,7 +134,7 @@ async def test_delete_with_cascade_multiple_input_nodes(
 ):
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema_branch.get(name="TestCar", duplicate=False)
-    car_schema.get_relationship("owner").delete_behavior = RelationshipDeleteBehavior.CASCADE
+    car_schema.get_relationship("owner").on_delete = RelationshipDeleteBehavior.CASCADE
 
     await NodeManager.delete(db=db, branch=default_branch, nodes=[car_accord_main, car_prius_main])
 
@@ -147,9 +147,9 @@ async def test_delete_with_cascade_both_directions_succeeds(
 ):
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema_branch.get(name="TestCar", duplicate=False)
-    car_schema.get_relationship("owner").delete_behavior = RelationshipDeleteBehavior.CASCADE
+    car_schema.get_relationship("owner").on_delete = RelationshipDeleteBehavior.CASCADE
     person_schema = schema_branch.get(name="TestPerson", duplicate=False)
-    person_schema.get_relationship("cars").delete_behavior = RelationshipDeleteBehavior.CASCADE
+    person_schema.get_relationship("cars").on_delete = RelationshipDeleteBehavior.CASCADE
 
     await NodeManager.delete(db=db, branch=default_branch, nodes=[car_accord_main])
 

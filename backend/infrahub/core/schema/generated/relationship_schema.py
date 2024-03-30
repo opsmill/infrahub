@@ -117,7 +117,7 @@ class GeneratedRelationshipSchema(HashableModel):
     filters: list[FilterSchema] = Field(
         default_factory=list, description="Relationship filters", json_schema_extra={"update": "not_applicable"}
     )
-    delete_behavior: RelationshipDeleteBehavior = Field(
+    on_delete: RelationshipDeleteBehavior = Field(
         default=RelationshipDeleteBehavior.NO_ACTION,
         description="If cascade, related node(s) are deleted when this node is deleted",
         json_schema_extra={"update": "allowed"},
