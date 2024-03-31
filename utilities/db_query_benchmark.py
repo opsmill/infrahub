@@ -1,8 +1,6 @@
 from pathlib import Path
 
 import typer
-
-# from infrahub.database import execute_read_query_async, execute_write_query_async, execute_query_async
 from infrahub_sdk.async_typer import AsyncTyper
 from rich.progress import (
     Progress,
@@ -14,8 +12,6 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabaseMode, get_db
-
-# pylint: skip-file
 from infrahub.database.analyzer import InfrahubDatabaseAnalyzer, query_stats
 from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
