@@ -50,7 +50,10 @@ pylint = "*"
 mypy = "*"
 ipython = "~8"
 pytest-asyncio = "^0.21.1"
-pytest-httpx = "~0.21"      # Latest version with Python 3.8 support
+pytest-httpx = [
+    { version = "~0.21", python = "<3.9"},
+    { version = ">=0.30", python = ">=3.9"},
+]
 pytest-clarity = "~1.0"
 pytest-cov = "~4.1"
 pytest-xdist = "~3.4"
@@ -460,7 +463,6 @@ ignore = [
     "C408",     # Unnecessary `dict` call (rewrite as a literal)
     "C409",     # Unnecessary `list` literal passed to `tuple()` (rewrite as a `tuple` literal)
     "C414",     # Unnecessary `list` call within `sorted()`
-    "C419",     # Unnecessary list comprehension.
     "N801",     # Class name should use CapWords convention
     "N802",     # Function name should be lowercase
     "N805",     # First argument of a method should be named self

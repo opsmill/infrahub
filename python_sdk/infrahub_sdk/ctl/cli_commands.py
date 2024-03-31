@@ -22,6 +22,7 @@ from infrahub_sdk.ctl.branch import app as branch_app
 from infrahub_sdk.ctl.check import run as run_check
 from infrahub_sdk.ctl.client import initialize_client, initialize_client_sync
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
+from infrahub_sdk.ctl.render import list_jinja2_transforms
 from infrahub_sdk.ctl.repository import get_repository_config
 from infrahub_sdk.ctl.schema import app as schema
 from infrahub_sdk.ctl.transform import list_transforms
@@ -190,13 +191,14 @@ def _run_transform(query: str, variables: Dict[str, Any], transformer: Callable,
 
 @app.command(name="render")
 def render(
-    transform_name: str,
+    transform_name: str = typer.Argument(default="", help="Name of the Python transformation", show_default=False),
     variables: Optional[List[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
     ),
     branch: str = typer.Option(None, help="Branch on which to render the transform."),
     debug: bool = False,
     _: str = CONFIG_PARAM,
+    list_available: bool = typer.Option(False, "--list", help="Show available transforms"),
     out: str = typer.Option(None, help="Path to a file to save the result."),
 ) -> None:
     """Render a local Jinja2 Transform for debugging purpose."""
@@ -204,10 +206,15 @@ def render(
     variables_dict = parse_cli_vars(variables)
     repository_config = get_repository_config(Path(config.INFRAHUB_REPO_CONFIG_FILE))
 
+    if list_available:
+        list_jinja2_transforms(config=repository_config)
+        return
+
     try:
         transform_config = repository_config.get_jinja2_transform(name=transform_name)
     except KeyError as exc:
-        console.print(f"[red]Unable to find {transform_name} in {config.INFRAHUB_REPO_CONFIG_FILE}")
+        console.print(f'[red]Unable to find "{transform_name}" in {config.INFRAHUB_REPO_CONFIG_FILE}')
+        list_jinja2_transforms(config=repository_config)
         raise typer.Exit(1) from exc
 
     transformer = functools.partial(render_jinja2_template, transform_config.template_path, variables_dict)

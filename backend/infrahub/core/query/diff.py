@@ -238,6 +238,7 @@ class DiffRelationshipQuery(DiffQuery):
                     AND ((r.to >= $diff_from AND r.to <= $diff_to) OR r.to is NULL))
                 )
             )
+            AND sn <> dn
             RETURN rel as rel1, sn as sn1, dn as dn1, r1 as r11, r2 as r21
             ORDER BY r1.branch_level DESC, r1.from DESC
             LIMIT 1
@@ -278,6 +279,7 @@ class DiffRelationshipPropertyQuery(DiffQuery):
             MATCH p = ((sn:Node)-[r1]-(rel)-[r2]-(dn:Node))
             WHERE r1.branch = r2.branch AND (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL))
             AND r1.from = r2.from AND r1.status = r2.status AND all(r IN relationships(p) WHERE ( %s ))
+            AND sn <> dn
             RETURN rel as rel1, sn as sn1, dn as dn1, r1 as r11, r2 as r21
             ORDER BY r1.branch_level DESC, r1.from DESC
             LIMIT 1

@@ -79,7 +79,7 @@ export const Form = ({
   };
 
   return (
-    <form className="flex-1 flex flex-col w-full" data-cy="form">
+    <form className="flex-1 flex flex-col w-full overflow-auto" data-cy="form">
       <FormProvider {...formMethods}>
         <div className="space-y-12 px-4 flex-1">
           <div className="">

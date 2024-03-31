@@ -131,6 +131,7 @@ class BaseClient:
 
         self.update_group_context = update_group_context
         self.identifier = identifier
+        self.group_context: Union[InfrahubGroupContext, InfrahubGroupContextSync]
         self._initialize()
 
     def _initialize(self) -> None:
@@ -151,10 +152,13 @@ class BaseClient:
         identifier: Optional[str] = None,
         params: Optional[Dict[str, Any]] = None,
         delete_unused_nodes: bool = False,
+        group_type: Optional[str] = None,
     ) -> Self:
         self.mode = InfrahubClientMode.TRACKING
         identifier = identifier or self.identifier or "python-sdk"
-        self.set_context_properties(identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes)
+        self.set_context_properties(
+            identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes, group_type=group_type
+        )
         return self
 
     def set_context_properties(
@@ -163,12 +167,22 @@ class BaseClient:
         params: Optional[Dict[str, str]] = None,
         delete_unused_nodes: bool = True,
         reset: bool = True,
+        group_type: Optional[str] = None,
     ) -> None:
-        raise NotImplementedError()
+        if reset:
+            if isinstance(self, InfrahubClient):
+                self.group_context = InfrahubGroupContext(self)
+            elif isinstance(self, InfrahubClientSync):
+                self.group_context = InfrahubGroupContextSync(self)
+        self.group_context.set_properties(
+            identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes, group_type=group_type
+        )
 
 
 class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     """GraphQL Client to interact with Infrahub."""
+
+    group_context: InfrahubGroupContext
 
     def _initialize(self) -> None:
         self.schema = InfrahubSchema(self)
@@ -182,17 +196,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     @classmethod
     async def init(cls, *args: Any, **kwargs: Any) -> InfrahubClient:
         return cls(*args, **kwargs)
-
-    def set_context_properties(
-        self,
-        identifier: str,
-        params: Optional[Dict[str, str]] = None,
-        delete_unused_nodes: bool = True,
-        reset: bool = True,
-    ) -> None:
-        if reset:
-            self.group_context = InfrahubGroupContext(self)  # pylint: disable=attribute-defined-outside-init
-        self.group_context.set_properties(identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes)
 
     async def create(
         self,
@@ -582,7 +585,17 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         params: Dict[str, Any] = {}
         if payload:
             params["json"] = payload
-        async with httpx.AsyncClient() as client:
+
+        proxy_config: Dict[str, Union[str, Dict[str, httpx.HTTPTransport]]] = {}
+        if self.config.proxy:
+            proxy_config["proxy"] = self.config.proxy
+        elif self.config.proxy_mounts:
+            proxy_config["mounts"] = {
+                key: httpx.HTTPTransport(proxy=value)
+                for key, value in self.config.proxy_mounts.dict(by_alias=True).items()
+            }
+
+        async with httpx.AsyncClient(**proxy_config) as client:  # type: ignore[arg-type]
             try:
                 response = await client.request(
                     method=method.value,
@@ -792,6 +805,8 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
 
 class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
+    group_context: InfrahubGroupContextSync
+
     def _initialize(self) -> None:
         self.schema = InfrahubSchemaSync(self)
         self.branch = InfrahubBranchManagerSync(self)
@@ -803,17 +818,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
     @classmethod
     def init(cls, *args: Any, **kwargs: Any) -> InfrahubClientSync:
         return cls(*args, **kwargs)
-
-    def set_context_properties(
-        self,
-        identifier: str,
-        params: Optional[Dict[str, str]] = None,
-        delete_unused_nodes: bool = True,
-        reset: bool = True,
-    ) -> None:
-        if reset:
-            self.group_context = InfrahubGroupContextSync(self)  # pylint: disable=attribute-defined-outside-init
-        self.group_context.set_properties(identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes)
 
     def create(
         self,
@@ -1321,7 +1325,17 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         params: Dict[str, Any] = {}
         if payload:
             params["json"] = payload
-        with httpx.Client() as client:
+
+        proxy_config: Dict[str, Union[str, Dict[str, httpx.HTTPTransport]]] = {}
+        if self.config.proxy:
+            proxy_config["proxy"] = self.config.proxy
+        elif self.config.proxy_mounts:
+            proxy_config["mounts"] = {
+                key: httpx.HTTPTransport(proxy=value)
+                for key, value in self.config.proxy_mounts.dict(by_alias=True).items()
+            }
+
+        with httpx.Client(**proxy_config) as client:  # type: ignore[arg-type]
             try:
                 response = client.request(
                     method=method.value,

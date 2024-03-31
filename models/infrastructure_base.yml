@@ -11,6 +11,8 @@ generics:
       - name__value
     order_by:
       - name__value
+    uniqueness_constraints:
+      - ["device", "name__value"]
     attributes:
       - name: name
         kind: Text
@@ -421,7 +423,6 @@ nodes:
         peer: InfraInterfaceL3
         optional: true
         cardinality: one
-        kind: Parent
   - name: VLAN
     namespace: Infra
     description: "A VLAN is a logical grouping of devices in the same broadcast domain"

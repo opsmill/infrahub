@@ -25,7 +25,7 @@ DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
 MEMGRAPH_DOCKER_IMAGE = os.getenv(
     "MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-platform:2.14.0-memgraph2.14.0-lab2.11.1-mage1.14"
 )
-NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.16.0-enterprise")
+NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.18.1-enterprise")
 MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv("MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.13.0-management")
 CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4")
 

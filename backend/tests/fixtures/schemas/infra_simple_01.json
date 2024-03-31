@@ -57,7 +57,7 @@
                 {"name": "description", "kind": "Text", "optional": true}
             ],
             "relationships": [
-                {"name": "interface", "peer": "InfraInterface", "optional": true, "cardinality": "one", "kind": "Parent"}
+                {"name": "interface", "peer": "InfraInterface", "optional": false, "cardinality": "one", "kind": "Parent"}
             ]
         }
     ]
