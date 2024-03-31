@@ -381,10 +381,6 @@ module = "infrahub.message_bus.operations.*"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.server"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.tasks.registry"
 ignore_errors = true
 
