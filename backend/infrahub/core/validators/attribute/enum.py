@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from infrahub.core.constants import PathType
+from infrahub.core.constants import NULL_VALUE, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 
 from ..interface import ConstraintCheckerInterface
@@ -28,7 +28,7 @@ class AttributeEnumUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params["node_kind"] = self.node_schema.kind
         self.params["attr_name"] = self.attribute_schema.name
         self.params["allowed_values"] = self.attribute_schema.enum
-
+        self.params["null_value"] = NULL_VALUE
         query = """
         MATCH p = (n:Node)
         WHERE $node_kind IN LABELS(n)
@@ -47,7 +47,7 @@ class AttributeEnumUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND attribute_value IS NOT NULL
-        AND attribute_value <> "NULL"
+        AND attribute_value <> $null_value
         AND NOT (attribute_value IN $allowed_values)
         """ % {"branch_filter": branch_filter}
 
