@@ -355,8 +355,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         branch = self.get_branch_based_on_support_type()
 
         # ---------- Update the Value ----------
-        # current_value_dict = self.from_db(current_attr.get_node("av"))
-
         if current_attr_data.content != self.to_db():
             # Create the new AttributeValue and update the existing relationship
             query = await AttributeUpdateValueQuery.init(db=db, attr=self, at=update_at)
@@ -383,18 +381,17 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                     await update_relationships_to([rel.element_id], to=update_at, db=db)
 
         # ---------- Update the Node Properties ----------
-        # FIXME need to leverage current_attr_data
-        for prop in self._node_properties:
-            if getattr(self, f"{prop}_id") and not (
-                current_attr_result.get(prop)
-                and current_attr_result.get(prop).get("uuid") == getattr(self, f"{prop}_id")
+        for prop_name in self._node_properties:
+            if getattr(self, f"{prop_name}_id") and not (
+                prop_name in current_attr_data.node_properties
+                and current_attr_data.node_properties[prop_name].uuid == getattr(self, f"{prop_name}_id")
             ):
                 query = await AttributeUpdateNodePropertyQuery.init(
-                    db=db, attr=self, at=update_at, prop_name=prop, prop_id=getattr(self, f"{prop}_id")
+                    db=db, attr=self, at=update_at, prop_name=prop_name, prop_id=getattr(self, f"{prop_name}_id")
                 )
                 await query.execute(db=db)
 
-                rel = current_attr_result.get(f"rel_{prop}")
+                rel = current_attr_result.get(f"rel_{prop_name}")
                 if rel and rel.get("branch") == branch.name:
                     await update_relationships_to([rel.element_id], to=update_at, db=db)
 
@@ -475,7 +472,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         changed = False
 
         if "value" in data:
-            value_to_set = self.schema.convert_to_attribute_enum(data["value"])
+            if self.is_enum:
+                value_to_set = self.schema.convert_value_to_enum(data["value"])
+            else:
+                value_to_set = data["value"]
             if value_to_set != self.value:
                 self.value = value_to_set
                 changed = True
