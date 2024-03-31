@@ -53,12 +53,14 @@ class AttributeUpdateValueQuery(AttributeQuery):
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = at.to_string()
-        self.params["value"] = self.attr.to_db()
+        content = self.attr.to_db()
+        self.params["value"] = content["value"]
+        self.params["is_default"] = content["is_default"]
 
         query = (
             """
-        MATCH (a { uuid: $attr_uuid })
-        MERGE (av:AttributeValue { value: $value })
+        MATCH (a:Attribute { uuid: $attr_uuid })
+        MERGE (av:AttributeValue { value: $value, is_default: $is_default })
         CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(av)
         """
             % self.attr._rel_to_value_label
