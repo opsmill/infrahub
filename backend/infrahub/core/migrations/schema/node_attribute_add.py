@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Sequence
 
-from infrahub.core.constants import RelationshipStatus
+from infrahub.core.constants import NULL_VALUE, RelationshipStatus
 
 from ..shared import AttributeMigrationQuery, AttributeSchemaMigration
 
@@ -25,7 +25,7 @@ class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery):
         if self.migration.new_attribute_schema.default_value:
             self.params["attr_value"] = self.migration.new_attribute_schema.default_value
         else:
-            self.params["attr_value"] = "NULL"
+            self.params["attr_value"] = NULL_VALUE
 
         self.params["rel_props"] = {
             "branch": self.branch.name,

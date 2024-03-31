@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from infrahub.core.constants import PathType
+from infrahub.core.constants import NULL_VALUE, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.exceptions import ValidationError
 from infrahub.types import get_attribute_type
@@ -34,6 +34,7 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
         self.params["node_kind"] = self.node_schema.kind
         self.params["attr_name"] = self.attribute_schema.name
+        self.params["null_value"] = NULL_VALUE
 
         query = """
         MATCH p = (n:Node)
@@ -53,7 +54,7 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND attribute_value IS NOT NULL
-        AND attribute_value <> "NULL"
+        AND attribute_value <> $null_value
         """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
@@ -65,7 +66,7 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         infrahub_attribute_class = infrahub_data_type.get_infrahub_class()
         for result in self.get_results():
             value = result.get("attribute_value")
-            if value in (None, "NULL"):
+            if value in (None, NULL_VALUE):
                 continue
             try:
                 infrahub_attribute_class.validate(
