@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, List
 
 from pydantic import BaseModel
@@ -31,7 +32,7 @@ class IndexItem(BaseModel):
         raise NotImplementedError()
 
 
-class IndexManagerBase:
+class IndexManagerBase(ABC):
     def __init__(self, db: InfrahubDatabase):
         self.db = db
 
@@ -58,5 +59,6 @@ class IndexManagerBase:
             for item in self.items:
                 await dbt.execute_query(query=item.get_drop_query(), params={}, name="index_drop")
 
+    @abstractmethod
     async def list(self) -> List[IndexInfo]:
-        raise NotImplementedError()
+        pass
