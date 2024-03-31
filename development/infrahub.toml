@@ -30,8 +30,7 @@ enable = false
 insecure = "True"
 exporter_type = "otlp"
 exporter_protocol = "grpc"
-exporter_endpoint = "jaeger"
-exporter_port = 4317
+exporter_endpoint = "http://jaeger:4317"
 
 
 # [experimental_features]

@@ -6,12 +6,12 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type
 
 import toml
 from infrahub_sdk import generate_uuid
 from pydantic import AliasChoices, Field, ValidationError
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
 from infrahub.database.constants import DatabaseType
 from infrahub.exceptions import InitializationError
@@ -279,35 +279,17 @@ class TraceSettings(BaseSettings):
         default=TraceTransportProtocol.GRPC, description="Protocol to be used for exporting traces"
     )
     exporter_endpoint: Optional[str] = Field(default=None, description="OTLP endpoint for exporting traces")
-    exporter_port: Optional[int] = Field(
-        default=None, ge=1, le=65535, description="Specified if running on a non default port (4317)"
-    )
 
-    @property
-    def service_port(self) -> int:
-        if self.exporter_protocol == TraceTransportProtocol.GRPC:
-            default_port = 4317
-        elif self.exporter_protocol == TraceTransportProtocol.HTTP_PROTOBUF:
-            default_port = 4318
-        else:
-            default_port = 4317
-
-        return self.exporter_port or default_port
-
-    @property
-    def trace_endpoint(self) -> Optional[str]:
-        if not self.exporter_endpoint:
-            return None
-        if self.insecure:
-            scheme = "http://"
-        else:
-            scheme = "https://"
-        endpoint = str(self.exporter_endpoint) + ":" + str(self.service_port)
-
-        if self.exporter_protocol == TraceTransportProtocol.HTTP_PROTOBUF:
-            endpoint += "/v1/traces"
-
-        return scheme + endpoint
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: Type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> Tuple[PydanticBaseSettingsSource, ...]:
+        return env_settings, init_settings, dotenv_settings, file_secret_settings
 
 
 @dataclass

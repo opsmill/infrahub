@@ -1,3 +1,5 @@
+import os
+
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
     OTLPSpanExporter as GRPCSpanExporter,
@@ -31,8 +33,18 @@ def create_tracer_provider(
     else:
         raise ValueError("Exporter type unsupported by Infrahub")
 
+    extra_attributes = {}
+    if os.getenv("OTEL_RESOURCE_ATTRIBUTES"):
+        extra_attributes = dict(attr.split("=") for attr in os.getenv("OTEL_RESOURCE_ATTRIBUTES").split(","))
+
     # Resource can be required for some backends, e.g. Jaeger
-    resource = Resource(attributes={"service.name": service, "service.version": version})
+    resource = Resource(
+        attributes={
+            "service.name": service,
+            "service.version": version,
+            **extra_attributes,
+        }
+    )
     span_processor = BatchSpanProcessor(exporter)
     tracer_provider = TracerProvider(resource=resource)
     tracer_provider.add_span_processor(span_processor)
