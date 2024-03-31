@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, Generator, List, Optional, Tuple, Union
 
 from infrahub import config
@@ -13,6 +14,8 @@ from infrahub.core.utils import extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
+    from neo4j.graph import Node as Neo4jNode
+
     from infrahub.core.attribute import AttributeCreateData, BaseAttribute
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
@@ -38,35 +41,39 @@ class NodeToProcess:
 
 
 @dataclass
-class AttrToProcess:
+class AttributeNodePropertyFromDB:
+    uuid: str
+    labels: List[str]
+
+
+@dataclass
+class AttributeFromDB:
     name: str
 
     attr_labels: List[str]
-    attr_id: int
+    attr_id: str
     attr_uuid: str
 
-    attr_value_id: int
+    attr_value_id: str
     attr_value_uuid: Optional[str]
+
     value: Any
+    content: Any
 
     updated_at: str
 
     branch: str
 
-    # permission: PermissionLevel
+    is_default: bool
 
-    # time_from: Optional[str]
-    # time_to: Optional[str]
+    node_properties: Dict[str, AttributeNodePropertyFromDB] = dataclass_field(default_factory=dict)
+    flag_properties: Dict[str, bool] = dataclass_field(default_factory=dict)
 
-    source_uuid: Optional[str]
-    source_labels: Optional[List[str]]
 
-    owner_uuid: Optional[str]
-    owner_labels: Optional[List[str]]
-
-    is_inherited: Optional[bool]
-    is_protected: Optional[bool]
-    is_visible: Optional[bool]
+@dataclass
+class NodeAttributesFromDB:
+    node: Neo4jNode
+    attrs: Dict[str, AttributeFromDB] = dataclass_field(default_factory=dict)
 
 
 class NodeQuery(Query):
@@ -157,7 +164,7 @@ class NodeCreateAllQuery(NodeQuery):
         FOREACH ( attr IN $attrs |
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(a)
-            MERGE (av:AttributeValue { value: attr.value })
+            MERGE (av:AttributeValue { value: attr.content.value, is_default: attr.content.is_default })
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
             MERGE (iv:Boolean { value: attr.is_visible })
@@ -407,54 +414,62 @@ class NodeListGetAttributeQuery(Query):
             self.add_to_query(query)
             self.return_labels.extend(["owner", "rel_owner"])
 
-    def get_attributes_group_by_node(self) -> Dict[str, Dict[str, AttrToProcess]]:
-        attrs_by_node = defaultdict(lambda: {"node": None, "attrs": None})
+    def get_attributes_group_by_node(self) -> Dict[str, NodeAttributesFromDB]:
+        attrs_by_node: Dict[str, NodeAttributesFromDB] = {}
 
         for result in self.get_results_group_by(("n", "uuid"), ("a", "name")):
-            node_id = result.get("n").get("uuid")
-            attr_name = result.get("a").get("name")
-            attr = AttrToProcess(
-                name=attr_name,
-                attr_labels=result.get("a").labels,
-                attr_id=result.get("a").element_id,
-                attr_uuid=result.get("a").get("uuid"),
-                attr_value_id=result.get("av").element_id,
-                attr_value_uuid=result.get("av").get("uuid"),
-                updated_at=result.get("r2").get("from"),
-                value=result.get("av").get("value"),
-                # permission=result.permission_score,
-                branch=self.branch.name,
-                is_inherited=None,
-                is_protected=result.get("isp").get("value"),
-                is_visible=result.get("isv").get("value"),
-                source_uuid=None,
-                source_labels=None,
-                owner_uuid=None,
-                owner_labels=None,
-            )
+            node_id: str = result.get_node("n").get("uuid")
+            attr_name: str = result.get_node("a").get("name")
 
-            if self.include_source and result.get("source"):
-                attr.source_uuid = result.get("source").get("uuid")
-                attr.source_labels = result.get("source").labels
-
-            if self.include_owner and result.get("owner"):
-                attr.owner_uuid = result.get("owner").get("uuid")
-                attr.owner_labels = result.get("owner").labels
+            attr = self._extract_attribute_data(result=result)
 
             if node_id not in attrs_by_node:
-                attrs_by_node[node_id]["node"] = result.get("n")
-                attrs_by_node[node_id]["attrs"] = {}
+                attrs_by_node[node_id] = NodeAttributesFromDB(node=result.get_node("n"))
 
-            attrs_by_node[node_id]["attrs"][attr_name] = attr
+            attrs_by_node[node_id].attrs[attr_name] = attr
 
         return attrs_by_node
 
-    def get_result_by_id_and_name(self, node_id: str, attr_name: str) -> QueryResult:
+    def get_result_by_id_and_name(self, node_id: str, attr_name: str) -> Tuple[AttributeFromDB, QueryResult]:
         for result in self.get_results_group_by(("n", "uuid"), ("a", "name")):
-            if result.get("n").get("uuid") == node_id and result.get("a").get("name") == attr_name:
-                return result
+            if result.get_node("n").get("uuid") == node_id and result.get_node("a").get("name") == attr_name:
+                return self._extract_attribute_data(result=result), result
 
-        return None
+        raise IndexError(f"Unable to find the result with ID: {node_id} and NAME: {attr_name}")
+
+    def _extract_attribute_data(self, result: QueryResult) -> AttributeFromDB:
+        attr = result.get_node("a")
+        attr_value = result.get_node("av")
+
+        data = AttributeFromDB(
+            name=attr.get("name"),
+            attr_labels=list(attr.labels),
+            attr_id=attr.element_id,
+            attr_uuid=attr.get("uuid"),
+            attr_value_id=attr_value.element_id,
+            attr_value_uuid=attr_value.get("uuid"),
+            updated_at=result.get_rel("r2").get("from"),
+            value=attr_value.get("value"),
+            is_default=attr_value.get("is_default"),
+            content=attr_value._properties,
+            branch=self.branch.name,
+            flag_properties={
+                "is_protected": result.get("isp").get("value"),
+                "is_visible": result.get("isv").get("value"),
+            },
+        )
+
+        if self.include_source and result.get("source"):
+            data.node_properties["source"] = AttributeNodePropertyFromDB(
+                uuid=result.get_node("source").get("uuid"), labels=list(result.get_node("source").labels)
+            )
+
+        if self.include_owner and result.get("owner"):
+            data.node_properties["owner"] = AttributeNodePropertyFromDB(
+                uuid=result.get_node("owner").get("uuid"), labels=list(result.get_node("owner").labels)
+            )
+
+        return data
 
 
 class NodeListGetRelationshipsQuery(Query):

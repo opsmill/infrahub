@@ -3,16 +3,15 @@ from __future__ import annotations
 import ipaddress
 import re
 from enum import Enum
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
 import ujson
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import is_valid_url
 from pydantic.v1 import BaseModel, Field
 
-from infrahub import config
 from infrahub.core import registry
-from infrahub.core.constants import BranchSupportType, RelationshipStatus
+from infrahub.core.constants import NULL_VALUE, BranchSupportType, RelationshipStatus
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,
@@ -25,7 +24,7 @@ from infrahub.core.query.attribute import (
     AttributeUpdateNodePropertyQuery,
     AttributeUpdateValueQuery,
 )
-from infrahub.core.query.node import NodeListGetAttributeQuery
+from infrahub.core.query.node import AttributeFromDB, NodeListGetAttributeQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
 from infrahub.exceptions import ValidationError
@@ -34,8 +33,6 @@ from infrahub.helpers import hash_password
 from .constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.schema import AttributeSchema
@@ -52,7 +49,8 @@ class AttributeCreateData(BaseModel):
     branch_level: int
     branch_support: str
     status: str
-    value: Any = None
+    content: Dict[str, Any]
+    is_default: bool
     is_protected: bool
     is_visible: bool
     source_prop: List[ValuePropertyData] = Field(default_factory=list)
@@ -72,14 +70,15 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         branch: Branch,
         at: Timestamp,
         node: Node,
-        id: UUID = None,
+        id: Optional[str] = None,
         db_id: Optional[str] = None,
-        data: Union[dict, str] = None,
-        updated_at: Union[Timestamp, str] = None,
+        data: Optional[Union[dict, str, AttributeFromDB]] = None,
+        updated_at: Optional[Union[Timestamp, str]] = None,
+        is_default: bool = False,
         **kwargs,
     ):
-        self.id: UUID = id
-        self.db_id: str = db_id
+        self.id: Optional[str] = id
+        self.db_id: Optional[str] = db_id
 
         self.updated_at = updated_at
         self.name = name
@@ -87,39 +86,53 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         self.schema = schema
         self.branch = branch
         self.at = at
+        self.is_default = is_default
 
         self._init_node_property_mixin(kwargs)
         self._init_flag_property_mixin(kwargs)
 
         self.value = None
 
-        if data is not None and isinstance(data, dict):
-            self.value = self.from_db(data.get("value", None))
+        if data is not None and isinstance(data, AttributeFromDB):
+            self.load_from_db(data=data)
 
-            fields_to_extract_from_data = ["id", "db_id"] + self._flag_properties + self._node_properties
+        elif data is not None and isinstance(data, dict):
+            self.value = data.get("value")
+
+            if "is_default" in data:
+                self.is_default = data.get("is_default")
+
+            fields_to_extract_from_data = ["id"] + self._flag_properties + self._node_properties
             for field_name in fields_to_extract_from_data:
                 setattr(self, field_name, data.get(field_name, None))
 
             if not self.updated_at and "updated_at" in data:
                 self.updated_at = Timestamp(data.get("updated_at"))
-
-        elif data is not None:
-            self.value = self.from_db(data)
-
-        self.value = self.schema.convert_to_attribute_enum(self.value)
+        else:
+            self.value = data
 
         # Assign default values
         if self.value is None and self.schema.default_value is not None:
             self.value = self.schema.default_value
+            self.is_default = True
 
         if self.value is not None:
             self.validate(value=self.value, name=self.name, schema=self.schema)
+
+        if self.is_enum and self.value:
+            self.value = self.schema.convert_value_to_enum(self.value)
 
         if self.is_protected is None:
             self.is_protected = False
 
         if self.is_visible is None:
             self.is_visible = True
+
+    @property
+    def is_enum(self) -> bool:
+        if self.schema.enum:
+            return True
+        return False
 
     def get_branch_based_on_support_type(self) -> Branch:
         """If the attribute is branch aware, return the Branch object associated with this attribute
@@ -165,9 +178,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             ValidationError: Format of the attribute value is not valid
         """
         value_to_check = value
-        enum_value = schema.convert_to_attribute_enum(value)
-        if isinstance(enum_value, Enum):
-            value_to_check = enum_value.value
+        if schema.enum and isinstance(value, Enum):
+            value_to_check = value.value
         if not isinstance(value_to_check, cls.type):  # pylint: disable=isinstance-second-argument-not-valid-type
             raise ValidationError({name: f"{name} is not of type {schema.kind}"})
 
@@ -183,7 +195,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         Raises:
             ValidationError: Content of the attribute value is not valid
         """
-
         if schema.regex:
             try:
                 is_valid = re.match(pattern=schema.regex, string=str(value))
@@ -204,37 +215,53 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 raise ValidationError({name: f"{value} must have a maximum length of {schema.max_length!r}"})
 
         if schema.enum:
-            if config.SETTINGS.experimental_features.graphql_enums:
-                try:
-                    schema.convert_to_attribute_enum(value)
-                except ValueError as exc:
-                    raise ValidationError({name: f"{value} must be one of {schema.enum!r}"}) from exc
-            elif value not in schema.enum:
-                raise ValidationError({name: f"{value} must be one of {schema.enum!r}"})
+            try:
+                schema.convert_value_to_enum(value)
+            except ValueError as exc:
+                raise ValidationError({name: f"{value} must be one of {schema.enum!r}"}) from exc
 
-    def to_db(self):
+    def to_db(self) -> Dict[str, Any]:
+        """Return the properties of the AttributeValue node in Dict format."""
+        data: Dict[str, Any] = {"is_default": self.is_default}
         if self.value is None:
-            return "NULL"
+            data["value"] = NULL_VALUE
+        else:
+            data["value"] = self.serialize_value()
 
-        return self.serialize(self.value)
+        return data
 
-    def from_db(self, value: Any):
-        if value == "NULL":
+    def load_from_db(self, data: AttributeFromDB) -> None:
+        self.value = self.value_from_db(data=data)
+        self.is_default = data.is_default
+
+        self.id = data.attr_uuid
+        self.db_id = data.attr_id
+
+        for prop_name in self._flag_properties:
+            if prop_name in data.flag_properties:
+                setattr(self, prop_name, data.flag_properties[prop_name])
+
+        for prop_name in self._node_properties:
+            if prop_name in data.node_properties:
+                setattr(self, prop_name, data.node_properties[prop_name].uuid)
+
+        if not self.updated_at and data.updated_at:
+            self.updated_at = Timestamp(data.updated_at)
+
+    def value_from_db(self, data: AttributeFromDB) -> Any:
+        if data.value == NULL_VALUE:
             return None
+        return self.deserialize_value(data=data)
 
-        return self.deserialize(value)
-
-    def serialize(self, value: Any) -> Any:
+    def serialize_value(self) -> Any:
         """Serialize the value before storing it in the database."""
-        value = self.schema.convert_to_attribute_enum(value)
-        if isinstance(value, Enum):
-            return value.value
-        return value
+        if isinstance(self.value, Enum):
+            return self.value.value
+        return self.value
 
-    def deserialize(self, value: Any) -> Any:
+    def deserialize_value(self, data: AttributeFromDB) -> Any:
         """Deserialize the value coming from the database."""
-        value = self.schema.convert_to_attribute_enum(value)
-        return value
+        return data.value
 
     async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> bool:
         """Create or Update the Attribute in the database."""
@@ -265,12 +292,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         # Check all the relationship and update the one that are in the same branch
         rel_ids_to_update = set()
         for result in results:
-            properties_to_delete.append((result.get("r2").type, result.get("ap").element_id))
+            properties_to_delete.append((result.get_rel("r2").type, result.get_node("ap").element_id))
 
             await add_relationship(
                 src_node_id=self.db_id,
-                dst_node_id=result.get("ap").element_id,
-                rel_type=result.get("r2").type,
+                dst_node_id=result.get_node("ap").element_id,
+                rel_type=result.get_rel("r2").type,
                 branch_name=branch.name,
                 branch_level=branch.hierarchy_level,
                 at=delete_at,
@@ -323,20 +350,20 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             include_owner=True,
         )
         await query.execute(db=db)
-        current_attr = query.get_result_by_id_and_name(self.node.id, self.name)
+        current_attr_data, current_attr_result = query.get_result_by_id_and_name(self.node.id, self.name)
 
         branch = self.get_branch_based_on_support_type()
 
         # ---------- Update the Value ----------
-        current_value = self.from_db(current_attr.get("av").get("value"))
+        # current_value_dict = self.from_db(current_attr.get_node("av"))
 
-        if current_value != self.value:
+        if current_attr_data.content != self.to_db():
             # Create the new AttributeValue and update the existing relationship
             query = await AttributeUpdateValueQuery.init(db=db, attr=self, at=update_at)
             await query.execute(db=db)
 
             # TODO check that everything went well
-            rel = current_attr.get("r2")
+            rel = current_attr_result.get_rel("r2")
             if rel.get("branch") == branch.name:
                 await update_relationships_to([rel.element_id], to=update_at, db=db)
 
@@ -346,26 +373,28 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             ("is_protected", "isp", "rel_isp"),
         )
 
-        for flag_name, node_name, rel_name in SUPPORTED_FLAGS:
-            if current_attr.get(node_name).get("value") != getattr(self, flag_name):
+        for flag_name, _, rel_name in SUPPORTED_FLAGS:
+            if current_attr_data.flag_properties[flag_name] != getattr(self, flag_name):
                 query = await AttributeUpdateFlagQuery.init(db=db, attr=self, at=update_at, flag_name=flag_name)
                 await query.execute(db=db)
 
-                rel = current_attr.get(rel_name)
+                rel = current_attr_result.get(rel_name)
                 if rel.get("branch") == branch.name:
                     await update_relationships_to([rel.element_id], to=update_at, db=db)
 
         # ---------- Update the Node Properties ----------
+        # FIXME need to leverage current_attr_data
         for prop in self._node_properties:
             if getattr(self, f"{prop}_id") and not (
-                current_attr.get(prop) and current_attr.get(prop).get("uuid") == getattr(self, f"{prop}_id")
+                current_attr_result.get(prop)
+                and current_attr_result.get(prop).get("uuid") == getattr(self, f"{prop}_id")
             ):
                 query = await AttributeUpdateNodePropertyQuery.init(
                     db=db, attr=self, at=update_at, prop_name=prop, prop_id=getattr(self, f"{prop}_id")
                 )
                 await query.execute(db=db)
 
-                rel = current_attr.get(f"rel_{prop}")
+                rel = current_attr_result.get(f"rel_{prop}")
                 if rel and rel.get("branch") == branch.name:
                     await update_relationships_to([rel.element_id], to=update_at, db=db)
 
@@ -478,7 +507,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             status="active",
             branch_level=self.branch.hierarchy_level,
             branch_support=self.schema.branch.value,
-            value=self.to_db(),
+            content=self.to_db(),
+            is_default=self.is_default,
             is_protected=self.is_protected,
             is_visible=self.is_visible,
         )
@@ -506,10 +536,9 @@ class String(BaseAttribute):
 class HashedPassword(BaseAttribute):
     type = str
 
-    def serialize(self, value: str) -> str:
+    def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
-
-        return hash_password(value)
+        return hash_password(str(self.value))
 
 
 class Integer(BaseAttribute):
@@ -526,20 +555,19 @@ class Dropdown(BaseAttribute):
     @property
     def color(self) -> str:
         """Return the color for the current value"""
-        color = ""
         if self.schema.choices:
             selected = [choice for choice in self.schema.choices if choice.name == self.value]
-            if selected:
-                color = selected[0].color
+            if selected and selected[0].color:
+                return selected[0].color
 
-        return color
+        return ""
 
     @property
     def description(self) -> str:
         """Return the description for the current value"""
         if self.schema.choices:
             selected = [choice for choice in self.schema.choices if choice.name == self.value]
-            if selected:
+            if selected and selected[0].description:
                 return selected[0].description
 
         return ""
@@ -547,13 +575,12 @@ class Dropdown(BaseAttribute):
     @property
     def label(self) -> str:
         """Return the label for the current value"""
-        label = ""
         if self.schema.choices:
             selected = [choice for choice in self.schema.choices if choice.name == self.value]
-            if selected:
-                label = selected[0].label
+            if selected and selected[0].label:
+                return selected[0].label
 
-        return label
+        return ""
 
     @classmethod
     def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
@@ -653,10 +680,10 @@ class IPNetwork(BaseAttribute):
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
-    def serialize(self, value: Any) -> Any:
+    def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
 
-        return ipaddress.ip_network(value).with_prefixlen
+        return ipaddress.ip_network(str(self.value)).with_prefixlen
 
 
 class IPHost(BaseAttribute):
@@ -737,37 +764,35 @@ class IPHost(BaseAttribute):
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
-    def serialize(self, value: Any) -> Any:
+    def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
 
-        return ipaddress.ip_interface(value).with_prefixlen
+        return ipaddress.ip_interface(str(self.value)).with_prefixlen
 
 
 class ListAttribute(BaseAttribute):
     type = list
 
-    def serialize(self, value: Any) -> Any:
+    def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
+        return ujson.dumps(self.value)
 
-        return ujson.dumps(value)
-
-    def deserialize(self, value: Any) -> Any:
+    def deserialize_value(self, data: AttributeFromDB) -> Dict[str, Any]:
         """Deserialize the value (potentially) coming from the database."""
-        if isinstance(value, (str, bytes)):
-            return ujson.loads(value)
-        return value
+        if isinstance(data.value, (str, bytes)):
+            return ujson.loads(data.value)
+        return data.value
 
 
 class JSONAttribute(BaseAttribute):
     type = (dict, list)
 
-    def serialize(self, value: Any) -> Any:
+    def serialize_value(self) -> str:
         """Serialize the value before storing it in the database."""
+        return ujson.dumps(self.value)
 
-        return ujson.dumps(value)
-
-    def deserialize(self, value: Any) -> Any:
+    def deserialize_value(self, data: AttributeFromDB) -> Dict[str, Any]:
         """Deserialize the value (potentially) coming from the database."""
-        if value and isinstance(value, (str, bytes)):
-            return ujson.loads(value)
-        return value
+        if data.value and isinstance(data.value, (str, bytes)):
+            return ujson.loads(data.value)
+        return data.value
