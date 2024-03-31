@@ -73,7 +73,7 @@ async def _start(debug: bool, port: int) -> None:
             service="infrahub-git-agent",
             version=__version__,
             exporter_type=config.SETTINGS.trace.exporter_type,
-            exporter_endpoint=config.SETTINGS.trace.trace_endpoint,
+            exporter_endpoint=config.SETTINGS.trace.exporter_endpoint,
             exporter_protocol=config.SETTINGS.trace.exporter_protocol,
         )
 
