@@ -17,6 +17,7 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 **Commands**:
 
 * `constraint`: Manage Database Constraints
+* `index`: Manage Database Indexes
 * `init`: Erase the content of the database and...
 * `load-test-data`: Load test data into the database from the...
 * `migrate`: Check the current format of the internal...
@@ -34,6 +35,25 @@ $ infrahub db constraint [OPTIONS] [ACTION]:[show|add|drop] [CONFIG_FILE]
 **Arguments**:
 
 * `[ACTION]:[show|add|drop]`: [default: ConstraintAction.SHOW]
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
+
+**Options**:
+
+* `--help`: Show this message and exit.
+
+## `infrahub db index`
+
+Manage Database Indexes
+
+**Usage**:
+
+```console
+$ infrahub db index [OPTIONS] [ACTION]:[show|add|drop] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[ACTION]:[show|add|drop]`: [default: IndexAction.SHOW]
 * `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
 
 **Options**:

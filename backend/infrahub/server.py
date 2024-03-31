@@ -22,6 +22,7 @@ from infrahub import __version__, config
 from infrahub.api import router as api
 from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.components import ComponentType
+from infrahub.core.graph.index import node_indexes, rel_indexes
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode, get_db
 from infrahub.dependencies.registry import build_component_registry
@@ -51,6 +52,7 @@ async def app_initialization(application: FastAPI) -> None:
 
     # Initialize database Driver and load local registry
     database = application.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
+    database.manager.index.init(nodes=node_indexes, rels=rel_indexes)
 
     initialize_lock()
 
