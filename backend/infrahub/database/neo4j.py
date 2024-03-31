@@ -11,27 +11,35 @@ if TYPE_CHECKING:
 
 
 class IndexRelNeo4j(IndexItem):
+    @property
+    def _index_name(self) -> str:
+        return f"rel_{self.type.value.lower()}_{self.name}_{'_'.join(self.properties)}"
+
     def get_add_query(self) -> str:
         properties_str = ", ".join([f"r.{prop}" for prop in self.properties])
         return (
-            f"CREATE {self.type.value.upper()} INDEX rel_{self.type.value.lower()}_{self.name}_{'_'.join(self.properties)} IF NOT EXISTS "
+            f"CREATE {self.type.value.upper()} INDEX {self._index_name} IF NOT EXISTS "
             f"FOR ()-[r:{self.label}]-() ON ({properties_str})"
         )
 
     def get_drop_query(self) -> str:
-        return f"DROP INDEX rel_{self.type.lower()}_{self.name}_{'_'.join(self.properties)} IF EXISTS"
+        return f"DROP INDEX {self._index_name} IF EXISTS"
 
 
 class IndexNodeNeo4j(IndexItem):
+    @property
+    def _index_name(self) -> str:
+        return f"node_{self.type.value.lower()}_{self.name}_{'_'.join(self.properties)}"
+
     def get_add_query(self) -> str:
         properties_str = ", ".join([f"n.{prop}" for prop in self.properties])
         return (
-            f"CREATE {self.type.value.upper()} INDEX node_{self.type.value.lower()}_{self.name}_{'_'.join(self.properties)} IF NOT EXISTS "
+            f"CREATE {self.type.value.upper()} INDEX {self._index_name} IF NOT EXISTS "
             f"FOR (n:{self.label}) ON ({properties_str})"
         )
 
     def get_drop_query(self) -> str:
-        return f"DROP INDEX node_{self.type.lower()}_{self.name}_{'_'.join(self.properties)} IF EXISTS"
+        return f"DROP INDEX {self._index_name} IF EXISTS"
 
 
 class IndexManagerNeo4j(IndexManagerBase):
