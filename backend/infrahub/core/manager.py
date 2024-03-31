@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
 from infrahub_sdk.utils import deep_merge_dict
 
@@ -503,7 +503,7 @@ class NodeManager:
                 continue
 
             node = nodes_info_by_id[node_id]
-            attrs = {"db_id": node.node_id, "id": node_id, "updated_at": node.updated_at}
+            new_node_data: Dict[str, Any] = {"db_id": node.node_id, "id": node_id, "updated_at": node.updated_at}
 
             if not node.schema:
                 raise SchemaNotFoundError(
@@ -515,26 +515,9 @@ class NodeManager:
             # --------------------------------------------------------
             # Attributes
             # --------------------------------------------------------
-            for attr_name, attr in node_attributes.get(node_id, {}).get("attrs", {}).items():
-                attrs[attr_name] = {
-                    "db_id": attr.attr_id,
-                    "id": attr.attr_uuid,
-                    "name": attr_name,
-                    "value": attr.value,
-                    "updated_at": attr.updated_at,
-                }
-
-                if attr.is_protected is not None:
-                    attrs[attr_name]["is_protected"] = attr.is_protected
-
-                if attr.is_visible is not None:
-                    attrs[attr_name]["is_visible"] = attr.is_visible
-
-                if attr.source_uuid:
-                    attrs[attr_name]["source"] = attr.source_uuid
-
-                if attr.owner_uuid:
-                    attrs[attr_name]["owner"] = attr.owner_uuid
+            if node_id in node_attributes:
+                for attr_name, attr in node_attributes[node_id].attrs.items():
+                    new_node_data[attr_name] = attr
 
             # --------------------------------------------------------
             # Relationships
@@ -545,13 +528,13 @@ class NodeManager:
                         rel_peers = [peers.get(id) for id in peers_per_node[node_id][rel_schema.identifier]]
                         if rel_schema.cardinality == "one":
                             if len(rel_peers) == 1:
-                                attrs[rel_schema.name] = rel_peers[0]
+                                new_node_data[rel_schema.name] = rel_peers[0]
                         elif rel_schema.cardinality == "many":
-                            attrs[rel_schema.name] = rel_peers
+                            new_node_data[rel_schema.name] = rel_peers
 
             node_class = identify_node_class(node=node)
             item = await node_class.init(schema=node.schema, branch=branch, at=at, db=db)
-            await item.load(**attrs, db=db)
+            await item.load(**new_node_data, db=db)
 
             nodes[node_id] = item
 
