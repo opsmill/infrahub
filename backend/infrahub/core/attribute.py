@@ -10,6 +10,7 @@ from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import is_valid_url
 from pydantic.v1 import BaseModel, Field
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import NULL_VALUE, BranchSupportType, RelationshipStatus
 from infrahub.core.property import (
@@ -452,7 +453,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 field = getattr(self, field_name)
 
             if field_name == "value" and isinstance(field, Enum):
-                field = field.name
+                if config.SETTINGS.experimental_features.graphql_enums:
+                    field = field.name
+                else:
+                    field = field.value
             if isinstance(field, str):
                 response[field_name] = self._filter_sensitive(value=field, filter_sensitive=filter_sensitive)
             elif isinstance(field, (int, bool, dict, list)):
