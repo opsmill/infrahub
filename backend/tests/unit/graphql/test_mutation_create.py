@@ -103,10 +103,7 @@ async def test_create_simple_object_with_enum(
 
     car_id = result.data["TestCarCreate"]["object"]["id"]
     database_car = await NodeManager.get_one(db=db, id=car_id)
-    if graphql_enums_on:
-        assert database_car.transmission.value.value == "manual"
-    else:
-        assert database_car.transmission.value == "manual"
+    assert database_car.transmission.value.value == "manual"
 
 
 async def test_create_enum_when_enums_off_fails(
