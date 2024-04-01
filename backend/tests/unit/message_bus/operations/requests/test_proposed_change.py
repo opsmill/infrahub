@@ -291,7 +291,7 @@ async def test_schema_integrity(
     checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
     assert len(checks) == 1
     check = checks[0]
-    assert check.conclusion.value == "failure"
+    assert check.conclusion.value.value == "failure"
     assert check.conflicts.value == [
         {
             "branch": "placeholder",

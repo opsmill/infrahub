@@ -130,6 +130,8 @@ async def test_trigger_proposed_change(db: InfrahubDatabase, register_core_model
     all_result = await graphql_mutation(
         query=RUN_CHECK, db=db, variables={"proposed_change": proposed_change.id}, service=service
     )
+    assert all_result.data
+    assert not all_result.errors
 
     artifact_recorder = BusRecorder()
     service = InfrahubServices(database=db, message_bus=artifact_recorder)
@@ -153,8 +155,6 @@ async def test_trigger_proposed_change(db: InfrahubDatabase, register_core_model
         service=service,
     )
 
-    assert all_result.data
-    assert not all_result.errors
     assert len(all_recorder.messages) == 1
     assert isinstance(all_recorder.messages[0], messages.RequestProposedChangePipeline)
     message = all_recorder.messages[0]
