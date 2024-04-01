@@ -68,7 +68,7 @@ async def authenticate_with_password(
 
     refresh_expires = now + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
     session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
-    access_token = generate_access_token(account_id=account.id, role=account.role.value, session_id=session_id)
+    access_token = generate_access_token(account_id=account.id, role=account.role.value.value, session_id=session_id)
     refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
 
     return models.UserToken(access_token=access_token, refresh_token=refresh_token)
@@ -110,7 +110,7 @@ async def create_fresh_access_token(
         )
 
     access_token = generate_access_token(
-        account_id=account.id, role=account.role.value, session_id=refresh_data.session_id
+        account_id=account.id, role=account.role.value.value, session_id=refresh_data.session_id
     )
 
     return models.AccessTokenResponse(access_token=access_token)
