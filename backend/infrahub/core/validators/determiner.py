@@ -8,9 +8,7 @@ from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.diff.model import DiffElementType
 from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema.attribute_schema import AttributeSchema
-from infrahub.core.schema.generic_schema import GenericSchema
-from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.core.schema import AttributeSchema, MainSchemaTypes
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
@@ -87,9 +85,7 @@ class ConstraintValidatorDeterminer:
 
         return validated_constraints
 
-    async def _get_constraints_for_one_schema(
-        self, schema: Union[NodeSchema, GenericSchema]
-    ) -> list[SchemaUpdateConstraintInfo]:
+    async def _get_constraints_for_one_schema(self, schema: MainSchemaTypes) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
         constraints.extend(await self._get_attribute_constraints_for_one_schema(schema=schema))
         constraints.extend(await self._get_relationship_constraints_for_one_schema(schema=schema))
@@ -102,7 +98,7 @@ class ConstraintValidatorDeterminer:
         return constraints
 
     async def _get_property_constraints_for_one_schema(
-        self, schema: Union[NodeSchema, GenericSchema]
+        self, schema: MainSchemaTypes
     ) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
         for prop_name, prop_field_info in schema.model_fields.items():
@@ -132,7 +128,7 @@ class ConstraintValidatorDeterminer:
         return constraints
 
     async def _get_attribute_constraints_for_one_schema(
-        self, schema: Union[NodeSchema, GenericSchema]
+        self, schema: MainSchemaTypes
     ) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
         for field_name in schema.attribute_names:
@@ -144,7 +140,7 @@ class ConstraintValidatorDeterminer:
         return constraints
 
     async def _get_relationship_constraints_for_one_schema(
-        self, schema: Union[NodeSchema, GenericSchema]
+        self, schema: MainSchemaTypes
     ) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
         for field_name in schema.relationship_names:
@@ -156,7 +152,7 @@ class ConstraintValidatorDeterminer:
         return constraints
 
     async def _get_constraints_for_one_field(
-        self, schema: Union[NodeSchema, GenericSchema], field: Union[AttributeSchema, RelationshipSchema]
+        self, schema: MainSchemaTypes, field: Union[AttributeSchema, RelationshipSchema]
     ) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
         for prop_name, prop_field_info in field.model_fields.items():

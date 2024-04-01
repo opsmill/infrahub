@@ -190,6 +190,7 @@ class RelationshipKind(InfrahubStringEnum):
     PARENT = "Parent"
     GROUP = "Group"
     HIERARCHY = "Hierarchy"
+    PROFILE = "Profile"
 
 
 class RelationshipStatus(InfrahubStringEnum):
@@ -254,6 +255,7 @@ RESTRICTED_NAMESPACES: List[str] = [
     "Internal",
     "Lineage",
     "Schema",
+    "Profile",
 ]
 
 NODE_NAME_REGEX = r"^[A-Z][a-zA-Z0-9]+$"

@@ -29,6 +29,13 @@ core_models: dict[str, Any] = {
             "label": "Node",
         },
         {
+            "name": "Profile",
+            "namespace": "Core",
+            "include_in_menu": False,
+            "description": "Base Profile in Infrahub.",
+            "label": "Profile",
+        },
+        {
             "name": "Owner",
             "namespace": "Lineage",
             "description": "Any Entities that is responsible for some data.",

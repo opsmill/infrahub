@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.definitions import Brancher
     from infrahub.core.manager import NodeManager
-    from infrahub.core.schema import GenericSchema, NodeSchema
+    from infrahub.core.schema import MainSchemaTypes, NodeSchema
     from infrahub.core.schema_manager import SchemaManager
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.mutations.attribute import BaseAttributeInput
@@ -111,9 +111,7 @@ class Registry:
             raise DataTypeNotFoundError(name=name)
         return self.data_type[name]
 
-    def get_full_schema(
-        self, branch: Optional[Union[Branch, str]] = None
-    ) -> Dict[str, Union[NodeSchema, GenericSchema]]:
+    def get_full_schema(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, MainSchemaTypes]:
         """Return all the nodes in the schema for a given branch."""
         return self.schema.get_full(branch=branch)
 

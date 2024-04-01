@@ -13,7 +13,7 @@ from infrahub.core.query.node import (
     NodeDeleteQuery,
     NodeGetListQuery,
 )
-from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
+from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, ValidationError
 from infrahub.types import ATTRIBUTE_TYPES
@@ -56,7 +56,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         _meta.default_filter = default_filter
         super(Node, cls).__init_subclass_with_meta__(_meta=_meta, **options)
 
-    def get_schema(self) -> NodeSchema:
+    def get_schema(self) -> Union[NodeSchema, ProfileSchema]:
         return self._schema
 
     def get_kind(self) -> str:
@@ -83,6 +83,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 labels.append("CoreNode")
             return labels
 
+        if isinstance(self._schema, ProfileSchema):
+            labels: List[str] = [self.get_kind()] + self._schema.inherit_from
+            return labels
+
         return [self.get_kind()]
 
     def get_branch_based_on_support_type(self) -> Branch:
@@ -104,11 +108,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     def __init__(
         self,
-        schema: NodeSchema,
+        schema: Union[NodeSchema, ProfileSchema],
         branch: Branch,
         at: Timestamp,
     ):
-        self._schema: NodeSchema = schema
+        self._schema: Union[NodeSchema, ProfileSchema] = schema
         self._branch: Branch = branch
         self._at: Timestamp = at
         self._existing: bool = False
@@ -128,7 +132,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
     async def init(
         cls,
-        schema: Union[NodeSchema, str],
+        schema: Union[NodeSchema, ProfileSchema, str],
         db: InfrahubDatabase,
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
@@ -137,13 +141,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         branch = await registry.get_branch(branch=branch, db=db)
 
-        if isinstance(schema, NodeSchema):
+        if isinstance(schema, (NodeSchema, ProfileSchema)):
             attrs["schema"] = schema
         elif isinstance(schema, str):
             # TODO need to raise a proper exception for this, right now it will raise a generic ValueError
             attrs["schema"] = registry.schema.get(name=schema, branch=branch)
         else:
-            raise ValueError(f"Invalid schema provided {type(schema)}, expected NodeSchema")
+            raise ValueError(f"Invalid schema provided {type(schema)}, expected NodeSchema or ProfileSchema")
 
         attrs["branch"] = branch
         attrs["at"] = Timestamp(at)
