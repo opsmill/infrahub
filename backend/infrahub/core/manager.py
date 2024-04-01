@@ -17,7 +17,7 @@ from infrahub.core.query.node import (
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
-from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema
+from infrahub.core.schema import GenericSchema, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError
@@ -54,7 +54,7 @@ class NodeManager:
     async def query(
         cls,
         db: InfrahubDatabase,
-        schema: Union[NodeSchema, GenericSchema, str],
+        schema: Union[NodeSchema, GenericSchema, ProfileSchema, str],
         filters: Optional[dict] = None,
         fields: Optional[dict] = None,
         offset: Optional[int] = None,
@@ -86,7 +86,7 @@ class NodeManager:
 
         if isinstance(schema, str):
             schema = registry.schema.get(name=schema, branch=branch.name)
-        elif not isinstance(schema, (NodeSchema, GenericSchema)):
+        elif not isinstance(schema, (NodeSchema, GenericSchema, ProfileSchema)):
             raise ValueError(f"Invalid schema provided {schema}")
 
         # Query the list of nodes matching this Query

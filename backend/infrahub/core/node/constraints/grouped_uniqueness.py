@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, List, Optional, Set, Union
+from typing import TYPE_CHECKING, Iterable, List, Optional, Set
 
 from infrahub.core import registry
-from infrahub.core.schema import GenericSchema, NodeSchema, SchemaAttributePath, SchemaAttributePathValue
+from infrahub.core.schema import (
+    MainSchemaTypes,
+    SchemaAttributePath,
+    SchemaAttributePathValue,
+)
 from infrahub.core.validators.uniqueness.index import UniquenessQueryResultsIndex
 from infrahub.core.validators.uniqueness.model import (
     NodeUniquenessQueryRequest,
@@ -33,7 +37,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
     def _build_query_request(
         self,
         updated_node: Node,
-        node_schema: Union[NodeSchema, GenericSchema],
+        node_schema: MainSchemaTypes,
         path_groups: List[List[SchemaAttributePath]],
         filters: Optional[List[str]] = None,
     ) -> NodeUniquenessQueryRequest:
@@ -134,7 +138,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
     async def _check_one_schema(
         self,
         node: Node,
-        node_schema: Union[NodeSchema, GenericSchema],
+        node_schema: MainSchemaTypes,
         at: Optional[Timestamp] = None,
         filters: Optional[List[str]] = None,
     ) -> None:
@@ -150,7 +154,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
 
     async def check(self, node: Node, at: Optional[Timestamp] = None, filters: Optional[List[str]] = None) -> None:
         node_schema = node.get_schema()
-        schemas_to_check: List[Union[NodeSchema, GenericSchema]] = [node_schema]
+        schemas_to_check: List[MainSchemaTypes] = [node_schema]
         if node_schema.inherit_from:
             for parent_schema_name in node_schema.inherit_from:
                 parent_schema = self.schema_branch.get(name=parent_schema_name, duplicate=False)

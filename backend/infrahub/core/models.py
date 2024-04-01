@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field
@@ -16,7 +16,7 @@ from infrahub.core.constants import (
 from infrahub.core.path import SchemaPath
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import GenericSchema, NodeSchema
+    from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema_manager import SchemaBranch
 
 
@@ -155,7 +155,7 @@ class SchemaUpdateValidationResult(BaseModel):
 
     def _process_attrs_rels(
         self,
-        schema: Union[NodeSchema, GenericSchema],
+        schema: MainSchemaTypes,
         node_field_name: str,
         node_field_diff: HashableModelDiff,
     ) -> None:
@@ -203,7 +203,7 @@ class SchemaUpdateValidationResult(BaseModel):
                     field_update=field_update,
                 )
 
-    def _process_node_attributes(self, schema: Union[NodeSchema, GenericSchema], node_field_name: str) -> None:
+    def _process_node_attributes(self, schema: MainSchemaTypes, node_field_name: str) -> None:
         field_info = schema.model_fields[node_field_name]
         field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
 
