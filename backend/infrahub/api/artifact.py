@@ -43,7 +43,7 @@ async def get_artifact(
 
     content = await registry.storage.retrieve(identifier=artifact.storage_id.value)
 
-    return Response(content=content, headers={"Content-Type": artifact.content_type.value})
+    return Response(content=content, headers={"Content-Type": artifact.content_type.value.value})
 
 
 @router.post("/generate/{artifact_definition_id:str}")
