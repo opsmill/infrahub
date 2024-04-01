@@ -3,15 +3,15 @@ import { usePermission } from "../../hooks/usePermission";
 import { constructPath } from "../../utils/fetch";
 import Content from "../layout/content";
 import { Card } from "../../components/ui/card";
-import { Select } from "../../components/inputs/select";
 import { Icon } from "@iconify-icon/react";
 import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 import { useAtomValue } from "jotai/index";
 import { branchesState } from "../../state/atoms/branches.atom";
-import { TextareaWithEditor } from "../../components/inputs/textarea-with-editor";
 import { BUTTON_TYPES } from "../../components/buttons/button";
 import { branchesToSelectOptions } from "../../utils/branches";
-import { Input } from "../../components/inputs/input";
+import { FormProvider, useForm } from "react-hook-form";
+import React from "react";
+import { DynamicControl } from "../edit-form-hook/dynamic-control";
 
 export const ProposedChangesCreate = () => {
   const permission = usePermission();
@@ -19,6 +19,7 @@ export const ProposedChangesCreate = () => {
   const defaultBranch = branches.filter((branch) => branch.is_default);
   const sourceBranches = branches.filter((branch) => !branch.is_default);
 
+  const form = useForm();
   if (!permission.write.allow) {
     return <Navigate to={constructPath("/proposed-changes")} replace />;
   }
@@ -27,53 +28,88 @@ export const ProposedChangesCreate = () => {
     <Content>
       <Content.Title title="New proposed change" />
 
-      <div className="flex flex-col p-2 py-4 items-stretch gap-4 max-w-2xl m-auto">
-        <div className="flex flex-wrap md:flex-nowrap items-center gap-2 justify-center w-full ">
-          <Card className="w-full">
-            <h2 className="font-semibold">Source branch</h2>
-            <p className="text-gray-600 text-sm mb-1">Select a branch to compare</p>
-            <Select options={branchesToSelectOptions(sourceBranches)} />
-          </Card>
+      <FormProvider {...form}>
+        <form
+          onSubmit={form.handleSubmit((e) => console.log(e))}
+          className="flex flex-col p-2 py-4 items-stretch gap-4 max-w-2xl m-auto">
+          <div className="flex flex-wrap md:flex-nowrap items-center gap-2 justify-center w-full ">
+            <Card className="w-full">
+              <h2 className="font-semibold">Source branch</h2>
+              <p className="text-gray-600 text-sm mb-1">Select a branch to compare</p>
+              <DynamicControl
+                name="source_branch.value"
+                kind="String"
+                type="select"
+                label="Source Branch"
+                value=""
+                options={branchesToSelectOptions(sourceBranches)}
+                config={{
+                  validate: (value) => !!value || "Required",
+                }}
+              />
+            </Card>
 
-          <Icon icon="mdi:arrow-bottom" className="text-xl shrink-0 md:-rotate-90 text-gray-500" />
-
-          <Card className="w-full">
-            <h2 className="font-semibold">Destination branch</h2>
-            <p className="text-gray-600 text-sm mb-1">It targets the default branch</p>
-            <Select
-              disabled
-              value={defaultBranch[0].id}
-              options={branchesToSelectOptions(defaultBranch)}
+            <Icon
+              icon="mdi:arrow-bottom"
+              className="text-xl shrink-0 md:-rotate-90 text-gray-500"
             />
-          </Card>
-        </div>
 
-        <div>
-          <h2 className="font-semibold mb-1">Name *</h2>
-          <Input />
-        </div>
+            <Card className="w-full">
+              <h2 className="font-semibold">Destination branch</h2>
+              <p className="text-gray-600 text-sm mb-1">It targets the default branch</p>
+              <DynamicControl
+                name="destination_branch.value"
+                kind="String"
+                type="select"
+                label="Source Branch"
+                value={defaultBranch[0].id}
+                options={branchesToSelectOptions(defaultBranch)}
+                config={{
+                  validate: (value) => !!value || "Required",
+                }}
+                isProtected
+              />
+            </Card>
+          </div>
 
-        <div>
-          <h2 className="font-semibold mb-1">Description</h2>
-          <TextareaWithEditor
-            placeholder="Add your description here..."
-            className="w-full min-h-48"
+          <DynamicControl
+            name="name.value"
+            kind="Text"
+            type="text"
+            label="Name"
+            value=""
+            config={{ validate: (value) => !!value || "Required" }}
           />
-        </div>
 
-        <div>
-          <h2 className="font-semibold mb-1">Reviewers</h2>
-          <Input />
-        </div>
+          <DynamicControl
+            name="description.value"
+            kind="TextArea"
+            type="textarea"
+            label="Description"
+            value=""
+            isOptional
+          />
 
-        <ButtonWithTooltip
-          className="self-end"
-          disabled={!permission.write.allow}
-          buttonType={BUTTON_TYPES.MAIN}
-          tooltipContent={permission.write.message ?? undefined}>
-          Create proposed change
-        </ButtonWithTooltip>
-      </div>
+          <DynamicControl
+            name="reviewers.list"
+            kind="String"
+            type="multiselect"
+            label="Reviewers"
+            options={[]}
+            value=""
+            isOptional
+          />
+
+          <ButtonWithTooltip
+            className="self-end"
+            type="submit"
+            disabled={!permission.write.allow}
+            buttonType={BUTTON_TYPES.MAIN}
+            tooltipContent={permission.write.message ?? undefined}>
+            Create proposed change
+          </ButtonWithTooltip>
+        </form>
+      </FormProvider>
     </Content>
   );
 };
