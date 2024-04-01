@@ -12,6 +12,8 @@ import { branchesToSelectOptions } from "../../utils/branches";
 import { FormProvider, useForm } from "react-hook-form";
 import React from "react";
 import { DynamicControl } from "../edit-form-hook/dynamic-control";
+import { gql } from "@apollo/client";
+import useQuery from "../../hooks/useQuery";
 
 export const ProposedChangesCreatePage = () => {
   const permission = usePermission();
@@ -29,9 +31,24 @@ const ProposedChangeCreateForm = () => {
   const sourceBranches = branches.filter((branch) => !branch.is_default);
   const form = useForm();
 
+  const GET_ALL_ACCOUNTS = gql`
+    query GetBranches {
+      CoreAccount {
+        edges {
+          node {
+            id
+            display_label
+          }
+        }
+      }
+    }
+  `;
+
+  const { data } = useQuery(GET_ALL_ACCOUNTS);
+
   return (
     <Content>
-      <Content.Title title="New proposed change" />
+      <Content.Title title="Add a proposed change" />
 
       <FormProvider {...form}>
         <form
@@ -100,7 +117,12 @@ const ProposedChangeCreateForm = () => {
             kind="String"
             type="multiselect"
             label="Reviewers"
-            options={[]}
+            options={
+              data?.CoreAccount?.edges.map((edge: any) => ({
+                id: edge?.node.id,
+                name: edge?.node?.display_label,
+              })) ?? []
+            }
             value=""
             isOptional
           />
