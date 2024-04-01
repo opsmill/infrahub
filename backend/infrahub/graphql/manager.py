@@ -8,7 +8,7 @@ import graphene
 from infrahub import config
 from infrahub.core.attribute import String
 from infrahub.core.constants import InfrahubKind, RelationshipKind
-from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, ProfileSchema
+from infrahub.core.schema import AttributeSchema, GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema
 from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
@@ -62,7 +62,7 @@ class GraphqlMutations:
     delete: Type[InfrahubMutation]
 
 
-def get_attr_kind(node_schema: Union[NodeSchema, GenericSchema, ProfileSchema], attr_schema: AttributeSchema) -> str:
+def get_attr_kind(node_schema: MainSchemaTypes, attr_schema: AttributeSchema) -> str:
     if not config.SETTINGS.experimental_features.graphql_enums or not attr_schema.enum:
         return attr_schema.kind
     return get_enum_attribute_type_name(node_schema=node_schema, attr_schema=attr_schema)
@@ -166,11 +166,11 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         )
         self.generate_graphql_paginated_object(schema=node_interface_schema, edge=edged_interface, populate_cache=True)
 
-    def _load_all_enum_types(self, node_schemas: Iterable[Union[NodeSchema, GenericSchema, ProfileSchema]]) -> None:
+    def _load_all_enum_types(self, node_schemas: Iterable[MainSchemaTypes]) -> None:
         for node_schema in node_schemas:
             self._load_enum_type(node_schema=node_schema)
 
-    def _load_enum_type(self, node_schema: Union[NodeSchema, GenericSchema, ProfileSchema]) -> None:
+    def _load_enum_type(self, node_schema: MainSchemaTypes) -> None:
         for attr_schema in node_schema.attributes:
             if not attr_schema.enum:
                 continue
@@ -670,7 +670,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
     def generate_filters(
         self,
-        schema: Union[NodeSchema, GenericSchema, ProfileSchema],
+        schema: MainSchemaTypes,
         top_level: bool = False,
         include_properties: bool = True,
     ) -> Dict[str, Union[graphene.Scalar, graphene.List]]:
@@ -730,17 +730,16 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
     def generate_graphql_edged_object(
         self,
-        schema: Union[NodeSchema, GenericSchema, ProfileSchema],
+        schema: MainSchemaTypes,
         node: Type[InfrahubObject],
         relation_property: Optional[Type[InfrahubObject]] = None,
         populate_cache: bool = False,
-        node_name: Optional[str] = None,
     ) -> Type[InfrahubObject]:
         """Generate a edged GraphQL object Type from a Infrahub NodeSchema for pagination."""
 
-        object_name = f"Edged{node_name or schema.kind}"
+        object_name = f"Edged{schema.kind}"
         if relation_property:
-            object_name = f"NestedEdged{node_name or schema.kind}"
+            object_name = f"NestedEdged{schema.kind}"
 
         meta_attrs: Dict[str, Any] = {
             "schema": schema,
@@ -766,17 +765,16 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
     def generate_graphql_paginated_object(
         self,
-        schema: Union[NodeSchema, GenericSchema, ProfileSchema],
+        schema: MainSchemaTypes,
         edge: Type[InfrahubObject],
         nested: bool = False,
         populate_cache: bool = False,
-        node_name: Optional[str] = None,
     ) -> Type[InfrahubObject]:
         """Generate a paginated GraphQL object Type from a Infrahub NodeSchema."""
 
-        object_name = f"Paginated{node_name or schema.kind}"
+        object_name = f"Paginated{schema.kind}"
         if nested:
-            object_name = f"NestedPaginated{node_name or schema.kind}"
+            object_name = f"NestedPaginated{schema.kind}"
 
         meta_attrs: Dict[str, Any] = {
             "schema": schema,
