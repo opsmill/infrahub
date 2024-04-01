@@ -145,14 +145,10 @@ class SchemaBranch:
     def to_dict(self) -> Dict[str, Any]:
         return {"nodes": self.nodes, "generics": self.generics, "profiles": self.profiles}
 
-    def to_dict_schema_object(
-        self, duplicate: bool = False
-    ) -> Dict[str, Dict[str, MainSchemaTypes]]:
+    def to_dict_schema_object(self, duplicate: bool = False) -> Dict[str, Dict[str, MainSchemaTypes]]:
         return {
-            "nodes": {
-                name: self.get(name, duplicate=duplicate)
-                for name in list(self.nodes.keys()) + list(self.profiles.keys())
-            },
+            "nodes": {name: self.get(name, duplicate=duplicate) for name in self.nodes},
+            "profiles": {name: self.get(name, duplicate=duplicate) for name in self.profiles},
             "generics": {name: self.get(name, duplicate=duplicate) for name in self.generics},
         }
 
