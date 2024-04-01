@@ -13,16 +13,21 @@ import { FormProvider, useForm } from "react-hook-form";
 import React from "react";
 import { DynamicControl } from "../edit-form-hook/dynamic-control";
 
-export const ProposedChangesCreate = () => {
+export const ProposedChangesCreatePage = () => {
   const permission = usePermission();
-  const branches = useAtomValue(branchesState);
-  const defaultBranch = branches.filter((branch) => branch.is_default);
-  const sourceBranches = branches.filter((branch) => !branch.is_default);
 
-  const form = useForm();
   if (!permission.write.allow) {
     return <Navigate to={constructPath("/proposed-changes")} replace />;
   }
+
+  return <ProposedChangeCreateForm />;
+};
+
+const ProposedChangeCreateForm = () => {
+  const branches = useAtomValue(branchesState);
+  const defaultBranch = branches.filter((branch) => branch.is_default);
+  const sourceBranches = branches.filter((branch) => !branch.is_default);
+  const form = useForm();
 
   return (
     <Content>
@@ -100,12 +105,7 @@ export const ProposedChangesCreate = () => {
             isOptional
           />
 
-          <ButtonWithTooltip
-            className="self-end"
-            type="submit"
-            disabled={!permission.write.allow}
-            buttonType={BUTTON_TYPES.MAIN}
-            tooltipContent={permission.write.message ?? undefined}>
+          <ButtonWithTooltip className="self-end" type="submit" buttonType={BUTTON_TYPES.MAIN}>
             Create proposed change
           </ButtonWithTooltip>
         </form>
