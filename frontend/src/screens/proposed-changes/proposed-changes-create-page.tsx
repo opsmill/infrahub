@@ -22,7 +22,17 @@ export const ProposedChangesCreatePage = () => {
     return <Navigate to={constructPath("/proposed-changes")} replace />;
   }
 
-  return <ProposedChangeCreateForm />;
+  return (
+    <Content className="p-2 py-4 max-w-2xl m-auto">
+      <h1 className="text-xl font-semibold text-gray-700">Create a proposed change</h1>
+      <p className="text-xs text-gray-700 mb-6">
+        A proposed change lets you compare two branches, run tests, and finally merge one branch
+        into another.
+      </p>
+
+      <ProposedChangeCreateForm />
+    </Content>
+  );
 };
 
 const ProposedChangeCreateForm = () => {
@@ -47,53 +57,48 @@ const ProposedChangeCreateForm = () => {
   const { data } = useQuery(GET_ALL_ACCOUNTS);
 
   return (
-    <Content>
-      <Content.Title title="Add a proposed change" />
-
-      <FormProvider {...form}>
-        <form
-          onSubmit={form.handleSubmit((e) => console.log(e))}
-          className="flex flex-col p-2 py-4 items-stretch gap-4 max-w-2xl m-auto">
-          <div className="flex flex-wrap md:flex-nowrap items-center gap-2 justify-center w-full ">
-            <Card className="w-full">
-              <h2 className="font-semibold">Source branch</h2>
-              <p className="text-gray-600 text-sm mb-1">Select a branch to compare</p>
-              <DynamicControl
-                name="source_branch.value"
-                kind="String"
-                type="select"
-                label="Source Branch"
-                value=""
-                options={branchesToSelectOptions(sourceBranches)}
-                config={{
-                  validate: (value) => !!value || "Required",
-                }}
-              />
-            </Card>
-
-            <Icon
-              icon="mdi:arrow-bottom"
-              className="text-xl shrink-0 md:-rotate-90 text-gray-500"
+    <FormProvider {...form}>
+      <form
+        onSubmit={form.handleSubmit((e) => console.log(e))}
+        className="flex flex-col items-stretch gap-4">
+        <div className="flex flex-wrap md:flex-nowrap items-center gap-2 justify-center w-full">
+          <Card className="w-full">
+            <h2 className="font-semibold">Source branch</h2>
+            <p className="text-gray-600 text-sm mb-1">Select a branch to compare</p>
+            <DynamicControl
+              name="source_branch.value"
+              kind="String"
+              type="select"
+              label="Source Branch"
+              value=""
+              options={branchesToSelectOptions(sourceBranches)}
+              config={{
+                validate: (value) => !!value || "Required",
+              }}
             />
+          </Card>
 
-            <Card className="w-full">
-              <h2 className="font-semibold">Destination branch</h2>
-              <p className="text-gray-600 text-sm mb-1">It targets the default branch</p>
-              <DynamicControl
-                name="destination_branch.value"
-                kind="String"
-                type="select"
-                label="Source Branch"
-                value={defaultBranch[0].id}
-                options={branchesToSelectOptions(defaultBranch)}
-                config={{
-                  validate: (value) => !!value || "Required",
-                }}
-                isProtected
-              />
-            </Card>
-          </div>
+          <Icon icon="mdi:arrow-bottom" className="text-xl shrink-0 md:-rotate-90 text-gray-500" />
 
+          <Card className="w-full">
+            <h2 className="font-semibold">Destination branch</h2>
+            <p className="text-gray-600 text-sm mb-1">It targets the default branch</p>
+            <DynamicControl
+              name="destination_branch.value"
+              kind="String"
+              type="select"
+              label="Source Branch"
+              value={defaultBranch[0].id}
+              options={branchesToSelectOptions(defaultBranch)}
+              config={{
+                validate: (value) => !!value || "Required",
+              }}
+              isProtected
+            />
+          </Card>
+        </div>
+
+        <div>
           <DynamicControl
             name="name.value"
             kind="Text"
@@ -102,7 +107,9 @@ const ProposedChangeCreateForm = () => {
             value=""
             config={{ validate: (value) => !!value || "Required" }}
           />
+        </div>
 
+        <div>
           <DynamicControl
             name="description.value"
             kind="TextArea"
@@ -111,7 +118,9 @@ const ProposedChangeCreateForm = () => {
             value=""
             isOptional
           />
+        </div>
 
+        <div>
           <DynamicControl
             name="reviewers.list"
             kind="String"
@@ -126,12 +135,12 @@ const ProposedChangeCreateForm = () => {
             value=""
             isOptional
           />
+        </div>
 
-          <ButtonWithTooltip className="self-end" type="submit" buttonType={BUTTON_TYPES.MAIN}>
-            Create proposed change
-          </ButtonWithTooltip>
-        </form>
-      </FormProvider>
-    </Content>
+        <ButtonWithTooltip className="self-end" type="submit" buttonType={BUTTON_TYPES.MAIN}>
+          Create proposed change
+        </ButtonWithTooltip>
+      </form>
+    </FormProvider>
   );
 };
