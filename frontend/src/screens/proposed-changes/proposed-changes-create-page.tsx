@@ -81,7 +81,7 @@ const ProposedChangeCreateForm = () => {
               },
             });
 
-            toast(<Alert type={ALERT_TYPES.SUCCESS} message="proposed change created" />, {
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message="Proposed change created" />, {
               toastId: "alert-success-CoreProposedChange-created",
             });
 
