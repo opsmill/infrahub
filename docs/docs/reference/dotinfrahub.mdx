@@ -89,3 +89,21 @@ See [this topic](/topics/infrahub-yml) for more details on the available reposit
 | name | string | The name of the Transform | True |
 | file_path | string | The file within the repository with the transform code. | True |
 | class_name | string | The name of the transform class to run. | False |
+
+<!-- vale off -->
+## Generator Definitions
+<!-- vale on -->
+
+**Description**: Generator definitions<br/>
+**Key**: generator_definitions<br/>
+**Type**: array<br/>
+**Item type**: InfrahubGeneratorDefinitionConfig<br/>
+
+| Property | Type | Description | Mandatory |
+| -------- | ---- | ----------- | --------- |
+| name | string | The name of the Generator Definition | True |
+| file_path | string | The file within the repository with the generator code. | True |
+| query | string | The GraphQL query to use as input. | True |
+| parameters | object | The input parameters required to run this check | False |
+| targets | string | The group to target when running this generator | True |
+| class_name | string | The name of the generator class to run. | False |

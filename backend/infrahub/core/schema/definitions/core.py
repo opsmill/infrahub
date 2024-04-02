@@ -1221,6 +1221,22 @@ core_models: dict[str, Any] = {
             ],
             "relationships": [
                 {
+                    "name": "query",
+                    "peer": InfrahubKind.GRAPHQLQUERY,
+                    "identifier": "generator_definition__graphql_query",
+                    "kind": "Attribute",
+                    "cardinality": "one",
+                    "optional": False,
+                },
+                {
+                    "name": "repository",
+                    "peer": InfrahubKind.GENERICREPOSITORY,
+                    "kind": "Attribute",
+                    "cardinality": "one",
+                    "identifier": "generator_definition__repository",
+                    "optional": False,
+                },
+                {
                     "name": "targets",
                     "peer": InfrahubKind.GENERICGROUP,
                     "kind": "Attribute",
