@@ -1,7 +1,6 @@
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { usePermission } from "../../hooks/usePermission";
 import { constructPath } from "../../utils/fetch";
-import Content from "../layout/content";
 import { Card } from "../../components/ui/card";
 import { Icon } from "@iconify-icon/react";
 import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
@@ -28,7 +27,7 @@ export const ProposedChangesCreatePage = () => {
   }
 
   return (
-    <Content className="p-2 py-4 max-w-2xl m-auto">
+    <main className="p-4 px-8 max-w-2xl m-auto mt-0 md:mt-4 bg-white rounded-md overflow-auto">
       <h1 className="text-xl font-semibold text-gray-700">Create a proposed change</h1>
       <p className="text-xs text-gray-700 mb-6">
         A proposed change lets you compare two branches, run tests, and finally merge one branch
@@ -36,7 +35,7 @@ export const ProposedChangesCreatePage = () => {
       </p>
 
       <ProposedChangeCreateForm />
-    </Content>
+    </main>
   );
 };
 
