@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Iterable, List, Optional, Union
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.query import Query
@@ -109,9 +109,43 @@ class IPPrefixIPAddressFetch(Query):
         return addresses
 
 
+class IPAddressIPPrefixFetch(Query):
+    name: str = "ipaddress_ipprefix_fetch"
+
+    def __init__(self, ip_address, *args, **kwargs):
+        self.ip_address = ip_address
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+        query = """
+        MATCH (pfx:%s)-[HAS_ATTRIBUTE]-(an:Attribute {name: "prefix"})-[HAS_VALUE]-(av:AttributeValue)
+        """ % (InfrahubKind.IPPREFIX)
+
+        self.add_to_query(query)
+        self.return_labels = ["pfx", "av"]
+
+    def get_prefix_for_address(self):
+        """Return the more specific prefix that contains this address."""
+        address = ipaddress.ip_interface(self.ip_address.address.value)
+        candidates: List[IPPrefixData] = []
+
+        for result in self.get_results():
+            candidate = IPPrefixData(
+                id=result.get("pfx").get("uuid"), prefix=ipaddress.ip_network(result.get("av").get("value"))
+            )
+            if address.version == candidate.prefix.version and address in candidate.prefix:
+                candidates.append(candidate)
+
+        prefix: Optional[IPPrefixData] = None
+        for candidate in candidates:
+            if not prefix or candidate.prefix.prefixlen > prefix.prefix.prefixlen:
+                prefix = candidate
+        return prefix
+
+
 async def get_container(
     ip_prefix, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
-) -> List[str]:
+) -> IPPrefixData:
     branch = await registry.get_branch(db=db, branch=branch)
     query = await IPPrefixSubnetFetch.init(db=db, branch=branch, ip_prefix=ip_prefix, at=at)
     await query.execute(db=db)
@@ -120,7 +154,7 @@ async def get_container(
 
 async def get_subnets(
     ip_prefix, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
-) -> List[str]:
+) -> Iterable[IPPrefixData]:
     branch = await registry.get_branch(db=db, branch=branch)
     query = await IPPrefixSubnetFetch.init(db=db, branch=branch, ip_prefix=ip_prefix, at=at)
     await query.execute(db=db)
@@ -129,8 +163,17 @@ async def get_subnets(
 
 async def get_ip_addresses(
     ip_prefix, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
-) -> List[str]:
+) -> Iterable[IPAddressData]:
     branch = await registry.get_branch(db=db, branch=branch)
     query = await IPPrefixIPAddressFetch.init(db=db, branch=branch, ip_prefix=ip_prefix, at=at)
     await query.execute(db=db)
     return query.get_addresses()
+
+
+async def get_ip_prefix_for_ip_address(
+    ip_address, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
+) -> IPAddressData:
+    branch = await registry.get_branch(db=db, branch=branch)
+    query = await IPAddressIPPrefixFetch.init(db=db, branch=branch, ip_address=ip_address, at=at)
+    await query.execute(db=db)
+    return query.get_prefix_for_address()

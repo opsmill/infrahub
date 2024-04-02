@@ -3,7 +3,7 @@ import ipaddress
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
-from infrahub.core.query.ipam import get_container, get_ip_addresses, get_subnets
+from infrahub.core.query.ipam import get_container, get_ip_addresses, get_ip_prefix_for_ip_address, get_subnets
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
@@ -122,3 +122,7 @@ async def test_validate_address_within_prefix(
     ip_addresses = await get_ip_addresses(db=db, branch=default_branch, ip_prefix=prefix)
     assert len(ip_addresses) == 1
     assert ip_addresses[0].address == ipaddress.ip_interface(address.address.value)
+
+    ip_prefix = await get_ip_prefix_for_ip_address(db=db, branch=default_branch, ip_address=address)
+    assert ip_prefix
+    assert ip_prefix.prefix == ipaddress.ip_network(prefix.prefix.value)
