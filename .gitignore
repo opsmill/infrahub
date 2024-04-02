@@ -35,3 +35,4 @@ python_sdk/dist/*
 
 # Generated files
 generated/
+query_performance_results/

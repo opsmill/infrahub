@@ -26,7 +26,7 @@ Below is the list of all available options to define an Attribute in the schema
 | [**min_length**](#min_length) | Attribute | Set a minimum number of characters allowed for a given attribute. | False |
 | [**name**](#name) | Attribute | Attribute name, must be unique within a model and must be all lowercase. | True |
 | [**optional**](#optional) | Attribute | Indicate if this attribute is mandatory or optional. | False |
-| [**order_weight**](#order_weight) | Attribute | Number used to order the attribute in the frontend (table and view). | False |
+| [**order_weight**](#order_weight) | Attribute | Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first. | False |
 | [**read_only**](#read_only) | Attribute | Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object. | False |
 | [**regex**](#regex) | Attribute | Regex uses to limit limit the characters allowed in for the attributes. | False |
 | [**state**](#state) | Attribute | Expected state of the attribute after loading the schema | False |
@@ -195,7 +195,7 @@ extensions:
 | ---- | --------------- |
 | **Name** | order_weight |
 | **Kind** | `Number` |
-| **Description** | Number used to order the attribute in the frontend (table and view). |
+| **Description** | Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first. |
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  |

@@ -15,16 +15,13 @@ type tId = {
 export const Id = (props: tId) => {
   const { id, kind = NODE_OBJECT, preventCopy } = props;
 
-  const queryString = getObjectDisplayLabel({
-    id,
-    kind,
-  });
+  const queryString = getObjectDisplayLabel({ kind });
 
   const query = gql`
     ${queryString}
   `;
 
-  const { loading, error, data } = useQuery(query);
+  const { loading, error, data } = useQuery(query, { variable: { ids: [id] } });
 
   const object = data?.[kind]?.edges?.[0]?.node ?? {};
 

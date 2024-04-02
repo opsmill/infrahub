@@ -92,6 +92,13 @@ class DiffAction(InfrahubStringEnum):
     UNCHANGED = "unchanged"
 
 
+class GeneratorInstanceStatus(InfrahubStringEnum):
+    ERROR = "Error"
+    PENDING = "Pending"
+    PROCESSING = "Processing"
+    READY = "Ready"
+
+
 class MutationAction(InfrahubStringEnum):
     ADDED = "added"
     REMOVED = "removed"

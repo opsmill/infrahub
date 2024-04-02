@@ -51,6 +51,13 @@ async def initialization(db: InfrahubDatabase) -> None:
         registry.id = str(root.get_uuid())
         registry.default_branch = root.default_branch
 
+        # Add Indexes to the database
+        if db.manager.index.initialized:
+            log.debug("Loading database indexes ..")
+            await db.manager.index.add()
+        else:
+            log.warning("The database index manager hasn't been initialized.")
+
     # ---------------------------------------------------
     # Initialize the Storage Driver
     # ---------------------------------------------------

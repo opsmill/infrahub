@@ -12,6 +12,7 @@ from rich.table import Table
 from infrahub import config
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
+from infrahub.core.graph.index import node_indexes, rel_indexes
 from infrahub.core.graph.schema import GRAPH_SCHEMA
 from infrahub.core.initialization import first_time_initialization, get_root_node, initialization
 from infrahub.core.migrations.graph import get_graph_migrations
@@ -25,6 +26,12 @@ PERMISSIONS_AVAILABLE = ["read", "write", "admin"]
 
 
 class ConstraintAction(str, Enum):
+    SHOW = "show"
+    ADD = "add"
+    DROP = "drop"
+
+
+class IndexAction(str, Enum):
     SHOW = "show"
     ADD = "add"
     DROP = "drop"
@@ -176,6 +183,44 @@ async def constraint(
 
     for item in constraints:
         table.add_row(item.item_name, item.item_label, item.property)
+
+    console.print(table)
+
+    await dbdriver.close()
+
+
+@app.command()
+async def index(
+    action: IndexAction = typer.Argument(IndexAction.SHOW),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Manage Database Indexes"""
+    config.load_and_exit(config_file_name=config_file)
+
+    dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
+    dbdriver.manager.index.init(nodes=node_indexes, rels=rel_indexes)
+
+    if action == IndexAction.ADD:
+        await dbdriver.manager.index.add()
+    elif action == IndexAction.DROP:
+        await dbdriver.manager.index.drop()
+
+    indexes = await dbdriver.manager.index.list()
+
+    console = Console()
+
+    table = Table(title="Database Indexes")
+
+    table.add_column("Name", justify="right", style="cyan", no_wrap=True)
+    table.add_column("Label")
+    table.add_column("Property")
+    table.add_column("Type")
+    table.add_column("Entity Type")
+
+    for item in indexes:
+        table.add_row(
+            item.name, item.label, ", ".join(item.properties), item.type.value.upper(), item.entity_type.value.upper()
+        )
 
     console.print(table)
 

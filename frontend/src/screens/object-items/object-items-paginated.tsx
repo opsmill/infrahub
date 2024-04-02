@@ -10,6 +10,7 @@ import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip"
 import { Retry } from "../../components/buttons/retry";
 import { RoundedButton } from "../../components/buttons/rounded-button";
 import SlideOver from "../../components/display/slide-over";
+import { Filters } from "../../components/filters/filters";
 import ModalDelete from "../../components/modals/modal-delete";
 import { SearchInput } from "../../components/search/search-bar";
 import { Tooltip } from "../../components/ui/tooltip";
@@ -99,9 +100,17 @@ export default function ObjectItems(props: any) {
   // This will not work if the type of filter value is not string.
   const filtersString = [
     // Add object filters
-    ...filters.map((row: iComboBoxFilter) =>
-      typeof row.value === "string" ? `${row.name}: "${row.value}"` : `${row.name}: ${row.value}`
-    ),
+    ...filters.map((row: iComboBoxFilter) => {
+      if (typeof row.value === "string") {
+        return `${row.name}: "${row.value}"`;
+      }
+
+      if (Array.isArray(row.value)) {
+        return `${row.name}: ${JSON.stringify(row.value)}`;
+      }
+
+      return `${row.name}: ${row.value}`;
+    }),
     // Add pagination filters
     ...[
       { name: "offset", value: pagination?.offset },
@@ -194,6 +203,7 @@ export default function ObjectItems(props: any) {
 
       return;
     }
+
     const newFilters = [
       ...filters,
       {
@@ -209,7 +219,7 @@ export default function ObjectItems(props: any) {
     setFilters(newFilters);
   };
 
-  const debouncedHandleSearch = debounce(handleSearch);
+  const debouncedHandleSearch = debounce(handleSearch, 500);
 
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching list." />;
@@ -248,14 +258,18 @@ export default function ObjectItems(props: any) {
       </div>
 
       <div className="m-2 rounded-md border overflow-hidden bg-custom-white shadow-sm">
-        <SearchInput
-          loading={loading}
-          onChange={debouncedHandleSearch}
-          placeholder="Search an object"
-          testId="object-list-search-bar"
-          className="!shadow-none !ring-0"
-          containerClassName="!max-w-[300px] !z-0"
-        />
+        <div className="flex items-center">
+          <SearchInput
+            loading={loading}
+            onChange={debouncedHandleSearch}
+            placeholder="Search an object"
+            testId="object-list-search-bar"
+            className="!shadow-none !ring-0"
+            containerClassName="!max-w-[300px] !z-0"
+          />
+
+          <Filters schema={schemaData} />
+        </div>
 
         {loading && !rows && <LoadingScreen />}
 

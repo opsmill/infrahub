@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type
 
 from neo4j import (
@@ -22,10 +23,14 @@ from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
 from .constants import DatabaseType
+from .memgraph import DatabaseManagerMemgraph
 from .metrics import QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
+from .neo4j import DatabaseManagerNeo4j
 
 if TYPE_CHECKING:
     from types import TracebackType
+
+    from .manager import DatabaseManager
 
 validated_database = {}
 
@@ -51,6 +56,7 @@ class InfrahubDatabase:
         driver: AsyncDriver,
         mode: InfrahubDatabaseMode = InfrahubDatabaseMode.DRIVER,
         db_type: Optional[DatabaseType] = None,
+        db_manager: Optional[DatabaseManager] = None,
         session: Optional[AsyncSession] = None,
         session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
         transaction: Optional[AsyncTransaction] = None,
@@ -65,6 +71,14 @@ class InfrahubDatabase:
             self.db_type = db_type
         else:
             self.db_type = config.SETTINGS.database.db_type
+
+        if db_manager:
+            self.manager = db_manager
+            self.manager.db = self
+        elif self.db_type == DatabaseType.NEO4J:
+            self.manager = DatabaseManagerNeo4j(db=self)
+        elif self.db_type == DatabaseType.MEMGRAPH:
+            self.manager = DatabaseManagerMemgraph(db=self)
 
     @property
     def is_session(self):
@@ -85,13 +99,18 @@ class InfrahubDatabase:
             session_mode = InfrahubDatabaseSessionMode.READ
 
         return self.__class__(
-            mode=InfrahubDatabaseMode.SESSION, db_type=self.db_type, driver=self._driver, session_mode=session_mode
+            mode=InfrahubDatabaseMode.SESSION,
+            db_type=self.db_type,
+            db_manager=self.manager,
+            driver=self._driver,
+            session_mode=session_mode,
         )
 
     def start_transaction(self) -> InfrahubDatabase:
         return self.__class__(
             mode=InfrahubDatabaseMode.TRANSACTION,
             db_type=self.db_type,
+            db_manager=self.manager,
             driver=self._driver,
             session=self._session,
             session_mode=self._session_mode,
@@ -268,9 +287,14 @@ def retry_db_transaction(name: str):
                 try:
                     return await func(*args, **kwargs)
                 except TransientError as exc:
-                    log.info(f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}")
+                    retry_time: float = random.randrange(100, 500) / 1000
+                    log.info(
+                        f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}",
+                        retry_time=retry_time,
+                    )
                     log.debug("database transaction failed", message=exc.message)
                     TRANSACTION_RETRIES.labels(name).inc()
+                    await asyncio.sleep(retry_time)
                     if attempt == config.SETTINGS.database.retry_limit:
                         raise
 

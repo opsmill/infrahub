@@ -29,7 +29,11 @@ class InfrahubGroupContextBase:
         self.group_type: str = "CoreStandardGroup"
 
     def set_properties(
-        self, identifier: str, params: Optional[Dict[str, str]] = None, delete_unused_nodes: bool = False
+        self,
+        identifier: str,
+        params: Optional[Dict[str, str]] = None,
+        delete_unused_nodes: bool = False,
+        group_type: Optional[str] = None,
     ) -> None:
         """Setter method to set the values of identifier and params.
 
@@ -40,6 +44,7 @@ class InfrahubGroupContextBase:
         self.identifier = identifier
         self.params = params or {}
         self.delete_unused_nodes = delete_unused_nodes
+        self.group_type = group_type or self.group_type
 
     def _get_params_as_str(self) -> str:
         """Convert the params in dict format, into a string"""
@@ -134,7 +139,7 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
 
     async def update_group(self) -> None:
         """
-        Create or update (using upsert) a CoreStandGroup to store all the Nodes and Groups used during an execution.
+        Create or update (using upsert) a CoreStandardGroup to store all the Nodes and Groups used during an execution.
         """
         children: List[str] = []
         members: List[str] = []
@@ -240,7 +245,7 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
 
     def update_group(self) -> None:
         """
-        Create or update (using upsert) a CoreStandGroup to store all the Nodes and Groups used during an execution.
+        Create or update (using upsert) a CoreStandardGroup to store all the Nodes and Groups used during an execution.
         """
         children: List[str] = []
         members: List[str] = []

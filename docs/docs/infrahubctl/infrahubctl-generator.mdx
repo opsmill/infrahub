@@ -1,0 +1,25 @@
+# `infrahubctl generator`
+
+Run a generator script.
+
+**Usage**:
+
+```console
+$ infrahubctl generator [OPTIONS] [GENERATOR_NAME] [VARIABLES]...
+```
+
+**Arguments**:
+
+* `[GENERATOR_NAME]`: Name of the Generator
+* `[VARIABLES]...`: Variables to pass along with the query. Format key=value key=value.
+
+**Options**:
+
+* `--branch TEXT`
+* `--path TEXT`: Root directory  [default: .]
+* `--debug / --no-debug`: [default: no-debug]
+* `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
+* `--list`: Show available Generators
+* `--install-completion`: Install completion for the current shell.
+* `--show-completion`: Show completion for the current shell, to copy it or customize the installation.
+* `--help`: Show this message and exit.

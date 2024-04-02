@@ -68,19 +68,31 @@ const validate = (value: any, attribute: any = {}, optional?: boolean) => {
   return "Required";
 };
 
-const getFormStructureForCreateEdit = (
-  schema: iNodeSchema | undefined,
-  schemas: iNodeSchema[] | undefined,
-  generics: iGenericSchema[],
-  row?: any,
-  user?: any,
-  isUpdate?: boolean
-): DynamicFieldData[] => {
+type FormParameters = {
+  schema: iNodeSchema | undefined;
+  schemas: iNodeSchema[] | undefined;
+  generics: iGenericSchema[];
+  row?: any;
+  user?: any;
+  isUpdate?: boolean;
+  isFilters?: boolean;
+};
+
+const getFormStructureForCreateEdit = ({
+  schema,
+  schemas,
+  generics,
+  row,
+  user,
+  isUpdate,
+  isFilters,
+}: FormParameters): DynamicFieldData[] => {
   if (!schema) {
     return [];
   }
 
   const fieldsToParse = sortByOrderWeight([
+    // ...(isFilters ? [] : schema.attributes ?? []),
     ...(schema.attributes ?? []),
     ...(getObjectRelationshipsForForm(schema) ?? []),
   ]);
@@ -101,9 +113,10 @@ const getFormStructureForCreateEdit = (
           value: getRelationshipValue(row, field),
           options: getRelationshipOptions(row, field, schemas, generics),
           config: {
-            validate: (value: any) => validate(value, undefined, field.optional),
+            validate: (value: any) =>
+              isFilters ? true : validate(value, undefined, field.optional),
           },
-          isOptional: field.optional,
+          isOptional: isFilters || field.optional,
           isProtected: getIsDisabled({
             owner: row && row[field.name]?.properties?.owner,
             user,
@@ -138,12 +151,12 @@ const getFormStructureForCreateEdit = (
         value: fieldValue,
         options: getOptionsFromAttribute(field, fieldValue),
         config: {
-          validate: (value: any) => validate(value, field, isOptional),
+          validate: (value: any) => (isFilters ? true : validate(value, field, isOptional)),
         },
-        isOptional,
+        isOptional: isFilters || isOptional,
         isReadOnly: field.read_only,
         isProtected,
-        isUnique: field.unique,
+        isUnique: !isFilters && field.unique,
         field,
         schema,
       };
