@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { usePermission } from "../../hooks/usePermission";
 import { constructPath } from "../../utils/fetch";
 import Content from "../layout/content";
@@ -7,13 +7,15 @@ import { Icon } from "@iconify-icon/react";
 import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 import { useAtomValue } from "jotai/index";
 import { branchesState } from "../../state/atoms/branches.atom";
-import { BUTTON_TYPES } from "../../components/buttons/button";
+import { Button, BUTTON_TYPES } from "../../components/buttons/button";
 import { branchesToSelectOptions } from "../../utils/branches";
 import { FormProvider, useForm } from "react-hook-form";
 import React from "react";
 import { DynamicControl } from "../edit-form-hook/dynamic-control";
-import { gql } from "@apollo/client";
+import { gql, useMutation } from "@apollo/client";
 import useQuery from "../../hooks/useQuery";
+import { CREATE_PROPOSED_CHANGE } from "../../graphql/mutations/proposed-changes/createProposedChange";
+import { useAuth } from "../../hooks/useAuth";
 
 export const ProposedChangesCreatePage = () => {
   const permission = usePermission();
@@ -36,6 +38,7 @@ export const ProposedChangesCreatePage = () => {
 };
 
 const ProposedChangeCreateForm = () => {
+  const { user } = useAuth();
   const branches = useAtomValue(branchesState);
   const defaultBranch = branches.filter((branch) => branch.is_default);
   const sourceBranches = branches.filter((branch) => !branch.is_default);
@@ -56,15 +59,31 @@ const ProposedChangeCreateForm = () => {
 
   const { data: getAllAccountsData } = useQuery(GET_ALL_ACCOUNTS);
 
+  const [createProposedChange, { loading, error }] = useMutation(CREATE_PROPOSED_CHANGE);
   return (
     <FormProvider {...form}>
       <form
-        onSubmit={form.handleSubmit((e) => console.log(e))}
+        onSubmit={form.handleSubmit(
+          ({ source_branch, destination_branch, name, description, reviewers }) => {
+            createProposedChange({
+              variables: {
+                source_branch,
+                destination_branch,
+                name,
+                description,
+                reviewers: reviewers.map((id: string) => ({ id })),
+                created_by: {
+                  id: user?.id,
+                },
+              },
+            });
+          }
+        )}
         className="flex flex-col items-stretch gap-4">
         <div className="flex flex-wrap md:flex-nowrap items-center gap-2 justify-center w-full">
           <Card className="w-full">
             <DynamicControl
-              name="source_branch.value"
+              name="source_branch"
               kind="String"
               type="select"
               label="Source Branch"
@@ -80,11 +99,11 @@ const ProposedChangeCreateForm = () => {
 
           <Card className="w-full">
             <DynamicControl
-              name="destination_branch.value"
+              name="destination_branch"
               kind="String"
               type="select"
               label="Destination Branch"
-              value={defaultBranch[0].id}
+              value={defaultBranch[0].name}
               options={branchesToSelectOptions(defaultBranch)}
               config={{
                 validate: (value) => !!value || "Required",
@@ -133,9 +152,18 @@ const ProposedChangeCreateForm = () => {
           />
         </div>
 
-        <ButtonWithTooltip className="self-end" type="submit" buttonType={BUTTON_TYPES.MAIN}>
-          Create proposed change
-        </ButtonWithTooltip>
+        <div className="self-end align-middle">
+          <Link to={constructPath("/proposed-changes")} className="mr-2">
+            <Button>Cancel</Button>
+          </Link>
+          <ButtonWithTooltip type="submit" buttonType={BUTTON_TYPES.MAIN} disabled={loading}>
+            Create proposed change
+          </ButtonWithTooltip>
+        </div>
+
+        {error && (
+          <div className="bg-red-100 p-4 text-red-800 rounded-md text-sm">{error.message}</div>
+        )}
       </form>
     </FormProvider>
   );

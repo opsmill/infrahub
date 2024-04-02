@@ -9,7 +9,7 @@ export const findSelectedBranch = (branches: Branch[], branchName?: string | nul
 export const branchesToSelectOptions = (branches: Branch[]) =>
   branches
     .map((branch) => ({
-      id: branch.id,
+      id: branch.name,
       name: branch.name,
       sync_with_git: branch.sync_with_git,
       is_default: branch.is_default,
