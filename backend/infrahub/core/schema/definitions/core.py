@@ -429,6 +429,55 @@ core_models: dict[str, Any] = {
             ],
         },
         {
+            "name": "IPNamespace",
+            "namespace": "Builtin",
+            "description": "A generic container for IP prefixes and IP addresses",
+            "include_in_menu": False,
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "branch": BranchSupportType.AWARE.value,
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "Text",
+                    "unique": True,
+                    "branch": BranchSupportType.AWARE.value,
+                    "order_weight": 1000,
+                },
+                {
+                    "name": "description",
+                    "kind": "Text",
+                    "optional": True,
+                    "branch": BranchSupportType.AWARE.value,
+                    "order_weight": 2000,
+                },
+            ],
+            "relationships": [
+                {
+                    "name": "tags",
+                    "peer": InfrahubKind.TAG,
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
+                {
+                    "name": "ip_prefixes",
+                    "peer": InfrahubKind.IPPREFIX,
+                    "identifier": "ip_namespace__ip_prefix",
+                    "optional": True,
+                    "cardinality": "many",
+                },
+                {
+                    "name": "ip_addresses",
+                    "peer": InfrahubKind.IPADDRESS,
+                    "identifier": "ip_namespace__ip_address",
+                    "optional": True,
+                    "cardinality": "many",
+                },
+            ],
+        },
+        {
             "name": "IPPrefix",
             "namespace": "Builtin",
             "description": "IPv6 or IPv4 prefix also referred as network",
@@ -461,6 +510,13 @@ core_models: dict[str, Any] = {
                     "kind": "Attribute",
                     "optional": True,
                     "cardinality": "many",
+                },
+                {
+                    "name": "ip_namespace",
+                    "peer": InfrahubKind.IPNAMESPACE,
+                    "identifier": "ip_prefix__ip_namespace",
+                    "optional": True,
+                    "cardinality": "one",
                 },
                 {
                     "name": "ip_addresses",
@@ -503,6 +559,13 @@ core_models: dict[str, Any] = {
                     "kind": "Attribute",
                     "optional": True,
                     "cardinality": "many",
+                },
+                {
+                    "name": "ip_namespace",
+                    "peer": InfrahubKind.IPNAMESPACE,
+                    "identifier": "ip_address__ip_namespace",
+                    "optional": True,
+                    "cardinality": "one",
                 },
                 {
                     "name": "ip_prefix",
