@@ -465,7 +465,7 @@ core_models: dict[str, Any] = {
                 {
                     "name": "ip_addresses",
                     "peer": InfrahubKind.IPADDRESS,
-                    "identifier": "prefix__ip_address",
+                    "identifier": "ip_prefix__ip_address",
                     "optional": True,
                     "cardinality": "many",
                 },
@@ -507,7 +507,7 @@ core_models: dict[str, Any] = {
                 {
                     "name": "ip_prefix",
                     "peer": InfrahubKind.IPPREFIX,
-                    "identifier": "ip_address__prefix",
+                    "identifier": "ip_address__ip_prefix",
                     "optional": True,
                     "cardinality": "one",
                 },
