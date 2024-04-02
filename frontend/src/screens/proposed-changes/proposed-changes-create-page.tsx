@@ -63,8 +63,6 @@ const ProposedChangeCreateForm = () => {
         className="flex flex-col items-stretch gap-4">
         <div className="flex flex-wrap md:flex-nowrap items-center gap-2 justify-center w-full">
           <Card className="w-full">
-            <h2 className="font-semibold">Source branch</h2>
-            <p className="text-gray-600 text-sm mb-1">Select a branch to compare</p>
             <DynamicControl
               name="source_branch.value"
               kind="String"
@@ -81,13 +79,11 @@ const ProposedChangeCreateForm = () => {
           <Icon icon="mdi:arrow-bottom" className="text-xl shrink-0 md:-rotate-90 text-gray-500" />
 
           <Card className="w-full">
-            <h2 className="font-semibold">Destination branch</h2>
-            <p className="text-gray-600 text-sm mb-1">It targets the default branch</p>
             <DynamicControl
               name="destination_branch.value"
               kind="String"
               type="select"
-              label="Source Branch"
+              label="Destination Branch"
               value={defaultBranch[0].id}
               options={branchesToSelectOptions(defaultBranch)}
               config={{
