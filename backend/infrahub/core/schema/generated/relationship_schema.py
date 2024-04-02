@@ -80,7 +80,7 @@ class GeneratedRelationshipSchema(HashableModel):
     )
     order_weight: Optional[int] = Field(
         default=None,
-        description="Number used to order the relationship in the frontend (table and view).",
+        description="Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first.",
         json_schema_extra={"update": "allowed"},
     )
     optional: bool = Field(

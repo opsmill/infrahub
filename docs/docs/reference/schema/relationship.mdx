@@ -27,7 +27,7 @@ Below is the list of all available options to define a Relationship in the schem
 | [**min_count**](#min_count) | Attribute | Defines the minimum objects allowed on the other side of the relationship. | False |
 | [**name**](#name) | Attribute | Relationship name, must be unique within a model and must be all lowercase. | True |
 | [**optional**](#optional) | Attribute | Indicate if this relationship is mandatory or optional. | False |
-| [**order_weight**](#order_weight) | Attribute | Number used to order the relationship in the frontend (table and view). | False |
+| [**order_weight**](#order_weight) | Attribute | Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first. | False |
 | [**peer**](#peer) | Attribute | Type (kind) of objects supported on the other end of the relationship. | True |
 | [**state**](#state) | Attribute | Expected state of the relationship after loading the schema | False |
 
@@ -186,7 +186,7 @@ Below is the list of all available options to define a Relationship in the schem
 | ---- | --------------- |
 | **Name** | order_weight |
 | **Kind** | `Number` |
-| **Description** | Number used to order the relationship in the frontend (table and view). |
+| **Description** | Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first. |
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  |
