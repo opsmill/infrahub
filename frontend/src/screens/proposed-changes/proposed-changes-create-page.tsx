@@ -18,6 +18,7 @@ import { CREATE_PROPOSED_CHANGE } from "../../graphql/mutations/proposed-changes
 import { useAuth } from "../../hooks/useAuth";
 import { toast } from "react-toastify";
 import { Alert, ALERT_TYPES } from "../../components/utils/alert";
+import { classNames } from "../../utils/common";
 
 export const ProposedChangesCreatePage = () => {
   const permission = usePermission();
@@ -39,7 +40,7 @@ export const ProposedChangesCreatePage = () => {
   );
 };
 
-const ProposedChangeCreateForm = () => {
+export const ProposedChangeCreateForm = ({ className }: { className?: string }) => {
   const { user } = useAuth();
   const branches = useAtomValue(branchesState);
   const defaultBranch = branches.filter((branch) => branch.is_default);
@@ -91,9 +92,9 @@ const ProposedChangeCreateForm = () => {
             navigate(url);
           }
         )}
-        className="flex flex-col items-stretch gap-4">
-        <div className="flex flex-wrap md:flex-nowrap items-center gap-2 justify-center w-full">
-          <Card className="w-full">
+        className={classNames("flex flex-col items-stretch gap-4", className)}>
+        <Card className="flex flex-wrap md:flex-nowrap items-center gap-4 justify-center w-full shadow-sm">
+          <div className="w-full">
             <DynamicControl
               name="source_branch"
               kind="String"
@@ -105,11 +106,11 @@ const ProposedChangeCreateForm = () => {
                 validate: (value) => !!value || "Required",
               }}
             />
-          </Card>
+          </div>
 
           <Icon icon="mdi:arrow-bottom" className="text-xl shrink-0 md:-rotate-90 text-gray-500" />
 
-          <Card className="w-full">
+          <div className="w-full">
             <DynamicControl
               name="destination_branch"
               kind="String"
@@ -122,8 +123,8 @@ const ProposedChangeCreateForm = () => {
               }}
               isProtected
             />
-          </Card>
-        </div>
+          </div>
+        </Card>
 
         <div>
           <DynamicControl
