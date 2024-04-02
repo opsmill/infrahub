@@ -54,7 +54,7 @@ const ProposedChangeCreateForm = () => {
     }
   `;
 
-  const { data } = useQuery(GET_ALL_ACCOUNTS);
+  const { data: getAllAccountsData } = useQuery(GET_ALL_ACCOUNTS);
 
   return (
     <FormProvider {...form}>
@@ -100,7 +100,7 @@ const ProposedChangeCreateForm = () => {
 
         <div>
           <DynamicControl
-            name="name.value"
+            name="name"
             kind="Text"
             type="text"
             label="Name"
@@ -111,7 +111,7 @@ const ProposedChangeCreateForm = () => {
 
         <div>
           <DynamicControl
-            name="description.value"
+            name="description"
             kind="TextArea"
             type="textarea"
             label="Description"
@@ -122,17 +122,17 @@ const ProposedChangeCreateForm = () => {
 
         <div>
           <DynamicControl
-            name="reviewers.list"
+            name="reviewers"
             kind="String"
             type="multiselect"
             label="Reviewers"
             options={
-              data?.CoreAccount?.edges.map((edge: any) => ({
+              getAllAccountsData?.CoreAccount?.edges.map((edge: any) => ({
                 id: edge?.node.id,
                 name: edge?.node?.display_label,
               })) ?? []
             }
-            value=""
+            value={[]}
             isOptional
           />
         </div>
