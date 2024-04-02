@@ -1,4 +1,4 @@
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { usePermission } from "../../hooks/usePermission";
 import { constructPath } from "../../utils/fetch";
 import Content from "../layout/content";
@@ -16,6 +16,8 @@ import { gql, useMutation } from "@apollo/client";
 import useQuery from "../../hooks/useQuery";
 import { CREATE_PROPOSED_CHANGE } from "../../graphql/mutations/proposed-changes/createProposedChange";
 import { useAuth } from "../../hooks/useAuth";
+import { toast } from "react-toastify";
+import { Alert, ALERT_TYPES } from "../../components/utils/alert";
 
 export const ProposedChangesCreatePage = () => {
   const permission = usePermission();
@@ -43,6 +45,7 @@ const ProposedChangeCreateForm = () => {
   const defaultBranch = branches.filter((branch) => branch.is_default);
   const sourceBranches = branches.filter((branch) => !branch.is_default);
   const form = useForm();
+  const navigate = useNavigate();
 
   const GET_ALL_ACCOUNTS = gql`
     query GetBranches {
@@ -64,8 +67,8 @@ const ProposedChangeCreateForm = () => {
     <FormProvider {...form}>
       <form
         onSubmit={form.handleSubmit(
-          ({ source_branch, destination_branch, name, description, reviewers }) => {
-            createProposedChange({
+          async ({ source_branch, destination_branch, name, description, reviewers }) => {
+            const { data } = await createProposedChange({
               variables: {
                 source_branch,
                 destination_branch,
@@ -77,6 +80,15 @@ const ProposedChangeCreateForm = () => {
                 },
               },
             });
+
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message="proposed change created" />, {
+              toastId: "alert-success-CoreProposedChange-created",
+            });
+
+            const url = constructPath(
+              `/proposed-changes/${data.CoreProposedChangeCreate.object.id}`
+            );
+            navigate(url);
           }
         )}
         className="flex flex-col items-stretch gap-4">
