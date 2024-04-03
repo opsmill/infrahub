@@ -43,8 +43,6 @@
     "@iconify-json/mdi": "^1.1.64",
     "@popperjs/core": "^2.11.8",
     "@radix-ui/react-tooltip": "^1.0.7",
-    "@sentry/react": "^7.45.0",
-    "@sentry/tracing": "^7.45.0",
     "@tailwindcss/forms": "^0.5.3",
     "@uiw/react-color": "^2.0.5",
     "@vitejs/plugin-react": "^4.0.0",
