@@ -2,7 +2,7 @@ from infrahub_sdk import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import PathType, SchemaPathType
+from infrahub.core.constants import NULL_VALUE, PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
@@ -57,7 +57,9 @@ async def test_query_NULL_allowed(
     registry.schema.set(name="TestCar", schema=car_schema)
 
     no_color_car = await Node.init(db=db, schema="TestCar", branch=default_branch)
-    await no_color_car.new(db=db, name="NoColor", color="NULL", nbr_seats=3, is_electric=False, owner=person_john_main)
+    await no_color_car.new(
+        db=db, name="NoColor", color=NULL_VALUE, nbr_seats=3, is_electric=False, owner=person_john_main
+    )
     await no_color_car.save(db=db)
     upper_color_car = await Node.init(db=db, schema="TestCar", branch=default_branch)
     await upper_color_car.new(

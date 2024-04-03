@@ -31,6 +31,8 @@ RESERVED_ATTR_REL_NAMES = [
 
 RESERVED_ATTR_GEN_NAMES = ["type"]
 
+NULL_VALUE = "NULL"
+
 
 class PermissionLevel(enum.Flag):
     READ = 1

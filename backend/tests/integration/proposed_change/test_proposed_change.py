@@ -100,21 +100,21 @@ class TestProposedChangePipeline(TestInfrahubApp):
         peers = await proposed_change.validations.get_peers(db=db)  # type: ignore[attr-defined]
         assert peers
         data_integrity = [validator for validator in peers.values() if validator.label.value == "Data Integrity"][0]
-        assert data_integrity.conclusion.value == ValidatorConclusion.SUCCESS.value
+        assert data_integrity.conclusion.value.value == ValidatorConclusion.SUCCESS.value
         ownership_artifacts = [
             validator for validator in peers.values() if validator.label.value == "Artifact Validator: Ownership report"
         ][0]
-        assert ownership_artifacts.conclusion.value == ValidatorConclusion.SUCCESS.value
+        assert ownership_artifacts.conclusion.value.value == ValidatorConclusion.SUCCESS.value
         description_check = [
             validator for validator in peers.values() if validator.label.value == "Check: car_description_check"
         ][0]
-        assert description_check.conclusion.value == ValidatorConclusion.SUCCESS.value
+        assert description_check.conclusion.value.value == ValidatorConclusion.SUCCESS.value
         age_check = [validator for validator in peers.values() if validator.label.value == "Check: owner_age_check"][0]
-        assert age_check.conclusion.value == ValidatorConclusion.SUCCESS.value
+        assert age_check.conclusion.value.value == ValidatorConclusion.SUCCESS.value
         repository_merge_conflict = [
             validator for validator in peers.values() if validator.label.value == "Repository Validator: car-dealership"
         ][0]
-        assert repository_merge_conflict.conclusion.value == ValidatorConclusion.SUCCESS.value
+        assert repository_merge_conflict.conclusion.value.value == ValidatorConclusion.SUCCESS.value
 
     async def test_conflict_pipeline(
         self, db: InfrahubDatabase, conflict_dataset: None, client: InfrahubClient
@@ -131,4 +131,4 @@ class TestProposedChangePipeline(TestInfrahubApp):
         peers = await proposed_change.validations.get_peers(db=db)  # type: ignore[attr-defined]
         assert peers
         data_integrity = [validator for validator in peers.values() if validator.label.value == "Data Integrity"][0]
-        assert data_integrity.conclusion.value == ValidatorConclusion.FAILURE.value
+        assert data_integrity.conclusion.value.value == ValidatorConclusion.FAILURE.value
