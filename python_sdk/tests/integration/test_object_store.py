@@ -1,7 +1,5 @@
-from infrahub_sdk import Config, InfrahubClient
-
+from infrahub_sdk import InfrahubClient
 from tests.helpers.test_app import TestInfrahubApp
-
 
 FILE_CONTENT_01 = """
     any content
