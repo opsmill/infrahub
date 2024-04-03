@@ -13,6 +13,7 @@ from infrahub.core.constants import (
     HashableModelState,
     InfrahubKind,
     RelationshipDeleteBehavior,
+    RelationshipKind,
     SchemaPathType,
 )
 from infrahub.core.schema import (
@@ -1307,7 +1308,7 @@ async def test_schema_branch_process_filters(
     assert not DeepDiff(criticality_dict["filters"], expected_filters, ignore_order=True)
 
 
-async def test_process_relationships_component_set_to_cascade(schema_all_in_one):
+async def test_process_relationships_on_delete_defaults_set(schema_all_in_one):
     schema_dict = _get_schema_by_kind(schema_all_in_one, "BuiltinCriticality")
     schema_dict["relationships"][0]["kind"] = "Component"
     schema = SchemaBranch(cache={}, name="test")
@@ -1318,6 +1319,10 @@ async def test_process_relationships_component_set_to_cascade(schema_all_in_one)
     processed_criticality = schema.get(name="BuiltinCriticality", duplicate=False)
     processed_relationship = processed_criticality.get_relationship(name="tags")
     assert processed_relationship.on_delete == RelationshipDeleteBehavior.CASCADE
+    for node_schema in schema.get_all(duplicate=False).values():
+        for relationship in node_schema.relationships:
+            if relationship.kind != RelationshipKind.COMPONENT:
+                assert relationship.on_delete == RelationshipDeleteBehavior.NO_ACTION
 
 
 async def test_process_relationships_component_can_be_overridden(schema_all_in_one):

@@ -847,14 +847,21 @@ class SchemaBranch:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
-            relationships = node.get_relationships_of_kind(relationship_kinds=[RelationshipKind.COMPONENT])
-            if not relationships:
-                continue
-
-            for relationship in relationships:
-                if "on_delete" in relationship.model_fields_set:
+            schema_to_update: Optional[Union[NodeSchema, GenericSchema]] = None
+            for relationship in node.relationships:
+                if relationship.on_delete is not None:
                     continue
-                relationship.on_delete = RelationshipDeleteBehavior.CASCADE
+                if not schema_to_update:
+                    schema_to_update = node.duplicate()
+
+                relationship_to_update = schema_to_update.get_relationship(name=relationship.name)
+                if relationship.kind == RelationshipKind.COMPONENT:
+                    relationship_to_update.on_delete = RelationshipDeleteBehavior.CASCADE
+                else:
+                    relationship_to_update.on_delete = RelationshipDeleteBehavior.NO_ACTION
+
+            if schema_to_update:
+                self.set(name=schema_to_update.kind, schema=schema_to_update)
 
     def process_hierarchy(self) -> None:
         for name in self.nodes.keys():
