@@ -39,6 +39,6 @@ describe("Branches screen", () => {
       </MockedProvider>
     );
 
-    cy.contains(`Branches (${branchesMocks.length})`).should("exist");
+    cy.contains(`Branches ${branchesMocks.length}`).should("exist");
   });
 });
