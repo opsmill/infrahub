@@ -202,7 +202,7 @@ export default function ObjectItemDetails(props: any) {
             </div>
           </div>
 
-          <div className="px-4 ">{schemaData?.description}</div>
+          <div className="px-4">{schemaData?.description}</div>
 
           <Tabs
             tabs={tabs}

@@ -3,7 +3,6 @@ import { TASK_OBJECT } from "../../config/constants";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 
-import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useParams } from "react-router-dom";
 import { Link } from "../../components/utils/link";
 import { getTaskItemDetailsTitle } from "../../graphql/queries/tasks/getTasksItemDetailsTitle";
@@ -12,6 +11,7 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { TaskItemDetails } from "./task-item-details";
 import Content from "../layout/content";
+import { Icon } from "@iconify-icon/react";
 
 export const TaskItemDetailsScreen = () => {
   useTitle("Task details");
@@ -45,21 +45,17 @@ export const TaskItemDetailsScreen = () => {
 
   return (
     <Content>
-      <div className="bg-custom-white">
-        <div className="flex items-center p-4 w-full">
-          <div className="sm:flex-auto flex items-center">
-            <Link to={constructPath("/tasks")}>
-              <h1 className="text-md font-semibold text-gray-900 mr-2">Task Details</h1>
-            </Link>
+      <Content.Title
+        title={
+          <>
+            <Link to={constructPath("/tasks")}>Task Details</Link>
 
-            <ChevronRightIcon
-              className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
-              aria-hidden="true"
-            />
-            <p className="max-w-2xl  text-gray-500">{object.title}</p>
-          </div>
-        </div>
-      </div>
+            <Icon icon="mdi:chevron-right" className="text-2xl shrink-0 text-gray-400" />
+
+            <p className="max-w-2xl text-gray-500 font-normal">{object.title}</p>
+          </>
+        }
+      />
 
       <TaskItemDetails />
     </Content>

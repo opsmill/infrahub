@@ -22,18 +22,6 @@ export const MAIN_ROUTES = [
     path: "/branches",
     element: <BranchesItems />,
   },
-  // {
-  //   path: "/groups/:groupname/:groupid",
-  //   element: <GroupItemDetails />,
-  // },
-  // {
-  //   path: "/groups/:groupname",
-  //   element: <GroupItems />,
-  // },
-  // {
-  //   path: "/groups",
-  //   element: <GroupItems />,
-  // },
   {
     path: `/objects/${ARTIFACT_OBJECT}/:objectid`,
     element: <ArtifactsObjectItemDetailsPaginated />,
