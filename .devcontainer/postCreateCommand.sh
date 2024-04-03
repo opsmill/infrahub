@@ -1,4 +1,4 @@
 #!/bin/bash
 
 git pull
-invoke demo.build demo.start
+invoke demo.start
