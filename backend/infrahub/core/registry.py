@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.core.schema_manager import SchemaManager
     from infrahub.database import InfrahubDatabase
-    from infrahub.graphql.mutations.attribute import BaseAttributeInput
+    from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
     from infrahub.graphql.types import InfrahubObject
     from infrahub.storage import InfrahubObjectStorage
     from infrahub.types import InfrahubDataType
@@ -42,7 +42,7 @@ class Registry:
     default_graphql_type: Dict[str, InfrahubObject] = field(default_factory=dict)
     graphql_type: dict = field(default_factory=lambda: defaultdict(dict))
     data_type: Dict[str, InfrahubDataType] = field(default_factory=dict)
-    input_type: Dict[str, BaseAttributeInput] = field(default_factory=dict)
+    input_type: Dict[str, Union[BaseAttributeCreate, BaseAttributeUpdate]] = field(default_factory=dict)
     account: dict = field(default_factory=dict)
     account_id: dict = field(default_factory=dict)
     node_group: dict = field(default_factory=dict)

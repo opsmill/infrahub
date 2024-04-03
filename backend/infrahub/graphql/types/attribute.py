@@ -17,6 +17,7 @@ class RelatedNodeInput(InputObjectType):
 
 
 class AttributeInterface(InfrahubInterface):
+    is_default = Field(Boolean)
     is_inherited = Field(Boolean)
     is_protected = Field(Boolean)
     is_visible = Field(Boolean)

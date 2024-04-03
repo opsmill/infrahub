@@ -64,9 +64,12 @@ async def test_node_init_schema_name(db: InfrahubDatabase, default_branch: Branc
     await obj.new(db=db, name="low", level=4)
 
     assert obj.name.value == "low"
+    assert obj.name.is_default is False
     assert obj.level.value == 4
+    assert obj.level.is_default is False
     assert obj.description.value is None
     assert obj.color.value == "#444444"
+    assert obj.color.is_default is True
 
 
 async def test_node_init_id(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
@@ -605,6 +608,13 @@ async def test_node_update_local_attrs(db: InfrahubDatabase, default_branch: Bra
     await obj1.save(db=db)
 
     obj2 = await NodeManager.get_one(db=db, id=obj1.id)
+
+    assert obj2.name.is_default is False
+    assert obj2.level.is_default is False
+    assert obj2.is_true.is_default is True
+    assert obj2.is_false.is_default is True
+    assert obj2.mylist.is_default is True
+
     obj2.name.value = "high"
     obj2.level.value = 1
     obj2.is_true.value = False
@@ -620,6 +630,12 @@ async def test_node_update_local_attrs(db: InfrahubDatabase, default_branch: Bra
     assert obj3.is_true.value is False
     assert obj3.is_false.value is True
     assert obj3.mylist.value == ["one", "two"]
+
+    assert obj2.name.is_default is False
+    assert obj2.level.is_default is False
+    assert obj2.is_true.is_default is False
+    assert obj2.is_false.is_default is False
+    assert obj2.mylist.is_default is False
 
     # Validate that saving the object a second time doesn't do anything
     await obj2.save(db=db)

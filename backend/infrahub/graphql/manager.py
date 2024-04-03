@@ -9,7 +9,7 @@ from infrahub import config
 from infrahub.core.attribute import String
 from infrahub.core.constants import InfrahubKind, RelationshipKind
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema
-from infrahub.graphql.mutations.attribute import BaseAttributeInput
+from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 
@@ -176,17 +176,19 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 continue
             base_enum_name = get_enum_attribute_type_name(node_schema, attr_schema)
             enum_value_name = f"{base_enum_name}Value"
-            input_class_name = f"{base_enum_name}AttributeInput"
-            data_type_class_name = f"{base_enum_name}EnumType"
             graphene_enum = generate_graphql_enum(name=enum_value_name, options=attr_schema.enum)
+            data_type_class_name = f"{base_enum_name}EnumType"
+
             default_value = None
             if attr_schema.default_value:
                 for g_enum in graphene_enum:
                     if g_enum.value == attr_schema.default_value:
                         default_value = g_enum.name
                         break
+
             graphene_field = graphene.Field(graphene_enum, default_value=default_value)
-            input_class = type(input_class_name, (BaseAttributeInput,), {"value": graphene_field})
+            create_class = type(f"{base_enum_name}AttributeCreate", (BaseAttributeCreate,), {"value": graphene_field})
+            update_class = type(f"{base_enum_name}AttributeUpdate", (BaseAttributeUpdate,), {"value": graphene_field})
             data_type_class: Type[InfrahubDataType] = type(
                 data_type_class_name,
                 (InfrahubDataType,),
@@ -194,7 +196,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                     "label": data_type_class_name,
                     "graphql": graphene.String,
                     "graphql_query": TextAttributeType,
-                    "graphql_input": input_class,
+                    "graphql_create": create_class,
+                    "graphql_update": update_class,
                     "graphql_filter": graphene_enum,
                     "infrahub": String,
                 },
@@ -496,7 +499,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 continue
 
             attr_kind = get_attr_kind(schema, attr)
-            attr_type = get_attribute_type(kind=attr_kind).get_graphql_input()
+            attr_type = get_attribute_type(kind=attr_kind).get_graphql_create()
 
             # A Field is not required if explicitly indicated or if a default value has been provided
             required = not attr.optional if not attr.default_value else False
@@ -534,7 +537,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             if attr.read_only:
                 continue
             attr_kind = get_attr_kind(schema, attr)
-            attr_type = get_attribute_type(kind=attr_kind).get_graphql_input()
+            attr_type = get_attribute_type(kind=attr_kind).get_graphql_update()
             attrs[attr.name] = graphene.InputField(attr_type, required=False, description=attr.description)
 
         for rel in schema.relationships:
