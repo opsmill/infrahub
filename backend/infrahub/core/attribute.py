@@ -154,6 +154,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     def get_kind(self) -> str:
         return self.schema.kind
 
+    def get_value(self) -> Any:
+        if isinstance(self.value, Enum):
+            return self.value.value
+        return self.value
+
     @classmethod
     def validate(cls, value: Any, name: str, schema: AttributeSchema) -> bool:
         if value is None and schema.optional is False:

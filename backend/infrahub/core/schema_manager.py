@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import enum
 import hashlib
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
@@ -1818,10 +1817,7 @@ class SchemaManager(NodeManager):
         #  for a standard node_schema, the relationships will be attributes and relationships
         for attr_name in schema_node._attributes:
             attr = getattr(schema_node, attr_name)
-            if isinstance(attr.value, enum.Enum):
-                node_data[attr_name] = attr.value.value
-            else:
-                node_data[attr_name] = attr.value
+            node_data[attr_name] = attr.get_value()
 
         for rel_name in schema_node._relationships:
             if rel_name not in node_data:
@@ -1833,10 +1829,7 @@ class SchemaManager(NodeManager):
                 item_data = {"id": item.id}
                 for item_name in item._attributes:
                     item_attr = getattr(item, item_name)
-                    if isinstance(item_attr.value, enum.Enum):
-                        item_data[item_name] = item_attr.value.value
-                    else:
-                        item_data[item_name] = item_attr.value
+                    item_data[item_name] = item_attr.get_value()
 
                 node_data[rel_name].append(item_data)
         return NodeSchema(**node_data)
@@ -1851,10 +1844,7 @@ class SchemaManager(NodeManager):
         #  for a standard node_schema, the relationships will be attributes and relationships
         for attr_name in schema_node._attributes:
             attr = getattr(schema_node, attr_name)
-            if isinstance(attr.value, enum.Enum):
-                node_data[attr_name] = attr.value.value
-            else:
-                node_data[attr_name] = attr.value
+            node_data[attr_name] = attr.get_value()
 
         for rel_name in schema_node._relationships:
             if rel_name not in node_data:
@@ -1866,10 +1856,7 @@ class SchemaManager(NodeManager):
                 item_data = {"id": item.id}
                 for item_name in item._attributes:
                     item_attr = getattr(item, item_name)
-                    if isinstance(item_attr.value, enum.Enum):
-                        item_data[item_name] = item_attr.value.value
-                    else:
-                        item_data[item_name] = item_attr.value
+                    item_data[item_name] = item_attr.get_value()
 
                 node_data[rel_name].append(item_data)
 
