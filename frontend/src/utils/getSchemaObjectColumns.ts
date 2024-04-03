@@ -165,6 +165,8 @@ export const getObjectPeers = (schema?: iNodeSchema | iGenericSchema) => {
 export const getFieldValue = (row: any, attribute: any) => {
   const value = row?.[attribute.name] ? row[attribute.name].value : attribute.default_value;
 
+  if (value === null) return null;
+
   if (attribute.kind === "DateTime") {
     if (isValid(value)) {
       return value;
