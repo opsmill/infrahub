@@ -147,7 +147,7 @@ async def test_cannot_upsert_new_object_without_required_fields(db: InfrahubData
         variable_values={},
     )
 
-    expected_error = "Field 'TestPersonCreateInput.name' of required type 'TextAttributeInput!' was not provided."
+    expected_error = "Field 'TestPersonUpsertInput.name' of required type 'TextAttributeUpdate!' was not provided."
     assert any(expected_error in error.message for error in result.errors)
 
     assert await NodeManager.get_one(db=db, id=fresh_id, branch=branch) is None
