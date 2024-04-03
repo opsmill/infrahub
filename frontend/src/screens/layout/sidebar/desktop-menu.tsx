@@ -74,8 +74,8 @@ export function DesktopMenu({ className = "" }: MenuProps) {
       <div className="border-b py-2">
         <SearchInput
           onChange={setQuery}
-          containerClassName="!z-0"
-          className="!shadow-none !ring-0"
+          containerClassName="z-0"
+          className="shadow-none border-none focus-visible:ring-0"
           placeholder="Search menu"
           testId="search-menu"
         />
