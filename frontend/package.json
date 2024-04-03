@@ -85,7 +85,7 @@
   "devDependencies": {
     "@graphql-codegen/cli": "^5.0.2",
     "@graphql-codegen/typescript": "^4.0.6",
-    "@playwright/test": "^1.41.1",
+    "@playwright/test": "^1.42.1",
     "@testing-library/react": "^14.0.0",
     "@types/node": "^16.18.12",
     "@types/prismjs": "^1.26.0",
