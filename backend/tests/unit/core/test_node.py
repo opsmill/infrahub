@@ -619,7 +619,7 @@ async def test_node_update_local_attrs(db: InfrahubDatabase, default_branch: Bra
     obj2.level.value = 1
     obj2.is_true.value = False
     obj2.is_false.value = True
-    obj2.mylist.value = ["one", "two"]
+    obj2.mylist.value = ["one", "two", "tree"]
     await obj2.save(db=db)
 
     nbr_rels = await count_relationships(db=db)
@@ -629,13 +629,13 @@ async def test_node_update_local_attrs(db: InfrahubDatabase, default_branch: Bra
     assert obj3.level.value == 1
     assert obj3.is_true.value is False
     assert obj3.is_false.value is True
-    assert obj3.mylist.value == ["one", "two"]
+    assert obj3.mylist.value == ["one", "two", "tree"]
 
-    assert obj2.name.is_default is False
-    assert obj2.level.is_default is False
-    assert obj2.is_true.is_default is False
-    assert obj2.is_false.is_default is False
-    assert obj2.mylist.is_default is False
+    assert obj3.name.is_default is False
+    assert obj3.level.is_default is False
+    assert obj3.is_true.is_default is False
+    assert obj3.is_false.is_default is False
+    assert obj3.mylist.is_default is False
 
     # Validate that saving the object a second time doesn't do anything
     await obj2.save(db=db)
