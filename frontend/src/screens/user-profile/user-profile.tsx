@@ -5,7 +5,7 @@ import { Avatar } from "../../components/display/avatar";
 import { Tabs } from "../../components/tabs";
 import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { getProfileDetails } from "../../graphql/queries/profile/getProfileDetails";
+import { getProfileDetails } from "../../graphql/queries/accounts/getProfileDetails";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { schemaState } from "../../state/atoms/schema.atom";
