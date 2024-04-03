@@ -11,7 +11,6 @@ from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
-from infrahub.core.constants import RelationshipDeleteBehavior, RelationshipKind
 from infrahub.core.migrations.schema.runner import schema_migrations_runner
 from infrahub.core.models import SchemaBranchHash  # noqa: TCH001
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
@@ -76,19 +75,6 @@ class SchemaReadAPI(BaseModel):
 
 class SchemaLoadAPI(SchemaRoot):
     version: str
-
-    @model_validator(mode="after")
-    def set_on_cascade_for_components(self) -> SchemaLoadAPI:
-        for schema in self.nodes + self.generics:
-            relationship_schema = schema.get_relationships_of_kind(relationship_kinds=[RelationshipKind.COMPONENT])
-            if not relationship_schema:
-                continue
-
-            for relationship in relationship_schema:
-                if "on_delete" in relationship.model_fields_set:
-                    continue
-                relationship.on_delete = RelationshipDeleteBehavior.CASCADE
-        return self
 
 
 class SchemasLoadAPI(SchemaRoot):
