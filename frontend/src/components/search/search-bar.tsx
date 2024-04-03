@@ -11,9 +11,9 @@ import { datetimeAtom } from "../../state/atoms/time.atom";
 import { classNames, debounce } from "../../utils/common";
 import { Background } from "../display/background";
 import { POPOVER_SIZE, PopOver } from "../display/popover";
-import { Input } from "../inputs/input";
 import Transition from "../utils/transition";
 import { SearchResults } from "./search-results";
+import { Input } from "../ui/input";
 
 type tSearchInput = {
   onChange: Function;
@@ -56,7 +56,7 @@ export const SearchInput = (props: tSearchInput) => {
       )}>
       <Input
         value={search}
-        onChange={handleChange}
+        onChange={(e) => handleChange(e.target.value)}
         data-testid={testId}
         className={classNames("py-2 pl-10 placeholder-gray-500", className)}
         placeholder={placeholder}
