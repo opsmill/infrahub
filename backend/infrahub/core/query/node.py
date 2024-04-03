@@ -32,6 +32,7 @@ class NodeToProcess:
 
     node_id: str
     node_uuid: str
+    profile_uuids: list[str]
 
     updated_at: str
 
@@ -542,12 +543,19 @@ class NodeListGetInfoQuery(Query):
         }
         WITH n1 as n, r1 as rb
         WHERE rb.status = "active"
+        OPTIONAL MATCH profile_path = (n)-[pr1:IS_RELATED]->(profile_r:Relationship)<-[pr2:IS_RELATED]-(profile:Node)-[pr3:IS_PART_OF]->(:Root)
+        WHERE profile_r.name = "node__profile"
+        AND profile.namespace = "Profile"
+        AND all(r in relationships(profile_path) WHERE %(branch_filter)s)
+        AND pr1.status = "active"
+        AND pr2.status = "active"
+        AND pr3.status = "active"
         """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
         self.params["ids"] = self.ids
 
-        self.return_labels = ["n", "rb"]
+        self.return_labels = ["collect(profile.uuid) as profile_uuids", "n", "rb"]
 
     async def get_nodes(self, duplicate: bool = True) -> AsyncIterator[NodeToProcess]:
         """Return all the node objects as NodeToProcess."""
@@ -558,6 +566,7 @@ class NodeListGetInfoQuery(Query):
                 schema=schema,
                 node_id=result.get_node("n").element_id,
                 node_uuid=result.get_node("n").get("uuid"),
+                profile_uuids=result.get("profile_uuids"),
                 updated_at=result.get_rel("rb").get("from"),
                 branch=self.branch.name,
                 labels=list(result.get_node("n").labels),

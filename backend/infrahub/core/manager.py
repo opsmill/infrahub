@@ -6,6 +6,8 @@ from infrahub_sdk.utils import deep_merge_dict
 
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
+    AttributeFromDB,
+    AttributeNodePropertyFromDB,
     NodeGetHierarchyQuery,
     NodeGetListQuery,
     NodeListGetAttributeQuery,
@@ -454,14 +456,19 @@ class NodeManager:
         # Query all nodes
         query = await NodeListGetInfoQuery.init(db=db, ids=ids, branch=branch, account=account, at=at)
         await query.execute(db=db)
-        nodes_info_by_id: Dict[str, NodeToProcess] = {
-            node.node_uuid: node async for node in query.get_nodes(duplicate=False)
-        }
+
+        nodes_info_by_id: Dict[str, NodeToProcess] = {}
+        profile_ids: set[str] = set()
+        node_id_profile_ids_map: dict[str, list[str]] = {}
+        async for node_info in query.get_nodes(duplicate=False):
+            nodes_info_by_id[node_info.node_uuid] = node_info
+            node_id_profile_ids_map[node_info.node_uuid] = node_info.profile_uuids
+            profile_ids.update(node_info.profile_uuids)
 
         # Query list of all Attributes
         query = await NodeListGetAttributeQuery.init(
             db=db,
-            ids=list(nodes_info_by_id.keys()),
+            ids=list(nodes_info_by_id.keys()) + list(profile_ids),
             fields=fields,
             branch=branch,
             include_source=include_source,
@@ -470,7 +477,14 @@ class NodeManager:
             at=at,
         )
         await query.execute(db=db)
-        node_attributes = query.get_attributes_group_by_node()
+        all_node_attributes = query.get_attributes_group_by_node()
+        profile_attributes: Dict[str, Dict[str, AttributeFromDB]] = {}
+        node_attributes: Dict[str, Dict[str, AttributeFromDB]] = {}
+        for node_id, attribute_dict in all_node_attributes.items():
+            if node_id in profile_ids:
+                profile_attributes[node_id] = attribute_dict
+            else:
+                node_attributes[node_id] = attribute_dict
 
         # if prefetch_relationships is enabled
         # Query all the peers associated with all nodes at once.
@@ -499,6 +513,10 @@ class NodeManager:
         nodes = {}
 
         for node_id in ids:  # pylint: disable=too-many-nested-blocks
+            profile_ids = node_id_profile_ids_map.get(node_id, [])
+            profiles = [profile_attributes[p_id] for p_id in profile_ids if p_id in profile_attributes]
+            profiles.sort(key=lambda p: str(p.attrs.get("profile_priority").value), reverse=True)
+
             if node_id not in nodes_info_by_id:
                 continue
 
@@ -517,6 +535,20 @@ class NodeManager:
             # --------------------------------------------------------
             if node_id in node_attributes:
                 for attr_name, attr in node_attributes[node_id].attrs.items():
+                    if attr.is_default and profiles:
+                        profile_value, profile_uuid = None, None
+                        index = 0
+                        while profile_value is None and index < (len(profiles) - 1):
+                            try:
+                                profile_value = profiles[index].attrs[attr_name].value
+                                profile_uuid = profiles[index].node["uuid"]
+                                break
+                            except (IndexError, KeyError, AttributeError):
+                                ...
+                            index += 1
+                        if profile_value is not None:
+                            attr.value = profile_value
+                            attr.node_properties["owner"] = AttributeNodePropertyFromDB(uuid=profile_uuid, labels=[])
                     new_node_data[attr_name] = attr
 
             # --------------------------------------------------------
