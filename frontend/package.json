@@ -46,7 +46,7 @@
     "@tailwindcss/forms": "^0.5.7",
     "@uiw/react-color": "^2.1.1",
     "@vitejs/plugin-react": "^4.0.0",
-    "autoprefixer": "^10.4.14",
+    "autoprefixer": "^10.4.19",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "cm6-theme-basic-light": "^0.2.0",
