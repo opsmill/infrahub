@@ -57,6 +57,8 @@ infrahubGit:
   persistence:
     enabled: true
     size: 100Mi
+    accessMode: ReadWriteMany
+    storageClassName: nfs
   infrahubGit:
     args:
       - infrahub
@@ -85,6 +87,8 @@ infrahubServer:
   persistence:
     enabled: true
     size: 100Mi
+    accessMode: ReadWriteMany
+    storageClassName: nfs
   infrahubServer:
     args:
       - gunicorn
@@ -178,3 +182,13 @@ messageQueue:
     periodSeconds: 30
     failureThreshold: 6
     successThreshold: 1
+
+# ----------- NFS Server -----------
+nfs-server-provisioner:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 10Gi
+  storageClass:
+    create: true
+    name: nfs
