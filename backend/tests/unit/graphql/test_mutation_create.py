@@ -33,7 +33,13 @@ async def test_create_simple_object(db: InfrahubDatabase, default_branch, car_pe
 
     assert result.errors is None
     assert result.data["TestPersonCreate"]["ok"] is True
-    assert len(result.data["TestPersonCreate"]["object"]["id"]) == 36  # lenght of an UUID
+
+    person_id = result.data["TestPersonCreate"]["object"]["id"]
+    assert len(person_id) == 36  # lenght of an UUID
+
+    person = await NodeManager.get_one(db=db, id=person_id)
+    assert person.name.is_default is False
+    assert person.height.is_default is False
 
 
 async def test_create_simple_object_with_ok_return(db: InfrahubDatabase, default_branch, car_person_schema):
@@ -364,9 +370,67 @@ async def test_all_attributes(db: InfrahubDatabase, default_branch, all_attribut
     obj1 = objs[0]
 
     assert obj1.mystring.value == "abc"
+    assert obj1.mystring.is_default is False
     assert obj1.mybool.value is False
+    assert obj1.mybool.is_default is False
     assert obj1.myint.value == 123
+    assert obj1.myint.is_default is False
     assert obj1.mylist.value == ["1", 2, False]
+    assert obj1.mylist.is_default is False
+
+
+async def test_all_attributes_default_value(db: InfrahubDatabase, default_branch, all_attribute_default_types_schema):
+    query = """
+    mutation {
+        TestAllAttributeTypesCreate(
+            data: {
+                name: { value: "obj1" }
+                mystring: { value: "abc" }
+                mybool: { value: false }
+                myint: { value: 123 }
+                mylist: { value: [ "1", 2, false ] }
+            }
+        ){
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["TestAllAttributeTypesCreate"]["ok"] is True
+    obj_id = result.data["TestAllAttributeTypesCreate"]["object"]["id"]
+    assert len(obj_id) == 36  # lenght of an UUID
+
+    obj1 = await NodeManager.get_one(db=db, id=obj_id)
+
+    assert obj1.mystring.value == "abc"
+    assert obj1.mystring.is_default is False
+    assert obj1.mybool.value is False
+    assert obj1.mybool.is_default is False
+    assert obj1.myint.value == 123
+    assert obj1.myint.is_default is False
+    assert obj1.mylist.value == ["1", 2, False]
+    assert obj1.mylist.is_default is False
+
+    assert obj1.mystring_default.value == "a string"
+    assert obj1.mystring_default.is_default is True
+    assert obj1.mybool_default.value is False
+    assert obj1.mybool_default.is_default is True
+    assert obj1.myint_default.value == 10
+    assert obj1.myint_default.is_default is True
+    assert obj1.mylist_default.value == [10, 11, 12]
+    assert obj1.mylist_default.is_default is True
 
 
 async def test_create_object_with_flag_property(db: InfrahubDatabase, default_branch, car_person_schema):

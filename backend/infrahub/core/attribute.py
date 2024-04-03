@@ -159,6 +159,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             return self.value.value
         return self.value
 
+    def set_default_value(self) -> None:
+        self.value = self.schema.default_value
+        if self.is_enum and self.value:
+            self.value = self.schema.convert_value_to_enum(self.value)
+
     @classmethod
     def validate(cls, value: Any, name: str, schema: AttributeSchema) -> bool:
         if value is None and schema.optional is False:
@@ -346,6 +351,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         # Validate if the value is still correct, will raise a ValidationError if not
         self.validate(value=self.value, name=self.name, schema=self.schema)
 
+        # Check if the current value is still the default one
+        if self.is_default:
+            if self.schema.default_value and self.schema.default_value != self.value:
+                self.is_default = False
+            elif not self.schema.default_value and self.value is not None:
+                self.is_default = False
+
         query = await NodeListGetAttributeQuery.init(
             db=db,
             ids=[self.node.id],
@@ -488,6 +500,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             if value_to_set != self.value:
                 self.value = value_to_set
                 changed = True
+
+        if "is_default" in data and not self.is_default:
+            self.is_default = True
+            changed = True
+
+            if "value" not in data:
+                self.set_default_value()
 
         if "is_protected" in data and data["is_protected"] != self.is_protected:
             self.is_protected = data["is_protected"]
