@@ -83,8 +83,8 @@
     "web-vitals": "^2.1.4"
   },
   "devDependencies": {
-    "@graphql-codegen/cli": "^3.0.0",
-    "@graphql-codegen/typescript": "^3.0.0",
+    "@graphql-codegen/cli": "^5.0.2",
+    "@graphql-codegen/typescript": "^4.0.6",
     "@playwright/test": "^1.41.1",
     "@testing-library/react": "^14.0.0",
     "@types/node": "^16.18.12",
