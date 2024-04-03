@@ -2,7 +2,7 @@ import time
 from typing import Dict
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind, RelationshipHierarchyDirection
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_attribute_remove import (
     NodeAttributeRemoveMigration,
@@ -24,6 +24,7 @@ from infrahub.core.query.node import (
     NodeListGetRelationshipsQuery,
 )
 from infrahub.core.registry import registry
+from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.database import InfrahubDatabase
 
 
@@ -219,6 +220,30 @@ async def test_query_NodeGetListQuery_with_generics(db: InfrahubDatabase, group_
     )
     await query.execute(db=db)
     assert query.get_node_ids() == [group_group1_main.id]
+
+
+async def test_query_NodeGetListQuery_order_by_optional_relationship(
+    db: InfrahubDatabase, branch: Branch, car_camry_main, car_accord_main
+):
+    schema = registry.schema.get(name="TestCar", branch=branch)
+    schema.relationships.append(
+        RelationshipSchema(
+            name="other_car",
+            peer="TestCar",
+            cardinality=RelationshipCardinality.ONE,
+            identifier="testcar__other_car",
+        )
+    )
+    schema.order_by = ["other_car__name__value"]
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+    )
+    await query.execute(db=db)
+
+    assert set(query.get_node_ids()) == {car_accord_main.id, car_camry_main.id}
 
 
 async def test_query_NodeListGetInfoQuery(
