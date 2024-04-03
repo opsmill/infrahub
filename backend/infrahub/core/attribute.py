@@ -600,39 +600,39 @@ class IPNetwork(BaseAttribute):
         return str(ipaddress.ip_network(str(self.value)).netmask)
 
     @property
-    def prefixlen(self) -> Optional[str]:
+    def prefixlen(self) -> Optional[int]:
         """Return the prefix length the ip network."""
         if not self.value:
             return None
-        return str(ipaddress.ip_network(str(self.value)).prefixlen)
+        return ipaddress.ip_network(str(self.value)).prefixlen
 
     @property
     def num_addresses(self) -> Optional[int]:
         """Return the number of possible addresses in the ip network."""
         if not self.value:
             return None
-        return int(ipaddress.ip_network(str(self.value)).num_addresses)
+        return ipaddress.ip_network(str(self.value)).num_addresses
 
     @property
     def version(self) -> Optional[int]:
         """Return the IP version of the ip network."""
         if not self.value:
             return None
-        return int(ipaddress.ip_network(str(self.value)).version)
+        return ipaddress.ip_network(str(self.value)).version
 
     @property
     def with_hostmask(self) -> Optional[str]:
         """Return the network ip and the associated hostmask of the ip network."""
         if not self.value:
             return None
-        return str(ipaddress.ip_network(str(self.value)).with_hostmask)
+        return ipaddress.ip_network(str(self.value)).with_hostmask
 
     @property
     def with_netmask(self) -> Optional[str]:
         """Return the network ip and the associated netmask of the ip network."""
         if not self.value:
             return None
-        return str(ipaddress.ip_network(str(self.value)).with_netmask)
+        return ipaddress.ip_network(str(self.value)).with_netmask
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
@@ -691,32 +691,32 @@ class IPHost(BaseAttribute):
         return str(ipaddress.ip_interface(str(self.value)).network)
 
     @property
-    def prefixlen(self) -> Optional[str]:
+    def prefixlen(self) -> Optional[int]:
         """Return the prefix length of the ip address."""
         if not self.value:
             return None
-        return str(ipaddress.ip_interface(str(self.value))._prefixlen)
+        return ipaddress.ip_interface(str(self.value)).network.prefixlen
 
     @property
     def version(self) -> Optional[int]:
         """Return the IP version of the ip address."""
         if not self.value:
             return None
-        return int(ipaddress.ip_interface(str(self.value)).version)
+        return ipaddress.ip_interface(str(self.value)).version
 
     @property
     def with_hostmask(self) -> Optional[str]:
         """Return the ip address and the associated hostmask of the ip address."""
         if not self.value:
             return None
-        return str(ipaddress.ip_interface(str(self.value)).with_hostmask)
+        return ipaddress.ip_interface(str(self.value)).with_hostmask
 
     @property
     def with_netmask(self) -> Optional[str]:
         """Return the ip address and the associated netmask of the ip address."""
         if not self.value:
             return None
-        return str(ipaddress.ip_interface(str(self.value)).with_netmask)
+        return ipaddress.ip_interface(str(self.value)).with_netmask
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
