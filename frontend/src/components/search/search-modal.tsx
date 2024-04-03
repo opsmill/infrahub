@@ -6,6 +6,7 @@ import { classNames } from "../../utils/common";
 import { SearchActions } from "./search-actions";
 import { SearchNodes } from "./search-nodes";
 import { SearchDocs } from "./search-docs";
+import Kbd from "../ui/kbd";
 
 type SearchInputProps = {
   className?: string;
@@ -32,6 +33,10 @@ const SearchInput = ({ value, onChange, className = "" }: SearchInputProps) => {
             rounded-md border border-gray-300 focus:border-custom-blue-600 focus:ring-custom-blue-600 shadow-sm
           `}
       />
+
+      <div className="absolute inset-y-0 right-2 flex items-center">
+        <Kbd keys="command">K</Kbd>
+      </div>
     </div>
   );
 };
