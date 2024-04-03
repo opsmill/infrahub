@@ -549,7 +549,8 @@ class NodeManager:
         nodes: List[Node],
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
-    ) -> None:
+    ) -> list[Node]:
+        """Returns list of deleted nodes because of cascading deletes"""
         branch = await registry.get_branch(branch=branch, db=db)
         component_registry = get_component_registry()
         node_delete_validator = await component_registry.get_component(NodeDeleteValidator, db=db, branch=branch)
@@ -559,8 +560,12 @@ class NodeManager:
         if missing_ids_to_delete:
             node_map = await cls.get_many(db=db, ids=list(missing_ids_to_delete), branch=branch, at=at)
             nodes += list(node_map.values())
+        deleted_nodes = []
         for node in nodes:
             await node.delete(db=db, at=at)
+            deleted_nodes.append(node)
+
+        return deleted_nodes
 
 
 registry.manager = NodeManager

@@ -19,8 +19,9 @@ async def test_delete_succeeds(
     car_accord_main: Node,
     person_albert_main: Node,
 ):
-    await NodeManager.delete(db=db, branch=default_branch, nodes=[person_albert_main])
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[person_albert_main])
 
+    assert {d.id for d in deleted} == {person_albert_main.id}
     node = await NodeManager.get_one(db=db, id=person_albert_main.id)
     assert node is None
 
@@ -79,8 +80,9 @@ async def test_source_node_already_deleted(
     car = await NodeManager.get_one(db=db, id=car_camry_main.id)
     await car.delete(db=db)
 
-    await NodeManager.delete(db=db, branch=default_branch, nodes=[person_jane_main])
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[person_jane_main])
 
+    assert {d.id for d in deleted} == {person_jane_main.id}
     node = await NodeManager.get_one(db=db, id=person_jane_main.id)
     assert node is None
 
@@ -97,8 +99,9 @@ async def test_cascade_delete_not_prevented(
     person_schema = schema_branch.get(name="TestPerson", duplicate=False)
     person_schema.get_relationship("cars").on_delete = RelationshipDeleteBehavior.CASCADE
 
-    await NodeManager.delete(db=db, branch=default_branch, nodes=[person_jane_main])
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[person_jane_main])
 
+    assert {d.id for d in deleted} == {person_jane_main.id, car_camry_main.id}
     node_map = await NodeManager.get_many(db=db, ids=[person_jane_main.id, car_camry_main.id])
     assert node_map == {}
 
@@ -110,8 +113,9 @@ async def test_delete_with_cascade_on_many_relationship(
     person_schema = schema_branch.get(name="TestPerson", duplicate=False)
     person_schema.get_relationship("cars").on_delete = RelationshipDeleteBehavior.CASCADE
 
-    await NodeManager.delete(db=db, branch=default_branch, nodes=[person_john_main])
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[person_john_main])
 
+    assert {d.id for d in deleted} == {person_john_main.id, car_accord_main.id, car_prius_main.id}
     node_map = await NodeManager.get_many(db=db, ids=[person_john_main.id, car_accord_main.id, car_prius_main.id])
     assert node_map == {}
 
@@ -123,8 +127,9 @@ async def test_delete_with_cascade_on_one_relationship(
     car_schema = schema_branch.get(name="TestCar", duplicate=False)
     car_schema.get_relationship("owner").on_delete = RelationshipDeleteBehavior.CASCADE
 
-    await NodeManager.delete(db=db, branch=default_branch, nodes=[car_accord_main])
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[car_accord_main])
 
+    assert {d.id for d in deleted} == {person_john_main.id, car_accord_main.id}
     node_map = await NodeManager.get_many(db=db, ids=[person_john_main.id, car_accord_main.id])
     assert node_map == {}
 
@@ -136,9 +141,10 @@ async def test_delete_with_cascade_multiple_input_nodes(
     car_schema = schema_branch.get(name="TestCar", duplicate=False)
     car_schema.get_relationship("owner").on_delete = RelationshipDeleteBehavior.CASCADE
 
-    await NodeManager.delete(db=db, branch=default_branch, nodes=[car_accord_main, car_prius_main])
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[car_accord_main, car_prius_main])
 
-    node_map = await NodeManager.get_many(db=db, ids=[person_john_main.id, car_accord_main.id])
+    assert {d.id for d in deleted} == {person_john_main.id, car_accord_main.id, car_prius_main.id}
+    node_map = await NodeManager.get_many(db=db, ids=[person_john_main.id, car_accord_main.id, car_prius_main.id])
     assert node_map == {}
 
 
@@ -151,7 +157,8 @@ async def test_delete_with_cascade_both_directions_succeeds(
     person_schema = schema_branch.get(name="TestPerson", duplicate=False)
     person_schema.get_relationship("cars").on_delete = RelationshipDeleteBehavior.CASCADE
 
-    await NodeManager.delete(db=db, branch=default_branch, nodes=[car_accord_main])
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[car_accord_main])
 
+    assert {d.id for d in deleted} == {person_john_main.id, car_accord_main.id, car_prius_main.id}
     node_map = await NodeManager.get_many(db=db, ids=[person_john_main.id, car_accord_main.id, car_prius_main.id])
     assert node_map == {}
