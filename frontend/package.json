@@ -31,7 +31,7 @@
     "format-code": "npm run prettier:fix && npm run eslint:fix"
   },
   "dependencies": {
-    "@apollo/client": "^3.7.7",
+    "@apollo/client": "^3.9.10",
     "@codemirror/commands": "^6.3.2",
     "@codemirror/lang-markdown": "^6.2.3",
     "@codemirror/state": "^6.3.2",
@@ -54,6 +54,7 @@
     "cm6-theme-basic-light": "^0.2.0",
     "cross-fetch": "^4.0.0",
     "date-fns": "^2.29.3",
+    "graphql": "^16.8.1",
     "handlebars": "^4.7.7",
     "jotai": "^2.6.0",
     "prismjs": "^1.29.0",
