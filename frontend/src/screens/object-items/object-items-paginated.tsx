@@ -85,6 +85,7 @@ export default function ObjectItems(props: any) {
   const generic = genericList.find((s) => s.kind === objectname);
 
   const schemaData = schema || generic;
+  const isGeneric = !!generic;
 
   if ((schemaList?.length || genericList?.length) && !schemaData) {
     // If there is no schema nor generics, go to home page
@@ -237,19 +238,21 @@ export default function ObjectItems(props: any) {
               <Retry isLoading={loading} onClick={handleRefetch} />
             </>
           }>
-          <div className="flex-grow text-right">
-            <Tooltip
-              enabled={!permission.write.allow}
-              content={permission.write.message ?? undefined}>
-              <RoundedButton
-                data-cy="create"
-                data-testid="create-object-button"
-                disabled={!permission.write.allow}
-                onClick={() => setShowCreateDrawer(true)}>
-                <PlusIcon className="w-4 h-4" aria-hidden="true" />
-              </RoundedButton>
-            </Tooltip>
-          </div>
+          {!isGeneric && (
+            <div className="flex-grow text-right">
+              <Tooltip
+                enabled={!permission.write.allow}
+                content={permission.write.message ?? undefined}>
+                <RoundedButton
+                  data-cy="create"
+                  data-testid="create-object-button"
+                  disabled={!permission.write.allow}
+                  onClick={() => setShowCreateDrawer(true)}>
+                  <PlusIcon className="w-4 h-4" aria-hidden="true" />
+                </RoundedButton>
+              </Tooltip>
+            </div>
+          )}
         </Content.Title>
       )}
 
