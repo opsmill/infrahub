@@ -600,11 +600,11 @@ class IPNetwork(BaseAttribute):
         return str(ipaddress.ip_network(str(self.value)).netmask)
 
     @property
-    def prefixlen(self) -> Optional[str]:
+    def prefixlen(self) -> Optional[int]:
         """Return the prefix length the ip network."""
         if not self.value:
             return None
-        return str(ipaddress.ip_network(str(self.value)).prefixlen)
+        return ipaddress.ip_network(str(self.value)).prefixlen
 
     @property
     def num_addresses(self) -> Optional[int]:
@@ -691,11 +691,11 @@ class IPHost(BaseAttribute):
         return str(ipaddress.ip_interface(str(self.value)).network)
 
     @property
-    def prefixlen(self) -> Optional[str]:
+    def prefixlen(self) -> Optional[int]:
         """Return the prefix length of the ip address."""
         if not self.value:
             return None
-        return str(ipaddress.ip_interface(str(self.value))._prefixlen)
+        return ipaddress.ip_interface(str(self.value)).network.prefixlen
 
     @property
     def version(self) -> Optional[int]:
