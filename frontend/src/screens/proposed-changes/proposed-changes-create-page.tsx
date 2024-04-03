@@ -11,13 +11,15 @@ import { branchesToSelectOptions } from "../../utils/branches";
 import { FormProvider, useForm } from "react-hook-form";
 import React from "react";
 import { DynamicControl } from "../edit-form-hook/dynamic-control";
-import { gql, useMutation } from "@apollo/client";
+import { useMutation } from "@apollo/client";
 import useQuery from "../../hooks/useQuery";
 import { CREATE_PROPOSED_CHANGE } from "../../graphql/mutations/proposed-changes/createProposedChange";
 import { useAuth } from "../../hooks/useAuth";
 import { toast } from "react-toastify";
 import { Alert, ALERT_TYPES } from "../../components/utils/alert";
 import { classNames } from "../../utils/common";
+import Content from "../layout/content";
+import { GET_ALL_ACCOUNTS } from "../../graphql/queries/accounts/getAllAccounts";
 
 export const ProposedChangesCreatePage = () => {
   const permission = usePermission();
@@ -27,15 +29,17 @@ export const ProposedChangesCreatePage = () => {
   }
 
   return (
-    <main className="p-4 px-8 max-w-2xl m-auto mt-0 md:mt-4 bg-white rounded-md overflow-auto">
-      <h1 className="text-xl font-semibold text-gray-700">Create a proposed change</h1>
-      <p className="text-xs text-gray-700 mb-6">
-        A proposed change lets you compare two branches, run tests, and finally merge one branch
-        into another.
-      </p>
+    <Content>
+      <div className="p-4 px-8 max-w-2xl m-auto mt-0 md:mt-4 bg-white rounded-md">
+        <h1 className="text-xl font-semibold text-gray-700">Create a proposed change</h1>
+        <p className="text-xs text-gray-700 mb-6">
+          A proposed change lets you compare two branches, run tests, and finally merge one branch
+          into another.
+        </p>
 
-      <ProposedChangeCreateForm />
-    </main>
+        <ProposedChangeCreateForm />
+      </div>
+    </Content>
   );
 };
 
@@ -47,22 +51,10 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
   const form = useForm();
   const navigate = useNavigate();
 
-  const GET_ALL_ACCOUNTS = gql`
-    query GetBranches {
-      CoreAccount {
-        edges {
-          node {
-            id
-            display_label
-          }
-        }
-      }
-    }
-  `;
-
   const { data: getAllAccountsData } = useQuery(GET_ALL_ACCOUNTS);
 
   const [createProposedChange, { loading, error }] = useMutation(CREATE_PROPOSED_CHANGE);
+
   return (
     <FormProvider {...form}>
       <form

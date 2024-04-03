@@ -33,7 +33,6 @@ export default {
     minHeight: {
       7: "1.75rem", // 28px
       10: "40px",
-      48: "12rem" /* 192px */,
       full: "100%",
     },
     extend: {
