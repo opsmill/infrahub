@@ -26,7 +26,7 @@ Below is the list of all available options to define a Relationship in the schem
 | [**max_count**](#max_count) | Attribute | Defines the maximum objects allowed on the other side of the relationship. | False |
 | [**min_count**](#min_count) | Attribute | Defines the minimum objects allowed on the other side of the relationship. | False |
 | [**name**](#name) | Attribute | Relationship name, must be unique within a model and must be all lowercase. | True |
-| [**on_delete**](#on_delete) | Attribute | If cascade, related node(s) are deleted when this node is deleted | False |
+| [**on_delete**](#on_delete) | Attribute | Default is no-action. If cascade, related node(s) are deleted when this node is deleted. | False |
 | [**optional**](#optional) | Attribute | Indicate if this relationship is mandatory or optional. | False |
 | [**order_weight**](#order_weight) | Attribute | Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first. | False |
 | [**peer**](#peer) | Attribute | Type (kind) of objects supported on the other end of the relationship. | True |
@@ -176,7 +176,7 @@ Below is the list of all available options to define a Relationship in the schem
 | ---- | --------------- |
 | **Name** | on_delete |
 | **Kind** | `Text` |
-| **Description** | If cascade, related node(s) are deleted when this node is deleted |
+| **Description** | Default is no-action. If cascade, related node(s) are deleted when this node is deleted. |
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  |
