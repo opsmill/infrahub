@@ -5,7 +5,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
 import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
@@ -42,6 +42,7 @@ import { RelationshipsDetails } from "../object-item-details/relationships-detai
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { Generate } from "./generate";
+import Content from "../layout/content";
 
 export default function ArtifactsDetails() {
   const { objectid } = useParams();
@@ -127,19 +128,20 @@ export default function ArtifactsDetails() {
   const fileUrl = CONFIG.ARTIFACTS_CONTENT_URL(objectDetailsData?.storage_id?.value);
 
   return (
-    <div className="flex-1 overflow-auto flex flex-col">
-      <div className="bg-custom-white px-4 py-5 flex items-center">
-        <div
-          onClick={() => navigate(constructPath(`/objects/${ARTIFACT_OBJECT}`))}
-          className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
-          {schemaData.name}
-        </div>
-        <ChevronRightIcon
-          className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
-          aria-hidden="true"
-        />
-        <p className="mt-1 max-w-2xl text-sm text-gray-500">{objectDetailsData.display_label}</p>
-      </div>
+    <Content>
+      <Content.Title
+        title={
+          <>
+            <Link to={constructPath(`/objects/${ARTIFACT_OBJECT}`)} className="hover:underline">
+              {schemaData.name}
+            </Link>
+            <Icon icon="mdi:chevron-right" className="text-2xl shrink-0 text-gray-400" />
+            <p className="max-w-2xl text-sm text-gray-500 font-normal">
+              {objectDetailsData.display_label}
+            </p>
+          </>
+        }
+      />
 
       <div className="px-4 text-sm">{schemaData?.description}</div>
 
@@ -463,6 +465,6 @@ export default function ArtifactsDetails() {
           row={objectDetailsData}
         />
       </SlideOver>
-    </div>
+    </Content>
   );
 }

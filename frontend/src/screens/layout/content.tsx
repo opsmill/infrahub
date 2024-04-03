@@ -22,9 +22,9 @@ export const ContentTitle = ({
   title,
 }: ContentTitleProps) => {
   return (
-    <header className="bg-custom-white h-16 flex items-center px-4">
+    <header className="bg-custom-white flex items-center px-4 border-b">
       {title && (
-        <h1 className="text-md font-semibold text-gray-900 mr-2 flex items-center gap-2">
+        <h1 className="h-16 text-md font-semibold text-gray-900 mr-2 flex items-center gap-2">
           {title}
         </h1>
       )}

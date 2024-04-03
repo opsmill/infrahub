@@ -1,5 +1,4 @@
 import { gql } from "@apollo/client";
-import { PlusIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
@@ -8,12 +7,10 @@ import { toast } from "react-toastify";
 import { BUTTON_TYPES } from "../../components/buttons/button";
 import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 import { Retry } from "../../components/buttons/retry";
-import { RoundedButton } from "../../components/buttons/rounded-button";
 import SlideOver from "../../components/display/slide-over";
 import { Filters } from "../../components/filters/filters";
 import ModalDelete from "../../components/modals/modal-delete";
 import { SearchInput } from "../../components/search/search-bar";
-import { Tooltip } from "../../components/ui/tooltip";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { Pagination } from "../../components/utils/pagination";
 import {
@@ -51,6 +48,10 @@ import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
+import { Badge } from "../../components/ui/badge";
+import { Tooltip } from "../../components/ui/tooltip";
+import { RoundedButton } from "../../components/buttons/rounded-button";
+import { PlusIcon } from "@heroicons/react/24/outline";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -227,35 +228,30 @@ export default function ObjectItems(props: any) {
 
   return (
     <Content>
-      <div className="flex items-center p-4 w-full bg-custom-white shadow-sm">
-        {schemaData && (
-          <div className="sm:flex-auto flex items-center">
-            <h1 className="text-md font-semibold text-gray-900 mr-2">
-              {schemaData.label} ({count})
-            </h1>
-
-            <div className="text-sm">{schemaData?.description}</div>
-
-            <div className="ml-2">
+      {schemaData && (
+        <Content.Title
+          title={
+            <>
+              {schemaData.label} <Badge>{count}</Badge>
+              <div className="text-sm font-normal">{schemaData?.description}</div>
               <Retry isLoading={loading} onClick={handleRefetch} />
-            </div>
+            </>
+          }>
+          <div className="flex-grow text-right">
+            <Tooltip
+              enabled={!permission.write.allow}
+              content={permission.write.message ?? undefined}>
+              <RoundedButton
+                data-cy="create"
+                data-testid="create-object-button"
+                disabled={!permission.write.allow}
+                onClick={() => setShowCreateDrawer(true)}>
+                <PlusIcon className="w-4 h-4" aria-hidden="true" />
+              </RoundedButton>
+            </Tooltip>
           </div>
-        )}
-
-        {schema && (
-          <Tooltip
-            enabled={!permission.write.allow}
-            content={permission.write.message ?? undefined}>
-            <RoundedButton
-              data-cy="create"
-              data-testid="create-object-button"
-              disabled={!permission.write.allow}
-              onClick={() => setShowCreateDrawer(true)}>
-              <PlusIcon className="w-4 h-4" aria-hidden="true" />
-            </RoundedButton>
-          </Tooltip>
-        )}
-      </div>
+        </Content.Title>
+      )}
 
       <div className="m-2 rounded-md border overflow-hidden bg-custom-white shadow-sm">
         <div className="flex items-center">
