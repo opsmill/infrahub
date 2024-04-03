@@ -85,28 +85,10 @@ def evaluate_candidate_schemas(
     branch_schema: SchemaBranch, schemas_to_evaluate: SchemasLoadAPI
 ) -> Tuple[SchemaBranch, SchemaUpdateValidationResult]:
     candidate_schema = branch_schema.duplicate()
-    # FIRST
-    # InfraDevice does not exist
-    # SECOND
-    # branch_schema.get("InfraDevice").get_relationship("interfaces").on_delete == cascade
-    # "on_delete" in branch_schema.get("InfraDevice").get_relationship("interfaces").model_fields_set == True
-
-    breakpoint()
-
-
     try:
         for schema in schemas_to_evaluate.schemas:
             candidate_schema.load_schema(schema=schema)
         candidate_schema.process()
-
-        # FIRST
-        # candidate_schema.get("InfraDevice").get_relationship("interfaces").on_delete == cascade
-        # "on_delete" in candidate_schema.get("InfraDevice").get_relationship("interfaces").model_fields_set == True
-        # SECOND
-        # candidate_schema.get("InfraDevice").get_relationship("interfaces").on_delete == no-action
-        # "on_delete" in candidate_schema.get("InfraDevice").get_relationship("interfaces").model_fields_set == True
-
-
     except ValueError as exc:
         raise SchemaNotValidError(message=str(exc)) from exc
 
