@@ -54,7 +54,7 @@ const Kbd = forwardRef<HTMLElement, KbdProps>((props, ref) => {
     <kbd
       ref={ref}
       className={classNames(
-        "text-gray-600 bg-gray-100 font-sans py-0.5 px-1.5 rounded-md text-xs",
+        "text-gray-600 bg-gray-100 font-sans py-0.5 px-1.5 rounded text-xs",
         className
       )}>
       {keysContent}
