@@ -52,6 +52,7 @@
     "cm6-theme-basic-light": "^0.2.0",
     "cross-fetch": "^4.0.0",
     "date-fns": "^3.6.0",
+    "graphiql": "^3.1.2",
     "graphql": "^16.8.1",
     "handlebars": "^4.7.8",
     "jotai": "^2.7.2",

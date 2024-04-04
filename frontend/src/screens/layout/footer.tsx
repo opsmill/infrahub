@@ -23,7 +23,7 @@ const ICONS = [
   },
   {
     component: <Icon icon="mdi:graphql" className="text-xl text-custom-blue-50" />,
-    link: `${INFRAHUB_API_SERVER_URL}/graphql`,
+    link: "/graphql",
     message: "GraphQL sandbox",
   },
   {

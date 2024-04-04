@@ -12,6 +12,7 @@ import { TaskItemDetailsScreen } from "../screens/tasks/task-item-details-screen
 import { TaskItemsScreen } from "../screens/tasks/task-items-screen";
 import UserProfile from "../screens/user-profile/user-profile";
 import { ARTIFACT_OBJECT } from "./constants";
+import GraphiQLPage from "../screens/graphiql";
 
 export const MAIN_ROUTES = [
   {
@@ -57,6 +58,10 @@ export const MAIN_ROUTES = [
   {
     path: "/tasks",
     element: <TaskItemsScreen />,
+  },
+  {
+    path: "/graphql",
+    element: <GraphiQLPage />,
   },
   {
     path: "/schema",
