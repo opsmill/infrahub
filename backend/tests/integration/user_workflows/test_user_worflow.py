@@ -3,6 +3,7 @@ import pytest
 from deepdiff import DeepDiff
 from fastapi.testclient import TestClient
 
+from infrahub.core.constants import NULL_VALUE
 from infrahub.database import InfrahubDatabase
 from infrahub.server import app
 from infrahub.test_data import dataset01 as ds01
@@ -358,7 +359,7 @@ class TestUserWorkflow01:
                                     "branch": "branch1",
                                     "changed_at": "2023-10-25T11:26:48.387801Z",
                                     "type": "HAS_VALUE",
-                                    "value": {"new": "New " "description " "in " "branch1", "previous": "NULL"},
+                                    "value": {"new": "New " "description " "in " "branch1", "previous": NULL_VALUE},
                                 }
                             ],
                             "path": "data/17915618-03d5-2db0-4358-185140cb1203/description/value",
@@ -394,7 +395,7 @@ class TestUserWorkflow01:
                                     "branch": "main",
                                     "changed_at": "2023-10-25T11:26:49.190014Z",
                                     "type": "HAS_VALUE",
-                                    "value": {"new": "New " "description " "in " "main", "previous": "NULL"},
+                                    "value": {"new": "New " "description " "in " "main", "previous": NULL_VALUE},
                                 }
                             ],
                             "path": "data/17915618-15e2-e1f0-435b-18517dcffdf5/description/value",
@@ -509,7 +510,7 @@ class TestUserWorkflow01:
                         "type": "HAS_VALUE",
                         "changed_at": "2023-05-04T18:45:28.584932Z",
                         "action": "updated",
-                        "value": {"new": "New New description in branch1", "previous": "NULL"},
+                        "value": {"new": "New New description in branch1", "previous": NULL_VALUE},
                     },
                     "properties": [],
                 }

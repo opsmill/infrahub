@@ -184,4 +184,4 @@ async def test_cancel(
     proposed_change = await NodeManager.get_one_by_id_or_default_filter(
         db=db, id=prepare_proposed_change, schema_name=InfrahubKind.PROPOSEDCHANGE
     )
-    assert proposed_change.state.value == ProposedChangeState.CANCELED.value  # type: ignore[attr-defined]
+    assert proposed_change.state.value.value == ProposedChangeState.CANCELED.value  # type: ignore[attr-defined]

@@ -86,6 +86,7 @@ class Attribute:
         self.id: Optional[str] = data.get("id", None)
 
         self.value: Optional[Any] = data.get("value", None)
+        self.is_default: Optional[bool] = data.get("is_default", None)
 
         if self.value:
             value_mapper: Dict[str, Callable] = {
@@ -138,7 +139,7 @@ class Attribute:
         return {"data": data, "variables": variables}
 
     def _generate_query_data(self) -> Optional[Dict]:
-        data: Dict[str, Any] = {"value": None}
+        data: Dict[str, Any] = {"value": None, "is_default": None}
 
         for prop_name in self._properties_flag:
             data[prop_name] = None

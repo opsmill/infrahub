@@ -1816,7 +1816,8 @@ class SchemaManager(NodeManager):
         # First pull all the local attributes at the top level, then convert all the local relationships
         #  for a standard node_schema, the relationships will be attributes and relationships
         for attr_name in schema_node._attributes:
-            node_data[attr_name] = getattr(schema_node, attr_name).value
+            attr = getattr(schema_node, attr_name)
+            node_data[attr_name] = attr.get_value()
 
         for rel_name in schema_node._relationships:
             if rel_name not in node_data:
@@ -1827,10 +1828,10 @@ class SchemaManager(NodeManager):
                 item = await rel.get_peer(db=db)
                 item_data = {"id": item.id}
                 for item_name in item._attributes:
-                    item_data[item_name] = getattr(item, item_name).value
+                    item_attr = getattr(item, item_name)
+                    item_data[item_name] = item_attr.get_value()
 
                 node_data[rel_name].append(item_data)
-
         return NodeSchema(**node_data)
 
     @staticmethod
@@ -1842,7 +1843,8 @@ class SchemaManager(NodeManager):
         # First pull all the attributes at the top level, then convert all the relationships
         #  for a standard node_schema, the relationships will be attributes and relationships
         for attr_name in schema_node._attributes:
-            node_data[attr_name] = getattr(schema_node, attr_name).value
+            attr = getattr(schema_node, attr_name)
+            node_data[attr_name] = attr.get_value()
 
         for rel_name in schema_node._relationships:
             if rel_name not in node_data:
@@ -1853,7 +1855,8 @@ class SchemaManager(NodeManager):
                 item = await rel.get_peer(db=db)
                 item_data = {"id": item.id}
                 for item_name in item._attributes:
-                    item_data[item_name] = getattr(item, item_name).value
+                    item_attr = getattr(item, item_name)
+                    item_data[item_name] = item_attr.get_value()
 
                 node_data[rel_name].append(item_data)
 

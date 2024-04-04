@@ -141,10 +141,7 @@ async def test_update_simple_object_with_enum(
     assert result.data["TestCarUpdate"]["object"]["transmission"]["value"] == response_value
 
     updated_car = await NodeManager.get_one(db=db, id=car_id)
-    if graphql_enums_on:
-        assert updated_car.transmission.value.value == "flintstone-feet"
-    else:
-        assert updated_car.transmission.value == "flintstone-feet"
+    assert updated_car.transmission.value.value == "flintstone-feet"
 
 
 async def test_update_check_unique(db: InfrahubDatabase, person_john_main: Node, person_jim_main: Node, branch: Branch):
@@ -361,6 +358,118 @@ async def test_update_single_relationship(
     car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(db=db)
     assert car_peer.id == person_jim_main.id
+
+
+async def test_update_default_value(
+    db: InfrahubDatabase, person_john_main: Node, person_jim_main: Node, car_accord_main: Node, branch: Branch
+):
+    assert car_accord_main.color.is_default is True
+
+    query = """
+    mutation {
+        TestCarUpdate(data: {id: "%s", color: { value: "#333333" }}) {
+            ok
+            object {
+                id
+                color {
+                    value
+                    is_default
+                }
+            }
+        }
+    }
+    """ % (car_accord_main.id)
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["TestCarUpdate"]["ok"] is True
+    assert result.data["TestCarUpdate"]["object"]["color"]["is_default"] is False
+
+    car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
+    assert car.color.value == "#333333"
+    assert car.color.is_default is False
+
+    # Set the is_default flag with a non default value, flag should be ignored
+    query = """
+    mutation {
+        TestCarUpdate(data: {id: "%s", color: { value: "#222222", is_default: true }}) {
+            ok
+            object {
+                id
+                color {
+                    value
+                    is_default
+                }
+            }
+        }
+    }
+    """ % (car_accord_main.id)
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["TestCarUpdate"]["ok"] is True
+    assert result.data["TestCarUpdate"]["object"]["color"]["is_default"] is False
+
+    car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
+    assert car.color.value == "#222222"
+    assert car.color.is_default is False
+
+    # Set the is_default flag to re-initialize the value
+    query = """
+    mutation {
+        TestCarUpdate(data: {id: "%s", color: { is_default: true }, transmission: { is_default: true } }) {
+            ok
+            object {
+                id
+                color {
+                    value
+                    is_default
+                }
+                transmission {
+                    value
+                    is_default
+                }
+            }
+        }
+    }
+    """ % (car_accord_main.id)
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["TestCarUpdate"]["ok"] is True
+    assert result.data["TestCarUpdate"]["object"]["color"]["is_default"] is True
+    assert result.data["TestCarUpdate"]["object"]["transmission"]["value"] is None
+    assert result.data["TestCarUpdate"]["object"]["transmission"]["is_default"] is True
+
+    car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
+    assert car.color.value == "#444444"
+    assert car.color.is_default is True
+
+    assert car.transmission.value is None
+    assert car.transmission.is_default is True
 
 
 async def test_update_new_single_relationship_flag_property(
