@@ -8,7 +8,7 @@ from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 
-async def test_validate_prefix_create(
+async def test_ipprefix_creation(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
@@ -25,7 +25,7 @@ async def test_validate_prefix_create(
     await prefix2.save(db=db)
 
 
-async def test_validate_address_create(
+async def test_ipaddress_creation(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
@@ -42,7 +42,7 @@ async def test_validate_address_create(
     await address2.save(db=db)
 
 
-async def test_validate_prefix_within_container(
+async def test_ipprefix_is_within_container(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
@@ -70,7 +70,7 @@ async def test_validate_prefix_within_container(
     assert prefix_container.prefix == ipaddress.ip_network(container.prefix.value)
 
 
-async def test_validate_subnets_of_prefix(
+async def test_ipprefix_subnets(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
@@ -98,7 +98,7 @@ async def test_validate_subnets_of_prefix(
     assert len(subnets) == 0
 
 
-async def test_validate_address_within_prefix(
+async def test_ipaddress_is_within_ipprefix(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
