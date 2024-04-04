@@ -6,7 +6,6 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { BUTTON_TYPES } from "../../components/buttons/button";
 import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
-import { Retry } from "../../components/buttons/retry";
 import SlideOver from "../../components/display/slide-over";
 import { Filters } from "../../components/filters/filters";
 import ModalDelete from "../../components/modals/modal-delete";
@@ -233,12 +232,14 @@ export default function ObjectItems(props: any) {
       {schemaData && (
         <Content.Title
           title={
-            <>
-              {schemaData.label} <Badge>{count}</Badge>
-              <div className="text-sm font-normal">{schemaData?.description}</div>
-              <Retry isLoading={loading} onClick={handleRefetch} />
-            </>
-          }>
+            <div className="flex items-center">
+              <h1 className="mr-2 truncate">{schemaData.label}</h1>
+              <Badge>{count}</Badge>
+            </div>
+          }
+          isReloadLoading={loading}
+          reload={handleRefetch}
+          description={schemaData?.description}>
           {!isGeneric && (
             <div className="flex-grow text-right">
               <Tooltip

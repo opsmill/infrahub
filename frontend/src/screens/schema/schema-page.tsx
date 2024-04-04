@@ -15,9 +15,10 @@ export default function SchemaPage() {
     <Content>
       <Content.Title
         title={
-          <>
-            Schema Visualizer <Badge>{nodes.length + generics.length}</Badge>
-          </>
+          <div className="flex items-center">
+            <h1 className="mr-2 truncate">Schema Visualizer</h1>
+            <Badge>{nodes.length + generics.length}</Badge>
+          </div>
         }
       />
 

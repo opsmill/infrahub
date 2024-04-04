@@ -94,7 +94,7 @@ export default function UserProfile() {
     <Content>
       <Content.Title
         title={
-          <>
+          <div className="flex items-center gap-2">
             <Avatar name={profile?.name?.value} />
 
             <div className="ml-2">
@@ -102,7 +102,7 @@ export default function UserProfile() {
 
               <p className="text-sm text-gray-500">{profile?.description?.value ?? "-"}</p>
             </div>
-          </>
+          </div>
         }
       />
 
