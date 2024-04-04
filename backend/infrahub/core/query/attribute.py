@@ -60,7 +60,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
         query = (
             """
         MATCH (a:Attribute { uuid: $attr_uuid })
-        MERGE (av:AttributeValue { value: $value, is_default: $is_default })
+        CREATE (av:AttributeValue { value: $value, is_default: $is_default })
         CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(av)
         """
             % self.attr._rel_to_value_label
@@ -103,7 +103,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
 
         query = """
         MATCH (a { uuid: $attr_uuid })
-        MERGE (flag:Boolean { value: $flag_value })
+        CREATE (flag:Boolean { value: $flag_value })
         CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(flag)
         """ % self.flag_name.upper()
 
