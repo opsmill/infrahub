@@ -1,7 +1,6 @@
 import { useAtom, useAtomValue } from "jotai/index";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
-import { SearchInput } from "../../../components/search/search-bar";
 import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
 import { CONFIG } from "../../../config/config";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
@@ -10,6 +9,7 @@ import { fetchUrl } from "../../../utils/fetch";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import DropDownMenuHeader from "./desktop-menu-header";
 import { classNames } from "../../../utils/common";
+import { SearchInput } from "../../../components/ui/search-input";
 
 export type MenuItem = {
   title: string;
@@ -71,15 +71,12 @@ export function DesktopMenu({ className = "" }: MenuProps) {
 
   return (
     <div className={classNames("flex flex-col", className)}>
-      <div className="border-b py-2">
-        <SearchInput
-          onChange={setQuery}
-          containerClassName="!z-0"
-          className="!shadow-none !ring-0"
-          placeholder="Search menu"
-          testId="search-menu"
-        />
-      </div>
+      <SearchInput
+        onChange={(e) => setQuery(e.target.value)}
+        className="shadow-none border-none focus-visible:ring-0 py-4"
+        placeholder="Search menu"
+        data-testid="search-menu"
+      />
 
       {isLoading && <LoadingScreen size={32} hideText />}
 

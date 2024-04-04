@@ -10,7 +10,6 @@ import { Retry } from "../../components/buttons/retry";
 import SlideOver from "../../components/display/slide-over";
 import { Filters } from "../../components/filters/filters";
 import ModalDelete from "../../components/modals/modal-delete";
-import { SearchInput } from "../../components/search/search-bar";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { Pagination } from "../../components/utils/pagination";
 import {
@@ -52,6 +51,7 @@ import { Badge } from "../../components/ui/badge";
 import { Tooltip } from "../../components/ui/tooltip";
 import { RoundedButton } from "../../components/buttons/rounded-button";
 import { PlusIcon } from "@heroicons/react/24/outline";
+import { SearchInput } from "../../components/ui/search-input";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -197,7 +197,8 @@ export default function ObjectItems(props: any) {
 
   const handleRefetch = () => refetch();
 
-  const handleSearch = (value: string) => {
+  const handleSearch = (e) => {
+    const value = e.target.value as string;
     if (!value) {
       const newFilters = filters.filter((filter: Filter) => !SEARCH_FILTERS.includes(filter.name));
 
@@ -262,9 +263,8 @@ export default function ObjectItems(props: any) {
             loading={loading}
             onChange={debouncedHandleSearch}
             placeholder="Search an object"
-            testId="object-list-search-bar"
-            className="!shadow-none !ring-0"
-            containerClassName="!max-w-[300px] !z-0"
+            className="border-none focus-visible:ring-0"
+            data-testid="object-list-search-bar"
           />
 
           <Filters schema={schemaData} />

@@ -7,6 +7,7 @@ import { SearchActions } from "./search-actions";
 import { SearchNodes } from "./search-nodes";
 import { SearchDocs } from "./search-docs";
 import Kbd from "../ui/kbd";
+import { Input } from "../ui/input";
 
 type SearchInputProps = {
   className?: string;
@@ -23,15 +24,11 @@ const SearchInput = ({ value, onChange, className = "" }: SearchInputProps) => {
         aria-hidden="true"
       />
 
-      <input
+      <Input
         placeholder="Search anywhere"
         onChange={onChange}
         value={value}
-        className={`
-            w-full px-8 py-2
-            text-sm leading-5 text-gray-900 placeholder:text-gray-400
-            rounded-md border border-gray-300 focus:border-custom-blue-600 focus:ring-custom-blue-600 shadow-sm
-          `}
+        className="w-full px-8 py-2"
       />
 
       <div className="absolute inset-y-0 right-2 flex items-center">
