@@ -50,7 +50,7 @@ const SearchTrigger = ({ value, onChange, onClick, className = "" }: SearchInput
 type SearchModalProps = {
   className?: string;
 };
-export function SearchModal({ className = "" }: SearchModalProps) {
+export function SearchAnywhere({ className = "" }: SearchModalProps) {
   let [isOpen, setIsOpen] = useState(false);
 
   function closeModal() {
@@ -106,7 +106,7 @@ export function SearchModal({ className = "" }: SearchModalProps) {
                 leave="ease-in duration-200"
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95">
-                <SearchAnywhere onSelection={closeModal} />
+                <SearchAnywhereDialog onSelection={closeModal} />
               </Transition.Child>
             </div>
           </div>
@@ -120,7 +120,7 @@ type SearchAnywhereProps = {
   onSelection: (url?: string) => void;
 };
 
-const SearchAnywhere = forwardRef<HTMLDivElement, SearchAnywhereProps>(
+const SearchAnywhereDialog = forwardRef<HTMLDivElement, SearchAnywhereProps>(
   ({ onSelection }, forwardedRef) => {
     const navigate = useNavigate();
     const [query, setQuery] = useState("");
