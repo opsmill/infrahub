@@ -73,7 +73,7 @@ export function DesktopMenu({ className = "" }: MenuProps) {
     <div className={classNames("flex flex-col", className)}>
       <SearchInput
         onChange={(e) => setQuery(e.target.value)}
-        className="shadow-none border-none focus-visible:ring-0 py-4"
+        className="shadow-none border-0 rounded-none border-b border-gray-200 focus-visible:ring-0 py-4"
         placeholder="Search menu"
         data-testid="search-menu"
       />
