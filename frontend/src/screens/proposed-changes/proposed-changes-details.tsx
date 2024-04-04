@@ -4,7 +4,6 @@ import { useAtom } from "jotai";
 import { useRef } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Retry } from "../../components/buttons/retry";
 import { Tabs } from "../../components/tabs";
 import { Link } from "../../components/utils/link";
 import { PROPOSED_CHANGES_OBJECT, TASK_OBJECT, TASK_TAB } from "../../config/constants";
@@ -172,7 +171,7 @@ export const ProposedChangesDetails = () => {
     <Content>
       <Content.Title
         title={
-          <>
+          <div className="flex items-center gap-1">
             <Link className="no-underline hover:underline" to={constructPath("/proposed-changes")}>
               Proposed changes
             </Link>
@@ -180,10 +179,10 @@ export const ProposedChangesDetails = () => {
             <Icon icon="mdi:chevron-right" className="text-2xl shrink-0 text-gray-400" />
 
             <p className="max-w-2xl text-sm text-gray-500 font-normal">{result?.display_label}</p>
-
-            <Retry isLoading={loading} onClick={handleRefetch} />
-          </>
+          </div>
         }
+        reload={handleRefetch}
+        isReloadLoading={loading}
       />
 
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
