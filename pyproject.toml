@@ -252,10 +252,6 @@ module = "infrahub.core.query.subquery"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.schema.attribute_schema"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.schema.basenode_schema"
 ignore_errors = true
 
