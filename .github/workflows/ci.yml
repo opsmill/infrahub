@@ -171,7 +171,7 @@ jobs:
           - "3.10"
           - "3.11"
           - "3.12"
-        pydantic-version: ["^1.10", "^2"]
+        pydantic-version: ["1.10.14", "^2"]
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
