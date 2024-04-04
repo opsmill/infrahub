@@ -9,7 +9,7 @@ const ContentRoot = ({ className, ...props }: HTMLAttributes<HTMLElement>) => {
 type ContentTitleProps = {
   children?: ReactNode;
   title?: ReactNode;
-  description?: string;
+  description?: ReactNode;
   reload?: () => void;
   isReloadLoading?: boolean;
 };
@@ -22,14 +22,16 @@ export const ContentTitle = ({
   title,
 }: ContentTitleProps) => {
   return (
-    <header className="bg-custom-white flex items-center px-4 border-b">
-      {title && (
-        <h1 className="h-16 text-md font-semibold text-gray-900 mr-2 flex items-center gap-2">
-          {title}
-        </h1>
-      )}
-      {description && <p className="text-sm">{description}</p>}
-      {reload && <Retry isLoading={isReloadLoading} onClick={reload} />}
+    <header className="h-16 bg-custom-white flex items-center px-4 border-b">
+      <div className="flex flex-col overflow-hidden pr-2">
+        {title && (
+          <div className="font-semibold flex items-center gap-2">
+            <div className="truncate">{title}</div>
+            {reload && <Retry isLoading={isReloadLoading} onClick={reload} />}
+          </div>
+        )}
+        {description && <p className="text-sm truncate">{description}</p>}
+      </div>
       {children}
     </header>
   );

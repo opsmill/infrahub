@@ -45,13 +45,13 @@ export const BrancheItemDetails = () => {
     <Content>
       <Content.Title
         title={
-          <>
+          <div className="flex items-center gap-1">
             <Link to={constructPath("/branches")} className="hover:underline">
               Branches
             </Link>
             <Icon icon="mdi:chevron-right" className="text-2xl shrink-0 text-gray-400" />
             <p className="max-w-2xl text-sm text-gray-500 font-normal">{branchname}</p>
-          </>
+          </div>
         }
       />
 

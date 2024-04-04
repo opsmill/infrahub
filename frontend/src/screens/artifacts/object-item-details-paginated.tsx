@@ -131,7 +131,7 @@ export default function ArtifactsDetails() {
     <Content>
       <Content.Title
         title={
-          <>
+          <div className="flex items-center gap-1">
             <Link to={constructPath(`/objects/${ARTIFACT_OBJECT}`)} className="hover:underline">
               {schemaData.name}
             </Link>
@@ -139,7 +139,7 @@ export default function ArtifactsDetails() {
             <p className="max-w-2xl text-sm text-gray-500 font-normal">
               {objectDetailsData.display_label}
             </p>
-          </>
+          </div>
         }
       />
 
