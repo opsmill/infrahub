@@ -17,6 +17,7 @@ from .enums import generate_graphql_enum, get_enum_attribute_type_name
 from .metrics import SCHEMA_GENERATE_GRAPHQL_METRICS
 from .mutations import (
     InfrahubArtifactDefinitionMutation,
+    InfrahubIPAddressMutation,
     InfrahubIPPrefixMutation,
     InfrahubMutation,
     InfrahubProposedChangeMutation,
@@ -361,6 +362,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
             if InfrahubKind.IPPREFIX in node_schema.inherit_from:
                 base_class = InfrahubIPPrefixMutation
+            elif InfrahubKind.IPADDRESS in node_schema.inherit_from:
+                base_class = InfrahubIPAddressMutation
             else:
                 base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
 

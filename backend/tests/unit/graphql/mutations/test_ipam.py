@@ -53,6 +53,56 @@ query GetPrefixWithParent($prefix: String!) {
                         }
                     }
                 }
+                ip_addresses {
+                    edges {
+                        node {
+                            id
+                            address {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+"""
+
+CREATE_IPADDRESS = """
+mutation CreateAddress($address: String!) {
+    IpamIPAddressCreate(
+        data: {
+            address: {
+                value: $address
+            }
+        }
+    ) {
+        ok
+        object {
+            id
+        }
+    }
+}
+"""
+
+GET_IPADDRESS = """
+query GetAddress($address: String!) {
+    IpamIPAddress(address__value: $address) {
+        edges {
+            node {
+                id
+                address {
+                    value
+                }
+                ip_prefix {
+                    node {
+                        id
+                        prefix {
+                            value
+                        }
+                    }
+                }
             }
         }
     }
@@ -165,7 +215,7 @@ async def test_ipprefix_delete(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
-    """Make sure parent/children relationship are set when creating a parent after a child."""
+    """Make sure deleting a prefix relocates its children."""
     gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     networks = [
@@ -226,7 +276,181 @@ async def test_ipprefix_delete(
         variable_values={"prefix": str(networks[3])},
     )
 
-    # Removing a node in the mddle should relocate children prefixes to a new parent prefix
+    # Removing a node in the middle should relocate children prefixes to a new parent prefix
     assert not result.errors
     assert len(result.data["IpamIPPrefix"]["edges"]) == 1
     assert result.data["IpamIPPrefix"]["edges"][0]["node"]["parent"]["node"]["id"] == network_nodes[1]
+
+
+async def test_ipaddress_create(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    """Make sure IP address is properly created and nested under a subnet."""
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    # Single IP address, no IP prefix
+    address = ipaddress.ip_interface("192.0.2.1/24")
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_IPADDRESS,
+        context_value=gql_params.context,
+        variable_values={"address": str(address)},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPAddressCreate"]["ok"]
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=GET_IPADDRESS,
+        context_value=gql_params.context,
+        variable_values={"address": str(address)},
+    )
+
+    assert not result.errors
+    assert len(result.data["IpamIPAddress"]["edges"]) == 1
+    assert not result.data["IpamIPAddress"]["edges"][0]["node"]["ip_prefix"]["node"]
+    assert result.data["IpamIPAddress"]["edges"][0]["node"]["address"]["value"] == str(address)
+
+    # Single IP address under an IP prefix
+    supernet = ipaddress.ip_network("2001:db8::/48")
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(supernet)},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPPrefixCreate"]["ok"]
+
+    address = ipaddress.ip_interface("2001:db8::1/64")
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_IPADDRESS,
+        context_value=gql_params.context,
+        variable_values={"address": str(address)},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPAddressCreate"]["ok"]
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=GET_IPADDRESS,
+        context_value=gql_params.context,
+        variable_values={"address": str(address)},
+    )
+
+    assert not result.errors
+    assert len(result.data["IpamIPAddress"]["edges"]) == 1
+    assert result.data["IpamIPAddress"]["edges"][0]["node"]["address"]["value"] == str(address)
+    assert result.data["IpamIPAddress"]["edges"][0]["node"]["ip_prefix"]["node"]["prefix"]["value"] == str(supernet)
+
+
+async def test_ipaddress_change_ipprefix(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    """Make sure relationship between an address and its prefix is properly managed."""
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    address = ipaddress.ip_interface("2001:db8::1/64")
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_IPADDRESS,
+        context_value=gql_params.context,
+        variable_values={"address": str(address)},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPAddressCreate"]["ok"]
+
+    # Create subnet which contains the previously created IP should set relationships
+    supernet = ipaddress.ip_network("2001:db8::/48")
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(supernet)},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPPrefixCreate"]["ok"]
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=GET_IPADDRESS,
+        context_value=gql_params.context,
+        variable_values={"address": str(address)},
+    )
+
+    assert not result.errors
+    assert len(result.data["IpamIPAddress"]["edges"]) == 1
+    assert result.data["IpamIPAddress"]["edges"][0]["node"]["ip_prefix"]["node"]["prefix"]["value"] == str(supernet)
+
+    # Check that the prefix now has an IP address
+    result = await graphql(
+        schema=gql_params.schema,
+        source=GET_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(supernet)},
+    )
+
+    assert not result.errors
+    assert len(result.data["IpamIPPrefix"]["edges"]) == 1
+    assert len(result.data["IpamIPPrefix"]["edges"][0]["node"]["ip_addresses"]["edges"]) == 1
+    assert result.data["IpamIPPrefix"]["edges"][0]["node"]["ip_addresses"]["edges"][0]["node"]["address"][
+        "value"
+    ] == str(address)
+
+    # Create subnet of the original one which contains the address, it should relocate it
+    subnet = ipaddress.ip_network("2001:db8::/64")
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(subnet)},
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=GET_IPADDRESS,
+        context_value=gql_params.context,
+        variable_values={"address": str(address)},
+    )
+
+    assert not result.errors
+    assert len(result.data["IpamIPAddress"]["edges"]) == 1
+    assert result.data["IpamIPAddress"]["edges"][0]["node"]["ip_prefix"]["node"]["prefix"]["value"] == str(subnet)
+
+    # Check that the subnet has the IP address now
+    result = await graphql(
+        schema=gql_params.schema,
+        source=GET_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(subnet)},
+    )
+
+    assert not result.errors
+    assert len(result.data["IpamIPPrefix"]["edges"]) == 1
+    assert result.data["IpamIPPrefix"]["edges"][0]["node"]["ip_addresses"]["edges"][0]["node"]["address"][
+        "value"
+    ] == str(address)
+
+    # Check that the supernet does not have an IP address anymore
+    result = await graphql(
+        schema=gql_params.schema,
+        source=GET_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(supernet)},
+    )
+
+    assert not result.errors
+    assert len(result.data["IpamIPPrefix"]["edges"]) == 1
+    assert not result.data["IpamIPPrefix"]["edges"][0]["node"]["ip_addresses"]["edges"]
