@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 from infrahub_sdk.utils import deep_merge_dict
 
 from infrahub.core.node import Node
+from infrahub.core.node.delete_validator import NodeDeleteValidator
 from infrahub.core.query.node import (
     AttributeFromDB,
     AttributeNodePropertyFromDB,
@@ -20,6 +21,7 @@ from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema import GenericSchema, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError
 
 if TYPE_CHECKING:
@@ -571,6 +573,31 @@ class NodeManager:
             nodes[node_id] = item
 
         return nodes
+
+    @classmethod
+    async def delete(
+        cls,
+        db: InfrahubDatabase,
+        nodes: List[Node],
+        branch: Optional[Union[Branch, str]] = None,
+        at: Optional[Union[Timestamp, str]] = None,
+    ) -> list[Node]:
+        """Returns list of deleted nodes because of cascading deletes"""
+        branch = await registry.get_branch(branch=branch, db=db)
+        component_registry = get_component_registry()
+        node_delete_validator = await component_registry.get_component(NodeDeleteValidator, db=db, branch=branch)
+        ids_to_delete = await node_delete_validator.get_ids_to_delete(nodes=nodes, at=at)
+        node_ids = {node.get_id() for node in nodes}
+        missing_ids_to_delete = ids_to_delete - node_ids
+        if missing_ids_to_delete:
+            node_map = await cls.get_many(db=db, ids=list(missing_ids_to_delete), branch=branch, at=at)
+            nodes += list(node_map.values())
+        deleted_nodes = []
+        for node in nodes:
+            await node.delete(db=db, at=at)
+            deleted_nodes.append(node)
+
+        return deleted_nodes
 
 
 registry.manager = NodeManager

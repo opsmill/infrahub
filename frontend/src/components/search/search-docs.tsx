@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { fetchUrl } from "../../utils/fetch";
-import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-modal";
+import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-anywhere";
 import { CONFIG, INFRAHUB_API_SERVER_URL } from "../../config/config";
 import { Icon } from "@iconify-icon/react";
 import { useDebounce } from "../../hooks/useDebounce";

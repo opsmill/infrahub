@@ -4,7 +4,9 @@ from typing import List, Optional
 from rich.console import Console
 
 from infrahub_sdk.ctl import config
+from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.ctl.repository import get_repository_config
+from infrahub_sdk.ctl.utils import execute_graphql_query, parse_cli_vars
 from infrahub_sdk.schema import InfrahubRepositoryConfig
 
 
@@ -30,6 +32,38 @@ async def run(
         console.print(f"[red]Unable to find requested generator: {generator_name}")
         list_generators(repository_config=repository_config)
         return
+
+    generator_config = matched[0]
+    generator_class = generator_config.load_class()
+    variables_dict = parse_cli_vars(variables)
+
+    param_key = list(generator_config.parameters.keys())
+    identifier = None
+    if param_key:
+        identifier = param_key[0]
+
+    client = await initialize_client()
+    if variables_dict:
+        data = execute_graphql_query(
+            query=generator_config.query, variables_dict=variables_dict, branch=branch, debug=False
+        )
+        generator = generator_class(query=generator_config.query, client=client, branch=branch, params=variables_dict)
+        await generator.run(identifier=generator_config.name, data=data)
+
+    else:
+        targets = await client.get(kind="CoreGroup", include=["members"], name__value=generator_config.targets)
+        await targets.members.fetch()
+        for member in targets.members.peers:
+            check_parameter = {}
+            if identifier:
+                attribute = getattr(member.peer, identifier)
+                check_parameter = {identifier: attribute.value}
+            params = {"name": member.peer.name.value}
+            generator = generator_class(query=generator_config.query, client=client, branch=branch, params=params)
+            data = execute_graphql_query(
+                query=generator_config.query, variables_dict=check_parameter, branch=branch, debug=False
+            )
+            await generator.run(identifier=generator_config.name, data=data)
 
 
 def list_generators(repository_config: InfrahubRepositoryConfig) -> None:

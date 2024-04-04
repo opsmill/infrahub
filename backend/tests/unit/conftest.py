@@ -31,9 +31,15 @@ from infrahub.core.schema import (
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
 from infrahub.test_data import dataset01 as ds01
 from tests.helpers.file_repo import FileRepo
+
+
+@pytest.fixture(scope="module", autouse=True)
+def load_component_dependency_registry():
+    build_component_registry()
 
 
 @pytest.fixture(params=["main", "branch2"])
@@ -1205,6 +1211,7 @@ async def car_person_schema_generics(
                 "default_filter": "name__value",
                 "display_labels": ["name__value", "color__value"],
                 "order_by": ["name__value"],
+                "include_in_menu": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "nbr_seats", "kind": "Number"},
@@ -1625,6 +1632,35 @@ async def all_attribute_types_schema(
             {"name": "myint", "kind": "Number", "optional": True},
             {"name": "mylist", "kind": "List", "optional": True},
             {"name": "myjson", "kind": "JSON", "optional": True},
+        ],
+    }
+
+    node_schema = NodeSchema(**SCHEMA)
+    registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
+    registry.schema.process_schema_branch(name=default_branch.name)
+    return node_schema
+
+
+@pytest.fixture
+async def all_attribute_default_types_schema(
+    db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema
+) -> NodeSchema:
+    SCHEMA: dict[str, Any] = {
+        "name": "AllAttributeTypes",
+        "namespace": "Test",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "optional": True},
+            {"name": "mystring", "kind": "Text", "optional": True},
+            {"name": "mybool", "kind": "Boolean", "optional": True},
+            {"name": "myint", "kind": "Number", "optional": True},
+            {"name": "mylist", "kind": "List", "optional": True},
+            {"name": "myjson", "kind": "JSON", "optional": True},
+            {"name": "mystring_default", "kind": "Text", "optional": True, "default_value": "a string"},
+            {"name": "mybool_default", "kind": "Boolean", "optional": True, "default_value": False},
+            {"name": "myint_default", "kind": "Number", "optional": True, "default_value": 10},
+            {"name": "mylist_default", "kind": "List", "optional": True, "default_value": [10, 11, 12]},
+            {"name": "myjson_default", "kind": "JSON", "optional": True, "default_value": {"name": "value"}},
         ],
     }
 

@@ -10,6 +10,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     HashableModelState,
     RelationshipCardinality,
+    RelationshipDeleteBehavior,
     RelationshipDirection,
     RelationshipKind,
 )
@@ -115,4 +116,9 @@ class GeneratedRelationshipSchema(HashableModel):
     )
     filters: list[FilterSchema] = Field(
         default_factory=list, description="Relationship filters", json_schema_extra={"update": "not_applicable"}
+    )
+    on_delete: Optional[RelationshipDeleteBehavior] = Field(
+        default=None,
+        description="Default is no-action. If cascade, related node(s) are deleted when this node is deleted.",
+        json_schema_extra={"update": "allowed"},
     )

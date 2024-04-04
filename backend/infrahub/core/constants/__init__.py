@@ -220,6 +220,11 @@ class RelationshipHierarchyDirection(InfrahubStringEnum):
     DESCENDANTS = "descendants"
 
 
+class RelationshipDeleteBehavior(InfrahubStringEnum):
+    NO_ACTION = "no-action"
+    CASCADE = "cascade"
+
+
 class Severity(InfrahubStringEnum):
     SUCCESS = "success"
     INFO = "info"

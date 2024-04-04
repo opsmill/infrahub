@@ -78,8 +78,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         is_default: bool = False,
         **kwargs,
     ):
-        self.id: Optional[str] = id
-        self.db_id: Optional[str] = db_id
+        self.id = id
+        self.db_id = db_id
 
         self.updated_at = updated_at
         self.name = name
@@ -94,10 +94,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         self.value = None
 
-        if data is not None and isinstance(data, AttributeFromDB):
+        if isinstance(data, AttributeFromDB):
             self.load_from_db(data=data)
 
-        elif data is not None and isinstance(data, dict):
+        elif isinstance(data, dict):
             self.value = data.get("value")
 
             if "is_default" in data:
@@ -131,9 +131,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
     @property
     def is_enum(self) -> bool:
-        if self.schema.enum:
-            return True
-        return False
+        return bool(self.schema.enum)
 
     def get_branch_based_on_support_type(self) -> Branch:
         """If the attribute is branch aware, return the Branch object associated with this attribute
@@ -153,6 +151,16 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
     def get_kind(self) -> str:
         return self.schema.kind
+
+    def get_value(self) -> Any:
+        if isinstance(self.value, Enum):
+            return self.value.value
+        return self.value
+
+    def set_default_value(self) -> None:
+        self.value = self.schema.default_value
+        if self.is_enum and self.value:
+            self.value = self.schema.convert_value_to_enum(self.value)
 
     @classmethod
     def validate(cls, value: Any, name: str, schema: AttributeSchema) -> bool:
@@ -341,6 +349,14 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         # Validate if the value is still correct, will raise a ValidationError if not
         self.validate(value=self.value, name=self.name, schema=self.schema)
 
+        # Check if the current value is still the default one
+        if (
+            self.is_default
+            and (self.schema.default_value is not None and self.schema.default_value != self.value)
+            or (self.schema.default_value is None and self.value is not None)
+        ):
+            self.is_default = False
+
         query = await NodeListGetAttributeQuery.init(
             db=db,
             ids=[self.node.id],
@@ -483,6 +499,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             if value_to_set != self.value:
                 self.value = value_to_set
                 changed = True
+
+        if "is_default" in data and not self.is_default:
+            self.is_default = True
+            changed = True
+
+            if "value" not in data:
+                self.set_default_value()
 
         if "is_protected" in data and data["is_protected"] != self.is_protected:
             self.is_protected = data["is_protected"]
@@ -631,39 +654,39 @@ class IPNetwork(BaseAttribute):
         return str(ipaddress.ip_network(str(self.value)).netmask)
 
     @property
-    def prefixlen(self) -> Optional[str]:
+    def prefixlen(self) -> Optional[int]:
         """Return the prefix length the ip network."""
         if not self.value:
             return None
-        return str(ipaddress.ip_network(str(self.value)).prefixlen)
+        return ipaddress.ip_network(str(self.value)).prefixlen
 
     @property
     def num_addresses(self) -> Optional[int]:
         """Return the number of possible addresses in the ip network."""
         if not self.value:
             return None
-        return int(ipaddress.ip_network(str(self.value)).num_addresses)
+        return ipaddress.ip_network(str(self.value)).num_addresses
 
     @property
     def version(self) -> Optional[int]:
         """Return the IP version of the ip network."""
         if not self.value:
             return None
-        return int(ipaddress.ip_network(str(self.value)).version)
+        return ipaddress.ip_network(str(self.value)).version
 
     @property
     def with_hostmask(self) -> Optional[str]:
         """Return the network ip and the associated hostmask of the ip network."""
         if not self.value:
             return None
-        return str(ipaddress.ip_network(str(self.value)).with_hostmask)
+        return ipaddress.ip_network(str(self.value)).with_hostmask
 
     @property
     def with_netmask(self) -> Optional[str]:
         """Return the network ip and the associated netmask of the ip network."""
         if not self.value:
             return None
-        return str(ipaddress.ip_network(str(self.value)).with_netmask)
+        return ipaddress.ip_network(str(self.value)).with_netmask
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
@@ -722,32 +745,32 @@ class IPHost(BaseAttribute):
         return str(ipaddress.ip_interface(str(self.value)).network)
 
     @property
-    def prefixlen(self) -> Optional[str]:
+    def prefixlen(self) -> Optional[int]:
         """Return the prefix length of the ip address."""
         if not self.value:
             return None
-        return str(ipaddress.ip_interface(str(self.value))._prefixlen)
+        return ipaddress.ip_interface(str(self.value)).network.prefixlen
 
     @property
     def version(self) -> Optional[int]:
         """Return the IP version of the ip address."""
         if not self.value:
             return None
-        return int(ipaddress.ip_interface(str(self.value)).version)
+        return ipaddress.ip_interface(str(self.value)).version
 
     @property
     def with_hostmask(self) -> Optional[str]:
         """Return the ip address and the associated hostmask of the ip address."""
         if not self.value:
             return None
-        return str(ipaddress.ip_interface(str(self.value)).with_hostmask)
+        return ipaddress.ip_interface(str(self.value)).with_hostmask
 
     @property
     def with_netmask(self) -> Optional[str]:
         """Return the ip address and the associated netmask of the ip address."""
         if not self.value:
             return None
-        return str(ipaddress.ip_interface(str(self.value)).with_netmask)
+        return ipaddress.ip_interface(str(self.value)).with_netmask
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
@@ -781,7 +804,7 @@ class ListAttribute(BaseAttribute):
         """Serialize the value before storing it in the database."""
         return ujson.dumps(self.value)
 
-    def deserialize_value(self, data: AttributeFromDB) -> Dict[str, Any]:
+    def deserialize_value(self, data: AttributeFromDB) -> Any:
         """Deserialize the value (potentially) coming from the database."""
         if isinstance(data.value, (str, bytes)):
             return ujson.loads(data.value)
@@ -795,7 +818,7 @@ class JSONAttribute(BaseAttribute):
         """Serialize the value before storing it in the database."""
         return ujson.dumps(self.value)
 
-    def deserialize_value(self, data: AttributeFromDB) -> Dict[str, Any]:
+    def deserialize_value(self, data: AttributeFromDB) -> Any:
         """Deserialize the value (potentially) coming from the database."""
         if data.value and isinstance(data.value, (str, bytes)):
             return ujson.loads(data.value)

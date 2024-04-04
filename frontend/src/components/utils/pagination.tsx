@@ -32,7 +32,7 @@ export const Pagination = (props: tPaginationType) => {
   const pagesCount = Math.ceil(count / limit) || 1;
 
   // Set the current page to 0 as it is an index
-  const currentPage = offset / limit ?? 0;
+  const currentPage = offset / limit;
 
   const offsetEnd = offset + limit > count ? count : offset + limit;
   const offsetStart = offsetEnd > 0 ? offset + 1 : 0;

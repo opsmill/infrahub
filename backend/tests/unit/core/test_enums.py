@@ -9,3 +9,4 @@ def test_generate_python_enum():
 
     enum_blue = enum_class("blue")
     assert isinstance(enum_blue, enum.Enum)
+    assert {enum.name for enum in enum_class} == {"RED", "BLUE"}

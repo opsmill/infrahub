@@ -178,6 +178,7 @@ async def test_query_data_no_filters(clients, location_schema, client_type):
                     "id": None,
                     "display_label": None,
                     "name": {
+                        "is_default": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -193,6 +194,7 @@ async def test_query_data_no_filters(clients, location_schema, client_type):
                         "value": None,
                     },
                     "description": {
+                        "is_default": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -208,6 +210,7 @@ async def test_query_data_no_filters(clients, location_schema, client_type):
                         "value": None,
                     },
                     "type": {
+                        "is_default": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -262,6 +265,7 @@ async def test_query_data_node(clients, location_schema, client_type):
 
     assert data == {
         "name": {
+            "is_default": None,
             "is_protected": None,
             "is_visible": None,
             "owner": {"__typename": None, "display_label": None, "id": None},
@@ -269,6 +273,7 @@ async def test_query_data_node(clients, location_schema, client_type):
             "value": None,
         },
         "description": {
+            "is_default": None,
             "is_protected": None,
             "is_visible": None,
             "owner": {"__typename": None, "display_label": None, "id": None},
@@ -276,6 +281,7 @@ async def test_query_data_node(clients, location_schema, client_type):
             "value": None,
         },
         "type": {
+            "is_default": None,
             "is_protected": None,
             "is_visible": None,
             "owner": {"__typename": None, "display_label": None, "id": None},
@@ -329,6 +335,7 @@ async def test_query_data_with_prefetch_relationships(clients, mock_schema_query
                     "id": None,
                     "display_label": None,
                     "name": {
+                        "is_default": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -344,6 +351,7 @@ async def test_query_data_with_prefetch_relationships(clients, mock_schema_query
                         "value": None,
                     },
                     "description": {
+                        "is_default": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -359,6 +367,7 @@ async def test_query_data_with_prefetch_relationships(clients, mock_schema_query
                         "value": None,
                     },
                     "type": {
+                        "is_default": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -393,6 +402,7 @@ async def test_query_data_with_prefetch_relationships(clients, mock_schema_query
                             "display_label": None,
                             "__typename": None,
                             "description": {
+                                "is_default": None,
                                 "is_protected": None,
                                 "is_visible": None,
                                 "owner": {
@@ -408,6 +418,7 @@ async def test_query_data_with_prefetch_relationships(clients, mock_schema_query
                                 "value": None,
                             },
                             "name": {
+                                "is_default": None,
                                 "is_protected": None,
                                 "is_visible": None,
                                 "owner": {
@@ -445,6 +456,7 @@ async def test_query_data_node_with_prefetch_relationships(clients, mock_schema_
 
     assert data == {
         "description": {
+            "is_default": None,
             "is_protected": None,
             "is_visible": None,
             "owner": {"__typename": None, "display_label": None, "id": None},
@@ -452,6 +464,7 @@ async def test_query_data_node_with_prefetch_relationships(clients, mock_schema_
             "value": None,
         },
         "name": {
+            "is_default": None,
             "is_protected": None,
             "is_visible": None,
             "owner": {"__typename": None, "display_label": None, "id": None},
@@ -462,6 +475,7 @@ async def test_query_data_node_with_prefetch_relationships(clients, mock_schema_
             "node": {
                 "__typename": None,
                 "description": {
+                    "is_default": None,
                     "is_protected": None,
                     "is_visible": None,
                     "owner": {"__typename": None, "display_label": None, "id": None},
@@ -471,6 +485,7 @@ async def test_query_data_node_with_prefetch_relationships(clients, mock_schema_
                 "display_label": None,
                 "id": None,
                 "name": {
+                    "is_default": None,
                     "is_protected": None,
                     "is_visible": None,
                     "owner": {"__typename": None, "display_label": None, "id": None},
@@ -486,6 +501,7 @@ async def test_query_data_node_with_prefetch_relationships(clients, mock_schema_
             },
         },
         "type": {
+            "is_default": None,
             "is_protected": None,
             "is_visible": None,
             "owner": {"__typename": None, "display_label": None, "id": None},
@@ -546,6 +562,7 @@ async def test_query_data_generic_fragment(clients, mock_schema_query_02, client
                     "...on BuiltinLocation": {
                         "description": {
                             "@alias": "__alias__BuiltinLocation__description",
+                            "is_default": None,
                             "is_protected": None,
                             "is_visible": None,
                             "owner": {
@@ -562,6 +579,7 @@ async def test_query_data_generic_fragment(clients, mock_schema_query_02, client
                         },
                         "name": {
                             "@alias": "__alias__BuiltinLocation__name",
+                            "is_default": None,
                             "is_protected": None,
                             "is_visible": None,
                             "owner": {
@@ -600,6 +618,7 @@ async def test_query_data_generic_fragment(clients, mock_schema_query_02, client
                         },
                         "type": {
                             "@alias": "__alias__BuiltinLocation__type",
+                            "is_default": None,
                             "is_protected": None,
                             "is_visible": None,
                             "owner": {
@@ -618,6 +637,7 @@ async def test_query_data_generic_fragment(clients, mock_schema_query_02, client
                     "...on BuiltinTag": {
                         "description": {
                             "@alias": "__alias__BuiltinTag__description",
+                            "is_default": None,
                             "is_protected": None,
                             "is_visible": None,
                             "owner": {
@@ -634,6 +654,7 @@ async def test_query_data_generic_fragment(clients, mock_schema_query_02, client
                         },
                         "name": {
                             "@alias": "__alias__BuiltinTag__name",
+                            "is_default": None,
                             "is_protected": None,
                             "is_visible": None,
                             "owner": {
@@ -676,6 +697,7 @@ async def test_query_data_include(client, location_schema, client_type):
                     "id": None,
                     "display_label": None,
                     "name": {
+                        "is_default": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -691,6 +713,7 @@ async def test_query_data_include(client, location_schema, client_type):
                         "value": None,
                     },
                     "description": {
+                        "is_default": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -706,6 +729,7 @@ async def test_query_data_include(client, location_schema, client_type):
                         "value": None,
                     },
                     "type": {
+                        "is_default": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -790,6 +814,7 @@ async def test_query_data_exclude(client, location_schema, client_type):
                     "id": None,
                     "display_label": None,
                     "name": {
+                        "is_default": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -805,6 +830,7 @@ async def test_query_data_exclude(client, location_schema, client_type):
                         "value": None,
                     },
                     "type": {
+                        "is_default": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {

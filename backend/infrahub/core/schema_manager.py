@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import enum
 import hashlib
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
@@ -20,6 +19,7 @@ from infrahub.core.constants import (
     HashableModelState,
     InfrahubKind,
     RelationshipCardinality,
+    RelationshipDeleteBehavior,
     RelationshipDirection,
     RelationshipKind,
 )
@@ -471,6 +471,7 @@ class SchemaBranch:
         self.generate_weight()
         self.process_labels()
         self.process_dropdowns()
+        self.process_relationships()
 
     def generate_identifiers(self) -> None:
         """Generate the identifier for all relationships if it's not already present."""
@@ -861,6 +862,26 @@ class SchemaBranch:
                     rel.label = format_label(rel.name)
 
             self.set(name=name, schema=node)
+
+    def process_relationships(self) -> None:
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            schema_to_update: Optional[Union[NodeSchema, GenericSchema]] = None
+            for relationship in node.relationships:
+                if relationship.on_delete is not None:
+                    continue
+                if not schema_to_update:
+                    schema_to_update = node.duplicate()
+
+                relationship_to_update = schema_to_update.get_relationship(name=relationship.name)
+                if relationship.kind == RelationshipKind.COMPONENT:
+                    relationship_to_update.on_delete = RelationshipDeleteBehavior.CASCADE
+                else:
+                    relationship_to_update.on_delete = RelationshipDeleteBehavior.NO_ACTION
+
+            if schema_to_update:
+                self.set(name=schema_to_update.kind, schema=schema_to_update)
 
     def process_hierarchy(self) -> None:
         for name in self.nodes.keys():
@@ -1907,10 +1928,7 @@ class SchemaManager(NodeManager):
         #  for a standard node_schema, the relationships will be attributes and relationships
         for attr_name in schema_node._attributes:
             attr = getattr(schema_node, attr_name)
-            if isinstance(attr.value, enum.Enum):
-                node_data[attr_name] = attr.value.value
-            else:
-                node_data[attr_name] = attr.value
+            node_data[attr_name] = attr.get_value()
 
         for rel_name in schema_node._relationships:
             if rel_name not in node_data:
@@ -1922,10 +1940,7 @@ class SchemaManager(NodeManager):
                 item_data = {"id": item.id}
                 for item_name in item._attributes:
                     item_attr = getattr(item, item_name)
-                    if isinstance(item_attr.value, enum.Enum):
-                        item_data[item_name] = item_attr.value.value
-                    else:
-                        item_data[item_name] = item_attr.value
+                    item_data[item_name] = item_attr.get_value()
 
                 node_data[rel_name].append(item_data)
         return NodeSchema(**node_data)
@@ -1940,10 +1955,7 @@ class SchemaManager(NodeManager):
         #  for a standard node_schema, the relationships will be attributes and relationships
         for attr_name in schema_node._attributes:
             attr = getattr(schema_node, attr_name)
-            if isinstance(attr.value, enum.Enum):
-                node_data[attr_name] = attr.value.value
-            else:
-                node_data[attr_name] = attr.value
+            node_data[attr_name] = attr.get_value()
 
         for rel_name in schema_node._relationships:
             if rel_name not in node_data:
@@ -1955,10 +1967,7 @@ class SchemaManager(NodeManager):
                 item_data = {"id": item.id}
                 for item_name in item._attributes:
                     item_attr = getattr(item, item_name)
-                    if isinstance(item_attr.value, enum.Enum):
-                        item_data[item_name] = item_attr.value.value
-                    else:
-                        item_data[item_name] = item_attr.value
+                    item_data[item_name] = item_attr.get_value()
 
                 node_data[rel_name].append(item_data)
 

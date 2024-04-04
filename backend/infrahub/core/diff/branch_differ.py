@@ -120,9 +120,7 @@ class BranchDiffer:
             raise DiffRangeValidationError("diff_to must be later than diff_from")
 
         # Results organized by Branch
-        self._results: Dict[str, dict] = defaultdict(
-            lambda: {"nodes": {}, "rels": defaultdict(lambda: {}), "files": {}}
-        )
+        self._results: Dict[str, dict] = defaultdict(lambda: {"nodes": {}, "rels": defaultdict(dict), "files": {}})
 
         self._calculated_diff_nodes_at: Optional[Timestamp] = None
         self._calculated_diff_rels_at: Optional[Timestamp] = None

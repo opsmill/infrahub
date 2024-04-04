@@ -1,7 +1,7 @@
 /// <reference types="vitest" />
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import svgrPlugin from "vite-plugin-svgr";
+import svgr from "@svgr/rollup";
 import viteTsconfigPaths from "vite-tsconfig-paths";
 
 // https://vitejs.dev/config/
@@ -13,7 +13,7 @@ export default defineConfig({
     port: 3000,
     host: "0.0.0.0",
   },
-  plugins: [react(), viteTsconfigPaths(), svgrPlugin()],
+  plugins: [react(), viteTsconfigPaths(), svgr()],
   test: {
     exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**", "**/playwright-report/**"],
     globals: true,

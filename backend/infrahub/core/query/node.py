@@ -642,34 +642,36 @@ class NodeGetListQuery(Query):
             self.add_to_query(filter_query)
             self.params.update(filter_params)
 
-        if self.schema.order_by:
-            order_cnt = 1
-
-            for order_by_value in self.schema.order_by:
-                order_by_field_name, order_by_next_name = order_by_value.split("__", maxsplit=1)
-
-                field = self.schema.get_field(order_by_field_name)
-
-                subquery, subquery_params, subquery_result_name = await build_subquery_order(
-                    db=db,
-                    field=field,
-                    name=order_by_field_name,
-                    order_by=order_by_next_name,
-                    branch_filter=branch_filter,
-                    branch=self.branch,
-                    subquery_idx=order_cnt,
-                )
-                self.order_by.append(subquery_result_name)
-                self.params.update(subquery_params)
-
-                self.add_subquery(subquery=subquery)
-
-                order_cnt += 1
-
-        else:
-            self.order_by.append("n.uuid")
-
         self.return_labels = final_return_labels
+        await self._set_order_by(db=db, branch_filter=branch_filter)
+
+    async def _set_order_by(self, db: InfrahubDatabase, branch_filter: str) -> None:
+        if not self.schema.order_by:
+            self.order_by.append("n.uuid")
+            return
+
+        order_cnt = 1
+
+        for order_by_path in self.schema.order_by:
+            order_by_field_name, order_by_attr_property_name = order_by_path.split("__", maxsplit=1)
+
+            field = self.schema.get_field(order_by_field_name)
+
+            subquery, subquery_params, subquery_result_name = await build_subquery_order(
+                db=db,
+                field=field,
+                name=order_by_field_name,
+                order_by=order_by_attr_property_name,
+                branch_filter=branch_filter,
+                branch=self.branch,
+                subquery_idx=order_cnt,
+            )
+            self.order_by.append(subquery_result_name)
+            self.params.update(subquery_params)
+
+            self.add_subquery(subquery=subquery)
+
+            order_cnt += 1
 
     async def build_filters(
         self, db: InfrahubDatabase, filters: Dict[str, Any], branch_filter: str

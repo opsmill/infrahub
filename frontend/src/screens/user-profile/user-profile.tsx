@@ -5,7 +5,7 @@ import { Avatar } from "../../components/display/avatar";
 import { Tabs } from "../../components/tabs";
 import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { getProfileDetails } from "../../graphql/queries/profile/getProfileDetails";
+import { getProfileDetails } from "../../graphql/queries/accounts/getProfileDetails";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -91,32 +91,26 @@ export default function UserProfile() {
   const profile = data?.AccountProfile;
 
   return (
-    <div className="flex flex-col flex-1 overflow-auto">
-      <div className="border-b border-gray-200 bg-custom-white px-4 py-5 sm:px-6">
-        <div className="-ml-4 -mt-4 flex flex-wrap items-center justify-between sm:flex-nowrap">
-          <div className="ml-4 mt-4">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Avatar name={profile?.name?.value} />
-              </div>
+    <Content>
+      <Content.Title
+        title={
+          <div className="flex items-center gap-2">
+            <Avatar name={profile?.name?.value} />
 
-              <div className="ml-4">
-                <h3 className="text-base font-semibold leading-6 text-gray-900">
-                  {profile?.display_label}
-                </h3>
+            <div className="ml-2">
+              <h3>{profile?.display_label}</h3>
 
-                <p className="text-sm text-gray-500">{profile?.description?.value ?? "-"}</p>
-              </div>
+              <p className="text-sm text-gray-500">{profile?.description?.value ?? "-"}</p>
             </div>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="sticky top-0 shadow-sm">
         <Tabs tabs={tabs} />
       </div>
 
-      <Content data-cy="user-details">{renderContent(qspTab)}</Content>
-    </div>
+      <div>{renderContent(qspTab)}</div>
+    </Content>
   );
 }

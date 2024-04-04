@@ -12,7 +12,7 @@ export function Sidebar() {
           <InfrahubLogo />
         </Link>
 
-        <div className="border-b flex flex-col items-stretch p-2 gap-2">
+        <div className="h-16 border-b flex items-center p-2 gap-2">
           <BranchSelector />
         </div>
 

@@ -392,10 +392,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         delete_at = Timestamp(at)
 
-        # Ensure the node can be safely deleted first TODO
-        #  - Check if there is a relationship pointing to it that is mandatory
-        #  - Check if some nodes must be deleted too CASCADE (TODO)
-
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)

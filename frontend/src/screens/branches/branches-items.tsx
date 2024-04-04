@@ -2,7 +2,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useNavigate } from "react-router-dom";
-import { Retry } from "../../components/buttons/retry";
 import { DateDisplay } from "../../components/display/date-display";
 import { Tooltip } from "../../components/utils/tooltip";
 import GET_BRANCHES from "../../graphql/queries/branches/getBranches";
@@ -11,6 +10,7 @@ import { useTitle } from "../../hooks/useTitle";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { constructPath } from "../../utils/fetch";
 import Content from "../layout/content";
+import { Badge } from "../../components/ui/badge";
 
 export const BranchesItems = () => {
   const [storedBranches, setBranches] = useAtom(branchesState);
@@ -33,13 +33,16 @@ export const BranchesItems = () => {
 
   return (
     <Content>
-      <div className="flex items-center p-4 bg-custom-white">
-        <h1 className="text-base font-semibold">Branches ({branches?.length})</h1>
-
-        <div className="ml-2">
-          <Retry isLoading={loading} onClick={handleRefresh} />
-        </div>
-      </div>
+      <Content.Title
+        title={
+          <div className="flex items-center">
+            <h1 className="mr-2 truncate">Branches</h1>
+            <Badge>{branches.length}</Badge>
+          </div>
+        }
+        isReloadLoading={loading}
+        reload={handleRefresh}
+      />
 
       <ul
         className="grid gap-6 grid-cols-1 p-6"

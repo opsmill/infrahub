@@ -1,11 +1,9 @@
 import { gql } from "@apollo/client";
-import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useRef } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Retry } from "../../components/buttons/retry";
 import { Tabs } from "../../components/tabs";
 import { Link } from "../../components/utils/link";
 import { PROPOSED_CHANGES_OBJECT, TASK_OBJECT, TASK_TAB } from "../../config/constants";
@@ -43,7 +41,6 @@ export const ProposedChangesDetails = () => {
   const [, setValidatorQsp] = useQueryParam(QSP.VALIDATOR_DETAILS, StringParam);
   const [schemaList] = useAtom(schemaState);
   const [proposedChange, setProposedChange] = useAtom(proposedChangedState);
-  const navigate = useNavigate();
   useTitle(
     proposedChange?.display_label
       ? `${proposedChange.display_label} details`
@@ -171,29 +168,26 @@ export const ProposedChangesDetails = () => {
   };
 
   return (
-    <>
-      <div className="bg-custom-white px-4 py-5 pb-0 sm:px-6 flex items-center">
-        <div
-          className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
-          onClick={() => navigate(constructPath("/proposed-changes"))}>
-          Proposed changes
-        </div>
+    <Content>
+      <Content.Title
+        title={
+          <div className="flex items-center gap-1">
+            <Link className="no-underline hover:underline" to={constructPath("/proposed-changes")}>
+              Proposed changes
+            </Link>
 
-        <ChevronRightIcon
-          className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
-          aria-hidden="true"
-        />
+            <Icon icon="mdi:chevron-right" className="text-2xl shrink-0 text-gray-400" />
 
-        <p className="mt-1 mr-2 max-w-2xl text-sm text-gray-500">{result?.display_label}</p>
-
-        <div className="ml-2">
-          <Retry isLoading={loading} onClick={handleRefetch} />
-        </div>
-      </div>
+            <p className="max-w-2xl text-sm text-gray-500 font-normal">{result?.display_label}</p>
+          </div>
+        }
+        reload={handleRefetch}
+        isReloadLoading={loading}
+      />
 
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
-      <Content>{renderContent()}</Content>
-    </>
+      <div>{renderContent()}</div>
+    </Content>
   );
 };

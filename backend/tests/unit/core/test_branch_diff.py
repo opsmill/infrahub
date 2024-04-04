@@ -1030,11 +1030,11 @@ async def test_diff_schema_changes(
 
     diff = BranchDiffer(db=db, branch=branch2)
     summary = await diff.get_schema_summary()
-
     assert list(summary.keys()) == ["branch2", "main"]
     assert set([element.kind for elements in summary.values() for element in elements]) == {
         "SchemaNode",
         "SchemaAttribute",
+        "SchemaRelationship",
     }
 
 

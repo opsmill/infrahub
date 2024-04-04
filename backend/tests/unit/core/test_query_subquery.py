@@ -149,7 +149,7 @@ async def test_build_subquery_order_relationship(db: InfrahubDatabase, default_b
 
     expected_query = """
     WITH n
-    MATCH path = (n)-[:IS_RELATED]->(:Relationship { name: $order1_rel_name })-[:IS_RELATED]->(:Node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $order1_name })-[:HAS_VALUE]-(last:AttributeValue)
+    OPTIONAL MATCH path = (n)-[:IS_RELATED]->(:Relationship { name: $order1_rel_name })-[:IS_RELATED]->(:Node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $order1_name })-[:HAS_VALUE]-(last:AttributeValue)
     WHERE all(r IN relationships(path) WHERE (PLACEHOLDER))
     WITH last, path, reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level, %(froms_var)s AS froms
     RETURN last.value as order1

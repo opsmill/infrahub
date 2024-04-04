@@ -259,8 +259,14 @@ class InfrahubMutationMixin:
         if not (obj := await NodeManager.get_one(db=context.db, id=data.get("id"), branch=branch, at=at)):
             raise NodeNotFoundError(branch, cls._meta.schema.kind, data.get("id"))
 
-        async with context.db.start_transaction() as db:
-            await obj.delete(db=db, at=at)
+        try:
+            async with context.db.start_transaction() as db:
+                deleted = await NodeManager.delete(db=db, at=at, branch=branch, nodes=[obj])
+        except ValidationError as exc:
+            raise ValueError(str(exc)) from exc
+
+        deleted_str = ", ".join([f"{d.get_kind()}({d.get_id()})" for d in deleted])
+        log.info(f"nodes deleted: {deleted_str}")
 
         ok = True
 

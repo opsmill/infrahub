@@ -18,6 +18,7 @@ import { SelectButton } from "./buttons/select-button";
 import { DateDisplay } from "./display/date-display";
 import { POPOVER_SIZE, PopOver } from "./display/popover";
 import { SelectOption } from "./inputs/select";
+import { branchesToSelectOptions } from "../utils/branches";
 
 const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
   branch && (
@@ -83,35 +84,7 @@ export default function BranchSelector() {
     </ButtonWithTooltip>
   );
 
-  const branchesOptions: SelectOption[] = branches
-    .map((branch) => ({
-      id: branch.id,
-      name: branch.name,
-      sync_with_git: branch.sync_with_git,
-      is_default: branch.is_default,
-      is_isolated: branch.is_isolated,
-      has_schema_changes: branch.has_schema_changes,
-      created_at: branch.created_at,
-    }))
-    .sort((branch1, branch2) => {
-      if (branch1.name === "main") {
-        return -1;
-      }
-
-      if (branch2.name === "main") {
-        return 1;
-      }
-
-      if (branch2.name === "main") {
-        return -1;
-      }
-
-      if (branch1.name > branch2.name) {
-        return 1;
-      }
-
-      return -1;
-    });
+  const branchesOptions: SelectOption[] = branchesToSelectOptions(branches);
 
   const defaultBranch = branches?.filter((b) => b.is_default)[0]?.id;
 
@@ -221,7 +194,7 @@ export default function BranchSelector() {
   ];
 
   return (
-    <div className="flex h-12" data-cy="branch-select-menu" data-testid="branch-select-menu">
+    <div className="flex h-12 w-full" data-cy="branch-select-menu" data-testid="branch-select-menu">
       <SelectButton
         value={branch}
         valueLabel={valueLabel}

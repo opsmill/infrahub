@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useAtomValue } from "jotai";
 import { genericsState, IModelSchema, menuAtom, schemaState } from "../../state/atoms/schema.atom";
-import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-modal";
+import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-anywhere";
 import { MenuItem } from "../../screens/layout/sidebar/desktop-menu";
 import { constructPath } from "../../utils/fetch";
 import { Icon } from "@iconify-icon/react";

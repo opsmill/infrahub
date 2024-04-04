@@ -2,7 +2,13 @@ import time
 from typing import Dict
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind, RelationshipHierarchyDirection
+from infrahub.core.constants import (
+    BranchSupportType,
+    InfrahubKind,
+    RelationshipCardinality,
+    RelationshipDirection,
+    RelationshipHierarchyDirection,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_attribute_remove import (
     NodeAttributeRemoveMigration,
@@ -24,6 +30,7 @@ from infrahub.core.query.node import (
     NodeListGetRelationshipsQuery,
 )
 from infrahub.core.registry import registry
+from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.database import InfrahubDatabase
 
 
@@ -219,6 +226,59 @@ async def test_query_NodeGetListQuery_with_generics(db: InfrahubDatabase, group_
     )
     await query.execute(db=db)
     assert query.get_node_ids() == [group_group1_main.id]
+
+
+async def test_query_NodeGetListQuery_order_by(
+    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
+):
+    schema = registry.schema.get(name="TestCar", branch=branch)
+    schema.order_by = ["owner__name__value", "name__value"]
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [car_camry_main.id, car_yaris_main.id, car_accord_main.id, car_volt_main.id]
+
+
+async def test_query_NodeGetListQuery_order_by_optional_relationship_nulls(
+    db: InfrahubDatabase, branch: Branch, car_accord_main, car_camry_main, car_volt_main, car_yaris_main
+):
+    schema = registry.schema.get(name="TestCar", branch=branch, duplicate=False)
+    schema.relationships.append(
+        RelationshipSchema(
+            name="other_car",
+            peer="TestCar",
+            cardinality=RelationshipCardinality.ONE,
+            identifier="testcar__other_car",
+            branch=BranchSupportType.AWARE,
+            direction=RelationshipDirection.OUTBOUND,
+        )
+    )
+    schema.order_by = ["other_car__name__value"]
+
+    accord = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await accord.other_car.update(db=db, data=car_camry_main)
+    await accord.save(db=db)
+    volt = await NodeManager.get_one(db=db, branch=branch, id=car_volt_main.id)
+    await volt.other_car.update(db=db, data=car_yaris_main)
+    await volt.save(db=db)
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+    )
+    await query.execute(db=db)
+
+    retrieved_node_ids = query.get_node_ids()
+    assert len(retrieved_node_ids) == 4
+    assert retrieved_node_ids[0] == car_accord_main.id
+    assert retrieved_node_ids[1] == car_volt_main.id
+    # null ones can be any order
+    assert set(retrieved_node_ids[2:]) == {car_camry_main.id, car_yaris_main.id}
 
 
 async def test_query_NodeListGetInfoQuery(
