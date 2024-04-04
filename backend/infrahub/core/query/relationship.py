@@ -311,7 +311,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
                 self.query_add_flag_property_merge(name=prop_name)
 
     def query_add_flag_property_merge(self, name: str):
-        self.add_to_query("MERGE (prop_%s:Boolean { value: $prop_%s })" % (name, name))
+        self.add_to_query("CREATE (prop_%s:Boolean { value: $prop_%s })" % (name, name))
         self.params[f"prop_{name}"] = getattr(self.rel, name)
         self.return_labels.append(f"prop_{name}")
 
@@ -321,7 +321,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
                 self.query_add_node_property_merge(name=prop_name)
 
     def query_add_node_property_merge(self, name: str):
-        self.add_to_query("MERGE (prop_%s:Node { uuid: $prop_%s })" % (name, name))
+        self.add_to_query("CREATE (prop_%s:Node { uuid: $prop_%s })" % (name, name))
         self.params[f"prop_{name}"] = getattr(self.rel, f"{name}_id")
         self.return_labels.append(f"prop_{name}")
 
