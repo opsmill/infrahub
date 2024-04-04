@@ -104,7 +104,7 @@ async def build_subquery_order(
     froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
     query = f"""
     WITH {node_alias}
-    MATCH path = {filter_str}
+    OPTIONAL MATCH path = {filter_str}
     WHERE {where_str}
     WITH last, path, {branch_level_str} AS branch_level, {froms_str} AS froms
     RETURN last.value as {prefix}
