@@ -8,7 +8,6 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { BADGE_TYPES, Badge } from "../../components/display/badge";
 import { DateDisplay } from "../../components/display/date-display";
 import { DurationDisplay } from "../../components/display/duration-display";
-import { SearchInput } from "../../components/search/search-bar";
 import { List } from "../../components/table/list";
 import { Id } from "../../components/utils/id";
 import { QSP } from "../../config/qsp";
@@ -16,6 +15,7 @@ import { getTaskItemDetails } from "../../graphql/queries/tasks/getTasksItemDeta
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { Logs, tLog } from "./logs";
+import { SearchInput } from "../../components/ui/search-input";
 
 export const getConclusionBadge: { [key: string]: any } = {
   success: <Badge type={BADGE_TYPES.VALIDATE}>success</Badge>,
@@ -120,9 +120,9 @@ export const TaskItemDetails = forwardRef((props, ref) => {
 
           <div className="flex flex-1 justify-end">
             <SearchInput
-              onChange={setSearch}
-              containerClassName="!z-0"
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Search logs from message or severity"
+              className="min-w-96"
             />
           </div>
         </div>
