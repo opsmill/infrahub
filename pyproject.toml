@@ -488,7 +488,6 @@ ignore = [
     "PLW1508",  # Invalid type for environment variable default; expected `str` or `None`
     "PLW2901",  # `for` loop variable `path` overwritten by assignment target
     "PLW3201",  # Bad or misspelled dunder method name `__init_subclass_with_meta__`
-    "RET502",   # [*] Do not implicitly `return None` in function able to return non-`None` value
     "RET503",   # Missing explicit `return` at the end of function able to return non-`None` value
     "RET504",   # Unnecessary assignment before `return` statement
 ]

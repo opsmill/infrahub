@@ -660,7 +660,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 "Unable to update the value of the commit because a valid client hasn't been provided.",
                 repository=self.name,
             )
-            return
+            return False
 
         log.debug(
             f"Updating commit value to {commit} for branch {branch_name}", repository=self.name, branch=branch_name
@@ -1105,7 +1105,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 branch=branch_name,
                 commit=commit,
             )
-            return
+            return None
 
         config_file_content = config_file.read_text(encoding="utf-8")
         try:
@@ -1117,7 +1117,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 branch=branch_name,
                 commit=commit,
             )
-            return
+            return None
 
         # Convert data to a dictionary to avoid it being `None` if the yaml file is just an empty document
         data = data or {}
@@ -1133,7 +1133,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 branch=branch_name,
                 commit=commit,
             )
-            return
+            return None
 
     async def import_schema_files(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig) -> None:
         # pylint: disable=too-many-branches
