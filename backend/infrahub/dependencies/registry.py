@@ -7,6 +7,7 @@ from .builder.constraint.schema.attribute_regex import SchemaAttributeRegexConst
 from .builder.constraint.schema.attribute_uniqueness import SchemaAttributeUniqueConstraintDependency
 from .builder.constraint.schema.relationship_optional import SchemaRelationshipOptionalConstraintDependency
 from .builder.constraint.schema.uniqueness import SchemaUniquenessConstraintDependency
+from .builder.node.delete_validator import NodeDeleteValidatorDependency
 from .component.registry import ComponentDependencyRegistry
 
 
@@ -21,6 +22,7 @@ def build_component_registry() -> ComponentDependencyRegistry:
     component_registry.track_dependency(NodeGroupedUniquenessConstraintDependency)
     component_registry.track_dependency(RelationshipCountConstraintDependency)
     component_registry.track_dependency(NodeConstraintRunnerDependency)
+    component_registry.track_dependency(NodeDeleteValidatorDependency)
     return component_registry
 
 
