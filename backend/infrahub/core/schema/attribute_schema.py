@@ -86,7 +86,7 @@ class AttributeSchema(GeneratedAttributeSchema):
         name: str,
         filter_name: str,
         branch: Optional[Branch] = None,
-        filter_value: Optional[Union[str, int, bool, list, enum.Enum]] = None,
+        filter_value: Optional[Union[str, int, bool, list]] = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
         db: Optional[InfrahubDatabase] = None,
