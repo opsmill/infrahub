@@ -277,7 +277,7 @@ class InfrahubMutationMixin:
 
 class InfrahubMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(   # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
         cls, schema: Optional[Union[NodeSchema, GenericSchema, ProfileSchema]] = None, _meta=None, **options
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
