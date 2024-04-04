@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
@@ -18,6 +18,8 @@ from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
+from infrahub.core.schema.generic_schema import GenericSchema
+from infrahub.core.schema.profile_schema import ProfileSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
@@ -275,9 +277,11 @@ class InfrahubMutationMixin:
 
 class InfrahubMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(   # pylint: disable=arguments-differ
+        cls, schema: Optional[Union[NodeSchema, GenericSchema, ProfileSchema]] = None, _meta=None, **options
+    ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
-        if not isinstance(schema, NodeSchema):
+        if not isinstance(schema, (NodeSchema, GenericSchema, ProfileSchema)):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
 
         if not _meta:
