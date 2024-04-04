@@ -68,7 +68,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
 
         query = """
         MATCH (a:Attribute { uuid: $attr_uuid })
-        MERGE (av:%(labels)s { %(props)s } )
+        CREATE (av:%(labels)s { %(props)s })
         CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(av)
         """ % {"rel_label": self.attr._rel_to_value_label, "labels": ":".join(labels), "props": ", ".join(prop_list)}
 
@@ -109,7 +109,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
 
         query = """
         MATCH (a:Attribute { uuid: $attr_uuid })
-        MERGE (flag:Boolean { value: $flag_value })
+        CREATE (flag:Boolean { value: $flag_value })
         CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(flag)
         """ % self.flag_name.upper()
 

@@ -196,10 +196,10 @@ class NodeCreateAllQuery(NodeQuery):
         FOREACH ( attr IN $attrs |
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(a)
-            MERGE (av:AttributeValue { value: attr.content.value, is_default: attr.content.is_default })
+            CREATE (av:AttributeValue { value: attr.content.value, is_default: attr.content.is_default })
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(av)
-            MERGE (ip:Boolean { value: attr.is_protected })
-            MERGE (iv:Boolean { value: attr.is_visible })
+            CREATE (ip:Boolean { value: attr.is_protected })
+            CREATE (iv:Boolean { value: attr.is_visible })
             CREATE (a)-[:IS_PROTECTED { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(ip)
             CREATE (a)-[:IS_VISIBLE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(iv)
             FOREACH ( prop IN attr.source_prop |
@@ -252,8 +252,8 @@ class NodeCreateAllQuery(NodeQuery):
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
             CREATE (d)-[:IS_RELATED %(rel_prop)s ]->(rl)
-            MERGE (ip:Boolean { value: rel.is_protected })
-            MERGE (iv:Boolean { value: rel.is_visible })
+            CREATE (ip:Boolean { value: rel.is_protected })
+            CREATE (iv:Boolean { value: rel.is_visible })
             CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
             CREATE (rl)-[:IS_VISIBLE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(iv)
             FOREACH ( prop IN rel.source_prop |
@@ -270,8 +270,8 @@ class NodeCreateAllQuery(NodeQuery):
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
             CREATE (d)<-[:IS_RELATED %(rel_prop)s ]-(rl)
-            MERGE (ip:Boolean { value: rel.is_protected })
-            MERGE (iv:Boolean { value: rel.is_visible })
+            CREATE (ip:Boolean { value: rel.is_protected })
+            CREATE (iv:Boolean { value: rel.is_visible })
             CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
             CREATE (rl)-[:IS_VISIBLE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(iv)
             FOREACH ( prop IN rel.source_prop |
@@ -288,8 +288,8 @@ class NodeCreateAllQuery(NodeQuery):
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)<-[:IS_RELATED %(rel_prop)s ]-(rl)
             CREATE (d)-[:IS_RELATED %(rel_prop)s ]->(rl)
-            MERGE (ip:Boolean { value: rel.is_protected })
-            MERGE (iv:Boolean { value: rel.is_visible })
+            CREATE (ip:Boolean { value: rel.is_protected })
+            CREATE (iv:Boolean { value: rel.is_visible })
             CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
             CREATE (rl)-[:IS_VISIBLE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(iv)
             FOREACH ( prop IN rel.source_prop |
