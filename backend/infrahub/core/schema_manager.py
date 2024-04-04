@@ -1202,6 +1202,8 @@ class SchemaBranch:
     def add_profiles(self):
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
+            if "profiles" in node.relationship_names:
+                continue
 
             if node.namespace in RESTRICTED_NAMESPACES:
                 continue

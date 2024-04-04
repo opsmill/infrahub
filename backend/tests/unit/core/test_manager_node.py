@@ -377,6 +377,7 @@ async def test_identify_node_class(db: InfrahubDatabase, car_schema, default_bra
         schema=car_schema,
         node_id=33,
         node_uuid=str(UUIDT()),
+        profile_uuids=[],
         updated_at=Timestamp().to_string(),
         branch=default_branch,
         labels=["Node", "TestCar"],
