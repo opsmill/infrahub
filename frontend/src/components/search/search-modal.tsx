@@ -1,5 +1,13 @@
 import { Combobox, Dialog, Transition } from "@headlessui/react";
-import { ChangeEventHandler, forwardRef, Fragment, ReactNode, useEffect, useState } from "react";
+import {
+  ChangeEventHandler,
+  forwardRef,
+  Fragment,
+  MouseEventHandler,
+  ReactNode,
+  useEffect,
+  useState,
+} from "react";
 import { Icon } from "@iconify-icon/react";
 import { Link, LinkProps, useNavigate } from "react-router-dom";
 import { classNames } from "../../utils/common";
@@ -13,11 +21,12 @@ type SearchInputProps = {
   className?: string;
   value?: string;
   onChange?: ChangeEventHandler<HTMLInputElement>;
+  onClick?: MouseEventHandler<HTMLDivElement>;
 };
 
-const SearchInput = ({ value, onChange, className = "" }: SearchInputProps) => {
+const SearchTrigger = ({ value, onChange, onClick, className = "" }: SearchInputProps) => {
   return (
-    <div className={classNames("relative", className)}>
+    <div className={classNames("relative", className)} onClick={onClick}>
       <Icon
         icon="mdi:magnify"
         className="text-lg text-custom-blue-10 absolute inset-y-0 left-0 pl-2 flex items-center"
@@ -65,8 +74,13 @@ export function SearchModal({ className = "" }: SearchModalProps) {
 
   return (
     <>
-      <div onClick={openModal} className={className}>
-        <SearchInput value="" className="w-full max-w-lg" onChange={openModal} />
+      <div className={className}>
+        <SearchTrigger
+          value=""
+          className="w-full max-w-lg"
+          onClick={openModal}
+          onChange={openModal}
+        />
       </div>
 
       <Transition appear show={isOpen} as={Fragment}>
