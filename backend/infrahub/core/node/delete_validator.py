@@ -11,8 +11,6 @@ from infrahub.core.query.relationship import (
     RelationshipPeersData,
 )
 from infrahub.core.schema import MainSchemaTypes
-from infrahub.core.schema.generic_schema import GenericSchema
-from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
