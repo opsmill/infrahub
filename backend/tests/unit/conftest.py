@@ -1205,6 +1205,7 @@ async def car_person_schema_generics(
                 "default_filter": "name__value",
                 "display_labels": ["name__value", "color__value"],
                 "order_by": ["name__value"],
+                "include_in_menu": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "nbr_seats", "kind": "Number"},
