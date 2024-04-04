@@ -78,8 +78,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         is_default: bool = False,
         **kwargs,
     ):
-        self.id: Optional[str] = id
-        self.db_id: Optional[str] = db_id
+        self.id = id
+        self.db_id = db_id
 
         self.updated_at = updated_at
         self.name = name
@@ -94,10 +94,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         self.value = None
 
-        if data is not None and isinstance(data, AttributeFromDB):
+        if isinstance(data, AttributeFromDB):
             self.load_from_db(data=data)
 
-        elif data is not None and isinstance(data, dict):
+        elif isinstance(data, dict):
             self.value = data.get("value")
 
             if "is_default" in data:
@@ -131,9 +131,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
     @property
     def is_enum(self) -> bool:
-        if self.schema.enum:
-            return True
-        return False
+        return bool(self.schema.enum)
 
     def get_branch_based_on_support_type(self) -> Branch:
         """If the attribute is branch aware, return the Branch object associated with this attribute
@@ -352,11 +350,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         self.validate(value=self.value, name=self.name, schema=self.schema)
 
         # Check if the current value is still the default one
-        if self.is_default:
-            if self.schema.default_value and self.schema.default_value != self.value:
-                self.is_default = False
-            elif not self.schema.default_value and self.value is not None:
-                self.is_default = False
+        if (
+            self.is_default
+            and (self.schema.default_value is not None and self.schema.default_value != self.value)
+            or (self.schema.default_value is None and self.value is not None)
+        ):
+            self.is_default = False
 
         query = await NodeListGetAttributeQuery.init(
             db=db,
@@ -805,7 +804,7 @@ class ListAttribute(BaseAttribute):
         """Serialize the value before storing it in the database."""
         return ujson.dumps(self.value)
 
-    def deserialize_value(self, data: AttributeFromDB) -> Dict[str, Any]:
+    def deserialize_value(self, data: AttributeFromDB) -> Any:
         """Deserialize the value (potentially) coming from the database."""
         if isinstance(data.value, (str, bytes)):
             return ujson.loads(data.value)
@@ -819,7 +818,7 @@ class JSONAttribute(BaseAttribute):
         """Serialize the value before storing it in the database."""
         return ujson.dumps(self.value)
 
-    def deserialize_value(self, data: AttributeFromDB) -> Dict[str, Any]:
+    def deserialize_value(self, data: AttributeFromDB) -> Any:
         """Deserialize the value (potentially) coming from the database."""
         if data.value and isinstance(data.value, (str, bytes)):
             return ujson.loads(data.value)
