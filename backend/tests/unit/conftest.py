@@ -31,9 +31,15 @@ from infrahub.core.schema import (
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
 from infrahub.test_data import dataset01 as ds01
 from tests.helpers.file_repo import FileRepo
+
+
+@pytest.fixture(scope="module", autouse=True)
+def load_component_dependency_registry():
+    build_component_registry()
 
 
 @pytest.fixture(params=["main", "branch2"])

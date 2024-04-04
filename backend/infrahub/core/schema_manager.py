@@ -19,6 +19,7 @@ from infrahub.core.constants import (
     HashableModelState,
     InfrahubKind,
     RelationshipCardinality,
+    RelationshipDeleteBehavior,
     RelationshipDirection,
     RelationshipKind,
 )
@@ -450,6 +451,7 @@ class SchemaBranch:
         self.generate_weight()
         self.process_labels()
         self.process_dropdowns()
+        self.process_relationships()
 
     def generate_identifiers(self) -> None:
         """Generate the identifier for all relationships if it's not already present."""
@@ -840,6 +842,26 @@ class SchemaBranch:
                     rel.label = format_label(rel.name)
 
             self.set(name=name, schema=node)
+
+    def process_relationships(self) -> None:
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            schema_to_update: Optional[Union[NodeSchema, GenericSchema]] = None
+            for relationship in node.relationships:
+                if relationship.on_delete is not None:
+                    continue
+                if not schema_to_update:
+                    schema_to_update = node.duplicate()
+
+                relationship_to_update = schema_to_update.get_relationship(name=relationship.name)
+                if relationship.kind == RelationshipKind.COMPONENT:
+                    relationship_to_update.on_delete = RelationshipDeleteBehavior.CASCADE
+                else:
+                    relationship_to_update.on_delete = RelationshipDeleteBehavior.NO_ACTION
+
+            if schema_to_update:
+                self.set(name=schema_to_update.kind, schema=schema_to_update)
 
     def process_hierarchy(self) -> None:
         for name in self.nodes.keys():

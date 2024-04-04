@@ -107,6 +107,23 @@ class RelationshipPeersData:
     destination_id: UUID
     destination_kind: str
 
+    def reversed(self) -> RelationshipPeersData:
+        return RelationshipPeersData(
+            id=self.id,
+            identifier=self.identifier,
+            source_id=self.destination_id,
+            source_kind=self.destination_kind,
+            destination_id=self.source_id,
+            destination_kind=self.source_kind,
+        )
+
+
+@dataclass
+class FullRelationshipIdentifier:
+    identifier: str
+    source_kind: str
+    destination_kind: str
+
 
 class RelationshipQuery(Query):
     def __init__(
@@ -744,12 +761,24 @@ class RelationshipGetByIdentifierQuery(Query):
 
     type: QueryType = QueryType.READ
 
-    def __init__(self, identifiers: List[str], excluded_namespaces: List[str], *args, **kwargs) -> None:
-        if not identifiers:
-            raise ValueError("identifiers cannot be an empty list")
+    def __init__(
+        self,
+        identifiers: Optional[List[str]] = None,
+        full_identifiers: Optional[List[FullRelationshipIdentifier]] = None,
+        excluded_namespaces: Optional[List[str]] = None,
+        *args,
+        **kwargs,
+    ) -> None:
+        if (not identifiers and not full_identifiers) or (identifiers and full_identifiers):
+            raise ValueError("one and only one of identifiers or full_identifiers is required")
 
-        self.identifiers = identifiers
-        self.excluded_namespaces = excluded_namespaces
+        if full_identifiers:
+            self.identifiers = list({i.identifier for i in full_identifiers})
+            self.full_identifiers = full_identifiers
+        else:
+            self.identifiers = identifiers
+            self.full_identifiers = []
+        self.excluded_namespaces = excluded_namespaces or []
 
         # Always exclude relationships with internal nodes
         if "Internal" not in self.excluded_namespaces:
@@ -759,6 +788,9 @@ class RelationshipGetByIdentifierQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
         self.params["identifiers"] = self.identifiers
+        self.params["full_identifiers"] = [
+            [full_id.source_kind, full_id.identifier, full_id.destination_kind] for full_id in self.full_identifiers
+        ]
         self.params["excluded_namespaces"] = self.excluded_namespaces
         self.params["branch"] = self.branch.name
         self.params["at"] = self.at.to_string()
@@ -774,7 +806,10 @@ class RelationshipGetByIdentifierQuery(Query):
         CALL {
             WITH rl
             MATCH (src:Node)-[r1:IS_RELATED]-(rl:Relationship)-[r2:IS_RELATED]-(dst:Node)
-            WHERE NOT src.namespace IN $excluded_namespaces AND NOT dst.namespace IN $excluded_namespaces AND %s
+            WHERE (size($full_identifiers) = 0 OR [src.kind, rl.name, dst.kind] in $full_identifiers)
+            AND NOT src.namespace IN $excluded_namespaces
+            AND NOT dst.namespace IN $excluded_namespaces
+            AND %s
             RETURN src, dst, r1, r2, rl as rl1
             ORDER BY r1.branch_level DESC, r2.branch_level DESC, r1.from DESC, r2.from DESC
             LIMIT 1
