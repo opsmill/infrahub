@@ -1,12 +1,16 @@
 import React from "react";
 import { GraphiQL } from "graphiql";
+import { explorerPlugin } from "@graphiql/plugin-explorer";
 import type { Fetcher } from "@graphiql/toolkit";
-import "graphiql/graphiql.min.css";
 import { useAtomValue } from "jotai/index";
+
 import { currentBranchAtom } from "../state/atoms/branches.atom";
 import { CONFIG } from "../config/config";
 import { ACCESS_TOKEN_KEY } from "../config/constants";
 import { datetimeAtom } from "../state/atoms/time.atom";
+
+import "graphiql/graphiql.min.css";
+import "@graphiql/plugin-explorer/dist/style.css";
 
 const fetcher =
   (url: string): Fetcher =>
@@ -30,7 +34,13 @@ const GraphiQLPage = () => {
   const branch = useAtomValue(currentBranchAtom);
   const waybackMachineDate = useAtomValue(datetimeAtom);
 
-  return <GraphiQL fetcher={fetcher(CONFIG.GRAPHQL_URL(branch?.name, waybackMachineDate))} />;
+  return (
+    <GraphiQL
+      defaultEditorToolsVisibility
+      plugins={[explorerPlugin({ showAttribution: false })]}
+      fetcher={fetcher(CONFIG.GRAPHQL_URL(branch?.name, waybackMachineDate))}
+    />
+  );
 };
 
 export default GraphiQLPage;
