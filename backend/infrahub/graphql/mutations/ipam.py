@@ -58,19 +58,14 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         if result.ok:
             prefix_data = await get_ip_prefix_for_ip_address(db=context.db, branch=branch, at=at, ip_address=address)
             if prefix_data:
-                prefix_node = await NodeManager.get_one_by_id_or_default_filter(
-                    db=context.db, id=prefix_data.id, schema_name=InfrahubKind.IPPREFIX, branch=context.branch, at=at
-                )
+                prefix_node = await NodeManager.get_one(db=context.db, branch=context.branch, at=at, id=prefix_data.id)
                 if not prefix_node:
                     raise ValueError(f"Unable to find the {InfrahubKind.IPPREFIX} {prefix_data.id}")
 
                 await address.ip_prefix.update(db=context.db, data=prefix_node)
                 await address.save(db=context.db)
 
-                # FIXME: ValueError('Relationship has not been initialized')
-                # prefix_node_addresses = await prefix_node.ip_addresses.get_peers(db=context.db)
-                # prefix_node_addresses[address.id] = address
-                await prefix_node.ip_addresses.update(db=context.db, data=address)
+                await prefix_node.ip_addresses.add(db=context.db, data=address)
                 await prefix_node.save(db=context.db)
 
         return address, result
@@ -164,8 +159,8 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             # Find if a parent prefix exists in the database and add relationship if one does
             container_data = await get_container(db=context.db, branch=branch, at=at, ip_prefix=prefix)
             if container_data:
-                container_node = await NodeManager.get_one_by_id_or_default_filter(
-                    db=context.db, id=container_data.id, schema_name=InfrahubKind.IPPREFIX, branch=context.branch, at=at
+                container_node = await NodeManager.get_one(
+                    db=context.db, branch=context.branch, at=at, id=container_data.id
                 )
                 if not container_node:
                     raise ValueError(f"Unable to find the {InfrahubKind.IPPREFIX} {container_data.id}")
@@ -176,9 +171,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             subnet_datas = await get_subnets(db=context.db, branch=branch, at=at, ip_prefix=prefix)
             subnet_nodes = []
             for subnet_data in subnet_datas:
-                node = await NodeManager.get_one_by_id_or_default_filter(
-                    db=context.db, id=subnet_data.id, schema_name=InfrahubKind.IPPREFIX, branch=context.branch, at=at
-                )
+                node = await NodeManager.get_one(db=context.db, branch=context.branch, at=at, id=subnet_data.id)
                 if not node:
                     raise ValueError(f"Unable to find the {InfrahubKind.IPPREFIX} {subnet_data.id}")
 
@@ -193,9 +186,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             address_datas = await get_ip_addresses(db=context.db, branch=branch, at=at, ip_prefix=prefix)
             address_nodes = []
             for address_data in address_datas:
-                node = await NodeManager.get_one_by_id_or_default_filter(
-                    db=context.db, id=address_data.id, schema_name=InfrahubKind.IPPREFIX, branch=context.branch, at=at
-                )
+                node = await NodeManager.get_one(db=context.db, branch=context.branch, at=at, id=address_data.id)
                 if not node:
                     raise ValueError(f"Unable to find the {InfrahubKind.IPADDRESS} {address_data.id}")
 
@@ -270,7 +261,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
     ):
         context: GraphqlContext = info.context
 
-        prefix = await NodeManager.get_one(db=context.db, id=data.get("id"), branch=branch, at=at)
+        prefix = await NodeManager.get_one(db=context.db, branch=branch, at=at, id=data.get("id"))
         if not prefix:
             raise NodeNotFoundError(branch, cls._meta.schema.kind, data.get("id"))
 

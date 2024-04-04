@@ -789,6 +789,29 @@ class RelationshipManager:
 
         return changed
 
+    async def add(self, data: Union[Dict[str, Any], Node], db: InfrahubDatabase) -> bool:
+        """Add a new relationship to the list of existing ones, avoid duplication."""
+        if not isinstance(data, (self.rel_class, dict)) and not hasattr(data, "_schema"):
+            raise ValidationError({self.name: f"Invalid data provided to form a relationship {data}"})
+
+        previous_relationships = {rel.peer_id for rel in await self.get_relationships(db=db) if rel.peer_id}
+
+        item_id = getattr(data, "id", None)
+        if not item_id and isinstance(data, dict):
+            item_id = data.get("id", None)
+
+        if item_id in previous_relationships:
+            return False
+
+        # If the item ID is not present in the previous set of relationships, create a new one
+        self._relationships.append(
+            await self.rel_class(schema=self.schema, branch=self.branch, at=self.at, node=self.node).new(
+                db=db, data=data
+            )
+        )
+
+        return True
+
     async def remove(
         self,
         peer_id: Union[str, UUID],
