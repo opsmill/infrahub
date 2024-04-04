@@ -546,10 +546,7 @@ class NodeListGetInfoQuery(Query):
         OPTIONAL MATCH profile_path = (n)-[pr1:IS_RELATED]->(profile_r:Relationship)<-[pr2:IS_RELATED]-(profile:Node)-[pr3:IS_PART_OF]->(:Root)
         WHERE profile_r.name = "node__profile"
         AND profile.namespace = "Profile"
-        AND all(r in relationships(profile_path) WHERE %(branch_filter)s)
-        AND pr1.status = "active"
-        AND pr2.status = "active"
-        AND pr3.status = "active"
+        AND all(r in relationships(profile_path) WHERE %(branch_filter)s and r.status = "active")
         """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
@@ -571,6 +568,18 @@ class NodeListGetInfoQuery(Query):
                 branch=self.branch.name,
                 labels=list(result.get_node("n").labels),
             )
+
+    def get_profile_ids_by_node_id(self) -> dict[str, list[str]]:
+        profile_id_map: dict[str, list[str]] = {}
+        for result in self.results:
+            node_id = result.get_node("n").get("uuid")
+            profile_ids = result.get("profile_uuids")
+            if not node_id or not profile_ids:
+                continue
+            if node_id not in profile_id_map:
+                profile_id_map[node_id] = []
+            profile_id_map[node_id].extend(profile_ids)
+        return profile_id_map
 
 
 class NodeGetListQuery(Query):

@@ -10,6 +10,7 @@ from infrahub.core.query.relationship import (
     RelationshipGetByIdentifierQuery,
     RelationshipPeersData,
 )
+from infrahub.core.schema import MainSchemaTypes
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
@@ -23,12 +24,12 @@ class DeleteRelationshipType(Enum):
 
 
 class NodeDeleteIndex:
-    def __init__(self, all_schemas_map: dict[str, Union[NodeSchema, GenericSchema]]) -> None:
+    def __init__(self, all_schemas_map: dict[str, MainSchemaTypes]) -> None:
         self._all_schemas_map = all_schemas_map
         # {node_schema: {DeleteRelationshipType: {relationship_identifier: peer_node_schema}}}
         self._dependency_graph: dict[str, dict[DeleteRelationshipType, dict[str, str]]] = {}
 
-    def index(self, start_schemas: Iterable[Union[NodeSchema, GenericSchema]]) -> None:
+    def index(self, start_schemas: Iterable[MainSchemaTypes]) -> None:
         self._index_cascading_deletes(start_schemas=start_schemas)
         self._index_dependent_schema(start_schemas=start_schemas)
 
@@ -41,7 +42,7 @@ class NodeDeleteIndex:
             self._dependency_graph[kind][relationship_type] = {}
         self._dependency_graph[kind][relationship_type][relationship_identifier] = peer_kind
 
-    def _index_cascading_deletes(self, start_schemas: Iterable[Union[NodeSchema, GenericSchema]]) -> None:
+    def _index_cascading_deletes(self, start_schemas: Iterable[MainSchemaTypes]) -> None:
         kinds_to_check: set[str] = {schema.kind for schema in start_schemas}
         while True:
             try:
@@ -61,7 +62,7 @@ class NodeDeleteIndex:
                 if relationship_schema.peer not in self._dependency_graph:
                     kinds_to_check.add(relationship_schema.peer)
 
-    def _index_dependent_schema(self, start_schemas: Iterable[Union[NodeSchema, GenericSchema]]) -> None:
+    def _index_dependent_schema(self, start_schemas: Iterable[MainSchemaTypes]) -> None:
         start_schema_kinds = {schema.kind for schema in start_schemas}
         for node_schema in self._all_schemas_map.values():
             for relationship_schema in node_schema.relationships:

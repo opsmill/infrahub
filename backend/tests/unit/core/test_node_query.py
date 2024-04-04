@@ -315,6 +315,44 @@ async def test_query_NodeListGetInfoQuery_with_profiles(
             assert set(node_to_process.profile_uuids) == {person_profile.id, person_profile_2.id}
 
 
+async def test_query_NodeListGetInfoQuery_with_profiles_some_deleted(
+    db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+):
+    profile_schema = registry.schema.get("ProfileTestPerson", branch=branch)
+    person_profile = await Node.init(db=db, schema=profile_schema)
+    await person_profile.new(db=db, profile_name="person_profile_1", height=172, profile_priority=1001)
+    await person_profile.save(db=db)
+    person_profile_2 = await Node.init(db=db, schema=profile_schema)
+    await person_profile_2.new(db=db, profile_name="person_profile_2", height=177, profile_priority=1002)
+    await person_profile_2.save(db=db)
+    for person_id in (person_albert_main.id, person_alfred_main.id, person_john_main.id):
+        person = await NodeManager.get_one(db=db, id=person_id, branch=branch)
+        await person.profiles.update(data=[person_profile, person_profile_2], db=db)
+        await person.save(db=db)
+    person_albert = await NodeManager.get_one(db=db, id=person_albert_main.id, branch=branch)
+    await person_albert.profiles.update(data=[person_profile_2], db=db)
+    await person_albert.save(db=db)
+
+    ids = [person_john_main.id, person_jim_main.id, person_albert_main.id, person_alfred_main.id]
+    query = await NodeListGetInfoQuery.init(db=db, branch=branch, ids=ids)
+    await query.execute(db=db)
+
+    queried_nodes = [node async for node in query.get_nodes(duplicate=False)]
+    assert {qn.node_uuid for qn in queried_nodes} == {
+        person_john_main.id,
+        person_jim_main.id,
+        person_albert_main.id,
+        person_alfred_main.id,
+    }
+    for node_to_process in queried_nodes:
+        if node_to_process.node_uuid in (person_john_main.id, person_alfred_main.id):
+            assert set(node_to_process.profile_uuids) == {person_profile.id, person_profile_2.id}
+        elif node_to_process.node_uuid in (person_albert_main.id):
+            assert node_to_process.profile_uuids == [person_profile_2.id]
+        elif node_to_process.node_uuid in (person_jim_main.id):
+            assert node_to_process.profile_uuids == []
+
+
 async def test_query_NodeListGetInfoQuery_renamed(
     db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):

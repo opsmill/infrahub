@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import reduce
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
 from infrahub_sdk.utils import deep_merge_dict
@@ -49,6 +50,48 @@ def identify_node_class(node: NodeToProcess) -> Type[Node]:
                 return registry.node[parent]
 
     return Node
+
+
+class ProfileAttributeIndex:
+    def __init__(
+        self,
+        profile_attributes_id_map: dict[str, dict[str, AttributeFromDB]],
+        profile_ids_by_node_id: dict[str, list[str]],
+    ):
+        self._profile_attributes_id_map = profile_attributes_id_map
+        self._profile_ids_by_node_id = profile_ids_by_node_id
+
+    def apply_profiles(self, node_data_dict: dict[str, Any]) -> dict[str, Any]:
+        updated_data: dict[str, Any] = {**node_data_dict}
+        node_id = node_data_dict.get("id")
+        profile_ids = self._profile_ids_by_node_id.get(node_id, [])
+        if not profile_ids:
+            return updated_data
+        profiles = [
+            self._profile_attributes_id_map[p_id] for p_id in profile_ids if p_id in self._profile_attributes_id_map
+        ]
+        profiles.sort(key=lambda p: str(p.attrs.get("profile_priority").value), reverse=True)
+
+        for attr_name, attr_data in updated_data.items():
+            if not isinstance(attr_data, AttributeFromDB):
+                continue
+            if not attr_data.is_default:
+                continue
+            profile_value, profile_uuid = None, None
+            index = 0
+            while profile_value is None and index <= (len(profiles) - 1):
+                try:
+                    profile_value = profiles[index].attrs[attr_name].value
+                    profile_uuid = profiles[index].node["uuid"]
+                    break
+                except (IndexError, KeyError, AttributeError):
+                    ...
+                index += 1
+
+            if profile_value is not None:
+                attr_data.value = profile_value
+                attr_data.node_properties["owner"] = AttributeNodePropertyFromDB(uuid=profile_uuid, labels=[])
+        return updated_data
 
 
 class NodeManager:
@@ -458,19 +501,18 @@ class NodeManager:
         # Query all nodes
         query = await NodeListGetInfoQuery.init(db=db, ids=ids, branch=branch, account=account, at=at)
         await query.execute(db=db)
-
-        nodes_info_by_id: Dict[str, NodeToProcess] = {}
-        profile_ids: set[str] = set()
-        node_id_profile_ids_map: dict[str, list[str]] = {}
-        async for node_info in query.get_nodes(duplicate=False):
-            nodes_info_by_id[node_info.node_uuid] = node_info
-            node_id_profile_ids_map[node_info.node_uuid] = node_info.profile_uuids
-            profile_ids.update(node_info.profile_uuids)
+        nodes_info_by_id: Dict[str, NodeToProcess] = {
+            node.node_uuid: node async for node in query.get_nodes(duplicate=False)
+        }
+        profile_ids_by_node_id = query.get_profile_ids_by_node_id()
+        all_profile_ids = reduce(
+            lambda all_ids, these_ids: all_ids | set(these_ids), profile_ids_by_node_id.values(), set()
+        )
 
         # Query list of all Attributes
         query = await NodeListGetAttributeQuery.init(
             db=db,
-            ids=list(nodes_info_by_id.keys()) + list(profile_ids),
+            ids=list(nodes_info_by_id.keys()) + list(all_profile_ids),
             fields=fields,
             branch=branch,
             include_source=include_source,
@@ -483,10 +525,13 @@ class NodeManager:
         profile_attributes: Dict[str, Dict[str, AttributeFromDB]] = {}
         node_attributes: Dict[str, Dict[str, AttributeFromDB]] = {}
         for node_id, attribute_dict in all_node_attributes.items():
-            if node_id in profile_ids:
+            if node_id in all_profile_ids:
                 profile_attributes[node_id] = attribute_dict
             else:
                 node_attributes[node_id] = attribute_dict
+        profile_index = ProfileAttributeIndex(
+            profile_attributes_id_map=profile_attributes, profile_ids_by_node_id=profile_ids_by_node_id
+        )
 
         # if prefetch_relationships is enabled
         # Query all the peers associated with all nodes at once.
@@ -515,15 +560,15 @@ class NodeManager:
         nodes = {}
 
         for node_id in ids:  # pylint: disable=too-many-nested-blocks
-            profile_ids = node_id_profile_ids_map.get(node_id, [])
-            profiles = [profile_attributes[p_id] for p_id in profile_ids if p_id in profile_attributes]
-            profiles.sort(key=lambda p: str(p.attrs.get("profile_priority").value), reverse=True)
-
             if node_id not in nodes_info_by_id:
                 continue
 
             node = nodes_info_by_id[node_id]
-            new_node_data: Dict[str, Any] = {"db_id": node.node_id, "id": node_id, "updated_at": node.updated_at}
+            new_node_data: Dict[str, Union[str, AttributeFromDB]] = {
+                "db_id": node.node_id,
+                "id": node_id,
+                "updated_at": node.updated_at,
+            }
 
             if not node.schema:
                 raise SchemaNotFoundError(
@@ -537,20 +582,6 @@ class NodeManager:
             # --------------------------------------------------------
             if node_id in node_attributes:
                 for attr_name, attr in node_attributes[node_id].attrs.items():
-                    if attr.is_default and profiles:
-                        profile_value, profile_uuid = None, None
-                        index = 0
-                        while profile_value is None and index < (len(profiles) - 1):
-                            try:
-                                profile_value = profiles[index].attrs[attr_name].value
-                                profile_uuid = profiles[index].node["uuid"]
-                                break
-                            except (IndexError, KeyError, AttributeError):
-                                ...
-                            index += 1
-                        if profile_value is not None:
-                            attr.value = profile_value
-                            attr.node_properties["owner"] = AttributeNodePropertyFromDB(uuid=profile_uuid, labels=[])
                     new_node_data[attr_name] = attr
 
             # --------------------------------------------------------
@@ -566,9 +597,10 @@ class NodeManager:
                         elif rel_schema.cardinality == "many":
                             new_node_data[rel_schema.name] = rel_peers
 
+            new_node_data_with_profile_overrides = profile_index.apply_profiles(new_node_data)
             node_class = identify_node_class(node=node)
             item = await node_class.init(schema=node.schema, branch=branch, at=at, db=db)
-            await item.load(**new_node_data, db=db)
+            await item.load(**new_node_data_with_profile_overrides, db=db)
 
             nodes[node_id] = item
 
