@@ -117,9 +117,13 @@ class SchemaBranch:
     def profile_names(self) -> List[str]:
         return list(self.profiles.keys())
 
-    def get_all_kind_id_map(self) -> Dict[str, str]:
+    def get_all_kind_id_map(self, exclude_profiles: bool = False) -> Dict[str, str]:
         kind_id_map = {}
-        for name in self.all_names:
+        if exclude_profiles:
+            names = self.node_names + self.generic_names
+        else:
+            names = self.all_names
+        for name in names:
             item = self.get(name=name, duplicate=False)
             kind_id_map[name] = item.id
         return kind_id_map
@@ -180,8 +184,8 @@ class SchemaBranch:
 
     def diff(self, other: SchemaBranch) -> SchemaDiff:
         # Identify the nodes or generics that have been added or removed
-        local_kind_id_map = self.get_all_kind_id_map()
-        other_kind_id_map = other.get_all_kind_id_map()
+        local_kind_id_map = self.get_all_kind_id_map(exclude_profiles=True)
+        other_kind_id_map = other.get_all_kind_id_map(exclude_profiles=True)
         clean_local_ids = [id for id in local_kind_id_map.values() if id is not None]
         clean_other_ids = [id for id in other_kind_id_map.values() if id is not None]
         shared_ids = intersection(list1=clean_local_ids, list2=clean_other_ids)
