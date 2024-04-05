@@ -1924,6 +1924,8 @@ class SchemaManager(NodeManager):
             for schema_node in await self.query(
                 schema=node_schema, branch=branch, at=at, filters=filters["nodes"], prefetch_relationships=True, db=db
             ):
+                if schema_node.namespace.value == "Profile":
+                    continue
                 kind = f"{schema_node.namespace.value}{schema_node.name.value}"
                 schema.set(
                     name=kind,
@@ -1934,10 +1936,8 @@ class SchemaManager(NodeManager):
 
         return schema
 
-    @staticmethod
-    async def convert_node_schema_to_schema(schema_node: Node, db: InfrahubDatabase) -> NodeSchema:
-        """Convert a schema_node object loaded from the database into NodeSchema object."""
-
+    @classmethod
+    async def _prepare_node_data(cls, schema_node: Node, db: InfrahubDatabase) -> dict[str, Any]:
         node_data = {"id": schema_node.id}
 
         # First pull all the local attributes at the top level, then convert all the local relationships
@@ -1959,32 +1959,16 @@ class SchemaManager(NodeManager):
                     item_data[item_name] = item_attr.get_value()
 
                 node_data[rel_name].append(item_data)
+        return node_data
+
+    @classmethod
+    async def convert_node_schema_to_schema(cls, schema_node: Node, db: InfrahubDatabase) -> NodeSchema:
+        """Convert a schema_node object loaded from the database into NodeSchema object."""
+        node_data = await cls._prepare_node_data(schema_node=schema_node, db=db)
         return NodeSchema(**node_data)
 
-    @staticmethod
-    async def convert_generic_schema_to_schema(schema_node: Node, db: InfrahubDatabase) -> GenericSchema:
+    @classmethod
+    async def convert_generic_schema_to_schema(cls, schema_node: Node, db: InfrahubDatabase) -> GenericSchema:
         """Convert a schema_node object loaded from the database into GenericSchema object."""
-
-        node_data = {"id": schema_node.id}
-
-        # First pull all the attributes at the top level, then convert all the relationships
-        #  for a standard node_schema, the relationships will be attributes and relationships
-        for attr_name in schema_node._attributes:
-            attr = getattr(schema_node, attr_name)
-            node_data[attr_name] = attr.get_value()
-
-        for rel_name in schema_node._relationships:
-            if rel_name not in node_data:
-                node_data[rel_name] = []
-
-            rm = getattr(schema_node, rel_name)
-            for rel in await rm.get(db=db):
-                item = await rel.get_peer(db=db)
-                item_data = {"id": item.id}
-                for item_name in item._attributes:
-                    item_attr = getattr(item, item_name)
-                    item_data[item_name] = item_attr.get_value()
-
-                node_data[rel_name].append(item_data)
-
+        node_data = await cls._prepare_node_data(schema_node=schema_node, db=db)
         return GenericSchema(**node_data)
