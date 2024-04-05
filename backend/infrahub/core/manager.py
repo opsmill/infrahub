@@ -70,7 +70,7 @@ class ProfileAttributeIndex:
         profiles = [
             self._profile_attributes_id_map[p_id] for p_id in profile_ids if p_id in self._profile_attributes_id_map
         ]
-        profiles.sort(key=lambda p: str(p.attrs.get("profile_priority").value), reverse=True)
+        profiles.sort(key=lambda p: str(p.attrs.get("profile_priority").value))
 
         for attr_name, attr_data in updated_data.items():
             if not isinstance(attr_data, AttributeFromDB):
