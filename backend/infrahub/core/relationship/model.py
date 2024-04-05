@@ -638,6 +638,12 @@ class RelationshipManager:
 
         return iter(self._relationships)
 
+    def __len__(self) -> int:
+        if not self.has_fetched_relationships:
+            raise LookupError("you can't count relationships before the cache has been populated.")
+
+        return len(self._relationships)
+
     async def get_peer(self, db: InfrahubDatabase) -> Optional[Node]:
         if self.schema.cardinality == "many":
             raise TypeError("peer is not available for relationship with multiple cardinality")

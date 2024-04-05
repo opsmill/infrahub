@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
 
 
@@ -144,7 +145,7 @@ class IPAddressIPPrefixFetch(Query):
 
 
 async def get_container(
-    ip_prefix, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
+    ip_prefix: Node, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
 ) -> IPPrefixData:
     branch = await registry.get_branch(db=db, branch=branch)
     query = await IPPrefixSubnetFetch.init(db=db, branch=branch, ip_prefix=ip_prefix, at=at)
@@ -153,7 +154,7 @@ async def get_container(
 
 
 async def get_subnets(
-    ip_prefix, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
+    ip_prefix: Node, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
 ) -> Iterable[IPPrefixData]:
     branch = await registry.get_branch(db=db, branch=branch)
     query = await IPPrefixSubnetFetch.init(db=db, branch=branch, ip_prefix=ip_prefix, at=at)
@@ -161,8 +162,36 @@ async def get_subnets(
     return query.get_subnets()
 
 
+async def get_utilization(
+    ip_prefix: Node,
+    db: InfrahubDatabase,
+    branch: Optional[Union[Branch, str]] = None,  # pylint: disable=unused-argument
+    at=None,
+) -> float:
+    # FIXME: maybe belongs somewhere else or need rewrite, don't actualy use queries
+    nodes = await ip_prefix.children.get_peers(db=db)
+
+    prefix_space = ip_prefix.prefix.num_addresses
+    free_ip_space = ip_prefix.prefix.num_addresses
+    if nodes:
+        # There are subnets, count space allocated by those
+        for node in nodes.values():
+            free_ip_space -= node.prefix.num_addresses
+    else:
+        # This is a subnet of hosts, count IP addresses
+        free_ip_space -= len(ip_prefix.ip_addresses)
+
+        # Non-RFC3021 subnet
+        if ip_prefix.prefix.version == 4 and ip_prefix.prefix.prefixlen < 31:
+            prefix_space -= 2
+            free_ip_space -= 2
+
+    # Return used percentage
+    return 100 - 100 * free_ip_space / prefix_space
+
+
 async def get_ip_addresses(
-    ip_prefix, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
+    ip_prefix: Node, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
 ) -> Iterable[IPAddressData]:
     branch = await registry.get_branch(db=db, branch=branch)
     query = await IPPrefixIPAddressFetch.init(db=db, branch=branch, ip_prefix=ip_prefix, at=at)
@@ -171,7 +200,7 @@ async def get_ip_addresses(
 
 
 async def get_ip_prefix_for_ip_address(
-    ip_address, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
+    ip_address: Node, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
 ) -> IPAddressData:
     branch = await registry.get_branch(db=db, branch=branch)
     query = await IPAddressIPPrefixFetch.init(db=db, branch=branch, ip_address=ip_address, at=at)
