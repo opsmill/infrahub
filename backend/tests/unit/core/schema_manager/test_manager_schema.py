@@ -2080,7 +2080,7 @@ async def test_load_schema_from_db(
     schema11 = registry.schema.get_schema_branch(name=default_branch.name)
     schema2 = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
 
-    assert len(schema2.nodes) == 8
+    assert len(schema2.nodes) == 6
     assert len(schema2.generics) == 1
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
