@@ -8,7 +8,7 @@ import {
   INFRAHUB_GITHUB_URL,
 } from "../../config/config";
 import { components } from "../../infraops";
-import { fetchUrl } from "../../utils/fetch";
+import { constructPath, fetchUrl } from "../../utils/fetch";
 
 const ICONS = [
   {
@@ -23,7 +23,7 @@ const ICONS = [
   },
   {
     component: <Icon icon="mdi:graphql" className="text-xl text-custom-blue-50" />,
-    link: "/graphql",
+    link: constructPath("/graphql"),
     message: "GraphQL sandbox",
   },
   {
