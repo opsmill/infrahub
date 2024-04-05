@@ -2,7 +2,7 @@
 # STAGE : Base Python Image
 # ****************************************************************
 ARG PYTHON_VER=3.12
-FROM docker.io/python:${PYTHON_VER} AS base
+FROM docker.io/python:${PYTHON_VER}-slim AS base
 
 ENV PYTHONUNBUFFERED 1
 
@@ -17,6 +17,8 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install --no-install-recommends -y curl git pkg-config build-essential ca-certificates && \
     curl -sSL https://install.python-poetry.org | python3 - && \
+    apt-get autoremove -y && \
+    apt-get clean all && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /var/lib/apt/lists/* && \
     pip --no-cache-dir install --no-compile --upgrade pip wheel
@@ -90,17 +92,12 @@ COPY --from=frontend /docs/build/ /opt/infrahub/docs/build
 #   Copy in only pyproject.toml/poetry.lock to help with caching this layer if no updates to dependencies
 # --------------------------------------------
 COPY poetry.lock pyproject.toml /source/
-RUN poetry install --no-interaction --no-ansi --no-root --no-directory
+RUN poetry install --no-interaction --no-ansi --no-root --no-directory && \
+    rm -rf /root/.cache
 
 # --------------------------------------------
 # Copy in the rest of the source code and install the project
 # --------------------------------------------
 COPY . ./
-RUN poetry install --no-interaction --no-ansi
-
-# --------------------------------------------
-# Purge & Cleanup
-# --------------------------------------------
-RUN apt-get autoremove -y && \
-    apt-get clean all && \
-    rm -rf /var/lib/apt/lists/*
+RUN poetry install --no-interaction --no-ansi && \
+    rm -rf /root/.local
