@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import os
 from abc import abstractmethod
-from copy import deepcopy
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from git.repo import Repo
 
@@ -22,6 +21,7 @@ class InfrahubGenerator:
         client: InfrahubClient,
         branch: Optional[str] = None,
         root_directory: str = "",
+        generator_instance: str = "",
         params: Optional[Dict] = None,
     ) -> None:
         self.query = query
@@ -29,9 +29,17 @@ class InfrahubGenerator:
         self.git: Optional[Repo] = None
         self.params = params or {}
         self.root_directory = root_directory or os.getcwd()
-        self._init_client = deepcopy(client)
-        self._init_client.config.default_branch = self.branch_name
+        self.generator_instance = generator_instance
+        # self._init_client = deepcopy(client)
+        self._init_client = client
+        self._init_client.config.default_branch = self._init_client.default_branch = self.branch_name
         self._client: Optional[InfrahubClient] = None
+
+    @property
+    def subscribers(self) -> Optional[List[str]]:
+        if self.generator_instance:
+            return [self.generator_instance]
+        return None
 
     @property
     def client(self) -> InfrahubClient:
@@ -61,7 +69,11 @@ class InfrahubGenerator:
         """Query the result of the GraphQL Query defined in self.query and return the result"""
 
         return await self._init_client.query_gql_query(
-            name=self.query, branch_name=self.branch_name, variables=self.params
+            name=self.query,
+            branch_name=self.branch_name,
+            variables=self.params,
+            update_group=True,
+            subscribers=self.subscribers,
         )
 
     async def run(self, identifier: str, data: Optional[dict] = None) -> None:

@@ -80,6 +80,7 @@ class ContentType(InfrahubStringEnum):
 class CheckType(InfrahubStringEnum):
     ARTIFACT = "artifact"
     DATA = "data"
+    GENERATOR = "generator"
     REPOSITORY = "repository"
     SCHEMA = "schema"
     TEST = "test"

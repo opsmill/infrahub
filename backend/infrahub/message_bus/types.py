@@ -86,6 +86,18 @@ class ProposedChangeArtifactDefinition(BaseModel):
         raise ValueError("Invalid kind for Transform")
 
 
+class ProposedChangeGeneratorDefinition(BaseModel):
+    definition_id: str
+    definition_name: str
+    query_name: str
+    query_models: list[str]
+    repository_id: str
+    class_name: str
+    file_path: str
+    parameters: dict
+    group_id: str
+
+
 class ProposedChangeBranchDiff(BaseModel):
     diff_summary: list[NodeDiff] = Field(default_factory=list, description="The DiffSummary between two branches")
     repositories: list[ProposedChangeRepository] = Field(default_factory=list)
