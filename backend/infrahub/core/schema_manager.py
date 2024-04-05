@@ -1131,6 +1131,9 @@ class SchemaBranch:
             if schema.kind in INTERNAL_SCHEMA_NODE_KINDS or schema.kind == InfrahubKind.GENERICGROUP:
                 continue
 
+            if isinstance(schema, ProfileSchema) or schema.namespace == "Profile":
+                continue
+
             if "member_of_groups" not in schema.relationship_names:
                 if not changed:
                     schema = schema.duplicate()

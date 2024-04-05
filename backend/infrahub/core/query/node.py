@@ -543,7 +543,7 @@ class NodeListGetInfoQuery(Query):
         }
         WITH n1 as n, r1 as rb
         WHERE rb.status = "active"
-        OPTIONAL MATCH profile_path = (n)-[pr1:IS_RELATED]->(profile_r:Relationship)<-[pr2:IS_RELATED]-(profile:Node)-[pr3:IS_PART_OF]->(:Root)
+        OPTIONAL MATCH profile_path = (n)-[:IS_RELATED]->(profile_r:Relationship)<-[:IS_RELATED]-(profile:Node)-[:IS_PART_OF]->(:Root)
         WHERE profile_r.name = "node__profile"
         AND profile.namespace = "Profile"
         AND all(r in relationships(profile_path) WHERE %(branch_filter)s and r.status = "active")
