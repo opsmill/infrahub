@@ -463,7 +463,6 @@ ignore = [
     "N806",     # Variable in function should be lowercase
     "N811",     # Constant imported as non-constant
     "N812",     # Lowercase imported as non-lowercase
-    "PIE804",   # [*] Unnecessary `dict` kwargs
     "PIE808",   # [*] Unnecessary `start` argument in `range`
     "PLC0415",  # `import` should be at the top-level of a file
     "PLC2701",  # Private name import from external module
