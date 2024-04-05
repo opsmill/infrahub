@@ -2106,7 +2106,7 @@ async def hierarchical_groups_data(
 
     tags = []
     nbr_tags_per_group = 2
-    for idx in range(0, len(GROUPS_DATA) * nbr_tags_per_group):
+    for idx in range(len(GROUPS_DATA) * nbr_tags_per_group):
         obj = await Node.init(db=db, schema="BuiltinTag")
         await obj.new(db=db, name=f"tag-{idx}")
         await obj.save(db=db)
