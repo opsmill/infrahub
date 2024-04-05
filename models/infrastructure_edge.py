@@ -197,6 +197,7 @@ ORGANIZATIONS = (
 ASNS = (
     # asn, organization
     (1299, "Arelion"),
+    (64496, "Duff"),
     (8220, "Colt Technology Services"),
     (701, "Verizon Business"),
     (3257, "GTT Communications"),
@@ -989,7 +990,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
             data_asn["description"] = {"value": f"{asn_name}", "source": account_crm.id, "owner": account_chloe.id}
         obj = await client.create(branch=branch, kind="InfraAutonomousSystem", data=data_asn)
         batch.add(task=obj.save, node=obj)
-        store.set(key=asn[0], node=obj)
+        store.set(key=asn[1], node=obj)
 
     for platform in PLATFORMS:
         obj = await client.create(
@@ -1016,9 +1017,13 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     batch = await client.create_batch()
     for peer_group in BGP_PEER_GROUPS:
         remote_as_id = None
+        local_as_id = None
+        local_as = store.get(kind="InfraAutonomousSystem", key=peer_group[3], raise_when_missing=False)
         remote_as = store.get(kind="InfraAutonomousSystem", key=peer_group[4], raise_when_missing=False)
         if remote_as:
             remote_as_id = remote_as.id
+        if local_as:
+            local_as_id = local_as.id
 
         obj = await client.create(
             branch=branch,
@@ -1026,8 +1031,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
             name={"value": peer_group[0], "source": account_pop.id},
             import_policies={"value": peer_group[1], "source": account_pop.id},
             export_policies={"value": peer_group[2], "source": account_pop.id},
-            local_as=store.get(kind="InfraAutonomousSystem", key=peer_group[3]).id,
-            remote_as=remote_as_id,
+            local_as={"id": local_as_id},
+            remote_as={"id": remote_as_id},
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=peer_group[0], node=obj)
@@ -1097,9 +1102,6 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
                         role=BACKBONE_ROLE,
                     )
                     batch.add(task=obj.save, node=obj)
-                    log.info(
-                        f"- Created BGP Session '{device1}' >> '{device2}': '{peer_group_name}' '{loopback1.address.value}' >> '{loopback2.address.value}'"
-                    )
 
     async for node, _ in batch.execute():
         if node._schema.default_filter:
@@ -1210,6 +1212,3 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         await branch_scenario_remove_colt(site_name=sites[0]["name"], client=client, log=log)
         await branch_scenario_conflict_device(site_name=sites[3]["name"], client=client, log=log)
         await branch_scenario_conflict_platform(client=client, log=log)
-
-    sessions = await client.all(kind="InfraBGPSession", branch=branch)
-    log.info(sessions)

@@ -124,8 +124,8 @@ generics:
     icon: "mingcute:location-line"
     include_in_menu: true
     attributes:
-      - name: "name"
-        kind: "Text"
+      - name: name
+        kind: Text
         unique: true
       - name: description
         kind: Text
@@ -204,39 +204,33 @@ nodes:
     children: ""
     parent: "LocationCountry"
     attributes:
-      - name: "city"
-        kind: "Text"
-        label: "City"
+      - name: city
+        kind: Text
         optional: true
-      - name: "address"
-        kind: "Text"
-        label: "Address"
+      - name: address
+        kind: Text
         optional: true
-      - name: "contact"
-        kind: "Text"
-        label: "Contact"
+      - name: contact
+        kind: Text
         optional: true
     relationships:
-      - name: "devices"
-        cardinality: "many"
-        peer: "InfraDevice"
-        kind: "Component"
-        identifier: "site__devices"
-      - name: "vlans"
-        cardinality: "many"
-        kind: "Component"
-        peer: "InfraVLAN"
-        identifier: "site__vlans"
-      - name: "circuit_endpoints"
-        cardinality: "many"
-        kind: "Component"
-        peer: "InfraCircuitEndpoint"
-        identifier: "site__circuit_endpoints"
-      - cardinality: "many"
-        kind: "Attribute"
-        name: "tags"
+      - name: devices
+        cardinality: many
+        peer: InfraDevice
+        kind: Component
+      - name: vlans
+        cardinality: many
+        kind: Component
+        peer: InfraVLAN
+      - name: circuit_endpoints
+        cardinality: many
+        kind: Component
+        peer: InfraCircuitEndpoint
+      - cardinality: many
+        kind: Attribute
+        name: tags
         optional: true
-        peer: "BuiltinTag"
+        peer: BuiltinTag
 
   # --------------------  Device (Platforms, Device, Interfaces )  --------------------
   - name: Device
@@ -838,43 +832,4 @@ nodes:
       - name: circuit
         peer: InfraCircuit
         cardinality: many
-        optional: true
-
-  - name: Status
-    namespace: Builtin
-    label: Status
-    description: "Status represents the current state of an object: active, maintenance"
-    default_filter: name__value
-    display_labels: [label__value]
-    icon: mdi:list-status
-    include_in_menu: false
-    attributes:
-      - kind: Text
-        name: name
-        unique: true
-      - kind: Text
-        name: label
-        optional: true
-      - kind: Text
-        name: description
-        optional: true
-
-  - name: Role
-    namespace: Builtin
-    label: Role
-    description: "Represents the role of an object"
-    default_filter: name__value
-    display_labels: [label__value]
-    order_by: [name__value]
-    icon: mdi:ballot
-    include_in_menu: false
-    attributes:
-      - kind: Text
-        name: name
-        unique: true
-      - kind: Text
-        name: label
-        optional: true
-      - kind: Text
-        name: description
         optional: true
