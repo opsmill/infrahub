@@ -23,7 +23,9 @@ const fetcher =
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        authorization: `Bearer ${accessToken}`,
+        ...(accessToken && {
+          authorization: `Bearer ${accessToken}`,
+        }),
       },
       body: JSON.stringify(graphQLParams),
       credentials: "same-origin",
