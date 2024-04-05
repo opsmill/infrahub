@@ -21,7 +21,7 @@ import { classNames } from "../../utils/common";
 import Content from "../layout/content";
 import { GET_ALL_ACCOUNTS } from "../../graphql/queries/accounts/getAllAccounts";
 
-export const ProposedChangesCreatePage = () => {
+const ProposedChangesCreatePage = () => {
   const permission = usePermission();
 
   if (!permission.write.allow) {
@@ -172,3 +172,5 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
     </FormProvider>
   );
 };
+
+export default ProposedChangesCreatePage;

@@ -41,6 +41,7 @@
     "@hookform/error-message": "^2.0.1",
     "@iconify-icon/react": "^2.0.1",
     "@iconify-json/mdi": "^1.1.64",
+    "@loadable/component": "^5.16.3",
     "@popperjs/core": "^2.11.8",
     "@radix-ui/react-tooltip": "^1.0.7",
     "@svgr/rollup": "^8.1.0",

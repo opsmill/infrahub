@@ -12,7 +12,7 @@ import { constructPath } from "../../utils/fetch";
 import Content from "../layout/content";
 import { Badge } from "../../components/ui/badge";
 
-export const BranchesItems = () => {
+const BranchesItems = () => {
   const [storedBranches, setBranches] = useAtom(branchesState);
   const navigate = useNavigate();
   useTitle("Branches list");
@@ -112,3 +112,5 @@ export const BranchesItems = () => {
     </Content>
   );
 };
+
+export default BranchesItems;
