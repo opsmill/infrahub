@@ -454,6 +454,7 @@ class SchemaBranch:
         self.process_inheritance()
         self.process_hierarchy()
         self.process_branch_support()
+        self.add_profile_schemas()
 
     def process_validate(self) -> None:
         self.validate_names()
@@ -470,7 +471,7 @@ class SchemaBranch:
     def process_post_validation(self) -> None:
         self.add_groups()
         self.add_hierarchy()
-        self.add_profiles()
+        self.add_profile_relationships()
         self.process_filters()
         self.generate_weight()
         self.process_labels()
@@ -509,12 +510,12 @@ class SchemaBranch:
 
         for identifier, rels_per_kind in rels_per_identifier.items():
             # Per node kind, check if the directions are good
-            for _, rels in rels_per_kind.items():
+            for kind, rels in rels_per_kind.items():
                 directions = sorted([rel.direction.value for rel in rels])
                 if not (len(rels) == 1 or (len(rels) == 2 and directions == ["inbound", "outbound"])):
                     names_directions = [(rel.name, rel.direction.value) for rel in rels]
                     raise ValueError(
-                        f"{node.kind}: Identifier of relationships must be unique for a given direction > {identifier!r} : {names_directions}"
+                        f"{kind}: Identifier of relationships must be unique for a given direction > {identifier!r} : {names_directions}"
                     ) from None
 
                 # Continue if no other model is using this identifier
@@ -1121,10 +1122,13 @@ class SchemaBranch:
             return
 
         for node_name in self.all_names:
-            schema: Union[NodeSchema, GenericSchema] = self.get(name=node_name, duplicate=False)
+            schema: MainSchemaTypes = self.get(name=node_name, duplicate=False)
             changed = False
 
             if isinstance(schema, NodeSchema) and InfrahubKind.GENERICGROUP in schema.inherit_from:
+                continue
+
+            if isinstance(schema, ProfileSchema) or schema.namespace == "Profile":
                 continue
 
             if schema.kind in INTERNAL_SCHEMA_NODE_KINDS or schema.kind == InfrahubKind.GENERICGROUP:
@@ -1203,24 +1207,30 @@ class SchemaBranch:
 
             self.set(name=node_name, schema=node)
 
-    def add_profiles(self):
+    def add_profile_schemas(self):
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
-            if "profiles" in node.relationship_names:
-                continue
-
             if node.namespace in RESTRICTED_NAMESPACES:
                 continue
 
             profile = self.generate_profile_from_node(node=node)
             self.set(name=profile.kind, schema=profile)
 
+    def add_profile_relationships(self):
+        for node_name in self.nodes.keys():
+            node = self.get_node(name=node_name, duplicate=False)
+            if node.namespace in RESTRICTED_NAMESPACES:
+                continue
+
+            if "profiles" in node.relationship_names:
+                continue
+
             # Add relationship between node and profile
             node.relationships.append(
                 RelationshipSchema(
                     name="profiles",
                     identifier="node__profile",
-                    peer=profile.kind,
+                    peer=self._get_profile_kind(node_kind=node.kind),
                     kind=RelationshipKind.PROFILE,
                     cardinality=RelationshipCardinality.MANY,
                     branch=BranchSupportType.AWARE,
@@ -1228,6 +1238,9 @@ class SchemaBranch:
             )
 
         # Add relationship between group and profile
+
+    def _get_profile_kind(self, node_kind: str) -> str:
+        return f"Profile{node_kind}"
 
     @staticmethod
     def generate_profile_from_node(node: NodeSchema) -> ProfileSchema:
