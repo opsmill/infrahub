@@ -16,7 +16,7 @@ Unlike traditional databases that can only have one schema at a time, in Infrahu
 
 There is several way to [load a new schema](/guides/schema).
 
-## Schema Definition
+## Schema definition
 
 ### Namespace, Node, Attributes, Relationships & Generics
 
@@ -408,14 +408,14 @@ Schema files can be loaded into Infrahub with the `infrahubctl` command or direc
 <!-- vale on -->
 The `infrahubctl` command can be used to check & load individual schema files or multiple files as part of a directory.
 
-The `infrahub schema check` command will validate if a given schema is valid and it will return a summary of the changes  
+The `infrahub schema check` command will validate if a given schema is valid and it will return a summary of the changes
 that will be applied to the schema if the schema was loaded.
 
 ```bash
 infrahubctl schema check <path to schema file or a directory> <path to schema file or a directory> [--branch <branch_name>]
 ```
 
-The `infrahub schema load` command will load the schemas into infrahub into the specified branch.
+The `infrahub schema load` command will load the schemas into Infrahub into the specified branch.
 
 ```bash
 infrahubctl schema load <path to schema file or a directory> <path to schema file or a directory> [--branch <branch_name>]
@@ -440,7 +440,7 @@ schemas:
   - schemas/demo_edge_fabric.yml
 ```
 
-## Schema Update & Data Migrations
+## Schema update and data migrations
 
 Unlike most databases that support a single schema at a time, in Infrahub it is possible to have a different schema per branch.
 This is possible because the schema itself is stored in the database like any other object.
@@ -461,16 +461,16 @@ the recommendation is to create a new branch and to integrate the changes into t
 
 :::
 
-### Isolated Mode
+### Isolated mode
 
 When a new schema is loaded into a branch, the branch will automatically be converted into isolated mode in order to apply the required data migrations for this branch.
 A branch rebase will be required to bring the latest changes from main into the branch.
 
-### State : Absent or Present
+### State: absent or present
 
 The format of the schema is declarative and incremental to allow schema to be composed from multiple sources.
 
-To remove an existing Node, Generic, Attribute or Relationship from the schema it is required to use the `state: absent` flag to explicitely indicate that this element must be deleted.
+To remove an existing Node, Generic, Attribute or Relationship from the schema it is required to use the `state: absent` flag to explicitly indicate that this element must be deleted.
 Without this flag the element will be ignored but it will not be removed.
 
 ```yaml {3} showLineNumbers
@@ -528,16 +528,16 @@ The internal identifier should be an UUID4, with 36 characters.
 </TabItem>
 </Tabs>
 
-### Restrictions & Limitations
+### Restrictions and limitations
 
 Most changes to an existing schema are supported but there are a few properties that can't be updated in the current release:
 
-- Properties that can't be updated on a Node or a Generic : `branch`
-- Properties that can't be updated on an Attribute : `branch`
-- Properties that can't be updated on an Relationship : `branch`, `direction`, `hierarchical`
+- Properties that can't be updated on a Node or a Generic: `branch`
+- Properties that can't be updated on an Attribute: `branch`
+- Properties that can't be updated on an Relationship: `branch`, `direction`, `hierarchical`
 
 [A reference guide for validators and migrations is available](/reference/schema/validator-migration)
 
-### Known Limitations
+### Known limitations
 
 - When updating the identifier on a relationship, the existing relationships won't be impacted or updated even if it was the last relationship using a given identifier. [ISSUE-2472](https://github.com/opsmill/infrahub/issues/2472)

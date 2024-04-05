@@ -1,10 +1,10 @@
 ---
-title: Sync Instance Configuration file
+title: Sync configuration file
 ---
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-# Sync Instance Configuration file
+# Sync instance configuration file
 
 The configuration file allows you to define the ressources needs for the sync.
 The file should be formatted as a Yaml file, have the filename `config.yml`. During the generation phase, the Sync adapters, and models will be generated in the same folder.
@@ -30,20 +30,21 @@ Optional configuration for a storage mechanism used for stateful synchronization
 
 | Property | Type | Description | Mandatory |
 | -------- | ---- | ----------- | --------- |
-| type | string | Type of the store (e.g., `redis`). | Yes |
+| type | string | Type of the store (for example    `redis`). | Yes |
 | settings | Dictionary | Connection details and other settings for the store. | No |
 
-### Source & Destination
-
+<!-- vale off -->
+### Source and Destination
+<!-- vale on -->
 Configuration for source and destination adapters.
 
 | Property | Type | Description | Mandatory |
 | -------- | ---- | ----------- | --------- |
 | name | string | Identifier for the adapter. | Yes |
 | settings | Dictionary | Adapter-specific settings like `url` and `token`. If not provided, values will be loaded from environment variables. | No |
-
+<!-- vale off -->
 ### Schema Mapping
-
+<!-- vale on -->
 Defines the mappings from source to destination schemas.
 
 #### Mapping models

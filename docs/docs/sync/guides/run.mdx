@@ -2,12 +2,12 @@
 title: Running Sync Tasks
 ---
 
-# Running Sync Tasks with Infrahub Sync
+# Running sync tasks with Infrahub Sync
 
 Learn how to use Infrahub Sync's commands to generate sync adapters, calculate differences, and synchronize data between your source and destination systems.
-
+<!-- vale off -->
 ## Generating Sync Adapters and Models
-
+<!-- vale on -->
 Before you can run a synchronization task, you need to generate the necessary Python code for your sync adapters and models based on your configuration.
 
 ### Command
@@ -23,7 +23,7 @@ infrahub-sync generate --name <sync_project_name> --directory <your_configuratio
 
 This command reads your configuration file and generates Python code for the sync adapters and models required for the synchronization task.
 
-## Calculating Differences
+## Calculating differences
 
 The `diff` command lets you see the differences between your source and destination before actually performing the synchronization. This is useful for verifying what will be synchronized.
 
@@ -40,7 +40,7 @@ infrahub-sync diff --name <sync_project_name> --directory <your_configuration_di
 
 Running this command will output the differences detected based on the current state of your source and destination systems.
 
-## Synchronizing Data
+## Synchronizing data
 
 Once you're ready to synchronize the data between your source and destination, you can use the `sync` command.
 
@@ -57,12 +57,12 @@ infrahub-sync sync --name <sync_project_name> --directory <your_configuration_di
 
 This command performs the synchronization, applying the changes from the source to the destination based on the differences calculated by the `diff` command.
 
-### Progress and Logging
+### Progress and logging
 
 The `sync` command also supports additional flags for displaying progress and managing logging:
 
 - `--show-progress`: Displays a progress bar during synchronization.
-- `--diff`: Print the differences between the source and the destinatio before syncing.
+- `--diff`: Print the differences between the source and the destination before syncing.
 
 For example:
 
