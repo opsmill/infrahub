@@ -550,6 +550,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         intf2 = store.get(kind="InfraInterfaceL3", key=f"{site_name}-edge2-l3-{idx}")
 
         intf1.description.value = f"Connected to {site_name}-edge2 {intf2.name.value}"
+        intf1.connected_endpoint = intf2
         await intf1.save()
 
         intf2.description.value = f"Connected to {site_name}-edge1 {intf1.name.value}"
