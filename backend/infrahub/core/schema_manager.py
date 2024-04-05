@@ -1128,9 +1128,6 @@ class SchemaBranch:
             if isinstance(schema, NodeSchema) and InfrahubKind.GENERICGROUP in schema.inherit_from:
                 continue
 
-            if isinstance(schema, ProfileSchema) or schema.namespace == "Profile":
-                continue
-
             if schema.kind in INTERNAL_SCHEMA_NODE_KINDS or schema.kind == InfrahubKind.GENERICGROUP:
                 continue
 
