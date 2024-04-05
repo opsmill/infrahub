@@ -19,6 +19,7 @@ from infrahub.tasks.check import set_check_status
 
 COMMAND_MAP = {
     "check.artifact.create": check.artifact.create,
+    "check.generator.run": check.generator.run,
     "check.repository.check_definition": check.repository.check_definition,
     "check.repository.merge_conflicts": check.repository.merge_conflicts,
     "check.repository.user_check": check.repository.user_check,
@@ -40,6 +41,7 @@ COMMAND_MAP = {
     "refresh.registry.branches": refresh.registry.branches,
     "refresh.registry.rebased_branch": refresh.registry.rebased_branch,
     "refresh.webhook.configuration": refresh.webhook.configuration,
+    "request.generator_definition.check": requests.generator_definition.check,
     "request.git.create_branch": requests.git.create_branch,
     "request.git.sync": requests.git.sync,
     "request.graphql_query_group.update": requests.graphql_query_group.update,
@@ -51,6 +53,7 @@ COMMAND_MAP = {
     "request.proposed_change.pipeline": requests.proposed_change.pipeline,
     "request.proposed_change.refresh_artifacts": requests.proposed_change.refresh_artifacts,
     "request.proposed_change.repository_checks": requests.proposed_change.repository_checks,
+    "request.proposed_change.run_generators": requests.proposed_change.run_generators,
     "request.proposed_change.run_tests": requests.proposed_change.run_tests,
     "request.proposed_change.schema_integrity": requests.proposed_change.schema_integrity,
     "request.repository.checks": requests.repository.checks,

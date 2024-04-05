@@ -25,3 +25,11 @@ artifact_definitions:
     content_type: "text/plain"
     targets: "people"
     transformation: "person_with_cars"
+
+generator_definitions:
+  - name: cartags
+    file_path: "generators/cartags.py"
+    targets: people
+    query: cartags
+    parameters:
+      name: "name__value"
