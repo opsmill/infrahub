@@ -17,7 +17,7 @@ import { PlusIcon } from "@heroicons/react/24/outline";
 import { Tooltip } from "../../components/ui/tooltip";
 import { Badge } from "../../components/ui/badge";
 
-export const ProposedChanges = () => {
+const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);
   const permission = usePermission();
   useTitle("Proposed changes list");
@@ -101,3 +101,5 @@ export const ProposedChanges = () => {
     </Content>
   );
 };
+
+export default ProposedChanges;
