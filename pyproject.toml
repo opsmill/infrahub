@@ -455,7 +455,6 @@ ignore = [
     "B026",     # Star-arg unpacking after a keyword argument is strongly discouraged
     "B904",     # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
     "C403",     # Unnecessary `list` comprehension (rewrite as a `set` comprehension)
-    "C408",     # Unnecessary `dict` call (rewrite as a literal)
     "C409",     # Unnecessary `list` literal passed to `tuple()` (rewrite as a `tuple` literal)
     "C414",     # Unnecessary `list` call within `sorted()`
     "N801",     # Class name should use CapWords convention
@@ -464,8 +463,6 @@ ignore = [
     "N806",     # Variable in function should be lowercase
     "N811",     # Constant imported as non-constant
     "N812",     # Lowercase imported as non-lowercase
-    "PIE804",   # [*] Unnecessary `dict` kwargs
-    "PIE808",   # [*] Unnecessary `start` argument in `range`
     "PLC0415",  # `import` should be at the top-level of a file
     "PLC2701",  # Private name import from external module
     "PLR0904",  # Too many public methods

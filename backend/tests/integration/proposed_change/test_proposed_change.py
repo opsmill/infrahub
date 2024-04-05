@@ -116,6 +116,9 @@ class TestProposedChangePipeline(TestInfrahubApp):
         ][0]
         assert repository_merge_conflict.conclusion.value.value == ValidatorConclusion.SUCCESS.value
 
+        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
+        await proposed_change_create.save()
+
     async def test_conflict_pipeline(
         self, db: InfrahubDatabase, conflict_dataset: None, client: InfrahubClient
     ) -> None:

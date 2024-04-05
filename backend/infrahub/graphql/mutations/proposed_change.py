@@ -123,7 +123,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     validator_kind = validation.get_kind()
                     if (
                         validator_kind != InfrahubKind.DATAVALIDATOR
-                        and validation.conclusion.value != ValidatorConclusion.SUCCESS.value
+                        and validation.conclusion.value.value != ValidatorConclusion.SUCCESS.value
                     ):
                         # Ignoring Data integrity checks as they are handled again later
                         raise ValidationError("Unable to merge proposed change containing failing checks")

@@ -24,7 +24,7 @@ def load_schema(
     data["nodes"][0]["attributes"] += attributes
 
     if "relationships" not in data["nodes"][0]:
-        data["nodes"][0]["relationships"] = list()
+        data["nodes"][0]["relationships"] = []
     data["nodes"][0]["relationships"] += relationships
 
     client.schema.validate(data)
