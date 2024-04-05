@@ -256,7 +256,6 @@ ignore = [
     "C414",    # Unnecessary `list` call within `sorted()`
     "N802",    # Function name should be lowercase
     "N806",    # Variable in function should be lowercase
-    "PIE808",  # [*] Unnecessary `start` argument in `range`
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments in function definition
     "PLR0917", # Too many positional arguments
