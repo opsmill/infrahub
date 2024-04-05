@@ -11,11 +11,12 @@ import { datetimeAtom } from "../state/atoms/time.atom";
 
 import "graphiql/graphiql.min.css";
 import "@graphiql/plugin-explorer/dist/style.css";
+import { Navigate, useLocation, useParams } from "react-router-dom";
+import { constructPath } from "../utils/fetch";
 
 const fetcher =
   (url: string): Fetcher =>
   async (graphQLParams) => {
-    console.log(graphQLParams);
     const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
     const data = await fetch(url, {
       method: "POST",
@@ -39,6 +40,19 @@ const GraphiQLPage = () => {
       defaultEditorToolsVisibility
       plugins={[explorerPlugin({ showAttribution: false })]}
       fetcher={fetcher(CONFIG.GRAPHQL_URL(branch?.name, waybackMachineDate))}
+    />
+  );
+};
+
+export const RedirectToGraphiQLPage = () => {
+  const { branch } = useParams();
+  const location = useLocation();
+
+  return (
+    <Navigate
+      to={constructPath("/graphql", [{ name: "branch", value: branch }])}
+      state={{ from: location }}
+      replace
     />
   );
 };
