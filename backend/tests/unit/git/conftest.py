@@ -79,7 +79,7 @@ def git_upstream_repo_01(git_sources_dir) -> Dict[str, str]:
     file.extractall(git_sources_dir)
     file.close()
 
-    return dict(name=name, path=str(os.path.join(git_sources_dir, name)))
+    return {"name": name, "path": str(os.path.join(git_sources_dir, name))}
 
 
 @pytest.fixture
@@ -123,7 +123,7 @@ def git_upstream_repo_10(helper, git_sources_dir) -> Dict[str, str]:
     file.extractall(git_sources_dir)
     file.close()
 
-    return dict(name=name, path=str(os.path.join(git_sources_dir, name)))
+    return {"name": name, "path": str(os.path.join(git_sources_dir, name))}
 
 
 @pytest.fixture
