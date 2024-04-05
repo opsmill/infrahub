@@ -12,15 +12,12 @@ addCollection(mdiIcons);
 
 const Layout = loadable(() => import("./screens/layout/layout"));
 const SchemaPage = loadable(() => import("./screens/schema/schema-page"));
-const GraphiQLPage = loadable(() => import("./screens/graphiql"));
-const RedirectToGraphiQLPage = loadable(() => import("./screens/graphiql"), {
-  // Exported as named export
-  resolveComponent: (components) => components.RedirectToGraphiQLPage,
-});
+const GraphiQLPage = loadable(() => import("./screens/graphql/graphiql"));
+const RedirectToGraphiQLPage = loadable(() => import("./screens/graphql/RedirectToGraphiQLPage"));
 const ArtifactsObjectItemDetailsPaginated = loadable(
   () => import("./screens/artifacts/object-item-details-paginated")
 );
-const BrancheItemDetails = loadable(() => import("./screens/branches/branche-item-details"));
+const BranchItemDetails = loadable(() => import("./screens/branches/branch-item-details"));
 const BranchesItems = loadable(() => import("./screens/branches/branches-items"));
 const TaskItemsScreen = loadable(() => import("./screens/tasks/task-items-screen"));
 const TaskItemDetailsScreen = loadable(() => import("./screens/tasks/task-item-details-screen"));
@@ -52,7 +49,7 @@ const App = () => {
               <Layout />
             </RequireAuth>
           }>
-          <Route path="/branches/:branchname" element={<BrancheItemDetails />} />
+          <Route path="/branches/:branchname" element={<BranchItemDetails />} />
           <Route path="/branches" element={<BranchesItems />} />
           <Route
             path={`/objects/${ARTIFACT_OBJECT}/:objectid`}
