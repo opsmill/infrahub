@@ -1,4 +1,4 @@
---- 
+---
 services:
   database:
     image: "${DATABASE_DOCKER_IMAGE:-memgraph/memgraph-platform:latest}"
