@@ -86,6 +86,11 @@ class GeneratedBaseNodeSchema(HashableModel):
         description="List of multi-element uniqueness constraints that can combine relationships and attributes",
         json_schema_extra={"update": "validate_constraint"},
     )
+    documentation: Optional[str] = Field(
+        default=None,
+        description="Link to a documentation associated with this object, can be internal or external.",
+        json_schema_extra={"update": "allowed"},
+    )
     state: HashableModelState = Field(
         default=HashableModelState.PRESENT,
         description="Expected state of the node/generic after loading the schema",
