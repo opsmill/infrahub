@@ -11,6 +11,8 @@ import { datetimeAtom } from "../../state/atoms/time.atom";
 
 import "graphiql/graphiql.min.css";
 import "@graphiql/plugin-explorer/dist/style.css";
+import { StringParam, useQueryParam } from "use-query-params";
+import { QSP } from "../../config/qsp";
 
 const fetcher =
   (url: string): Fetcher =>
@@ -32,12 +34,14 @@ const fetcher =
   };
 
 const GraphiQLPage = () => {
+  const [query] = useQueryParam(QSP.QUERY, StringParam);
   const branch = useAtomValue(currentBranchAtom);
   const waybackMachineDate = useAtomValue(datetimeAtom);
 
   return (
     <GraphiQL
       defaultEditorToolsVisibility
+      query={query ?? undefined}
       plugins={[explorerPlugin({ showAttribution: false })]}
       fetcher={fetcher(CONFIG.GRAPHQL_URL(branch?.name, waybackMachineDate))}
     />
