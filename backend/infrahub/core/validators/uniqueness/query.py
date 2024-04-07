@@ -48,23 +48,28 @@ class NodeUniqueAttributeConstraintQuery(Query):
             else:
                 attr_paths_param.append((attr_path.attribute_name, property_rel_name))
 
+        relationship_names = set()
         relationship_attr_paths = []
         relationship_only_attr_paths = []
         relationship_attr_paths_with_value = []
         for rel_path in self.query_request.relationship_attribute_paths:
+            relationship_names.add(rel_path.identifier)
             if rel_path.attribute_name and rel_path.value:
                 relationship_attr_paths_with_value.append(
                     (rel_path.identifier, rel_path.attribute_name, rel_path.value)
                 )
+                relationship_names.add(rel_path.identifier)
             elif rel_path.attribute_name:
                 relationship_attr_paths.append((rel_path.identifier, rel_path.attribute_name))
             else:
                 relationship_only_attr_paths.append(rel_path.identifier)
+
         self.params.update(
             {
                 "node_kind": self.query_request.kind,
                 "attr_paths": attr_paths_param,
                 "attr_paths_with_value": attr_paths_with_value_param,
+                "relationship_names": list(relationship_names),
                 "relationship_attr_paths": relationship_attr_paths,
                 "relationship_attr_paths_with_value": relationship_attr_paths_with_value,
                 "relationship_only_attr_paths": relationship_only_attr_paths,
@@ -86,7 +91,9 @@ class NodeUniqueAttributeConstraintQuery(Query):
             UNION
             WITH start_node
             MATCH rel_path = (start_node:Node)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)-[:HAS_ATTRIBUTE]->(rel_attr:Attribute)-[:HAS_VALUE]->(rel_attr_value:AttributeValue)
-            WHERE [relationship_node.name, rel_attr.name] in $relationship_attr_paths OR [relationship_node.name, rel_attr.name, rel_attr_value.value] in $relationship_attr_paths_with_value
+            WHERE relationship_node.name in $relationship_names
+               AND ([relationship_node.name, rel_attr.name] in $relationship_attr_paths
+               OR [relationship_node.name, rel_attr.name, rel_attr_value.value] in $relationship_attr_paths_with_value)
             RETURN rel_path as potential_path, relationship_node.name as rel_identifier, rel_attr.name as potential_attr, rel_attr_value.value as potential_attr_value
             UNION
             WITH start_node
