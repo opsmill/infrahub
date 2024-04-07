@@ -72,6 +72,12 @@ deepdiff = "^6.2"
 [tool.poetry.group.test-scale.dependencies]
 locust = "^2.20.1"
 docker = "^7.0.0"
+matplotlib = [
+    { version = "^3.8", python = ">=3.9"},
+]
+pandas = [
+    { version = "^2.2", python = ">=3.9"},
+]
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
