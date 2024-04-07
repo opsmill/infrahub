@@ -7,6 +7,7 @@ from infrahub.database.index import IndexItem
 
 node_indexes: List[IndexItem] = [
     IndexItem(name="node", label="Node", properties=["uuid"], type=IndexType.RANGE),
+    IndexItem(name="node", label="Node", properties=["kind"], type=IndexType.RANGE),
     IndexItem(name="attr", label="Attribute", properties=["name"], type=IndexType.RANGE),
     IndexItem(name="attr_value", label="AttributeValue", properties=["value"], type=IndexType.RANGE),
     IndexItem(name="rel_uuid", label="Relationship", properties=["uuid"], type=IndexType.RANGE),
