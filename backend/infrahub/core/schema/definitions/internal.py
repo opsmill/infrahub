@@ -102,6 +102,7 @@ class SchemaAttribute(BaseModel):
             "Text": "str",
             "List": "list",
             "Number": "int",
+            "URL": "str",
         }
         return kind_map[self.kind]
 
@@ -317,6 +318,13 @@ base_node_schema = SchemaNode(
             description="List of multi-element uniqueness constraints that can combine relationships and attributes",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="documentation",
+            kind="URL",
+            description="Link to a documentation associated with this object, can be internal or external.",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="state",
