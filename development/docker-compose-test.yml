@@ -1,7 +1,5 @@
 ---
 # yamllint disable rule:line-length
-
-version: "3.4"
 services:
   infrahub-test:
     build:
