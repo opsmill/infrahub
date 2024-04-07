@@ -108,17 +108,13 @@ class QueryAnalyzer:
         name = f"{query_name}_{metric}"
         plt.figure(name)
 
-        serie_name = f"{metric}"
-        serie1 = df_query[metric].multiply(1000).round(2)
-        plt.plot(df_query.index, serie1, label=serie_name)
-
-        if len(df_query) < 50 * 20:
-            serie_name = f"{metric}_mean_rolling50"
-            serie2 = df_query[metric].rolling(50).mean().multiply(1000).round(2)
-            plt.plot(df_query.index, serie2, label=serie_name)
+        serie_name = f"{metric}_min_r10"
+        serie2 = df_query[metric].rolling(10).min().multiply(1000).round(2)
+        plt.plot(df_query.index, serie2, label=serie_name)
 
         plt.ylabel("msec", fontsize=15)
         plt.title(f"Query - {query_name} | {metric}", fontsize=20)
+        plt.grid()
 
         file_name = f"{name}.png"
         if prefix:
