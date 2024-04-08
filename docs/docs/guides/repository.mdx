@@ -93,48 +93,51 @@ If you are using GitHub as your Git Server, you need to have a [fine-grained per
 
 <Tabs>
   <TabItem value="CoreRepository" default>
-    ```GraphQL
-    # Endpoint: http://127.0.0.1:8000/graphql/main
-    mutation {
-      CoreRepositoryCreate(
-        data: {
-          name: { value: "YOUR_REPOSITORY_NAME" }
-          location: { value: "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git" }
-          username: { value: "YOUR_GIT_USERNAME" }
-          password: { value: "YOUR_PERSONAL_ACCESS_TOKEN" }
-          # default_branch: { value: "main" } <-- optional
-        }
-      ) {
-        ok
-        object {
-          id
-        }
-      }
+
+```GraphQL
+# Endpoint: http://127.0.0.1:8000/graphql/main
+mutation {
+  CoreRepositoryCreate(
+    data: {
+      name: { value: "YOUR_REPOSITORY_NAME" }
+      location: { value: "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git" }
+      username: { value: "YOUR_GIT_USERNAME" }
+      password: { value: "YOUR_PERSONAL_ACCESS_TOKEN" }
+      # default_branch: { value: "main" } <-- optional
     }
-    ```
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
   </TabItem>
   <TabItem value="Read-only Repository">
     **Make sure that you are on the correct Infrahub branch.** Unlike a CoreRepository, a Read-only Repository will only pull files into the Infrahub branch on which it was created.
 
-    ```GraphQL
-    # Endpoint : http://127.0.0.1:8000/graphql/:branch
-    mutation {
-      CoreReadOnlyRepositoryCreate(
-        data: {
-          name: { value: "YOUR_REPOSITORY_NAME" }
-          location: { value: "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git" }
-          username: { value: "YOUR_GIT_USERNAME" }
-          password: { value: "YOUR_PERSONAL_ACCESS_TOKEN" }
-          ref: { value: "BRANCH/TAG/COMMIT TO TRACK" }
-        }
-      ) {
-        ok
-        object {
-          id
-        }
-      }
+```GraphQL
+# Endpoint : http://127.0.0.1:8000/graphql/:branch
+mutation {
+  CoreReadOnlyRepositoryCreate(
+    data: {
+      name: { value: "YOUR_REPOSITORY_NAME" }
+      location: { value: "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git" }
+      username: { value: "YOUR_GIT_USERNAME" }
+      password: { value: "YOUR_PERSONAL_ACCESS_TOKEN" }
+      ref: { value: "BRANCH/TAG/COMMIT TO TRACK" }
     }
-    ```
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
   </TabItem>
 </Tabs>
 
@@ -161,23 +164,24 @@ Infrahub does not automatically update Read-only Repositories with changes on th
 <details>
   <summary>Example update mutation</summary>
 
-    ```GraphQL
-    # Endpoint : http://127.0.0.1:8000/graphql/main
-    mutation {
-      CoreReadOnlyRepositoryUpdate(
-        data: {
-          id: "ID_OF_THE_REPOSITORY"
-          ref: { value: "BRANCH/TAG/COMMIT TO TRACK" }
-          commit: { value: "NEW COMMIT ON THE REF TO PULL" }
-        }
-      ) {
-        ok
-        object {
-          id
-        }
-      }
+```GraphQL
+# Endpoint : http://127.0.0.1:8000/graphql/main
+mutation {
+  CoreReadOnlyRepositoryUpdate(
+    data: {
+      id: "ID_OF_THE_REPOSITORY"
+      ref: { value: "BRANCH/TAG/COMMIT TO TRACK" }
+      commit: { value: "NEW COMMIT ON THE REF TO PULL" }
     }
-    ```
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
 </details>
 
 ## Updates to the external repository
