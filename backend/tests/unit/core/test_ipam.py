@@ -69,12 +69,15 @@ async def test_ipprefix_is_within_container(
     await unrelated.new(db=db, prefix="192.0.2.0/24")
     await unrelated.save(db=db)
 
-    prefix_container = await get_container(db=db, branch=default_branch, ip_prefix=container)
+    container_ip_network = ipaddress.ip_network(container.prefix.value)
+    prefix_ip_network = ipaddress.ip_network(prefix.prefix.value)
+
+    prefix_container = await get_container(db=db, branch=default_branch, ip_prefix=container_ip_network)
     assert prefix_container is None
 
-    prefix_container = await get_container(db=db, branch=default_branch, ip_prefix=prefix)
+    prefix_container = await get_container(db=db, branch=default_branch, ip_prefix=prefix_ip_network)
     assert prefix_container
-    assert prefix_container.prefix == ipaddress.ip_network(container.prefix.value)
+    assert prefix_container.prefix == ipaddress.ip_network(container_ip_network)
 
 
 async def test_ipprefix_subnets(
@@ -97,11 +100,14 @@ async def test_ipprefix_subnets(
     await unrelated.new(db=db, prefix="192.0.2.0/24")
     await unrelated.save(db=db)
 
-    subnets = await get_subnets(db=db, branch=default_branch, ip_prefix=container)
-    assert len(subnets) == 1
-    assert subnets[0].prefix == ipaddress.ip_network(prefix.prefix.value)
+    container_ip_network = ipaddress.ip_network(container.prefix.value)
+    prefix_ip_network = ipaddress.ip_network(prefix.prefix.value)
 
-    subnets = await get_subnets(db=db, branch=default_branch, ip_prefix=prefix)
+    subnets = await get_subnets(db=db, branch=default_branch, ip_prefix=container_ip_network)
+    assert len(subnets) == 1
+    assert subnets[0].prefix == prefix_ip_network
+
+    subnets = await get_subnets(db=db, branch=default_branch, ip_prefix=prefix_ip_network)
     assert len(subnets) == 0
 
 
@@ -126,13 +132,16 @@ async def test_ipaddress_is_within_ipprefix(
     await unrelated.new(db=db, address="192.0.2.1/32")
     await unrelated.save(db=db)
 
-    ip_addresses = await get_ip_addresses(db=db, branch=default_branch, ip_prefix=prefix)
-    assert len(ip_addresses) == 1
-    assert ip_addresses[0].address == ipaddress.ip_interface(address.address.value)
+    prefix_ip_network = ipaddress.ip_network(prefix.prefix.value)
+    address_ip_address = ipaddress.ip_interface(address.address.value)
 
-    ip_prefix = await get_ip_prefix_for_ip_address(db=db, branch=default_branch, ip_address=address)
+    ip_addresses = await get_ip_addresses(db=db, branch=default_branch, ip_prefix=prefix_ip_network)
+    assert len(ip_addresses) == 1
+    assert ip_addresses[0].address == address_ip_address
+
+    ip_prefix = await get_ip_prefix_for_ip_address(db=db, branch=default_branch, ip_address=address_ip_address)
     assert ip_prefix
-    assert ip_prefix.prefix == ipaddress.ip_network(prefix.prefix.value)
+    assert ip_prefix.prefix == prefix_ip_network
 
 
 async def test_ipprefix_utilization(

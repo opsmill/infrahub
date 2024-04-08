@@ -1,3 +1,4 @@
+import ipaddress
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from graphene import InputObjectType, Mutation
@@ -5,7 +6,6 @@ from graphql import GraphQLResolveInfo
 from typing_extensions import Self
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.ipam import get_container, get_ip_addresses, get_ip_prefix_for_ip_address, get_subnets
@@ -52,23 +52,13 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         database: Optional[InfrahubDatabase] = None,
     ) -> Tuple[Node, Self]:
         context: GraphqlContext = info.context
+        ip_address = ipaddress.ip_interface(data["address"]["value"])
 
-        address, result = await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
+        ip_network = await get_ip_prefix_for_ip_address(db=context.db, branch=branch, at=at, ip_address=ip_address)
+        if ip_network:
+            data["ip_prefix"] = {"id": ip_network.id}
 
-        if result.ok:
-            prefix_data = await get_ip_prefix_for_ip_address(db=context.db, branch=branch, at=at, ip_address=address)
-            if prefix_data:
-                prefix_node = await NodeManager.get_one(db=context.db, branch=context.branch, at=at, id=prefix_data.id)
-                if not prefix_node:
-                    raise ValueError(f"Unable to find the {InfrahubKind.IPPREFIX} {prefix_data.id}")
-
-                await address.ip_prefix.update(db=context.db, data=prefix_node)
-                await address.save(db=context.db)
-
-                await prefix_node.ip_addresses.add(db=context.db, data=address)
-                await prefix_node.save(db=context.db)
-
-        return address, result
+        return await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
 
     @classmethod
     async def mutate_update(
@@ -152,58 +142,33 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         database: Optional[InfrahubDatabase] = None,
     ) -> Tuple[Node, Self]:
         context: GraphqlContext = info.context
+        ip_network = ipaddress.ip_network(data["prefix"]["value"])
 
-        prefix, result = await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
+        # Set supernet if found
+        super_network = await get_container(db=context.db, branch=branch, at=at, ip_prefix=ip_network)
+        if super_network:
+            data["parent"] = {"id": super_network.id}
 
-        if result.ok:
-            # Find if a parent prefix exists in the database and add relationship if one does
-            container_data = await get_container(db=context.db, branch=branch, at=at, ip_prefix=prefix)
-            if container_data:
-                container_node = await NodeManager.get_one(
-                    db=context.db, branch=context.branch, at=at, id=container_data.id
-                )
-                if not container_node:
-                    raise ValueError(f"Unable to find the {InfrahubKind.IPPREFIX} {container_data.id}")
+        # Set subnets if found
+        sub_networks = await get_subnets(db=context.db, branch=branch, at=at, ip_prefix=ip_network)
+        if sub_networks:
+            data["children"] = [s.id for s in sub_networks]
 
-                await prefix.parent.update(db=context.db, data=container_node)
+        # Set addresses if found
+        ip_addresses = await get_ip_addresses(db=context.db, branch=branch, at=at, ip_prefix=ip_network)
+        if ip_addresses:
+            data["ip_addresses"] = [a.id for a in ip_addresses]
 
-            # Find if some children prefixes exist and add relationships if some do
-            subnet_datas = await get_subnets(db=context.db, branch=branch, at=at, ip_prefix=prefix)
-            subnet_nodes = []
-            for subnet_data in subnet_datas:
-                node = await NodeManager.get_one(db=context.db, branch=context.branch, at=at, id=subnet_data.id)
-                if not node:
-                    raise ValueError(f"Unable to find the {InfrahubKind.IPPREFIX} {subnet_data.id}")
+        async with context.db.start_transaction() as dbt:
+            prefix, result = await super().mutate_create(
+                root=root, info=info, data=data, branch=branch, at=at, database=dbt
+            )
 
-                await node.parent.delete(db=context.db)
-                await node.parent.update(db=context.db, data=prefix)
-                await node.save(db=context.db)
-                subnet_nodes.append(node)
-
-            await prefix.children.update(db=context.db, data=subnet_nodes)
-
-            # Find if some IP addresses fit into the prefix and add relationships if some do
-            address_datas = await get_ip_addresses(db=context.db, branch=branch, at=at, ip_prefix=prefix)
-            address_nodes = []
-            for address_data in address_datas:
-                node = await NodeManager.get_one(db=context.db, branch=context.branch, at=at, id=address_data.id)
-                if not node:
-                    raise ValueError(f"Unable to find the {InfrahubKind.IPADDRESS} {address_data.id}")
-
-                # Set container prefix on each address
-                current_prefix = await node.ip_prefix.get_peer(db=context.db)
-                if not current_prefix or current_prefix.prefix.prefixlen < prefix.prefix.prefixlen:
-                    await node.ip_prefix.delete(db=context.db)
-                    await node.ip_prefix.update(db=context.db, data=prefix)
-                    await node.save(db=context.db)
-
-                    if current_prefix and node.id in await current_prefix.ip_addresses.get_peers(db=context.db):
-                        await current_prefix.ip_addresses.remove(db=context.db, update_db=True, peer_id=node.id)
-                address_nodes.append(node)
-
-            # Set prefix' addresses
-            await prefix.ip_addresses.update(db=context.db, data=address_nodes)
-            await prefix.save(db=context.db)
+            # Fix ip_prefix for addresses if needed
+            for ip_address in ip_addresses:
+                node = await NodeManager.get_one(ip_address.id, dbt, branch=branch, at=at)
+                await node.ip_prefix.update(prefix, dbt)
+                await node.ip_prefix.save(db=dbt)
 
         return prefix, result
 
@@ -261,17 +226,19 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
     ):
         context: GraphqlContext = info.context
 
-        prefix = await NodeManager.get_one(db=context.db, branch=branch, at=at, id=data.get("id"))
+        prefix = await NodeManager.get_one(
+            data.get("id"), context.db, branch=branch, at=at, prefetch_relationships=True
+        )
         if not prefix:
             raise NodeNotFoundError(branch, cls._meta.schema.kind, data.get("id"))
 
+        # FIXME: ValueError: Relationship has not been initialized
         # Attach children to the current parent of the node before deleting the node
-        node_parent = await prefix.parent.get_peer(db=context.db)
-        if node_parent:
-            node_children = await prefix.children.get_peers(db=context.db)
-            for child in node_children.values():
-                await node_parent.children.update(db=context.db, data=child)
-            await node_parent.children.save(db=context.db)
+        # parent = await prefix.parent.get_peer(db=context.db)
+        # if parent:
+        #     children = await prefix.children.get_peers(db=context.db)
+        #     await parent.children.update(db=context.db, data=children)
+        #     await parent.children.save(db=context.db)
 
         # Proceed to node deletion
         prefix, result = await super().mutate_delete(root=root, info=info, data=data, branch=branch, at=at)
