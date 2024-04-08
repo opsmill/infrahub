@@ -9,6 +9,7 @@ codespaces
 config
 content_type
 cypher
+Dagster
 datastore
 dev
 devcontainer
@@ -24,6 +25,7 @@ eslint
 excalidraw
 fanout
 file_path
+generator_definitions
 github
 graphene
 graphiql
@@ -45,6 +47,8 @@ memgraph
 menu_placement
 namespace
 namespaces
+Nautobot
+Netbox
 npm
 o'brian
 openconfig
@@ -53,11 +57,14 @@ PyPI
 rebase
 repo
 REST
+ressources
+schema_mapping
 sdk
 template_path
 toml
 uncheck
 validators
+Version Control
 Vitest
 Yaml
 yamllint

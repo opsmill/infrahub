@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
 from infrahub_sdk.utils import deep_merge_dict
 
 from infrahub.core.node import Node
+from infrahub.core.node.delete_validator import NodeDeleteValidator
 from infrahub.core.query.node import (
     NodeGetHierarchyQuery,
     NodeGetListQuery,
@@ -18,6 +19,7 @@ from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError
 
 if TYPE_CHECKING:
@@ -503,7 +505,7 @@ class NodeManager:
                 continue
 
             node = nodes_info_by_id[node_id]
-            attrs = {"db_id": node.node_id, "id": node_id, "updated_at": node.updated_at}
+            new_node_data: Dict[str, Any] = {"db_id": node.node_id, "id": node_id, "updated_at": node.updated_at}
 
             if not node.schema:
                 raise SchemaNotFoundError(
@@ -515,26 +517,9 @@ class NodeManager:
             # --------------------------------------------------------
             # Attributes
             # --------------------------------------------------------
-            for attr_name, attr in node_attributes.get(node_id, {}).get("attrs", {}).items():
-                attrs[attr_name] = {
-                    "db_id": attr.attr_id,
-                    "id": attr.attr_uuid,
-                    "name": attr_name,
-                    "value": attr.value,
-                    "updated_at": attr.updated_at,
-                }
-
-                if attr.is_protected is not None:
-                    attrs[attr_name]["is_protected"] = attr.is_protected
-
-                if attr.is_visible is not None:
-                    attrs[attr_name]["is_visible"] = attr.is_visible
-
-                if attr.source_uuid:
-                    attrs[attr_name]["source"] = attr.source_uuid
-
-                if attr.owner_uuid:
-                    attrs[attr_name]["owner"] = attr.owner_uuid
+            if node_id in node_attributes:
+                for attr_name, attr in node_attributes[node_id].attrs.items():
+                    new_node_data[attr_name] = attr
 
             # --------------------------------------------------------
             # Relationships
@@ -545,17 +530,42 @@ class NodeManager:
                         rel_peers = [peers.get(id) for id in peers_per_node[node_id][rel_schema.identifier]]
                         if rel_schema.cardinality == "one":
                             if len(rel_peers) == 1:
-                                attrs[rel_schema.name] = rel_peers[0]
+                                new_node_data[rel_schema.name] = rel_peers[0]
                         elif rel_schema.cardinality == "many":
-                            attrs[rel_schema.name] = rel_peers
+                            new_node_data[rel_schema.name] = rel_peers
 
             node_class = identify_node_class(node=node)
             item = await node_class.init(schema=node.schema, branch=branch, at=at, db=db)
-            await item.load(**attrs, db=db)
+            await item.load(**new_node_data, db=db)
 
             nodes[node_id] = item
 
         return nodes
+
+    @classmethod
+    async def delete(
+        cls,
+        db: InfrahubDatabase,
+        nodes: List[Node],
+        branch: Optional[Union[Branch, str]] = None,
+        at: Optional[Union[Timestamp, str]] = None,
+    ) -> list[Node]:
+        """Returns list of deleted nodes because of cascading deletes"""
+        branch = await registry.get_branch(branch=branch, db=db)
+        component_registry = get_component_registry()
+        node_delete_validator = await component_registry.get_component(NodeDeleteValidator, db=db, branch=branch)
+        ids_to_delete = await node_delete_validator.get_ids_to_delete(nodes=nodes, at=at)
+        node_ids = {node.get_id() for node in nodes}
+        missing_ids_to_delete = ids_to_delete - node_ids
+        if missing_ids_to_delete:
+            node_map = await cls.get_many(db=db, ids=list(missing_ids_to_delete), branch=branch, at=at)
+            nodes += list(node_map.values())
+        deleted_nodes = []
+        for node in nodes:
+            await node.delete(db=db, at=at)
+            deleted_nodes.append(node)
+
+        return deleted_nodes
 
 
 registry.manager = NodeManager

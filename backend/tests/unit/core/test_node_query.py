@@ -2,7 +2,13 @@ import time
 from typing import Dict
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind, RelationshipHierarchyDirection
+from infrahub.core.constants import (
+    BranchSupportType,
+    InfrahubKind,
+    RelationshipCardinality,
+    RelationshipDirection,
+    RelationshipHierarchyDirection,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_attribute_remove import (
     NodeAttributeRemoveMigration,
@@ -24,6 +30,7 @@ from infrahub.core.query.node import (
     NodeListGetRelationshipsQuery,
 )
 from infrahub.core.registry import registry
+from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.database import InfrahubDatabase
 
 
@@ -221,6 +228,59 @@ async def test_query_NodeGetListQuery_with_generics(db: InfrahubDatabase, group_
     assert query.get_node_ids() == [group_group1_main.id]
 
 
+async def test_query_NodeGetListQuery_order_by(
+    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
+):
+    schema = registry.schema.get(name="TestCar", branch=branch)
+    schema.order_by = ["owner__name__value", "name__value"]
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [car_camry_main.id, car_yaris_main.id, car_accord_main.id, car_volt_main.id]
+
+
+async def test_query_NodeGetListQuery_order_by_optional_relationship_nulls(
+    db: InfrahubDatabase, branch: Branch, car_accord_main, car_camry_main, car_volt_main, car_yaris_main
+):
+    schema = registry.schema.get(name="TestCar", branch=branch, duplicate=False)
+    schema.relationships.append(
+        RelationshipSchema(
+            name="other_car",
+            peer="TestCar",
+            cardinality=RelationshipCardinality.ONE,
+            identifier="testcar__other_car",
+            branch=BranchSupportType.AWARE,
+            direction=RelationshipDirection.OUTBOUND,
+        )
+    )
+    schema.order_by = ["other_car__name__value"]
+
+    accord = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await accord.other_car.update(db=db, data=car_camry_main)
+    await accord.save(db=db)
+    volt = await NodeManager.get_one(db=db, branch=branch, id=car_volt_main.id)
+    await volt.other_car.update(db=db, data=car_yaris_main)
+    await volt.save(db=db)
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+    )
+    await query.execute(db=db)
+
+    retrieved_node_ids = query.get_node_ids()
+    assert len(retrieved_node_ids) == 4
+    assert retrieved_node_ids[0] == car_accord_main.id
+    assert retrieved_node_ids[1] == car_volt_main.id
+    # null ones can be any order
+    assert set(retrieved_node_ids[2:]) == {car_camry_main.id, car_yaris_main.id}
+
+
 async def test_query_NodeListGetInfoQuery(
     db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):
@@ -270,8 +330,8 @@ async def test_query_NodeListGetAttributeQuery_all_fields(db: InfrahubDatabase, 
     await query.execute(db=db)
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c2"]
     assert len(list(query.get_results())) == 8
-    assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 4
-    assert len(query.get_attributes_group_by_node()["c2"]["attrs"]) == 4
+    assert len(query.get_attributes_group_by_node()["c1"].attrs) == 4
+    assert len(query.get_attributes_group_by_node()["c2"].attrs) == 4
 
     # Query all the nodes in branch1, c1, c2 and c3 present
     # Expect 15 attributes because each node has 4 but c1at2 has a value both in Main and Branch1
@@ -279,9 +339,9 @@ async def test_query_NodeListGetAttributeQuery_all_fields(db: InfrahubDatabase, 
     await query.execute(db=db)
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c2", "c3"]
     assert len(list(query.get_results())) == 15
-    assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 4
-    assert len(query.get_attributes_group_by_node()["c2"]["attrs"]) == 4
-    assert len(query.get_attributes_group_by_node()["c3"]["attrs"]) == 4
+    assert len(query.get_attributes_group_by_node()["c1"].attrs) == 4
+    assert len(query.get_attributes_group_by_node()["c2"].attrs) == 4
+    assert len(query.get_attributes_group_by_node()["c3"].attrs) == 4
 
     # Query all the nodes in branch1 in isolated mode, only c1 and c3 present
     # Expect 9 attributes because each node has 4 but c1at2 has a value both in Main and Branch1
@@ -290,8 +350,8 @@ async def test_query_NodeListGetAttributeQuery_all_fields(db: InfrahubDatabase, 
     await query.execute(db=db)
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c3"]
     assert len(list(query.get_results())) == 11
-    assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 4
-    assert len(query.get_attributes_group_by_node()["c3"]["attrs"]) == 4
+    assert len(query.get_attributes_group_by_node()["c1"].attrs) == 4
+    assert len(query.get_attributes_group_by_node()["c3"].attrs) == 4
 
 
 async def test_query_NodeListGetAttributeQuery_with_source(
@@ -319,9 +379,15 @@ async def test_query_NodeListGetAttributeQuery_with_source(
     )
     await query.execute(db=db)
     assert sorted(query.get_attributes_group_by_node().keys()) == sorted([obj1.id, obj2.id])
-    assert query.get_attributes_group_by_node()[obj1.id]["attrs"]["name"].source_uuid == first_account.id
-    assert query.get_attributes_group_by_node()[obj2.id]["attrs"]["level"].source_uuid == second_account.id
-    assert query.get_attributes_group_by_node()[obj2.id]["attrs"]["name"].source_uuid == first_account.id
+    assert (
+        query.get_attributes_group_by_node()[obj1.id].attrs["name"].node_properties["source"].uuid == first_account.id
+    )
+    assert (
+        query.get_attributes_group_by_node()[obj2.id].attrs["level"].node_properties["source"].uuid == second_account.id
+    )
+    assert (
+        query.get_attributes_group_by_node()[obj2.id].attrs["name"].node_properties["source"].uuid == first_account.id
+    )
 
 
 async def test_query_NodeListGetAttributeQuery(db: InfrahubDatabase, base_dataset_02):
@@ -335,8 +401,8 @@ async def test_query_NodeListGetAttributeQuery(db: InfrahubDatabase, base_datase
     )
     await query.execute(db=db)
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c2"]
-    assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 2
-    assert len(query.get_attributes_group_by_node()["c2"]["attrs"]) == 2
+    assert len(query.get_attributes_group_by_node()["c1"].attrs) == 2
+    assert len(query.get_attributes_group_by_node()["c2"].attrs) == 2
     assert len(list(query.get_results())) == 4
 
     # Query all the nodes in branch1: c1, c2 and c3 present
@@ -346,9 +412,9 @@ async def test_query_NodeListGetAttributeQuery(db: InfrahubDatabase, base_datase
     )
     await query.execute(db=db)
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c2", "c3"]
-    assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 1
-    assert len(query.get_attributes_group_by_node()["c2"]["attrs"]) == 1
-    assert len(query.get_attributes_group_by_node()["c3"]["attrs"]) == 1
+    assert len(query.get_attributes_group_by_node()["c1"].attrs) == 1
+    assert len(query.get_attributes_group_by_node()["c2"].attrs) == 1
+    assert len(query.get_attributes_group_by_node()["c3"].attrs) == 1
     assert len(list(query.get_results())) == 6
 
     # Query c1 in branch1
@@ -394,17 +460,17 @@ async def test_query_NodeListGetAttributeQuery_deleted(db: InfrahubDatabase, bas
     await query.execute(db=db)
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c2"]
 
-    assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 4
-    assert len(query.get_attributes_group_by_node()["c2"]["attrs"]) == 4
+    assert len(query.get_attributes_group_by_node()["c1"].attrs) == 4
+    assert len(query.get_attributes_group_by_node()["c2"].attrs) == 4
 
     # Query all the nodes in branch1: c1, c2 and c3 present
     # Expect 6 attributes because each node has 1 but c1at2 has its value and its protected flag defined both in Main and Branch1
     query = await NodeListGetAttributeQuery.init(db=db, ids=["c1", "c2", "c3"], branch=branch1)
     await query.execute(db=db)
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c2", "c3"]
-    assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 3
-    assert len(query.get_attributes_group_by_node()["c2"]["attrs"]) == 3
-    assert len(query.get_attributes_group_by_node()["c3"]["attrs"]) == 3
+    assert len(query.get_attributes_group_by_node()["c1"].attrs) == 3
+    assert len(query.get_attributes_group_by_node()["c2"].attrs) == 3
+    assert len(query.get_attributes_group_by_node()["c3"].attrs) == 3
 
     # Query c1 in branch1
     # Expect 4 attributes because c1at2 has its value and its protected flag defined both in Main and Branch1
@@ -413,7 +479,7 @@ async def test_query_NodeListGetAttributeQuery_deleted(db: InfrahubDatabase, bas
     )
     await query.execute(db=db)
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1"]
-    assert len(query.get_attributes_group_by_node()["c1"]["attrs"]) == 1
+    assert len(query.get_attributes_group_by_node()["c1"].attrs) == 1
 
 
 async def test_query_NodeListGetRelationshipsQuery(db: InfrahubDatabase, default_branch: Branch, person_jack_tags_main):

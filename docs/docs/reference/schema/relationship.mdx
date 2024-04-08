@@ -26,8 +26,9 @@ Below is the list of all available options to define a Relationship in the schem
 | [**max_count**](#max_count) | Attribute | Defines the maximum objects allowed on the other side of the relationship. | False |
 | [**min_count**](#min_count) | Attribute | Defines the minimum objects allowed on the other side of the relationship. | False |
 | [**name**](#name) | Attribute | Relationship name, must be unique within a model and must be all lowercase. | True |
+| [**on_delete**](#on_delete) | Attribute | Default is no-action. If cascade, related node(s) are deleted when this node is deleted. | False |
 | [**optional**](#optional) | Attribute | Indicate if this relationship is mandatory or optional. | False |
-| [**order_weight**](#order_weight) | Attribute | Number used to order the relationship in the frontend (table and view). | False |
+| [**order_weight**](#order_weight) | Attribute | Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first. | False |
 | [**peer**](#peer) | Attribute | Type (kind) of objects supported on the other end of the relationship. | True |
 | [**state**](#state) | Attribute | Expected state of the relationship after loading the schema | False |
 
@@ -169,6 +170,18 @@ Below is the list of all available options to define a Relationship in the schem
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[a-z0-9\_]+$`<br /> Length: min 3, max 32 |
 
+### on_delete
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | on_delete |
+| **Kind** | `Text` |
+| **Description** | Default is no-action. If cascade, related node(s) are deleted when this node is deleted. |
+| **Optional** | True |
+| **Default Value** |  |
+| **Constraints** |  |
+| **Accepted Values** | `no-action` `cascade`  |
+
 ### optional
 
 | Key | Value |
@@ -186,7 +199,7 @@ Below is the list of all available options to define a Relationship in the schem
 | ---- | --------------- |
 | **Name** | order_weight |
 | **Kind** | `Number` |
-| **Description** | Number used to order the relationship in the frontend (table and view). |
+| **Description** | Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first. |
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  |

@@ -10,6 +10,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     HashableModelState,
     RelationshipCardinality,
+    RelationshipDeleteBehavior,
     RelationshipDirection,
     RelationshipKind,
 )
@@ -80,7 +81,7 @@ class GeneratedRelationshipSchema(HashableModel):
     )
     order_weight: Optional[int] = Field(
         default=None,
-        description="Number used to order the relationship in the frontend (table and view).",
+        description="Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first.",
         json_schema_extra={"update": "allowed"},
     )
     optional: bool = Field(
@@ -115,4 +116,9 @@ class GeneratedRelationshipSchema(HashableModel):
     )
     filters: list[FilterSchema] = Field(
         default_factory=list, description="Relationship filters", json_schema_extra={"update": "not_applicable"}
+    )
+    on_delete: Optional[RelationshipDeleteBehavior] = Field(
+        default=None,
+        description="Default is no-action. If cascade, related node(s) are deleted when this node is deleted.",
+        json_schema_extra={"update": "allowed"},
     )

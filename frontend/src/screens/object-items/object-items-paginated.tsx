@@ -1,5 +1,4 @@
 import { gql } from "@apollo/client";
-import { PlusIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
@@ -7,13 +6,9 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { BUTTON_TYPES } from "../../components/buttons/button";
 import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
-import { Retry } from "../../components/buttons/retry";
-import { RoundedButton } from "../../components/buttons/rounded-button";
 import SlideOver from "../../components/display/slide-over";
 import { Filters } from "../../components/filters/filters";
 import ModalDelete from "../../components/modals/modal-delete";
-import { SearchInput } from "../../components/search/search-bar";
-import { Tooltip } from "../../components/ui/tooltip";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { Pagination } from "../../components/utils/pagination";
 import {
@@ -51,6 +46,11 @@ import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
+import { Badge } from "../../components/ui/badge";
+import { Tooltip } from "../../components/ui/tooltip";
+import { RoundedButton } from "../../components/buttons/rounded-button";
+import { PlusIcon } from "@heroicons/react/24/outline";
+import { SearchInput } from "../../components/ui/search-input";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -84,6 +84,7 @@ export default function ObjectItems(props: any) {
   const generic = genericList.find((s) => s.kind === objectname);
 
   const schemaData = schema || generic;
+  const isGeneric = !!generic;
 
   if ((schemaList?.length || genericList?.length) && !schemaData) {
     // If there is no schema nor generics, go to home page
@@ -195,7 +196,8 @@ export default function ObjectItems(props: any) {
 
   const handleRefetch = () => refetch();
 
-  const handleSearch = (value: string) => {
+  const handleSearch = (e) => {
+    const value = e.target.value as string;
     if (!value) {
       const newFilters = filters.filter((filter: Filter) => !SEARCH_FILTERS.includes(filter.name));
 
@@ -227,35 +229,34 @@ export default function ObjectItems(props: any) {
 
   return (
     <Content>
-      <div className="flex items-center p-4 w-full bg-custom-white shadow-sm">
-        {schemaData && (
-          <div className="sm:flex-auto flex items-center">
-            <h1 className="text-md font-semibold text-gray-900 mr-2">
-              {schemaData.label} ({count})
-            </h1>
-
-            <div className="text-sm">{schemaData?.description}</div>
-
-            <div className="ml-2">
-              <Retry isLoading={loading} onClick={handleRefetch} />
+      {schemaData && (
+        <Content.Title
+          title={
+            <div className="flex items-center">
+              <h1 className="mr-2 truncate">{schemaData.label}</h1>
+              <Badge>{count}</Badge>
             </div>
-          </div>
-        )}
-
-        {schema && (
-          <Tooltip
-            enabled={!permission.write.allow}
-            content={permission.write.message ?? undefined}>
-            <RoundedButton
-              data-cy="create"
-              data-testid="create-object-button"
-              disabled={!permission.write.allow}
-              onClick={() => setShowCreateDrawer(true)}>
-              <PlusIcon className="w-4 h-4" aria-hidden="true" />
-            </RoundedButton>
-          </Tooltip>
-        )}
-      </div>
+          }
+          isReloadLoading={loading}
+          reload={handleRefetch}
+          description={schemaData?.description}>
+          {!isGeneric && (
+            <div className="flex-grow text-right">
+              <Tooltip
+                enabled={!permission.write.allow}
+                content={permission.write.message ?? undefined}>
+                <RoundedButton
+                  data-cy="create"
+                  data-testid="create-object-button"
+                  disabled={!permission.write.allow}
+                  onClick={() => setShowCreateDrawer(true)}>
+                  <PlusIcon className="w-4 h-4" aria-hidden="true" />
+                </RoundedButton>
+              </Tooltip>
+            </div>
+          )}
+        </Content.Title>
+      )}
 
       <div className="m-2 rounded-md border overflow-hidden bg-custom-white shadow-sm">
         <div className="flex items-center">
@@ -263,9 +264,8 @@ export default function ObjectItems(props: any) {
             loading={loading}
             onChange={debouncedHandleSearch}
             placeholder="Search an object"
-            testId="object-list-search-bar"
-            className="!shadow-none !ring-0"
-            containerClassName="!max-w-[300px] !z-0"
+            className="border-none focus-visible:ring-0"
+            data-testid="object-list-search-bar"
           />
 
           <Filters schema={schemaData} />

@@ -31,6 +31,8 @@ RESERVED_ATTR_REL_NAMES = [
 
 RESERVED_ATTR_GEN_NAMES = ["type"]
 
+NULL_VALUE = "NULL"
+
 
 class PermissionLevel(enum.Flag):
     READ = 1
@@ -215,6 +217,11 @@ class RelationshipDirection(InfrahubStringEnum):
 class RelationshipHierarchyDirection(InfrahubStringEnum):
     ANCESTORS = "ancestors"
     DESCENDANTS = "descendants"
+
+
+class RelationshipDeleteBehavior(InfrahubStringEnum):
+    NO_ACTION = "no-action"
+    CASCADE = "cascade"
 
 
 class Severity(InfrahubStringEnum):

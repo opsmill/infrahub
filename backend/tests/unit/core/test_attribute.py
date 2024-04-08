@@ -114,7 +114,7 @@ async def test_validate_iphost_returns(db: InfrahubDatabase, default_branch: Bra
     assert test_ipv4.hostmask == "0.0.0.1"
     assert test_ipv4.netmask == "255.255.255.254"
     assert test_ipv4.network == "192.0.2.0/31"
-    assert test_ipv4.prefixlen == "31"
+    assert test_ipv4.prefixlen == 31
     assert test_ipv4.with_hostmask == "192.0.2.1/0.0.0.1"
     assert test_ipv4.with_netmask == "192.0.2.1/255.255.255.254"
     assert test_ipv4.version == 4
@@ -124,7 +124,7 @@ async def test_validate_iphost_returns(db: InfrahubDatabase, default_branch: Bra
     assert test_ipv6.hostmask == "::ffff:ffff:ffff:ffff:ffff:ffff"
     assert test_ipv6.netmask == "ffff:ffff::"
     assert test_ipv6.network == "2001:db8::/32"
-    assert test_ipv6.prefixlen == "32"
+    assert test_ipv6.prefixlen == 32
     assert test_ipv6.with_hostmask == "2001:db8::/::ffff:ffff:ffff:ffff:ffff:ffff"
     assert test_ipv6.with_netmask == "2001:db8::/ffff:ffff::"
     assert test_ipv6.version == 6
@@ -144,7 +144,7 @@ async def test_validate_ipnetwork_returns(db: InfrahubDatabase, default_branch: 
     assert test_ipv4.broadcast_address == "192.0.2.1"
     assert test_ipv4.hostmask == "0.0.0.1"
     assert test_ipv4.netmask == "255.255.255.254"
-    assert test_ipv4.prefixlen == "31"
+    assert test_ipv4.prefixlen == 31
     assert test_ipv4.num_addresses == 2
     assert test_ipv4.with_hostmask == "192.0.2.0/0.0.0.1"
     assert test_ipv4.with_netmask == "192.0.2.0/255.255.255.254"
@@ -154,7 +154,7 @@ async def test_validate_ipnetwork_returns(db: InfrahubDatabase, default_branch: 
     assert test_ipv6.broadcast_address == "2001:db8:ffff:ffff:ffff:ffff:ffff:ffff"
     assert test_ipv6.hostmask == "::ffff:ffff:ffff:ffff:ffff:ffff"
     assert test_ipv6.netmask == "ffff:ffff::"
-    assert test_ipv6.prefixlen == "32"
+    assert test_ipv6.prefixlen == 32
     assert test_ipv6.num_addresses == 79228162514264337593543950336
     assert test_ipv6.with_hostmask == "2001:db8::/::ffff:ffff:ffff:ffff:ffff:ffff"
     assert test_ipv6.with_netmask == "2001:db8::/ffff:ffff::"
@@ -363,7 +363,7 @@ async def test_get_query_filter_any_node_property(db: InfrahubDatabase, default_
         "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute)",
         "-[:HAS_SOURCE]-",
-        "(ap:CoreNode { uuid: $attr_any_source_id })",
+        "(ap:Node { uuid: $attr_any_source_id })",
     ]
     assert [str(item) for item in filters] == expected_response
     assert params == {"attr_any_source_id": "abcdef"}

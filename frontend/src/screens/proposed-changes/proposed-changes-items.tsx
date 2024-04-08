@@ -1,41 +1,26 @@
 import { gql } from "@apollo/client";
-import { PlusIcon } from "@heroicons/react/24/outline";
-import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
-import { useAtomValue } from "jotai/index";
-import * as R from "ramda";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Retry } from "../../components/buttons/retry";
-import { RoundedButton } from "../../components/buttons/rounded-button";
-import SlideOver from "../../components/display/slide-over";
-import {
-  ACCOUNT_OBJECT,
-  DEFAULT_BRANCH_NAME,
-  PROPOSED_CHANGES_OBJECT,
-} from "../../config/constants";
+import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
-import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
-import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
-import { constructPath } from "../../utils/fetch";
 import { getObjectRelationships } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
 import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
-import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
-import { getFormStructure } from "./conversations";
 import { ProposedChange } from "./proposed-changes-item";
+import { usePermission } from "../../hooks/usePermission";
+import { Link } from "react-router-dom";
+import { RoundedButton } from "../../components/buttons/rounded-button";
+import { PlusIcon } from "@heroicons/react/24/outline";
+import { Tooltip } from "../../components/ui/tooltip";
+import { Badge } from "../../components/ui/badge";
 
-export const ProposedChanges = () => {
+const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);
-  const [branches] = useAtom(branchesState);
-  const auth = useAuth();
-  const branch = useAtomValue(currentBranchAtom);
-  const navigate = useNavigate();
-  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const permission = usePermission();
+  useTitle("Proposed changes list");
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
   const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
@@ -69,58 +54,42 @@ export const ProposedChanges = () => {
 
   const { count = "...", edges = [] } = result;
 
-  useTitle("Proposed changes list");
-
   const rows = edges?.map((edge: any) => edge.node).reverse();
-
-  const customObject = {
-    created_by: {
-      id: auth?.data?.sub,
-    },
-  };
 
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching the proposed changes list." />;
   }
 
-  const branchesOptions: any[] = branches
-    .filter((branch) => branch.name !== "main")
-    .map((branch) => ({ id: branch.name, name: branch.name, createdAt: branch.created_at }));
-
-  const branchesOptionsSortedByCreatedAt = R.sortWith(
-    [R.descend(R.prop("createdAt"))],
-    branchesOptions
-  );
-
-  const reviewersOptions: any[] =
-    data && accountSchemaData?.kind
-      ? data[accountSchemaData.kind]?.edges.map((edge: any) => ({
-          id: edge?.node.id,
-          name: edge?.node?.display_label,
-        }))
-      : [];
-
-  const formStructure = getFormStructure(branchesOptionsSortedByCreatedAt, reviewersOptions);
-
   return (
     <Content>
-      <div className="bg-white flex items-center justify-between p-4 w-full">
-        <div className="flex items-center">
-          <h1 className="text-base font-semibold">Proposed changes ({count})</h1>
-
-          <div className="mx-2">
-            <Retry isLoading={loading} onClick={handleRefetch} />
-          </div>
+      <Content.Title
+        title={
+          <>
+            Proposed changes <Badge>{count}</Badge>
+          </>
+        }
+        reload={handleRefetch}
+        isReloadLoading={loading}>
+        <div className="flex-grow text-right">
+          {permission.write.allow ? (
+            <Link to={"/proposed-changes/new"}>
+              <RoundedButton
+                disabled={!permission.write.allow}
+                data-testid="add-proposed-changes-button">
+                <PlusIcon className="w-4 h-4" aria-hidden="true" />
+              </RoundedButton>
+            </Link>
+          ) : (
+            <Tooltip content={permission.write.message ?? undefined}>
+              <RoundedButton
+                disabled={!permission.write.allow}
+                data-testid="add-proposed-changes-button">
+                <PlusIcon className="w-4 h-4" aria-hidden="true" />
+              </RoundedButton>
+            </Tooltip>
+          )}
         </div>
-
-        <RoundedButton
-          disabled={!auth?.permissions?.write}
-          onClick={() => setShowCreateDrawer(true)}
-          data-cy="add-proposed-changes-button"
-          data-testid="add-proposed-changes-button">
-          <PlusIcon className="w-4 h-4" aria-hidden="true" />
-        </RoundedButton>
-      </div>
+      </Content.Title>
 
       <ul className="grid gap-6 grid-cols-1 p-6">
         {!rows && loading && <LoadingScreen />}
@@ -129,46 +98,8 @@ export const ProposedChanges = () => {
           <ProposedChange key={index} row={row} refetch={refetch} />
         ))}
       </ul>
-
-      <SlideOver
-        title={
-          <div className="space-y-2">
-            <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">Create Proposed Changes</span>
-              <div className="flex-1"></div>
-              <div className="flex items-center">
-                <Icon icon={"mdi:layers-triple"} />
-                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-              </div>
-            </div>
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-              <svg
-                className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                viewBox="0 0 6 6"
-                aria-hidden="true">
-                <circle cx={3} cy={3} r={3} />
-              </svg>
-              {schemaData?.kind}
-            </span>
-          </div>
-        }
-        open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}>
-        <ObjectItemCreate
-          onCreate={(response: any) => {
-            setShowCreateDrawer(false);
-            if (response?.object?.id) {
-              const url = constructPath(`/proposed-changes/${response?.object?.id}`);
-              navigate(url);
-            }
-          }}
-          onCancel={() => setShowCreateDrawer(false)}
-          objectname={PROPOSED_CHANGES_OBJECT!}
-          refetch={refetch}
-          formStructure={formStructure}
-          customObject={customObject}
-        />
-      </SlideOver>
     </Content>
   );
 };
+
+export default ProposedChanges;

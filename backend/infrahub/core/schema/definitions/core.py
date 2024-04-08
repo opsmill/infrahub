@@ -104,6 +104,7 @@ core_models: dict[str, Any] = {
                     "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
+                    "on_delete": "cascade",
                 },
                 {
                     "name": "created_by",
@@ -190,6 +191,7 @@ core_models: dict[str, Any] = {
                     "optional": True,
                     "cardinality": "many",
                     "identifier": "validator__check",
+                    "on_delete": "cascade",
                 },
             ],
         },
@@ -618,6 +620,7 @@ core_models: dict[str, Any] = {
                     "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
+                    "on_delete": "cascade",
                 },
                 {
                     "name": "threads",
@@ -626,6 +629,7 @@ core_models: dict[str, Any] = {
                     "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
+                    "on_delete": "cascade",
                 },
                 {
                     "name": "validations",
@@ -634,6 +638,7 @@ core_models: dict[str, Any] = {
                     "identifier": "proposed_change__validator",
                     "optional": True,
                     "cardinality": "many",
+                    "on_delete": "cascade",
                 },
             ],
         },
@@ -1220,6 +1225,22 @@ core_models: dict[str, Any] = {
                 {"name": "class_name", "kind": "Text"},
             ],
             "relationships": [
+                {
+                    "name": "query",
+                    "peer": InfrahubKind.GRAPHQLQUERY,
+                    "identifier": "generator_definition__graphql_query",
+                    "kind": "Attribute",
+                    "cardinality": "one",
+                    "optional": False,
+                },
+                {
+                    "name": "repository",
+                    "peer": InfrahubKind.GENERICREPOSITORY,
+                    "kind": "Attribute",
+                    "cardinality": "one",
+                    "identifier": "generator_definition__repository",
+                    "optional": False,
+                },
                 {
                     "name": "targets",
                     "peer": InfrahubKind.GENERICGROUP,

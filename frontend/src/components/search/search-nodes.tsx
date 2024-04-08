@@ -12,7 +12,7 @@ import { constructPath } from "../../utils/fetch";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { format } from "date-fns";
 import { Skeleton } from "../skeleton";
-import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-modal";
+import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-anywhere";
 import { useDebounce } from "../../hooks/useDebounce";
 
 type SearchProps = {

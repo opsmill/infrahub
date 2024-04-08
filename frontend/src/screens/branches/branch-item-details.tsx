@@ -1,5 +1,4 @@
-import { ChevronRightIcon } from "@heroicons/react/24/outline";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { TabsButtons } from "../../components/buttons/tabs-buttons";
 import { QSP } from "../../config/qsp";
@@ -8,6 +7,7 @@ import { constructPath } from "../../utils/fetch";
 import { Diff } from "../diff/diff";
 import { BranchDetails } from "./branch-details";
 import Content from "../layout/content";
+import { Icon } from "@iconify-icon/react";
 
 export const BRANCH_TABS = {
   DETAILS: "details",
@@ -36,35 +36,30 @@ const renderContent = (tab: string | null | undefined) => {
   }
 };
 
-export const BrancheItemDetails = () => {
+const BranchItemDetails = () => {
   const { branchname } = useParams();
   const [qspTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
-  const navigate = useNavigate();
   useTitle(`${branchname} details`);
 
-  const branchesPath = constructPath("/branches");
-
   return (
-    <>
-      <div className="bg-custom-white py-4 px-4 pb-0 w-full">
-        <div className="flex items-center">
-          <div
-            onClick={() => navigate(branchesPath)}
-            className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
-            Branches
+    <Content>
+      <Content.Title
+        title={
+          <div className="flex items-center gap-1">
+            <Link to={constructPath("/branches")} className="hover:underline">
+              Branches
+            </Link>
+            <Icon icon="mdi:chevron-right" className="text-2xl shrink-0 text-gray-400" />
+            <p className="max-w-2xl text-sm text-gray-500 font-normal">{branchname}</p>
           </div>
-          <ChevronRightIcon
-            className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
-            aria-hidden="true"
-          />
-
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">{branchname}</p>
-        </div>
-      </div>
+        }
+      />
 
       <TabsButtons tabs={tabs} qsp={QSP.BRANCH_TAB} />
 
-      <Content>{renderContent(qspTab)}</Content>
-    </>
+      <div>{renderContent(qspTab)}</div>
+    </Content>
   );
 };
+
+export default BranchItemDetails;

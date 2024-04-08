@@ -23,6 +23,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     HashableModelState,
     RelationshipCardinality,
+    RelationshipDeleteBehavior,
     RelationshipDirection,
     RelationshipKind,
     UpdateSupport,
@@ -543,7 +544,7 @@ attribute_schema = SchemaNode(
         SchemaAttribute(
             name="order_weight",
             kind="Number",
-            description="Number used to order the attribute in the frontend (table and view).",
+            description="Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.",
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
@@ -683,7 +684,7 @@ relationship_schema = SchemaNode(
         SchemaAttribute(
             name="order_weight",
             kind="Number",
-            description="Number used to order the relationship in the frontend (table and view).",
+            description="Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first.",
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
@@ -749,6 +750,16 @@ relationship_schema = SchemaNode(
             default_factory="list",
             optional=True,
             extra={"update": UpdateSupport.NOT_APPLICABLE},
+        ),
+        SchemaAttribute(
+            name="on_delete",
+            kind="Text",
+            internal_kind=RelationshipDeleteBehavior,
+            description="Default is no-action. If cascade, related node(s) are deleted when this node is deleted.",
+            enum=RelationshipDeleteBehavior.available_types(),
+            default_value=None,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
         ),
     ],
     relationships=[

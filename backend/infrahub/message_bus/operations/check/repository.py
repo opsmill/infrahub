@@ -4,6 +4,7 @@ from infrahub_sdk import UUIDT
 
 from infrahub import lock
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import CheckError
 from infrahub.git.repository import InfrahubRepository
@@ -207,8 +208,7 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
         )
         await check.save()
 
-    for previous_result in existing_checks.values():
-        await previous_result.delete()
+    await NodeManager.delete(db=service.database, nodes=list(existing_checks.values()))
 
     await service.cache.set(
         key=f"validator_execution_id:{message.validator_execution_id}:check_execution_id:{message.check_execution_id}",

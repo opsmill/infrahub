@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import enum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
 from pydantic import field_validator, model_validator
 
@@ -62,42 +62,39 @@ class AttributeSchema(GeneratedAttributeSchema):
             raise ValueError("branch hasn't been defined yet")
         return self.branch
 
-    def get_attribute_enum_class(self) -> Optional[enum.EnumType]:
-        if not self.uses_enum_class:
-            return None
-        return generate_python_enum(f"{self.name.title()}Enum", {v: v for v in self.enum})
+    def get_enum_class(self) -> Type[enum.Enum]:
+        if not self.enum:
+            raise ValueError(f"{self.name} is not an Enum")
+        return generate_python_enum(name=f"{self.name.title()}Enum", options=self.enum)
 
-    def convert_to_attribute_enum(self, value: Any) -> Any:
-        if not self.uses_enum_class or not value:
-            return value
-        attribute_enum_class = self.get_attribute_enum_class()
-        if isinstance(value, attribute_enum_class):
-            return value
+    def convert_value_to_enum(self, value: Any) -> enum.Enum:
         if isinstance(value, enum.Enum):
-            value = value.value
-        return attribute_enum_class(value)
-
-    def convert_to_enum_value(self, value: Any) -> Any:
-        if not self.uses_enum_class:
             return value
-        if isinstance(value, list):
-            value = [self.convert_to_attribute_enum(element) for element in value]
+        enum_class = self.get_enum_class()
+        return enum_class(value)
+
+    def convert_enum_to_value(self, data: Any) -> Any:
+        if isinstance(data, list):
+            value = [self.convert_enum_to_value(element) for element in data]
             return [element.value if isinstance(element, enum.Enum) else element for element in value]
-        value = self.convert_to_attribute_enum(value)
-        return value.value if isinstance(value, enum.Enum) else value
+        if isinstance(data, enum.Enum):
+            return data.value
+        return data
 
     async def get_query_filter(
         self,
         name: str,
         filter_name: str,
         branch: Optional[Branch] = None,
-        filter_value: Optional[Union[str, int, bool, list, enum.Enum]] = None,
+        filter_value: Optional[Union[str, int, bool, list]] = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
         db: Optional[InfrahubDatabase] = None,
         partial_match: bool = False,
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
-        filter_value = self.convert_to_enum_value(filter_value)
+        if self.enum:
+            filter_value = self.convert_enum_to_value(filter_value)
+
         return await default_attribute_query_filter(
             name=name,
             filter_name=filter_name,

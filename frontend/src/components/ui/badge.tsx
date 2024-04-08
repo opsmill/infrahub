@@ -28,7 +28,7 @@ export interface BadgeProps
     VariantProps<typeof badgeVariants> {}
 
 const Badge = ({ className = "", variant, ...props }: BadgeProps) => {
-  return <div className={classNames(badgeVariants({ variant }), className)} {...props} />;
+  return <span className={classNames(badgeVariants({ variant }), className)} {...props} />;
 };
 
 export { Badge };

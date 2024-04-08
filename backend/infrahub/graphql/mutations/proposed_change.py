@@ -101,7 +101,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             include_owner=True,
             include_source=True,
         )
-        state = ProposedChangeState(obj.state.value)
+        state = ProposedChangeState(obj.state.value.value)
         state.validate_editability()
 
         updated_state = None
@@ -123,7 +123,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     validator_kind = validation.get_kind()
                     if (
                         validator_kind != InfrahubKind.DATAVALIDATOR
-                        and validation.conclusion.value != ValidatorConclusion.SUCCESS.value
+                        and validation.conclusion.value.value != ValidatorConclusion.SUCCESS.value
                     ):
                         # Ignoring Data integrity checks as they are handled again later
                         raise ValidationError("Unable to merge proposed change containing failing checks")
@@ -193,7 +193,7 @@ class ProposedChangeRequestRunCheck(Mutation):
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
             id=identifier, schema_name=InfrahubKind.PROPOSEDCHANGE, db=context.db
         )
-        state = ProposedChangeState(proposed_change.state.value)
+        state = ProposedChangeState(proposed_change.state.value.value)
         state.validate_state_check_run()
 
         destination_branch = proposed_change.destination_branch.value

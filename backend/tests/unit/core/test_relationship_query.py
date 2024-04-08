@@ -575,7 +575,7 @@ async def test_query_RelationshipGetByIdentifierQuery(
         query = await RelationshipGetByIdentifierQuery.init(
             db=db, branch=branch, identifiers=[], excluded_namespaces=[]
         )
-    assert "identifiers cannot be an empty list" in str(exc.value)
+    assert "identifiers or full_identifiers is required" in str(exc.value)
 
     query = await RelationshipGetByIdentifierQuery.init(
         db=db, branch=branch, identifiers=["testcar__testperson"], excluded_namespaces=[]

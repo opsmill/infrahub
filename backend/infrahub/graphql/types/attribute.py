@@ -17,6 +17,7 @@ class RelatedNodeInput(InputObjectType):
 
 
 class AttributeInterface(InfrahubInterface):
+    is_default = Field(Boolean)
     is_inherited = Field(Boolean)
     is_protected = Field(Boolean)
     is_visible = Field(Boolean)
@@ -64,7 +65,7 @@ class IPHostType(BaseAttribute):
     ip = Field(String)
     hostmask = Field(String)
     netmask = Field(String)
-    prefixlen = Field(String)
+    prefixlen = Field(Int)
     version = Field(Int)
     with_hostmask = Field(String)
     with_netmask = Field(String)
@@ -80,7 +81,7 @@ class IPNetworkType(BaseAttribute):
     broadcast_address = Field(String)
     hostmask = Field(String)
     netmask = Field(String)
-    prefixlen = Field(String)
+    prefixlen = Field(Int)
     num_addresses = Field(Int)
     version = Field(Int)
     with_hostmask = Field(String)
