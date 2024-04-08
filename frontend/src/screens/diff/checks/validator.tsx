@@ -99,16 +99,13 @@ export const Validator = ({ validator }: tValidatorProps) => {
   };
 
   const title = (
-    <div className="flex items-center">
+    <div className="flex items-center gap-2">
       {getValidatorState(state?.value, conclusion?.value)}
-
       <span>{display_label}</span>
-
-      <span className="mx-2 font-normal">-</span>
-
+      <span className="font-normal">-</span>
       <DurationDisplay date={started_at.value} endDate={completed_at.value} />
 
-      <div className="flex flex-1 justify-end">
+      <div className="flex flex-grow justify-end">
         <PopOver buttonComponent={MoreButton}>
           <List columns={columns} row={row} />
         </PopOver>
