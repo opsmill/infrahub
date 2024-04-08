@@ -5,7 +5,7 @@ import { DateDisplay } from "../../../components/display/date-display";
 import { DurationDisplay } from "../../../components/display/duration-display";
 import { PopOver } from "../../../components/display/popover";
 import { List } from "../../../components/table/list";
-import { Tooltip } from "../../../components/utils/tooltip";
+import { Tooltip } from "../../../components/ui/tooltip";
 import { ValidatorDetails } from "./validator-details";
 
 type tValidatorProps = {
@@ -16,38 +16,38 @@ const getValidatorState = (state?: string, conclusion?: string) => {
   switch (state) {
     case "queued": {
       return (
-        <Tooltip message={"Queued"}>
-          <Icon icon={"mdi:timer-sand-complete"} className="text-yellow-500 mr-2" />
+        <Tooltip content="Queued" enabled>
+          <Icon icon={"mdi:timer-sand-complete"} className="text-yellow-500" />
         </Tooltip>
       );
     }
     case "in_progress": {
       return (
-        <Tooltip message={"In progress"}>
-          <Icon icon={"mdi:clock-time-four-outline"} className="text-yellow-500 mr-2" />
+        <Tooltip content="In progress" enabled>
+          <Icon icon={"mdi:clock-time-four-outline"} className="text-yellow-500" />
         </Tooltip>
       );
     }
     case "completed": {
       if (conclusion === "success") {
         return (
-          <Tooltip message={"Success"}>
-            <Icon icon={"mdi:check-circle-outline"} className="text-green-500 mr-2" />
+          <Tooltip content="Success" enabled>
+            <Icon icon={"mdi:check-circle-outline"} className="text-green-500" />
           </Tooltip>
         );
       }
 
       if (conclusion === "failure") {
         return (
-          <Tooltip message={"Failure"}>
-            <Icon icon={"mdi:warning"} className="text-red-500 mr-2" />
+          <Tooltip content="Failure" enabled>
+            <Icon icon={"mdi:warning"} className="text-red-500" />
           </Tooltip>
         );
       }
 
       return (
-        <Tooltip message={"Unkown"}>
-          <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500 mr-2" />
+        <Tooltip content="Unknown" enabled>
+          <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500" />
         </Tooltip>
       );
     }
