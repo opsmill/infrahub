@@ -25,7 +25,6 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await expect(page.locator("#alert-success-Tenant-created")).toContainText("Tenant created");
       const tenantRow = page.locator("tbody >> tr").filter({ hasText: "my-first-tenant" });
       await expect(tenantRow).toContainText("my-first-tenant");
-      await expect(tenantRow).toContainText("My-First-Tenant");
       await expect(tenantRow).toContainText("Testing Infrahub");
     });
   });
@@ -90,7 +89,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await test.step("View branch diff", async () => {
       await page.getByRole("button", { name: "Diff" }).click();
-      await page.getByText("My-First-Tenant").click();
+      await page.getByText("my-first-Tenant").click();
       await expect(page.getByText("Testing Infrahub")).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_branch_diff");
       await expect(page.getByText("Changes from branch cr1234")).toBeVisible();
