@@ -57,9 +57,7 @@ const getValidatorState = (state?: string, conclusion?: string) => {
   }
 };
 
-export const Validator = (props: tValidatorProps) => {
-  const { validator } = props;
-
+export const Validator = ({ validator }: tValidatorProps) => {
   const { id, display_label, started_at, completed_at, conclusion, state } = validator;
 
   const columns = [
@@ -119,10 +117,8 @@ export const Validator = (props: tValidatorProps) => {
   );
 
   return (
-    <div className="bg-custom-white rounded-md p-2 mb-2 last:mb-0">
-      <Accordion title={title}>
-        <ValidatorDetails id={id} />
-      </Accordion>
-    </div>
+    <Accordion title={title} className="bg-custom-white rounded-md p-2">
+      <ValidatorDetails id={id} />
+    </Accordion>
   );
 };

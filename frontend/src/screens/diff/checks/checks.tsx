@@ -29,7 +29,7 @@ export const Checks = forwardRef((props, ref) => {
     <div className="text-xs">
       <ChecksSummary isLoading={loading} validators={validators} refetch={refetch} />
 
-      <div className="p-4 pt-0">
+      <div className="p-4 pt-0 space-y-2">
         {validators.map((item: any) => (
           <Validator key={item.id} validator={item} />
         ))}
