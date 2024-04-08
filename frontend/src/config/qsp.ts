@@ -11,6 +11,7 @@ export const QSP = {
   FILTER: "filters",
   PAGINATION: "pagination",
   PROPOSED_CHANGES_TAB: "pr_tab",
+  QUERY: "query",
   TAB: "tab",
   TASK_ID: "task_id",
   LIST_SEARCH: "list-search",
