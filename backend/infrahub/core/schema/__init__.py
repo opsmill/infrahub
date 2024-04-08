@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, List, Optional
+from typing import Any, List, Optional, TypeAlias, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -15,7 +15,10 @@ from .dropdown import DropdownChoice
 from .filter import FilterSchema
 from .generic_schema import GenericSchema
 from .node_schema import NodeSchema
+from .profile_schema import ProfileSchema
 from .relationship_schema import RelationshipSchema
+
+MainSchemaTypes: TypeAlias = Union[NodeSchema, GenericSchema, ProfileSchema]
 
 
 # -----------------------------------------------------
@@ -76,8 +79,10 @@ __all__ = [
     "FilterSchema",
     "NodeSchema",
     "GenericSchema",
+    "ProfileSchema",
     "RelationshipSchema",
     "SchemaAttributePath",
     "SchemaAttributePathValue",
     "SchemaRoot",
+    "MainSchemaTypes",
 ]

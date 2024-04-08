@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import reduce
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
 from infrahub_sdk.utils import deep_merge_dict
@@ -7,6 +8,8 @@ from infrahub_sdk.utils import deep_merge_dict
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
 from infrahub.core.query.node import (
+    AttributeFromDB,
+    AttributeNodePropertyFromDB,
     NodeGetHierarchyQuery,
     NodeGetListQuery,
     NodeListGetAttributeQuery,
@@ -17,7 +20,7 @@ from infrahub.core.query.node import (
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
-from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema
+from infrahub.core.schema import GenericSchema, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError
@@ -49,12 +52,54 @@ def identify_node_class(node: NodeToProcess) -> Type[Node]:
     return Node
 
 
+class ProfileAttributeIndex:
+    def __init__(
+        self,
+        profile_attributes_id_map: dict[str, dict[str, AttributeFromDB]],
+        profile_ids_by_node_id: dict[str, list[str]],
+    ):
+        self._profile_attributes_id_map = profile_attributes_id_map
+        self._profile_ids_by_node_id = profile_ids_by_node_id
+
+    def apply_profiles(self, node_data_dict: dict[str, Any]) -> dict[str, Any]:
+        updated_data: dict[str, Any] = {**node_data_dict}
+        node_id = node_data_dict.get("id")
+        profile_ids = self._profile_ids_by_node_id.get(node_id, [])
+        if not profile_ids:
+            return updated_data
+        profiles = [
+            self._profile_attributes_id_map[p_id] for p_id in profile_ids if p_id in self._profile_attributes_id_map
+        ]
+        profiles.sort(key=lambda p: str(p.attrs.get("profile_priority").value))
+
+        for attr_name, attr_data in updated_data.items():
+            if not isinstance(attr_data, AttributeFromDB):
+                continue
+            if not attr_data.is_default:
+                continue
+            profile_value, profile_uuid = None, None
+            index = 0
+            while profile_value is None and index <= (len(profiles) - 1):
+                try:
+                    profile_value = profiles[index].attrs[attr_name].value
+                    profile_uuid = profiles[index].node["uuid"]
+                    break
+                except (IndexError, KeyError, AttributeError):
+                    ...
+                index += 1
+
+            if profile_value is not None:
+                attr_data.value = profile_value
+                attr_data.node_properties["source"] = AttributeNodePropertyFromDB(uuid=profile_uuid, labels=[])
+        return updated_data
+
+
 class NodeManager:
     @classmethod
     async def query(
         cls,
         db: InfrahubDatabase,
-        schema: Union[NodeSchema, GenericSchema, str],
+        schema: Union[NodeSchema, GenericSchema, ProfileSchema, str],
         filters: Optional[dict] = None,
         fields: Optional[dict] = None,
         offset: Optional[int] = None,
@@ -86,7 +131,7 @@ class NodeManager:
 
         if isinstance(schema, str):
             schema = registry.schema.get(name=schema, branch=branch.name)
-        elif not isinstance(schema, (NodeSchema, GenericSchema)):
+        elif not isinstance(schema, (NodeSchema, GenericSchema, ProfileSchema)):
             raise ValueError(f"Invalid schema provided {schema}")
 
         # Query the list of nodes matching this Query
@@ -459,11 +504,15 @@ class NodeManager:
         nodes_info_by_id: Dict[str, NodeToProcess] = {
             node.node_uuid: node async for node in query.get_nodes(duplicate=False)
         }
+        profile_ids_by_node_id = query.get_profile_ids_by_node_id()
+        all_profile_ids = reduce(
+            lambda all_ids, these_ids: all_ids | set(these_ids), profile_ids_by_node_id.values(), set()
+        )
 
         # Query list of all Attributes
         query = await NodeListGetAttributeQuery.init(
             db=db,
-            ids=list(nodes_info_by_id.keys()),
+            ids=list(nodes_info_by_id.keys()) + list(all_profile_ids),
             fields=fields,
             branch=branch,
             include_source=include_source,
@@ -472,7 +521,17 @@ class NodeManager:
             at=at,
         )
         await query.execute(db=db)
-        node_attributes = query.get_attributes_group_by_node()
+        all_node_attributes = query.get_attributes_group_by_node()
+        profile_attributes: Dict[str, Dict[str, AttributeFromDB]] = {}
+        node_attributes: Dict[str, Dict[str, AttributeFromDB]] = {}
+        for node_id, attribute_dict in all_node_attributes.items():
+            if node_id in all_profile_ids:
+                profile_attributes[node_id] = attribute_dict
+            else:
+                node_attributes[node_id] = attribute_dict
+        profile_index = ProfileAttributeIndex(
+            profile_attributes_id_map=profile_attributes, profile_ids_by_node_id=profile_ids_by_node_id
+        )
 
         # if prefetch_relationships is enabled
         # Query all the peers associated with all nodes at once.
@@ -505,7 +564,11 @@ class NodeManager:
                 continue
 
             node = nodes_info_by_id[node_id]
-            new_node_data: Dict[str, Any] = {"db_id": node.node_id, "id": node_id, "updated_at": node.updated_at}
+            new_node_data: Dict[str, Union[str, AttributeFromDB]] = {
+                "db_id": node.node_id,
+                "id": node_id,
+                "updated_at": node.updated_at,
+            }
 
             if not node.schema:
                 raise SchemaNotFoundError(
@@ -534,9 +597,10 @@ class NodeManager:
                         elif rel_schema.cardinality == "many":
                             new_node_data[rel_schema.name] = rel_peers
 
+            new_node_data_with_profile_overrides = profile_index.apply_profiles(new_node_data)
             node_class = identify_node_class(node=node)
             item = await node_class.init(schema=node.schema, branch=branch, at=at, db=db)
-            await item.load(**new_node_data, db=db)
+            await item.load(**new_node_data_with_profile_overrides, db=db)
 
             nodes[node_id] = item
 

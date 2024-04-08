@@ -246,6 +246,7 @@ class RelationshipKind(str, Enum):
     PARENT = "Parent"
     GROUP = "Group"
     HIERARCHY = "Hierarchy"
+    PROFILE = "Profile"
 
 
 class DropdownMutation(str, Enum):

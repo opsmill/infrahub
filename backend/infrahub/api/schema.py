@@ -13,7 +13,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.migrations.schema.runner import schema_migrations_runner
 from infrahub.core.models import SchemaBranchHash  # noqa: TCH001
-from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, SchemaRoot
 from infrahub.core.schema_manager import SchemaBranch, SchemaNamespace, SchemaUpdateValidationResult  # noqa: TCH001
 from infrahub.core.validators.checker import schema_validators_checker
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
@@ -35,7 +35,7 @@ router = APIRouter(prefix="/schema")
 
 class APISchemaMixin:
     @classmethod
-    def from_schema(cls, schema: Union[NodeSchema, GenericSchema]) -> Self:
+    def from_schema(cls, schema: MainSchemaTypes) -> Self:
         data = schema.model_dump()
         data["relationships"] = [
             relationship.model_dump() for relationship in schema.relationships if not relationship.internal_peer
@@ -66,10 +66,22 @@ class APIGenericSchema(GenericSchema, APISchemaMixin):
         return values
 
 
+class APIProfileSchema(ProfileSchema, APISchemaMixin):
+    api_kind: Optional[str] = Field(default=None, alias="kind", validate_default=True)
+    hash: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def set_kind(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        values["kind"] = f'{values["namespace"]}{values["name"]}'
+        return values
+
+
 class SchemaReadAPI(BaseModel):
     main: str = Field(description="Main hash for the entire schema")
     nodes: List[APINodeSchema] = Field(default_factory=list)
     generics: List[APIGenericSchema] = Field(default_factory=list)
+    profiles: List[APIProfileSchema] = Field(default_factory=list)
     namespaces: List[SchemaNamespace] = Field(default_factory=list)
 
 
@@ -121,6 +133,11 @@ async def get_schema(
             APIGenericSchema.from_schema(value)
             for value in all_schemas
             if isinstance(value, GenericSchema) and value.namespace != "Internal"
+        ],
+        profiles=[
+            APIProfileSchema.from_schema(value)
+            for value in all_schemas
+            if isinstance(value, ProfileSchema) and value.namespace != "Internal"
         ],
         namespaces=schema_branch.get_namespaces(),
     )
