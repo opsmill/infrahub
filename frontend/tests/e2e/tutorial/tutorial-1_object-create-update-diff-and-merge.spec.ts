@@ -23,9 +23,10 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await test.step("confirm creation and update UI", async () => {
       await expect(page.locator("#alert-success-Tenant-created")).toContainText("Tenant created");
-      await expect(page.locator("tbody")).toContainText("my-first-tenant");
-      await expect(page.locator("tbody")).toContainText("My-First-Tenant");
-      await expect(page.locator("tbody")).toContainText("Testing Infrahub");
+      const tenantRow = page.locator("tbody >> tr").filter({ hasText: "my-first-tenant" });
+      await expect(tenantRow).toContainText("my-first-tenant");
+      await expect(tenantRow).toContainText("My-First-Tenant");
+      await expect(tenantRow).toContainText("Testing Infrahub");
     });
   });
 
