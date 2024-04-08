@@ -102,7 +102,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
         self.params["flag_type"] = self.attr.get_kind()
 
         query = """
-        MATCH (a { uuid: $attr_uuid })
+        MATCH (a:Attribute { uuid: $attr_uuid })
         MERGE (flag:Boolean { value: $flag_value })
         CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(flag)
         """ % self.flag_name.upper()
@@ -143,8 +143,8 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
 
         query = (
             """
-        MATCH (a { uuid: $attr_uuid })
-        MATCH (np { uuid: $prop_id })
+        MATCH (a:Attribute { uuid: $attr_uuid })
+        MATCH (np:Node { uuid: $prop_id })
         CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(np)
         """
             % rel_name
@@ -172,7 +172,7 @@ class AttributeGetQuery(AttributeQuery):
             """
         MATCH (a:Attribute { uuid: $attr_uuid })
         MATCH p = ((a)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap))
-        WHERE all(r IN relationships(p) WHERE ( %s))
+        WHERE all(r IN relationships(p) WHERE ( %s ))
         """
             % rels_filter
         )
@@ -262,7 +262,7 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,dis
         query_filter.extend(
             [
                 QueryRel(labels=[f"HAS_{property_name.upper()}"]),
-                QueryNode(name="ap", labels=["CoreNode"], params={"uuid": f"${param_prefix}_{clean_filter_name}"}),
+                QueryNode(name="ap", labels=["Node"], params={"uuid": f"${param_prefix}_{clean_filter_name}"}),
             ]
         )
         query_params[f"{param_prefix}_{clean_filter_name}"] = filter_value

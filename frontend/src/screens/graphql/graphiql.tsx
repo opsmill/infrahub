@@ -4,15 +4,15 @@ import { explorerPlugin } from "@graphiql/plugin-explorer";
 import type { Fetcher } from "@graphiql/toolkit";
 import { useAtomValue } from "jotai/index";
 
-import { currentBranchAtom } from "../state/atoms/branches.atom";
-import { CONFIG } from "../config/config";
-import { ACCESS_TOKEN_KEY } from "../config/constants";
-import { datetimeAtom } from "../state/atoms/time.atom";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import { CONFIG } from "../../config/config";
+import { ACCESS_TOKEN_KEY } from "../../config/constants";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 import "graphiql/graphiql.min.css";
 import "@graphiql/plugin-explorer/dist/style.css";
-import { Navigate, useLocation, useParams } from "react-router-dom";
-import { constructPath } from "../utils/fetch";
+import { StringParam, useQueryParam } from "use-query-params";
+import { QSP } from "../../config/qsp";
 
 const fetcher =
   (url: string): Fetcher =>
@@ -34,27 +34,16 @@ const fetcher =
   };
 
 const GraphiQLPage = () => {
+  const [query] = useQueryParam(QSP.QUERY, StringParam);
   const branch = useAtomValue(currentBranchAtom);
   const waybackMachineDate = useAtomValue(datetimeAtom);
 
   return (
     <GraphiQL
       defaultEditorToolsVisibility
+      query={query ?? undefined}
       plugins={[explorerPlugin({ showAttribution: false })]}
       fetcher={fetcher(CONFIG.GRAPHQL_URL(branch?.name, waybackMachineDate))}
-    />
-  );
-};
-
-export const RedirectToGraphiQLPage = () => {
-  const { branch } = useParams();
-  const location = useLocation();
-
-  return (
-    <Navigate
-      to={constructPath("/graphql", [{ name: "branch", value: branch }])}
-      state={{ from: location }}
-      replace
     />
   );
 };

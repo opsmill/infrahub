@@ -211,8 +211,8 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.params["is_visible"] = self.rel.is_visible
 
         query_match = """
-        MATCH (s { uuid: $source_id })
-        MATCH (d { uuid: $destination_id })
+        MATCH (s:Node { uuid: $source_id })
+        MATCH (d:Node { uuid: $destination_id })
         """
         self.add_to_query(query_match)
 
@@ -295,7 +295,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
         self.params["at"] = self.at.to_string()
 
         query = """
-        MATCH (rl { uuid: $rel_node_id })
+        MATCH (rl:Relationship { uuid: $rel_node_id })
         """
         self.add_to_query(query)
 
@@ -381,9 +381,9 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         # Match all nodes, including properties
         # -----------------------------------------------------------------------
         query = """
-        MATCH (s { uuid: $source_id })
-        MATCH (d { uuid: $destination_id })
-        MATCH (rl { uuid: $rel_node_id })
+        MATCH (s:Node { uuid: $source_id })
+        MATCH (d:Node { uuid: $destination_id })
+        MATCH (rl:Relationship { uuid: $rel_node_id })
         """
         self.add_to_query(query)
         self.return_labels = ["s", "d", "rl"]
@@ -459,7 +459,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
         r2 = f"{arrows.right.start}[r2:{self.rel_type} $rel_prop ]{arrows.right.end}"
 
         query = """
-        MATCH (s { uuid: $source_id })-[]-(rl:Relationship {uuid: $rel_id})-[]-(d { uuid: $destination_id })
+        MATCH (s:Node { uuid: $source_id })-[]-(rl:Relationship {uuid: $rel_id})-[]-(d:Node { uuid: $destination_id })
         CREATE (s)%s(rl)
         CREATE (rl)%s(d)
         """ % (
@@ -740,8 +740,8 @@ class RelationshipGetQuery(RelationshipQuery):
         r2 = f"{arrows.right.start}[r2:{self.rel.rel_type}]{arrows.right.end}"
 
         query = """
-        MATCH (s { uuid: $source_id })
-        MATCH (d { uuid: $destination_id })
+        MATCH (s:Node { uuid: $source_id })
+        MATCH (d:Node { uuid: $destination_id })
         MATCH (s)%s(rl:Relationship { name: $name })%s(d)
         WHERE %s
         """ % (

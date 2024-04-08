@@ -36,7 +36,7 @@ const renderContent = (tab: string | null | undefined) => {
   }
 };
 
-export const BrancheItemDetails = () => {
+const BranchItemDetails = () => {
   const { branchname } = useParams();
   const [qspTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
   useTitle(`${branchname} details`);
@@ -61,3 +61,5 @@ export const BrancheItemDetails = () => {
     </Content>
   );
 };
+
+export default BranchItemDetails;

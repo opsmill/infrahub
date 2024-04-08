@@ -381,7 +381,7 @@ class DiffNodePropertiesByIDSQuery(Query):
         self.params.update(rels_params)
 
         query = """
-        MATCH (a) WHERE a.uuid IN $ids
+        MATCH (a:Attribute) WHERE a.uuid IN $ids
         MATCH (a)-[r:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE]-(ap)
         WHERE %s
         """ % ("\n AND ".join(rels_filter),)
@@ -437,7 +437,7 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
 
         # TODO Compute the list of potential relationship dynamically in the future based on the class
         query = """
-        MATCH (rl) WHERE rl.uuid IN $ids
+        MATCH (rl:Relationship) WHERE rl.uuid IN $ids
         MATCH (rl)-[r:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]-(rp)
         WHERE %s
         """ % ("\n AND ".join(rels_filter),)
