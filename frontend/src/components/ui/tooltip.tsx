@@ -20,7 +20,7 @@ export function Tooltip({
         <TooltipPrimitives.Content
           side={side}
           className={classNames(
-            "bg-gray-600 text-white text-sm font-medium px-3 py-2 rounded-lg shadow-sm z-50",
+            "bg-gray-600 text-white text-xs font-medium px-3 py-2 rounded-lg shadow-sm z-50",
             !enabled && "hidden",
             className
           )}
