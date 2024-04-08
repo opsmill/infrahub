@@ -179,7 +179,7 @@ class TestInfrahubClientSync:
 
         def create_org_with_tag(clt: InfrahubClientSync, nbr_tags: int):
             tags = []
-            for idx in range(0, nbr_tags):
+            for idx in range(nbr_tags):
                 obj = clt.create(kind="BuiltinTag", name=f"tracking-{tag_names[idx]}")
                 obj.save(allow_upsert=True)
                 tags.append(obj)
