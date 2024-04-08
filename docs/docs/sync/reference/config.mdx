@@ -1,0 +1,66 @@
+---
+title: Sync configuration file
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Sync instance configuration file
+
+The configuration file allows you to define the ressources needs for the sync.
+The file should be formatted as a Yaml file, have the filename `config.yml`. During the generation phase, the Sync adapters, and models will be generated in the same folder.
+
+The following settings can be defined:
+
+## Configuration fields
+
+Describes the overall synchronization    configuration.
+
+| Property | Type | Description | Mandatory |
+| -------- | ---- | ----------- | --------- |
+| name | string | Unique identifier for the sync instance. | Yes |
+| store | SyncStore | Configuration for the optional storage mechanism. | No |
+| source | SyncAdapter | Configuration for the source adapter. | Yes |
+| destination | SyncAdapter | Configuration for the destination adapter. | Yes |
+| order | List of strings | Specifies the order in which objects should be synchronized. | Yes |
+| schema_mapping | List of SchemaMappingModel | Defines how data is mapped from source to destination. | Yes |
+
+### Sync store
+
+Optional configuration for a storage mechanism used for stateful synchronization.
+
+| Property | Type | Description | Mandatory |
+| -------- | ---- | ----------- | --------- |
+| type | string | Type of the store (for example    `redis`). | Yes |
+| settings | Dictionary | Connection details and other settings for the store. | No |
+
+<!-- vale off -->
+### Source and Destination
+<!-- vale on -->
+Configuration for source and destination adapters.
+
+| Property | Type | Description | Mandatory |
+| -------- | ---- | ----------- | --------- |
+| name | string | Identifier for the adapter. | Yes |
+| settings | Dictionary | Adapter-specific settings like `url` and `token`. If not provided, values will be loaded from environment variables. | No |
+<!-- vale off -->
+### Schema Mapping
+<!-- vale on -->
+Defines the mappings from source to destination schemas.
+
+#### Mapping models
+
+| Property | Type | Description | Mandatory |
+| -------- | ---- | ----------- | --------- |
+| name | string | Infrahub model name to be mapped. | Yes |
+| mapping | string | The source's schema mapping (API) path. | Yes |
+| identifiers | List of strings | Fields used to uniquely identify an object. | Yes |
+| fields | List of SchemaMappingField | Describes individual field mappings or transformations. | Yes |
+
+##### Mapping field
+
+| Property | Type | Description | Mandatory |
+| -------- | ---- | ----------- | --------- |
+| name | string | Name of the field. | Yes |
+| mapping | string | How the field is mapped from source to destination. | No |
+| static | Any | A static value to assign to the field, used if `mapping` is not provided. | No |
+| reference | string | Reference to another object in the configuration, used if direct mapping is not applicable. | No |

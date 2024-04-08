@@ -530,11 +530,11 @@ class NodeListGetInfoQuery(Query):
         self.params.update(branch_params)
 
         query = """
-        MATCH p = (root:Root)<-[:IS_PART_OF]-(n)
+        MATCH p = (root:Root)<-[:IS_PART_OF]-(n:Node)
         WHERE n.uuid IN $ids
         CALL {
             WITH root, n
-            MATCH (root:Root)<-[r:IS_PART_OF]-(n)
+            MATCH (root:Root)<-[r:IS_PART_OF]-(n:Node)
             WHERE %(branch_filter)s
             RETURN n as n1, r as r1
             ORDER BY r.branch_level DESC, r.from DESC

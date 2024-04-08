@@ -363,7 +363,7 @@ async def test_get_query_filter_any_node_property(db: InfrahubDatabase, default_
         "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute)",
         "-[:HAS_SOURCE]-",
-        "(ap:CoreNode { uuid: $attr_any_source_id })",
+        "(ap:Node { uuid: $attr_any_source_id })",
     ]
     assert [str(item) for item in filters] == expected_response
     assert params == {"attr_any_source_id": "abcdef"}
