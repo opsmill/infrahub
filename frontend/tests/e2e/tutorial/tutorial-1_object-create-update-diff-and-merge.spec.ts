@@ -22,9 +22,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
 
     await test.step("confirm creation and update UI", async () => {
-      await expect(page.locator("#alert-success-Organization-created")).toContainText(
-        "Organization created"
-      );
+      await expect(page.locator("#alert-success-Tenant-created")).toContainText("Tenant created");
       await expect(page.locator("tbody")).toContainText("my-first-tenant");
       await expect(page.locator("tbody")).toContainText("My-First-Tenant");
       await expect(page.locator("tbody")).toContainText("Testing Infrahub");
@@ -50,7 +48,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
   test("3. Update an organization", async ({ page }) => {
     await test.step("Go to the newly created organization on branch cr1234", async () => {
       await page.goto("/?branch=cr1234");
-      await page.getByRole("link", { name: "Organization" }).click();
+      await page.getByRole("link", { name: "Tenant" }).click();
       const myFirstOrgLink = page.getByRole("cell", { name: "my-first-tenant", exact: true });
       await expect(myFirstOrgLink).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_organizations");
@@ -69,7 +67,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
 
     await test.step("Update confirmation and update UI", async () => {
-      await expect(page.locator("#alert-success-updated")).toContainText("Organization updated");
+      await expect(page.locator("#alert-success-updated")).toContainText("Tenant updated");
       await expect(page.getByText("Changes from branch cr1234")).toBeVisible();
     });
 
@@ -113,13 +111,13 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await test.step("Validate merged changes in main", async () => {
       await page.getByTestId("branch-list-display-button").click();
       await page.getByTestId("branch-list-dropdown").getByText("main", { exact: true }).click();
-      await page.getByTestId("sidebar-menu").getByRole("link", { name: "Organization" }).click();
+      await page.getByTestId("sidebar-menu").getByRole("link", { name: "Tenant" }).click();
       await expect(page.locator("tbody")).toContainText("Changes from branch cr1234");
     });
   });
 
   test("5. Browse historical data", async ({ page }) => {
-    await page.goto("/objects/OrganizationTenant");
+    await page.goto("/objects/TenantTenant");
 
     await test.step("Row my-first-tenant is visible at current time", async () => {
       await expect(page.locator("tbody")).toContainText("my-first-tenant");
