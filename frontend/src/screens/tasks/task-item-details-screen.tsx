@@ -13,7 +13,7 @@ import { TaskItemDetails } from "./task-item-details";
 import Content from "../layout/content";
 import { Icon } from "@iconify-icon/react";
 
-export const TaskItemDetailsScreen = () => {
+const TaskItemDetailsScreen = () => {
   useTitle("Task details");
 
   const { task } = useParams();
@@ -61,3 +61,5 @@ export const TaskItemDetailsScreen = () => {
     </Content>
   );
 };
+
+export default TaskItemDetailsScreen;

@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Icon } from "@iconify-icon/react";
 import Content from "./layout/content";
 
-export const Homepage = () => {
+const Homepage = () => {
   return (
     <Content className="bg-custom-white p-8">
       <div className="bg-white flex flex-col">
@@ -138,3 +138,5 @@ const HelperCard = ({
     </div>
   );
 };
+
+export default Homepage;

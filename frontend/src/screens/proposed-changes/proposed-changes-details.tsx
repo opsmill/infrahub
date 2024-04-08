@@ -32,7 +32,7 @@ export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
 };
 
-export const ProposedChangesDetails = () => {
+const ProposedChangesDetails = () => {
   const { proposedchange } = useParams();
   const location = useLocation();
   const { pathname } = location;
@@ -191,3 +191,5 @@ export const ProposedChangesDetails = () => {
     </Content>
   );
 };
+
+export default ProposedChangesDetails;

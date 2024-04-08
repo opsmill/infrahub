@@ -9,7 +9,7 @@ import { TaskItems } from "./task-items";
 import Content from "../layout/content";
 import { Badge } from "../../components/ui/badge";
 
-export const TaskItemsScreen = () => {
+const TaskItemsScreen = () => {
   useTitle("Task Overview");
 
   const queryString = getTasksItemsCount({
@@ -48,3 +48,5 @@ export const TaskItemsScreen = () => {
     </Content>
   );
 };
+
+export default TaskItemsScreen;
