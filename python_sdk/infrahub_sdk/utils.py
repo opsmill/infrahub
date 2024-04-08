@@ -203,6 +203,13 @@ def generate_request_filename(request: httpx.Request) -> str:
 
 
 def is_valid_url(url: str) -> bool:
+    if not isinstance(url, str):
+        return False
+    if "://" not in url and not url.startswith("/"):
+        return False
+    if "://" not in url:
+        url = "http://localhost" + url
+
     try:
         parsed = httpx.URL(url)
         return all([parsed.scheme, parsed.netloc])
