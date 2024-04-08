@@ -1927,8 +1927,6 @@ class SchemaManager(NodeManager):
             for schema_node in await self.query(
                 schema=node_schema, branch=branch, at=at, filters=filters["nodes"], prefetch_relationships=True, db=db
             ):
-                if schema_node.namespace.value == "Profile":
-                    continue
                 kind = f"{schema_node.namespace.value}{schema_node.name.value}"
                 schema.set(
                     name=kind,
