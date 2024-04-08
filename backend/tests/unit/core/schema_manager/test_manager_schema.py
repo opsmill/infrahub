@@ -1964,6 +1964,7 @@ async def test_load_schema_to_db_internal_models(db: InfrahubDatabase, default_b
     node_schema = registry.schema.get(name="SchemaNode", branch=default_branch)
     results = await SchemaManager.query(schema=node_schema, db=db)
     assert len(results) > 1
+    assert all(r for r in results if r.namespace.value != "Profile")
 
 
 async def test_load_schema_to_db_core_models(
@@ -1977,6 +1978,7 @@ async def test_load_schema_to_db_core_models(
     node_schema = registry.schema.get(name="SchemaGeneric")
     results = await SchemaManager.query(schema=node_schema, db=db)
     assert len(results) > 1
+    assert all(r for r in results if r.namespace.value != "Profile")
 
 
 async def test_load_schema_to_db_simple_01(
@@ -2082,6 +2084,7 @@ async def test_load_schema_from_db(
 
     assert len(schema2.nodes) == 6
     assert len(schema2.generics) == 1
+    assert set(schema2.profiles.keys()) == {"ProfileBuiltinTag", "ProfileTestCriticality"}
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name="BuiltinTag").get_hash()
@@ -2155,6 +2158,7 @@ async def test_load_schema(
 
     assert len(schema2.nodes) == 6
     assert len(schema2.generics) == 1
+    assert set(schema2.profiles.keys()) == {"ProfileBuiltinTag", "ProfileTestCriticality"}
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name=InfrahubKind.TAG).get_hash()
