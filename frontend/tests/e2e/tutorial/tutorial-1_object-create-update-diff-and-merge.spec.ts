@@ -9,12 +9,12 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
   test("1. Create a new organization", async ({ page }) => {
     await page.goto("/");
-    await page.getByTestId("sidebar-menu").getByRole("link", { name: "Organization" }).click();
+    await page.getByTestId("sidebar-menu").getByRole("link", { name: "Tenant" }).click();
 
     await test.step("fill and submit form for new organization", async () => {
       await page.getByTestId("create-object-button").click();
 
-      await page.getByLabel("Name *").fill("my-first-org");
+      await page.getByLabel("Name *").fill("my-first-tenant");
       await page.getByLabel("Description").fill("Testing Infrahub");
       await saveScreenshotForDocs(page, "tutorial_1_organization_create");
 
@@ -25,8 +25,8 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await expect(page.locator("#alert-success-Organization-created")).toContainText(
         "Organization created"
       );
-      await expect(page.locator("tbody")).toContainText("my-first-org");
-      await expect(page.locator("tbody")).toContainText("My-First-Org");
+      await expect(page.locator("tbody")).toContainText("my-first-tenant");
+      await expect(page.locator("tbody")).toContainText("My-First-Tenant");
       await expect(page.locator("tbody")).toContainText("Testing Infrahub");
     });
   });
@@ -51,7 +51,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await test.step("Go to the newly created organization on branch cr1234", async () => {
       await page.goto("/?branch=cr1234");
       await page.getByRole("link", { name: "Organization" }).click();
-      const myFirstOrgLink = page.getByRole("cell", { name: "my-first-org", exact: true });
+      const myFirstOrgLink = page.getByRole("cell", { name: "my-first-tenant", exact: true });
       await expect(myFirstOrgLink).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_organizations");
       await myFirstOrgLink.click();
@@ -91,7 +91,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await test.step("View branch diff", async () => {
       await page.getByRole("button", { name: "Diff" }).click();
-      await page.getByText("My-First-Org").click();
+      await page.getByText("My-First-Tenant").click();
       await expect(page.getByText("Testing Infrahub")).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_branch_diff");
       await expect(page.getByText("Changes from branch cr1234")).toBeVisible();
@@ -119,23 +119,23 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
   });
 
   test("5. Browse historical data", async ({ page }) => {
-    await page.goto("/objects/CoreOrganization");
+    await page.goto("/objects/OrganizationTenant");
 
-    await test.step("Row my-first-org is visible at current time", async () => {
-      await expect(page.locator("tbody")).toContainText("my-first-org");
+    await test.step("Row my-first-tenant is visible at current time", async () => {
+      await expect(page.locator("tbody")).toContainText("my-first-tenant");
     });
 
-    await test.step("Row my-first-org is not visible when date prior to its creation is selected", async () => {
+    await test.step("Row my-first-tenant is not visible when date prior to its creation is selected", async () => {
       const dateAt5MinAgo = format(subMinutes(new Date(), 50), "iiii, MMMM do,");
       await page.getByTestId("timeframe-selector").click();
       await saveScreenshotForDocs(page, "tutorial_2_historical");
       await page.getByLabel(`Choose ${dateAt5MinAgo}`).click();
-      await expect(page.locator("tbody")).not.toContainText("my-first-org");
+      await expect(page.locator("tbody")).not.toContainText("my-first-tenant");
     });
 
-    await test.step("Row my-first-org is visible again when we reset date input", async () => {
+    await test.step("Row my-first-tenant is visible again when we reset date input", async () => {
       await page.getByTestId("reset-timeframe-selector").click();
-      await expect(page.locator("tbody")).toContainText("my-first-org");
+      await expect(page.locator("tbody")).toContainText("my-first-tenant");
     });
   });
 });
