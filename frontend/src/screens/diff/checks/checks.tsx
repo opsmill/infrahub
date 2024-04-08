@@ -1,24 +1,20 @@
-import { gql } from "@apollo/client";
 import { forwardRef, useImperativeHandle } from "react";
 import { useParams } from "react-router-dom";
-import { getValidators } from "../../../graphql/queries/diff/getValidators";
 import useQuery from "../../../hooks/useQuery";
 import ErrorScreen from "../../error-screen/error-screen";
 import { ChecksSummary } from "./checks-summary";
 import { Validator } from "./validator";
+import { GET_VALIDATORS } from "../../../graphql/queries/diff/getValidators";
 
 export const Checks = forwardRef((props, ref) => {
   const { proposedchange } = useParams();
 
-  const queryString = getValidators({
-    id: proposedchange,
+  const { loading, error, data, refetch } = useQuery(GET_VALIDATORS, {
+    notifyOnNetworkStatusChange: true,
+    variables: {
+      ids: [proposedchange],
+    },
   });
-
-  const query = gql`
-    ${queryString}
-  `;
-
-  const { loading, error, data, refetch } = useQuery(query, { notifyOnNetworkStatusChange: true });
 
   // Provide refetch function to parent
   useImperativeHandle(ref, () => ({ refetch }));
