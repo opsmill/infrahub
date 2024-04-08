@@ -36,13 +36,22 @@ def test_is_valid_uuid():
     assert is_valid_uuid(uuid.UUID) is False
 
 
-def test_is_valid_url():
-    assert is_valid_url(55) is False
-    assert is_valid_url("https://") is False
-    assert is_valid_url("my-server") is False
-    assert is_valid_url("https://my-server") is True
-    assert is_valid_url("http://my-server:8080") is True
-    assert is_valid_url("http://192.168.1.10") is True
+@pytest.mark.parametrize(
+    "input,result",
+    [
+        (55, False),
+        ("https://", False),
+        ("my-server", False),
+        ("http://my-server", True),
+        ("http://my-server:8080", True),
+        ("http://192.168.1.10", True),
+        ("/test", True),
+        ("/", True),
+        ("http:/192.168.1.10", False),
+    ],
+)
+def test_is_valid_url(input, result):
+    assert is_valid_url(input) is result
 
 
 def test_duplicates():
