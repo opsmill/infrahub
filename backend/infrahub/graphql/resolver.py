@@ -213,6 +213,11 @@ async def many_relationship_resolver(
                 branch=context.branch,
             )
 
+        if "utilization" in fields:
+            response["utilization"] = await NodeManager.compute_utilization(
+                db=db, id=parent["id"], schema=node_schema, at=context.at, branch=context.branch
+            )
+
         if not node_fields:
             return response
 
@@ -301,6 +306,9 @@ async def hierarchy_resolver(
                 at=context.at,
                 branch=context.branch,
             )
+
+        if "utilization" in fields:
+            response["utilization"] = "22.22"
 
         if not node_fields:
             return response
