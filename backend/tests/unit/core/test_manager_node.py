@@ -235,8 +235,8 @@ async def test_get_many_with_profile(db: InfrahubDatabase, default_branch: Branc
     node_map = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
     assert len(node_map) == 2
     assert node_map[criticality_low.id].color.value == "green"
-    owner = await node_map[criticality_low.id].color.get_owner(db=db)
-    assert owner.id == crit_profile_1.id
+    source = await node_map[criticality_low.id].color.get_source(db=db)
+    assert source.id == crit_profile_1.id
 
 
 async def test_query_no_filter(

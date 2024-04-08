@@ -90,7 +90,7 @@ class ProfileAttributeIndex:
 
             if profile_value is not None:
                 attr_data.value = profile_value
-                attr_data.node_properties["owner"] = AttributeNodePropertyFromDB(uuid=profile_uuid, labels=[])
+                attr_data.node_properties["source"] = AttributeNodePropertyFromDB(uuid=profile_uuid, labels=[])
         return updated_data
 
 
