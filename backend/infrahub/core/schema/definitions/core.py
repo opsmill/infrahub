@@ -455,13 +455,6 @@ core_models: dict[str, Any] = {
             ],
             "relationships": [
                 {
-                    "name": "tags",
-                    "peer": InfrahubKind.TAG,
-                    "kind": "Attribute",
-                    "optional": True,
-                    "cardinality": "many",
-                },
-                {
                     "name": "ip_prefixes",
                     "peer": InfrahubKind.IPPREFIX,
                     "identifier": "ip_namespace__ip_prefix",
@@ -505,13 +498,6 @@ core_models: dict[str, Any] = {
             ],
             "relationships": [
                 {
-                    "name": "tags",
-                    "peer": InfrahubKind.TAG,
-                    "kind": "Attribute",
-                    "optional": True,
-                    "cardinality": "many",
-                },
-                {
                     "name": "ip_namespace",
                     "peer": InfrahubKind.IPNAMESPACE,
                     "identifier": "ip_prefix__ip_namespace",
@@ -553,13 +539,6 @@ core_models: dict[str, Any] = {
                 },
             ],
             "relationships": [
-                {
-                    "name": "tags",
-                    "peer": InfrahubKind.TAG,
-                    "kind": "Attribute",
-                    "optional": True,
-                    "cardinality": "many",
-                },
                 {
                     "name": "ip_namespace",
                     "peer": InfrahubKind.IPNAMESPACE,
