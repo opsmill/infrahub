@@ -29,12 +29,20 @@ core_models: dict[str, Any] = {
             "label": "Node",
         },
         {
+            "name": "Profile",
+            "namespace": "Core",
+            "include_in_menu": False,
+            "description": "Base Profile in Infrahub.",
+            "label": "Profile",
+        },
+        {
             "name": "Owner",
             "namespace": "Lineage",
             "description": "Any Entities that is responsible for some data.",
             "label": "Owner",
             "include_in_menu": False,
             "display_labels": ["name__value"],
+            "documentation": "/topics/metadata",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
@@ -47,6 +55,7 @@ core_models: dict[str, Any] = {
             "label": "Source",
             "include_in_menu": False,
             "display_labels": ["name__value"],
+            "documentation": "/topics/metadata",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
@@ -254,6 +263,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
             "branch": BranchSupportType.AWARE.value,
+            "documentation": "/topics/proposed-change",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "label", "kind": "Text", "optional": True},
@@ -342,6 +352,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
+            "documentation": "/topics/repository",
             "attributes": [
                 {
                     "name": "name",
@@ -498,6 +509,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["label__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": [InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE],
+            "documentation": "/topics/auth",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "password", "kind": "HashedPassword", "unique": False},
@@ -529,6 +541,7 @@ core_models: dict[str, Any] = {
             "default_filter": "token__value",
             "display_labels": ["token__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
+            "documentation": "/topics/auth",
             "attributes": [
                 {"name": "name", "kind": "Text", "optional": True},
                 {"name": "token", "kind": "Text", "unique": True},
@@ -574,6 +587,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": [InfrahubKind.TASKTARGET],
+            "documentation": "/topics/proposed-change",
             "attributes": [
                 {"name": "name", "kind": "Text", "optional": False},
                 {"name": "description", "kind": "TextArea", "optional": True},
@@ -763,6 +777,7 @@ core_models: dict[str, Any] = {
                 InfrahubKind.GENERICREPOSITORY,
                 InfrahubKind.TASKTARGET,
             ],
+            "documentation": "/topics/repository",
             "attributes": [
                 {"name": "default_branch", "kind": "Text", "default_value": "main", "order_weight": 6000},
                 {
@@ -790,6 +805,7 @@ core_models: dict[str, Any] = {
                 InfrahubKind.GENERICREPOSITORY,
                 InfrahubKind.TASKTARGET,
             ],
+            "documentation": "/topics/repository",
             "attributes": [
                 {
                     "name": "ref",
@@ -818,6 +834,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "inherit_from": [InfrahubKind.TRANSFORM],
             "branch": BranchSupportType.AWARE.value,
+            "documentation": "/topics/transformation",
             "attributes": [
                 {"name": "template_path", "kind": "Text"},
             ],
@@ -1042,6 +1059,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "inherit_from": [InfrahubKind.TRANSFORM],
             "branch": BranchSupportType.AWARE.value,
+            "documentation": "/topics/transformation",
             "attributes": [
                 {"name": "file_path", "kind": "Text"},
                 {"name": "class_name", "kind": "Text"},
@@ -1058,6 +1076,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
+            "documentation": "/topics/graphql",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
@@ -1121,6 +1140,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "branch": BranchSupportType.LOCAL.value,
             "inherit_from": [InfrahubKind.TASKTARGET],
+            "documentation": "/topics/artifact",
             "attributes": [
                 {"name": "name", "kind": "Text"},
                 {
@@ -1176,6 +1196,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
             "inherit_from": [InfrahubKind.TASKTARGET],
+            "documentation": "/topics/artifact",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "artifact_name", "kind": "Text"},

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Union
+from typing import Dict, List
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -9,7 +9,7 @@ from infrahub.api.dependencies import get_branch_dep
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.schema import GenericSchema, NodeSchema
+from infrahub.core.schema import MainSchemaTypes, NodeSchema
 from infrahub.log import get_logger
 
 log = get_logger()
@@ -44,7 +44,7 @@ def add_to_menu(structure: Dict[str, List[InterfaceMenu]], menu_item: InterfaceM
     menu_item.children.insert(0, all_items)
 
 
-def _extract_node_icon(model: Union[NodeSchema, GenericSchema]) -> str:
+def _extract_node_icon(model: MainSchemaTypes) -> str:
     if not model.icon:
         return ""
     return model.icon
