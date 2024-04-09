@@ -239,7 +239,7 @@ export default function ObjectItemDetails(props: any) {
 
       {!qspTab && (
         <dl className="bg-custom-white divide-y">
-          <ObjectAttributeRow name="ID" value={objectDetailsData.id} />
+          <ObjectAttributeRow name="ID" value={objectDetailsData.id} enableCopyToClipboard />
           {attributes.map((attribute) => {
             if (
               !objectDetailsData[attribute.name] ||
