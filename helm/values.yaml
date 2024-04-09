@@ -95,6 +95,8 @@ infrahubServer:
       - gunicorn
       - --config
       - /source/backend/infrahub/serve/gunicorn_config.py
+      - -w
+      - "2"
       - --logger-class
       - infrahub.serve.log.GunicornLogger
       - infrahub.server:app

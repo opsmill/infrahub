@@ -86,7 +86,7 @@ spec:
     service: infrahub-server
   {{- include "infrahub-helm.selectorLabels" . | nindent 4 }}
   ports:
-	{{- .Values.infrahubServer.ports | toYaml | nindent 4 }}
+    {{- .Values.infrahubServer.ports | toYaml | nindent 4 }}
 
 {{- if and .Values.infrahubServer.persistence.enabled (not .Values.infrahubServer.persistence.existingClaim) }}
 ---
