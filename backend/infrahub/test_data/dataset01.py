@@ -132,7 +132,7 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
             )
             await intf.save(db=db)
 
-            ip = await Node.init(db=db, schema="InfraIPAddress")
+            ip = await Node.init(db=db, schema="IpamIPAddress")
             await ip.new(db=db, interface=intf, address=f"192.168.{idx}.10/24")
             await ip.save(db=db)
 
@@ -162,6 +162,6 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
             await intf.save(db=db)
 
             if intf_idx == 1:
-                ip = await Node.init(db=db, schema="InfraIPAddress")
+                ip = await Node.init(db=db, schema="IpamIPAddress")
                 await ip.new(db=db, interface=intf, address=f"192.168.{idx}.{intf_idx}/24")
                 await ip.save(db=db)
