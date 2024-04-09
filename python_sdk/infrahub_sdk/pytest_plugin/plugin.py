@@ -82,7 +82,6 @@ def pytest_sessionstart(session: Session) -> None:
         }
 
     infrahub_client = InfrahubClientSync(config=client_config)
-    infrahub_client.login()
     session.infrahub_client = infrahub_client  # type: ignore[attr-defined]
 
 
