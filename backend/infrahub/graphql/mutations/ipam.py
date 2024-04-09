@@ -154,18 +154,13 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         if sub_networks:
             data["children"] = [s.id for s in sub_networks]
 
-        # Set addresses if found
-        ip_addresses = await get_ip_addresses(db=context.db, branch=branch, at=at, ip_prefix=ip_network)
-        if ip_addresses:
-            data["ip_addresses"] = [a.id for a in ip_addresses]
-
         async with context.db.start_transaction() as dbt:
             prefix, result = await super().mutate_create(
                 root=root, info=info, data=data, branch=branch, at=at, database=dbt
             )
 
             # Fix ip_prefix for addresses if needed
-            for ip_address in ip_addresses:
+            for ip_address in await get_ip_addresses(db=dbt, branch=branch, at=at, ip_prefix=ip_network):
                 node = await NodeManager.get_one(ip_address.id, dbt, branch=branch, at=at)
                 await node.ip_prefix.update(prefix, dbt)
                 await node.ip_prefix.save(db=dbt)

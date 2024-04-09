@@ -455,7 +455,6 @@ async def test_ipaddress_change_ipprefix(
     ] == str(address)
 
     # Check that the supernet does not have an IP address anymore
-    # FIXME: broken
     result = await graphql(
         schema=gql_params.schema,
         source=GET_IPPREFIX,
@@ -465,4 +464,4 @@ async def test_ipaddress_change_ipprefix(
 
     assert not result.errors
     assert len(result.data["IpamIPPrefix"]["edges"]) == 1
-    # assert not result.data["IpamIPPrefix"]["edges"][0]["node"]["ip_addresses"]["edges"]
+    assert not result.data["IpamIPPrefix"]["edges"][0]["node"]["ip_addresses"]["edges"]

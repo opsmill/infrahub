@@ -499,7 +499,7 @@ core_models: dict[str, Any] = {
                 {
                     "name": "ip_namespace",
                     "peer": InfrahubKind.IPNAMESPACE,
-                    "identifier": "ip_prefix__ip_namespace",
+                    "identifier": "ip_namespace__ip_prefix",
                     "optional": True,
                     "cardinality": "one",
                 },
@@ -540,14 +540,14 @@ core_models: dict[str, Any] = {
                 {
                     "name": "ip_namespace",
                     "peer": InfrahubKind.IPNAMESPACE,
-                    "identifier": "ip_address__ip_namespace",
+                    "identifier": "ip_namespace__ip_address",
                     "optional": True,
                     "cardinality": "one",
                 },
                 {
                     "name": "ip_prefix",
                     "peer": InfrahubKind.IPPREFIX,
-                    "identifier": "ip_address__ip_prefix",
+                    "identifier": "ip_prefix__ip_address",
                     "optional": True,
                     "cardinality": "one",
                 },
