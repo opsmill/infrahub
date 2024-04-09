@@ -16,10 +16,10 @@ To execute any mutation you'll need to define a HTTP header in the GraphQL Explo
 
 :::
 
-```graphql # Create a new organization
+```graphql # Create a new tenant
 # Endpoint : http://localhost:8000/graphql/main
 mutation {
-  CoreOrganizationCreate(
+  OrganizationTenantCreate(
     data: {
       name: { value: "Hooli" },
       description: { value: "Transforming the world as we know it."}

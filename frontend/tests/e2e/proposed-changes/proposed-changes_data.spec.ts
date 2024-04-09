@@ -17,14 +17,14 @@ test.describe("/proposed-changes diff data", () => {
         .locator("../..")
         .getByTestId("select-open-option-button")
         .click();
-      await page.getByRole("option", { name: "atl1-delete-transit" }).click();
+      await page.getByRole("option", { name: "atl1-delete-upstream" }).click();
       await page.getByRole("button", { name: "Create" }).click();
       await expect(page.getByText("Proposed change created")).toBeVisible();
     });
 
     await test.step("display created proposed change details", async () => {
       await expect(page.getByText("Namepc-data-diff")).toBeVisible();
-      await expect(page.getByText("Source branchatl1-delete-transit")).toBeVisible();
+      await expect(page.getByText("Source branchatl1-delete-upstream")).toBeVisible();
       await expect(page.getByText("Stateopen")).toBeVisible();
     });
 
