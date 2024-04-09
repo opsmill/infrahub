@@ -307,9 +307,6 @@ async def hierarchy_resolver(
                 branch=context.branch,
             )
 
-        if "utilization" in fields:
-            response["utilization"] = "22.22"
-
         if not node_fields:
             return response
 
