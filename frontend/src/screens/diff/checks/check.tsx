@@ -102,6 +102,7 @@ export const Check = ({ id }: tCheckProps) => {
 
   const {
     __typename,
+    conflicts,
     kind,
     origin,
     created_at,
@@ -182,6 +183,10 @@ export const Check = ({ id }: tCheckProps) => {
               </Accordion>
             </div>
           )}
+
+          {conflicts?.value?.map((conflict: any, index: number) => (
+            <Conflict key={index} {...conflict} check={check} id={id} refetch={refetch} />
+          ))}
         </div>
       </div>
 
