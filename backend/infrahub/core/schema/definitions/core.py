@@ -484,7 +484,6 @@ core_models: dict[str, Any] = {
                 {
                     "name": "prefix",
                     "kind": "IPNetwork",
-                    "unique": True,
                     "branch": BranchSupportType.AWARE.value,
                     "order_weight": 1000,
                 },
@@ -526,7 +525,6 @@ core_models: dict[str, Any] = {
                 {
                     "name": "address",
                     "kind": "IPHost",
-                    "unique": True,
                     "branch": BranchSupportType.AWARE.value,
                     "order_weight": 1000,
                 },
