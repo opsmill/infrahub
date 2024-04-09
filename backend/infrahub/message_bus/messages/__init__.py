@@ -108,9 +108,7 @@ RESPONSE_MAP: Dict[str, Type[InfrahubResponse]] = {
     "schema.validator.path": SchemaValidatorPathResponse,
 }
 
-
-def message_priority(routing_key: str) -> int:
-    PRIORITY_MAP = {
+PRIORITY_MAP = {
         "check.artifact.create": 2,
         "check.repository.check_definition": 2,
         "check.repository.merge_conflicts": 2,
@@ -128,6 +126,7 @@ def message_priority(routing_key: str) -> int:
         "transform.python.data": 4,
     }
 
+def message_priority(routing_key: str) -> int:
     return PRIORITY_MAP.get(routing_key, 3)
 
 
