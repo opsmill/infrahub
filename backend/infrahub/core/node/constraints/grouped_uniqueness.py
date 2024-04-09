@@ -146,6 +146,8 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         query_request = self._build_query_request(
             updated_node=node, node_schema=node_schema, path_groups=path_groups, filters=filters
         )
+        if not query_request:
+            return
         query = await NodeUniqueAttributeConstraintQuery.init(
             db=self.db, branch=self.branch, at=at, query_request=query_request, min_count_required=0
         )
