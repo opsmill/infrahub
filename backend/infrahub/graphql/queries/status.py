@@ -5,13 +5,18 @@ from typing import TYPE_CHECKING, Any
 from graphene import Boolean, Field, List, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 
-from infrahub.services import InfrahubServices, services
+from infrahub.services import services
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.branch import Branch
     from infrahub.graphql import GraphqlContext
+
+
+class StatusSummary(ObjectType):
+    schema_hash_synced = Field(
+        Boolean, required=True, description="Indicates if the schema hash is in sync on all active workers"
+    )
 
 
 class StatusWorker(ObjectType):
@@ -25,32 +30,12 @@ class StatusWorkerEdge(ObjectType):
 
 
 class StatusWorkerEdges(ObjectType):
-    edges = Field(List(of_type=StatusWorkerEdge), required=True)
+    edges = Field(List(of_type=StatusWorkerEdge, required=True), required=True)
 
 
 class Status(ObjectType):
+    summary = Field(StatusSummary, required=True)
     workers = Field(StatusWorkerEdges, required=True)
-
-
-async def resolve_workers(workers: dict, service: InfrahubServices, branch: Branch) -> dict:
-    response: dict[str, Any] = {}
-    if edges := workers.get("edges"):
-        response["edges"] = []
-        if node := edges.get("node"):
-            response["edges"] = await resolve_worker_node(node=node, service=service, branch=branch)
-
-    return response
-
-
-async def resolve_worker_node(node: dict, service: InfrahubServices, branch: Branch) -> list[dict]:
-    response: list[dict] = []
-
-    schema_hash = "schema_hash" in node
-    workers = await service.component.list_workers(branch=branch.name, schema_hash=schema_hash)
-    for worker in workers:
-        response.append({"node": worker.to_dict()})
-
-    return response
 
 
 async def resolve_status(
@@ -60,14 +45,18 @@ async def resolve_status(
     context: GraphqlContext = info.context
     service = context.service or services.service
     fields = await extract_fields_first_node(info)
-    response = {}
+    response: dict[str, Any] = {}
+    workers = await service.component.list_workers(branch=context.branch.name, schema_hash=True)
 
-    if workers := fields.get("workers"):
-        response["workers"] = await resolve_workers(
-            workers=workers,
-            service=service,
-            branch=context.branch,
-        )
+    if summary := fields.get("summary"):
+        response["summary"] = {}
+        if "schema_hash_synced" in summary:
+            hashes = {worker.schema_hash for worker in workers if worker.active}
+            response["summary"]["schema_hash_synced"] = len(hashes) == 1
+
+    if "workers" in fields:
+        response["workers"] = {}
+        response["workers"]["edges"] = [{"node": worker.to_dict()} for worker in workers]
 
     return response
 

@@ -83,11 +83,13 @@ class InfrahubComponent:
     async def refresh_heartbeat(self) -> None:
         for component in self.component_names:
             await self.service.cache.set(
-                key=f"workers:active:{component}:worker:{WORKER_IDENTITY}", value=str(Timestamp()), expires=15
+                key=f"workers:active:{component}:worker:{WORKER_IDENTITY}", value=Timestamp().to_string(), expires=15
             )
         if self.service.component_type == ComponentType.API_SERVER:
             await self._set_primary_api_server()
-        await self.service.cache.set(key=f"workers:worker:{WORKER_IDENTITY}", value=str(Timestamp()), expires=7200)
+        await self.service.cache.set(
+            key=f"workers:worker:{WORKER_IDENTITY}", value=Timestamp().to_string(), expires=7200
+        )
 
     async def _set_primary_api_server(self) -> None:
         result = await self.service.cache.set(
