@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
 from infrahub_sdk.utils import deep_merge_dict
 
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
 from infrahub.core.query.ipam import get_utilization
@@ -232,7 +231,7 @@ class NodeManager:
     ) -> Optional[float]:
         node = await cls.get_one(id, db, at=at, branch=branch, prefetch_relationships=True)
 
-        if InfrahubKind.IPPREFIX not in schema.inherit_from:
+        if not schema.is_ip_prefix():
             return None
 
         return await get_utilization(node, db, branch=branch, at=at)

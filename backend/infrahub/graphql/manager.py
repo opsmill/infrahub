@@ -360,9 +360,9 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 InfrahubKind.GRAPHQLQUERY: InfrahubGraphQLQueryMutation,
             }
 
-            if InfrahubKind.IPPREFIX in node_schema.inherit_from:
+            if isinstance(node_schema, NodeSchema) and node_schema.is_ip_prefix():
                 base_class = InfrahubIPPrefixMutation
-            elif InfrahubKind.IPADDRESS in node_schema.inherit_from:
+            elif isinstance(node_schema, NodeSchema) and node_schema.is_ip_address():
                 base_class = InfrahubIPAddressMutation
             else:
                 base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
