@@ -1,7 +1,7 @@
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from invoke import Context, task
 
@@ -329,12 +329,18 @@ def _generate_infrahub_events_documentation() -> None:
     Generate documentation for all classes in the event system into a single file
     using a Jinja2 template. Accessible via `invoke generate_infrahub_events_documentation`.
     """
+    from collections import defaultdict
+    from typing import Dict, List, Optional, Type, Union
+
+    from infrahub.message_bus import InfrahubMessage, InfrahubResponse
+
     def group_classes_by_category(
-    classes: Dict, priority_map: Optional[Dict[str, int]] = None) -> Dict:
+        classes: Dict[str, Type[Union[InfrahubMessage, InfrahubResponse]]],
+        priority_map: Optional[Dict[str, int]] = None,
+    ) -> Dict[str, Dict[str, List[Dict[str, any]]]]:
         """
         Group classes into a nested dictionary by primary and secondary categories, including priority.
         """
-        from collections import defaultdict
         grouped = defaultdict(lambda: defaultdict(list))
         for event_name, cls in classes.items():
             parts = event_name.split(".")
