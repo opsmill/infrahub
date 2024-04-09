@@ -8,6 +8,7 @@ class_name
 codespaces
 config
 content_type
+CoreRepository
 cypher
 Dagster
 datastore

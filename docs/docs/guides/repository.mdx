@@ -19,9 +19,9 @@ Infrahub supports two different types of connections to external Git repositorie
   1. Go to settings > Developer Settings > Personal access tokens [New GitHub token](https://github.com/settings/personal-access-tokens/new)
   2. Select Fine-grained tokens
   3. Limit the scope of the token in **Repository Access** > **Only Select Repositories**
-  4. Grant the token permission
-  a. If you want to create a CoreRepository using this token, then you will need to give it `Read/Write` access for the **Content** of the repository
-  b. If you want to create a Read-only Repository using this token, then you will only need to give it `Read` access for the **Content** of the repository.
+  4. Grant the token permission:
+   - a. If you want to create a CoreRepository using this token, then you will need to give it `Read/Write` access for the **Content** of the repository.
+   - b. If you want to create a Read-only Repository using this token, then you will only need to give it `Read` access for the **Content** of the repository.
 
   ![Fine-Grained Token](../media/github_fined_grain_access_token_setup.png)
 </details>
@@ -58,7 +58,7 @@ You will need to submit an access token with your request to create a repository
     (Optional): A description or comment about the repository used for informational purposes.
   </TabItem>
   <TabItem value="Location">
-    The URL of the external repository, e.g. `https://github.com/opsmill/infrahub.git`.
+    The URL of the external repository, for example `https://github.com/opsmill/infrahub.git`.
   </TabItem>
   <TabItem value="Username">
     Your username on the external Git provider.
