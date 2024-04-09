@@ -1,7 +1,7 @@
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from invoke import Context, task
 
@@ -11,7 +11,7 @@ from .shared import (
     build_test_envs,
     get_env_vars,
 )
-from .utils import ESCAPED_REPO_PATH, check_if_command_available
+from .utils import ESCAPED_REPO_PATH, check_if_command_available, group_classes_by_category
 
 CURRENT_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
 DOCUMENTATION_DIRECTORY = os.path.join(CURRENT_DIRECTORY, "../docs")
@@ -63,6 +63,12 @@ def generate_repository(context: Context):
 def generate_python_sdk(context: Context):
     """Generate documentation for the Python SDK."""
     _generate_infrahub_sdk_configuration_documentation(context=context)
+
+
+@task
+def generate_bus_events(context: Context):
+    """Generate documentation for the Bus events."""
+    _generate_infrahub_events_documentation(context=context)
 
 
 @task
@@ -167,6 +173,7 @@ def _generate(context: Context):
     _generate_infrahub_schema_documentation()
     _generate_infrahub_repository_configuration_documentation()
     _generate_infrahub_sdk_configuration_documentation()
+    _generate_infrahub_events_documentation()
 
 
 def _generate_infrahubctl_documentation(context: Context):
@@ -315,3 +322,38 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
 
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(rendered_file)
+
+
+def _generate_infrahub_events_documentation() -> None:
+    """
+    Generate documentation for all classes in the event system into a single file
+    using a Jinja2 template. Accessible via `invoke generate_infrahub_events_documentation`.
+    """
+    template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/message-bus-events.j2"
+    output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/message-bus-events.mdx"
+    output_label = "docs/docs/reference/message-bus-events.mdx"
+
+    print(" - Generate Infrahub Bus Events documentation")
+
+    if not os.path.exists(template_file):
+        print(f"Unable to find the template file at {template_file}")
+        sys.exit(-1)
+
+    import jinja2
+
+    from infrahub.message_bus.messages import MESSAGE_MAP, PRIORITY_MAP, RESPONSE_MAP
+
+    template_text = Path(template_file).read_text(encoding="utf-8")
+    environment = jinja2.Environment()
+    template = environment.from_string(template_text)
+
+    message_classes = group_classes_by_category(classes=MESSAGE_MAP, priority_map=PRIORITY_MAP)
+    response_classes = group_classes_by_category(classes=RESPONSE_MAP, priority_map=PRIORITY_MAP)
+
+    rendered_doc = template.render(message_classes=message_classes, response_classes=response_classes)
+
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(rendered_doc)
+
+    print(f"Docs saved to: {output_label}")
