@@ -32,14 +32,13 @@ class InfrahubScheduler:
         self.service = service
 
         self.running = config.SETTINGS.miscellaneous.start_background_runner
+        # Add some randomness to the interval to avoid having all workers pulling the latest update at the same time
+        random_number = random.randint(30, 60)
         if self.service.component_type == ComponentType.API_SERVER:
-            # Add some randomness to the interval to avoid having all workers pulling the latest update at the same time
-            random_number = 30 + random.randint(1, 4) - 2
-
             schedules = [
                 Schedule(name="refresh_api_components", interval=10, function=refresh_heartbeat, start_delay=0),
                 Schedule(
-                    name="branch_refresh", interval=10, function=trigger_branch_refresh, start_delay=random_number
+                    name="branch_refresh", interval=900, function=trigger_branch_refresh, start_delay=random_number
                 ),
             ]
             self.schedules.extend(schedules)
@@ -55,6 +54,9 @@ class InfrahubScheduler:
         if self.service.component_type == ComponentType.GIT_AGENT:
             schedules = [
                 Schedule(name="refresh_components", interval=10, function=refresh_heartbeat),
+                Schedule(
+                    name="branch_refresh", interval=900, function=trigger_branch_refresh, start_delay=random_number
+                ),
             ]
             self.schedules.extend(schedules)
 
