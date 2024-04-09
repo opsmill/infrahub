@@ -126,6 +126,7 @@ PRIORITY_MAP = {
         "transform.python.data": 4,
     }
 
+
 def message_priority(routing_key: str) -> int:
     return PRIORITY_MAP.get(routing_key, 3)
 
