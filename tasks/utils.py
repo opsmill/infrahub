@@ -1,10 +1,11 @@
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Type
+from typing import Dict, List, Optional, Tuple, Type, Union
 
 from invoke import Context, UnexpectedExit
-from pydantic import BaseModel
+
+from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
 try:
     import toml
@@ -104,7 +105,7 @@ def str_to_bool(value: str) -> bool:
 
 
 def group_classes_by_category(
-    classes: Dict[str, Type[BaseModel]], priority_map: Optional[Dict[str, int]] = None
+    classes: Dict[str, Type[Union[InfrahubMessage, InfrahubResponse]]], priority_map: Optional[Dict[str, int]] = None
 ) -> Dict[str, Dict[str, List[Dict[str, any]]]]:
     """
     Group classes into a nested dictionary by primary and secondary categories, including priority.
