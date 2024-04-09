@@ -182,7 +182,10 @@ async def get_ip_addresses(
 
 # FIXME: maybe belongs somewhere else or need rewrite, don't actualy use queries
 async def get_utilization(
-    ip_prefix: Node, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
+    ip_prefix: Node,
+    db: InfrahubDatabase,
+    branch: Optional[Union[Branch, str]] = None,  # pylint: disable=unused-argument
+    at=None,  # pylint: disable=unused-argument
 ) -> float:
     nodes = await ip_prefix.children.get_peers(db=db)
 
