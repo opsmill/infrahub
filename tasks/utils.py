@@ -103,7 +103,9 @@ def str_to_bool(value: str) -> bool:
         raise ValueError(f"{value} can not be converted into a boolean") from exc
 
 
-def group_classes_by_category(classes: Dict[str, Type[BaseModel]], priority_map: Optional[Dict[str, int]] = None) -> Dict[str, Dict[str, List[Dict[str, any]]]]:
+def group_classes_by_category(
+    classes: Dict[str, Type[BaseModel]], priority_map: Optional[Dict[str, int]] = None
+) -> Dict[str, Dict[str, List[Dict[str, any]]]]:
     """
     Group classes into a nested dictionary by primary and secondary categories, including priority.
     """
@@ -118,12 +120,15 @@ def group_classes_by_category(classes: Dict[str, Type[BaseModel]], priority_map:
             "event_name": event_name,
             "description": description,
             "priority": priority,
-            "fields": [{
-                "name": prop,
-                "type": details.get("type", "N/A"),
-                "description": details.get("description", "N/A"),
-                "default": details.get("default", "None"),
-            } for prop, details in cls.model_json_schema().get("properties", {}).items()]
+            "fields": [
+                {
+                    "name": prop,
+                    "type": details.get("type", "N/A"),
+                    "description": details.get("description", "N/A"),
+                    "default": details.get("default", "None"),
+                }
+                for prop, details in cls.model_json_schema().get("properties", {}).items()
+            ],
         }
         grouped[primary][secondary].append(event_info)
     return grouped
