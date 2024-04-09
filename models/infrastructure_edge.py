@@ -379,7 +379,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
         ip = await client.create(
             branch=branch,
-            kind="InfraIPAddress",
+            kind="IpamIPAddress",
             interface={"id": intf.id, "source": account_pop.id},
             address={"value": f"{str(next(LOOPBACK_POOL))}/32", "source": account_pop.id},
         )
@@ -403,7 +403,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         )
         await intf.save()
         ip = await client.create(
-            branch=branch, kind="InfraIPAddress", interface=intf.id, address=f"{str(next(MANAGEMENT_IPS))}/24"
+            branch=branch, kind="IpamIPAddress", interface=intf.id, address=f"{str(next(MANAGEMENT_IPS))}/24"
         )
         await ip.save()
 
@@ -446,7 +446,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             if address:
                 ip = await client.create(
                     branch=branch,
-                    kind="InfraIPAddress",
+                    kind="IpamIPAddress",
                     interface={"id": intf.id, "source": account_pop.id},
                     address={"value": address, "source": account_pop.id},
                 )
@@ -499,7 +499,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
                     peer_ip = await client.create(
                         branch=branch,
-                        kind="InfraIPAddress",
+                        kind="IpamIPAddress",
                         address=peer_address,
                     )
                     await peer_ip.save()
@@ -630,14 +630,14 @@ async def branch_scenario_add_upstream(client: InfrahubClient, log: logging.Logg
 
     peer_ip = await client.create(
         branch=new_branch_name,
-        kind="InfraIPAddress",
+        kind="IpamIPAddress",
         address=peer_address,
     )
     await peer_ip.save()
 
     ip = await client.create(
         branch=new_branch_name,
-        kind="InfraIPAddress",
+        kind="IpamIPAddress",
         interface={"id": intf.id},
         address={"value": address},
     )
@@ -738,7 +738,7 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
     # Querying the object for now, need to pull from the store instead
     peer_ip = await client.create(
         branch=new_branch_name,
-        kind="InfraIPAddress",
+        kind="IpamIPAddress",
         interface={"id": peer_intfs_dev1[0].id},
         address=f"{str(next(new_peer_network))}/31",
     )
@@ -747,7 +747,7 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
 
     ip = await client.create(
         branch=new_branch_name,
-        kind="InfraIPAddress",
+        kind="IpamIPAddress",
         interface={"id": peer_intfs_dev2[0].id},  # , "source": account_pop.id},
         address={"value": f"{str(next(new_peer_network))}/31"},  # , "source": account_pop.id},
     )
@@ -1171,14 +1171,14 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         intf21_address = f"{str(next(P2P_NETWORKS_POOL[backbone_link]))}/31"
         intf11_ip = await client.create(
             branch=branch,
-            kind="InfraIPAddress",
+            kind="IpamIPAddress",
             interface={"id": intf1.id, "source": account_pop.id},
             address={"value": intf11_address, "source": account_pop.id},
         )
         await intf11_ip.save()
         intf21_ip = await client.create(
             branch=branch,
-            kind="InfraIPAddress",
+            kind="IpamIPAddress",
             interface={"id": intf2.id, "source": account_pop.id},
             address={"value": intf21_address, "source": account_pop.id},
         )
