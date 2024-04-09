@@ -156,3 +156,80 @@ The default devcontainer `.devcontainer/devcontainer.json` is the bare-bones one
 A first version of our K8S helm-chart is available in our repository.
 
 <ReferenceLink title="Infrahub Helm Chart" url="https://github.com/opsmill/infrahub/tree/stable/helm" openInNewTab />
+
+The following are required for production deployments using Helm:
+
+- data persistence must be enabled (except for the Infrahub API Server if using S3 storage)
+- multiple replicas of the Infrahub API Server and Infrahub Git Agents should be deployed: you can make use of the `affinity` variable to define the affinity policy for the pods
+- a shared storage should be available for use by the Git Agents (through a StorageClass that supports RWX accesses)
+- S3 storage should be configured for the Infrahub API Server
+
+You can use the following values example:
+
+```yaml
+global:
+  infrahubTag: stable
+  imagePullPolicy: Always
+
+infrahubServer:
+  replicas: 3
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: service
+              operator: In
+              values:
+              - infrahub-server
+          topologyKey: topology.kubernetes.io/zone
+  persistence:
+    enabled: false
+  ingress:
+    enabled: true
+  infrahubServer:
+    env:
+      INFRAHUB_ALLOW_ANONYMOUS_ACCESS: "true"
+      INFRAHUB_CACHE_PORT: 6379
+      INFRAHUB_CONFIG: /config/infrahub.toml
+      INFRAHUB_DB_TYPE: neo4j
+      INFRAHUB_LOG_LEVEL: INFO
+      INFRAHUB_PRODUCTION: "true"
+      INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
+      INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
+      INFRAHUB_STORAGE_DRIVER: s3
+      AWS_ACCESS_KEY_ID: xxxx
+      AWS_SECRET_ACCESS_KEY: xxxx
+      AWS_S3_BUCKET_NAME: infrahub-data
+      AWS_S3_ENDPOINT_URL: https://s3
+
+infrahubGit:
+  replicas: 3
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: service
+              operator: In
+              values:
+              - infrahub-git
+          topologyKey: topology.kubernetes.io/zone
+  persistence:
+    enabled: true
+    storageClassName: standard-rwx # using GCP Filestore
+
+database:
+  persistence:
+    data:
+      enabled: true
+    logs:
+      enabled: true
+
+nfs-server-provisioner:
+  enabled: false
+```
+
+```bash
+helm install infrahub -f values.yml path/to/infrahub/chart
+```
