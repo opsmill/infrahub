@@ -47,12 +47,13 @@ DEVICES = (
 )
 
 
-NETWORKS_POOL_INTERNAL = IPv4Network("10.0.0.0/8").subnets(new_prefix=16)
-LOOPBACK_POOL = next(NETWORKS_POOL_INTERNAL).hosts()
-P2P_NETWORK_POOL = next(NETWORKS_POOL_INTERNAL).subnets(new_prefix=31)
+NETWORKS_SUPERNET = IPv4Network("10.0.0.0/8")
+NETWORKS_POOL_INTERNAL = list(NETWORKS_SUPERNET.subnets(new_prefix=16))
+LOOPBACK_POOL = NETWORKS_POOL_INTERNAL[0].hosts()
+P2P_NETWORK_POOL = NETWORKS_POOL_INTERNAL[1].subnets(new_prefix=31)
 NETWORKS_POOL_EXTERNAL = IPv4Network("203.0.113.0/24").subnets(new_prefix=29)
-
-MANAGEMENT_IPS = IPv4Network("172.20.20.0/27").hosts()
+MANAGEMENT_NETWORKS = IPv4Network("172.20.20.0/27")
+MANAGEMENT_IPS = MANAGEMENT_NETWORKS.hosts()
 
 ACTIVE_STATUS = "active"
 BACKBONE_ROLE = "backbone"
@@ -1056,6 +1057,15 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         log.info(f"- Created {node._schema.kind} - {node.name.value}")
 
     internal_as = store.get(kind="InfraAutonomousSystem", key="Duff")
+
+    # ------------------------------------------
+    # Create IP prefixes
+    # ------------------------------------------
+    log.info("Creating IP Prefixes")
+    for network in [NETWORKS_SUPERNET, MANAGEMENT_NETWORKS, NETWORKS_POOL_INTERNAL[0], NETWORKS_POOL_INTERNAL[1]]:
+        obj = await client.create(branch=branch, kind="IpamIPPrefix", prefix=str(network))
+        await obj.save()
+    log.debug(f"IP Prefixes Creation Completed")
 
     # ------------------------------------------
     # Create Sites

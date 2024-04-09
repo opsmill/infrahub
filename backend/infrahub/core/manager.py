@@ -229,11 +229,10 @@ class NodeManager:
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
     ) -> Optional[float]:
-        node = await cls.get_one(id, db, at=at, branch=branch, prefetch_relationships=True)
-
         if not schema.is_ip_prefix():
             return None
-
+        # FIXME: Change this to make this lower cost of function
+        node = await cls.get_one(id, db, at=at, branch=branch, prefetch_relationships=True)
         return await get_utilization(node, db, branch=branch, at=at)
 
     @classmethod
