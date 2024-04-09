@@ -1,11 +1,8 @@
 import sys
-from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import Tuple
 
 from invoke import Context, UnexpectedExit
-
-from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
 try:
     import toml
@@ -102,34 +99,3 @@ def str_to_bool(value: str) -> bool:
         return MAP[value.lower()]
     except KeyError as exc:
         raise ValueError(f"{value} can not be converted into a boolean") from exc
-
-
-def group_classes_by_category(
-    classes: Dict[str, Type[Union[InfrahubMessage, InfrahubResponse]]], priority_map: Optional[Dict[str, int]] = None
-) -> Dict[str, Dict[str, List[Dict[str, any]]]]:
-    """
-    Group classes into a nested dictionary by primary and secondary categories, including priority.
-    """
-    grouped = defaultdict(lambda: defaultdict(list))
-    for event_name, cls in classes.items():
-        parts = event_name.split(".")
-        primary, secondary = parts[0], ".".join(parts[:2])
-        priority = priority_map.get(event_name, 3) if priority_map else -1
-        description = cls.__doc__.strip() if cls.__doc__ else None
-
-        event_info = {
-            "event_name": event_name,
-            "description": description,
-            "priority": priority,
-            "fields": [
-                {
-                    "name": prop,
-                    "type": details.get("type", "N/A"),
-                    "description": details.get("description", "N/A"),
-                    "default": details.get("default", "None"),
-                }
-                for prop, details in cls.model_json_schema().get("properties", {}).items()
-            ],
-        }
-        grouped[primary][secondary].append(event_info)
-    return grouped

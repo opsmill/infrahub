@@ -1,7 +1,7 @@
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from invoke import Context, task
 
@@ -11,7 +11,7 @@ from .shared import (
     build_test_envs,
     get_env_vars,
 )
-from .utils import ESCAPED_REPO_PATH, check_if_command_available, group_classes_by_category
+from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
 CURRENT_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
 DOCUMENTATION_DIRECTORY = os.path.join(CURRENT_DIRECTORY, "../docs")
@@ -329,6 +329,36 @@ def _generate_infrahub_events_documentation() -> None:
     Generate documentation for all classes in the event system into a single file
     using a Jinja2 template. Accessible via `invoke generate_infrahub_events_documentation`.
     """
+    def group_classes_by_category(
+    classes: Dict, priority_map: Optional[Dict[str, int]] = None) -> Dict:
+        """
+        Group classes into a nested dictionary by primary and secondary categories, including priority.
+        """
+        from collections import defaultdict
+        grouped = defaultdict(lambda: defaultdict(list))
+        for event_name, cls in classes.items():
+            parts = event_name.split(".")
+            primary, secondary = parts[0], ".".join(parts[:2])
+            priority = priority_map.get(event_name, 3) if priority_map else -1
+            description = cls.__doc__.strip() if cls.__doc__ else None
+
+            event_info = {
+                "event_name": event_name,
+                "description": description,
+                "priority": priority,
+                "fields": [
+                    {
+                        "name": prop,
+                        "type": details.get("type", "N/A"),
+                        "description": details.get("description", "N/A"),
+                        "default": details.get("default", "None"),
+                    }
+                    for prop, details in cls.model_json_schema().get("properties", {}).items()
+                ],
+            }
+            grouped[primary][secondary].append(event_info)
+        return grouped
+
     template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/message-bus-events.j2"
     output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/message-bus-events.mdx"
     output_label = "docs/docs/reference/message-bus-events.mdx"
