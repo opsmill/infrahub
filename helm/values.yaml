@@ -83,6 +83,7 @@ infrahubGit:
 infrahubServer:
   type: ClusterIP
   ingress:
+    enabled: true
     hostname: infrahub-cluster.local
   persistence:
     enabled: true
