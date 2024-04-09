@@ -236,6 +236,10 @@ module = "infrahub.core.query.diff"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
+module = "infrahub.core.query.ipam"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
 module = "infrahub.core.query.node"
 ignore_errors = true
 
@@ -293,6 +297,10 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.attribute"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.mutations.ipam"
 ignore_errors = true
 
 [[tool.mypy.overrides]]

@@ -246,3 +246,51 @@ async def test_many_update(
         db=db, source_id=tag_red_main.db_id, destination_id=person_jack_main.db_id, max_length=2
     )
     assert len(paths) == 2
+
+
+async def test_many_add(
+    db: InfrahubDatabase, tag_blue_main: Node, tag_red_main: Node, person_jack_main: Node, branch: Branch
+):
+    person_schema = registry.schema.get(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    relm = await RelationshipManager.init(
+        db=db, schema=rel_schema, branch=branch, at=Timestamp(), node=person_jack_main
+    )
+    await relm.save(db=db)
+
+    paths = await get_paths_between_nodes(
+        db=db, source_id=tag_blue_main.db_id, destination_id=person_jack_main.db_id, max_length=2
+    )
+    assert len(paths) == 1
+
+    paths = await get_paths_between_nodes(
+        db=db, source_id=tag_red_main.db_id, destination_id=person_jack_main.db_id, max_length=2
+    )
+    assert len(paths) == 1
+
+    await relm.add(db=db, data=tag_blue_main)
+    await relm.save(db=db)
+
+    paths = await get_paths_between_nodes(
+        db=db, source_id=tag_blue_main.db_id, destination_id=person_jack_main.db_id, max_length=2
+    )
+    assert len(paths) == 2
+
+    paths = await get_paths_between_nodes(
+        db=db, source_id=tag_red_main.db_id, destination_id=person_jack_main.db_id, max_length=2
+    )
+    assert len(paths) == 1
+
+    await relm.add(db=db, data=tag_red_main)
+    await relm.save(db=db)
+
+    paths = await get_paths_between_nodes(
+        db=db, source_id=tag_blue_main.db_id, destination_id=person_jack_main.db_id, max_length=2
+    )
+    assert len(paths) == 2
+
+    paths = await get_paths_between_nodes(
+        db=db, source_id=tag_red_main.db_id, destination_id=person_jack_main.db_id, max_length=2
+    )
+    assert len(paths) == 2

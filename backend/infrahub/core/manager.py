@@ -7,6 +7,7 @@ from infrahub_sdk.utils import deep_merge_dict
 
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
+from infrahub.core.query.ipam import get_utilization
 from infrahub.core.query.node import (
     AttributeFromDB,
     AttributeNodePropertyFromDB,
@@ -218,6 +219,21 @@ class NodeManager:
             db=db, source_ids=ids, source_kind=source_kind, schema=schema, filters=filters, rel=rel, at=at
         )
         return await query.count(db=db)
+
+    @classmethod
+    async def compute_utilization(
+        cls,
+        db: InfrahubDatabase,
+        id: str,
+        schema: NodeSchema,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
+    ) -> Optional[float]:
+        if not schema.is_ip_prefix():
+            return None
+        # FIXME: Change this to make this lower cost of function
+        node = await cls.get_one(id, db, at=at, branch=branch, prefetch_relationships=True)
+        return await get_utilization(node, db, branch=branch, at=at)
 
     @classmethod
     async def query_peers(
