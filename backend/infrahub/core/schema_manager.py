@@ -941,6 +941,11 @@ class SchemaBranch:
 
             generics_used_by["CoreNode"].append(node.kind)
 
+            if InfrahubKind.IPPREFIX in node.inherit_from and InfrahubKind.IPADDRESS in node.inherit_from:
+                raise ValueError(
+                    f"{node.kind} cannot inherit from both {InfrahubKind.IPPREFIX} and {InfrahubKind.IPADDRESS}"
+                )
+
             generic_with_hierarchical_support = []
             for generic_kind in node.inherit_from:
                 if generic_kind not in self.generics.keys():

@@ -327,7 +327,7 @@ nodes:
         cardinality: many
         kind: Attribute
       - name: primary_address
-        peer: InfraIPAddress
+        peer: IpamIPAddress
         label: Primary IP Address
         optional: true
         cardinality: one
@@ -354,7 +354,7 @@ nodes:
       - "CoreArtifactTarget"
     relationships:
       - name: ip_addresses
-        peer: InfraIPAddress
+        peer: IpamIPAddress
         optional: true
         cardinality: many
         kind: Component
@@ -430,22 +430,29 @@ nodes:
         cardinality: many
 
   # --------------------  IPAM (VLAN, IP Address)  --------------------
+  - name: IPNamespace
+    namespace: Ipam
+    inherit_from:
+      - "BuiltinIPNamespace"
+    description: "A namespace for IP resources such as a routing table"
+    icon: "mdi:format-list-group"
+    label: "IP Namespace"
+  - name: IPPrefix
+    namespace: Ipam
+    inherit_from:
+      - "BuiltinIPPrefix"
+    menu_placement: "IpamIPNamespace"
+    description: "IPv4 or IPv6 network"
+    icon: "mdi:ip-network"
+    label: "IP Prefix"
   - name: IPAddress
-    namespace: Infra
+    namespace: Ipam
+    inherit_from:
+      - "BuiltinIPAddress"
+    menu_placement: "IpamIPNamespace"
     description: "IP Address"
-    label: "IP Address"
     icon: "mdi:ip-outline"
-    default_filter: address__value
-    order_by:
-      - "address__value"
-    display_labels:
-      - address__value
-    attributes:
-      - name: address
-        kind: IPHost
-      - name: description
-        kind: Text
-        optional: true
+    label: "IP Address"
     relationships:
       - name: interface
         peer: InfraInterfaceL3
@@ -748,13 +755,13 @@ nodes:
         kind: Attribute
       - name: local_ip
         identifier: bgpsession__local_ip
-        peer: InfraIPAddress
+        peer: IpamIPAddress
         optional: true
         cardinality: one
         kind: Attribute
       - name: remote_ip
         identifier: bgpsession__remote_ip
-        peer: InfraIPAddress
+        peer: IpamIPAddress
         optional: true
         cardinality: one
         kind: Attribute

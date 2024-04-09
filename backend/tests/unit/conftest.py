@@ -2296,6 +2296,34 @@ async def builtin_schema() -> SchemaRoot:
 
 
 @pytest.fixture
+async def ipam_schema() -> SchemaRoot:
+    SCHEMA: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "IPPrefix",
+                "namespace": "Ipam",
+                "default_filter": "prefix__value",
+                "order_by": ["prefix__value"],
+                "display_labels": ["prefix__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPPREFIX],
+            },
+            {
+                "name": "IPAddress",
+                "namespace": "Ipam",
+                "default_filter": "address__value",
+                "order_by": ["address__value"],
+                "display_labels": ["address__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPADDRESS],
+            },
+        ],
+    }
+
+    return SchemaRoot(**SCHEMA)
+
+
+@pytest.fixture
 async def register_builtin_models_schema(default_branch: Branch, builtin_schema: SchemaRoot) -> SchemaBranch:
     schema_branch = registry.schema.register_schema(schema=builtin_schema, branch=default_branch.name)
     default_branch.update_schema_hash()
@@ -2327,6 +2355,13 @@ async def register_account_schema(db: InfrahubDatabase) -> None:
     nodes = [item for item in core_models["nodes"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
     generics = [item for item in core_models["generics"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
     registry.schema.register_schema(schema=SchemaRoot(nodes=nodes, generics=generics))
+
+
+@pytest.fixture
+async def register_ipam_schema(default_branch: Branch, ipam_schema: SchemaRoot) -> SchemaBranch:
+    schema_branch = registry.schema.register_schema(schema=ipam_schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    return schema_branch
 
 
 @pytest.fixture

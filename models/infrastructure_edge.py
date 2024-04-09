@@ -47,12 +47,13 @@ DEVICES = (
 )
 
 
-NETWORKS_POOL_INTERNAL = IPv4Network("10.0.0.0/8").subnets(new_prefix=16)
-LOOPBACK_POOL = next(NETWORKS_POOL_INTERNAL).hosts()
-P2P_NETWORK_POOL = next(NETWORKS_POOL_INTERNAL).subnets(new_prefix=31)
+NETWORKS_SUPERNET = IPv4Network("10.0.0.0/8")
+NETWORKS_POOL_INTERNAL = list(NETWORKS_SUPERNET.subnets(new_prefix=16))
+LOOPBACK_POOL = NETWORKS_POOL_INTERNAL[0].hosts()
+P2P_NETWORK_POOL = NETWORKS_POOL_INTERNAL[1].subnets(new_prefix=31)
 NETWORKS_POOL_EXTERNAL = IPv4Network("203.0.113.0/24").subnets(new_prefix=29)
-
-MANAGEMENT_IPS = IPv4Network("172.20.20.0/27").hosts()
+MANAGEMENT_NETWORKS = IPv4Network("172.20.20.0/27")
+MANAGEMENT_IPS = MANAGEMENT_NETWORKS.hosts()
 
 ACTIVE_STATUS = "active"
 BACKBONE_ROLE = "backbone"
@@ -379,7 +380,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
         ip = await client.create(
             branch=branch,
-            kind="InfraIPAddress",
+            kind="IpamIPAddress",
             interface={"id": intf.id, "source": account_pop.id},
             address={"value": f"{str(next(LOOPBACK_POOL))}/32", "source": account_pop.id},
         )
@@ -403,7 +404,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         )
         await intf.save()
         ip = await client.create(
-            branch=branch, kind="InfraIPAddress", interface=intf.id, address=f"{str(next(MANAGEMENT_IPS))}/24"
+            branch=branch, kind="IpamIPAddress", interface=intf.id, address=f"{str(next(MANAGEMENT_IPS))}/24"
         )
         await ip.save()
 
@@ -446,7 +447,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             if address:
                 ip = await client.create(
                     branch=branch,
-                    kind="InfraIPAddress",
+                    kind="IpamIPAddress",
                     interface={"id": intf.id, "source": account_pop.id},
                     address={"value": address, "source": account_pop.id},
                 )
@@ -499,7 +500,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
                     peer_ip = await client.create(
                         branch=branch,
-                        kind="InfraIPAddress",
+                        kind="IpamIPAddress",
                         address=peer_address,
                     )
                     await peer_ip.save()
@@ -630,14 +631,14 @@ async def branch_scenario_add_upstream(client: InfrahubClient, log: logging.Logg
 
     peer_ip = await client.create(
         branch=new_branch_name,
-        kind="InfraIPAddress",
+        kind="IpamIPAddress",
         address=peer_address,
     )
     await peer_ip.save()
 
     ip = await client.create(
         branch=new_branch_name,
-        kind="InfraIPAddress",
+        kind="IpamIPAddress",
         interface={"id": intf.id},
         address={"value": address},
     )
@@ -738,7 +739,7 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
     # Querying the object for now, need to pull from the store instead
     peer_ip = await client.create(
         branch=new_branch_name,
-        kind="InfraIPAddress",
+        kind="IpamIPAddress",
         interface={"id": peer_intfs_dev1[0].id},
         address=f"{str(next(new_peer_network))}/31",
     )
@@ -747,7 +748,7 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
 
     ip = await client.create(
         branch=new_branch_name,
-        kind="InfraIPAddress",
+        kind="IpamIPAddress",
         interface={"id": peer_intfs_dev2[0].id},  # , "source": account_pop.id},
         address={"value": f"{str(next(new_peer_network))}/31"},  # , "source": account_pop.id},
     )
@@ -1058,6 +1059,15 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     internal_as = store.get(kind="InfraAutonomousSystem", key="Duff")
 
     # ------------------------------------------
+    # Create IP prefixes
+    # ------------------------------------------
+    log.info("Creating IP Prefixes")
+    for network in [NETWORKS_SUPERNET, MANAGEMENT_NETWORKS, NETWORKS_POOL_INTERNAL[0], NETWORKS_POOL_INTERNAL[1]]:
+        obj = await client.create(branch=branch, kind="IpamIPPrefix", prefix=str(network))
+        await obj.save()
+    log.debug(f"IP Prefixes Creation Completed")
+
+    # ------------------------------------------
     # Create Sites
     # ------------------------------------------
     log.info("Creating Site and associated objects (Device, Circuit, BGP Sessions)")
@@ -1171,14 +1181,14 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         intf21_address = f"{str(next(P2P_NETWORKS_POOL[backbone_link]))}/31"
         intf11_ip = await client.create(
             branch=branch,
-            kind="InfraIPAddress",
+            kind="IpamIPAddress",
             interface={"id": intf1.id, "source": account_pop.id},
             address={"value": intf11_address, "source": account_pop.id},
         )
         await intf11_ip.save()
         intf21_ip = await client.create(
             branch=branch,
-            kind="InfraIPAddress",
+            kind="IpamIPAddress",
             interface={"id": intf2.id, "source": account_pop.id},
             address={"value": intf21_address, "source": account_pop.id},
         )
