@@ -213,6 +213,7 @@ jobs:
         working-directory: ./
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
+        continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -252,6 +253,7 @@ jobs:
         run: "invoke sdk.test-integration"
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2
+        continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -329,6 +331,7 @@ jobs:
         run: "invoke backend.test-unit"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
+        continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -379,6 +382,7 @@ jobs:
         run: "invoke backend.test-integration"
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2
+        continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -481,6 +485,7 @@ jobs:
           path: frontend/cypress/videos/*
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
+        continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -787,6 +792,7 @@ jobs:
       #     allowed-conclusions: success,skipped,cancelled,failure
 
       - uses: coverallsapp/github-action@v2
+        continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
