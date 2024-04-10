@@ -162,8 +162,11 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             # Fix ip_prefix for addresses if needed
             for ip_address in await get_ip_addresses(db=dbt, branch=branch, at=at, ip_prefix=ip_network):
                 node = await NodeManager.get_one(ip_address.id, dbt, branch=branch, at=at)
-                await node.ip_prefix.update(prefix, dbt)
-                await node.ip_prefix.save(db=dbt)
+                node_prefix = await node.ip_prefix.get_peer(dbt)
+                if not node_prefix or ip_network.prefixlen > ipaddress.ip_network(node_prefix.prefix.value).prefixlen:
+                    # Change address' prefix only if none set or new one is more specific
+                    await node.ip_prefix.update(prefix, dbt)
+                    await node.ip_prefix.save(db=dbt)
 
         return prefix, result
 
