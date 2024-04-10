@@ -26,17 +26,6 @@ class BuiltinTag(InfrahubModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
-class InfraCircuit(InfrahubModel):
-    _modelname: str = "InfraCircuit"
-    _identifiers: List[str] = ("name",)
-    _attributes: List[str] = ("provider", "description", "vendor_id")
-    circuit_id: str
-    description: Optional[str]
-    vendor_id: Optional[str]
-    provider: str
-    local_id: Optional[str] = None
-    local_data: Optional[Any] = None
-
 class InfraDevice(InfrahubModel):
     _modelname: str = "InfraDevice"
     _identifiers: List[str] = ("name", "location", "rack", "organization")
@@ -49,33 +38,23 @@ class InfraDevice(InfrahubModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+class InfraCircuit(InfrahubModel):
+    _modelname: str = "InfraCircuit"
+    _identifiers: List[str] = ("name",)
+    _attributes: List[str] = ("provider", "description", "vendor_id")
+    circuit_id: str
+    description: Optional[str]
+    vendor_id: Optional[str]
+    provider: str
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
 class InfraIPAddress(InfrahubModel):
     _modelname: str = "InfraIPAddress"
     _identifiers: List[str] = ("address", "vrf")
     _attributes: List[str] = ("description",)
+    description: Optional[str]
     address: str
-    description: Optional[str]
-    local_id: Optional[str] = None
-    local_data: Optional[Any] = None
-
-class InfraPrefix(InfrahubModel):
-    _modelname: str = "InfraPrefix"
-    _identifiers: List[str] = ("prefix", "vrf")
-    _attributes: List[str] = ("organization", "location", "role", "description")
-    role: Optional[str]
-    prefix: str
-    description: Optional[str]
-    organization: Optional[str]
-    location: Optional[str]
-    local_id: Optional[str] = None
-    local_data: Optional[Any] = None
-
-class InfraRouteTarget(InfrahubModel):
-    _modelname: str = "InfraRouteTarget"
-    _identifiers: List[str] = ("name", "organization")
-    _attributes: List[str] = ("description",)
-    name: str
-    description: Optional[str]
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -83,10 +62,22 @@ class InfraVLAN(InfrahubModel):
     _modelname: str = "InfraVLAN"
     _identifiers: List[str] = ("name", "vlan_id", "location", "vlan_group")
     _attributes: List[str] = ("description",)
-    name: str
-    description: Optional[str]
     vlan_id: int
+    description: Optional[str]
+    name: str
     location: Optional[str]
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+class InfraPrefix(InfrahubModel):
+    _modelname: str = "InfraPrefix"
+    _identifiers: List[str] = ("prefix", "vrf")
+    _attributes: List[str] = ("location", "organization", "description", "role")
+    description: Optional[str]
+    prefix: str
+    role: Optional[str]
+    location: Optional[str]
+    organization: Optional[str]
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -99,5 +90,14 @@ class InfraVRF(InfrahubModel):
     description: Optional[str]
     import_rt: Optional[str]
     export_rt: Optional[str]
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+class InfraRouteTarget(InfrahubModel):
+    _modelname: str = "InfraRouteTarget"
+    _identifiers: List[str] = ("name", "organization")
+    _attributes: List[str] = ("description",)
+    name: str
+    description: Optional[str]
     local_id: Optional[str] = None
     local_data: Optional[Any] = None

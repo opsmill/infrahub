@@ -1,7 +1,6 @@
 import copy
 from typing import Any, Dict, Mapping
 
-import pkg_resources
 from infrahub_sdk import (
     Config,
     InfrahubClientSync,
@@ -16,12 +15,10 @@ from diffsync import DiffSyncModel
 from infrahub_sync import DiffSyncMixin, DiffSyncModelMixin, SyncAdapter, SyncConfig
 from infrahub_sync.generator import has_field
 
-diffsync_version = pkg_resources.get_distribution("diffsync").version
-
-if pkg_resources.parse_version(diffsync_version) >= pkg_resources.parse_version("2.0"):
-    from diffsync import Adapter as BaseAdapter
-else:
-    from diffsync import DiffSync as BaseAdapter
+try:
+    from diffsync import Adapter as DiffSync  # type: ignore[attr-defined]
+except ImportError:
+    from diffsync import DiffSync  # type: ignore[no-redef]
 
 
 def update_node(node: InfrahubNodeSync, attrs: dict):
@@ -51,7 +48,7 @@ def update_node(node: InfrahubNodeSync, attrs: dict):
     return node
 
 
-class InfrahubAdapter(DiffSyncMixin, BaseAdapter):
+class InfrahubAdapter(DiffSyncMixin, DiffSync):
     type = "Infrahub"
 
     def __init__(self, *args, target: str, adapter: SyncAdapter, config: SyncConfig, branch: str = None, **kwargs):

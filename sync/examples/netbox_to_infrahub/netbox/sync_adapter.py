@@ -21,10 +21,10 @@ from .sync_models import (
 class NetboxSync(NetboxAdapter):
     CoreStandardGroup = CoreStandardGroup
     BuiltinTag = BuiltinTag
-    InfraCircuit = InfraCircuit
     InfraDevice = InfraDevice
+    InfraCircuit = InfraCircuit
     InfraIPAddress = InfraIPAddress
-    InfraPrefix = InfraPrefix
-    InfraRouteTarget = InfraRouteTarget
     InfraVLAN = InfraVLAN
+    InfraPrefix = InfraPrefix
     InfraVRF = InfraVRF
+    InfraRouteTarget = InfraRouteTarget

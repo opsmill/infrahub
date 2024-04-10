@@ -4,7 +4,6 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, Any, Dict
 
-import pkg_resources
 import pynetbox
 
 from diffsync import DiffSyncModel
@@ -16,12 +15,10 @@ from infrahub_sync import (
     SyncConfig,
 )
 
-diffsync_version = pkg_resources.get_distribution("diffsync").version
-
-if pkg_resources.parse_version(diffsync_version) >= pkg_resources.parse_version("2.0"):
-    from diffsync import Adapter as BaseAdapter
-else:
-    from diffsync import DiffSync as BaseAdapter
+try:
+    from diffsync import Adapter as DiffSync  # type: ignore[attr-defined]
+except ImportError:
+    from diffsync import DiffSync  # type: ignore[no-redef]
 
 if TYPE_CHECKING:
     from pynetbox.core.response import Record as NetboxRecord
@@ -39,7 +36,7 @@ def get_value(obj, name: str):
     return get_value(obj=sub_obj, name=remaining_part)
 
 
-class NetboxAdapter(DiffSyncMixin, BaseAdapter):
+class NetboxAdapter(DiffSyncMixin, DiffSync):
     type = "Netbox"
 
     def __init__(self, *args, target: str, adapter: SyncAdapter, config: SyncConfig, **kwargs):

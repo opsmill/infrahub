@@ -23,12 +23,12 @@ from .sync_models import (
 class NautobotSync(NautobotAdapter):
     CoreStandardGroup = CoreStandardGroup
     BuiltinTag = BuiltinTag
-    InfraAutonomousSystem = InfraAutonomousSystem
-    InfraCircuit = InfraCircuit
-    InfraDevice = InfraDevice
-    InfraIPAddress = InfraIPAddress
     InfraPlatform = InfraPlatform
-    InfraPrefix = InfraPrefix
-    InfraRouteTarget = InfraRouteTarget
+    InfraDevice = InfraDevice
+    InfraCircuit = InfraCircuit
+    InfraAutonomousSystem = InfraAutonomousSystem
+    InfraIPAddress = InfraIPAddress
     InfraVLAN = InfraVLAN
+    InfraPrefix = InfraPrefix
     InfraVRF = InfraVRF
+    InfraRouteTarget = InfraRouteTarget
