@@ -28,7 +28,7 @@ from .mutations import (
     TaskCreate,
     TaskUpdate,
 )
-from .queries import BranchQueryList, DiffSummary, DiffSummaryOld, InfrahubInfo, Relationship, Task
+from .queries import BranchQueryList, DiffSummary, DiffSummaryOld, InfrahubInfo, InfrahubStatus, Relationship, Task
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo  # pylint: disable=no-name-in-module
@@ -71,6 +71,7 @@ class InfrahubBaseQuery(ObjectType):
     Relationship = Relationship
 
     InfrahubInfo = InfrahubInfo
+    InfrahubStatus = InfrahubStatus
 
     InfrahubTask = Task
 
