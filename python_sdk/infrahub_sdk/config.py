@@ -136,15 +136,15 @@ class Config(ConfigBase):
     )
     requester: Optional[AsyncRequester] = None
     sync_requester: Optional[SyncRequester] = None
-    log_: Optional[Any] = pydantic.Field(default=None, alias="log")
+    log: Optional[Any] = None
 
     @property
-    def log(self) -> InfrahubLoggers:
+    def logger(self) -> InfrahubLoggers:
         # We expect the log to adhere to the definitions defined by the InfrahubLoggers object
         # When using structlog the logger doesn't expose the expected methods by looking at the
         # object to pydantic rejects them. This is a workaround to allow structlog to be used
         # as a logger
-        return self.log_  # type: ignore
+        return self.log  # type: ignore
 
     @pydantic.root_validator(pre=True)
     @classmethod
