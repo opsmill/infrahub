@@ -39,7 +39,7 @@ class NodeUniquenessQueryRequest(BaseModel):
     unique_attribute_paths: Set[QueryAttributePath] = Field(default_factory=set)
     relationship_attribute_paths: Set[QueryRelationshipAttributePath] = Field(default_factory=set)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         if self.unique_attribute_paths or self.relationship_attribute_paths:
             return True
         return False
