@@ -64,3 +64,11 @@ class NodeSchema(GeneratedNodeSchema):
         if self.namespace not in ["Schema", "Internal"] and InfrahubKind.GENERICGROUP not in self.inherit_from:
             labels.append("CoreNode")
         return labels
+
+    def is_ip_prefix(self) -> bool:
+        """Return whether a node is a derivative of built-in IP prefixes."""
+        return InfrahubKind.IPPREFIX in self.inherit_from
+
+    def is_ip_address(self) -> bool:
+        """Return whether a node is a derivative of built-in IP addreses."""
+        return InfrahubKind.IPADDRESS in self.inherit_from
