@@ -25,7 +25,7 @@ classifiers = [
 python = ">=3.8, < 3.13"
 infrahub-sdk = {version = "^0,>=0.9.1", extras = ["all"]}
 structlog = "^22.3.0"
-diffsync = "^1.10.0"
+diffsync = "^2.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"

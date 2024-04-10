@@ -449,7 +449,7 @@ schema_mapping:
       - name: name
         mapping: name
       - name: description
-        maping: description
+        mapping: description
       - name: interface_type
         mapping: type.label
       - name: l2_mode
@@ -484,7 +484,7 @@ schema_mapping:
       - name: name
         mapping: name
       - name: description
-        maping: description
+        mapping: description
       - name: port_type
         mapping: type.label
       - name: rear_port
@@ -503,7 +503,7 @@ schema_mapping:
       - name: name
         mapping: name
       - name: description
-        maping: description
+        mapping: description
       - name: port_type
         mapping: type.label
       - name: device

@@ -251,10 +251,10 @@ schema_mapping:
         static: "Provider"
   - name: InfraProviderNetwork
     mapping: circuits.provider-networks
+    identifiers: ["name"]
     fields:
       - name: name
         mapping: name
-        identifier: true
       - name: vendor_id
         mapping: service_id
       - name: provider
@@ -272,10 +272,10 @@ schema_mapping:
         reference: CoreOrganization
   - name: TemplateCircuitType
     mapping: circuits.circuit-types
+    identifiers: ["name"]
     fields:
       - name: name
         mapping: name
-        identifier: true
       - name: description
         mapping: description
       - name: tags
@@ -283,10 +283,10 @@ schema_mapping:
         reference: BuiltinTag
   - name: InfraCircuit
     mapping: circuits.circuits
+    identifiers: ["name"]
     fields:
       - name: circuit_id
         mapping: cid
-        identifier: true
       - name: vendor_id
         mapping: cid
       - name: provider
