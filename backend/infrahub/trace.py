@@ -1,3 +1,5 @@
+import os
+
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
     OTLPSpanExporter as GRPCSpanExporter,
@@ -10,9 +12,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
 from opentelemetry.trace import StatusCode
 
-
-def get_tracer(name: str = "infrahub") -> trace.Tracer:
-    return trace.get_tracer(name)
+from infrahub.worker import WORKER_IDENTITY
 
 
 def get_current_span_with_context() -> trace.Span:
@@ -55,7 +55,7 @@ def add_span_exception(exception: Exception) -> None:
 
 
 def create_tracer_provider(
-    version: str, exporter_type: str, exporter_endpoint: str = None, exporter_protocol: str = None
+    service: str, version: str, exporter_type: str, exporter_endpoint: str = None, exporter_protocol: str = None
 ) -> TracerProvider:
     # Create a BatchSpanProcessor exporter based on the type
     if exporter_type == "console":
@@ -70,8 +70,19 @@ def create_tracer_provider(
     else:
         raise ValueError("Exporter type unsupported by Infrahub")
 
+    extra_attributes = {}
+    if os.getenv("OTEL_RESOURCE_ATTRIBUTES"):
+        extra_attributes = dict(attr.split("=") for attr in os.getenv("OTEL_RESOURCE_ATTRIBUTES").split(","))
+
     # Resource can be required for some backends, e.g. Jaeger
-    resource = Resource(attributes={"service.name": "infrahub", "service.version": version})
+    resource = Resource(
+        attributes={
+            "service.name": service,
+            "service.version": version,
+            "worker.id": WORKER_IDENTITY,
+            **extra_attributes,
+        }
+    )
     span_processor = BatchSpanProcessor(exporter)
     tracer_provider = TracerProvider(resource=resource)
     tracer_provider.add_span_processor(span_processor)
@@ -80,16 +91,16 @@ def create_tracer_provider(
 
 
 def configure_trace(
-    version: str, exporter_type: str, exporter_endpoint: str = None, exporter_protocol: str = None
+    service: str, version: str, exporter_type: str, exporter_endpoint: str | None = None, exporter_protocol: str = None
 ) -> None:
     # Create a trace provider with the exporter
     tracer_provider = create_tracer_provider(
+        service=service,
         version=version,
         exporter_type=exporter_type,
         exporter_endpoint=exporter_endpoint,
         exporter_protocol=exporter_protocol,
     )
-    tracer_provider.get_tracer(__name__)
 
     # Register the trace provider
     trace.set_tracer_provider(tracer_provider)

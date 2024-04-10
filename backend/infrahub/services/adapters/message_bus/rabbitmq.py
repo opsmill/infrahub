@@ -4,8 +4,11 @@ import asyncio
 from typing import TYPE_CHECKING, Awaitable, Callable, List, MutableMapping, Optional, Type, TypeVar
 
 import aio_pika
+import opentelemetry.instrumentation.aio_pika.span_builder
 import ujson
 from infrahub_sdk import UUIDT
+from opentelemetry.instrumentation.aio_pika import AioPikaInstrumentor
+from opentelemetry.semconv.trace import SpanAttributes
 
 from infrahub import config
 from infrahub.components import ComponentType
@@ -24,12 +27,36 @@ if TYPE_CHECKING:
         AbstractQueue,
         AbstractRobustConnection,
     )
+    from opentelemetry.instrumentation.aio_pika.span_builder import SpanBuilder
 
     from infrahub.config import BrokerSettings
     from infrahub.services import InfrahubServices
 
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
 ResponseClass = TypeVar("ResponseClass")
+
+
+AioPikaInstrumentor().instrument()
+
+
+# TODO: remove this once https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1835 is resolved
+def patch_spanbuilder_set_channel() -> None:
+    """
+    The default SpanBuilder.set_channel does not work with aio_pika 9.1 and the refactored connection
+    attribute
+    """
+
+    def set_channel(self: SpanBuilder, channel: AbstractChannel) -> None:
+        if hasattr(channel, "_connection"):
+            url = channel._connection.url
+            self._attributes.update(
+                {
+                    SpanAttributes.NET_PEER_NAME: url.host,
+                    SpanAttributes.NET_PEER_PORT: url.port,
+                }
+            )
+
+    opentelemetry.instrumentation.aio_pika.span_builder.SpanBuilder.set_channel = set_channel  # type: ignore
 
 
 async def _add_request_id(message: InfrahubMessage) -> None:
@@ -54,6 +81,8 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.futures: MutableMapping[str, asyncio.Future] = {}
 
     async def initialize(self, service: InfrahubServices) -> None:
+        patch_spanbuilder_set_channel()
+
         self.service = service
         self.connection = await aio_pika.connect_robust(
             host=self.settings.address,

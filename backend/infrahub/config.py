@@ -279,35 +279,6 @@ class TraceSettings(BaseSettings):
         default=TraceTransportProtocol.GRPC, description="Protocol to be used for exporting traces"
     )
     exporter_endpoint: Optional[str] = Field(default=None, description="OTLP endpoint for exporting traces")
-    exporter_port: Optional[int] = Field(
-        default=None, ge=1, le=65535, description="Specified if running on a non default port (4317)"
-    )
-
-    @property
-    def service_port(self) -> int:
-        if self.exporter_protocol == TraceTransportProtocol.GRPC:
-            default_port = 4317
-        elif self.exporter_protocol == TraceTransportProtocol.HTTP_PROTOBUF:
-            default_port = 4318
-        else:
-            default_port = 4317
-
-        return self.exporter_port or default_port
-
-    @property
-    def trace_endpoint(self) -> Optional[str]:
-        if not self.exporter_endpoint:
-            return None
-        if self.insecure:
-            scheme = "http://"
-        else:
-            scheme = "https://"
-        endpoint = str(self.exporter_endpoint) + ":" + str(self.service_port)
-
-        if self.exporter_protocol == TraceTransportProtocol.HTTP_PROTOBUF:
-            endpoint += "/v1/traces"
-
-        return scheme + endpoint
 
 
 @dataclass
