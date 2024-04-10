@@ -308,10 +308,8 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
     site_name = site.name.value
 
-    peer_networks = {
-        0: next(P2P_NETWORK_POOL).hosts(),
-        1: next(P2P_NETWORK_POOL).hosts(),
-    }
+    peer_networks = [next(P2P_NETWORK_POOL), next(P2P_NETWORK_POOL)]
+    peer_network_hosts = {0: peer_networks[0].hosts(), 1: peer_networks[1].hosts()}
 
     # --------------------------------------------------
     # Create the site specific VLAN
@@ -330,6 +328,13 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         )
         await obj.save()
         store.set(key=vlan_name, node=obj)
+
+    # --------------------------------------------------
+    # Create the site specific IP prefixes
+    # --------------------------------------------------
+    for net in peer_networks:
+        prefix = await client.create(branch=branch, kind="IpamIPPrefix", prefix=str(net))
+        await prefix.save()
 
     for idx, device in enumerate(DEVICES):
         device_name = f"{site_name}-{device[0]}"
@@ -434,7 +439,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
             address = None
             if intf_role == "peer":
-                address = f"{str(next(peer_networks[intf_idx]))}/31"
+                address = f"{str(next(peer_network_hosts[intf_idx]))}/31"
 
             if intf_role in ["upstream", "peering"] and "edge" in device_role:
                 subnet = next(NETWORKS_POOL_EXTERNAL).hosts()
