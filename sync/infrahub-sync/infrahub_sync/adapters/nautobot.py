@@ -21,7 +21,6 @@ except ImportError:
     from diffsync import DiffSync  # type: ignore[no-redef]
 
 
-
 if TYPE_CHECKING:
     from pynautobot.core.response import Record as NautobotRecord
 
