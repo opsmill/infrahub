@@ -137,6 +137,13 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
+          label: 'Topics',
+          items: [
+            'python-sdk/topics/tracking'
+          ],
+        },
+        {
+          type: 'category',
           label: 'Reference',
           items: [
             'python-sdk/reference/config'

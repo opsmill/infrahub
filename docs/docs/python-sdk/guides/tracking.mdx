@@ -1,76 +1,87 @@
 ---
-title: Using the Client Tracking Mode
+title: Using the client tracking mode
 ---
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-# Using the client tracking Mode
+# Using the client tracking mode
 
-The Python SDK provides a feature known as *Tracking Mode*. This mode allows for the aggregation and tracking of operations performed during a session, enabling batch updates and more efficient data management.
+The Python SDK provides a feature known as *Tracking Mode*. This mode allows for the aggregation and tracking of operations performed during a session, enhancing efficiency and data management.
 
 ## Overview
 
-Tracking mode is designed for scenarios where multiple operations or mutations are performed in sequence, and you want to consolidate or track these operations for efficiency or auditing purposes. It can be particularly useful in complex workflows or batch processing tasks.
+Tracking mode is designed for scenarios where multiple operations or mutations are performed in sequence, and you want to consolidate or track these operations for efficiency or auditing purposes. It is ideal for scenarios requiring precise control and repeatability, such as idempotent scripting.
+Under the hood, tracking mode leverages a `CoreStandardGroup` object to aggregate and track these operations.
 
-## Enabling tracking mode
+For an in-depth exploration of tracking's practical applications and how to leverage it for idempotent scripting, visit the [tracking topic](/python-sdk/topics/tracking).
 
-To enable tracking mode, you'll need to call the `start_tracking` method on your `InfrahubClient` instance. Here's a quick example:
+## Automatic tracking
+
+The Infrahub Python SDK offers a streamlined process for managing the tracking session lifecycle using the context manager. This method is available for both asynchronous and synchronous clients, ensuring all operations within the context are efficiently tracked without manual intervention.
+
+### Utilizing the context manager
+
+With the `start_tracking` method, you initiate tracking mode as you enter the context and automatically conclude the tracking session as you exit. This guarantees that all operations performed within the context are tracked under the specified session, simplifying tracking management.
 
 <Tabs groupId="async-sync">
   <TabItem value="Async">
 
   ```python
-  await client.start_tracking(identifier="my_tracking_session")
+  # Auto-manage tracking session with async context manager
+  async with client.start_tracking(identifier="my_tracking_session", params=params, delete_unused_nodes=True) as session:
+      # Tracked operations
+      node = await session.create(kind="MyNodeKind", data={"name": "Example"})
+      await node.save()
+
+      # Optionally, add related Nodes and Groups to the context
+      await session.group_context.add_related_nodes([another_node.id])
+      await session.group_context.add_related_groups([group.id])
   ```
 
   </TabItem>
   <TabItem value="Sync">
 
   ```python
-  client.start_tracking(identifier="my_tracking_session")
+  # Auto-manage tracking session with sync context manager
+  with client.start_tracking(identifier="my_tracking_session", params=params, delete_unused_nodes=True) as session:
+      # Tracked operations
+      node = session.create(kind="MyNodeKind", data={"name": "Example"})
+      node.save()
+
+      # Optionally, add related Nodes and Groups to the context
+      session.group_context.add_related_nodes([another_node.id])
+      session.group_context.add_related_groups([group.id])
   ```
 
   </TabItem>
 </Tabs>
 
-### Parameters
+:::info
 
-- `identifier`: A unique identifier for the tracking session. This is used to correlate logs and operations within this session.
-- Other parameters allow for further customization of the tracking behavior, including context parameters and node deletion policies.
+The context manager feature elegantly handles the start and conclusion of tracking sessions, making your code cleaner and less prone to errors related to manual tracking management.
 
-## Setting up
+:::
 
-First, ensure you have the Python SDK installed and configured to communicate with your Infrahub instance. Then, let's start by setting up our client and enabling tracking mode.
+## Manual tracking
+
+Manual tracking involves explicitly starting, managing, and concluding sessions, offering fine-grained control over the tracking process.
+
+### Setting up
+
+First, ensure the Python SDK is installed and configured to communicate with your Infrahub instance. Then, let's start by setting up our client and enabling tracking mode.
+
+Once tracking mode is enabled, it's important to note that only the objects that are being saved (created or updated) will be automatically tracked under the specified session identifier. Objects that are merely queried and not modified or saved will not be added to the tracking group.
+This behavior ensures that the tracking group specifically reflects changes made during the session, providing a clear audit trail of modifications.
 
 <Tabs groupId="async-sync">
   <TabItem value="Async">
 
   ```python
   from infrahub_sdk.client import InfrahubClient
+
   client = await InfrahubClient.init(address="http://localhost:8000")
+
   await client.start_tracking(identifier="my_tracking_session")
-  ```
-
-  </TabItem>
-  <TabItem value="Sync">
-
-  ```python
-  from infrahub_sdk.client_sync import InfrahubClientSync
-  client = InfrahubClientSync.init(address="http://localhost:8000")
-  client.start_tracking(identifier="my_tracking_session")
-  ```
-
-  </TabItem>
-</Tabs>
-
-## Tracking operations
-
-Once tracking mode is enabled, all subsequent operations performed with the SDK client will be tracked under the specified session identifier. This includes creating, updating, and deleting nodes, as well as querying and other actions.
-
-<Tabs groupId="async-sync">
-  <TabItem value="Async">
-
-  ```python
   node = await client.create(kind="MyNodeKind", data={"name": "Example"})
   await node.save()
   ```
@@ -79,6 +90,11 @@ Once tracking mode is enabled, all subsequent operations performed with the SDK 
   <TabItem value="Sync">
 
   ```python
+  from infrahub_sdk.client_sync import InfrahubClientSync
+
+  client = InfrahubClientSync.init(address="http://localhost:8000")
+
+  client.start_tracking(identifier="my_tracking_session")
   node = client.create(kind="MyNodeKind", data={"name": "Example"})
   node.save()
   ```
@@ -86,20 +102,29 @@ Once tracking mode is enabled, all subsequent operations performed with the SDK 
   </TabItem>
 </Tabs>
 
-### Advanced group tracking with parameters
+#### Tracking parameters
 
-In addition to the basic tracking mode functionalities, the Infrahub Python SDK allows for more granular control over the tracking sessions through the use of parameters. These parameters can be particularly useful for categorizing, filtering, or adding metadata to the groups created or updated during the tracking session.
+When enabling tracking mode with the `start_tracking` method, you can customize the tracking session with the following parameters:
 
-#### Using parameters for enhanced tracking
+| Parameter              | Description                                                                                                                 |
+|------------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| **identifier**         | Unique string to identify the session, used for correlating operations and logs. Defaults to "python-sdk" if not specified. |
+| **params**             | Optional dictionary for extra context, enabling fine-grained control over tracking.                                         |
+| **delete_unused_nodes**| Boolean indicating if nodes not referenced should be automatically deleted, helping maintain a clean state.                 |
+| **group_type**         | Type of group object for tracking, default is `CoreStandardGroup`, customizable for specific grouping logic.                |
 
-When starting a tracking session with `start_tracking`, you can pass a dictionary of parameters to further define the context and characteristics of the group being tracked. This allows for dynamic grouping based on runtime data, user inputs, or other operational metrics.
+These parameters provide flexibility, enabling detailed auditing, efficient data management, and support for idempotent operations.
+
+#### Advanced tracking with parameters
+
+In addition to the basic tracking mode functionalities, the Infrahub Python SDK allows for more granular control over the tracking sessions through parameters. These parameters can be beneficial for categorizing, filtering, or adding metadata to the groups created or updated during the tracking session.
+When starting a tracking session with `start_tracking,` you can pass a dictionary of parameters to define further the context and characteristics of the group being tracked. This allows for dynamic grouping based on runtime data, user inputs, or other operational metrics.
 
 <Tabs groupId="async-sync">
   <TabItem value="Async">
 
   ```python
   params = {
-      "week_number": "42",
       "data_source": "external",
       "analysis_type": "ipam_data"
   }
@@ -116,7 +141,6 @@ When starting a tracking session with `start_tracking`, you can pass a dictionar
 
   ```python
   params = {
-      "week_number": "42",
       "data_source": "external",
       "analysis_type": "ipam_data"
   }
@@ -131,25 +155,94 @@ When starting a tracking session with `start_tracking`, you can pass a dictionar
   </TabItem>
 </Tabs>
 
-## Ending a tracking session and updating tracking information
+### Ending a tracking session and updating tracking information
 
-The Infrahub Python SDK simplifies the process of ending a tracking session and updating tracking information by utilizing the async context manager. This feature not only manages the lifecycle of the tracking session but also automatically handles the update of tracking information upon exiting the session context.
+This step involves creating or updating (using upsert) the `CoreStandardGroup` used to store all the Nodes and Groups used during execution.
 
-### Using the async context manager
+<Tabs groupId="async-sync">
+  <TabItem value="Async">
 
-When using the async context manager, you initiate the tracking mode as you enter the context and automatically end the tracking session as you exit. This ensures that all operations within the context are efficiently tracked without the need for explicit calls to start or end the tracking.
+  ```python
+  from infrahub_sdk.client import InfrahubClient
+
+  client = await InfrahubClient.init(address="http://localhost:8000")
+
+  await client.start_tracking(identifier="my_tracking_session")
+  node = await client.create(kind="MyNodeKind", data={"name": "Example"})
+  await node.save()
+
+  # Update tracking information for async client
+  await client.group_context.update_group()
+  ```
+
+  </TabItem>
+  <TabItem value="Sync">
+
+  ```python
+  from infrahub_sdk.client_sync import InfrahubClientSync
+
+  client = InfrahubClientSync.init(address="http://localhost:8000")
+
+  client.start_tracking(identifier="my_tracking_session")
+  node = client.create(kind="MyNodeKind", data={"name": "Example"})
+  node.save()
+
+  # Update tracking information for sync client
+  client.group_context.update_group()
+  ```
+
+  </TabItem>
+</Tabs>
+
+## Retrieving and manipulating groups
+
+After setting up a tracking session with specific parameters, you may need to retrieve the group associated with this session for further manipulation. This involves fetching the group, accessing its members, and executing specific logic based on the member types.
+
+Here's how to retrieve a group based on an identifier and parameters and interact with its members:
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async">
 
 ```python
-# Automatically manage tracking session with async context manager
-async with client as session:
-    # Operations performed here are automatically tracked
-    node = await client.create(kind="MyNodeKind", data={"name": "Example"})
-    await node.save()
+# Set the context properties to match the tracking session
+await client.set_context_properties(identifier="my_tracking_session", params=params)
 
-    # Optionally update other tracking information if needed
-    session.group_context.add_related_nodes([node.id])
+# Retrieve the group associated with the specified identifier and parameters
+group = await client.group_context.get_group(store_peers=True)
+
+# Check if the group exists
+if group:
+    # Access previous members of the group, if any
+    if client.group_context.previous_members:
+        for member in client.group_context.previous_members:
+            # Fetch the object from the store based on the member's type and ID
+            obj = client.store.get(kind=member._typename, key=member.id)
+
+            # Perform operations based on the member's type
+            pass
 ```
 
-:::info
-The async context manager feature elegantly manages the tracking mode, making your code cleaner and less prone to errors related to manual tracking management. This method is particularly useful in scripts or applications where multiple operations are executed in a sequence, and you wish to consolidate them under a single tracking session.
-:::
+  </TabItem>
+  <TabItem value="Sync">
+
+```python
+# Set the context properties to match the tracking session
+client.set_context_properties(identifier="my_tracking_session", params=params)
+
+# Retrieve the group associated with the specified identifier and parameters
+group = client.group_context.get_group(store_peers=True)
+
+# Check if the group exists
+if group:
+    # Access previous members of the group, if any
+    if client.group_context.previous_members:
+        for member in client.group_context.previous_members:
+            # Fetch the object from the store based on the member's type and ID
+            obj = client.store.get(kind=member._typename, key=member.id)
+
+            # Perform operations based on the member's type
+            pass
+```
+
+  </TabItem>
+</Tabs>
