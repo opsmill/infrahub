@@ -1,6 +1,6 @@
 ---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-infrahub-server
   labels:
@@ -18,6 +18,9 @@ spec:
         service: infrahub-server
       {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
     spec:
+      {{- with .Values.infrahubServer.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - args: {{- toYaml .Values.infrahubServer.infrahubServer.args | nindent 12 }}
           {{- with .Values.infrahubServer.infrahubServer.env }}
@@ -57,27 +60,17 @@ spec:
               mountPath: /config
       restartPolicy: Always
       volumes:
-        {{- if not .Values.infrahubServer.persistence.enabled }}
+        {{- if and .Values.infrahubServer.persistence.enabled }}
+        - name: infrahub-server-storage-data
+          persistentVolumeClaim:
+            claimName: {{ tpl (.Values.infrahubServer.persistence.existingClaim | default (printf "%s-%s" (include "infrahub-helm.fullname" .) "infrahub-server-storage-data")) . }}
+        {{- else }}
         - name: infrahub-server-storage-data
           emptyDir: {}
         {{- end }}
         - name: config-volume
           configMap:
             name: {{ include "infrahub-helm.fullname" . }}-infrahub-config
-  {{- if and .Values.infrahubServer.persistence.enabled }}
-  volumeClaimTemplates:
-    - metadata:
-        name: infrahub-server-storage-data
-      spec:
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: {{ .Values.infrahubServer.persistence.size | quote }}
-        {{- with .Values.infrahubServer.persistence.storageClassName }}
-        storageClassName: {{ . }}
-        {{- end }}
-  {{- end }}
 
 ---
 apiVersion: v1
@@ -93,4 +86,24 @@ spec:
     service: infrahub-server
   {{- include "infrahub-helm.selectorLabels" . | nindent 4 }}
   ports:
-	{{- .Values.infrahubServer.ports | toYaml | nindent 4 }}
+    {{- .Values.infrahubServer.ports | toYaml | nindent 4 }}
+
+{{- if and .Values.infrahubServer.persistence.enabled (not .Values.infrahubServer.persistence.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-infrahub-server-storage-data
+  labels:
+    service: infrahub-server-storage-data
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.infrahubServer.persistence.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.infrahubServer.persistence.size | quote }}
+  {{- with .Values.infrahubServer.persistence.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}
