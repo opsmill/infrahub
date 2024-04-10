@@ -178,8 +178,8 @@ async def test_schema_load_endpoint_valid_simple(
         )
         read = client.get("/api/schema", headers=admin_headers)
 
-    assert creation.json() == {}
-    assert creation.status_code == 202
+    assert creation.json()["schema_updated"]
+    assert creation.status_code == 200
     assert read.status_code == 200
     nodes = read.json()["nodes"]
     device = [node for node in nodes if node["name"] == "Device"]
@@ -231,7 +231,7 @@ async def test_schema_load_endpoint_idempotent_simple(
 
         nbr_rels = await count_relationships(db=db)
 
-        assert creation.status_code == 202
+        assert creation.status_code == 200
         assert read.status_code == 200
         nodes = read.json()["nodes"]
         device = [node for node in nodes if node["name"] == "Device"]
@@ -250,7 +250,7 @@ async def test_schema_load_endpoint_idempotent_simple(
         )
         read = client.get("/api/schema", headers=admin_headers)
 
-        assert creation.status_code == 202
+        assert creation.status_code == 200
         assert read.status_code == 200
 
         assert nbr_rels == await count_relationships(db=db)
@@ -272,7 +272,7 @@ async def test_schema_load_endpoint_valid_with_generics(
             headers=admin_headers,
             json={"schemas": [helper.schema_file("infra_w_generics_01.json")]},
         )
-        assert response1.status_code == 202
+        assert response1.status_code == 200
 
         response2 = client.get("/api/schema", headers=admin_headers)
         assert response2.status_code == 200
@@ -297,8 +297,8 @@ async def test_schema_load_endpoint_idempotent_with_generics(
             headers=admin_headers,
             json={"schemas": [helper.schema_file("infra_w_generics_01.json")]},
         )
-        assert response1.json() == {}
-        assert response1.status_code == 202
+        assert response1.json()["schema_updated"]
+        assert response1.status_code == 200
 
         response2 = client.get("/api/schema", headers=admin_headers)
         assert response2.status_code == 200
@@ -313,8 +313,8 @@ async def test_schema_load_endpoint_idempotent_with_generics(
             headers=admin_headers,
             json={"schemas": [helper.schema_file("infra_w_generics_01.json")]},
         )
-        assert response3.json() == {}
-        assert response3.status_code == 202
+        assert response3.json()["schema_updated"] is False
+        assert response3.status_code == 200
 
         response4 = client.get("/api/schema", headers=admin_headers)
         assert response4.status_code == 200
@@ -359,8 +359,8 @@ async def test_schema_load_endpoint_valid_with_extensions(
             json={"schemas": [helper.schema_file("infra_w_extensions_01.json")]},
         )
 
-    assert response.json() == {}
-    assert response.status_code == 202
+    assert response.json()["schema_updated"]
+    assert response.status_code == 200
 
     org_schema = registry.schema.get(name="CoreOrganization", branch=default_branch.name)
     assert len(org_schema.relationships) == initial_nbr_relationships + 1
