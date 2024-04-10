@@ -108,7 +108,7 @@ class BaseClient:
         self.default_timeout = self.config.timeout
         self.config.address = address or self.config.address
         self.insert_tracker = self.config.insert_tracker
-        self.log = self.config.log or logging.getLogger("infrahub_sdk")
+        self.log = self.config.logger or logging.getLogger("infrahub_sdk")
         self.address = self.config.address
         self.mode = self.config.mode
         self.pagination_size = self.config.pagination_size
