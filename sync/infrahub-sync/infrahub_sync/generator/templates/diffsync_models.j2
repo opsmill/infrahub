@@ -11,7 +11,7 @@ from infrahub_sync.adapters.{{ adapter.name }} import {{ adapter.name.title() }}
 {%-   if node | get_identifiers(config) and config | has_node(node.kind) %}
 
 class {{ nodekind }}({{ adapter.name.title() }}Model):
-    _modelname: str = "{{ node.kind }}"
+    _modelname = "{{ node.kind }}"
     _identifiers: List[str] = {{ node | get_identifiers(config) | list_to_set }}
     _attributes: List[str] = {{ node | get_attributes(config) | list_to_set }}
 {%- if node | has_children(config) %}
