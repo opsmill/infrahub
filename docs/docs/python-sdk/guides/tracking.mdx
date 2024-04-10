@@ -13,7 +13,7 @@ The Python SDK provides a feature known as *Tracking Mode*. This mode allows for
 Tracking mode is designed for scenarios where multiple operations or mutations are performed in sequence, and you want to consolidate or track these operations for efficiency or auditing purposes. It is ideal for scenarios requiring precise control and repeatability, such as idempotent scripting.
 Under the hood, tracking mode leverages a `CoreStandardGroup` object to aggregate and track these operations.
 
-For an in-depth exploration of tracking's practical applications and how to leverage it for idempotent scripting, visit the [tracking topic](/python-sdk/topics/tracking).
+For a detailed exploration of tracking mode applications and how to use it for idempotent scripting, visit the [tracking topic](/python-sdk/topics/tracking).
 
 ## Automatic tracking
 
@@ -105,14 +105,14 @@ This behavior ensures that the tracking group specifically reflects changes made
 #### Tracking parameters
 
 When enabling tracking mode with the `start_tracking` method, you can customize the tracking session with the following parameters:
-
+<!-- vale off -->
 | Parameter              | Description                                                                                                                 |
 |------------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | **identifier**         | Unique string to identify the session, used for correlating operations and logs. Defaults to "python-sdk" if not specified. |
 | **params**             | Optional dictionary for extra context, enabling fine-grained control over tracking.                                         |
 | **delete_unused_nodes**| Boolean indicating if nodes not referenced should be automatically deleted, helping maintain a clean state.                 |
 | **group_type**         | Type of group object for tracking, default is `CoreStandardGroup`, customizable for specific grouping logic.                |
-
+<!-- vale on -->
 These parameters provide flexibility, enabling detailed auditing, efficient data management, and support for idempotent operations.
 
 #### Advanced tracking with parameters

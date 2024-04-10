@@ -8,6 +8,7 @@ check_definitions
 class_name
 codespaces
 config
+Config
 content_type
 cypher
 Dagster
