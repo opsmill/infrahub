@@ -4,9 +4,10 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, Any, Dict
 
+import pkg_resources
 import pynautobot
 
-from diffsync import DiffSync, DiffSyncModel
+from diffsync import DiffSyncModel
 from infrahub_sync import (
     DiffSyncMixin,
     DiffSyncModelMixin,
@@ -14,6 +15,15 @@ from infrahub_sync import (
     SyncAdapter,
     SyncConfig,
 )
+
+diffsync_version = pkg_resources.get_distribution("diffsync").version
+
+if pkg_resources.parse_version(diffsync_version) >= pkg_resources.parse_version("2.0"):
+    from diffsync import Adapter as BaseAdapter
+else:
+    from diffsync import DiffSync as BaseAdapter
+
+
 
 if TYPE_CHECKING:
     from pynautobot.core.response import Record as NautobotRecord
@@ -31,7 +41,7 @@ def get_value(obj, name: str):
     return get_value(obj=sub_obj, name=remaining_part)
 
 
-class NautobotAdapter(DiffSyncMixin, DiffSync):
+class NautobotAdapter(DiffSyncMixin, BaseAdapter):
     type = "Nautobot"
 
     def __init__(self, *args, target: str, adapter: SyncAdapter, config: SyncConfig, **kwargs):
