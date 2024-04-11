@@ -126,19 +126,27 @@ const sidebars: SidebarsConfig = {
           type: 'category',
           label: 'Guides',
           items: [
-	    'python-sdk/guides/installation',
-	    'python-sdk/guides/client',
+            'python-sdk/guides/installation',
+            'python-sdk/guides/client',
             'python-sdk/guides/query_data',
-	    'python-sdk/guides/create_update_delete',
-	    'python-sdk/guides/branches',
-	    'python-sdk/guides/store'
+            'python-sdk/guides/create_update_delete',
+            'python-sdk/guides/branches',
+            'python-sdk/guides/store',
+            'python-sdk/guides/tracking'
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Topics',
+          items: [
+            'python-sdk/topics/tracking'
           ],
         },
         {
           type: 'category',
           label: 'Reference',
           items: [
-	    'python-sdk/reference/config'
+            'python-sdk/reference/config'
           ],
         },
       ],
