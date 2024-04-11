@@ -129,8 +129,8 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
     async def test_step_01_attr_regex_add_rebase_failure(
         self, client: InfrahubClient, db: InfrahubDatabase, initial_dataset, schema_01_attr_regex, branch_2
     ):
-        success, _ = await client.schema.load(schemas=[schema_01_attr_regex])
-        assert success
+        response = await client.schema.load(schemas=[schema_01_attr_regex])
+        assert not response.errors
         little_john = await Node.init(schema=PERSON_KIND, db=db, branch=branch_2)
         await little_john.new(db=db, name="little john", height=115, description="a smaller john")
         await little_john.save(db=db)
@@ -144,8 +144,8 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
     async def test_step_02_node_unique_rebase_failure(
         self, client: InfrahubClient, db: InfrahubDatabase, initial_dataset, schema_02_node_unique, branch_2
     ):
-        success, _ = await client.schema.load(schemas=[schema_02_node_unique])
-        assert success
+        response = await client.schema.load(schemas=[schema_02_node_unique])
+        assert not response.errors
 
         honda = await client.get(id=initial_dataset["honda"], kind=MANUFACTURER_KIND_01, branch=branch_2.name)
         jane = await client.get(id=initial_dataset["jane"], kind=PERSON_KIND, branch=branch_2.name)

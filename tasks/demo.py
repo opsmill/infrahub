@@ -175,10 +175,7 @@ def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE):
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
-        command = f"{base_cmd} run infrahub-git infrahubctl schema load models/infrastructure_base.yml"
-        execute_command(context=context, command=command)
-
-        command = f"{base_cmd} restart infrahub-server"
+        command = f"{base_cmd} run infrahub-git infrahubctl schema load models/infrastructure_base.yml --wait 30"
         execute_command(context=context, command=command)
 
 

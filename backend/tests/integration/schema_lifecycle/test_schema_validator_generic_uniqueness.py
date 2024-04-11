@@ -278,8 +278,8 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         schema_02_generic_uniqueness_failure,
         branch_2,
     ):
-        success, _ = await client.schema.load(schemas=[schema_02_generic_uniqueness_failure], branch=branch_2.name)
-        assert success
+        response = await client.schema.load(schemas=[schema_02_generic_uniqueness_failure], branch=branch_2.name)
+        assert not response.errors
 
         boomer_main = await NodeManager.get_one_by_id_or_default_filter(
             db=db, schema_name=CYLON_KIND, id=initial_dataset["boomer"]
@@ -350,10 +350,10 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         schema_04_generic_and_node_uniqueness_failure,
         branch_2,
     ):
-        success, _ = await client.schema.load(
+        response = await client.schema.load(
             schemas=[schema_04_generic_and_node_uniqueness_failure], branch=branch_2.name
         )
-        assert success
+        assert not response.errors
 
         boomer_main = await NodeManager.get_one_by_id_or_default_filter(
             db=db, schema_name=CYLON_KIND, id=initial_dataset["boomer"]

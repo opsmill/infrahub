@@ -128,3 +128,7 @@ class FeatureNotSupportedError(Error):
 
 class UninitializedError(Error):
     """Raised when an object requires an initialization step before use"""
+
+
+class InvalidResponseError(Error):
+    """Raised when an object requires an initialization step before use"""
