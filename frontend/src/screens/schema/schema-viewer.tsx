@@ -191,6 +191,10 @@ const Properties = ({ schema }: { schema: IModelSchema }) => {
         <PropertyRow title="Order by" value={schema.order_by} />
         <PropertyRow title="Uniqueness constraints" value={schema.uniqueness_constraints} />
       </div>
+
+      <div>
+        <PropertyRow title="Documentation" value={schema.documentation} />
+      </div>
     </div>
   );
 };
