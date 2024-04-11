@@ -10,6 +10,8 @@ import { genericsState, IModelSchema, schemaState } from "../../state/atoms/sche
 import { ArrayParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../config/qsp";
 import { CSSProperties } from "react";
+import { Button } from "../../components/ui/button";
+import { SchemaHelpMenu } from "./schema-help-menu";
 
 export const SchemaViewerStack = ({ className = "" }: { className: string }) => {
   const [selectedKind, setKinds] = useQueryParam(QSP.KIND, ArrayParam);
@@ -74,7 +76,13 @@ export const SchemaViewer = ({
           <span className="text-xs">{schema.id}</span>
         </div>
 
-        <Icon icon="mdi:close" className="text-xl cursor-pointer text-gray-600" onClick={onClose} />
+        <div className="flex items-center gap-2 text-gray-600">
+          <SchemaHelpMenu schema={schema} />
+
+          <Button size="icon" variant="ghost">
+            <Icon icon="mdi:close" className="text-xl" onClick={onClose} />
+          </Button>
+        </div>
       </div>
 
       <SchemaViewerTitle schema={schema} />
