@@ -8,7 +8,7 @@ from typing import Dict
 import pytest
 import ujson
 from git import Repo
-from infrahub_sdk import UUIDT, InfrahubClient, InfrahubNode
+from infrahub_sdk import UUIDT, Config, InfrahubClient, InfrahubNode
 from infrahub_sdk import SchemaRoot as ClientSchemaRoot
 from infrahub_sdk.branch import BranchData
 from pytest_httpx import HTTPXMock
@@ -22,7 +22,7 @@ from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
 
 @pytest.fixture
 async def client() -> InfrahubClient:
-    return await InfrahubClient.init(address="http://mock", insert_tracker=True)
+    return await InfrahubClient.init(config=Config(address="http://mock", insert_tracker=True))
 
 
 @pytest.fixture

@@ -21,8 +21,8 @@ from infrahub.services import InfrahubServices
 
 @pytest.fixture
 def service_all(db: InfrahubDatabase, helper):
-    config = Config(address="http://mock")
-    client = InfrahubClient(config=config, insert_tracker=True)
+    config = Config(address="http://mock", insert_tracker=True)
+    client = InfrahubClient(config=config)
     bus_simulator = helper.get_message_bus_simulator()
     service = InfrahubServices(message_bus=bus_simulator, client=client, database=db)
     bus_simulator.service = service
