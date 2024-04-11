@@ -1,4 +1,3 @@
-import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { MoreButton } from "../../../components/buttons/more-button";
@@ -9,7 +8,7 @@ import { CodeEditor } from "../../../components/editor/code-editor";
 import { Skeleton } from "../../../components/skeleton";
 import { List } from "../../../components/table/list";
 import { Tooltip } from "../../../components/utils/tooltip";
-import { getCheckDetails } from "../../../graphql/queries/diff/getCheckDetails";
+import { GET_CHECKS } from "../../../graphql/queries/diff/getCheckDetails";
 import useQuery from "../../../hooks/useQuery";
 import { schemaKindLabelState } from "../../../state/atoms/schemaKindLabel.atom";
 import { classNames } from "../../../utils/common";
@@ -94,25 +93,16 @@ const getCheckData = (check: any, refetch: Function) => {
   }
 };
 
-export const Check = (props: tCheckProps) => {
-  const { id } = props;
-
+export const Check = ({ id }: tCheckProps) => {
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
 
-  const queryString = getCheckDetails({
-    id,
-  });
-
-  const query = gql`
-    ${queryString}
-  `;
-
-  const { loading, error, data, refetch } = useQuery(query);
+  const { loading, error, data, refetch } = useQuery(GET_CHECKS, { variables: { ids: [id] } });
 
   const check = data?.CoreCheck?.edges?.[0]?.node ?? {};
 
   const {
     __typename,
+    conflicts,
     kind,
     origin,
     created_at,
@@ -193,6 +183,10 @@ export const Check = (props: tCheckProps) => {
               </Accordion>
             </div>
           )}
+
+          {conflicts?.value?.map((conflict: any, index: number) => (
+            <Conflict key={index} {...conflict} check={check} id={id} refetch={refetch} />
+          ))}
         </div>
       </div>
 

@@ -20,3 +20,9 @@ version: 0.1.8
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
 appVersion: "0.8.2"
+
+dependencies:
+  - name: nfs-server-provisioner
+    version: "1.8.0"
+    repository: "https://kubernetes-sigs.github.io/nfs-ganesha-server-and-external-provisioner/"
+    condition: nfs-server-provisioner.enabled

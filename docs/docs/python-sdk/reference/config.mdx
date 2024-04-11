@@ -78,6 +78,29 @@ The following settings can be defined in the Config class
 **Default value**: False<br />
 **Environment variable**: `INFRAHUB_SDK_DEFAULT_BRANCH_FROM_GIT`<br />
 
+## identifier
+
+**Property**: identifier<br />
+**Description**: Tracker identifier<br />
+**Type**: `string`<br />
+**Environment variable**: `INFRAHUB_SDK_IDENTIFIER`<br />
+
+## insert_tracker
+
+**Property**: insert_tracker<br />
+**Description**: Insert a tracker on queries to the server<br />
+**Type**: `boolean`<br />
+**Default value**: False<br />
+**Environment variable**: `INFRAHUB_SDK_INSERT_TRACKER`<br />
+
+## max_concurrent_execution
+
+**Property**: max_concurrent_execution<br />
+**Description**: Max concurrent execution in batch mode<br />
+**Type**: `integer`<br />
+**Default value**: 5<br />
+**Environment variable**: `INFRAHUB_SDK_MAX_CONCURRENT_EXECUTION`<br />
+
 ## mode
 
 **Property**: mode<br />
@@ -86,6 +109,30 @@ The following settings can be defined in the Config class
 **Default value**: default<br />
 **Choices**: default, tracking<br />
 **Environment variable**: `INFRAHUB_SDK_MODE`<br />
+
+## pagination_size
+
+**Property**: pagination_size<br />
+**Description**: Page size for queries to the server<br />
+**Type**: `integer`<br />
+**Default value**: 50<br />
+**Environment variable**: `INFRAHUB_SDK_PAGINATION_SIZE`<br />
+
+## retry_delay
+
+**Property**: retry_delay<br />
+**Description**: Number of seconds to wait until attempting a retry.<br />
+**Type**: `integer`<br />
+**Default value**: 5<br />
+**Environment variable**: `INFRAHUB_SDK_RETRY_DELAY`<br />
+
+## retry_on_failure
+
+**Property**: retry_on_failure<br />
+**Description**: Retry operation in case of failure<br />
+**Type**: `boolean`<br />
+**Default value**: False<br />
+**Environment variable**: `INFRAHUB_SDK_RETRY_ON_FAILURE`<br />
 
 ## timeout
 
@@ -117,6 +164,14 @@ The following settings can be defined in the Config class
 **Description**: Proxy mounts configuration<br />
 **Type**: `object`<br />
 **Environment variable**: `INFRAHUB_SDK_PROXY_MOUNTS`<br />
+
+## update_group_context
+
+**Property**: update_group_context<br />
+**Description**: Update GraphQL query groups<br />
+**Type**: `boolean`<br />
+**Default value**: False<br />
+**Environment variable**: `INFRAHUB_SDK_UPDATE_GROUP_CONTEXT`<br />
 
 ## recorder
 

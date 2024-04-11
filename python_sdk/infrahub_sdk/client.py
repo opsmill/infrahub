@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import copy
 import logging
-from logging import Logger
 from time import sleep
 from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
 
@@ -93,22 +92,9 @@ class BaseClient:
     def __init__(
         self,
         address: str = "",
-        retry_on_failure: bool = False,
-        retry_delay: int = 5,
-        log: Optional[Logger] = None,
-        insert_tracker: bool = False,
-        update_group_context: bool = False,
-        pagination_size: int = 50,
-        max_concurrent_execution: int = 5,
         config: Optional[Union[Config, Dict[str, Any]]] = None,
-        identifier: Optional[str] = None,
     ):
         self.client = None
-        self.retry_on_failure = retry_on_failure
-        self.retry_delay = retry_delay
-        self.log = log or logging.getLogger("infrahub_sdk")
-        self.insert_tracker = insert_tracker
-        self.pagination_size = pagination_size
         self.headers = {"content-type": "application/json"}
         self.access_token: str = ""
         self.refresh_token: str = ""
@@ -121,16 +107,21 @@ class BaseClient:
         self.default_branch = self.config.default_infrahub_branch
         self.default_timeout = self.config.timeout
         self.config.address = address or self.config.address
+        self.insert_tracker = self.config.insert_tracker
+        self.log = self.config.logger or logging.getLogger("infrahub_sdk")
         self.address = self.config.address
         self.mode = self.config.mode
+        self.pagination_size = self.config.pagination_size
+        self.retry_delay = self.config.retry_delay
+        self.retry_on_failure = self.config.retry_on_failure
 
         if self.config.api_token:
             self.headers["X-INFRAHUB-KEY"] = self.config.api_token
 
-        self.max_concurrent_execution = max_concurrent_execution
+        self.max_concurrent_execution = self.config.max_concurrent_execution
 
-        self.update_group_context = update_group_context
-        self.identifier = identifier
+        self.update_group_context = self.config.update_group_context
+        self.identifier = self.config.identifier
         self.group_context: Union[InfrahubGroupContext, InfrahubGroupContextSync]
         self._initialize()
 
@@ -194,8 +185,12 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         self.group_context = InfrahubGroupContext(self)
 
     @classmethod
-    async def init(cls, *args: Any, **kwargs: Any) -> InfrahubClient:
-        return cls(*args, **kwargs)
+    async def init(
+        cls,
+        address: str = "",
+        config: Optional[Union[Config, Dict[str, Any]]] = None,
+    ) -> InfrahubClient:
+        return cls(address=address, config=config)
 
     async def create(
         self,
@@ -816,8 +811,12 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         self.group_context = InfrahubGroupContextSync(self)
 
     @classmethod
-    def init(cls, *args: Any, **kwargs: Any) -> InfrahubClientSync:
-        return cls(*args, **kwargs)
+    def init(
+        cls,
+        address: str = "",
+        config: Optional[Union[Config, Dict[str, Any]]] = None,
+    ) -> InfrahubClientSync:
+        return cls(address=address, config=config)
 
     def create(
         self,

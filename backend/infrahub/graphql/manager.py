@@ -17,6 +17,8 @@ from .enums import generate_graphql_enum, get_enum_attribute_type_name
 from .metrics import SCHEMA_GENERATE_GRAPHQL_METRICS
 from .mutations import (
     InfrahubArtifactDefinitionMutation,
+    InfrahubIPAddressMutation,
+    InfrahubIPPrefixMutation,
     InfrahubMutation,
     InfrahubProposedChangeMutation,
     InfrahubRepositoryMutation,
@@ -357,7 +359,13 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 InfrahubKind.PROPOSEDCHANGE: InfrahubProposedChangeMutation,
                 InfrahubKind.GRAPHQLQUERY: InfrahubGraphQLQueryMutation,
             }
-            base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
+
+            if isinstance(node_schema, NodeSchema) and node_schema.is_ip_prefix():
+                base_class = InfrahubIPPrefixMutation
+            elif isinstance(node_schema, NodeSchema) and node_schema.is_ip_address():
+                base_class = InfrahubIPAddressMutation
+            else:
+                base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
 
             mutations = self.generate_graphql_mutations(schema=node_schema, base_class=base_class)
 
@@ -846,5 +854,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             "edges": graphene.List(of_type=base_interface),
             "Meta": type("Meta", (object,), meta_attrs),
         }
+
+        if schema.kind == InfrahubKind.IPPREFIX:
+            main_attrs["utilization"] = graphene.Float(required=False)
 
         return type(f"NestedPaginated{schema.kind}", (InfrahubObject,), main_attrs)

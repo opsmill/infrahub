@@ -26,6 +26,7 @@ from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.types import (
     ProposedChangeArtifactDefinition,
     ProposedChangeBranchDiff,
+    ProposedChangeGeneratorDefinition,
     ProposedChangeRepository,
     ProposedChangeSubscriber,
 )
@@ -42,13 +43,13 @@ if TYPE_CHECKING:
 log = get_logger()
 
 
-class ArtifactSelect(IntFlag):
+class DefinitionSelect(IntFlag):
     NONE = 0
     MODIFIED_KINDS = 1
     FILE_CHANGES = 2
 
     @staticmethod
-    def add_flag(current: ArtifactSelect, flag: ArtifactSelect, condition: bool):
+    def add_flag(current: DefinitionSelect, flag: DefinitionSelect, condition: bool):
         if condition:
             return current | flag
         return current
@@ -56,10 +57,10 @@ class ArtifactSelect(IntFlag):
     @property
     def log_line(self) -> str:
         change_types = []
-        if ArtifactSelect.MODIFIED_KINDS in self:
+        if DefinitionSelect.MODIFIED_KINDS in self:
             change_types.append("data changes within relevant object kinds")
 
-        if ArtifactSelect.FILE_CHANGES in self:
+        if DefinitionSelect.FILE_CHANGES in self:
             change_types.append("file modifications in Git repositories")
 
         if self:
@@ -145,6 +146,18 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             await task_report.info("Adding Refresh Artifact job", proposed_change=message.proposed_change)
             events.append(
                 messages.RequestProposedChangeRefreshArtifacts(
+                    proposed_change=message.proposed_change,
+                    source_branch=message.source_branch,
+                    source_branch_sync_with_git=message.source_branch_sync_with_git,
+                    destination_branch=message.destination_branch,
+                    branch_diff=branch_diff,
+                )
+            )
+
+        if message.check_type in [CheckType.ALL, CheckType.GENERATOR]:
+            await task_report.info("Adding Run Generators job", proposed_change=message.proposed_change)
+            events.append(
+                messages.RequestProposedChangeRunGenerators(
                     proposed_change=message.proposed_change,
                     source_branch=message.source_branch,
                     source_branch_sync_with_git=message.source_branch_sync_with_git,
@@ -339,17 +352,17 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
             # Alternatively if the queries used touches models that have been modified in the path
             # impacted artifact definitions will be included for consideration
 
-            select = ArtifactSelect.NONE
+            select = DefinitionSelect.NONE
             select = select.add_flag(
                 current=select,
-                flag=ArtifactSelect.FILE_CHANGES,
+                flag=DefinitionSelect.FILE_CHANGES,
                 condition=message.source_branch_sync_with_git and message.branch_diff.has_file_modifications,
             )
 
             for changed_model in message.branch_diff.modified_kinds(branch=message.source_branch):
                 select = select.add_flag(
                     current=select,
-                    flag=ArtifactSelect.MODIFIED_KINDS,
+                    flag=DefinitionSelect.MODIFIED_KINDS,
                     condition=changed_model in artifact_definition.query_models,
                 )
 
@@ -365,6 +378,66 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
                     destination_branch=message.destination_branch,
                 )
 
+                msg.assign_meta(parent=message)
+                await service.send(message=msg)
+
+
+async def run_generators(message: messages.RequestProposedChangeRunGenerators, service: InfrahubServices) -> None:
+    async with service.task_report(
+        related_node=message.proposed_change,
+        title="Evaluating Generators",
+    ) as task_report:
+        generators = await service.client.filters(
+            kind="CoreGeneratorDefinition", prefetch_relationships=True, populate_store=True
+        )
+
+        generator_definitions = [
+            ProposedChangeGeneratorDefinition(
+                definition_id=generator.id,
+                definition_name=generator.name.value,
+                class_name=generator.class_name.value,
+                file_path=generator.file_path.value,
+                query_name=generator.query.peer.name.value,
+                query_models=generator.query.peer.models.value,
+                repository_id=generator.repository.peer.id,
+                parameters=generator.parameters.value,
+                group_id=generator.targets.peer.id,
+            )
+            for generator in generators
+        ]
+
+        for generator_definition in generator_definitions:
+            # Request generator definitions if the source branch that is managed in combination
+            # to the Git repository containing modifications which could indicate changes to the transforms
+            # in code
+            # Alternatively if the queries used touches models that have been modified in the path
+            # impacted artifact definitions will be included for consideration
+
+            select = DefinitionSelect.NONE
+            select = select.add_flag(
+                current=select,
+                flag=DefinitionSelect.FILE_CHANGES,
+                condition=message.source_branch_sync_with_git and message.branch_diff.has_file_modifications,
+            )
+
+            for changed_model in message.branch_diff.modified_kinds(branch=message.source_branch):
+                select = select.add_flag(
+                    current=select,
+                    flag=DefinitionSelect.MODIFIED_KINDS,
+                    condition=changed_model in generator_definition.query_models,
+                )
+
+            await task_report.info(f"{generator_definition.definition_name}: {select.log_line}")
+
+            if select:
+                msg = messages.RequestGeneratorDefinitionCheck(
+                    generator_definition=generator_definition,
+                    branch_diff=message.branch_diff,
+                    proposed_change=message.proposed_change,
+                    source_branch=message.source_branch,
+                    source_branch_sync_with_git=message.source_branch_sync_with_git,
+                    destination_branch=message.destination_branch,
+                )
                 msg.assign_meta(parent=message)
                 await service.send(message=msg)
 

@@ -116,6 +116,10 @@ class TestProposedChangePipeline(TestInfrahubApp):
         ][0]
         assert repository_merge_conflict.conclusion.value.value == ValidatorConclusion.SUCCESS.value
 
+        tags = await client.all(kind="BuiltinTag", branch="conflict_free")
+        # The Generator defined in the repository is expected to have created this tag during the pipeline
+        assert "john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
+
         proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
         await proposed_change_create.save()
 

@@ -4,11 +4,11 @@ import signal
 from typing import Any
 
 import typer
-from infrahub_sdk import InfrahubClient
+from infrahub_sdk import Config, InfrahubClient
 from prometheus_client import start_http_server
 from rich.logging import RichHandler
 
-from infrahub import config
+from infrahub import __version__, config
 from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, get_db
@@ -20,6 +20,7 @@ from infrahub.log import get_logger
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
+from infrahub.trace import configure_trace
 
 app = typer.Typer()
 
@@ -63,8 +64,20 @@ async def _start(debug: bool, port: int) -> None:
 
     # initialize the Infrahub Client and query the list of branches to validate that the API is reacheable and the auth is working
     log.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
-    client = await InfrahubClient.init(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=log)
+    client = InfrahubClient(
+        config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=log)
+    )
     await client.branch.all()
+
+    # Initialize trace
+    if config.SETTINGS.trace.enable:
+        configure_trace(
+            service="infrahub-git-agent",
+            version=__version__,
+            exporter_type=config.SETTINGS.trace.exporter_type,
+            exporter_endpoint=config.SETTINGS.trace.exporter_endpoint,
+            exporter_protocol=config.SETTINGS.trace.exporter_protocol,
+        )
 
     # Initialize the lock
     initialize_lock()
@@ -82,6 +95,8 @@ async def _start(debug: bool, port: int) -> None:
 
     async with service.database.start_session() as db:
         await initialization(db=db)
+
+    await service.component.refresh_schema_hash()
 
     await initialize_git_agent(service=service)
 

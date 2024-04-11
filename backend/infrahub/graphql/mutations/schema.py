@@ -265,3 +265,4 @@ async def update_registry(kind: NodeSchema, branch: Branch, db: InfrahubDatabase
                     meta=Meta(initiator_id=WORKER_IDENTITY),
                 )
                 await services.send(message)
+            await services.service.component.refresh_schema_hash(branches=[branch.name])

@@ -30,7 +30,7 @@ async def test_init(
     assert attr._source is None
 
     with pytest.raises(LookupError):
-        attr.source
+        _ = attr.source
 
     # initialize with a more complex data structure
     attr = String(

@@ -135,7 +135,15 @@ const sidebars: SidebarsConfig = {
             'python-sdk/guides/query_data',
             'python-sdk/guides/create_update_delete',
             'python-sdk/guides/branches',
-            'python-sdk/guides/store'
+            'python-sdk/guides/store',
+            'python-sdk/guides/tracking'
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Topics',
+          items: [
+            'python-sdk/topics/tracking'
           ],
         },
         {

@@ -5,10 +5,10 @@ test.describe("Sidebar menu", () => {
     await page.goto("/");
 
     await test.step("all items are visible", async () => {
-      await expect(page.getByRole("link", { name: "All Circuit(s)" })).toBeVisible();
       await expect(page.getByRole("button", { name: "BGP Session" })).toBeVisible();
       await expect(page.getByRole("link", { name: "All BGP Session(s)" })).toBeVisible();
       await expect(page.getByRole("link", { name: "BGP Peer Group" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Circuit" })).toBeVisible();
     });
 
     await test.step("filter with text 'inter'", async () => {

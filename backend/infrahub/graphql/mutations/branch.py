@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Optional
 import pydantic
 from graphene import Boolean, Field, InputObjectType, List, Mutation, String
 from infrahub_sdk.utils import extract_fields, extract_fields_first_node
+from opentelemetry import trace
 from typing_extensions import Self
 
 from infrahub import config, lock
@@ -55,6 +56,7 @@ class BranchCreate(Mutation):
 
     @classmethod
     @retry_db_transaction(name="branch_create")
+    @trace.get_tracer(__name__).start_as_current_span("branch_create")
     async def mutate(
         cls, root: dict, info: GraphQLResolveInfo, data: BranchCreateInput, background_execution: bool = False
     ) -> Self:
