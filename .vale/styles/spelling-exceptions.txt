@@ -3,10 +3,12 @@ APIs
 artifact_definitions
 artifact_name
 async
+boolean
 check_definitions
 class_name
 codespaces
 config
+Config
 content_type
 cypher
 Dagster
@@ -31,6 +33,7 @@ graphene
 graphiql
 graphql
 greymatter
+idempotency
 include_in_menu
 Infrahub
 Infrahub's
@@ -63,6 +66,7 @@ sdk
 template_path
 toml
 uncheck
+upsert
 validators
 Version Control
 Vitest
