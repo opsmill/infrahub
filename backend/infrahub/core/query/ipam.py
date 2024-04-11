@@ -187,20 +187,23 @@ async def get_utilization(
     branch: Optional[Union[Branch, str]] = None,  # pylint: disable=unused-argument
     at=None,  # pylint: disable=unused-argument
 ) -> float:
-    nodes = await ip_prefix.children.get_peers(db=db)
-
     prefix_space = ip_prefix.prefix.num_addresses
     free_ip_space = ip_prefix.prefix.num_addresses
-    if nodes:
-        # There are subnets, count space allocated by those
+
+    # Count utilization based on subnet allocations
+    if ip_prefix.member_type.value == "prefix":
+        nodes = await ip_prefix.children.get_peers(db=db)
         for node in nodes.values():
+            # FIXME: Why is the parent also in children?
+            if node.prefix.prefixlen < ip_prefix.prefix.prefixlen:
+                continue
             free_ip_space -= node.prefix.num_addresses
     else:
         # This is a subnet of hosts, count IP addresses
         free_ip_space -= len(ip_prefix.ip_addresses)
 
         # Non-RFC3021 subnet
-        if ip_prefix.prefix.version == 4 and ip_prefix.prefix.prefixlen < 31:
+        if ip_prefix.prefix.version == 4 and ip_prefix.prefix.prefixlen < 31 and not ip_prefix.is_pool.value:
             prefix_space -= 2
             free_ip_space -= 2
 

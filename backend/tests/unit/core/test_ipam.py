@@ -154,11 +154,11 @@ async def test_ipprefix_utilization(
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
     container = await Node.init(db=db, schema=prefix_schema)
-    await container.new(db=db, prefix="192.0.2.0/24")
+    await container.new(db=db, prefix="192.0.2.0/24", member_type="prefix")
     await container.save(db=db)
 
     prefix = await Node.init(db=db, schema=prefix_schema)
-    await prefix.new(db=db, prefix="192.0.2.0/28")
+    await prefix.new(db=db, prefix="192.0.2.0/28", member_type="address")
     await prefix.save(db=db)
 
     # Build relationship between container and prefix
