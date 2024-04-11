@@ -37,7 +37,7 @@ export const DropdownMenuItem = forwardRef<
       "rounded-sm px-2 py-1.5 text-xs",
       "relative flex items-center",
       "cursor-pointer outline-none focus:bg-gray-100",
-      "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
       className
     )}
     {...props}
