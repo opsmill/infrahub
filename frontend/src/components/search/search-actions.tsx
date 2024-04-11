@@ -1,6 +1,10 @@
-import { useMemo } from "react";
 import { useAtomValue } from "jotai";
-import { genericsState, IModelSchema, menuAtom, schemaState } from "../../state/atoms/schema.atom";
+import {
+  genericsState,
+  IModelSchema,
+  menuFlatAtom,
+  schemaState,
+} from "../../state/atoms/schema.atom";
 import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-anywhere";
 import { MenuItem } from "../../screens/layout/sidebar/desktop-menu";
 import { constructPath } from "../../utils/fetch";
@@ -15,20 +19,7 @@ export const SearchActions = ({ query }: SearchProps) => {
   const generics = useAtomValue(genericsState);
   const models: IModelSchema[] = [...nodes, ...generics];
 
-  const menu = useAtomValue(menuAtom);
-  const menuItems = useMemo(() => {
-    const flattenMenuItems = (menuItems: MenuItem[]): MenuItem[] => {
-      return menuItems.reduce<MenuItem[]>((acc, menuItem) => {
-        if (menuItem.children.length === 0) {
-          return [...acc, menuItem];
-        }
-
-        return [...acc, ...flattenMenuItems(menuItem.children)];
-      }, []);
-    };
-
-    return flattenMenuItems(menu);
-  }, [menu.length]);
+  const menuItems = useAtomValue(menuFlatAtom);
 
   const queryLowerCased = query.toLowerCase();
   const resultsMenu = menuItems.filter(({ title }) =>
@@ -75,7 +66,6 @@ const ActionOnMenu = ({ menuItem }: ActionOnMenuProps) => {
 };
 
 const ActionOnSchema = ({ model }: { model: IModelSchema }) => {
-  console.log(model);
   const { kind, label, name } = model;
 
   return (
