@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, computed_field, model_validator
 from starlette.responses import JSONResponse
 
 from infrahub import config, lock
@@ -12,12 +12,12 @@ from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.migrations.schema.runner import schema_migrations_runner
-from infrahub.core.models import SchemaBranchHash  # noqa: TCH001
+from infrahub.core.models import SchemaBranchHash, SchemaDiff  # noqa: TCH001
 from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, SchemaRoot
 from infrahub.core.schema_manager import SchemaBranch, SchemaNamespace, SchemaUpdateValidationResult  # noqa: TCH001
 from infrahub.core.validators.checker import schema_validators_checker
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
-from infrahub.exceptions import PermissionDeniedError
+from infrahub.exceptions import MigrationError, PermissionDeniedError
 from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
@@ -91,6 +91,17 @@ class SchemaLoadAPI(SchemaRoot):
 
 class SchemasLoadAPI(SchemaRoot):
     schemas: List[SchemaLoadAPI]
+
+
+class SchemaUpdate(BaseModel):
+    hash: str = Field(..., description="The new hash for the entire schema")
+    previous_hash: str = Field(..., description="The previous hash for the entire schema")
+    diff: SchemaDiff = Field(..., description="The modifications to the schema")
+
+    @computed_field
+    def schema_updated(self) -> bool:
+        """Indicates if the loading of the schema changed the existing schema"""
+        return self.hash != self.previous_hash
 
 
 def evaluate_candidate_schemas(
@@ -183,7 +194,7 @@ async def load_schema(
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
     _: Any = Depends(get_current_user),
-) -> JSONResponse:
+) -> SchemaUpdate:
     service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)
 
@@ -196,11 +207,12 @@ async def load_schema(
 
     async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
+        original_hash = branch_schema.get_hash()
 
         candidate_schema, result = evaluate_candidate_schemas(branch_schema=branch_schema, schemas_to_evaluate=schemas)
 
         if not result.diff.all:
-            return JSONResponse(status_code=202, content={})
+            return SchemaUpdate(hash=original_hash, previous_hash=original_hash, diff=result.diff)
 
         # ----------------------------------------------------------
         # Validate if the new schema is valid with the content of the database
@@ -233,6 +245,8 @@ async def load_schema(
                 log.info("Branch converted to isolated mode because the schema has changed", branch=branch.name)
 
             await branch.save(db=dbt)
+            updated_branch = registry.schema.get_schema_branch(name=branch.name)
+            updated_hash = updated_branch.get_hash()
 
         # ----------------------------------------------------------
         # Run the migrations
@@ -245,7 +259,7 @@ async def load_schema(
             service=service,
         )
         if error_messages:
-            return JSONResponse(status_code=500, content={"error": ",\n".join(error_messages)})
+            raise MigrationError(message=",\n".join(error_messages))
 
         if config.SETTINGS.broker.enable:
             message = messages.EventSchemaUpdate(
@@ -255,7 +269,8 @@ async def load_schema(
             background_tasks.add_task(services.send, message)
 
     await service.component.refresh_schema_hash(branches=[branch.name])
-    return JSONResponse(status_code=202, content={})
+
+    return SchemaUpdate(hash=updated_hash, previous_hash=original_hash, diff=result.diff)
 
 
 @router.post("/check")

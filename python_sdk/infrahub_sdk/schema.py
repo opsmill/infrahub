@@ -478,7 +478,7 @@ class InfrahubSchemaBase:
 
     @staticmethod
     def _validate_response(response: httpx.Response) -> Tuple[bool, Optional[dict]]:
-        if response.status_code == httpx.codes.ACCEPTED:
+        if response.status_code == httpx.codes.OK:
             return True, None
 
         if response.status_code == httpx.codes.BAD_REQUEST:
