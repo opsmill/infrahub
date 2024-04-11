@@ -495,6 +495,33 @@ core_models: dict[str, Any] = {
                     "order_weight": 2000,
                 },
                 {
+                    "name": "member_type",
+                    "kind": "Dropdown",
+                    "choices": [
+                        {
+                            "name": "prefix",
+                            "label": "Prefix",
+                            "description": "Prefix serves as container for other prefixes",
+                        },
+                        {
+                            "name": "address",
+                            "label": "Address",
+                            "description": "Prefix serves as subnet for IP addresses",
+                        },
+                    ],
+                    "branch": BranchSupportType.AWARE.value,
+                    "default_value": "address",
+                    "order_weight": 3000,
+                },
+                {
+                    "name": "is_pool",
+                    "kind": "Boolean",
+                    "branch": BranchSupportType.AWARE.value,
+                    "default_value": False,
+                    "order_weight": 4000,
+                    "description": "All IP addresses within this prefix are considered usable",
+                },
+                {
                     "name": "utilization",
                     "kind": "Number",
                     "read_only": True,
