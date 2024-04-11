@@ -697,7 +697,8 @@ nodes:
         kind: Text
         optional: true
       - name: height
-        kind: Text
+        label: "Height (U)"
+        kind: Number
       - name: facility_id
         label: Facility ID
         kind: Text

@@ -6,7 +6,7 @@ except ImportError:
     import pydantic  # type: ignore[no-redef]
 
 
-class SchemaMappingField(pydantic.BaseSettings):
+class SchemaMappingField(pydantic.BaseModel):
     name: str
     mapping: Optional[str] = pydantic.Field(default=None)
     static: Optional[Any] = pydantic.Field(default=None)

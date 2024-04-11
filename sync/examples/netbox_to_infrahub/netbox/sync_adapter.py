@@ -5,18 +5,8 @@ from .sync_models import (
     BuiltinRole,
     BuiltinTag,
     CoreStandardGroup,
-    InfraCircuit,
-    InfraDevice,
-    InfraIPAddress,
-    InfraPrefix,
-    InfraProviderNetwork,
     InfraRack,
-    InfraRouteTarget,
-    InfraVLAN,
-    InfraVRF,
     OrganizationGeneric,
-    TemplateCircuitType,
-    TemplateDeviceType,
 )
 
 
@@ -30,15 +20,5 @@ class NetboxSync(NetboxAdapter):
     BuiltinTag = BuiltinTag
     BuiltinLocation = BuiltinLocation
     BuiltinRole = BuiltinRole
-    InfraCircuit = InfraCircuit
-    InfraDevice = InfraDevice
-    InfraIPAddress = InfraIPAddress
-    InfraPrefix = InfraPrefix
-    InfraProviderNetwork = InfraProviderNetwork
     InfraRack = InfraRack
-    InfraRouteTarget = InfraRouteTarget
-    InfraVLAN = InfraVLAN
-    InfraVRF = InfraVRF
     OrganizationGeneric = OrganizationGeneric
-    TemplateCircuitType = TemplateCircuitType
-    TemplateDeviceType = TemplateDeviceType
