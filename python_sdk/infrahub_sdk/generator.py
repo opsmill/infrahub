@@ -30,8 +30,7 @@ class InfrahubGenerator:
         self.params = params or {}
         self.root_directory = root_directory or os.getcwd()
         self.generator_instance = generator_instance
-        # self._init_client = deepcopy(client)
-        self._init_client = client
+        self._init_client = client.clone()
         self._init_client.config.default_branch = self._init_client.default_branch = self.branch_name
         self._client: Optional[InfrahubClient] = None
 
