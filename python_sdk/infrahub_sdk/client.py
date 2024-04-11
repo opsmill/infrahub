@@ -169,6 +169,23 @@ class BaseClient:
             identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes, group_type=group_type
         )
 
+    def _graphql_url(
+        self,
+        branch_name: Optional[str] = None,
+        at: Optional[Union[str, Timestamp]] = None,
+    ) -> str:
+        url = f"{self.config.address}/graphql"
+        if branch_name:
+            url += f"/{branch_name}"
+
+        url_params = {}
+        if at:
+            at = Timestamp(at)
+            url_params["at"] = at.to_string()
+            url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
+
+        return url
+
 
 class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     """GraphQL Client to interact with Infrahub."""
@@ -430,7 +447,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         """Return a cloned version of the client using the same configuration"""
         return InfrahubClient(config=self.config)
 
-    async def execute_graphql(  # pylint: disable=too-many-branches
+    async def execute_graphql(
         self,
         query: str,
         variables: Optional[dict] = None,
@@ -457,21 +474,11 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             _type_: _description_
         """
 
-        url = f"{self.address}/graphql"
-        if branch_name:
-            url += f"/{branch_name}"
+        url = self._graphql_url(branch_name=branch_name, at=at)
 
         payload: Dict[str, Union[str, dict]] = {"query": query}
         if variables:
             payload["variables"] = variables
-
-        url_params = {}
-        if at:
-            at = Timestamp(at)
-            url_params["at"] = at.to_string()
-
-        if url_params:
-            url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
         headers = copy.copy(self.headers or {})
         if self.insert_tracker and tracker:
@@ -851,7 +858,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         """Return a cloned version of the client using the same configuration"""
         return InfrahubClientSync(config=self.config)
 
-    def execute_graphql(  # pylint: disable=too-many-branches
+    def execute_graphql(
         self,
         query: str,
         variables: Optional[dict] = None,
@@ -878,21 +885,11 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             _type_: _description_
         """
 
-        url = f"{self.address}/graphql"
-        if branch_name:
-            url += f"/{branch_name}"
+        url = self._graphql_url(branch_name=branch_name, at=at)
 
         payload: Dict[str, Union[str, dict]] = {"query": query}
         if variables:
             payload["variables"] = variables
-
-        url_params = {}
-        if at:
-            at = Timestamp(at)
-            url_params["at"] = at.to_string()
-
-        if url_params:
-            url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
         headers = copy.copy(self.headers or {})
         if self.insert_tracker and tracker:
