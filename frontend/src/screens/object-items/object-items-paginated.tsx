@@ -4,8 +4,6 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { BUTTON_TYPES } from "../../components/buttons/button";
-import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 import SlideOver from "../../components/display/slide-over";
 import { Filters } from "../../components/filters/filters";
 import ModalDelete from "../../components/modals/modal-delete";
@@ -48,9 +46,9 @@ import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { Badge } from "../../components/ui/badge";
 import { Tooltip } from "../../components/ui/tooltip";
-import { RoundedButton } from "../../components/buttons/rounded-button";
-import { PlusIcon } from "@heroicons/react/24/outline";
 import { SearchInput } from "../../components/ui/search-input";
+import { Button, ButtonWithTooltip } from "../../components/ui/button";
+import { ObjectHelpButton } from "../../components/menu/object-help-button";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -242,33 +240,39 @@ export default function ObjectItems(props: any) {
           description={schemaData?.description}>
           {!isGeneric && (
             <div className="flex-grow text-right">
-              <Tooltip
-                enabled={!permission.write.allow}
-                content={permission.write.message ?? undefined}>
-                <RoundedButton
-                  data-cy="create"
-                  data-testid="create-object-button"
-                  disabled={!permission.write.allow}
-                  onClick={() => setShowCreateDrawer(true)}>
-                  <PlusIcon className="w-4 h-4" aria-hidden="true" />
-                </RoundedButton>
-              </Tooltip>
+              <ObjectHelpButton
+                documentationUrl={schemaData.documentation}
+                kind={schemaData.kind}
+              />
             </div>
           )}
         </Content.Title>
       )}
 
       <div className="m-2 rounded-md border overflow-hidden bg-custom-white shadow-sm">
-        <div className="flex items-center">
+        <div className="flex items-center p-2">
           <SearchInput
             loading={loading}
             onChange={debouncedHandleSearch}
             placeholder="Search an object"
-            className="border-none focus-visible:ring-0"
+            className="border-none focus-visible:ring-0 h-7"
             data-testid="object-list-search-bar"
           />
 
           <Filters schema={schemaData} />
+          <Tooltip
+            enabled={!permission.write.allow}
+            content={permission.write.message ?? undefined}>
+            <Button
+              data-cy="create"
+              data-testid="create-object-button"
+              disabled={!permission.write.allow}
+              onClick={() => setShowCreateDrawer(true)}
+              size="sm">
+              <Icon icon="mdi:plus" className="text-sm" />
+              Add {schemaData?.label}
+            </Button>
+          </Tooltip>
         </div>
 
         {loading && !rows && <LoadingScreen />}
@@ -313,7 +317,7 @@ export default function ObjectItems(props: any) {
                         disabled={!permission.write.allow}
                         tooltipEnabled={!permission.write.allow}
                         tooltipContent={permission.write.message ?? undefined}
-                        buttonType={BUTTON_TYPES.INVISIBLE}
+                        variant="ghost"
                         onClick={() => {
                           setRowToDelete(row);
                           setDeleteModal(true);
