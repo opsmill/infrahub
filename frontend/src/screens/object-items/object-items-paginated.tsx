@@ -238,14 +238,9 @@ export default function ObjectItems(props: any) {
           isReloadLoading={loading}
           reload={handleRefetch}
           description={schemaData?.description}>
-          {!isGeneric && (
-            <div className="flex-grow text-right">
-              <ObjectHelpButton
-                documentationUrl={schemaData.documentation}
-                kind={schemaData.kind}
-              />
-            </div>
-          )}
+          <div className="flex-grow text-right">
+            <ObjectHelpButton documentationUrl={schemaData.documentation} kind={schemaData.kind} />
+          </div>
         </Content.Title>
       )}
 
@@ -260,19 +255,21 @@ export default function ObjectItems(props: any) {
           />
 
           <Filters schema={schemaData} />
-          <Tooltip
-            enabled={!permission.write.allow}
-            content={permission.write.message ?? undefined}>
-            <Button
-              data-cy="create"
-              data-testid="create-object-button"
-              disabled={!permission.write.allow}
-              onClick={() => setShowCreateDrawer(true)}
-              size="sm">
-              <Icon icon="mdi:plus" className="text-sm" />
-              Add {schemaData?.label}
-            </Button>
-          </Tooltip>
+          {!isGeneric && (
+            <Tooltip
+              enabled={!permission.write.allow}
+              content={permission.write.message ?? undefined}>
+              <Button
+                data-cy="create"
+                data-testid="create-object-button"
+                disabled={!permission.write.allow}
+                onClick={() => setShowCreateDrawer(true)}
+                size="sm">
+                <Icon icon="mdi:plus" className="text-sm" />
+                Add {schemaData?.label}
+              </Button>
+            </Tooltip>
+          )}
         </div>
 
         {loading && !rows && <LoadingScreen />}
