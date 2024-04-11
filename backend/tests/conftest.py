@@ -322,13 +322,14 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
 def tmp_path_module_scope() -> Generator[str, None, None]:
     """Fixture similar to tmp_path but with scope=module"""
     with TemporaryDirectory() as tmpdir:
+        directory = tmpdir
         if sys.platform == "darwin" and tmpdir.startswith("/var/"):
             # On Mac /var is symlinked to /private/var. TemporaryDirectory uses the /var prefix
             # however when using 'git worktree list --porcelain' the path is returned with
             # /prefix/var and InfrahubRepository fails to initialize the repository as the
             # relative path of the repository isn't handled correctly
-            tmpdir = f"/private{tmpdir}"
-        yield tmpdir
+            directory = f"/private{tmpdir}"
+        yield directory
 
 
 @pytest.fixture(scope="module")
