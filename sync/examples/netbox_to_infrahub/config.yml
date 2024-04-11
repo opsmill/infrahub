@@ -10,17 +10,11 @@ destination:
   settings:
     url: "http://localhost:8000"
 
-store:
-  type: redis
-  settings:
-    host: localhost
-    port: 6379
-
 order: [
   "BuiltinTag",
   "BuiltinRole",
   "CoreStandardGroup",
-  "CoreOrganization",
+  "OrganizationGeneric",
   "BuiltinLocation",
   "InfraRack",
   "TemplateDeviceType",
@@ -81,7 +75,7 @@ schema_mapping:
         mapping: name
       - name: description
         mapping: description
-  - name: CoreOrganization
+  - name: OrganizationGeneric
     mapping: tenancy.tenants
     identifiers: ["name"]
     fields:
@@ -89,8 +83,6 @@ schema_mapping:
         mapping: name
       - name: description
         mapping: description
-      - name: type
-        static: "Tenant"
       - name: group
         mapping: group
         reference: CoreStandardGroup
@@ -130,7 +122,7 @@ schema_mapping:
         reference: CoreStandardGroup
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: tags
         mapping: tags
         reference: BuiltinTag
@@ -145,7 +137,7 @@ schema_mapping:
         static: "Location"
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: tags
         mapping: tags
         reference: BuiltinTag
@@ -176,7 +168,7 @@ schema_mapping:
         reference: BuiltinTag
 
   # Device (manufacturer, device types, devices)
-  - name: CoreOrganization
+  - name: OrganizationGeneric
     mapping: dcim.manufacturers
     identifiers: ["name"]
     fields:
@@ -184,8 +176,6 @@ schema_mapping:
         mapping: name
       - name: description
         mapping: description
-      - name: type
-        static: "Manufacturer"
   - name: TemplateDeviceType
     mapping: dcim.device-types
     identifiers: ["name", "manufacturer"]
@@ -203,7 +193,7 @@ schema_mapping:
         reference: BuiltinTag
       - name: manufacturer
         mapping: manufacturer
-        reference: CoreOrganization
+        reference: OrganizationGeneric
   # -> The netbox constraint is `dcim_device_unique_name_site_tenant`
   # Reusing device_name + site + Organization as identifiers
   - name: InfraDevice
@@ -223,7 +213,7 @@ schema_mapping:
         reference: TemplateDeviceType
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: role
         mapping: role.name
       # - name: status
@@ -239,7 +229,7 @@ schema_mapping:
         reference: BuiltinTag
 
   # Circuits (Provider, Provider Network, Circuits Types, Circuits)
-  - name: CoreOrganization
+  - name: OrganizationGeneric
     mapping: circuits.providers
     identifiers: ["name"]
     fields:
@@ -247,8 +237,6 @@ schema_mapping:
         mapping: name
       - name: description
         mapping: description
-      - name: type
-        static: "Provider"
   - name: InfraProviderNetwork
     mapping: circuits.provider-networks
     identifiers: ["name"]
@@ -259,7 +247,7 @@ schema_mapping:
         mapping: service_id
       - name: provider
         mapping: provider
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: description
         mapping: description
       # - name: status
@@ -269,7 +257,7 @@ schema_mapping:
         reference: BuiltinTag
       - name: provider
         mapping: provider
-        reference: CoreOrganization
+        reference: OrganizationGeneric
   - name: TemplateCircuitType
     mapping: circuits.circuit-types
     identifiers: ["name"]
@@ -291,7 +279,7 @@ schema_mapping:
         mapping: cid
       - name: provider
         mapping: provider
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: description
         mapping: description
       # - name: status
@@ -300,7 +288,7 @@ schema_mapping:
         mapping: type.name
       - name: provider
         mapping: provider
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: tags
         mapping: tags
         reference: BuiltinTag
@@ -316,7 +304,7 @@ schema_mapping:
         mapping: description
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
   - name: InfraVRF
     mapping: ipam.vrfs
     identifiers: ["name"]
@@ -327,7 +315,7 @@ schema_mapping:
         mapping: description
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: vrf_rd
         mapping: rd
       - name: import_rt
@@ -354,7 +342,7 @@ schema_mapping:
         mapping: vid
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: description
         mapping: description
       - name: location
@@ -373,7 +361,7 @@ schema_mapping:
         mapping: description
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: role
         mapping: role
         reference: BuiltinRole
@@ -399,7 +387,7 @@ schema_mapping:
         mapping: description
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       # Not the same as ipam.role
       # - name: role
       #   mapping: role.value

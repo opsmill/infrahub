@@ -28,7 +28,7 @@ class {{ nodekind }}({{ adapter.name.title() }}Model):
     {{ rel.name }}: {{ rel | get_kind }}
 {%-       endif -%}
 {%-    endfor %}
-    local_id: Optional[str] = None
+    local_id: Optional[str]
     local_data: Optional[Any] = None
 {%-   endif -%}
 {% endfor %}

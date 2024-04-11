@@ -1,15 +1,22 @@
 from infrahub_sync.adapters.netbox import NetboxAdapter
 
 from .sync_models import (
+    BuiltinLocation,
+    BuiltinRole,
     BuiltinTag,
     CoreStandardGroup,
     InfraCircuit,
     InfraDevice,
     InfraIPAddress,
     InfraPrefix,
+    InfraProviderNetwork,
+    InfraRack,
     InfraRouteTarget,
     InfraVLAN,
     InfraVRF,
+    OrganizationGeneric,
+    TemplateCircuitType,
+    TemplateDeviceType,
 )
 
 
@@ -21,10 +28,17 @@ from .sync_models import (
 class NetboxSync(NetboxAdapter):
     CoreStandardGroup = CoreStandardGroup
     BuiltinTag = BuiltinTag
-    InfraDevice = InfraDevice
+    BuiltinLocation = BuiltinLocation
+    BuiltinRole = BuiltinRole
     InfraCircuit = InfraCircuit
+    InfraDevice = InfraDevice
     InfraIPAddress = InfraIPAddress
-    InfraVLAN = InfraVLAN
     InfraPrefix = InfraPrefix
-    InfraVRF = InfraVRF
+    InfraProviderNetwork = InfraProviderNetwork
+    InfraRack = InfraRack
     InfraRouteTarget = InfraRouteTarget
+    InfraVLAN = InfraVLAN
+    InfraVRF = InfraVRF
+    OrganizationGeneric = OrganizationGeneric
+    TemplateCircuitType = TemplateCircuitType
+    TemplateDeviceType = TemplateDeviceType

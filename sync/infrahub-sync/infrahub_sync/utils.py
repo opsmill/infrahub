@@ -75,10 +75,7 @@ def get_all_sync(directory: Optional[str] = None) -> List[SyncInstance]:
         with config_file.open("r") as file:
             directory_name = str(config_file.parent)
             config_data = yaml.safe_load(file)
-            try:
-                SyncConfig(**config_data)
-            except Exception as e:
-                print("Validation error:", e.json())
+            SyncConfig(**config_data)
             results.append(SyncInstance(**config_data, directory=directory_name))
 
     return results
