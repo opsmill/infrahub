@@ -1,10 +1,10 @@
 import { addCollection } from "@iconify-icon/react";
 import mdiIcons from "@iconify-json/mdi/icons.json";
-import { Navigate, Route, Routes } from "react-router-dom";
 import loadable from "@loadable/component";
+import { Navigate, Route, Routes } from "react-router-dom";
 
-import { AuthProvider, RequireAuth } from "./hooks/useAuth";
 import { ARTIFACT_OBJECT } from "./config/constants";
+import { AuthProvider, RequireAuth } from "./hooks/useAuth";
 
 import "react-toastify/dist/ReactToastify.css";
 
@@ -37,6 +37,7 @@ const ObjectItemDetailsPaginated = loadable(
 );
 const Homepage = loadable(() => import("./screens/homepage"));
 const SignIn = loadable(() => import("./screens/sign-in/sign-in"));
+const IpamPage = loadable(() => import("./screens/ipam/ipam-page"));
 
 const App = () => {
   return (
@@ -66,6 +67,7 @@ const App = () => {
           <Route path="/graphql/:branch" element={<RedirectToGraphiQLPage />} />
           <Route path="/graphql" element={<GraphiQLPage />} />
           <Route path="/schema" element={<SchemaPage />} />
+          <Route path="/ipam" element={<IpamPage />} />
           <Route path="/" element={<Homepage />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Route>
