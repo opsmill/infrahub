@@ -150,6 +150,15 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
                 raise ValueError(f"Cannot set '{attr}', attribute is managed automatically.")
 
     @classmethod
+    def compute_network_attributes(
+        cls, ip_network: Union[ipaddress.IPv6Network, ipaddress.IPv4Network], data: InputObjectType
+    ) -> None:
+        data["netmask"] = {"value": str(ip_network.netmask)}
+        data["hostmask"] = {"value": str(ip_network.hostmask)}
+        data["network_address"] = {"value": str(ip_network.network_address)}
+        data["broadcast_address"] = {"value": str(ip_network.broadcast_address)}
+
+    @classmethod
     async def mutate_create(
         cls,
         root: dict,
@@ -164,6 +173,8 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         context: GraphqlContext = info.context
         db = database or context.db
         ip_network = ipaddress.ip_network(data["prefix"]["value"])
+
+        cls.compute_network_attributes(ip_network, data)
 
         # Set supernet if found
         super_network = await get_container(db=db, branch=branch, at=at, ip_prefix=ip_network)
@@ -203,6 +214,10 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         node: Optional[Node] = None,
     ) -> Tuple[Node, Self]:
         cls.forbid_managed_attributes(data)
+
+        if "prefix" in data:
+            ip_network = ipaddress.ip_network(data["prefix"]["value"])
+            cls.compute_network_attributes(ip_network, data)
 
         prefix, result = await super().mutate_update(
             root=root, info=info, data=data, branch=branch, at=at, database=database, node=node

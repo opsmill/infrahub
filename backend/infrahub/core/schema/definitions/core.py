@@ -494,6 +494,36 @@ core_models: dict[str, Any] = {
                     "branch": BranchSupportType.AWARE.value,
                     "order_weight": 2000,
                 },
+                {
+                    "name": "utilization",
+                    "kind": "Number",
+                    "read_only": True,
+                    "optional": True,
+                },
+                {
+                    "name": "netmask",
+                    "kind": "Text",
+                    "read_only": True,
+                    "optional": True,
+                },
+                {
+                    "name": "hostmask",
+                    "kind": "Text",
+                    "read_only": True,
+                    "optional": True,
+                },
+                {
+                    "name": "network_address",
+                    "kind": "Text",
+                    "read_only": True,
+                    "optional": True,
+                },
+                {
+                    "name": "broadcast_address",
+                    "kind": "Text",
+                    "read_only": True,
+                    "optional": True,
+                },
             ],
             "relationships": [
                 {
