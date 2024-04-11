@@ -9,7 +9,6 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.exceptions import (
     BranchNotFoundError,
     DataTypeNotFoundError,
-    Error,
     InitializationError,
 )
 
@@ -18,7 +17,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.branch import Branch
-    from infrahub.core.definitions import Brancher
     from infrahub.core.manager import NodeManager
     from infrahub.core.schema import MainSchemaTypes, NodeSchema
     from infrahub.core.schema_manager import SchemaManager
@@ -47,9 +45,19 @@ class Registry:
     account_id: dict = field(default_factory=dict)
     node_group: dict = field(default_factory=dict)
     attr_group: dict = field(default_factory=dict)
-    branch_object: Optional[Type[Brancher]] = None
+    _branch_object: Optional[Type[Branch]] = None
     _manager: Optional[Type[NodeManager]] = None
     _storage: Optional[InfrahubObjectStorage] = None
+
+    @property
+    def branch_object(self) -> Type[Branch]:
+        if not self._branch_object:
+            raise InitializationError
+        return self._branch_object
+
+    @branch_object.setter
+    def branch_object(self, value: Type[Branch]) -> None:
+        self._branch_object = value
 
     @property
     def default_branch(self) -> str:
@@ -140,9 +148,8 @@ class Registry:
             Branch: A Branch Object
         """
 
-        if self.branch_object and branch:
-            if self.branch_object.isinstance(branch) and not isinstance(branch, str):
-                return branch
+        if branch and not isinstance(branch, str):
+            return branch
 
         # if the name of the branch is not defined or not a string we used the default branch name
         if not branch or not isinstance(branch, str):
@@ -179,18 +186,8 @@ class Registry:
             Branch: A Branch Object
         """
 
-        branch_name = ""
-        if not isinstance(branch, str) and branch is not None:
-            branch_name = branch.name
-
-        if self.branch_object and branch:
-            if self.branch_object.isinstance(branch) and not isinstance(branch, str):
-                return branch
-
-        if (self.branch_object and self.branch_object.isinstance(branch) and branch_name == GLOBAL_BRANCH_NAME) or (
-            isinstance(branch, str) and branch == GLOBAL_BRANCH_NAME
-        ):
-            raise BranchNotFoundError(identifier=GLOBAL_BRANCH_NAME)
+        if branch and not isinstance(branch, str):
+            return branch
 
         if not branch or not isinstance(branch, str):
             branch = registry.default_branch
@@ -200,9 +197,6 @@ class Registry:
         except BranchNotFoundError:
             if not session and not db:
                 raise
-
-        if not self.branch_object:
-            raise Error("Branch object not initialized")
 
         async with lock.registry.local_schema_lock():
             obj = await self.branch_object.get_by_name(name=branch, db=db)
