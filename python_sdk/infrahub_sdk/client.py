@@ -426,6 +426,10 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return nodes
 
+    def clone(self) -> InfrahubClient:
+        """Return a cloned version of the client using the same configuration"""
+        return InfrahubClient(config=self.config)
+
     async def execute_graphql(  # pylint: disable=too-many-branches
         self,
         query: str,
@@ -842,6 +846,10 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
     def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:
         raise NotImplementedError("This method hasn't been implemented in the sync client yet.")
+
+    def clone(self) -> InfrahubClientSync:
+        """Return a cloned version of the client using the same configuration"""
+        return InfrahubClientSync(config=self.config)
 
     def execute_graphql(  # pylint: disable=too-many-branches
         self,
