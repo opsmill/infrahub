@@ -130,9 +130,8 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         schema_step02["nodes"][0]["attributes"][0]["id"] = attr.id
 
         # Load the new schema and apply the migrations
-        success, response = await client.schema.load(schemas=[schema_step02])
-        assert success
-        assert response is None
+        response = await client.schema.load(schemas=[schema_step02])
+        assert not response.errors
 
         # Ensure that we can query the existing node with the new schema
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "John"})
@@ -200,9 +199,8 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert schema_step03["nodes"][2]["name"] == "CarMaker"
         schema_step03["nodes"][2]["id"] = manufacturer_schema.id
 
-        success, response = await client.schema.load(schemas=[schema_step03])
-        assert response is None
-        assert success
+        response = await client.schema.load(schemas=[schema_step03])
+        assert not response.errors
 
         # Ensure that we can query the existing node with the new schema
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "John"})
@@ -239,8 +237,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert schema_step04["nodes"][3]["name"] == "Tag"
         schema_step04["nodes"][3]["id"] = tag_schema.id
 
-        success, response = await client.schema.load(schemas=[schema_step04])
-        assert response is None
-        assert success
+        response = await client.schema.load(schemas=[schema_step04])
+        assert not response.errors
 
         assert registry.schema.has(name=TAG_KIND) is False
