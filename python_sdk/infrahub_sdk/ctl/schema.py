@@ -148,6 +148,9 @@ async def load(
                 console.print("[green] Schema updated on all workers.")
                 continue_waiting = False
             else:
+                if waited >= wait:
+                    console.print("[red] Schema is still not in sync after the specified waiting time")
+                    raise typer.Exit(1)
                 console.print("[yellow] Waiting for schema to sync across all workers")
                 waited += 1
                 await asyncio.sleep(delay=1)
