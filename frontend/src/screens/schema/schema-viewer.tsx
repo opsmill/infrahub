@@ -10,6 +10,8 @@ import { genericsState, IModelSchema, schemaState } from "../../state/atoms/sche
 import { ArrayParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../config/qsp";
 import { CSSProperties } from "react";
+import { Button } from "../../components/buttons/button-primitive";
+import { SchemaHelpMenu } from "./schema-help-menu";
 
 export const SchemaViewerStack = ({ className = "" }: { className: string }) => {
   const [selectedKind, setKinds] = useQueryParam(QSP.KIND, ArrayParam);
@@ -66,7 +68,8 @@ export const SchemaViewer = ({
       className={classNames(
         "flex flex-col overflow-hidden space-y-4 p-4 shadow-lg border border-gray-200 bg-custom-white rounded-md",
         className
-      )}>
+      )}
+      data-testid="schema-viewer">
       <div className="flex justify-between items-start">
         <div className="space-x-1">
           <Badge variant="blue">{schema.namespace}</Badge>
@@ -74,7 +77,13 @@ export const SchemaViewer = ({
           <span className="text-xs">{schema.id}</span>
         </div>
 
-        <Icon icon="mdi:close" className="text-xl cursor-pointer text-gray-600" onClick={onClose} />
+        <div className="flex items-center gap-2 text-gray-600">
+          <SchemaHelpMenu schema={schema} />
+
+          <Button size="icon" variant="ghost">
+            <Icon icon="mdi:close" className="text-xl" onClick={onClose} />
+          </Button>
+        </div>
       </div>
 
       <SchemaViewerTitle schema={schema} />
@@ -190,6 +199,10 @@ const Properties = ({ schema }: { schema: IModelSchema }) => {
         <PropertyRow title="Default filter" value={schema.default_filter} />
         <PropertyRow title="Order by" value={schema.order_by} />
         <PropertyRow title="Uniqueness constraints" value={schema.uniqueness_constraints} />
+      </div>
+
+      <div>
+        <PropertyRow title="Documentation" value={schema.documentation} />
       </div>
     </div>
   );

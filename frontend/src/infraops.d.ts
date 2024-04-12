@@ -85,6 +85,10 @@ export interface paths {
     /** Load Schema */
     post: operations["load_schema_api_schema_load_post"];
   };
+  "/api/schema/check": {
+    /** Check Schema */
+    post: operations["check_schema_api_schema_check_post"];
+  };
   "/api/storage/object/{identifier}": {
     /** Get File */
     get: operations["get_file_api_storage_object__identifier__get"];
@@ -113,44 +117,106 @@ export interface components {
   schemas: {
     /** APIGenericSchema */
     APIGenericSchema: {
-      /** Id */
+      /**
+       * Id
+       * @description The ID of the node
+       */
       id?: string | null;
-      /** Name */
+      /**
+       * @description Expected state of the node/generic after loading the schema
+       * @default present
+       */
+      state?: components["schemas"]["HashableModelState"];
+      /**
+       * Name
+       * @description Node name, must be unique within a namespace and must start with an uppercase letter.
+       */
       name: string;
-      /** Namespace */
+      /**
+       * Namespace
+       * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
+       */
       namespace: string;
-      /** Description */
+      /**
+       * Description
+       * @description Short description of the model, will be visible in the frontend.
+       */
       description?: string | null;
-      /** Default Filter */
-      default_filter?: string | null;
-      /** @default aware */
-      branch?: components["schemas"]["BranchSupportType"];
-      /** Order By */
-      order_by?: string[] | null;
-      /** Display Labels */
-      display_labels?: string[] | null;
-      /** Attributes */
-      attributes?: components["schemas"]["AttributeSchema"][];
-      /** Relationships */
-      relationships?: components["schemas"]["RelationshipSchema-Output"][];
-      /** Filters */
-      filters?: components["schemas"]["FilterSchema"][];
-      /** Include In Menu */
-      include_in_menu?: boolean | null;
-      /** Menu Placement */
-      menu_placement?: string | null;
-      /** Icon */
-      icon?: string | null;
-      /** Label */
+      /**
+       * Label
+       * @description Human friendly representation of the name/kind
+       */
       label?: string | null;
-      /** Uniqueness Constraints */
+      /**
+       * @description Type of branch support for the model.
+       * @default aware
+       */
+      branch?: components["schemas"]["BranchSupportType"];
+      /**
+       * Default Filter
+       * @description Default filter used to search for a node in addition to its ID.
+       */
+      default_filter?: string | null;
+      /**
+       * Display Labels
+       * @description List of attributes to use to generate the display label
+       */
+      display_labels?: string[] | null;
+      /**
+       * Include In Menu
+       * @description Defines if objects of this kind should be included in the menu.
+       */
+      include_in_menu?: boolean | null;
+      /**
+       * Menu Placement
+       * @description Defines where in the menu this object should be placed.
+       */
+      menu_placement?: string | null;
+      /**
+       * Icon
+       * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
+       */
+      icon?: string | null;
+      /**
+       * Order By
+       * @description List of attributes to use to order the results by default
+       */
+      order_by?: string[] | null;
+      /**
+       * Uniqueness Constraints
+       * @description List of multi-element uniqueness constraints that can combine relationships and attributes
+       */
       uniqueness_constraints?: string[][] | null;
       /**
+       * Documentation
+       * @description Link to a documentation associated with this object, can be internal or external.
+       */
+      documentation?: string | null;
+      /**
+       * Filters
+       * @description Node filters
+       */
+      filters?: components["schemas"]["FilterSchema"][];
+      /**
+       * Attributes
+       * @description Node attributes
+       */
+      attributes?: components["schemas"]["AttributeSchema-Output"][];
+      /**
+       * Relationships
+       * @description Node Relationships
+       */
+      relationships?: components["schemas"]["RelationshipSchema-Output"][];
+      /**
        * Hierarchical
+       * @description Defines if the Generic support the hierarchical mode.
        * @default false
        */
       hierarchical?: boolean;
-      /** Used By */
+      /**
+       * Used By
+       * @description List of Nodes that are referencing this Generic
+       */
       used_by?: string[];
       /** Kind */
       kind?: string | null;
@@ -159,46 +225,218 @@ export interface components {
     };
     /** APINodeSchema */
     APINodeSchema: {
-      /** Id */
+      /**
+       * Id
+       * @description The ID of the node
+       */
       id?: string | null;
-      /** Name */
+      /**
+       * @description Expected state of the node/generic after loading the schema
+       * @default present
+       */
+      state?: components["schemas"]["HashableModelState"];
+      /**
+       * Name
+       * @description Node name, must be unique within a namespace and must start with an uppercase letter.
+       */
       name: string;
-      /** Namespace */
+      /**
+       * Namespace
+       * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
+       */
       namespace: string;
-      /** Description */
+      /**
+       * Description
+       * @description Short description of the model, will be visible in the frontend.
+       */
       description?: string | null;
-      /** Default Filter */
-      default_filter?: string | null;
-      /** @default aware */
-      branch?: components["schemas"]["BranchSupportType"];
-      /** Order By */
-      order_by?: string[] | null;
-      /** Display Labels */
-      display_labels?: string[] | null;
-      /** Attributes */
-      attributes?: components["schemas"]["AttributeSchema"][];
-      /** Relationships */
-      relationships?: components["schemas"]["RelationshipSchema-Output"][];
-      /** Filters */
-      filters?: components["schemas"]["FilterSchema"][];
-      /** Include In Menu */
-      include_in_menu?: boolean | null;
-      /** Menu Placement */
-      menu_placement?: string | null;
-      /** Icon */
-      icon?: string | null;
-      /** Label */
+      /**
+       * Label
+       * @description Human friendly representation of the name/kind
+       */
       label?: string | null;
-      /** Uniqueness Constraints */
+      /**
+       * @description Type of branch support for the model.
+       * @default aware
+       */
+      branch?: components["schemas"]["BranchSupportType"];
+      /**
+       * Default Filter
+       * @description Default filter used to search for a node in addition to its ID.
+       */
+      default_filter?: string | null;
+      /**
+       * Display Labels
+       * @description List of attributes to use to generate the display label
+       */
+      display_labels?: string[] | null;
+      /**
+       * Include In Menu
+       * @description Defines if objects of this kind should be included in the menu.
+       */
+      include_in_menu?: boolean | null;
+      /**
+       * Menu Placement
+       * @description Defines where in the menu this object should be placed.
+       */
+      menu_placement?: string | null;
+      /**
+       * Icon
+       * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
+       */
+      icon?: string | null;
+      /**
+       * Order By
+       * @description List of attributes to use to order the results by default
+       */
+      order_by?: string[] | null;
+      /**
+       * Uniqueness Constraints
+       * @description List of multi-element uniqueness constraints that can combine relationships and attributes
+       */
       uniqueness_constraints?: string[][] | null;
-      /** Inherit From */
+      /**
+       * Documentation
+       * @description Link to a documentation associated with this object, can be internal or external.
+       */
+      documentation?: string | null;
+      /**
+       * Filters
+       * @description Node filters
+       */
+      filters?: components["schemas"]["FilterSchema"][];
+      /**
+       * Attributes
+       * @description Node attributes
+       */
+      attributes?: components["schemas"]["AttributeSchema-Output"][];
+      /**
+       * Relationships
+       * @description Node Relationships
+       */
+      relationships?: components["schemas"]["RelationshipSchema-Output"][];
+      /**
+       * Inherit From
+       * @description List of Generic Kind that this node is inheriting from
+       */
       inherit_from?: string[];
-      /** Hierarchy */
+      /**
+       * Hierarchy
+       * @description Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode
+       */
       hierarchy?: string | null;
-      /** Parent */
+      /**
+       * Parent
+       * @description Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined.
+       */
       parent?: string | null;
-      /** Children */
+      /**
+       * Children
+       * @description Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.
+       */
       children?: string | null;
+      /** Kind */
+      kind?: string | null;
+      /** Hash */
+      hash: string;
+    };
+    /** APIProfileSchema */
+    APIProfileSchema: {
+      /**
+       * Id
+       * @description The ID of the node
+       */
+      id?: string | null;
+      /**
+       * @description Expected state of the node/generic after loading the schema
+       * @default present
+       */
+      state?: components["schemas"]["HashableModelState"];
+      /**
+       * Name
+       * @description Node name, must be unique within a namespace and must start with an uppercase letter.
+       */
+      name: string;
+      /**
+       * Namespace
+       * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
+       */
+      namespace: string;
+      /**
+       * Description
+       * @description Short description of the model, will be visible in the frontend.
+       */
+      description?: string | null;
+      /**
+       * Label
+       * @description Human friendly representation of the name/kind
+       */
+      label?: string | null;
+      /**
+       * @description Type of branch support for the model.
+       * @default aware
+       */
+      branch?: components["schemas"]["BranchSupportType"];
+      /**
+       * Default Filter
+       * @description Default filter used to search for a node in addition to its ID.
+       */
+      default_filter?: string | null;
+      /**
+       * Display Labels
+       * @description List of attributes to use to generate the display label
+       */
+      display_labels?: string[] | null;
+      /**
+       * Include In Menu
+       * @description Defines if objects of this kind should be included in the menu.
+       */
+      include_in_menu?: boolean | null;
+      /**
+       * Menu Placement
+       * @description Defines where in the menu this object should be placed.
+       */
+      menu_placement?: string | null;
+      /**
+       * Icon
+       * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
+       */
+      icon?: string | null;
+      /**
+       * Order By
+       * @description List of attributes to use to order the results by default
+       */
+      order_by?: string[] | null;
+      /**
+       * Uniqueness Constraints
+       * @description List of multi-element uniqueness constraints that can combine relationships and attributes
+       */
+      uniqueness_constraints?: string[][] | null;
+      /**
+       * Documentation
+       * @description Link to a documentation associated with this object, can be internal or external.
+       */
+      documentation?: string | null;
+      /**
+       * Filters
+       * @description Node filters
+       */
+      filters?: components["schemas"]["FilterSchema"][];
+      /**
+       * Attributes
+       * @description Node attributes
+       */
+      attributes?: components["schemas"]["AttributeSchema-Output"][];
+      /**
+       * Relationships
+       * @description Node Relationships
+       */
+      relationships?: components["schemas"]["RelationshipSchema-Output"][];
+      /**
+       * Inherit From
+       * @description List of Generic Kind that this profile is inheriting from
+       */
+      inherit_from?: string[];
       /** Kind */
       kind?: string | null;
       /** Hash */
@@ -239,55 +477,192 @@ export interface components {
       display_label?: string | null;
     };
     /** AttributeSchema */
-    AttributeSchema: {
-      /** Id */
+    "AttributeSchema-Input": {
+      /**
+       * Id
+       * @description The ID of the attribute
+       */
       id?: string | null;
-      /** Name */
+      /**
+       * @description Expected state of the attribute after loading the schema
+       * @default present
+       */
+      state?: components["schemas"]["HashableModelState"];
+      /**
+       * Name
+       * @description Attribute name, must be unique within a model and must be all lowercase.
+       */
       name: string;
-      /** Kind */
+      /**
+       * Kind
+       * @description Defines the type of the attribute.
+       */
       kind: string;
-      /** Label */
-      label?: string | null;
-      /** Description */
-      description?: string | null;
-      /** Default Value */
-      default_value?: unknown;
-      /** Enum */
+      /**
+       * Enum
+       * @description Define a list of valid values for the attribute.
+       */
       enum?: unknown[] | null;
-      /** Regex */
+      /**
+       * Choices
+       * @description Define a list of valid choices for a dropdown attribute.
+       */
+      choices?: components["schemas"]["DropdownChoice"][] | null;
+      /**
+       * Regex
+       * @description Regex uses to limit limit the characters allowed in for the attributes.
+       */
       regex?: string | null;
-      /** Max Length */
+      /**
+       * Max Length
+       * @description Set a maximum number of characters allowed for a given attribute.
+       */
       max_length?: number | null;
-      /** Min Length */
+      /**
+       * Min Length
+       * @description Set a minimum number of characters allowed for a given attribute.
+       */
       min_length?: number | null;
       /**
+       * Label
+       * @description Human friendly representation of the name. Will be autogenerated if not provided
+       */
+      label?: string | null;
+      /**
+       * Description
+       * @description Short description of the attribute.
+       */
+      description?: string | null;
+      /**
        * Read Only
+       * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
        * @default false
        */
       read_only?: boolean;
       /**
-       * Inherited
-       * @default false
-       */
-      inherited?: boolean;
-      /**
        * Unique
+       * @description Indicate if the value of this attribute must be unique in the database for a given model.
        * @default false
        */
       unique?: boolean;
-      branch?: components["schemas"]["BranchSupportType"] | null;
       /**
        * Optional
+       * @description Indicate if this attribute is mandatory or optional.
        * @default false
        */
       optional?: boolean;
-      /** Order Weight */
+      /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+      branch?: components["schemas"]["BranchSupportType"] | null;
+      /**
+       * Order Weight
+       * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
+       */
       order_weight?: number | null;
       /**
+       * Default Value
+       * @description Default value of the attribute.
+       */
+      default_value?: unknown;
+      /**
+       * Inherited
+       * @description Internal value to indicate if the attribute was inherited from a Generic node.
+       * @default false
+       */
+      inherited?: boolean;
+    };
+    /** AttributeSchema */
+    "AttributeSchema-Output": {
+      /**
+       * Id
+       * @description The ID of the attribute
+       */
+      id?: string | null;
+      /**
+       * @description Expected state of the attribute after loading the schema
+       * @default present
+       */
+      state?: components["schemas"]["HashableModelState"];
+      /**
+       * Name
+       * @description Attribute name, must be unique within a model and must be all lowercase.
+       */
+      name: string;
+      /**
+       * Kind
+       * @description Defines the type of the attribute.
+       */
+      kind: string;
+      /**
+       * Enum
+       * @description Define a list of valid values for the attribute.
+       */
+      enum?: unknown[] | null;
+      /**
        * Choices
-       * @description The available choices if the kind is Dropdown.
+       * @description Define a list of valid choices for a dropdown attribute.
        */
       choices?: components["schemas"]["DropdownChoice"][] | null;
+      /**
+       * Regex
+       * @description Regex uses to limit limit the characters allowed in for the attributes.
+       */
+      regex?: string | null;
+      /**
+       * Max Length
+       * @description Set a maximum number of characters allowed for a given attribute.
+       */
+      max_length?: number | null;
+      /**
+       * Min Length
+       * @description Set a minimum number of characters allowed for a given attribute.
+       */
+      min_length?: number | null;
+      /**
+       * Label
+       * @description Human friendly representation of the name. Will be autogenerated if not provided
+       */
+      label?: string | null;
+      /**
+       * Description
+       * @description Short description of the attribute.
+       */
+      description?: string | null;
+      /**
+       * Read Only
+       * @description Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.
+       * @default false
+       */
+      read_only?: boolean;
+      /**
+       * Unique
+       * @description Indicate if the value of this attribute must be unique in the database for a given model.
+       * @default false
+       */
+      unique?: boolean;
+      /**
+       * Optional
+       * @description Indicate if this attribute is mandatory or optional.
+       * @default false
+       */
+      optional?: boolean;
+      /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+      branch?: components["schemas"]["BranchSupportType"] | null;
+      /**
+       * Order Weight
+       * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
+       */
+      order_weight?: number | null;
+      /**
+       * Default Value
+       * @description Default value of the attribute.
+       */
+      default_value?: unknown;
+      /**
+       * Inherited
+       * @description Internal value to indicate if the attribute was inherited from a Generic node.
+       * @default false
+       */
+      inherited?: boolean;
     };
     /** Body_upload_file_api_storage_upload_file_post */
     Body_upload_file_api_storage_upload_file_post: {
@@ -346,13 +721,6 @@ export interface components {
        * @default
        */
       id?: string;
-      /**
-       * @default {
-       *   "added": 0,
-       *   "removed": 0,
-       *   "updated": 0
-       * }
-       */
       summary?: components["schemas"]["DiffSummary"];
       /** @default unchanged */
       action?: components["schemas"]["DiffAction"];
@@ -373,13 +741,6 @@ export interface components {
       identifier?: string;
       /** Branches */
       branches?: string[];
-      /**
-       * @default {
-       *   "added": 0,
-       *   "removed": 0,
-       *   "updated": 0
-       * }
-       */
       summary?: components["schemas"]["DiffSummary"];
       /** Peers */
       peers?: {
@@ -420,13 +781,6 @@ export interface components {
       identifier?: string;
       /** Branches */
       branches?: string[];
-      /**
-       * @default {
-       *   "added": 0,
-       *   "removed": 0,
-       *   "updated": 0
-       * }
-       */
       summary?: components["schemas"]["DiffSummary"];
       peer?: components["schemas"]["BranchDiffRelationshipOnePeerCollection"] | null;
       /** Properties */
@@ -452,13 +806,6 @@ export interface components {
       elements?: {
         [key: string]: components["schemas"]["BranchDiffElement"];
       };
-      /**
-       * @default {
-       *   "added": 0,
-       *   "removed": 0,
-       *   "updated": 0
-       * }
-       */
       summary?: components["schemas"]["DiffSummary"];
       /** Action */
       action?: {
@@ -582,6 +929,10 @@ export interface components {
     };
     /** DropdownChoice */
     DropdownChoice: {
+      /** Id */
+      id?: string | null;
+      /** @default present */
+      state?: components["schemas"]["HashableModelState"];
       /** Name */
       name: string;
       /** Description */
@@ -606,6 +957,10 @@ export interface components {
     };
     /** FilterSchema */
     FilterSchema: {
+      /** Id */
+      id?: string | null;
+      /** @default present */
+      state?: components["schemas"]["HashableModelState"];
       /** Name */
       name: string;
       kind: components["schemas"]["FilterSchemaKind"];
@@ -626,44 +981,106 @@ export interface components {
      * @description A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined.
      */
     GenericSchema: {
-      /** Id */
+      /**
+       * Id
+       * @description The ID of the node
+       */
       id?: string | null;
-      /** Name */
+      /**
+       * @description Expected state of the node/generic after loading the schema
+       * @default present
+       */
+      state?: components["schemas"]["HashableModelState"];
+      /**
+       * Name
+       * @description Node name, must be unique within a namespace and must start with an uppercase letter.
+       */
       name: string;
-      /** Namespace */
+      /**
+       * Namespace
+       * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
+       */
       namespace: string;
-      /** Description */
+      /**
+       * Description
+       * @description Short description of the model, will be visible in the frontend.
+       */
       description?: string | null;
-      /** Default Filter */
-      default_filter?: string | null;
-      /** @default aware */
-      branch?: components["schemas"]["BranchSupportType"];
-      /** Order By */
-      order_by?: string[] | null;
-      /** Display Labels */
-      display_labels?: string[] | null;
-      /** Attributes */
-      attributes?: components["schemas"]["AttributeSchema"][];
-      /** Relationships */
-      relationships?: components["schemas"]["RelationshipSchema-Input"][];
-      /** Filters */
-      filters?: components["schemas"]["FilterSchema"][];
-      /** Include In Menu */
-      include_in_menu?: boolean | null;
-      /** Menu Placement */
-      menu_placement?: string | null;
-      /** Icon */
-      icon?: string | null;
-      /** Label */
+      /**
+       * Label
+       * @description Human friendly representation of the name/kind
+       */
       label?: string | null;
-      /** Uniqueness Constraints */
+      /**
+       * @description Type of branch support for the model.
+       * @default aware
+       */
+      branch?: components["schemas"]["BranchSupportType"];
+      /**
+       * Default Filter
+       * @description Default filter used to search for a node in addition to its ID.
+       */
+      default_filter?: string | null;
+      /**
+       * Display Labels
+       * @description List of attributes to use to generate the display label
+       */
+      display_labels?: string[] | null;
+      /**
+       * Include In Menu
+       * @description Defines if objects of this kind should be included in the menu.
+       */
+      include_in_menu?: boolean | null;
+      /**
+       * Menu Placement
+       * @description Defines where in the menu this object should be placed.
+       */
+      menu_placement?: string | null;
+      /**
+       * Icon
+       * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
+       */
+      icon?: string | null;
+      /**
+       * Order By
+       * @description List of attributes to use to order the results by default
+       */
+      order_by?: string[] | null;
+      /**
+       * Uniqueness Constraints
+       * @description List of multi-element uniqueness constraints that can combine relationships and attributes
+       */
       uniqueness_constraints?: string[][] | null;
       /**
+       * Documentation
+       * @description Link to a documentation associated with this object, can be internal or external.
+       */
+      documentation?: string | null;
+      /**
+       * Filters
+       * @description Node filters
+       */
+      filters?: components["schemas"]["FilterSchema"][];
+      /**
+       * Attributes
+       * @description Node attributes
+       */
+      attributes?: components["schemas"]["AttributeSchema-Input"][];
+      /**
+       * Relationships
+       * @description Node Relationships
+       */
+      relationships?: components["schemas"]["RelationshipSchema-Input"][];
+      /**
        * Hierarchical
+       * @description Defines if the Generic support the hierarchical mode.
        * @default false
        */
       hierarchical?: boolean;
-      /** Used By */
+      /**
+       * Used By
+       * @description List of Nodes that are referencing this Generic
+       */
       used_by?: string[];
     };
     /** HTTPValidationError */
@@ -671,6 +1088,26 @@ export interface components {
       /** Detail */
       detail?: components["schemas"]["ValidationError"][];
     };
+    /** HashableModelDiff */
+    HashableModelDiff: {
+      /** Added */
+      added?: {
+        [key: string]: components["schemas"]["HashableModelDiff"] | null;
+      };
+      /** Changed */
+      changed?: {
+        [key: string]: components["schemas"]["HashableModelDiff"] | null;
+      };
+      /** Removed */
+      removed?: {
+        [key: string]: components["schemas"]["HashableModelDiff"] | null;
+      };
+    };
+    /**
+     * HashableModelState
+     * @enum {string}
+     */
+    HashableModelState: "present" | "absent";
     /** InfoAPI */
     InfoAPI: {
       /** Deployment Id */
@@ -720,11 +1157,6 @@ export interface components {
     /** MainSettings */
     MainSettings: {
       /**
-       * Default Branch
-       * @default main
-       */
-      default_branch?: string;
-      /**
        * Docs Index Path
        * @description Full path of saved json containing pre-indexed documentation
        * @default /opt/infrahub/docs/build/search-index.json
@@ -744,54 +1176,128 @@ export interface components {
     };
     /** NodeExtensionSchema */
     NodeExtensionSchema: {
+      /** Id */
+      id?: string | null;
+      /** @default present */
+      state?: components["schemas"]["HashableModelState"];
       /** Kind */
       kind: string;
       /** Attributes */
-      attributes?: components["schemas"]["AttributeSchema"][];
+      attributes?: components["schemas"]["AttributeSchema-Input"][];
       /** Relationships */
       relationships?: components["schemas"]["RelationshipSchema-Input"][];
     };
     /** NodeSchema */
     NodeSchema: {
-      /** Id */
+      /**
+       * Id
+       * @description The ID of the node
+       */
       id?: string | null;
-      /** Name */
+      /**
+       * @description Expected state of the node/generic after loading the schema
+       * @default present
+       */
+      state?: components["schemas"]["HashableModelState"];
+      /**
+       * Name
+       * @description Node name, must be unique within a namespace and must start with an uppercase letter.
+       */
       name: string;
-      /** Namespace */
+      /**
+       * Namespace
+       * @description Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.
+       */
       namespace: string;
-      /** Description */
+      /**
+       * Description
+       * @description Short description of the model, will be visible in the frontend.
+       */
       description?: string | null;
-      /** Default Filter */
-      default_filter?: string | null;
-      /** @default aware */
-      branch?: components["schemas"]["BranchSupportType"];
-      /** Order By */
-      order_by?: string[] | null;
-      /** Display Labels */
-      display_labels?: string[] | null;
-      /** Attributes */
-      attributes?: components["schemas"]["AttributeSchema"][];
-      /** Relationships */
-      relationships?: components["schemas"]["RelationshipSchema-Input"][];
-      /** Filters */
-      filters?: components["schemas"]["FilterSchema"][];
-      /** Include In Menu */
-      include_in_menu?: boolean | null;
-      /** Menu Placement */
-      menu_placement?: string | null;
-      /** Icon */
-      icon?: string | null;
-      /** Label */
+      /**
+       * Label
+       * @description Human friendly representation of the name/kind
+       */
       label?: string | null;
-      /** Uniqueness Constraints */
+      /**
+       * @description Type of branch support for the model.
+       * @default aware
+       */
+      branch?: components["schemas"]["BranchSupportType"];
+      /**
+       * Default Filter
+       * @description Default filter used to search for a node in addition to its ID.
+       */
+      default_filter?: string | null;
+      /**
+       * Display Labels
+       * @description List of attributes to use to generate the display label
+       */
+      display_labels?: string[] | null;
+      /**
+       * Include In Menu
+       * @description Defines if objects of this kind should be included in the menu.
+       */
+      include_in_menu?: boolean | null;
+      /**
+       * Menu Placement
+       * @description Defines where in the menu this object should be placed.
+       */
+      menu_placement?: string | null;
+      /**
+       * Icon
+       * @description Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/
+       */
+      icon?: string | null;
+      /**
+       * Order By
+       * @description List of attributes to use to order the results by default
+       */
+      order_by?: string[] | null;
+      /**
+       * Uniqueness Constraints
+       * @description List of multi-element uniqueness constraints that can combine relationships and attributes
+       */
       uniqueness_constraints?: string[][] | null;
-      /** Inherit From */
+      /**
+       * Documentation
+       * @description Link to a documentation associated with this object, can be internal or external.
+       */
+      documentation?: string | null;
+      /**
+       * Filters
+       * @description Node filters
+       */
+      filters?: components["schemas"]["FilterSchema"][];
+      /**
+       * Attributes
+       * @description Node attributes
+       */
+      attributes?: components["schemas"]["AttributeSchema-Input"][];
+      /**
+       * Relationships
+       * @description Node Relationships
+       */
+      relationships?: components["schemas"]["RelationshipSchema-Input"][];
+      /**
+       * Inherit From
+       * @description List of Generic Kind that this node is inheriting from
+       */
       inherit_from?: string[];
-      /** Hierarchy */
+      /**
+       * Hierarchy
+       * @description Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode
+       */
       hierarchy?: string | null;
-      /** Parent */
+      /**
+       * Parent
+       * @description Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined.
+       */
       parent?: string | null;
-      /** Children */
+      /**
+       * Children
+       * @description Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.
+       */
       children?: string | null;
     };
     /** PasswordCredential */
@@ -820,6 +1326,11 @@ export interface components {
      */
     RelationshipCardinality: "one" | "many";
     /**
+     * RelationshipDeleteBehavior
+     * @enum {string}
+     */
+    RelationshipDeleteBehavior: "no-action" | "cascade";
+    /**
      * RelationshipDirection
      * @enum {string}
      */
@@ -828,102 +1339,205 @@ export interface components {
      * RelationshipKind
      * @enum {string}
      */
-    RelationshipKind: "Generic" | "Attribute" | "Component" | "Parent" | "Group" | "Hierarchy";
+    RelationshipKind:
+      | "Generic"
+      | "Attribute"
+      | "Component"
+      | "Parent"
+      | "Group"
+      | "Hierarchy"
+      | "Profile";
     /** RelationshipSchema */
     "RelationshipSchema-Input": {
-      /** Id */
+      /**
+       * Id
+       * @description The ID of the relationship schema
+       */
       id?: string | null;
-      /** Name */
+      /**
+       * @description Expected state of the relationship after loading the schema
+       * @default present
+       */
+      state?: components["schemas"]["HashableModelState"];
+      /**
+       * Name
+       * @description Relationship name, must be unique within a model and must be all lowercase.
+       */
       name: string;
-      /** Peer */
+      /**
+       * Peer
+       * @description Type (kind) of objects supported on the other end of the relationship.
+       */
       peer: string;
-      /** @default Generic */
+      /**
+       * @description Defines the type of the relationship.
+       * @default Generic
+       */
       kind?: components["schemas"]["RelationshipKind"];
-      /** @default bidirectional */
-      direction?: components["schemas"]["RelationshipDirection"];
-      /** Label */
+      /**
+       * Label
+       * @description Human friendly representation of the name. Will be autogenerated if not provided
+       */
       label?: string | null;
-      /** Description */
+      /**
+       * Description
+       * @description Short description of the relationship.
+       */
       description?: string | null;
-      /** Identifier */
+      /**
+       * Identifier
+       * @description Unique identifier of the relationship within a model, identifiers must match to traverse a relationship on both direction.
+       */
       identifier?: string | null;
       /**
-       * Inherited
-       * @default false
+       * @description Defines how many objects are expected on the other side of the relationship.
+       * @default many
        */
-      inherited?: boolean;
-      /** @default many */
       cardinality?: components["schemas"]["RelationshipCardinality"];
-      branch?: components["schemas"]["BranchSupportType"] | null;
-      /**
-       * Optional
-       * @default true
-       */
-      optional?: boolean;
-      /** Hierarchical */
-      hierarchical?: string | null;
-      /** Filters */
-      filters?: components["schemas"]["FilterSchema"][];
-      /** Order Weight */
-      order_weight?: number | null;
       /**
        * Min Count
+       * @description Defines the minimum objects allowed on the other side of the relationship.
        * @default 0
        */
       min_count?: number;
       /**
        * Max Count
+       * @description Defines the maximum objects allowed on the other side of the relationship.
        * @default 0
        */
       max_count?: number;
+      /**
+       * Order Weight
+       * @description Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first.
+       */
+      order_weight?: number | null;
+      /**
+       * Optional
+       * @description Indicate if this relationship is mandatory or optional.
+       * @default true
+       */
+      optional?: boolean;
+      /** @description Type of branch support for the relatioinship, if not defined it will be determine based both peers. */
+      branch?: components["schemas"]["BranchSupportType"] | null;
+      /**
+       * Inherited
+       * @description Internal value to indicate if the relationship was inherited from a Generic node.
+       * @default false
+       */
+      inherited?: boolean;
+      /**
+       * @description Defines the direction of the relationship,  Unidirectional relationship are required when the same model is on both side.
+       * @default bidirectional
+       */
+      direction?: components["schemas"]["RelationshipDirection"];
+      /**
+       * Hierarchical
+       * @description Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind
+       */
+      hierarchical?: string | null;
+      /**
+       * Filters
+       * @description Relationship filters
+       */
+      filters?: components["schemas"]["FilterSchema"][];
+      /** @description Default is no-action. If cascade, related node(s) are deleted when this node is deleted. */
+      on_delete?: components["schemas"]["RelationshipDeleteBehavior"] | null;
     };
     /** RelationshipSchema */
     "RelationshipSchema-Output": {
-      /** Id */
+      /**
+       * Id
+       * @description The ID of the relationship schema
+       */
       id?: string | null;
-      /** Name */
+      /**
+       * @description Expected state of the relationship after loading the schema
+       * @default present
+       */
+      state?: components["schemas"]["HashableModelState"];
+      /**
+       * Name
+       * @description Relationship name, must be unique within a model and must be all lowercase.
+       */
       name: string;
-      /** Peer */
+      /**
+       * Peer
+       * @description Type (kind) of objects supported on the other end of the relationship.
+       */
       peer: string;
-      /** @default Generic */
+      /**
+       * @description Defines the type of the relationship.
+       * @default Generic
+       */
       kind?: components["schemas"]["RelationshipKind"];
-      /** @default bidirectional */
-      direction?: components["schemas"]["RelationshipDirection"];
-      /** Label */
+      /**
+       * Label
+       * @description Human friendly representation of the name. Will be autogenerated if not provided
+       */
       label?: string | null;
-      /** Description */
+      /**
+       * Description
+       * @description Short description of the relationship.
+       */
       description?: string | null;
-      /** Identifier */
+      /**
+       * Identifier
+       * @description Unique identifier of the relationship within a model, identifiers must match to traverse a relationship on both direction.
+       */
       identifier?: string | null;
       /**
-       * Inherited
-       * @default false
+       * @description Defines how many objects are expected on the other side of the relationship.
+       * @default many
        */
-      inherited?: boolean;
-      /** @default many */
       cardinality?: components["schemas"]["RelationshipCardinality"];
-      branch?: components["schemas"]["BranchSupportType"] | null;
-      /**
-       * Optional
-       * @default true
-       */
-      optional?: boolean;
-      /** Hierarchical */
-      hierarchical?: string | null;
-      /** Filters */
-      filters?: components["schemas"]["FilterSchema"][];
-      /** Order Weight */
-      order_weight?: number | null;
       /**
        * Min Count
+       * @description Defines the minimum objects allowed on the other side of the relationship.
        * @default 0
        */
       min_count?: number;
       /**
        * Max Count
+       * @description Defines the maximum objects allowed on the other side of the relationship.
        * @default 0
        */
       max_count?: number;
+      /**
+       * Order Weight
+       * @description Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first.
+       */
+      order_weight?: number | null;
+      /**
+       * Optional
+       * @description Indicate if this relationship is mandatory or optional.
+       * @default true
+       */
+      optional?: boolean;
+      /** @description Type of branch support for the relatioinship, if not defined it will be determine based both peers. */
+      branch?: components["schemas"]["BranchSupportType"] | null;
+      /**
+       * Inherited
+       * @description Internal value to indicate if the relationship was inherited from a Generic node.
+       * @default false
+       */
+      inherited?: boolean;
+      /**
+       * @description Defines the direction of the relationship,  Unidirectional relationship are required when the same model is on both side.
+       * @default bidirectional
+       */
+      direction?: components["schemas"]["RelationshipDirection"];
+      /**
+       * Hierarchical
+       * @description Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind
+       */
+      hierarchical?: string | null;
+      /**
+       * Filters
+       * @description Relationship filters
+       */
+      filters?: components["schemas"]["FilterSchema"][];
+      /** @description Default is no-action. If cascade, related node(s) are deleted when this node is deleted. */
+      on_delete?: components["schemas"]["RelationshipDeleteBehavior"] | null;
     };
     /** RemoteLoggingSettings */
     RemoteLoggingSettings: {
@@ -952,8 +1566,27 @@ export interface components {
         [key: string]: string;
       };
     };
+    /** SchemaDiff */
+    SchemaDiff: {
+      /** Added */
+      added?: {
+        [key: string]: components["schemas"]["HashableModelDiff"];
+      };
+      /** Changed */
+      changed?: {
+        [key: string]: components["schemas"]["HashableModelDiff"];
+      };
+      /** Removed */
+      removed?: {
+        [key: string]: components["schemas"]["HashableModelDiff"];
+      };
+    };
     /** SchemaExtension */
     SchemaExtension: {
+      /** Id */
+      id?: string | null;
+      /** @default present */
+      state?: components["schemas"]["HashableModelState"];
       /** Nodes */
       nodes?: components["schemas"]["NodeExtensionSchema"][];
     };
@@ -967,6 +1600,7 @@ export interface components {
       nodes?: components["schemas"]["NodeSchema"][];
       /**
        * @default {
+       *   "state": "present",
        *   "nodes": []
        * }
        */
@@ -990,8 +1624,30 @@ export interface components {
       nodes?: components["schemas"]["APINodeSchema"][];
       /** Generics */
       generics?: components["schemas"]["APIGenericSchema"][];
+      /** Profiles */
+      profiles?: components["schemas"]["APIProfileSchema"][];
       /** Namespaces */
       namespaces?: components["schemas"]["SchemaNamespace"][];
+    };
+    /** SchemaUpdate */
+    SchemaUpdate: {
+      /**
+       * Hash
+       * @description The new hash for the entire schema
+       */
+      hash: string;
+      /**
+       * Previous Hash
+       * @description The previous hash for the entire schema
+       */
+      previous_hash: string;
+      /** @description The modifications to the schema */
+      diff: components["schemas"]["SchemaDiff"];
+      /**
+       * Schema Updated
+       * @description Indicates if the loading of the schema changed the existing schema
+       */
+      schema_updated: boolean;
     };
     /** SchemasLoadAPI */
     SchemasLoadAPI: {
@@ -1003,6 +1659,7 @@ export interface components {
       nodes?: components["schemas"]["NodeSchema"][];
       /**
        * @default {
+       *   "state": "present",
        *   "nodes": []
        * }
        */
@@ -1065,8 +1722,6 @@ export interface operations {
         branch?: string | null;
         /** @description Time to use for the query, in absolute or relative format */
         at?: string | null;
-        /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
-        rebase?: boolean;
       };
       path: {
         artifact_id: string;
@@ -1095,8 +1750,6 @@ export interface operations {
         branch?: string | null;
         /** @description Time to use for the query, in absolute or relative format */
         at?: string | null;
-        /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
-        rebase?: boolean;
       };
       path: {
         artifact_definition_id: string;
@@ -1288,8 +1941,6 @@ export interface operations {
         branch?: string | null;
         /** @description Time to use for the query, in absolute or relative format */
         at?: string | null;
-        /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
-        rebase?: boolean;
       };
       path: {
         repository_id: string;
@@ -1368,8 +2019,6 @@ export interface operations {
         branch?: string | null;
         /** @description Time to use for the query, in absolute or relative format */
         at?: string | null;
-        /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
-        rebase?: boolean;
       };
       path: {
         /** @description ID or Name of the GraphQL query to execute */
@@ -1403,8 +2052,6 @@ export interface operations {
         branch?: string | null;
         /** @description Time to use for the query, in absolute or relative format */
         at?: string | null;
-        /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
-        rebase?: boolean;
       };
       path: {
         /** @description ID or Name of the GraphQL query to execute */
@@ -1547,6 +2194,34 @@ export interface operations {
       /** @description Successful Response */
       200: {
         content: {
+          "application/json": components["schemas"]["SchemaUpdate"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Check Schema */
+  check_schema_api_schema_check_post: {
+    parameters: {
+      query?: {
+        /** @description Name of the branch to use for the query */
+        branch?: string | null;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SchemasLoadAPI"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
           "application/json": unknown;
         };
       };
@@ -1632,8 +2307,6 @@ export interface operations {
         branch?: string | null;
         /** @description Time to use for the query, in absolute or relative format */
         at?: string | null;
-        /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
-        rebase?: boolean;
       };
       path: {
         transform_id: string;
@@ -1662,8 +2335,6 @@ export interface operations {
         branch?: string | null;
         /** @description Time to use for the query, in absolute or relative format */
         at?: string | null;
-        /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
-        rebase?: boolean;
       };
       path: {
         /** @description ID or Name of the Jinja2 Transform to render */
