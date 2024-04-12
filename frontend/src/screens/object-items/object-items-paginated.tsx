@@ -47,7 +47,7 @@ import ObjectItemCreate from "../object-item-create/object-item-create-paginated
 import { Badge } from "../../components/ui/badge";
 import { Tooltip } from "../../components/ui/tooltip";
 import { SearchInput } from "../../components/ui/search-input";
-import { Button, ButtonWithTooltip } from "../../components/ui/button";
+import { Button, ButtonWithTooltip } from "../../components/buttons/button-primitive";
 import { ObjectHelpButton } from "../../components/menu/object-help-button";
 
 export default function ObjectItems(props: any) {

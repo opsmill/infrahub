@@ -10,7 +10,7 @@ import { genericsState, IModelSchema, schemaState } from "../../state/atoms/sche
 import { ArrayParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../config/qsp";
 import { CSSProperties } from "react";
-import { Button } from "../../components/ui/button";
+import { Button } from "../../components/buttons/button-primitive";
 import { SchemaHelpMenu } from "./schema-help-menu";
 
 export const SchemaViewerStack = ({ className = "" }: { className: string }) => {

@@ -4,7 +4,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { Button } from "../ui/button";
+import { Button } from "../buttons/button-primitive";
 import { Link } from "react-router-dom";
 import { INFRAHUB_DOC_LOCAL } from "../../config/config";
 import { Icon } from "@iconify-icon/react";

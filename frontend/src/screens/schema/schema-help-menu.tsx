@@ -1,4 +1,4 @@
-import { Button } from "../../components/ui/button";
+import { Button } from "../../components/buttons/button-primitive";
 import { Icon } from "@iconify-icon/react";
 import {
   DropdownMenu,
