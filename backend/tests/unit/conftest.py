@@ -1632,6 +1632,8 @@ async def all_attribute_types_schema(
             {"name": "myint", "kind": "Number", "optional": True},
             {"name": "mylist", "kind": "List", "optional": True},
             {"name": "myjson", "kind": "JSON", "optional": True},
+            {"name": "ipaddress", "kind": "IPHost", "optional": True},
+            {"name": "prefix", "kind": "IPNetwork", "optional": True},
         ],
     }
 

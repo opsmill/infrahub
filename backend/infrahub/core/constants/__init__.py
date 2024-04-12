@@ -251,6 +251,12 @@ class ValidatorState(InfrahubStringEnum):
     COMPLETED = "completed"
 
 
+class AttributeDBNodeType(InfrahubStringEnum):
+    DEFAULT = "default"
+    IPHOST = "iphost"
+    IPNETWORK = "ipnetwork"
+
+
 RESTRICTED_NAMESPACES: List[str] = [
     "Account",
     "Branch",

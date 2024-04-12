@@ -213,6 +213,71 @@ async def test_update_object_with_flag_property(db: InfrahubDatabase, person_joh
     assert obj1.height.is_visible is False
 
 
+async def test_update_all_attributes(db: InfrahubDatabase, default_branch, all_attribute_types_schema):
+    obj1 = await Node.init(db=db, schema="TestAllAttributeTypes")
+    await obj1.new(
+        db=db,
+        name="obj1",
+        mystring="abc",
+        mybool=False,
+        myint=123,
+        mylist=["1", 2, False],
+        myjson={"key1": "bill"},
+        ipaddress="10.5.0.1/27",
+        prefix="10.1.0.0/22",
+    )
+    await obj1.save(db=db)
+
+    query = (
+        """
+    mutation {
+        TestAllAttributeTypesUpdate(
+            data: {
+                id: "%s"
+                name: { value: "obj1" }
+                mystring: { value: "def" }
+                mybool: { value: true }
+                myint: { value: 456 }
+                mylist: { value: [ "2", "4", "6" ] }
+                ipaddress: { value: "10.3.4.254/24" }
+                prefix: { value: "10.3.4.0/24" }
+            }
+        ){
+            ok
+        }
+    }
+    """
+        % obj1.id
+    )
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": obj1.id},
+    )
+
+    assert result.errors is None
+    assert result.data["TestAllAttributeTypesUpdate"]["ok"] is True
+
+    objs = await NodeManager.query(db=db, schema="TestAllAttributeTypes")
+    obj = objs[0]
+
+    assert obj.mystring.value == "def"
+    assert obj.mybool.value is True
+    assert obj.mybool.is_default is False
+    assert obj.myint.value == 456
+    assert obj.myint.is_default is False
+    assert obj.mylist.value == ["2", "4", "6"]
+    assert obj.mylist.is_default is False
+    assert obj.ipaddress.value == "10.3.4.254/24"
+    assert obj.ipaddress.is_default is False
+    assert obj.prefix.value == "10.3.4.0/24"
+    assert obj.prefix.is_default is False
+
+
 @pytest.fixture
 async def person_john_with_source_main(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema, first_account
