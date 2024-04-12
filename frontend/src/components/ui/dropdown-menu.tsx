@@ -2,7 +2,7 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { classNames } from "../../utils/common";
 import { ComponentPropsWithoutRef, ElementRef, forwardRef } from "react";
 
-export const DropdownMenu = (props: typeof DropdownMenuPrimitive.Root) => (
+export const DropdownMenu = (props: DropdownMenuPrimitive.DropdownMenuProps) => (
   <DropdownMenuPrimitive.Root modal={false} {...props} />
 );
 
@@ -29,9 +29,7 @@ export const DropdownMenuContent = forwardRef<
 
 export const DropdownMenuItem = forwardRef<
   ElementRef<typeof DropdownMenuPrimitive.Item>,
-  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
-    inset?: boolean;
-  }
+  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item>
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Item
     ref={ref}

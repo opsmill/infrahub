@@ -24,7 +24,7 @@ export const ObjectHelpButton = ({ documentationUrl, kind }: ObjectHelpButtonPro
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
+      <DropdownMenuTrigger asChild>
         <Button variant="outline" size="icon">
           ?
         </Button>
