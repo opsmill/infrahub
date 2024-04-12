@@ -184,7 +184,7 @@ class NodeCreateAllQuery(NodeQuery):
             "binary_address": "attr.content.binary_address",
             "version": "attr.content.version",
             "prefixlen": "attr.content.prefixlen",
-            "num_addresses": "attr.content.num_addresses",
+            # "num_addresses": "attr.content.num_addresses",
         }
         ipnetwork_prop_list = [f"{key}: {value}" for key, value in ipnetwork_prop.items()]
 

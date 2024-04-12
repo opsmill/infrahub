@@ -756,7 +756,7 @@ class IPNetwork(BaseAttribute):
             data["version"] = self.version
             data["binary_address"] = self.network_address_binary
             data["prefixlen"] = self.prefixlen
-            data["num_addresses"] = self.num_addresses
+            # data["num_addresses"] = self.num_addresses
 
         return data
 

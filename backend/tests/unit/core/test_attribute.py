@@ -178,7 +178,7 @@ async def test_validate_ipnetwork_returns(db: InfrahubDatabase, default_branch: 
     assert test_ipv4.to_db() == {
         "binary_address": "00001010000000000000001000000000",
         "is_default": False,
-        "num_addresses": 2,
+        # "num_addresses": 2,
         "prefixlen": 31,
         "value": "10.0.2.0/31",
         "version": 4,
@@ -203,7 +203,7 @@ async def test_validate_ipnetwork_returns(db: InfrahubDatabase, default_branch: 
     assert test_ipv6.to_db() == {
         "binary_address": f"0010000000000001000011011011100000000000000000000000000000000000000000000000000000000000{'0' * 40}",
         "is_default": False,
-        "num_addresses": 79228162514264337593543950336,
+        # "num_addresses": 79228162514264337593543950336,
         "prefixlen": 32,
         "value": "2001:db8::/32",
         "version": 6,
