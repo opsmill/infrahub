@@ -144,6 +144,22 @@ class GraphAttributeNode(BaseModel):
 # -----------------------------------------------------
 class GraphAttributeValueProperties(BaseModel):
     value: Any = Field(..., description="value of the attribute")
+    is_default: bool = Field(..., description="Flag to indicate if an attribute has the default value")
+
+
+class GraphAttributeIPNetworkProperties(BaseModel):
+    value: str = Field(..., description="value of the attribute")
+    is_default: bool = Field(..., description="Flag to indicate if an attribute has the default value")
+    binary_address: str = Field(..., description="Network address represented in binary format")
+    version: int = Field(..., description="Version of IP, either 4 or 6")
+    num_addresses: int = Field(..., description="Total number of addresses available in this IPNetwork")
+
+
+class GraphAttributeIPHostProperties(BaseModel):
+    value: str = Field(..., description="value of the attribute")
+    is_default: bool = Field(..., description="Flag to indicate if an attribute has the default value")
+    binary_address: str = Field(..., description="Network address represented in binary format")
+    version: int = Field(..., description="Version of IP, either 4 or 6")
 
 
 class GraphAttributeValueRelationships(BaseModel):
@@ -156,6 +172,18 @@ class GraphAttributeValueRelationships(BaseModel):
 class GraphAttributeValueNode(BaseModel):
     default_label: str = "AttributeValue"
     properties: GraphAttributeValueProperties
+    relationships: GraphAttributeValueRelationships
+
+
+class GraphAttributeIPNetworkNode(BaseModel):
+    default_label: str = "AttributeIPNetwork"
+    properties: GraphAttributeIPNetworkProperties
+    relationships: GraphAttributeValueRelationships
+
+
+class GraphAttributeIPHostNode(BaseModel):
+    default_label: str = "AttributeIPHost"
+    properties: GraphAttributeIPHostProperties
     relationships: GraphAttributeValueRelationships
 
 
@@ -208,6 +236,8 @@ GRAPH_SCHEMA: Dict[str, Dict[str, Any]] = {
         "Relationship": GraphRelationshipNode,
         "Attribute": GraphAttributeNode,
         "AttributeValue": GraphAttributeValueNode,
+        "AttributeIPNetwork": GraphAttributeIPNetworkNode,
+        "AttributeIPHost": GraphAttributeIPHostNode,
         "Boolean": GraphBooleanNode,
     },
     "relationships": {
