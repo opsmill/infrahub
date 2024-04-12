@@ -18,7 +18,7 @@ type SchemaHelpMenuProps = {
 
 export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {
   const menuItems = useAtomValue(menuFlatAtom);
-  const schemaInMenu = menuItems.find(({ kind }) => kind === schema.kind);
+  const schemaInMenu = menuItems.find(({ title }) => title === schema.label);
 
   return (
     <DropdownMenu>
