@@ -68,7 +68,8 @@ export const SchemaViewer = ({
       className={classNames(
         "flex flex-col overflow-hidden space-y-4 p-4 shadow-lg border border-gray-200 bg-custom-white rounded-md",
         className
-      )}>
+      )}
+      data-testid="schema-viewer">
       <div className="flex justify-between items-start">
         <div className="space-x-1">
           <Badge variant="blue">{schema.namespace}</Badge>
