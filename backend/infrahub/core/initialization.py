@@ -6,6 +6,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.node import Node
+from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema_manager import SchemaManager
@@ -113,6 +114,7 @@ async def initialization(db: InfrahubDatabase) -> None:
     # ---------------------------------------------------
 
     registry.node["Node"] = Node
+    registry.node["BuiltinIPPrefix"] = BuiltinIPPrefix
 
     # ---------------------------------------------------
     # Load all existing Groups into the registry
