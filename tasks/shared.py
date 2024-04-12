@@ -74,7 +74,8 @@ TEST_SCALE_COMPOSE_FILES_MEMGRAPH = [
 TEST_SCALE_OVERRIDE_FILE_NAME = "development/docker-compose-test-scale-override.yml"
 
 IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", "registry.opsmill.io/opsmill/infrahub")
-IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER", "stable")
+REQUESTED_IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER")
+IMAGE_VER = REQUESTED_IMAGE_VER or "stable"
 
 OVERRIDE_FILE_NAME = "development/docker-compose.override.yml"
 DEFAULT_FILE_NAME = "development/docker-compose.default.yml"
@@ -102,16 +103,6 @@ DEV_OVERRIDE_FILE_NAME = "development/docker-compose.dev-override.yml"
 
 TEST_METRICS_OVERRIDE_FILE_NAME = "development/docker-compose-test-metrics.yml"
 
-ENV_VARS_DICT = {
-    "IMAGE_NAME": IMAGE_NAME,
-    "IMAGE_VER": IMAGE_VER,
-    "PYTHON_VER": PYTHON_VER,
-    "INFRAHUB_BUILD_NAME": BUILD_NAME,
-    "NBR_WORKERS": NBR_WORKERS,
-    "CACHE_DOCKER_IMAGE": CACHE_DOCKER_IMAGE,
-    "MESSAGE_QUEUE_DOCKER_IMAGE": MESSAGE_QUEUE_DOCKER_IMAGE,
-    "INFRAHUB_DB_TYPE": INFRAHUB_DATABASE,
-}
 
 PLATFORMS_PTY_ENABLE = ["Linux", "Darwin"]
 PLATFORMS_SUDO_DETECT = ["Linux"]
@@ -176,9 +167,23 @@ def execute_command(context: Context, command: str, print_cmd: bool = False) -> 
     return context.run(command, pty=params["pty"])
 
 
-def get_env_vars(context: Context) -> str:
+def get_env_vars(context: Context, namespace: str = "default") -> str:
+    ENV_VARS_DICT = {
+        "IMAGE_NAME": IMAGE_NAME,
+        "IMAGE_VER": IMAGE_VER,
+        "PYTHON_VER": PYTHON_VER,
+        "INFRAHUB_BUILD_NAME": BUILD_NAME,
+        "NBR_WORKERS": NBR_WORKERS,
+        "CACHE_DOCKER_IMAGE": CACHE_DOCKER_IMAGE,
+        "MESSAGE_QUEUE_DOCKER_IMAGE": MESSAGE_QUEUE_DOCKER_IMAGE,
+        "INFRAHUB_DB_TYPE": INFRAHUB_DATABASE,
+    }
+
+    if namespace == "DEV" and not REQUESTED_IMAGE_VER:
+        ENV_VARS_DICT["IMAGE_VER"] = "local"
+
     if DATABASE_DOCKER_IMAGE:
-        ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = ENV_VARS_DICT
+        ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = DATABASE_DOCKER_IMAGE
     elif INFRAHUB_DATABASE == DatabaseType.NEO4J.value:
         ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = NEO4J_DOCKER_IMAGE
     elif INFRAHUB_DATABASE == DatabaseType.MEMGRAPH.value:
@@ -186,7 +191,7 @@ def get_env_vars(context: Context) -> str:
     return " ".join([f"{key}={value}" for key, value in ENV_VARS_DICT.items()])
 
 
-def build_compose_files_cmd(database: str) -> str:
+def build_compose_files_cmd(database: str, namespace: str = "") -> str:
     if database not in SUPPORTED_DATABASES:
         sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
@@ -201,7 +206,7 @@ def build_compose_files_cmd(database: str) -> str:
     else:
         COMPOSE_FILES.append(DEFAULT_FILE_NAME)
 
-    if "local" in IMAGE_VER:
+    if "local" in IMAGE_VER or (namespace == "DEV" and not REQUESTED_IMAGE_VER):
         COMPOSE_FILES.append(LOCAL_FILE_NAME)
 
     if os.getenv("CI") is not None:

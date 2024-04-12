@@ -2,7 +2,7 @@
 
 from invoke import Collection, Context, task
 
-from . import backend, demo, dev, docs, main, performance, schema, sdk, sync, test
+from . import backend, demo, dev, docs, main, performance, schema, sdk, sync
 
 ns = Collection()
 ns.add_collection(sdk)
@@ -14,7 +14,6 @@ ns.add_collection(demo)
 ns.add_collection(main)
 ns.add_collection(schema)
 ns.add_collection(sync)
-ns.add_collection(test)
 
 
 @task
