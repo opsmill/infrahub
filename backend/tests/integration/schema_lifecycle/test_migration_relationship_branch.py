@@ -232,9 +232,8 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         schema_step02["nodes"][1]["relationships"][0]["id"] = rel.id
 
         # Load the new schema and apply the migrations
-        success, response = await client.schema.load(schemas=[schema_step02], branch=self.branch1.name)
-        assert success
-        assert response is None
+        response = await client.schema.load(schemas=[schema_step02], branch=self.branch1.name)
+        assert not response.errors
 
         # Check if the branch has been properly updated
         branches = await client.branch.all()
@@ -281,9 +280,8 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert success
 
     async def test_step03_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
-        success, response = await client.schema.load(schemas=[schema_step03], branch=self.branch1.name)
-        assert response is None
-        assert success
+        response = await client.schema.load(schemas=[schema_step03], branch=self.branch1.name)
+        assert not response.errors
 
         john = await registry.manager.get_one(db=db, id=initial_dataset["john"], branch=self.branch1)
         assert john

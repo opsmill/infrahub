@@ -28,9 +28,9 @@ def load_schema(
     data["nodes"][0]["relationships"] += relationships
 
     client.schema.validate(data)
-    (loaded, response) = client.schema.load(schemas=[data], branch=branch)
-    if not loaded:
-        raise ValueError(f"Could not load schema: {response}")
+    response = client.schema.load(schemas=[data], branch=branch)
+    if response.errors:
+        raise ValueError(f"Could not load schema: {response.errors}")
 
 
 def _stage_node(client: InfrahubClientSync, kind: str, prefix: str, amount: int, offset: int = 0):

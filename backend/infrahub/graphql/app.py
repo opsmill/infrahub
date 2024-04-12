@@ -477,8 +477,8 @@ async def _get_operation_from_multipart(
             raise ValueError(f"File fields don't contain a valid UploadFile type for '{name}' mapping")
 
         for path in paths:
-            path = tuple(path.split("."))
-            _inject_file_to_operations(operations, file, path)
+            path_components = tuple(path.split("."))
+            _inject_file_to_operations(operations, file, path_components)
 
     return operations
 

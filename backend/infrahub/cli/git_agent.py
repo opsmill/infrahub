@@ -4,7 +4,7 @@ import signal
 from typing import Any
 
 import typer
-from infrahub_sdk import InfrahubClient
+from infrahub_sdk import Config, InfrahubClient
 from prometheus_client import start_http_server
 from rich.logging import RichHandler
 
@@ -64,7 +64,9 @@ async def _start(debug: bool, port: int) -> None:
 
     # initialize the Infrahub Client and query the list of branches to validate that the API is reacheable and the auth is working
     log.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
-    client = await InfrahubClient.init(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=log)
+    client = InfrahubClient(
+        config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=log)
+    )
     await client.branch.all()
 
     # Initialize trace

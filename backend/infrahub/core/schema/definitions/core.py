@@ -1033,6 +1033,23 @@ core_models: dict[str, Any] = {
             ],
         },
         {
+            "name": "GeneratorCheck",
+            "namespace": "Core",
+            "description": "A check related to a Generator instance",
+            "include_in_menu": False,
+            "label": "Generator Check",
+            "display_labels": ["label__value"],
+            "inherit_from": ["CoreCheck"],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "attributes": [
+                {
+                    "name": "instance",
+                    "kind": "Text",
+                    "optional": False,
+                },
+            ],
+        },
+        {
             "name": "DataValidator",
             "namespace": "Core",
             "description": "A check to validate the data integrity between two branches",
@@ -1113,6 +1130,26 @@ core_models: dict[str, Any] = {
                 {
                     "name": "definition",
                     "peer": InfrahubKind.ARTIFACTDEFINITION,
+                    "kind": "Attribute",
+                    "optional": False,
+                    "cardinality": "one",
+                    "branch": BranchSupportType.AGNOSTIC.value,
+                },
+            ],
+        },
+        {
+            "name": "GeneratorValidator",
+            "namespace": "Core",
+            "description": "A validator related to generators",
+            "include_in_menu": False,
+            "label": "Generator Validator",
+            "display_labels": ["label__value"],
+            "inherit_from": [InfrahubKind.VALIDATOR],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "relationships": [
+                {
+                    "name": "definition",
+                    "peer": InfrahubKind.GENERATORDEFINITION,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",

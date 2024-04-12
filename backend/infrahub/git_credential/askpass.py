@@ -3,7 +3,7 @@ import sys
 from typing import List, Optional
 
 import typer
-from infrahub_sdk import InfrahubClientSync
+from infrahub_sdk import Config, InfrahubClientSync
 
 from infrahub import config
 from infrahub.core.constants import InfrahubKind
@@ -37,7 +37,7 @@ def askpass(
     if not request_type:
         raise typer.Exit(f"Unable to identify the request type in '{text}'")
 
-    client = InfrahubClientSync.init(address=config.SETTINGS.main.internal_address, insert_tracker=True)
+    client = InfrahubClientSync.init(config=Config(address=config.SETTINGS.main.internal_address, insert_tracker=True))
     repo = client.get(kind=InfrahubKind.GENERICREPOSITORY, location__value=location)
 
     attr = getattr(repo, request_type)

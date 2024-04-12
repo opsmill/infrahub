@@ -3,6 +3,7 @@ from typing import Dict, Type
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
 from .check_artifact_create import CheckArtifactCreate
+from .check_generator_run import CheckGeneratorRun
 from .check_repository_checkdefinition import CheckRepositoryCheckDefinition
 from .check_repository_mergeconflicts import CheckRepositoryMergeConflicts
 from .check_repository_usercheck import CheckRepositoryUserCheck
@@ -27,6 +28,7 @@ from .refresh_webhook_configuration import RefreshWebhookConfiguration
 from .request_artifact_generate import RequestArtifactGenerate
 from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
 from .request_artifactdefinition_generate import RequestArtifactDefinitionGenerate
+from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
 from .request_git_createbranch import RequestGitCreateBranch
 from .request_git_sync import RequestGitSync
 from .request_graphqlquerygroup_update import RequestGraphQLQueryGroupUpdate
@@ -35,6 +37,7 @@ from .request_proposedchange_dataintegrity import RequestProposedChangeDataInteg
 from .request_proposedchange_pipeline import RequestProposedChangePipeline
 from .request_proposedchange_refreshartifacts import RequestProposedChangeRefreshArtifacts
 from .request_proposedchange_repositorychecks import RequestProposedChangeRepositoryChecks
+from .request_proposedchange_rungenerators import RequestProposedChangeRunGenerators
 from .request_proposedchange_runtests import RequestProposedChangeRunTests
 from .request_proposedchange_schemaintegrity import RequestProposedChangeSchemaIntegrity
 from .request_repository_checks import RequestRepositoryChecks
@@ -51,6 +54,7 @@ from .trigger_webhook_actions import TriggerWebhookActions
 
 MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "check.artifact.create": CheckArtifactCreate,
+    "check.generator.run": CheckGeneratorRun,
     "check.repository.check_definition": CheckRepositoryCheckDefinition,
     "check.repository.merge_conflicts": CheckRepositoryMergeConflicts,
     "check.repository.user_check": CheckRepositoryUserCheck,
@@ -77,6 +81,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "request.artifact.generate": RequestArtifactGenerate,
     "request.artifact_definition.check": RequestArtifactDefinitionCheck,
     "request.artifact_definition.generate": RequestArtifactDefinitionGenerate,
+    "request.generator_definition.check": RequestGeneratorDefinitionCheck,
     "request.git.create_branch": RequestGitCreateBranch,
     "request.git.sync": RequestGitSync,
     "request.graphql_query_group.update": RequestGraphQLQueryGroupUpdate,
@@ -85,6 +90,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "request.proposed_change.pipeline": RequestProposedChangePipeline,
     "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,
     "request.proposed_change.repository_checks": RequestProposedChangeRepositoryChecks,
+    "request.proposed_change.run_generators": RequestProposedChangeRunGenerators,
     "request.proposed_change.schema_integrity": RequestProposedChangeSchemaIntegrity,
     "request.proposed_change.run_tests": RequestProposedChangeRunTests,
     "request.repository.checks": RequestRepositoryChecks,
@@ -108,26 +114,26 @@ RESPONSE_MAP: Dict[str, Type[InfrahubResponse]] = {
     "schema.validator.path": SchemaValidatorPathResponse,
 }
 
+PRIORITY_MAP = {
+    "check.artifact.create": 2,
+    "check.repository.check_definition": 2,
+    "check.repository.merge_conflicts": 2,
+    "event.branch.create": 5,
+    "event.branch.delete": 5,
+    "event.branch.merge": 5,
+    "event.schema.update": 5,
+    "git.diff.names_only": 4,
+    "git.file.get": 4,
+    "request.artifact.generate": 2,
+    "request.git.sync": 4,
+    "request.proposed_change.pipeline": 5,
+    "request.proposed_change.repository_checks": 5,
+    "transform.jinja.template": 4,
+    "transform.python.data": 4,
+}
+
 
 def message_priority(routing_key: str) -> int:
-    PRIORITY_MAP = {
-        "check.artifact.create": 2,
-        "check.repository.check_definition": 2,
-        "check.repository.merge_conflicts": 2,
-        "event.branch.create": 5,
-        "event.branch.delete": 5,
-        "event.branch.merge": 5,
-        "event.schema.update": 5,
-        "git.diff.names_only": 4,
-        "git.file.get": 4,
-        "request.artifact.generate": 2,
-        "request.git.sync": 4,
-        "request.proposed_change.pipeline": 5,
-        "request.proposed_change.repository_checks": 5,
-        "transform.jinja.template": 4,
-        "transform.python.data": 4,
-    }
-
     return PRIORITY_MAP.get(routing_key, 3)
 
 

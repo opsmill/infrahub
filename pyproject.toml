@@ -381,10 +381,6 @@ module = "infrahub.message_bus.operations.*"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.tasks.registry"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.test_data.*"
 ignore_errors = true
 
@@ -460,7 +456,6 @@ ignore = [
     "B008",     # Do not perform function call `Depends` in argument defaults;
     "B009",     # [*] Do not call `getattr` with a constant attribute value. It is not any safer than normal property access.
     "B010",     # [*] Do not call `setattr` with a constant attribute value. It is not any safer than normal property access.
-    "B018",     # Found useless expression. Either assign it to a variable or remove it.
     "B026",     # Star-arg unpacking after a keyword argument is strongly discouraged
     "B904",     # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
     "C403",     # Unnecessary `list` comprehension (rewrite as a `set` comprehension)
@@ -487,7 +482,6 @@ ignore = [
     "PLR6301",  # Method could be a function, class method, or static method
     "PLW0603",  # Using the global statement to update `SETTINGS` is discouraged
     "PLW1508",  # Invalid type for environment variable default; expected `str` or `None`
-    "PLW2901",  # `for` loop variable `path` overwritten by assignment target
     "PLW3201",  # Bad or misspelled dunder method name `__init_subclass_with_meta__`
     "RET503",   # Missing explicit `return` at the end of function able to return non-`None` value
     "RET504",   # Unnecessary assignment before `return` statement

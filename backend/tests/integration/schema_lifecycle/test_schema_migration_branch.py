@@ -176,9 +176,8 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         schema_step02["nodes"][0]["attributes"][0]["id"] = attr.id
 
         # Load the new schema and apply the migrations
-        success, response = await client.schema.load(schemas=[schema_step02], branch=self.branch1.name)
-        assert success
-        assert response is None
+        response = await client.schema.load(schemas=[schema_step02], branch=self.branch1.name)
+        assert not response.errors
 
         # Check if the branch has been properly updated
         branches = await client.branch.all()
@@ -263,9 +262,8 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert schema_step03["nodes"][2]["name"] == "CarMaker"
         schema_step03["nodes"][2]["id"] = manufacturer_schema.id
 
-        success, response = await client.schema.load(schemas=[schema_step03], branch=self.branch1.name)
-        assert response is None
-        assert success
+        response = await client.schema.load(schemas=[schema_step03], branch=self.branch1.name)
+        assert not response.errors
 
         # Ensure that we can query the existing node with the new schema
         # person_schema = registry.schema.get(name=PERSON_KIND)
@@ -326,9 +324,8 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert schema_step04["nodes"][3]["name"] == "Tag"
         schema_step04["nodes"][3]["id"] = tag_schema.id
 
-        success, response = await client.schema.load(schemas=[schema_step04], branch=self.branch1.name)
-        assert response is None
-        assert success
+        response = await client.schema.load(schemas=[schema_step04], branch=self.branch1.name)
+        assert not response.errors
 
         assert registry.schema.has(name=TAG_KIND) is True
         # FIXME after loading the new schema, TestingTag is still present in the branch, need to investigate

@@ -112,6 +112,7 @@ const sidebars: SidebarsConfig = {
         },
         'reference/configuration',
         'reference/git-agent',
+        'reference/message-bus-events',
         'reference/api-server',
         'reference/dotinfrahub',
         'reference/infrahub-tests'
@@ -120,25 +121,36 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Python SDK',
-      link: {type: 'doc', id: 'python-sdk/readme'},
+      link: {
+        type: 'doc',
+        id: 'python-sdk/readme'
+      },
       items: [
         {
           type: 'category',
           label: 'Guides',
           items: [
-	    'python-sdk/guides/installation',
-	    'python-sdk/guides/client',
+            'python-sdk/guides/installation',
+            'python-sdk/guides/client',
             'python-sdk/guides/query_data',
-	    'python-sdk/guides/create_update_delete',
-	    'python-sdk/guides/branches',
-	    'python-sdk/guides/store'
+            'python-sdk/guides/create_update_delete',
+            'python-sdk/guides/branches',
+            'python-sdk/guides/store',
+            'python-sdk/guides/tracking'
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Topics',
+          items: [
+            'python-sdk/topics/tracking'
           ],
         },
         {
           type: 'category',
           label: 'Reference',
           items: [
-	    'python-sdk/reference/config'
+            'python-sdk/reference/config'
           ],
         },
       ],
@@ -146,22 +158,25 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Infrahub Sync',
-      link: {type: 'doc', id: 'sync/readme'},
+      link: {
+        type: 'doc',
+        id: 'sync/readme'
+      },
       items: [
         {
           type: 'category',
           label: 'Guides',
           items: [
-	    'sync/guides/installation',
-	    'sync/guides/creation',
-      'sync/guides/run',
+            'sync/guides/installation',
+            'sync/guides/creation',
+            'sync/guides/run',
           ],
         },
         {
           type: 'category',
           label: 'Reference',
           items: [
-	    'sync/reference/config'
+            'sync/reference/config'
           ],
         },
       ],

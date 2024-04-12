@@ -45,7 +45,7 @@ The preferred way to work on the documentation with Vale and markdownlint is dir
 
 You can disable Vale and markdownlint in-line with the following markdown comments:
 
-```md
+```markdown
 <!-- vale off -->
 Ignored Specialized Phrase ignored by vale
 <!-- vale on -->
@@ -86,6 +86,36 @@ Use two full returns between paragraphs (one empty line). This ensures a new par
 #### Ensure proper h1 tags
 
 Many pages include a *greymatter* or *metadata* block at the top, denoted by two sets of `---`. This is used by Retype to [configure the page](https://retype.com/faq/#what-is-page-metadata). If using the `title` attribute, also use a top-level heading `#` on the page. They do not need to be the same. If `title` is omitted, Retype will use the top-level heading (h1).
+
+#### Notification blocks
+
+When writing documentation, it's essential to guide the reader's attention to specific types of information. Notification blocks are a powerful tool to achieve this, allowing you to highlight information based on its nature and importance. Here are the types of notification blocks and how to use them:
+
+- **Info:** Use info blocks for additional, helpful information that isn't required to complete the task but offers more context or useful tips.
+
+  ```markdown
+  > **Info**: This feature is available in version 2.1 and later.
+  ```
+
+- **Success:** Use success blocks to highlight expected outcomes and "status checks" to ensure the reader is on track with the guide. These blocks can reinforce the reader's progress and provide positive feedback.
+
+  ```markdown
+  > **Success**: If you've followed the steps correctly, your installation should now be complete.
+  ```
+
+- **Warning:** Warning blocks should be used to highlight common errors or mistakes that may occur during the process. They serve as preventive measures to help the reader avoid potential pitfalls.
+
+  ```markdown
+  > **Warning**: Ensure you've backed up your files before proceeding with this step to prevent data loss.
+  ```
+
+- **Danger:** Use danger blocks to highlight irreversible or breaking actions. These notifications are critical for steps that could significantly affect the system or data if mishandled.
+
+  ```markdown
+  > **Danger**: This action will permanently delete your data and cannot be undone.
+  ```
+
+Incorporating these blocks into your documentation makes it more interactive and user-friendly, guiding the reader through different stages of their learning or implementation process with visual cues that emphasize the significance of each piece of information.
 
 ## Organizing new pages
 
@@ -214,7 +244,7 @@ Every page should have a top-level heading. Additional heading tiers can only ex
 
 **:x: Don't do this**:
 
-```md
+```markdown
 <!-- This is missing an h2 -->
 # Page title
 
@@ -235,7 +265,7 @@ Capitalize the first letter of each list item. If an item is a complete sentence
 
 When listing items and descriptions, prefer the use of a colon (:) instead of a dash (-).
 
-```md
+```markdown
 <!-- Don't do this -->
 - Not - this
 - Or - this
@@ -249,7 +279,7 @@ When listing items and descriptions, prefer the use of a colon (:) instead of a 
 
 Avoid extra spaces before a colon.
 
-```md
+```markdown
 <!-- Don't do this -->
 Feature : Explanation of feature
 

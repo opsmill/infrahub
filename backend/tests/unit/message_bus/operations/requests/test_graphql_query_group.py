@@ -40,8 +40,10 @@ async def test_graphql_group_update(db: InfrahubDatabase, httpx_mock: HTTPXMock,
         subscribers={r1},
         params={"name": "John"},
     )
-    config = Config(address="http://mock")
-    client = InfrahubClient(config=config, insert_tracker=True)
+    config = Config(address="http://mock", insert_tracker=True)
+    client = InfrahubClient(
+        config=config,
+    )
     service = InfrahubServices(client=client)
 
     response1 = {

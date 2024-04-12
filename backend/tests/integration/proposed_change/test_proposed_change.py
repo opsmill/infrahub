@@ -69,7 +69,7 @@ class TestProposedChangePipeline(TestInfrahubApp):
         await richard.save(db=db)
 
         john = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id="John", schema_name=TestKind.PERSON, branch=branch1
+            db=db, id="John", schema_name=TestKind.PERSON, branch=branch1.name
         )
         john.age.value = 26  # type: ignore[attr-defined]
         await john.save(db=db)
@@ -115,6 +115,10 @@ class TestProposedChangePipeline(TestInfrahubApp):
             validator for validator in peers.values() if validator.label.value == "Repository Validator: car-dealership"
         ][0]
         assert repository_merge_conflict.conclusion.value.value == ValidatorConclusion.SUCCESS.value
+
+        tags = await client.all(kind="BuiltinTag", branch="conflict_free")
+        # The Generator defined in the repository is expected to have created this tag during the pipeline
+        assert "john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
 
         proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
         await proposed_change_create.save()
