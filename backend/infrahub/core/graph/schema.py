@@ -152,7 +152,7 @@ class GraphAttributeIPNetworkProperties(BaseModel):
     is_default: bool = Field(..., description="Flag to indicate if an attribute has the default value")
     binary_address: str = Field(..., description="Network address represented in binary format")
     version: int = Field(..., description="Version of IP, either 4 or 6")
-    num_addresses: int = Field(..., description="Total number of addresses available in this IPNetwork")
+    # num_addresses: int = Field(..., description="Total number of addresses available in this IPNetwork")
 
 
 class GraphAttributeIPHostProperties(BaseModel):
