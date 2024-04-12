@@ -10,6 +10,8 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from neo4j.graph import Node as Neo4jNode
+
     from infrahub.database import InfrahubDatabase
 
 
@@ -129,6 +131,18 @@ async def count_relationships(db: InfrahubDatabase) -> int:
 
     result = await db.execute_query(query=query, params=params, name="count_relationships")
     return result[0][0]
+
+
+async def get_nodes(db: InfrahubDatabase, label: str) -> List[Neo4jNode]:
+    """Return theall nodes of a given label in the database."""
+    query = """
+    MATCH (node)
+    WHERE $label IN LABELS(node)
+    RETURN node
+    """
+    params: dict = {"label": label}
+    results = await db.execute_query(query=query, params=params, name="get_nodes")
+    return [result[0] for result in results]
 
 
 async def count_nodes(db: InfrahubDatabase, label: str) -> int:
