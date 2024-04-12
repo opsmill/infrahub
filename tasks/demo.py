@@ -1,11 +1,12 @@
 """Replacement for Makefile."""
 
 import re
-import sys
-from time import sleep
+from typing import Optional
 
-from invoke import Context, task
+from invoke.context import Context
+from invoke.tasks import task
 
+from .container_ops import build_images
 from .shared import (
     AVAILABLE_SERVICES,
     BUILD_NAME,
@@ -13,11 +14,12 @@ from .shared import (
     INFRAHUB_DATABASE,
     PYTHON_VER,
     build_compose_files_cmd,
-    build_dev_compose_files_cmd,
     execute_command,
     get_env_vars,
 )
 from .utils import ESCAPED_REPO_PATH
+
+NAMESPACE = "DEMO"
 
 ADD_REPO_QUERY = """
 mutation($name: String!, $location: String!){
@@ -35,12 +37,12 @@ mutation($name: String!, $location: String!){
 
 @task(optional=["database"])
 def build(
-    context,
-    service: str = None,
+    context: Context,
+    service: Optional[str] = None,
     python_ver: str = PYTHON_VER,
     nocache: bool = False,
     database: str = INFRAHUB_DATABASE,
-):  # pylint: disable=too-many-arguments
+):
     """Build an image with the provided name and python version.
 
     Args:
@@ -48,28 +50,7 @@ def build(
         python_ver (str): Define the Python version docker image to build from
         nocache (bool): Do not use cache when building the image
     """
-    print("Building images")
-
-    if service and service not in AVAILABLE_SERVICES:
-        sys.exit(f"{service} is not a valid service ({AVAILABLE_SERVICES})")
-    with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_compose_files_cmd(database=database)
-        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
-        print(f"base_cmd={base_cmd}")
-        # if not TEST_IN_DOCKER:
-        exec_cmd = f"build --build-arg PYTHON_VER={python_ver}"
-        print(f"exec_cmd={exec_cmd}")
-        # else:
-        #     user_id = get_user_id(context)
-        #     group_id = get_group_id(context)
-        #     exec_cmd = f"build --build-arg USER_ID {user_id} --build-arg GROUP_ID {group_id} --build-arg PYTHON_VER={python_ver}"
-        if nocache:
-            exec_cmd += " --no-cache"
-
-        if service:
-            exec_cmd += f" {service}"
-
-        execute_command(context=context, command=f"{base_cmd} {exec_cmd}", print_cmd=True)
+    build_images(context=context, service=service, python_ver=python_ver, nocache=nocache, database=database)
 
 
 @task(optional=["database"])
@@ -154,12 +135,6 @@ def cli_git(context: Context, database: str = INFRAHUB_DATABASE):
         execute_command(context=context, command=command)
 
 
-@task
-def init(context: Context, database: str = INFRAHUB_DATABASE):
-    """Initialize Infrahub database before using it the first time."""
-    print("demo.init has been deprecated ... it's now included directly in demo.start.")
-
-
 @task(optional=["database"])
 def status(context: Context, database: str = INFRAHUB_DATABASE):
     """Display the status of all containers."""
@@ -186,16 +161,6 @@ def load_infra_data(context: Context, database: str = INFRAHUB_DATABASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
         command = f"{base_cmd} run infrahub-git infrahubctl run models/infrastructure_edge.py"
-        execute_command(context=context, command=command)
-
-
-@task(optional=["database"])
-def fake_proposed_change(context: Context, database: str = INFRAHUB_DATABASE):
-    """Load some demo data."""
-    with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_compose_files_cmd(database=database)
-        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
-        command = f"{base_cmd} run infrahub-git infrahubctl run utilities/proposed_change_faker.py"
         execute_command(context=context, command=command)
 
 
@@ -243,38 +208,3 @@ def infra_git_create(
     %s/graphql
     """ % (clean_query, name, location, INFRAHUB_ADDRESS)
     execute_command(context=context, command=exec_cmd, print_cmd=True)
-
-
-# ----------------------------- -----------------------------------------------
-# Dev Environment tasks
-# ----------------------------------------------------------------------------
-@task(optional=["database"])
-def dev_start(context: Context, database: str = INFRAHUB_DATABASE):
-    """Start a local instance of NEO4J & RabbitMQ."""
-    with context.cd(ESCAPED_REPO_PATH):
-        dev_compose_files_cmd = build_dev_compose_files_cmd(database=database)
-        command = f"{get_env_vars(context)} docker compose {dev_compose_files_cmd} -p {BUILD_NAME} up -d"
-        execute_command(context=context, command=command)
-
-
-@task(optional=["database"])
-def dev_stop(context: Context, database: str = INFRAHUB_DATABASE):
-    """Start a local instance of NEO4J & RabbitMQ."""
-    with context.cd(ESCAPED_REPO_PATH):
-        dev_compose_files_cmd = build_dev_compose_files_cmd(database=database)
-        command = f"{get_env_vars(context)} docker compose  {dev_compose_files_cmd} -p {BUILD_NAME} down"
-        execute_command(context=context, command=command)
-
-
-@task(optional=["expected"])
-def wait_healthy(context: Context, expected: int = 2):
-    """Wait until containers are healthy before continuing."""
-    missing_healthy = True
-    while missing_healthy:
-        output = context.run("docker ps --filter 'health=healthy' --format '{{ .Names}}'", hide=True)
-        containers = output.stdout.splitlines()
-        if len(containers) >= expected:
-            missing_healthy = False
-        else:
-            print(f"Expected {expected} healthy containers only saw: {', '.join(containers)}")
-            sleep(1)
