@@ -205,9 +205,8 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
     async def test_step_02_add_node_success(
         self, client: InfrahubClient, initial_dataset, schema_02_uniqueness_constraint
     ):
-        success, response = await client.schema.load(schemas=[schema_02_uniqueness_constraint])
-        assert success is True
-        assert not response
+        response = await client.schema.load(schemas=[schema_02_uniqueness_constraint])
+        assert not response.errors
 
         john_person = await client.get(kind=PERSON_KIND, id=initial_dataset["john"])
         honda_manufacturer = await client.get(kind=MANUFACTURER_KIND, id=initial_dataset["honda"])
@@ -248,9 +247,8 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
     async def test_step_03_add_node_success(
         self, client: InfrahubClient, initial_dataset, schema_03_uniqueness_constraint
     ):
-        success, response = await client.schema.load(schemas=[schema_03_uniqueness_constraint])
-        assert success is True
-        assert not response
+        response = await client.schema.load(schemas=[schema_03_uniqueness_constraint])
+        assert not response.errors
 
         john_person = await client.get(kind=PERSON_KIND, id=initial_dataset["john"])
         honda_manufacturer = await client.get(kind=MANUFACTURER_KIND, id=initial_dataset["honda"])

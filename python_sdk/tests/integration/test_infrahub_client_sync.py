@@ -43,9 +43,8 @@ class TestInfrahubClientSync:
     async def base_dataset(self, db: InfrahubDatabase, test_client: InfrahubTestClient, builtin_org_schema):
         config = Config(username="admin", password="infrahub", sync_requester=test_client.sync_request)
         client = InfrahubClientSync.init(config=config)
-        success, response = client.schema.load(schemas=[builtin_org_schema])
-        assert response is None
-        assert success
+        response = client.schema.load(schemas=[builtin_org_schema])
+        assert not response.errors
 
         await create_branch(branch_name="branch01", db=db)
 

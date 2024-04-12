@@ -1198,19 +1198,19 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if has_error:
             return
 
-        _, errors = await self.client.schema.load(schemas=[item.content for item in schemas_data], branch=branch_name)
+        response = await self.client.schema.load(schemas=[item.content for item in schemas_data], branch=branch_name)
 
-        if errors:
+        if response.errors:
             error_messages = []
 
-            if "detail" in errors:
-                for error in errors["detail"]:
+            if "detail" in response.errors:
+                for error in response.errors["detail"]:
                     loc_str = [str(item) for item in error["loc"][1:]]
                     error_messages.append(f"{'/'.join(loc_str)} | {error['msg']} ({error['type']})")
-            elif "error" in errors:
-                error_messages.append(f"{errors.get('error')}")
+            elif "error" in response.errors:
+                error_messages.append(f"{response.errors.get('error')}")
             else:
-                error_messages.append(f"{errors}")
+                error_messages.append(f"{response.errors}")
 
             await self.log.error(
                 f"Unable to load the schema : {', '.join(error_messages)}", repository=self.name, commit=commit
