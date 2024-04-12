@@ -50,6 +50,36 @@ For more detailed explanations on how to use these events within Infrahub, see t
 <!-- vale on -->
 
 <!-- vale off -->
+### Check Generator
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event check.generator.run
+<!-- vale on -->
+
+**Description**: A check that runs a generator.
+
+**Priority**: 3
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **generator_definition** | The Generator definition | N/A | None |
+| **generator_instance** | The id of the generator instance if it previously existed | N/A | None |
+| **commit** | The commit to target | string | None |
+| **repository_id** | The unique ID of the Repository | string | None |
+| **repository_name** | The name of the Repository | string | None |
+| **repository_kind** | The kind of the Repository | string | None |
+| **branch_name** | The branch where the check is run | string | None |
+| **target_id** | The ID of the target object for this generator | string | None |
+| **target_name** | Name of the generator target | string | None |
+| **query** | The name of the query to use when collecting data | string | None |
+| **variables** | Input variables when running the generator | object | None |
+| **validator_id** | The ID of the validator | string | None |
+<!-- vale on -->
+
+<!-- vale off -->
 ### Check Repository
 <!-- vale on -->
 
@@ -591,6 +621,30 @@ For more detailed explanations on how to use these events within Infrahub, see t
 <!-- vale on -->
 
 <!-- vale off -->
+### Request Generator Definition
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event request.generator_definition.check
+<!-- vale on -->
+
+**Description**: Sent to trigger Generators to run for a proposed change.
+
+**Priority**: 3
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **generator_definition** | The Generator Definition | N/A | None |
+| **branch_diff** | The calculated diff between the two branches | N/A | None |
+| **proposed_change** | The unique ID of the Proposed Change | string | None |
+| **source_branch** | The source branch | string | None |
+| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
+| **destination_branch** | The target branch | string | None |
+<!-- vale on -->
+
+<!-- vale off -->
 ### Request Git
 <!-- vale on -->
 
@@ -726,6 +780,24 @@ For more detailed explanations on how to use these events within Infrahub, see t
 **Description**: Sent when a proposed change is created to trigger additional checks
 
 **Priority**: 5
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **proposed_change** | The unique ID of the Proposed Change | string | None |
+| **source_branch** | The source branch of the proposed change | string | None |
+| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
+| **destination_branch** | The destination branch of the proposed change | string | None |
+| **branch_diff** | The calculated diff between the two branches | N/A | None |
+<!-- vale on -->
+<!-- vale off -->
+#### Event request.proposed_change.run_generators
+<!-- vale on -->
+
+**Description**: Sent trigger the generators that are impacted by the proposed change to run.
+
+**Priority**: 3
 
 <!-- vale off -->
 | Key | Description | Type | Default Value |
@@ -1004,6 +1076,37 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **query** | The name of the query to use when collecting data | string | None |
 | **timeout** | Timeout for requests used to generate this artifact | integer | None |
 | **variables** | Input variables when generating the artifact | object | None |
+| **validator_id** | The ID of the validator | string | None |
+<!-- vale on -->
+
+<!-- vale off -->
+### Check Generator
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event check.generator.run
+<!-- vale on -->
+
+**Description**: A check that runs a generator.
+
+**Priority**: 3
+
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **generator_definition** | The Generator definition | N/A | None |
+| **generator_instance** | The id of the generator instance if it previously existed | N/A | None |
+| **commit** | The commit to target | string | None |
+| **repository_id** | The unique ID of the Repository | string | None |
+| **repository_name** | The name of the Repository | string | None |
+| **repository_kind** | The kind of the Repository | string | None |
+| **branch_name** | The branch where the check is run | string | None |
+| **target_id** | The ID of the target object for this generator | string | None |
+| **target_name** | Name of the generator target | string | None |
+| **query** | The name of the query to use when collecting data | string | None |
+| **variables** | Input variables when running the generator | object | None |
 | **validator_id** | The ID of the validator | string | None |
 <!-- vale on -->
 
@@ -1575,6 +1678,31 @@ For more detailed explanations on how to use these events within Infrahub, see t
 <!-- vale on -->
 
 <!-- vale off -->
+### Request Generator Definition
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event request.generator_definition.check
+<!-- vale on -->
+
+**Description**: Sent to trigger Generators to run for a proposed change.
+
+**Priority**: 3
+
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **generator_definition** | The Generator Definition | N/A | None |
+| **branch_diff** | The calculated diff between the two branches | N/A | None |
+| **proposed_change** | The unique ID of the Proposed Change | string | None |
+| **source_branch** | The source branch | string | None |
+| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
+| **destination_branch** | The target branch | string | None |
+<!-- vale on -->
+
+<!-- vale off -->
 ### Request Git
 <!-- vale on -->
 
@@ -1717,6 +1845,25 @@ For more detailed explanations on how to use these events within Infrahub, see t
 **Description**: Sent when a proposed change is created to trigger additional checks
 
 **Priority**: 5
+
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **proposed_change** | The unique ID of the Proposed Change | string | None |
+| **source_branch** | The source branch of the proposed change | string | None |
+| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
+| **destination_branch** | The destination branch of the proposed change | string | None |
+| **branch_diff** | The calculated diff between the two branches | N/A | None |
+<!-- vale on -->
+<!-- vale off -->
+#### Event request.proposed_change.run_generators
+<!-- vale on -->
+
+**Description**: Sent trigger the generators that are impacted by the proposed change to run.
+
+**Priority**: 3
 
 
 <!-- vale off -->
