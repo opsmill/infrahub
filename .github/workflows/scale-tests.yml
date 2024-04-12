@@ -46,6 +46,12 @@ jobs:
             rels-amount: 0
             changes-amount: 0
             stager: stage_infranode
+          - name: 100000 nodes
+            node-amount: 100000
+            attrs-amount: 0
+            rels-amount: 0
+            changes-amount: 0
+            stager: stage_infranode
           - name: 100 attrs
             node-amount: 10
             attrs-amount: 100
