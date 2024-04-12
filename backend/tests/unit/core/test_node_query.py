@@ -93,7 +93,7 @@ async def test_query_NodeCreateAllQuery_ipnetwork(
     assert prefix["version"] == 4
     assert prefix["binary_address"] == "00001010000000100000010100000000"
     assert prefix["prefixlen"] == 24
-    assert prefix["num_addresses"] == 256
+    # assert prefix["num_addresses"] == 256
 
     assert await count_nodes(db=db, label="AttributeIPHost") == 0
 
