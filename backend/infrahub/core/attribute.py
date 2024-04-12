@@ -12,7 +12,7 @@ from pydantic.v1 import BaseModel, Field
 
 from infrahub import config
 from infrahub.core import registry
-from infrahub.core.constants import NULL_VALUE, BranchSupportType, RelationshipStatus
+from infrahub.core.constants import NULL_VALUE, AttributeDBNodeType, BranchSupportType, RelationshipStatus
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,
@@ -56,6 +56,7 @@ class AttributeCreateData(BaseModel):
     is_visible: bool
     source_prop: List[ValuePropertyData] = Field(default_factory=list)
     owner_prop: List[NodePropertyData] = Field(default_factory=list)
+    node_type: AttributeDBNodeType = AttributeDBNodeType.DEFAULT
 
 
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
@@ -523,10 +524,14 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return changed
 
+    def get_db_node_type(self):
+        return AttributeDBNodeType.DEFAULT
+
     def get_create_data(self) -> AttributeCreateData:
         # pylint: disable=no-member
         branch = self.get_branch_based_on_support_type()
         data = AttributeCreateData(
+            node_type=self.get_db_node_type(),
             uuid=str(UUIDT()),
             name=self.name,
             type=self.get_kind(),
@@ -633,25 +638,52 @@ class IPNetwork(BaseAttribute):
     type = str
 
     @property
+    def obj(self) -> Union[ipaddress.IPv4Network, ipaddress.IPv6Network]:
+        """Return an ipaddress interface object."""
+        if not self.value:
+            raise ValueError("value for IPNetwork must be defined")
+        return ipaddress.ip_network(str(self.value))
+
+    @property
     def broadcast_address(self) -> Optional[str]:
         """Return the broadcast address of the ip network."""
         if not self.value:
             return None
-        return str(ipaddress.ip_network(str(self.value)).broadcast_address)
+        return str(self.obj.broadcast_address)
 
     @property
     def hostmask(self) -> Optional[str]:
         """Return the hostmask of the ip network."""
         if not self.value:
             return None
-        return str(ipaddress.ip_network(str(self.value)).hostmask)
+        return str(self.obj.hostmask)
 
     @property
     def netmask(self) -> Optional[str]:
         """Return the netmask of the ip network."""
         if not self.value:
             return None
-        return str(ipaddress.ip_network(str(self.value)).netmask)
+        return str(self.obj.netmask)
+
+    @property
+    def network_address(self) -> Optional[str]:
+        """Return the netmask of the ip network."""
+        if not self.value:
+            return None
+        return str(self.obj.network_address)
+
+    @property
+    def network_address_integer(self) -> int:
+        """Return the network address of the ip network in integer format."""
+        return int(self.obj.network_address)
+
+    @property
+    def network_address_binary(self) -> str:
+        """Return the network address of the ip network in binary format."""
+        binary_value = bin(self.network_address_integer)[2:]
+        if self.obj.version == 6:
+            return binary_value.zfill(128)
+        return binary_value.zfill(32)
 
     @property
     def prefixlen(self) -> Optional[int]:
@@ -712,65 +744,101 @@ class IPNetwork(BaseAttribute):
 
         return ipaddress.ip_network(str(self.value)).with_prefixlen
 
+    def get_db_node_type(self):
+        if self.value is not None:
+            return AttributeDBNodeType.IPNETWORK
+        return AttributeDBNodeType.DEFAULT
+
+    def to_db(self) -> Dict[str, Any]:
+        data = super().to_db()
+
+        if self.value is not None:
+            data["version"] = self.version
+            data["binary_address"] = self.network_address_binary
+            data["prefixlen"] = self.prefixlen
+            data["num_addresses"] = self.num_addresses
+
+        return data
+
 
 class IPHost(BaseAttribute):
     type = str
+
+    @property
+    def obj(self) -> Union[ipaddress.IPv4Interface, ipaddress.IPv6Interface]:
+        """Return the ip adress without a prefix or subnet mask."""
+        if not self.value:
+            raise ValueError("value for IPHost must be defined")
+        return ipaddress.ip_interface(str(self.value))
 
     @property
     def ip(self) -> Optional[str]:
         """Return the ip adress without a prefix or subnet mask."""
         if not self.value:
             return None
-        return str(ipaddress.ip_interface(str(self.value)).ip)
+        return str(self.obj.ip)
 
     @property
     def hostmask(self) -> Optional[str]:
         """Return the hostmask of the ip address."""
         if not self.value:
             return None
-        return str(ipaddress.ip_interface(str(self.value)).hostmask)
+        return str(self.obj.hostmask)
 
     @property
     def netmask(self) -> Optional[str]:
         """Return the netmask of the ip address."""
         if not self.value:
             return None
-        return str(ipaddress.ip_interface(str(self.value)).netmask)
+        return str(self.obj.netmask)
 
     @property
     def network(self) -> Optional[str]:
         """Return the network encapsuling the ip address."""
         if not self.value:
             return None
-        return str(ipaddress.ip_interface(str(self.value)).network)
+        return str(self.obj.network)
 
     @property
     def prefixlen(self) -> Optional[int]:
         """Return the prefix length of the ip address."""
         if not self.value:
             return None
-        return ipaddress.ip_interface(str(self.value)).network.prefixlen
+        return self.obj.network.prefixlen
 
     @property
     def version(self) -> Optional[int]:
         """Return the IP version of the ip address."""
         if not self.value:
             return None
-        return ipaddress.ip_interface(str(self.value)).version
+        return self.obj.version
 
     @property
     def with_hostmask(self) -> Optional[str]:
         """Return the ip address and the associated hostmask of the ip address."""
         if not self.value:
             return None
-        return ipaddress.ip_interface(str(self.value)).with_hostmask
+        return self.obj.with_hostmask
 
     @property
     def with_netmask(self) -> Optional[str]:
         """Return the ip address and the associated netmask of the ip address."""
         if not self.value:
             return None
-        return ipaddress.ip_interface(str(self.value)).with_netmask
+        return self.obj.with_netmask
+
+    @property
+    def ip_integer(self) -> int:
+        """Return the ip address in binary format."""
+        return int(self.obj)
+
+    @property
+    def ip_binary(self) -> str:
+        """Return the ip address in binary format."""
+        binary_ip = bin(self.ip_integer)[2:]
+        if self.obj.version == 6:
+            return binary_ip.zfill(128)
+        return binary_ip.zfill(32)
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
@@ -795,6 +863,21 @@ class IPHost(BaseAttribute):
         """Serialize the value before storing it in the database."""
 
         return ipaddress.ip_interface(str(self.value)).with_prefixlen
+
+    def get_db_node_type(self):
+        if self.value is not None:
+            return AttributeDBNodeType.IPHOST
+        return AttributeDBNodeType.DEFAULT
+
+    def to_db(self) -> Dict[str, Any]:
+        data = super().to_db()
+
+        if self.value is not None:
+            data["version"] = self.version
+            data["binary_address"] = self.ip_binary
+            data["prefixlen"] = self.prefixlen
+
+        return data
 
 
 class ListAttribute(BaseAttribute):

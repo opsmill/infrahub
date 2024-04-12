@@ -275,6 +275,8 @@ async def test_all_attributes(db: InfrahubDatabase, default_branch: Branch, data
         myint=123,
         mylist=["1", 2, False],
         myjson={"key1": "bill"},
+        ipaddress="10.5.0.1/27",
+        prefix="10.1.0.0/22",
     )
     await obj1.save(db=db)
 
@@ -293,6 +295,16 @@ async def test_all_attributes(db: InfrahubDatabase, default_branch: Branch, data
                     myint { value }
                     mylist { value }
                     myjson { value }
+                    ipaddress {
+                        value
+                        prefixlen
+                        netmask
+                    }
+                    prefix {
+                        value
+                        prefixlen
+                        netmask
+                    }
                 }
             }
         }
@@ -319,12 +331,24 @@ async def test_all_attributes(db: InfrahubDatabase, default_branch: Branch, data
     assert results["obj1"]["myint"]["value"] == obj1.myint.value
     assert results["obj1"]["mylist"]["value"] == obj1.mylist.value
     assert results["obj1"]["myjson"]["value"] == obj1.myjson.value
+    assert results["obj1"]["ipaddress"]["value"] == obj1.ipaddress.value
+    assert results["obj1"]["ipaddress"]["netmask"] == obj1.ipaddress.netmask
+    assert results["obj1"]["ipaddress"]["prefixlen"] == obj1.ipaddress.prefixlen
+    assert results["obj1"]["prefix"]["value"] == obj1.prefix.value
+    assert results["obj1"]["prefix"]["netmask"] == obj1.prefix.netmask
+    assert results["obj1"]["prefix"]["prefixlen"] == obj1.prefix.prefixlen
 
     assert results["obj2"]["mystring"]["value"] == obj2.mystring.value
     assert results["obj2"]["mybool"]["value"] == obj2.mybool.value
     assert results["obj2"]["myint"]["value"] == obj2.myint.value
     assert results["obj2"]["mylist"]["value"] == obj2.mylist.value
     assert results["obj2"]["myjson"]["value"] == obj2.myjson.value
+    assert results["obj2"]["ipaddress"]["value"] == obj2.ipaddress.value
+    assert results["obj2"]["ipaddress"]["netmask"] is None
+    assert results["obj2"]["ipaddress"]["prefixlen"] is None
+    assert results["obj2"]["prefix"]["value"] == obj2.prefix.value
+    assert results["obj2"]["prefix"]["netmask"] is None
+    assert results["obj2"]["prefix"]["prefixlen"] is None
 
 
 async def test_nested_query(db: InfrahubDatabase, default_branch: Branch, car_person_schema):

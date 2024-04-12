@@ -53,9 +53,9 @@ async def test_validate_format_ipnetwork_and_iphost(
 
     # 1/ test with prefixlen
     IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/32")
-    IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/32")
-    IPNetwork(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/32")
-    IPNetwork(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/32")
+    IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/128")
+    IPNetwork(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/27")
+    IPNetwork(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/64")
 
     # 2/ test with netmask
     IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.1/255.255.255.0")
@@ -102,22 +102,30 @@ async def test_validate_validate_url(db: InfrahubDatabase, default_branch: Branc
 async def test_validate_iphost_returns(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     schema = criticality_schema.get_attribute("name")
 
-    test_ipv4 = IPHost(
-        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.1/31"
-    )
+    test_ipv4 = IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="10.0.2.1/31")
     test_ipv6 = IPHost(
         name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/32"
     )
 
-    assert test_ipv4.value == "192.0.2.1/31"
-    assert test_ipv4.ip == "192.0.2.1"
+    assert test_ipv4.value == "10.0.2.1/31"
+    assert test_ipv4.ip == "10.0.2.1"
     assert test_ipv4.hostmask == "0.0.0.1"
     assert test_ipv4.netmask == "255.255.255.254"
-    assert test_ipv4.network == "192.0.2.0/31"
+    assert test_ipv4.network == "10.0.2.0/31"
     assert test_ipv4.prefixlen == 31
-    assert test_ipv4.with_hostmask == "192.0.2.1/0.0.0.1"
-    assert test_ipv4.with_netmask == "192.0.2.1/255.255.255.254"
+    assert test_ipv4.with_hostmask == "10.0.2.1/0.0.0.1"
+    assert test_ipv4.with_netmask == "10.0.2.1/255.255.255.254"
     assert test_ipv4.version == 4
+    assert test_ipv4.ip_integer == 167772673
+    assert test_ipv4.ip_binary == "00001010000000000000001000000001"
+    assert len(test_ipv4.ip_binary) == 32
+    assert test_ipv4.to_db() == {
+        "binary_address": "00001010000000000000001000000001",
+        "is_default": False,
+        "prefixlen": 31,
+        "value": "10.0.2.1/31",
+        "version": 4,
+    }
 
     assert test_ipv6.value == "2001:db8::/32"
     assert test_ipv6.ip == "2001:db8::"
@@ -128,27 +136,53 @@ async def test_validate_iphost_returns(db: InfrahubDatabase, default_branch: Bra
     assert test_ipv6.with_hostmask == "2001:db8::/::ffff:ffff:ffff:ffff:ffff:ffff"
     assert test_ipv6.with_netmask == "2001:db8::/ffff:ffff::"
     assert test_ipv6.version == 6
+    assert test_ipv6.ip_integer == 42540766411282592856903984951653826560
+    assert (
+        test_ipv6.ip_binary
+        == "00100000000000010000110110111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    )
+    assert len(test_ipv6.ip_binary) == 128
+
+    assert test_ipv6.to_db() == {
+        "binary_address": f"0010000000000001000011011011100000000000000000000000000000000000000000000000000000000000{'0' * 40}",
+        "is_default": False,
+        "prefixlen": 32,
+        "value": "2001:db8::/32",
+        "version": 6,
+    }
 
 
 async def test_validate_ipnetwork_returns(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     schema = criticality_schema.get_attribute("name")
 
     test_ipv4 = IPNetwork(
-        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/31"
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="10.0.2.0/31"
     )
     test_ipv6 = IPNetwork(
         name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/32"
     )
 
-    assert test_ipv4.value == "192.0.2.0/31"
-    assert test_ipv4.broadcast_address == "192.0.2.1"
+    assert test_ipv4.value == "10.0.2.0/31"
+    assert test_ipv4.broadcast_address == "10.0.2.1"
     assert test_ipv4.hostmask == "0.0.0.1"
     assert test_ipv4.netmask == "255.255.255.254"
     assert test_ipv4.prefixlen == 31
     assert test_ipv4.num_addresses == 2
-    assert test_ipv4.with_hostmask == "192.0.2.0/0.0.0.1"
-    assert test_ipv4.with_netmask == "192.0.2.0/255.255.255.254"
+    assert test_ipv4.with_hostmask == "10.0.2.0/0.0.0.1"
+    assert test_ipv4.with_netmask == "10.0.2.0/255.255.255.254"
     assert test_ipv4.version == 4
+    assert test_ipv4.network_address_integer == 167772672
+    assert test_ipv4.network_address_binary == "00001010000000000000001000000000"
+    assert len(test_ipv4.network_address_binary) == 32
+
+    assert test_ipv4.to_db() == {
+        "binary_address": "00001010000000000000001000000000",
+        "is_default": False,
+        "num_addresses": 2,
+        "prefixlen": 31,
+        "value": "10.0.2.0/31",
+        "version": 4,
+    }
 
     assert test_ipv6.value == "2001:db8::/32"
     assert test_ipv6.broadcast_address == "2001:db8:ffff:ffff:ffff:ffff:ffff:ffff"
@@ -159,6 +193,21 @@ async def test_validate_ipnetwork_returns(db: InfrahubDatabase, default_branch: 
     assert test_ipv6.with_hostmask == "2001:db8::/::ffff:ffff:ffff:ffff:ffff:ffff"
     assert test_ipv6.with_netmask == "2001:db8::/ffff:ffff::"
     assert test_ipv6.version == 6
+    assert test_ipv6.network_address_integer == 42540766411282592856903984951653826560
+    assert (
+        test_ipv6.network_address_binary
+        == f"0010000000000001000011011011100000000000000000000000000000000000000000000000000000000000{'0' * 40}"
+    )
+    assert len(test_ipv6.network_address_binary) == 128
+
+    assert test_ipv6.to_db() == {
+        "binary_address": f"0010000000000001000011011011100000000000000000000000000000000000000000000000000000000000{'0' * 40}",
+        "is_default": False,
+        "num_addresses": 79228162514264337593543950336,
+        "prefixlen": 32,
+        "value": "2001:db8::/32",
+        "version": 6,
+    }
 
 
 async def test_validate_content_dropdown(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
