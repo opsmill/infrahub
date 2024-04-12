@@ -1,6 +1,7 @@
 import copy
 from typing import Any, Dict, Mapping, Optional
 
+from diffsync import DiffSyncModel
 from infrahub_sdk import (
     Config,
     InfrahubClientSync,
@@ -10,15 +11,13 @@ from infrahub_sdk import (
 )
 from infrahub_sdk.exceptions import NodeNotFoundError
 from infrahub_sdk.utils import compare_lists
-
-from diffsync import DiffSyncModel
 from infrahub_sync import DiffSyncMixin, DiffSyncModelMixin, SyncAdapter, SyncConfig
 from infrahub_sync.generator import has_field
 
 try:
-    from diffsync import Adapter as DiffSync  # type: ignore[attr-defined]
+    from diffsync import Adapter as DiffSyncAdapter  # type: ignore[attr-defined]
 except ImportError:
-    from diffsync import DiffSync  # type: ignore[no-redef]
+    from diffsync import DiffSync as DiffSyncAdapter  # type: ignore[no-redef]
 
 
 def update_node(node: InfrahubNodeSync, attrs: dict):
@@ -48,7 +47,7 @@ def update_node(node: InfrahubNodeSync, attrs: dict):
     return node
 
 
-class InfrahubAdapter(DiffSyncMixin, DiffSync):
+class InfrahubAdapter(DiffSyncMixin, DiffSyncAdapter):
     type = "Infrahub"
 
     def __init__(self, *args, target: str, adapter: SyncAdapter, config: SyncConfig, branch: str = None, **kwargs):
@@ -156,10 +155,10 @@ class InfrahubModel(DiffSyncModelMixin, DiffSyncModel):
         cls,
         ids: Mapping[Any, Any],
         attrs: Mapping[Any, Any],
-        diffsync: Optional["DiffSync"] = None,
-        adapter: Optional["DiffSync"] = None,
+        diffsync: Optional[DiffSyncAdapter] = None,
+        adapter: Optional[DiffSyncAdapter] = None,
     ):
-        context = diffsync or adapter
+        context = adapter if adapter is not None else diffsync
 
         if context is None:
             raise ValueError("Either 'diffsync' or 'adapter' must be provided.")
