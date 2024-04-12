@@ -248,7 +248,7 @@ jobs:
       - name: "Build Test Image"
         run: "invoke dev.build"
       - name: "Pull External Docker Images"
-        run: "invoke test.pull"
+        run: "invoke dev.pull"
       - name: "Integration Tests"
         run: "invoke sdk.test-integration"
       - name: "Coveralls : Integration Tests"
@@ -326,7 +326,7 @@ jobs:
       - name: "Build Test Image"
         run: "invoke dev.build"
       - name: "Pull External Docker Images"
-        run: "invoke test.pull"
+        run: "invoke dev.pull"
       - name: "Unit Tests"
         run: "invoke backend.test-unit"
       - name: "Coveralls : Unit Tests"
@@ -373,7 +373,7 @@ jobs:
       - name: "Build Test Image"
         run: "invoke dev.build"
       - name: "Pull External Docker Images"
-        run: "invoke test.pull"
+        run: "invoke dev.pull"
       - name: "Pylint Tests"
         run: "invoke backend.pylint --docker"
       - name: "Mypy Tests"
@@ -415,7 +415,7 @@ jobs:
       - name: "Build Test Image"
         run: "invoke dev.build"
       - name: "Pull External Docker Images"
-        run: "invoke test.pull"
+        run: "invoke dev.pull"
       - name: "Unit Tests"
         run: "invoke backend.test-unit"
 
@@ -646,7 +646,7 @@ jobs:
         run: echo "INFRAHUB_ADDRESS=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
 
       - name: Git Repository
-        run: invoke demo.infra-git-import demo.infra-git-create
+        run: invoke dev.infra-git-import dev.infra-git-create
 
       - name: Install frontend dependencies
         run: npm install
