@@ -144,7 +144,6 @@ class GraphAttributeNode(BaseModel):
 # -----------------------------------------------------
 class GraphAttributeValueProperties(BaseModel):
     value: Any = Field(..., description="value of the attribute")
-    is_default: bool = Field(..., description="Flag to indicate if an attribute has the default value")
 
 
 class GraphAttributeIPNetworkProperties(BaseModel):

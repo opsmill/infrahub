@@ -485,13 +485,6 @@ def test_constraint_manager_from_graph_schema_memgraph(db: InfrahubDatabase):
             mandatory=True,
         ),
         ConstraintNodeMemgraph(
-            item_name="attributevalue",
-            item_label="AttributeValue",
-            property="is_default",
-            type=GraphPropertyType.BOOLEAN,
-            mandatory=True,
-        ),
-        ConstraintNodeMemgraph(
             item_name="attributeipnetwork",
             item_label="AttributeIPNetwork",
             property="value",
@@ -709,7 +702,6 @@ async def test_constraint_manager_database_memgraph(db: InfrahubDatabase, defaul
         ConstraintInfo(item_name="n_a", item_label="Attribute", property="branch_support"),
         ConstraintInfo(item_name="n_a", item_label="Attribute", property="name"),
         ConstraintInfo(item_name="n_a", item_label="Attribute", property="uuid"),
-        ConstraintInfo(item_name="n_a", item_label="AttributeValue", property="is_default"),
         ConstraintInfo(item_name="n_a", item_label="AttributeIPNetwork", property="value"),
         ConstraintInfo(item_name="n_a", item_label="AttributeIPNetwork", property="is_default"),
         ConstraintInfo(item_name="n_a", item_label="AttributeIPNetwork", property="binary_address"),
