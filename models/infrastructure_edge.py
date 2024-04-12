@@ -1080,7 +1080,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         NETWORKS_POOL_INTERNAL[1],
         NETWORKS_POOL_EXTERNAL_SUPERNET,
     ]:
-        obj = await client.create(branch=branch, kind="IpamIPPrefix", prefix=str(network))
+        obj = await client.create(branch=branch, kind="IpamIPPrefix", prefix=str(network), member_type="prefix")
         await obj.save()
     log.debug(f"IP Prefixes Creation Completed")
 

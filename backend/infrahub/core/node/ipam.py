@@ -20,8 +20,10 @@ class BuiltinIPPrefix(Node):
             db, fields=fields, related_node_ids=related_node_ids, filter_sensitive=filter_sensitive
         )
 
-        for read_only_attr in ["netmask", "hostmask", "network_address", "broadcast_address"]:
-            if read_only_attr in fields:
-                response[read_only_attr] = {"value": getattr(self.prefix, read_only_attr)}
+        if fields:
+            prefix = getattr(self, "prefix")
+            for read_only_attr in ["netmask", "hostmask", "network_address", "broadcast_address"]:
+                if read_only_attr in fields:
+                    response[read_only_attr] = {"value": getattr(prefix, read_only_attr)}
 
         return response
