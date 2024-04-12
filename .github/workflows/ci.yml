@@ -246,7 +246,7 @@ jobs:
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
       - name: "Build Test Image"
-        run: "invoke test.build"
+        run: "invoke dev.build"
       - name: "Pull External Docker Images"
         run: "invoke test.pull"
       - name: "Integration Tests"
@@ -324,7 +324,7 @@ jobs:
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build Test Image"
-        run: "invoke test.build"
+        run: "invoke dev.build"
       - name: "Pull External Docker Images"
         run: "invoke test.pull"
       - name: "Unit Tests"
@@ -371,7 +371,7 @@ jobs:
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build Test Image"
-        run: "invoke test.build"
+        run: "invoke dev.build"
       - name: "Pull External Docker Images"
         run: "invoke test.pull"
       - name: "Pylint Tests"
@@ -413,7 +413,7 @@ jobs:
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build Test Image"
-        run: "invoke test.build"
+        run: "invoke dev.build"
       - name: "Pull External Docker Images"
         run: "invoke test.pull"
       - name: "Unit Tests"
@@ -540,7 +540,7 @@ jobs:
       - name: "Setup environment"
         run: "pip install invoke toml"
       - name: "Build Test Image"
-        run: "invoke test.build"
+        run: "invoke dev.build"
       - name: "Validate generated documentation"
         run: "invoke docs.validate --docker"
 
@@ -756,7 +756,7 @@ jobs:
         run: mv development/docker-compose.dev-override-benchmark.yml development/docker-compose.dev-override.yml
 
       - name: Start dependencies
-        run: invoke demo.dev-start
+        run: invoke dev.deps
 
       - name: Update PATH
         run: "echo ~/.cargo/bin >> $GITHUB_PATH"

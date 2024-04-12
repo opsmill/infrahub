@@ -33,8 +33,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 TOP_DIRECTORY_NAME = os.path.basename(os.path.abspath(os.path.join(here, "..")))
 BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", re.sub(r"[^a-zA-Z0-9_/.]", "", TOP_DIRECTORY_NAME))
 PYTHON_VER = os.getenv("PYTHON_VER", "3.12")
-IMAGE_NAME = os.getenv("IMAGE_NAME", "registry.opsmill.io/opsmill/infrahub")
-IMAGE_VER = os.getenv("IMAGE_VER", "stable")
+
 PWD = os.getcwd()
 
 NBR_WORKERS = os.getenv("PYTEST_XDIST_WORKER_COUNT", 1)

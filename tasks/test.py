@@ -10,16 +10,6 @@ from .shared import (
 from .utils import ESCAPED_REPO_PATH
 
 
-@task
-def build(context: Context):
-    """Start a local instance of Infrahub in debug mode."""
-    with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_test_compose_files_cmd()
-        exec_cmd = f"{get_env_vars(context=context)} docker compose {compose_files_cmd} -p {BUILD_NAME} build"
-
-        return execute_command(context=context, command=exec_cmd)
-
-
 @task(optional=["database"])
 def pull(context: Context, database: str = "memgraph"):
     """Pull external containers from registry."""
