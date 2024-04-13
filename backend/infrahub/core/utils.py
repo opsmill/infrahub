@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import re
 from inspect import isclass
 from typing import TYPE_CHECKING, List, Optional, Union
@@ -192,6 +193,17 @@ def parse_node_kind(kind: str) -> NodeKind:
         return NodeKind(namespace=match.group(1), name=match.group(2))
 
     raise ValueError("The String provided is not a valid Node kind")
+
+
+def convert_ip_to_binary_str(
+    obj: Union[ipaddress.IPv6Network, ipaddress.IPv4Network, ipaddress.IPv4Interface, ipaddress.IPv6Interface],
+) -> str:
+    if isinstance(obj, (ipaddress.IPv6Network, ipaddress.IPv4Network)):
+        prefix_bin = bin(int(obj.network_address))[2:]
+        return prefix_bin.zfill(obj.max_prefixlen)
+
+    ip_bin = bin(int(obj))[2:]
+    return ip_bin.zfill(obj.max_prefixlen)
 
 
 # --------------------------------------------------------------------------------

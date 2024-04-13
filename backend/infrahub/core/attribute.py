@@ -27,7 +27,7 @@ from infrahub.core.query.attribute import (
 )
 from infrahub.core.query.node import AttributeFromDB, NodeListGetAttributeQuery
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.utils import add_relationship, update_relationships_to
+from infrahub.core.utils import add_relationship, convert_ip_to_binary_str, update_relationships_to
 from infrahub.exceptions import ValidationError
 from infrahub.helpers import hash_password
 
@@ -680,8 +680,7 @@ class IPNetwork(BaseAttribute):
     @property
     def network_address_binary(self) -> str:
         """Return the network address of the ip network in binary format."""
-        binary_value = bin(self.network_address_integer)[2:]
-        return binary_value.zfill(self.obj.max_prefixlen)
+        return convert_ip_to_binary_str(obj=self.obj)
 
     @property
     def prefixlen(self) -> Optional[int]:
@@ -833,8 +832,7 @@ class IPHost(BaseAttribute):
     @property
     def ip_binary(self) -> str:
         """Return the ip address in binary format."""
-        binary_ip = bin(self.ip_integer)[2:]
-        return binary_ip.zfill(self.obj.max_prefixlen)
+        return convert_ip_to_binary_str(obj=self.obj)
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
