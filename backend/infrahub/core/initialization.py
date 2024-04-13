@@ -240,7 +240,7 @@ async def create_account(
 async def create_ipam_namespace(
     db: InfrahubDatabase, name: str = "Default", description: str = "Used to provide a default space of IP resources"
 ) -> Node:
-    obj = await Node.init(db=db, schema="IpamNamespace")
+    obj = await Node.init(db=db, schema=InfrahubKind.IPAMNAMESPACE)
     await obj.new(db=db, name=name, description=description)
     await obj.save(db=db)
     log.info(f"Created IPAM Namespace: {name}")
