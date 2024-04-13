@@ -17,6 +17,7 @@ from infrahub.core.constants import BranchSupportType, InfrahubKind
 from infrahub.core.initialization import (
     create_default_branch,
     create_global_branch,
+    create_ipam_namespace,
     create_root_node,
 )
 from infrahub.core.schema import (
@@ -91,6 +92,13 @@ async def default_branch(reset_registry, local_storage_dir, empty_database, db: 
     await create_global_branch(db=db)
     registry.schema = SchemaManager()
     return branch
+
+
+@pytest.fixture
+async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Branch:
+    ip_namespace = await create_ipam_namespace(db=db)
+    registry.default_ipnamespace = ip_namespace.id
+    return ip_namespace
 
 
 @pytest.fixture
