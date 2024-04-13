@@ -1002,10 +1002,16 @@ class NodeGetListQuery(Query):
                 continue
             var_name = f"final_attr_value{far.index}"
             self.params[var_name] = far.field_attr_value
+            if self.partial_match:
+                where_parts.append(
+                    f"toLower(toString({far.final_value_query_variable})) CONTAINS toLower(toString(${var_name}))"
+                )
+                continue
             if far.field_attr_name == "values":
                 operator = "IN"
             else:
                 operator = "="
+
             where_parts.append(f"{far.final_value_query_variable} {operator} ${var_name}")
         if where_parts:
             where_str = "WHERE " + " AND ".join(where_parts)
@@ -1026,7 +1032,9 @@ class NodeGetListQuery(Query):
                         field_name=field_name,
                         field=field,
                         field_attr_name=field_attr_name,
-                        field_attr_value=field_attr_value,
+                        field_attr_value=field_attr_value.value
+                        if isinstance(field_attr_value, Enum)
+                        else field_attr_value,
                         index=index,
                         types=[FieldAttributeRequirementType.FILTER],
                     )
