@@ -319,6 +319,44 @@ async def test_query_NodeGetListQuery_order_by_optional_relationship_nulls(
     assert set(retrieved_node_ids[2:]) == {car_camry_main.id, car_yaris_main.id}
 
 
+async def test_query_NodeGetListQuery_filter_with_profiles(
+    db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+):
+    profile_schema = registry.schema.get("ProfileTestPerson", branch=branch, duplicate=False)
+    person_profile = await Node.init(db=db, schema=profile_schema)
+    await person_profile.new(db=db, profile_name="person_profile_1", height=172, profile_priority=1001)
+    await person_profile.save(db=db)
+    person_profile_2 = await Node.init(db=db, schema=profile_schema)
+    await person_profile_2.new(db=db, profile_name="person_profile_2", height=177, profile_priority=1002)
+    await person_profile_2.save(db=db)
+
+    person_schema = registry.schema.get("TestPerson", branch=branch, duplicate=False)
+    person_schema.order_by = ["height__value", "name__value"]
+    person = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
+    person.height.value = None
+    person.height.is_default = True
+    await person.profiles.update(data=[person_profile, person_profile_2], db=db)
+    await person.save(db=db)
+    person = await NodeManager.get_one(db=db, id=person_jim_main.id, branch=branch)
+    person.height.value = None
+    person.height.is_default = True
+    await person.profiles.update(data=[person_profile], db=db)
+    await person.save(db=db)
+    person = await NodeManager.get_one(db=db, id=person_albert_main.id, branch=branch)
+    await person.profiles.update(data=[person_profile_2], db=db)
+    await person.save(db=db)
+    person = await NodeManager.get_one(db=db, id=person_alfred_main.id, branch=branch)
+    person.height.value = 172
+    await person.save(db=db)
+
+    person_schema = registry.schema.get(name="TestPerson", branch=branch)
+    query = await NodeGetListQuery.init(db=db, branch=branch, schema=person_schema, filters={"height__value": 172})
+
+    await query.execute(db=db)
+
+    assert query.get_node_ids() == [person_alfred_main.id, person_jim_main.id, person_john_main.id]
+
+
 async def test_query_NodeListGetInfoQuery(
     db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):

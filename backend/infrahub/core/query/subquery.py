@@ -23,9 +23,14 @@ async def build_subquery_filter(
     branch: Branch = None,
     subquery_idx: int = 1,
     partial_match: bool = False,
+    optional_match: bool = False,
+    result_prefix: str = "filter",
+    support_profiles: bool = False,
+    extra_tail_properties: Optional[dict[str, str]] = None,
 ) -> Tuple[str, dict[str, Any], str]:
+    support_profiles = support_profiles and field and field.is_attribute and filter_name in ("value", "values")
     params = {}
-    prefix = f"filter{subquery_idx}"
+    prefix = f"{result_prefix}{subquery_idx}"
 
     # If the field is not provided, it means that the query is targeting a special keyword like:: any or attribute
     # Currently any and attribute have the same effect and relationship is not supported yet
@@ -45,6 +50,7 @@ async def build_subquery_filter(
         param_prefix=prefix,
         db=db,
         partial_match=partial_match,
+        support_profiles=support_profiles,
     )
     params.update(field_params)
 
@@ -53,12 +59,20 @@ async def build_subquery_filter(
     where_str = " AND ".join(field_where)
     branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
     froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
+    to_return = f"{node_alias} as {prefix}"
+    with_extra = ""
+    if extra_tail_properties:
+        tail_node = field_filter[-1]
+        with_extra += f", {tail_node.name}"
+        for variable_name, tail_property in extra_tail_properties.items():
+            to_return += f", {tail_node.name}.{tail_property} as {variable_name}"
+    match = "OPTIONAL MATCH" if optional_match else "MATCH"
     query = f"""
     WITH {node_alias}
-    MATCH path = {filter_str}
+    {match} path = {filter_str}
     WHERE {where_str}
-    WITH {node_alias}, path, {branch_level_str} AS branch_level, {froms_str} AS froms
-    RETURN {node_alias} as {prefix}
+    WITH {node_alias}, path, {branch_level_str} AS branch_level, {froms_str} AS froms{with_extra}
+    RETURN {to_return}
     ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
     LIMIT 1
     """
@@ -74,9 +88,13 @@ async def build_subquery_order(
     name: Optional[str] = None,
     branch: Branch = None,
     subquery_idx: int = 1,
+    result_prefix: Optional[str] = None,
+    support_profiles: bool = False,
+    extra_tail_properties: Optional[dict[str, str]] = None,
 ) -> Tuple[str, dict[str, Any], str]:
+    support_profiles = support_profiles and field and field.is_attribute and order_by in ("value", "values")
     params = {}
-    prefix = f"order{subquery_idx}"
+    prefix = result_prefix or f"order{subquery_idx}"
 
     field_filter, field_params, field_where = await field.get_query_filter(
         db=db,
@@ -86,6 +104,7 @@ async def build_subquery_order(
         filter_value=None,
         branch=branch,
         param_prefix=prefix,
+        support_profiles=support_profiles,
     )
     params.update(field_params)
 
@@ -102,12 +121,27 @@ async def build_subquery_order(
     where_str = " AND ".join(field_where)
     branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
     froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
+    to_return = f"last.value as {prefix}"
+    with_parts: dict[str, Optional[str]] = {
+        "last": None,
+        "path": None,
+        branch_level_str: "branch_level",
+        froms_str: "froms",
+    }
+    if extra_tail_properties:
+        tail_node = field_filter[-1]
+        if tail_node.name not in with_parts:
+            with_parts[tail_node.name] = None
+        tail_node_name = with_parts.get(tail_node.name) or tail_node.name
+        for variable_name, tail_property in extra_tail_properties.items():
+            to_return += f", {tail_node_name}.{tail_property} as {variable_name}"
+    with_str = ", ".join(f"{k} AS {v}" if v is not None else f"{k}" for k, v in with_parts.items())
     query = f"""
     WITH {node_alias}
     OPTIONAL MATCH path = {filter_str}
     WHERE {where_str}
-    WITH last, path, {branch_level_str} AS branch_level, {froms_str} AS froms
-    RETURN last.value as {prefix}
+    WITH {with_str}
+    RETURN {to_return}
     ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
     LIMIT 1
     """

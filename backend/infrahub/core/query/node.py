@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
+from enum import Enum
 from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, Generator, List, Optional, Tuple, Union
 
 from infrahub import config
@@ -21,9 +22,11 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.relationship import RelationshipCreateData, RelationshipManager
     from infrahub.core.schema import GenericSchema, NodeSchema
+    from infrahub.core.schema.attribute_schema import AttributeSchema
+    from infrahub.core.schema.relationship_schema import RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
-# pylint: disable=consider-using-f-string,redefined-builtin
+# pylint: disable=consider-using-f-string,redefined-builtin,too-many-lines
 
 
 @dataclass
@@ -654,6 +657,53 @@ class NodeListGetInfoQuery(Query):
         return profile_id_map
 
 
+class FieldAttributeRequirementType(Enum):
+    FILTER = "filter"
+    ORDER = "order"
+
+
+@dataclass
+class FieldAttributeRequirement:
+    field_name: str
+    field: Optional[Union[AttributeSchema, RelationshipSchema]]
+    field_attr_name: str
+    field_attr_value: Any
+    index: int
+    types: list[FieldAttributeRequirementType] = dataclass_field(default_factory=list)
+
+    @property
+    def supports_profile(self) -> bool:
+        return self.field and self.field.is_attribute and self.field_attr_name in ("value", "values")
+
+    @property
+    def is_filter(self) -> bool:
+        return FieldAttributeRequirementType.FILTER in self.types
+
+    @property
+    def is_order(self) -> bool:
+        return FieldAttributeRequirementType.ORDER in self.types
+
+    @property
+    def is_default_query_variable(self) -> str:
+        return f"attr{self.index}_is_default"
+
+    @property
+    def node_value_query_variable(self) -> str:
+        return f"attr{self.index}_node_value"
+
+    @property
+    def profile_value_query_variable(self) -> str:
+        return f"attr{self.index}_profile_value"
+
+    @property
+    def profile_final_value_query_variable(self) -> str:
+        return f"attr{self.index}_final_profile_value"
+
+    @property
+    def final_value_query_variable(self) -> str:
+        return f"attr{self.index}_final_value"
+
+
 class NodeGetListQuery(Query):
     name = "node_get_list"
 
@@ -663,139 +713,347 @@ class NodeGetListQuery(Query):
         self.schema = schema
         self.filters = filters
         self.partial_match = partial_match
+        self._variables_to_track = ["n", "rb"]
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
-        filter_has_single_id = False
+    def _track_variable(self, variable: str) -> None:
+        if variable not in self._variables_to_track:
+            self._variables_to_track.append(variable)
+
+    def _untrack_variable(self, variable: str) -> None:
+        try:
+            self._variables_to_track.remove(variable)
+        except ValueError:
+            ...
+
+    def _get_tracked_variables(self) -> list[str]:
+        return self._variables_to_track
+
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
         self.order_by = []
+        self.params["node_kind"] = self.schema.kind
 
-        final_return_labels = ["n.uuid", "rb.branch", "ID(rb) as rb_id"]
+        self.return_labels = ["n.uuid", "rb.branch", "ID(rb) as rb_id"]
+        where_clause_elements = []
 
-        # Add the Branch filters
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        query = (
-            """
+        query = """
         MATCH p = (n:Node)
         WHERE $node_kind IN LABELS(n)
         CALL {
             WITH n
             MATCH (root:Root)<-[r:IS_PART_OF]-(n)
-            WHERE %s
-            RETURN n as n1, r as r1
+            WHERE %(branch_filter)s
+            RETURN r
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH n1 as n, r1 as rb
-        """
-            % branch_filter
-        )
+        WITH n, r as rb
+        WHERE rb.status = "active"
+        """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
-        self.params["node_kind"] = self.schema.kind
-
-        where_clause = ['rb.status = "active"']
-
-        # Check 'id' or 'ids' is part of the filter
-        # if 'id' is present, we can skip ordering, filtering etc ..
-        # if 'ids' is present, we keep the filtering and the ordering
+        use_simple = False
         if self.filters and "id" in self.filters:
-            filter_has_single_id = True
-            where_clause.append("n.uuid = $uuid")
+            use_simple = True
+            where_clause_elements.append("n.uuid = $uuid")
             self.params["uuid"] = self.filters["id"]
-        elif self.filters and "ids" in self.filters:
-            where_clause.append("n.uuid IN $node_ids")
+        if not self.filters and not self.schema.order_by:
+            use_simple = True
+            self.order_by = ["n.uuid"]
+        if use_simple:
+            if where_clause_elements:
+                self.add_to_query(" AND " + " AND ".join(where_clause_elements))
+            return
+
+        if self.filters and "ids" in self.filters:
+            self.add_to_query("AND n.uuid IN $node_ids")
             self.params["node_ids"] = self.filters["ids"]
 
-        self.add_to_query("WHERE " + " AND ".join(where_clause))
-        self.return_labels = ["n", "rb"]
+        field_attribute_requirements = self._get_field_requirements()
+        use_profiles = any(far for far in field_attribute_requirements if far.supports_profile)
+        await self._add_node_filter_attributes(
+            db=db, field_attribute_requirements=field_attribute_requirements, branch_filter=branch_filter
+        )
+        await self._add_node_order_attributes(
+            db=db, field_attribute_requirements=field_attribute_requirements, branch_filter=branch_filter
+        )
 
-        if filter_has_single_id:
-            self.return_labels = final_return_labels
+        if use_profiles:
+            await self._add_profiles_per_node_query(branch_filter=branch_filter)
+            await self._add_profile_attributes(
+                db=db, field_attribute_requirements=field_attribute_requirements, branch_filter=branch_filter
+            )
+            await self._add_profile_rollups(field_attribute_requirements=field_attribute_requirements)
+
+        self._add_final_filter(field_attribute_requirements=field_attribute_requirements)
+        self.order_by = []
+        for far in field_attribute_requirements:
+            if not far.is_order:
+                continue
+            if far.supports_profile:
+                self.order_by.append(far.final_value_query_variable)
+                continue
+            self.order_by.append(far.node_value_query_variable)
+
+    async def _add_node_filter_attributes(
+        self,
+        db: InfrahubDatabase,
+        field_attribute_requirements: list[FieldAttributeRequirement],
+        branch_filter: str,
+    ) -> None:
+        field_attribute_requirements = [far for far in field_attribute_requirements if far.is_filter]
+        if not field_attribute_requirements:
             return
 
-        if self.filters:
-            filter_query, filter_params = await self.build_filters(
-                db=db, filters=self.filters, branch_filter=branch_filter
+        filter_query: List[str] = []
+        filter_params: Dict[str, Any] = {}
+
+        for far in field_attribute_requirements:
+            extra_tail_properties = {far.node_value_query_variable: "value"}
+            if far.supports_profile:
+                extra_tail_properties[far.is_default_query_variable] = "is_default"
+            subquery, subquery_params, subquery_result_name = await build_subquery_filter(
+                db=db,
+                field=far.field,
+                name=far.field_name,
+                filter_name=far.field_attr_name,
+                filter_value=far.field_attr_value,
+                branch_filter=branch_filter,
+                branch=self.branch,
+                subquery_idx=far.index,
+                partial_match=self.partial_match,
+                support_profiles=far.supports_profile,
+                extra_tail_properties=extra_tail_properties,
+            )
+            for query_var in extra_tail_properties:
+                self._track_variable(query_var)
+            with_str = ", ".join(
+                [
+                    f"{subquery_result_name} as {label}" if label == "n" else label
+                    for label in self._get_tracked_variables()
+                ]
             )
 
+            filter_params.update(subquery_params)
+            filter_query.append("CALL {")
+            filter_query.append(subquery)
+            filter_query.append("}")
+            filter_query.append(f"WITH {with_str}")
+
+        if filter_query:
             self.add_to_query(filter_query)
-            self.params.update(filter_params)
+        self.params.update(filter_params)
 
-        self.return_labels = final_return_labels
-        await self._set_order_by(db=db, branch_filter=branch_filter)
-
-    async def _set_order_by(self, db: InfrahubDatabase, branch_filter: str) -> None:
-        if not self.schema.order_by:
-            self.order_by.append("n.uuid")
+    async def _add_node_order_attributes(
+        self,
+        db: InfrahubDatabase,
+        field_attribute_requirements: list[FieldAttributeRequirement],
+        branch_filter: str,
+    ) -> None:
+        field_attribute_requirements = [
+            far for far in field_attribute_requirements if far.is_order and not far.is_filter
+        ]
+        if not field_attribute_requirements:
             return
 
-        order_cnt = 1
+        sort_query: List[str] = []
+        sort_params: Dict[str, Any] = {}
+
+        for far in field_attribute_requirements:
+            extra_tail_properties = {}
+            if far.supports_profile:
+                extra_tail_properties[far.is_default_query_variable] = "is_default"
+
+            subquery, subquery_params, _ = await build_subquery_order(
+                db=db,
+                field=far.field,
+                name=far.field_name,
+                order_by=far.field_attr_name,
+                branch_filter=branch_filter,
+                branch=self.branch,
+                subquery_idx=far.index,
+                result_prefix=far.node_value_query_variable,
+                support_profiles=far.supports_profile,
+                extra_tail_properties=extra_tail_properties,
+            )
+            for query_var in extra_tail_properties:
+                self._track_variable(query_var)
+            self._track_variable(far.node_value_query_variable)
+            with_str = ", ".join(self._get_tracked_variables())
+
+            sort_params.update(subquery_params)
+            sort_query.append("CALL {")
+            sort_query.append(subquery)
+            sort_query.append("}")
+            sort_query.append(f"WITH {with_str}")
+
+        if sort_query:
+            self.add_to_query(sort_query)
+        self.params.update(sort_params)
+
+    async def _add_profiles_per_node_query(self, branch_filter: str) -> None:
+        with_str = ", ".join(self._get_tracked_variables())
+        profiles_per_node_query = (
+            """
+            CALL {
+                WITH n
+                OPTIONAL MATCH profile_path = (n)-[:IS_RELATED]->(profile_r:Relationship)<-[:IS_RELATED]-(profile_n:Node)-[:IS_PART_OF]->(:Root)
+                WHERE profile_r.name = "node__profile"
+                AND profile_n.namespace = "Profile"
+                AND all(r in relationships(profile_path) WHERE %(branch_filter)s and r.status = "active")
+                RETURN profile_n
+            }
+            WITH %(with_str)s, profile_n
+            CALL {
+                WITH profile_n
+                OPTIONAL MATCH profile_priority_path = (profile_n)-[pr1:HAS_ATTRIBUTE]->(a:Attribute)-[pr2:HAS_VALUE]->(av:AttributeValue)
+                WHERE a.name = "profile_priority"
+                AND all(r in relationships(profile_priority_path) WHERE %(branch_filter)s and r.status = "active")
+                RETURN av.value as profile_priority
+                ORDER BY pr1.branch_level + pr2.branch_level DESC, pr2.from DESC, pr1.from DESC
+                LIMIT 1
+            }
+            WITH %(with_str)s, profile_n, profile_priority
+            """
+        ) % {"branch_filter": branch_filter, "with_str": with_str}
+        self.add_to_query(profiles_per_node_query)
+        self._track_variable("profile_n")
+        self._track_variable("profile_priority")
+
+    async def _add_profile_attributes(
+        self, db: InfrahubDatabase, field_attribute_requirements: list[FieldAttributeRequirement], branch_filter: str
+    ) -> None:
+        attributes_queries: List[str] = []
+        attributes_params: Dict[str, Any] = {}
+        profile_attributes = [far for far in field_attribute_requirements if far.supports_profile]
+
+        for profile_attr in profile_attributes:
+            subquery, subquery_params, _ = await build_subquery_order(
+                db=db,
+                field=profile_attr.field,
+                node_alias="profile_n",
+                name=profile_attr.field_name,
+                order_by=profile_attr.field_attr_name,
+                branch_filter=branch_filter,
+                branch=self.branch,
+                subquery_idx=profile_attr.index,
+                result_prefix=profile_attr.profile_value_query_variable,
+                support_profiles=False,
+            )
+            attributes_params.update(subquery_params)
+            self._track_variable(profile_attr.profile_value_query_variable)
+            with_str = ", ".join(self._get_tracked_variables())
+
+            attributes_queries.append("CALL {")
+            attributes_queries.append(subquery)
+            attributes_queries.append("}")
+            attributes_queries.append(f"WITH {with_str}")
+
+        self.add_to_query(attributes_queries)
+        self.params.update(attributes_params)
+
+    async def _add_profile_rollups(self, field_attribute_requirements: list[FieldAttributeRequirement]) -> None:
+        profile_attributes = [far for far in field_attribute_requirements if far.supports_profile]
+        order_by_str = (
+            "n.uuid, profile_n.uuid, "
+            + ", ".join([paf.profile_value_query_variable for paf in profile_attributes])
+            + ", profile_priority ASC"
+        )
+        profile_value_collects = []
+        for profile_attr in profile_attributes:
+            self._untrack_variable(profile_attr.profile_value_query_variable)
+            profile_value_collects.append(
+                f"head(collect({profile_attr.profile_value_query_variable})) as {profile_attr.profile_final_value_query_variable}"
+            )
+        self._untrack_variable("profile_n")
+        self._untrack_variable("profile_priority")
+        profile_rollup_with_str = ", ".join(self._get_tracked_variables() + profile_value_collects)
+        profile_rollup_query = f"""
+        ORDER BY {order_by_str}
+        WITH {profile_rollup_with_str}
+        """
+        self.add_to_query(profile_rollup_query)
+        for profile_attr in profile_attributes:
+            self._track_variable(profile_attr.profile_final_value_query_variable)
+
+        final_value_with = []
+        for profile_attr in profile_attributes:
+            final_value_with.append(f"""
+            CASE
+                WHEN {profile_attr.is_default_query_variable}
+                THEN {profile_attr.profile_final_value_query_variable}
+                ELSE {profile_attr.node_value_query_variable}
+            END AS {profile_attr.final_value_query_variable}
+            """)
+            self._untrack_variable(profile_attr.is_default_query_variable)
+            self._untrack_variable(profile_attr.profile_final_value_query_variable)
+            self._untrack_variable(profile_attr.node_value_query_variable)
+        final_value_with_str = ", ".join(self._get_tracked_variables() + final_value_with)
+        self.add_to_query(f"WITH {final_value_with_str}")
+
+    def _add_final_filter(self, field_attribute_requirements: list[FieldAttributeRequirement]) -> None:
+        where_parts = []
+        where_str = ""
+        for far in field_attribute_requirements:
+            if not far.is_filter or not far.supports_profile:
+                continue
+            var_name = f"final_attr_value{far.index}"
+            self.params[var_name] = far.field_attr_value
+            if far.field_attr_name == "values":
+                operator = "IN"
+            else:
+                operator = "="
+            where_parts.append(f"{far.final_value_query_variable} {operator} ${var_name}")
+        if where_parts:
+            where_str = "WHERE " + " AND ".join(where_parts)
+        self.add_to_query(where_str)
+
+    def _get_field_requirements(self) -> list[FieldAttributeRequirement]:
+        internal_filters = ["any", "attribute", "relationship"]
+        field_requirements_map: dict[tuple[str, str], FieldAttributeRequirement] = {}
+        index = 1
+        if self.filters:
+            for field_name in self.schema.valid_input_names + internal_filters:
+                attr_filters = extract_field_filters(field_name=field_name, filters=self.filters)
+                if not attr_filters:
+                    continue
+                field = self.schema.get_field(field_name, raise_on_error=False)
+                for field_attr_name, field_attr_value in attr_filters.items():
+                    field_requirements_map[(field_name, field_attr_name)] = FieldAttributeRequirement(
+                        field_name=field_name,
+                        field=field,
+                        field_attr_name=field_attr_name,
+                        field_attr_value=field_attr_value,
+                        index=index,
+                        types=[FieldAttributeRequirementType.FILTER],
+                    )
+                    index += 1
+        if not self.schema.order_by:
+            return list(field_requirements_map.values())
 
         for order_by_path in self.schema.order_by:
             order_by_field_name, order_by_attr_property_name = order_by_path.split("__", maxsplit=1)
 
             field = self.schema.get_field(order_by_field_name)
-
-            subquery, subquery_params, subquery_result_name = await build_subquery_order(
-                db=db,
-                field=field,
-                name=order_by_field_name,
-                order_by=order_by_attr_property_name,
-                branch_filter=branch_filter,
-                branch=self.branch,
-                subquery_idx=order_cnt,
-            )
-            self.order_by.append(subquery_result_name)
-            self.params.update(subquery_params)
-
-            self.add_subquery(subquery=subquery)
-
-            order_cnt += 1
-
-    async def build_filters(
-        self, db: InfrahubDatabase, filters: Dict[str, Any], branch_filter: str
-    ) -> Tuple[List[str], Dict[str, Any]]:
-        filter_query: List[str] = []
-        filter_params: Dict[str, Any] = {}
-        filter_cnt = 0
-
-        INTERNAL_FILTERS: List[str] = ["any", "attribute", "relationship"]
-
-        for field_name in self.schema.valid_input_names + INTERNAL_FILTERS:
-            attr_filters = extract_field_filters(field_name=field_name, filters=filters)
-            if not attr_filters:
-                continue
-
-            filter_cnt += 1
-
-            field = self.schema.get_field(field_name, raise_on_error=False)
-
-            for field_attr_name, field_attr_value in attr_filters.items():
-                subquery, subquery_params, subquery_result_name = await build_subquery_filter(
-                    db=db,
+            field_req = field_requirements_map.get(
+                (order_by_field_name, order_by_attr_property_name),
+                FieldAttributeRequirement(
+                    field_name=order_by_field_name,
                     field=field,
-                    name=field_name,
-                    filter_name=field_attr_name,
-                    filter_value=field_attr_value,
-                    branch_filter=branch_filter,
-                    branch=self.branch,
-                    subquery_idx=filter_cnt,
-                    partial_match=self.partial_match,
-                )
-                filter_params.update(subquery_params)
+                    field_attr_name=order_by_attr_property_name,
+                    field_attr_value=None,
+                    index=index,
+                    types=[],
+                ),
+            )
+            field_req.types.append(FieldAttributeRequirementType.ORDER)
+            field_requirements_map[(order_by_field_name, order_by_attr_property_name)] = field_req
+            index += 1
 
-                with_str = ", ".join(
-                    [f"{subquery_result_name} as {label}" if label == "n" else label for label in self.return_labels]
-                )
-
-                filter_query.append("CALL {")
-                filter_query.append(subquery)
-                filter_query.append("}")
-                filter_query.append(f"WITH {with_str}")
-
-        return filter_query, filter_params
+        return list(field_requirements_map.values())
 
     def get_node_ids(self) -> List[str]:
         return [str(result.get("n.uuid")) for result in self.get_results()]
