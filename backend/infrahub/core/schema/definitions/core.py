@@ -1570,5 +1570,18 @@ core_models: dict[str, Any] = {
                 },
             ],
         },
+        {
+            "name": "Namespace",
+            "namespace": "Ipam",
+            "description": "A namespace that segments IPAM",
+            "label": "IPAM Namespace",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "include_in_menu": True,
+            "icon": "mdi:format-list-group",
+            "branch": BranchSupportType.AWARE.value,
+            "inherit_from": [InfrahubKind.IPNAMESPACE],
+        },
     ],
 }

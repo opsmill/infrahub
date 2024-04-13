@@ -237,6 +237,17 @@ async def create_account(
     return obj
 
 
+async def create_ipam_namespace(
+    db: InfrahubDatabase, name: str = "Default", description: str = "Used to provide a default space of IP resources"
+) -> Node:
+    obj = await Node.init(db=db, schema="IpamNamespace")
+    await obj.new(db=db, name=name, description=description)
+    await obj.save(db=db)
+    log.info(f"Created IPAM Namespace: {name}")
+
+    return obj
+
+
 async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create the default Branch
@@ -269,3 +280,9 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
         password=config.SETTINGS.security.initial_admin_password,
         token_value=config.SETTINGS.security.initial_admin_token,
     )
+
+    # --------------------------------------------------
+    # Create Default IPAM Namespace
+    # --------------------------------------------------
+
+    await create_ipam_namespace(db=db)
