@@ -55,8 +55,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = at.to_string()
         content = self.attr.to_db()
-        for key, value in content.items():
-            self.params[key] = value
+        self.params.update(self.attr.to_db())
 
         prop_list = [f"{key}: ${key}" for key in content.keys()]
 
