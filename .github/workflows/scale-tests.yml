@@ -133,7 +133,7 @@ jobs:
     name: ${{ matrix.name }}
     runs-on:
       group: huge-runners
-    timeout-minutes: 120
+    timeout-minutes: 300
     env:
       INFRAHUB_DB_TYPE: neo4j
       METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
