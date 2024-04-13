@@ -71,6 +71,17 @@ class Registry:
         self._default_branch = value
 
     @property
+    def default_ipnamespace(self) -> str:
+        if not self._default_ipnamespace:
+            raise InitializationError()
+
+        return self._default_ipnamespace
+
+    @default_ipnamespace.setter
+    def default_ipnamespace(self, value: str) -> None:
+        self._default_ipnamespace = value
+
+    @property
     def schema(self) -> SchemaManager:
         if not self._schema:
             raise InitializationError()

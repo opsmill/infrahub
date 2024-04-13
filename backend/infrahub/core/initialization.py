@@ -35,6 +35,17 @@ async def get_root_node(db: InfrahubDatabase, initialize: bool = False) -> Root:
     return roots[0]
 
 
+async def get_default_ipnamespace(db: InfrahubDatabase) -> Node:
+    nodes = registry.manager.query(db=db, schema=InfrahubKind.NAMESPACE, filters={"name__value": "default"})
+    if len(nodes) == 0:
+        raise DatabaseError("Unable to find the IP namespace default in the database.")
+
+    if len(nodes) > 1:
+        raise DatabaseError("More than 1 default namespace found.")
+
+    return nodes[0]
+
+
 async def initialization(db: InfrahubDatabase) -> None:
     if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
         session = await db.session()
@@ -112,9 +123,14 @@ async def initialization(db: InfrahubDatabase) -> None:
     # ---------------------------------------------------
     # Load internal models into the registry
     # ---------------------------------------------------
-
     registry.node["Node"] = Node
     registry.node["BuiltinIPPrefix"] = BuiltinIPPrefix
+
+    # ---------------------------------------------------
+    # Load Default Namespace
+    # ---------------------------------------------------
+    ip_namespace = await get_default_ipnamespace(db=db)
+    registry.default_ipnamespace = ip_namespace.id
 
     # ---------------------------------------------------
     # Load all existing Groups into the registry
@@ -238,9 +254,9 @@ async def create_account(
 
 
 async def create_ipam_namespace(
-    db: InfrahubDatabase, name: str = "Default", description: str = "Used to provide a default space of IP resources"
+    db: InfrahubDatabase, name: str = "default", description: str = "Used to provide a default space of IP resources"
 ) -> Node:
-    obj = await Node.init(db=db, schema=InfrahubKind.IPAMNAMESPACE)
+    obj = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await obj.new(db=db, name=name, description=description)
     await obj.save(db=db)
     log.info(f"Created IPAM Namespace: {name}")
@@ -273,7 +289,6 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create Default Users and Groups
     # --------------------------------------------------
-
     await create_account(
         db=db,
         name="admin",
@@ -284,5 +299,4 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create Default IPAM Namespace
     # --------------------------------------------------
-
     await create_ipam_namespace(db=db)
