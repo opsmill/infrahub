@@ -32,17 +32,73 @@ class IPAddressData:
 class IPPrefixSubnetFetch(Query):
     name: str = "ipprefix_subnet_fetch"
 
-    def __init__(self, ip_prefix: Union[ipaddress.IPv6Network, ipaddress.IPv4Network], *args, **kwargs):
+    def __init__(self, ip_prefix: Union[ipaddress.IPv6Network, ipaddress.IPv4Network], namespace: str, *args, **kwargs):
         self.ip_prefix = ip_prefix
+        self.namespace = namespace
         super().__init__(*args, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+        self.params["ns_name"] = self.namespace
+        prefix_bin = bin(int(self.ip_prefix.network_address))[2 : self.ip_prefix.prefixlen + 2]
+        self.params["prefix_binary"] = prefix_bin
+        self.params["maxprefixlen"] = self.ip_prefix.prefixlen
+        self.params["ip_version"] = self.ip_prefix.version
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        self.params.update(branch_params)
+
+        # ruff: noqa: E501
         query = """
-        MATCH (pfx:%s)-[HAS_ATTRIBUTE]-(an:Attribute {name: "prefix"})-[HAS_VALUE]-(av:AttributeValue)
-        """ % (InfrahubKind.IPPREFIX)
+        // First match on IPNAMESPACE
+        MATCH ns_path = (ns:%(ns_label)s)-[:HAS_ATTRIBUTE]-(ns_attr:Attribute)-[:HAS_VALUE]-(ns_av:AttributeValue)
+        WHERE ns_attr.name = "name"
+            AND ns_av.value = $ns_name
+            AND all(r IN relationships(ns_path) WHERE (%(branch_filter)s))
+        CALL {
+            WITH ns
+            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
+            WHERE %(branch_filter)s
+            RETURN ns as ns1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH ns, r1 as r
+        WHERE r.status = "active"
+        WITH ns
+        // MATCH all prefixes that are IN SCOPE
+        MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(pfx:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "prefix"})-[:HAS_VALUE]-(av:AttributeIPNetwork)
+        WHERE ns_rel.name = "ip_namespace__ip_prefix"
+            AND av.binary_address STARTS WITH $prefix_binary
+            AND av.prefixlen > $maxprefixlen
+            AND av.version = $ip_version
+            AND all(r IN relationships(path2) WHERE (%(branch_filter)s))
+        // TODO Need to check for delete nodes
+        WITH
+            collect([pfx, av]) as all_prefixes_and_value,
+            collect(pfx) as all_prefixes
+        // ---
+        // FIND ALL CHILDREN OF THESE PREFIXES
+        // ---
+        CALL {
+            WITH all_prefixes
+            UNWIND all_prefixes as prefix
+            MATCH (prefix)<-[:IS_RELATED]-(ch_rel:Relationship)<-[:IS_RELATED]-(children:BuiltinIPPrefix)
+            WHERE ch_rel.name = "parent__child"
+            RETURN children.uuid as children_uuids
+        }
+        WITH collect( distinct children_uuids ) AS all_children_uuids, all_prefixes_and_value
+        UNWIND all_prefixes_and_value as prefixes_to_check
+        WITH prefixes_to_check, all_children_uuids
+        WHERE not prefixes_to_check[0].uuid in all_children_uuids
+        """ % {
+            "ns_label": InfrahubKind.IPNAMESPACE,
+            "node_label": InfrahubKind.IPPREFIX,
+            "branch_filter": branch_filter,
+        }
 
         self.add_to_query(query)
-        self.return_labels = ["pfx", "av"]
+        self.return_labels = ["prefixes_to_check[0] as pfx", "prefixes_to_check[1] as av"]
+        self.order_by = ["av.binary_address"]
 
     def get_container(self):
         """Return the more specific prefix that contains this one."""
@@ -73,12 +129,7 @@ class IPPrefixSubnetFetch(Query):
             subnet = IPPrefixData(
                 id=result.get("pfx").get("uuid"), prefix=ipaddress.ip_network(result.get("av").get("value"))
             )
-            if (
-                self.ip_prefix.version == subnet.prefix.version
-                and self.ip_prefix != subnet.prefix
-                and subnet.prefix.subnet_of(self.ip_prefix)
-            ):
-                subnets.append(subnet)
+            subnets.append(subnet)
 
         return subnets
 
