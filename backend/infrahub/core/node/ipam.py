@@ -23,10 +23,9 @@ class BuiltinIPPrefix(Node):
         )
 
         if fields:
-            prefix = getattr(self, "prefix")
             for read_only_attr in ["netmask", "hostmask", "network_address", "broadcast_address"]:
                 if read_only_attr in fields:
-                    response[read_only_attr] = {"value": getattr(prefix, read_only_attr)}
+                    response[read_only_attr] = {"value": getattr(self.prefix, read_only_attr)}  # type: ignore[attr-defined]
 
             if "utilization" in fields:
                 utilization = await get_utilization(self, db, branch=self._branch)
