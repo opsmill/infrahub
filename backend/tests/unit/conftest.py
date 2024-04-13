@@ -2302,6 +2302,12 @@ async def ipam_schema() -> SchemaRoot:
     SCHEMA: dict[str, Any] = {
         "nodes": [
             {
+                "name": "IPNamespace",
+                "namespace": "Ipam",
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPNAMESPACE],
+            },
+            {
                 "name": "IPPrefix",
                 "namespace": "Ipam",
                 "default_filter": "prefix__value",
