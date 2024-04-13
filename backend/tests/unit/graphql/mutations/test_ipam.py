@@ -465,3 +465,23 @@ async def test_ipaddress_change_ipprefix(
     assert not result.errors
     assert len(result.data["IpamIPPrefix"]["edges"]) == 1
     assert not result.data["IpamIPPrefix"]["edges"][0]["node"]["ip_addresses"]["edges"]
+
+    # Create a less specific subnet, IP address should not be relocated
+    middle = ipaddress.ip_network("2001:db8::/56")
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(middle)},
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=GET_IPADDRESS,
+        context_value=gql_params.context,
+        variable_values={"address": str(address)},
+    )
+
+    assert not result.errors
+    assert len(result.data["IpamIPAddress"]["edges"]) == 1
+    assert result.data["IpamIPAddress"]["edges"][0]["node"]["ip_prefix"]["node"]["prefix"]["value"] == str(subnet)
