@@ -212,7 +212,7 @@ class IPPrefixUtilization(Query):
             MATCH (rl:Relationship { name: $rel_identifier })
             CALL {
                 WITH rl
-                MATCH path = (peer_node:%(label)s)-[r:IS_RELATED]-(rl)-[:IS_RELATED]-(remote_peer:%(label)s)-[:HAS_ATTRIBUTE]-(:Attribute {name: "prefix"})-[:HAS_VALUE]-(av:AttributeValue)
+                MATCH path = (peer_node:%(label)s)-[r:IS_RELATED]-(rl)-[:IS_RELATED]-(remote_peer:%(label)s)-[:HAS_ATTRIBUTE]-(:Attribute {name: "prefix"})-[:HAS_VALUE]-(av:AttributeIPNetwork)
                 WHERE peer_node.uuid = $pfx_uuid AND %(branch_filter)s
                 RETURN peer_node as peer, r, remote_peer as remote, av as remote_value
                 ORDER BY r.branch_level DESC, r.from DESC
