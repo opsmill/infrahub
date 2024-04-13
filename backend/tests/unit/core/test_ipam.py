@@ -1,22 +1,104 @@
 import ipaddress
 
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.query.ipam import (
+    IPPrefixContainerFetch,
+    IPPrefixSubnetFetch,
     IPPrefixUtilization,
     get_container,
     get_ip_addresses,
     get_ip_prefix_for_ip_address,
-    get_subnets,
-    IPPrefixSubnetFetch,
-    get_container,
-    get_ip_addresses,
-    get_ip_prefix_for_ip_address,
-    get_utilization,
 )
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
+
+
+@pytest.fixture
+async def ip_dataset_01(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+
+    # -----------------------
+    # Namespace NS1
+    # -----------------------
+
+    ns1 = await Node.init(db=db, schema="IpamIPNamespace")
+    await ns1.new(db=db, name="ns1")
+    await ns1.save(db=db)
+
+    container = await Node.init(db=db, schema=prefix_schema)
+    await container.new(db=db, prefix="2001:db8::/32", ip_namespace=ns1)
+    await container.save(db=db)
+
+    prefix = await Node.init(db=db, schema=prefix_schema)
+    await prefix.new(db=db, prefix="2001:db8::/48", ip_namespace=ns1)
+    await prefix.save(db=db)
+
+    net146 = await Node.init(db=db, schema=prefix_schema)
+    await net146.new(db=db, prefix="10.0.0.0/8", ip_namespace=ns1)
+    await net146.save(db=db)
+
+    net140 = await Node.init(db=db, schema=prefix_schema)
+    await net140.new(db=db, prefix="10.10.0.0/16", ip_namespace=ns1, parent=net146)
+    await net140.save(db=db)
+
+    net142 = await Node.init(db=db, schema=prefix_schema)
+    await net142.new(db=db, prefix="10.10.1.0/24", parent=net140, ip_namespace=ns1)
+    await net142.save(db=db)
+
+    net143 = await Node.init(db=db, schema=prefix_schema)
+    await net143.new(db=db, prefix="10.10.1.0/27", parent=net142, ip_namespace=ns1)
+    await net143.save(db=db)
+
+    net144 = await Node.init(db=db, schema=prefix_schema)
+    await net144.new(db=db, prefix="10.10.2.0/24", parent=net140, ip_namespace=ns1)
+    await net144.save(db=db)
+
+    net145 = await Node.init(db=db, schema=prefix_schema)
+    await net145.new(db=db, prefix="10.10.3.0/27", parent=net140, ip_namespace=ns1)
+    await net145.save(db=db)
+
+    # -----------------------
+    # Namespace NS2
+    # -----------------------
+    ns2 = await Node.init(db=db, schema="IpamIPNamespace")
+    await ns2.new(db=db, name="ns2")
+    await ns2.save(db=db)
+
+    net240 = await Node.init(db=db, schema=prefix_schema)
+    await net240.new(db=db, prefix="10.10.0.0/15", ip_namespace=ns2)
+    await net240.save(db=db)
+
+    net241 = await Node.init(db=db, schema=prefix_schema)
+    await net241.new(db=db, prefix="10.10.0.0/24", parent=net240, ip_namespace=ns2)
+    await net241.save(db=db)
+
+    net242 = await Node.init(db=db, schema=prefix_schema)
+    await net242.new(db=db, prefix="10.10.4.0/27", parent=net240, ip_namespace=ns2)
+    await net242.save(db=db)
+
+    data = {
+        "ns1": ns1,
+        "ns2": ns2,
+        "net140": net140,
+        "net142": net142,
+        "net143": net143,
+        "net144": net144,
+        "net145": net145,
+        "net146": net146,
+        "net240": net240,
+        "net241": net241,
+        "net242": net242,
+    }
+    return data
 
 
 async def test_ipprefix_creation(
@@ -84,64 +166,35 @@ async def test_ipprefix_is_within_container(
     assert prefix_container.prefix == ipaddress.ip_network(container_ip_network)
 
 
-async def test_ipprefix_subnets(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: SchemaBranch,
-    register_ipam_schema: SchemaBranch,
-):
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
-
-    ns1 = await Node.init(db=db, schema="IpamIPNamespace")
-    await ns1.new(db=db, name="ns1")
-    await ns1.save(db=db)
-
-    ns2 = await Node.init(db=db, schema="IpamIPNamespace")
-    await ns2.new(db=db, name="ns2")
-    await ns2.save(db=db)
-
-    container = await Node.init(db=db, schema=prefix_schema)
-    await container.new(db=db, prefix="2001:db8::/32", ip_namespace=ns1)
-    await container.save(db=db)
-
-    prefix = await Node.init(db=db, schema=prefix_schema)
-    await prefix.new(db=db, prefix="2001:db8::/48", parent=container, ip_namespace=ns1)
-    await prefix.save(db=db)
-
-    net40 = await Node.init(db=db, schema=prefix_schema)
-    await net40.new(db=db, prefix="192.0.0.0/16", ip_namespace=ns1)
-    await net40.save(db=db)
-
-    net41 = await Node.init(db=db, schema=prefix_schema)
-    await net41.new(db=db, prefix="192.0.0.0/22", ip_namespace=ns1)
-    await net41.save(db=db)
-
-    net42 = await Node.init(db=db, schema=prefix_schema)
-    await net42.new(db=db, prefix="192.0.1.0/24", parent=net40, ip_namespace=ns1)
-    await net42.save(db=db)
-
-    net43 = await Node.init(db=db, schema=prefix_schema)
-    await net43.new(db=db, prefix="192.0.1.0/27", parent=net42, ip_namespace=ns1)
-    await net43.save(db=db)
-
-    net44 = await Node.init(db=db, schema=prefix_schema)
-    await net44.new(db=db, prefix="192.0.2.0/24", parent=net40, ip_namespace=ns1)
-    await net44.save(db=db)
-
-    net44 = await Node.init(db=db, schema=prefix_schema)
-    await net44.new(db=db, prefix="192.0.3.0/27", parent=net40, ip_namespace=ns1)
-    await net44.save(db=db)
-
-    container_ip_network = ipaddress.ip_network(net41.prefix.value)
-
-    query = await IPPrefixSubnetFetch.init(
-        db=db, branch=default_branch, ip_prefix=container_ip_network, namespace="ns1"
-    )
+@pytest.mark.parametrize(
+    "input,response",
+    [
+        (ipaddress.ip_network("10.10.0.0/22"), ["10.10.1.0/24", "10.10.2.0/24", "10.10.3.0/27"]),
+    ],
+)
+async def test_ipprefix_subnets(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01, input, response):
+    query = await IPPrefixSubnetFetch.init(db=db, branch=default_branch, obj=input, namespace="ns1")
     await query.execute(db=db)
-
     subnets = query.get_subnets()
 
-    assert subnets
+    assert sorted([str(subnet.prefix) for subnet in subnets]) == response
+
+
+@pytest.mark.parametrize(
+    "input,response",
+    [
+        (ipaddress.ip_network("10.10.0.0/22"), "10.10.0.0/16"),
+        (ipaddress.ip_network("10.10.1.0/28"), "10.10.1.0/27"),
+        (ipaddress.ip_interface("10.10.1.10/27"), "10.10.1.0/27"),
+    ],
+)
+async def test_ipprefix_container(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01, input, response):
+    query = await IPPrefixContainerFetch.init(db=db, branch=default_branch, obj=input, namespace="ns1")
+
+    await query.execute(db=db)
+    container = query.get_container()
+    assert container is not None
+    assert str(container.prefix) == response
 
 
 async def test_ipaddress_is_within_ipprefix(
