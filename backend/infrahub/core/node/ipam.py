@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
+from infrahub.core.query.ipam import get_utilization
+
 from . import Node
 
 if TYPE_CHECKING:
@@ -25,5 +27,9 @@ class BuiltinIPPrefix(Node):
             for read_only_attr in ["netmask", "hostmask", "network_address", "broadcast_address"]:
                 if read_only_attr in fields:
                     response[read_only_attr] = {"value": getattr(prefix, read_only_attr)}
+
+            if "utilization" in fields:
+                utilization = await get_utilization(self, db, branch=self._branch)
+                response["utilization"] = {"value": int(utilization)}
 
         return response

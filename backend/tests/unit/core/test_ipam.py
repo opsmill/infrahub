@@ -1,15 +1,14 @@
 import ipaddress
-from typing import List
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.query.ipam import (
+    IPPrefixUtilization,
     get_container,
     get_ip_addresses,
     get_ip_prefix_for_ip_address,
     get_subnets,
-    get_utilization,
 )
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -62,7 +61,7 @@ async def test_ipprefix_is_within_container(
     await container.save(db=db)
 
     prefix = await Node.init(db=db, schema=prefix_schema)
-    await prefix.new(db=db, prefix="2001:db8::/48")
+    await prefix.new(db=db, prefix="2001:db8::/48", parent=container)
     await prefix.save(db=db)
 
     unrelated = await Node.init(db=db, schema=prefix_schema)
@@ -93,7 +92,7 @@ async def test_ipprefix_subnets(
     await container.save(db=db)
 
     prefix = await Node.init(db=db, schema=prefix_schema)
-    await prefix.new(db=db, prefix="2001:db8::/48")
+    await prefix.new(db=db, prefix="2001:db8::/48", parent=container)
     await prefix.save(db=db)
 
     unrelated = await Node.init(db=db, schema=prefix_schema)
@@ -125,7 +124,7 @@ async def test_ipaddress_is_within_ipprefix(
     await prefix.save(db=db)
 
     address = await Node.init(db=db, schema=address_schema)
-    await address.new(db=db, address="2001:db8::1/64")
+    await address.new(db=db, address="2001:db8::1/64", ip_prefix=prefix)
     await address.save(db=db)
 
     unrelated = await Node.init(db=db, schema=address_schema)
@@ -158,26 +157,20 @@ async def test_ipprefix_utilization(
     await container.save(db=db)
 
     prefix = await Node.init(db=db, schema=prefix_schema)
-    await prefix.new(db=db, prefix="192.0.2.0/28", member_type="address")
+    await prefix.new(db=db, prefix="192.0.2.0/28", member_type="address", parent=container)
     await prefix.save(db=db)
 
-    # Build relationship between container and prefix
-    await container.children.update(db=db, data=prefix)
-    await container.children.save(db=db)
-    await prefix.parent.update(db=db, data=container)
-    await prefix.parent.save(db=db)
-
-    addresses: List[Node] = []
+    addresses = []
     for i in range(1, 8):
         address = await Node.init(db=db, schema=address_schema)
-        await address.new(db=db, address=f"192.0.2.{i}/28")
-        await address.ip_prefix.update(db=db, data=prefix)
+        await address.new(db=db, address=f"192.0.2.{i}/28", ip_prefix=prefix)
         await address.save(db=db)
         addresses.append(address)
 
-    # Build relationships between addresses and prefix
-    await prefix.ip_addresses.update(db=db, data=addresses)
-    await prefix.ip_addresses.save(db=db)
+    query = await IPPrefixUtilization.init(db, branch=default_branch, ip_prefix=container)
+    await query.execute(db)
+    assert await query.get_percentage() == 100 / 16
 
-    assert await get_utilization(db=db, branch=default_branch, ip_prefix=container) == 100 / 16
-    assert await get_utilization(db=db, branch=default_branch, ip_prefix=prefix) == 50.0
+    query = await IPPrefixUtilization.init(db, branch=default_branch, ip_prefix=prefix)
+    await query.execute(db)
+    assert await query.get_percentage() == 50.0

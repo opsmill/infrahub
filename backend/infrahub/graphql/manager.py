@@ -855,7 +855,4 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
-        if schema.kind == InfrahubKind.IPPREFIX:
-            main_attrs["utilization"] = graphene.Float(required=False)
-
         return type(f"NestedPaginated{schema.kind}", (InfrahubObject,), main_attrs)
