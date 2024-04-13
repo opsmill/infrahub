@@ -63,8 +63,8 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         db = database or context.db
         ip_address = ipaddress.ip_interface(data["address"]["value"])
 
-        if not data["ip_namespace"]:
-            data["ip_namespace"]["id"] = registry.default_ipnamespace
+        if "ip_namespace" not in data:
+            data["ip_namespace"] = {"id": registry.default_ipnamespace}
 
         ip_network = await get_ip_prefix_for_ip_address(db=db, branch=branch, at=at, ip_address=ip_address)
         if ip_network:
@@ -169,8 +169,8 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         db = database or context.db
         ip_network = ipaddress.ip_network(data["prefix"]["value"])
 
-        if not data["ip_namespace"]:
-            data["ip_namespace"]["id"] = registry.default_ipnamespace
+        if "ip_namespace" not in data:
+            data["ip_namespace"] = {"id": registry.default_ipnamespace}
 
         # Set supernet if found
         super_network = await get_container(db=db, branch=branch, at=at, ip_prefix=ip_network)
