@@ -344,6 +344,8 @@ async def test_all_attributes(db: InfrahubDatabase, default_branch, all_attribut
                 mybool: { value: false }
                 myint: { value: 123 }
                 mylist: { value: [ "1", 2, false ] }
+                ipaddress: { value: "10.3.4.254/24" }
+                prefix: { value: "10.3.4.0/24" }
             }
         ){
             ok
@@ -377,6 +379,10 @@ async def test_all_attributes(db: InfrahubDatabase, default_branch, all_attribut
     assert obj1.myint.is_default is False
     assert obj1.mylist.value == ["1", 2, False]
     assert obj1.mylist.is_default is False
+    assert obj1.ipaddress.value == "10.3.4.254/24"
+    assert obj1.ipaddress.is_default is False
+    assert obj1.prefix.value == "10.3.4.0/24"
+    assert obj1.prefix.is_default is False
 
 
 async def test_all_attributes_default_value(db: InfrahubDatabase, default_branch, all_attribute_default_types_schema):

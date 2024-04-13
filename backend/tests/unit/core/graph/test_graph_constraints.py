@@ -120,6 +120,62 @@ def test_constraint_manager_from_graph_schema_neo4j(db: InfrahubDatabase):
             mandatory=True,
         ),
         ConstraintNodeNeo4j(
+            item_name="attributeipnetwork",
+            item_label="AttributeIPNetwork",
+            property="value",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintNodeNeo4j(
+            item_name="attributeipnetwork",
+            item_label="AttributeIPNetwork",
+            property="is_default",
+            type=GraphPropertyType.BOOLEAN,
+            mandatory=True,
+        ),
+        ConstraintNodeNeo4j(
+            item_name="attributeipnetwork",
+            item_label="AttributeIPNetwork",
+            property="binary_address",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintNodeNeo4j(
+            item_name="attributeipnetwork",
+            item_label="AttributeIPNetwork",
+            property="version",
+            type=GraphPropertyType.INTEGER,
+            mandatory=True,
+        ),
+        ConstraintNodeNeo4j(
+            item_name="attributeiphost",
+            item_label="AttributeIPHost",
+            property="value",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintNodeNeo4j(
+            item_name="attributeiphost",
+            item_label="AttributeIPHost",
+            property="is_default",
+            type=GraphPropertyType.BOOLEAN,
+            mandatory=True,
+        ),
+        ConstraintNodeNeo4j(
+            item_name="attributeiphost",
+            item_label="AttributeIPHost",
+            property="binary_address",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintNodeNeo4j(
+            item_name="attributeiphost",
+            item_label="AttributeIPHost",
+            property="version",
+            type=GraphPropertyType.INTEGER,
+            mandatory=True,
+        ),
+        ConstraintNodeNeo4j(
             item_name="boolean",
             item_label="Boolean",
             property="value",
@@ -485,6 +541,62 @@ def test_constraint_manager_from_graph_schema_memgraph(db: InfrahubDatabase):
             mandatory=True,
         ),
         ConstraintNodeMemgraph(
+            item_name="attributeipnetwork",
+            item_label="AttributeIPNetwork",
+            property="value",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintNodeMemgraph(
+            item_name="attributeipnetwork",
+            item_label="AttributeIPNetwork",
+            property="is_default",
+            type=GraphPropertyType.BOOLEAN,
+            mandatory=True,
+        ),
+        ConstraintNodeMemgraph(
+            item_name="attributeipnetwork",
+            item_label="AttributeIPNetwork",
+            property="binary_address",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintNodeMemgraph(
+            item_name="attributeipnetwork",
+            item_label="AttributeIPNetwork",
+            property="version",
+            type=GraphPropertyType.INTEGER,
+            mandatory=True,
+        ),
+        ConstraintNodeMemgraph(
+            item_name="attributeiphost",
+            item_label="AttributeIPHost",
+            property="value",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintNodeMemgraph(
+            item_name="attributeiphost",
+            item_label="AttributeIPHost",
+            property="is_default",
+            type=GraphPropertyType.BOOLEAN,
+            mandatory=True,
+        ),
+        ConstraintNodeMemgraph(
+            item_name="attributeiphost",
+            item_label="AttributeIPHost",
+            property="binary_address",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintNodeMemgraph(
+            item_name="attributeiphost",
+            item_label="AttributeIPHost",
+            property="version",
+            type=GraphPropertyType.INTEGER,
+            mandatory=True,
+        ),
+        ConstraintNodeMemgraph(
             item_name="boolean",
             item_label="Boolean",
             property="value",
@@ -517,6 +629,56 @@ async def test_constraint_manager_database_neo4j(db: InfrahubDatabase, default_b
         ConstraintInfo(item_name="node_attribute_name_type", item_label="Attribute", property="name"),
         ConstraintInfo(item_name="node_attribute_uuid_exist", item_label="Attribute", property="uuid"),
         ConstraintInfo(item_name="node_attribute_uuid_type", item_label="Attribute", property="uuid"),
+        ConstraintInfo(
+            item_name="node_attributeiphost_binary_address_exist",
+            item_label="AttributeIPHost",
+            property="binary_address",
+        ),
+        ConstraintInfo(
+            item_name="node_attributeiphost_binary_address_type",
+            item_label="AttributeIPHost",
+            property="binary_address",
+        ),
+        ConstraintInfo(
+            item_name="node_attributeiphost_is_default_exist", item_label="AttributeIPHost", property="is_default"
+        ),
+        ConstraintInfo(
+            item_name="node_attributeiphost_is_default_type", item_label="AttributeIPHost", property="is_default"
+        ),
+        ConstraintInfo(item_name="node_attributeiphost_value_exist", item_label="AttributeIPHost", property="value"),
+        ConstraintInfo(item_name="node_attributeiphost_value_type", item_label="AttributeIPHost", property="value"),
+        ConstraintInfo(
+            item_name="node_attributeiphost_version_exist", item_label="AttributeIPHost", property="version"
+        ),
+        ConstraintInfo(item_name="node_attributeiphost_version_type", item_label="AttributeIPHost", property="version"),
+        ConstraintInfo(
+            item_name="node_attributeipnetwork_binary_address_exist",
+            item_label="AttributeIPNetwork",
+            property="binary_address",
+        ),
+        ConstraintInfo(
+            item_name="node_attributeipnetwork_binary_address_type",
+            item_label="AttributeIPNetwork",
+            property="binary_address",
+        ),
+        ConstraintInfo(
+            item_name="node_attributeipnetwork_is_default_exist", item_label="AttributeIPNetwork", property="is_default"
+        ),
+        ConstraintInfo(
+            item_name="node_attributeipnetwork_is_default_type", item_label="AttributeIPNetwork", property="is_default"
+        ),
+        ConstraintInfo(
+            item_name="node_attributeipnetwork_value_exist", item_label="AttributeIPNetwork", property="value"
+        ),
+        ConstraintInfo(
+            item_name="node_attributeipnetwork_value_type", item_label="AttributeIPNetwork", property="value"
+        ),
+        ConstraintInfo(
+            item_name="node_attributeipnetwork_version_exist", item_label="AttributeIPNetwork", property="version"
+        ),
+        ConstraintInfo(
+            item_name="node_attributeipnetwork_version_type", item_label="AttributeIPNetwork", property="version"
+        ),
         ConstraintInfo(item_name="node_boolean_value_exist", item_label="Boolean", property="value"),
         ConstraintInfo(item_name="node_boolean_value_type", item_label="Boolean", property="value"),
         ConstraintInfo(item_name="node_node_branch_support_exist", item_label="Node", property="branch_support"),
@@ -646,6 +808,14 @@ async def test_constraint_manager_database_memgraph(db: InfrahubDatabase, defaul
         ConstraintInfo(item_name="n_a", item_label="Attribute", property="branch_support"),
         ConstraintInfo(item_name="n_a", item_label="Attribute", property="name"),
         ConstraintInfo(item_name="n_a", item_label="Attribute", property="uuid"),
+        ConstraintInfo(item_name="n_a", item_label="AttributeIPNetwork", property="value"),
+        ConstraintInfo(item_name="n_a", item_label="AttributeIPNetwork", property="is_default"),
+        ConstraintInfo(item_name="n_a", item_label="AttributeIPNetwork", property="binary_address"),
+        ConstraintInfo(item_name="n_a", item_label="AttributeIPNetwork", property="version"),
+        ConstraintInfo(item_name="n_a", item_label="AttributeIPHost", property="value"),
+        ConstraintInfo(item_name="n_a", item_label="AttributeIPHost", property="is_default"),
+        ConstraintInfo(item_name="n_a", item_label="AttributeIPHost", property="binary_address"),
+        ConstraintInfo(item_name="n_a", item_label="AttributeIPHost", property="version"),
         ConstraintInfo(item_name="n_a", item_label="Boolean", property="value"),
     ]
 
