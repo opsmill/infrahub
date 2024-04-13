@@ -36,7 +36,7 @@ async def get_root_node(db: InfrahubDatabase, initialize: bool = False) -> Root:
 
 
 async def get_default_ipnamespace(db: InfrahubDatabase) -> Node:
-    nodes = registry.manager.query(db=db, schema=InfrahubKind.NAMESPACE, filters={"name__value": "default"})
+    nodes = await registry.manager.query(db=db, schema=InfrahubKind.NAMESPACE, filters={"name__value": "default"})
     if len(nodes) == 0:
         raise DatabaseError("Unable to find the IP namespace default in the database.")
 
