@@ -96,11 +96,12 @@ async def default_branch(reset_registry, local_storage_dir, empty_database, db: 
 
 
 @pytest.fixture
-async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Node:
+async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Optional[Node]:
     if not registry._default_ipnamespace:
         ip_namespace = await create_ipam_namespace(db=db)
         registry.default_ipnamespace = ip_namespace.id
-    return ip_namespace
+        return ip_namespace
+    return None
 
 
 @pytest.fixture
