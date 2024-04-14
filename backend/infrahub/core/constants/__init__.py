@@ -14,6 +14,8 @@ __all__ = ["InfrahubKind", "FlagProperty", "NodeProperty", "UpdateSupport", "Upd
 
 GLOBAL_BRANCH_NAME = "-global-"
 
+DEFAULT_IP_NAMESPACE = "default"
+
 RESERVED_BRANCH_NAMES = [GLOBAL_BRANCH_NAME]
 
 RESERVED_ATTR_REL_NAMES = [
