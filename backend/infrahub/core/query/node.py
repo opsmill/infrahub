@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from infrahub.core.relationship import RelationshipCreateData, RelationshipManager
     from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.core.schema.attribute_schema import AttributeSchema
+    from infrahub.core.schema.profile_schema import ProfileSchema
     from infrahub.core.schema.relationship_schema import RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
@@ -31,7 +32,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class NodeToProcess:
-    schema: Optional[NodeSchema]
+    schema: Optional[Union[NodeSchema, ProfileSchema]]
 
     node_id: str
     node_uuid: str
@@ -90,7 +91,7 @@ class NodeQuery(Query):
         branch: Optional[Branch] = None,
         *args,
         **kwargs,
-    ):
+    ) -> None:
         # TODO Validate that Node is a valid node
         # Eventually extract the branch from Node as well
         self.node = node
@@ -596,12 +597,12 @@ class NodeListGetRelationshipsQuery(Query):
 class NodeListGetInfoQuery(Query):
     name: str = "node_list_get_info"
 
-    def __init__(self, ids: List[str], account=None, *args, **kwargs):
+    def __init__(self, ids: List[str], account=None, *args: Any, **kwargs: Any) -> None:
         self.account = account
         self.ids = ids
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
@@ -638,7 +639,7 @@ class NodeListGetInfoQuery(Query):
                 schema=schema,
                 node_id=result.get_node("n").element_id,
                 node_uuid=result.get_node("n").get("uuid"),
-                profile_uuids=result.get("profile_uuids"),
+                profile_uuids=[str(puuid) for puuid in result.get("profile_uuids")],
                 updated_at=result.get_rel("rb").get("from"),
                 branch=self.branch.name,
                 labels=list(result.get_node("n").labels),
@@ -673,7 +674,7 @@ class FieldAttributeRequirement:
 
     @property
     def supports_profile(self) -> bool:
-        return self.field and self.field.is_attribute and self.field_attr_name in ("value", "values")
+        return bool(self.field and self.field.is_attribute and self.field_attr_name in ("value", "values"))
 
     @property
     def is_filter(self) -> bool:
@@ -708,8 +709,8 @@ class NodeGetListQuery(Query):
     name = "node_get_list"
 
     def __init__(
-        self, schema: NodeSchema, filters: Optional[dict] = None, partial_match: bool = False, *args, **kwargs
-    ):
+        self, schema: NodeSchema, filters: Optional[dict] = None, partial_match: bool = False, *args: Any, **kwargs: Any
+    ) -> None:
         self.schema = schema
         self.filters = filters
         self.partial_match = partial_match
@@ -730,7 +731,7 @@ class NodeGetListQuery(Query):
     def _get_tracked_variables(self) -> list[str]:
         return self._variables_to_track
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
         self.order_by = []
         self.params["node_kind"] = self.schema.kind
 
@@ -863,6 +864,8 @@ class NodeGetListQuery(Query):
         sort_params: Dict[str, Any] = {}
 
         for far in field_attribute_requirements:
+            if far.field is None:
+                continue
             extra_tail_properties = {}
             if far.supports_profile:
                 extra_tail_properties[far.is_default_query_variable] = "is_default"
@@ -931,6 +934,8 @@ class NodeGetListQuery(Query):
         profile_attributes = [far for far in field_attribute_requirements if far.supports_profile]
 
         for profile_attr in profile_attributes:
+            if not profile_attr.field:
+                continue
             subquery, subquery_params, _ = await build_subquery_order(
                 db=db,
                 field=profile_attr.field,
@@ -1078,9 +1083,9 @@ class NodeGetHierarchyQuery(Query):
         direction: RelationshipHierarchyDirection,
         node_schema: Union[NodeSchema, GenericSchema],
         filters: Optional[dict] = None,
-        *args,
-        **kwargs,
-    ):
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
         self.filters = filters or {}
         self.direction = direction
         self.node_id = node_id
@@ -1090,7 +1095,7 @@ class NodeGetHierarchyQuery(Query):
 
         self.hierarchy_schema = node_schema.get_hierarchy_schema(self.branch)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):  # pylint: disable=too-many-statements
+    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:  # pylint: disable=too-many-statements
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
         self.order_by = []
