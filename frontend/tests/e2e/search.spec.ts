@@ -1,6 +1,14 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("when searching an object", () => {
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test("should open search anywhere modal", async ({ page }) => {
     await page.goto("/");
 

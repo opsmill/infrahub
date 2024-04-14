@@ -3,6 +3,14 @@ import { ACCOUNT_STATE_PATH } from "../constants";
 import { createBranch } from "../utils";
 
 test.describe("Branches creation and deletion", () => {
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test.describe("when not logged in", () => {
     test("should not be able to create a branch if not logged in", async ({ page }) => {
       await page.goto("/");

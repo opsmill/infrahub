@@ -6,6 +6,14 @@ const NEW_TAG = "group-tag";
 test.describe("Object groups update", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test("should contain initial values and update them", async ({ page }) => {
     await test.step("access the tags and create a new one", async () => {
       await page.goto("/objects/BuiltinTag");

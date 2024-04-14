@@ -1,6 +1,14 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Object filters", () => {
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test("should filter the objects list", async ({ page }) => {
     await test.step("access objects list and verify initial state", async () => {
       await page.goto("/objects/InfraDevice");

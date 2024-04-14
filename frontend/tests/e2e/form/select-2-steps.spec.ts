@@ -10,6 +10,14 @@ const ENDPOINT_NAME = "et-0/0/2";
 test.describe("Verifies the object creation", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test("creates and verifies the objects values", async ({ page }) => {
     await test.step("creates the object", async () => {
       await page.goto("/objects/InfraInterfaceL3");

@@ -5,6 +5,14 @@ import { saveScreenshotForDocs } from "../../utils";
 test.describe("Getting started with Infrahub - Integration with Git", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test("1. Generate the configuration of a device", async ({ page }) => {
     await page.goto("/");
 

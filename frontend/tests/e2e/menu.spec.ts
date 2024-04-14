@@ -1,6 +1,14 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Sidebar menu", () => {
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test("filter item in menu", async ({ page }) => {
     await page.goto("/");
 
