@@ -35,10 +35,10 @@ async def get_root_node(db: InfrahubDatabase, initialize: bool = False) -> Root:
     return roots[0]
 
 
-async def get_default_ipnamespace(db: InfrahubDatabase) -> Node:
+async def get_default_ipnamespace(db: InfrahubDatabase) -> Optional[Node]:
     nodes = await registry.manager.query(db=db, schema=InfrahubKind.NAMESPACE, filters={"name__value": "default"})
     if len(nodes) == 0:
-        raise DatabaseError("Unable to find the IP namespace default in the database.")
+        return None
 
     if len(nodes) > 1:
         raise DatabaseError("More than 1 default namespace found.")
@@ -130,7 +130,8 @@ async def initialization(db: InfrahubDatabase) -> None:
     # Load Default Namespace
     # ---------------------------------------------------
     ip_namespace = await get_default_ipnamespace(db=db)
-    registry.default_ipnamespace = ip_namespace.id
+    if ip_namespace:
+        registry.default_ipnamespace = ip_namespace.id
 
     # ---------------------------------------------------
     # Load all existing Groups into the registry

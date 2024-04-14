@@ -20,6 +20,7 @@ from infrahub.core.initialization import (
     create_ipam_namespace,
     create_root_node,
 )
+from infrahub.core.node import Node
 from infrahub.core.schema import (
     SchemaRoot,
     core_models,
@@ -95,9 +96,10 @@ async def default_branch(reset_registry, local_storage_dir, empty_database, db: 
 
 
 @pytest.fixture
-async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Branch:
-    ip_namespace = await create_ipam_namespace(db=db)
-    registry.default_ipnamespace = ip_namespace.id
+async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Node:
+    if not registry._default_ipnamespace:
+        ip_namespace = await create_ipam_namespace(db=db)
+        registry.default_ipnamespace = ip_namespace.id
     return ip_namespace
 
 
