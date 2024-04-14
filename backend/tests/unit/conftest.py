@@ -1980,6 +1980,7 @@ async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_bran
                 "name": "Rack",
                 "namespace": "Location",
                 "default_filter": "name__value",
+                "order_by": ["name__value"],
                 "inherit_from": ["LocationGeneric"],
                 "parent": "LocationSite",
                 "children": "",

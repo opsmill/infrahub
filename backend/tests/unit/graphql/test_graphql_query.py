@@ -2689,7 +2689,7 @@ async def test_hierarchical_location_parent_filter(
     nodes = [node["node"]["name"]["value"] for node in result.data["LocationRack"]["edges"]]
 
     assert result.errors is None
-    assert nodes == ["paris-r1", "paris-r2", "london-r1", "london-r2"]
+    assert nodes == ["london-r1", "london-r2", "paris-r1", "paris-r2"]
 
 
 async def test_hierarchical_location_ancestors(
