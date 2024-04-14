@@ -36,7 +36,7 @@ async def get_root_node(db: InfrahubDatabase, initialize: bool = False) -> Root:
 
 
 async def get_default_ipnamespace(db: InfrahubDatabase) -> Optional[Node]:
-    if not registry.schema.has(name=InfrahubKind.NAMESPACE):
+    if not registry.schema._branches or not registry.schema.has(name=InfrahubKind.NAMESPACE):
         return None
 
     nodes = await registry.manager.query(db=db, schema=InfrahubKind.NAMESPACE, filters={"name__value": "default"})
