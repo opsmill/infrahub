@@ -783,7 +783,7 @@ class NodeGetListQuery(Query):
         )
 
         if use_profiles:
-            await self._add_profiles_per_node_query(branch_filter=branch_filter)
+            await self._add_profiles_per_node_query(db=db, branch_filter=branch_filter)
             await self._add_profile_attributes(
                 db=db, field_attribute_requirements=field_attribute_requirements, branch_filter=branch_filter
             )
@@ -897,19 +897,31 @@ class NodeGetListQuery(Query):
             self.add_to_query(sort_query)
         self.params.update(sort_params)
 
-    async def _add_profiles_per_node_query(self, branch_filter: str) -> None:
+    async def _add_profiles_per_node_query(self, db: InfrahubDatabase, branch_filter: str) -> None:
         with_str = ", ".join(self._get_tracked_variables())
+        froms_str = db.render_list_comprehension(items="relationships(profile_path)", item_name="from")
         profiles_per_node_query = (
             """
             CALL {
                 WITH n
-                OPTIONAL MATCH profile_path = (n)-[:IS_RELATED]->(profile_r:Relationship)<-[:IS_RELATED]-(profile_n:Node)-[:IS_PART_OF]->(:Root)
+                OPTIONAL MATCH profile_path = (n)-[:IS_RELATED]->(profile_r:Relationship)<-[:IS_RELATED]-(maybe_profile_n:Node)-[:IS_PART_OF]->(:Root)
                 WHERE profile_r.name = "node__profile"
-                AND profile_n.namespace = "Profile"
-                AND all(r in relationships(profile_path) WHERE %(branch_filter)s and r.status = "active")
-                RETURN profile_n
+                AND maybe_profile_n.namespace = "Profile"
+                AND all(r in relationships(profile_path) WHERE %(branch_filter)s)
+                WITH
+                    maybe_profile_n,
+                    profile_path,
+                    reduce(br_lvl = 0, r in relationships(profile_path) | br_lvl + r.branch_level) AS branch_level,
+                    %(froms_str)s AS froms,
+                    all(r in relationships(profile_path) WHERE r.status = "active") AS is_active
+                RETURN maybe_profile_n, is_active, branch_level, froms
             }
-            WITH %(with_str)s, profile_n
+            WITH %(with_str)s, maybe_profile_n, branch_level, froms, is_active
+            ORDER BY n.uuid, maybe_profile_n.uuid, branch_level DESC, froms[-1] DESC, froms[-2] DESC, froms[-3] DESC
+            WITH %(with_str)s, maybe_profile_n, collect(is_active) as ordered_is_actives
+            WITH %(with_str)s, CASE
+                WHEN ordered_is_actives[0] = True THEN maybe_profile_n ELSE NULL
+            END AS profile_n
             CALL {
                 WITH profile_n
                 OPTIONAL MATCH profile_priority_path = (profile_n)-[pr1:HAS_ATTRIBUTE]->(a:Attribute)-[pr2:HAS_VALUE]->(av:AttributeValue)
@@ -921,7 +933,7 @@ class NodeGetListQuery(Query):
             }
             WITH %(with_str)s, profile_n, profile_priority
             """
-        ) % {"branch_filter": branch_filter, "with_str": with_str}
+        ) % {"branch_filter": branch_filter, "with_str": with_str, "froms_str": froms_str}
         self.add_to_query(profiles_per_node_query)
         self._track_variable("profile_n")
         self._track_variable("profile_priority")
@@ -962,11 +974,6 @@ class NodeGetListQuery(Query):
 
     async def _add_profile_rollups(self, field_attribute_requirements: list[FieldAttributeRequirement]) -> None:
         profile_attributes = [far for far in field_attribute_requirements if far.supports_profile]
-        order_by_str = (
-            "n.uuid, profile_n.uuid, "
-            + ", ".join([paf.profile_value_query_variable for paf in profile_attributes])
-            + ", profile_priority ASC"
-        )
         profile_value_collects = []
         for profile_attr in profile_attributes:
             self._untrack_variable(profile_attr.profile_value_query_variable)
@@ -977,7 +984,7 @@ class NodeGetListQuery(Query):
         self._untrack_variable("profile_priority")
         profile_rollup_with_str = ", ".join(self._get_tracked_variables() + profile_value_collects)
         profile_rollup_query = f"""
-        ORDER BY {order_by_str}
+        ORDER BY n.uuid, profile_priority ASC
         WITH {profile_rollup_with_str}
         """
         self.add_to_query(profile_rollup_query)
@@ -988,7 +995,7 @@ class NodeGetListQuery(Query):
         for profile_attr in profile_attributes:
             final_value_with.append(f"""
             CASE
-                WHEN {profile_attr.is_default_query_variable}
+                WHEN {profile_attr.is_default_query_variable} AND {profile_attr.profile_final_value_query_variable} IS NOT NULL
                 THEN {profile_attr.profile_final_value_query_variable}
                 ELSE {profile_attr.node_value_query_variable}
             END AS {profile_attr.final_value_query_variable}
