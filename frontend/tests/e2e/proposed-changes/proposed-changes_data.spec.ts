@@ -43,6 +43,17 @@ test.describe("/proposed-changes diff data", () => {
 
     await test.step("go to Data tab and open comment form", async () => {
       await page.getByLabel("Tabs").getByText("Data").click();
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          return (
+            reqData?.operationName === "getProposedChangesThreadsForCoreObjectThread" &&
+            status === 200
+          );
+        }),
+      ]);
       await page.getByText("InfraCircuit").first().hover();
       await page.getByTestId("data-diff-add-comment").first().click();
       await expect(page.getByText("Conversation")).toBeVisible();
