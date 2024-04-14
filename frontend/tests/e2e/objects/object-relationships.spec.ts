@@ -2,6 +2,14 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("/objects/:objectname/:objectid - relationship tab", () => {
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test.describe("when not logged in", () => {
     test("should not be able to edit relationship", async ({ page }) => {
       await test.step("Navigate to relationship tab of an object", async () => {
