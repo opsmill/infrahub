@@ -53,8 +53,9 @@ test.describe("Branches creation and deletion", () => {
     test("should delete a non-selected branch and remain on the current branch", async ({
       page,
     }) => {
-      await page.goto("/");
+      await page.goto("/", { waitUntil: "networkidle" });
       await createBranch(page, "test456");
+      await page.waitForURL("/?branch=test456"); // createBranch redirects to this URL, we must wait for it to avoid ERR_ABORTED errors in the next goto
       await page.goto("/branches/test456?branch=test123");
 
       await page.getByRole("button", { name: "Delete" }).click();
