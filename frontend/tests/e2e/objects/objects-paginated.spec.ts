@@ -43,10 +43,11 @@ test.describe("/objects/:objectname", () => {
       // When
       const objectDetailsLink = page.getByRole("link", { name: "blue" });
       const linkHref = await objectDetailsLink.getAttribute("href");
+      const newTabPromise = context.waitForEvent("page");
       await objectDetailsLink.click({ button: "middle" });
 
       // then
-      const newTab = await context.waitForEvent("page");
+      const newTab = await newTabPromise;
       await newTab.waitForURL(linkHref);
       expect(newTab.url()).toContain(linkHref);
     });
