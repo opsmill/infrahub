@@ -54,6 +54,7 @@ test.describe("/proposed-changes diff data", () => {
           );
         }),
       ]);
+      await page.waitForLoadState("networkidle"); // need that because we might have multiple getProposedChangesThreadsForCoreObjectThread requests in parallel
       await page.getByText("InfraCircuit").first().hover();
       await page.getByTestId("data-diff-add-comment").first().click();
       await expect(page.getByText("Conversation")).toBeVisible();
