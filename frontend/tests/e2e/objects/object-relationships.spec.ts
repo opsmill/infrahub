@@ -15,7 +15,7 @@ test.describe("/objects/:objectname/:objectid - relationship tab", () => {
       await test.step("Navigate to relationship tab of an object", async () => {
         await page.goto("/objects/InfraPlatform");
         await page.getByRole("link", { name: "Juniper JunOS" }).click();
-        await page.getByText("Devices10").click();
+        await page.getByText(/Devices9|Devices10/).click(); // since this test can run in parallel with the "should delete the relationship" test
       });
 
       await test.step("all buttons are disabled", async () => {
