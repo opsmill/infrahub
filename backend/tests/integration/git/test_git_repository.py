@@ -25,8 +25,14 @@ from tests.helpers.test_client import InfrahubTestClient
 async def load_infrastructure_schema(db: InfrahubDatabase):
     models_dir = get_models_dir()
 
-    schema_txt = Path(os.path.join(models_dir, "infrastructure_base.yml")).read_text()
-    infra_schema = yaml.safe_load(schema_txt)
+    infra_schema = {}
+    for file_name in os.listdir(models_dir):
+        file_path = os.path.join(models_dir, file_name)
+
+        if file_path.endswith((".yml", ".yaml")):
+            schema_txt = Path(file_path).read_text()
+            loaded_schema = yaml.safe_load(schema_txt)
+            infra_schema.update(loaded_schema)
 
     default_branch_name = registry.default_branch
     branch_schema = registry.schema.get_schema_branch(name=default_branch_name)
