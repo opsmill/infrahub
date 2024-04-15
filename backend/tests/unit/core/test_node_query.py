@@ -1,4 +1,3 @@
-import time
 from typing import Dict
 
 from infrahub.core.branch import Branch
@@ -31,16 +30,14 @@ from infrahub.core.query.node import (
 )
 from infrahub.core.registry import registry
 from infrahub.core.schema.relationship_schema import RelationshipSchema
+from infrahub.core.utils import count_nodes, get_nodes
 from infrahub.database import InfrahubDatabase
 
 
 async def test_query_NodeCreateAllQuery(db: InfrahubDatabase, default_branch: Branch, car_person_schema, first_account):
     obj = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await obj.new(db=db, name="John", height=180)
-
-    original_start_time = time.time_ns()
     await obj.save(db=db)
-    time.time_ns() - original_start_time
 
     car = await Node.init(db=db, schema="TestCar", branch=default_branch)
     await car.new(
@@ -52,12 +49,53 @@ async def test_query_NodeCreateAllQuery(db: InfrahubDatabase, default_branch: Br
         owner={"id": obj.id, "_relation__source": first_account},
     )
 
-    new_start_time = time.time_ns()
     query = await NodeCreateAllQuery.init(db=db, node=car)
     await query.execute(db=db)
-    time.time_ns() - new_start_time
 
     assert query.get_self_ids()
+
+
+async def test_query_NodeCreateAllQuery_iphost(
+    db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema
+):
+    obj = await Node.init(db=db, schema="TestAllAttributeTypes", branch=default_branch)
+    await obj.new(db=db, ipaddress="10.2.5.2/24")
+
+    query = await NodeCreateAllQuery.init(db=db, node=obj)
+    await query.execute(db=db)
+
+    nodes = await get_nodes(db=db, label="AttributeIPHost")
+    assert len(nodes) == 1
+    attribute = nodes[0]
+
+    assert attribute["value"] == "10.2.5.2/24"
+    assert attribute["version"] == 4
+    assert attribute["binary_address"] == "00001010000000100000010100000010"
+    assert attribute["prefixlen"] == 24
+
+    assert await count_nodes(db=db, label="AttributeIPNetwork") == 0
+
+
+async def test_query_NodeCreateAllQuery_ipnetwork(
+    db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema
+):
+    obj = await Node.init(db=db, schema="TestAllAttributeTypes", branch=default_branch)
+    await obj.new(db=db, prefix="10.2.5.0/24")
+
+    query = await NodeCreateAllQuery.init(db=db, node=obj)
+    await query.execute(db=db)
+
+    nodes = await get_nodes(db=db, label="AttributeIPNetwork")
+    assert len(nodes) == 1
+    prefix = nodes[0]
+
+    assert prefix["value"] == "10.2.5.0/24"
+    assert prefix["version"] == 4
+    assert prefix["binary_address"] == "00001010000000100000010100000000"
+    assert prefix["prefixlen"] == 24
+    # assert prefix["num_addresses"] == 256
+
+    assert await count_nodes(db=db, label="AttributeIPHost") == 0
 
 
 async def test_query_NodeGetListQuery(

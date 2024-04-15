@@ -36,6 +36,7 @@ class Registry:
     branch: dict = field(default_factory=dict)
     node: dict = field(default_factory=dict)
     _default_branch: Optional[str] = None
+    _default_ipnamespace: Optional[str] = None
     _schema: Optional[SchemaManager] = None
     default_graphql_type: Dict[str, InfrahubObject] = field(default_factory=dict)
     graphql_type: dict = field(default_factory=lambda: defaultdict(dict))
@@ -69,6 +70,17 @@ class Registry:
     @default_branch.setter
     def default_branch(self, value: str) -> None:
         self._default_branch = value
+
+    @property
+    def default_ipnamespace(self) -> str:
+        if not self._default_ipnamespace:
+            raise InitializationError()
+
+        return self._default_ipnamespace
+
+    @default_ipnamespace.setter
+    def default_ipnamespace(self, value: str) -> None:
+        self._default_ipnamespace = value
 
     @property
     def schema(self) -> SchemaManager:
@@ -127,6 +139,7 @@ class Registry:
         self.branch = {}
         self.node = {}
         self._schema = None
+        self._default_ipnamespace = None
         self.account = {}
         self.account_id = {}
         self.node_group = {}

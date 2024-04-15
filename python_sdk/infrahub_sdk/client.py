@@ -187,7 +187,7 @@ class BaseClient:
         return url
 
 
-class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
+class InfrahubClient(BaseClient):
     """GraphQL Client to interact with Infrahub."""
 
     group_context: InfrahubGroupContext
@@ -810,7 +810,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         self.mode = InfrahubClientMode.DEFAULT
 
 
-class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
+class InfrahubClientSync(BaseClient):
     group_context: InfrahubGroupContextSync
 
     def _initialize(self) -> None:
