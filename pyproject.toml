@@ -13,7 +13,7 @@ packages = [
 optional = true
 
 [tool.poetry.dependencies]
-python = "^3.8, < 3.13"
+python = "^3.9, < 3.13"
 neo4j = "~5.18"
 infrahub-sdk = {path = "python_sdk", extras = ["ctl","tests"], develop=true}
 pydantic = "~2.6"
@@ -71,12 +71,8 @@ deepdiff = "^6.2"
 [tool.poetry.group.test-scale.dependencies]
 locust = "^2.20.1"
 docker = "^7.0.0"
-matplotlib = [
-    { version = "^3.8", python = ">=3.9"},
-]
-pandas = [
-    { version = "^2.2", python = ">=3.9"},
-]
+matplotlib = "^3.8"
+pandas = "^2.2"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
