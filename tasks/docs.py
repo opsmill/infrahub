@@ -203,7 +203,6 @@ def _generate_infrahubctl_documentation(context: Context):
 
 def _generate_infrahubsync_documentation(context: Context):
     """Generate the documentation for infrahub-sync using typer-cli."""
-    from infrahub_sync.cli import app
 
     print(" - Generate infrahub-sync CLI documentation")
     exec_cmd = 'poetry run typer infrahub_sync.cli utils docs --name "infrahub-sync"'
