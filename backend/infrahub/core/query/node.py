@@ -904,9 +904,10 @@ class NodeGetListQuery(Query):
             """
             CALL {
                 WITH n
-                OPTIONAL MATCH profile_path = (n)-[:IS_RELATED]->(profile_r:Relationship)<-[:IS_RELATED]-(maybe_profile_n:Node)-[:IS_PART_OF]->(:Root)
+                OPTIONAL MATCH profile_path = (
+                    (n)-[:IS_RELATED]->(profile_r:Relationship)<-[:IS_RELATED]-(maybe_profile_n:CoreProfile)-[:IS_PART_OF]->(:Root)
+                )
                 WHERE profile_r.name = "node__profile"
-                AND maybe_profile_n.namespace = "Profile"
                 AND all(r in relationships(profile_path) WHERE %(branch_filter)s)
                 WITH
                     maybe_profile_n,

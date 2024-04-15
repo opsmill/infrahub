@@ -1255,7 +1255,7 @@ class SchemaBranch:
             description=f"Profile for {node.kind}",
             branch=node.branch,
             include_in_menu=False,
-            # inherit_from=["CoreProfile"],
+            inherit_from=["CoreProfile"],
             attributes=[
                 AttributeSchema(
                     name="profile_name",
