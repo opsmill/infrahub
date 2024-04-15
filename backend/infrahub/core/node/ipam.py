@@ -27,6 +27,9 @@ class BuiltinIPPrefix(Node):
                 if read_only_attr in fields:
                     response[read_only_attr] = {"value": getattr(self.prefix, read_only_attr)}  # type: ignore[attr-defined]
 
+            if "is_top_level" in fields:
+                response["is_top_level"] = {"value": await self.parent.get_peer(db=db) is None}  # type: ignore[attr-defined]
+
             if "utilization" in fields:
                 utilization = await get_utilization(self, db, branch=self._branch)
                 response["utilization"] = {"value": int(utilization)}
