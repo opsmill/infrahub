@@ -536,7 +536,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: "Setup environment"
-        run: pip install invoke toml
+        run: "pip install invoke toml"
       - name: "Build Test Image"
         run: "invoke dev.build"
       - name: "Validate generated documentation"
