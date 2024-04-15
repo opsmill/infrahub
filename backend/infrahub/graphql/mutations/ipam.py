@@ -7,12 +7,13 @@ from typing_extensions import Self
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.ipam import get_container, get_ip_addresses, get_ip_prefix_for_ip_address, get_subnets
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import NodeNotFoundError
+from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.graphql.mutations.node_getter.interface import MutationNodeGetterInterface
 from infrahub.log import get_logger
 
@@ -63,10 +64,23 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         db = database or context.db
         ip_address = ipaddress.ip_interface(data["address"]["value"])
 
+        namespace_id: Optional[str] = None
         if "ip_namespace" not in data:
             data["ip_namespace"] = {"id": registry.default_ipnamespace}
+            namespace_id = registry.default_ipnamespace
+        elif "ip_namespace" in data and "id" in data["ip_namespace"]:
+            namespace = await registry.manager.get_one_by_id_or_default_filter(
+                db=db, schema_name=InfrahubKind.IPNAMESPACE, id=data["ip_namespace"]["id"]
+            )
+            namespace_id = namespace.id
+        else:
+            raise ValidationError(
+                "A Valid ip_namespace must be provided or ip_namespace should be left empty in order to use the default value."
+            )
 
-        ip_network = await get_ip_prefix_for_ip_address(db=db, branch=branch, at=at, ip_address=ip_address)
+        ip_network = await get_ip_prefix_for_ip_address(
+            db=db, branch=branch, at=at, ip_address=ip_address, namespace=namespace_id
+        )
         if ip_network:
             data["ip_prefix"] = {"id": ip_network.id}
 
@@ -169,16 +183,27 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         db = database or context.db
         ip_network = ipaddress.ip_network(data["prefix"]["value"])
 
+        namespace_id: Optional[str] = None
         if "ip_namespace" not in data:
             data["ip_namespace"] = {"id": registry.default_ipnamespace}
+            namespace_id = registry.default_ipnamespace
+        elif "ip_namespace" in data and "id" in data["ip_namespace"]:
+            namespace = await registry.manager.get_one_by_id_or_default_filter(
+                db=db, schema_name=InfrahubKind.IPNAMESPACE, id=data["ip_namespace"]["id"]
+            )
+            namespace_id = namespace.id
+        else:
+            raise ValidationError(
+                "A Valid ip_namespace must be provided or ip_namespace should be left empty in order to use the default value."
+            )
 
         # Set supernet if found
-        super_network = await get_container(db=db, branch=branch, at=at, ip_prefix=ip_network)
+        super_network = await get_container(db=db, branch=branch, at=at, ip_prefix=ip_network, namespace=namespace_id)
         if super_network:
             data["parent"] = {"id": super_network.id}
 
         # Set subnets if found
-        sub_networks = await get_subnets(db=db, branch=branch, at=at, ip_prefix=ip_network)
+        sub_networks = await get_subnets(db=db, branch=branch, at=at, ip_prefix=ip_network, namespace=namespace_id)
         if sub_networks:
             data["children"] = [s.id for s in sub_networks]
 
@@ -188,7 +213,10 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             )
 
             # Fix ip_prefix for addresses if needed
-            for ip_address in await get_ip_addresses(db=dbt, branch=branch, at=at, ip_prefix=ip_network):
+            addresses = await get_ip_addresses(
+                db=dbt, branch=branch, at=at, ip_prefix=ip_network, namespace=namespace_id
+            )
+            for ip_address in addresses:
                 node = await NodeManager.get_one(ip_address.id, dbt, branch=branch, at=at)
                 node_prefix = await node.ip_prefix.get_peer(dbt)
                 if not node_prefix or ip_network.prefixlen > ipaddress.ip_network(node_prefix.prefix.value).prefixlen:

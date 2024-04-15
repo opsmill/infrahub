@@ -3,7 +3,7 @@ from typing import List, Optional
 from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
+from infrahub.core.constants import DEFAULT_IP_NAMESPACE, GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
@@ -39,7 +39,9 @@ async def get_default_ipnamespace(db: InfrahubDatabase) -> Optional[Node]:
     if not registry.schema._branches or not registry.schema.has(name=InfrahubKind.NAMESPACE):
         return None
 
-    nodes = await registry.manager.query(db=db, schema=InfrahubKind.NAMESPACE, filters={"name__value": "default"})
+    nodes = await registry.manager.query(
+        db=db, schema=InfrahubKind.NAMESPACE, filters={"name__value": DEFAULT_IP_NAMESPACE}
+    )
     if len(nodes) == 0:
         return None
 
@@ -258,7 +260,9 @@ async def create_account(
 
 
 async def create_ipam_namespace(
-    db: InfrahubDatabase, name: str = "default", description: str = "Used to provide a default space of IP resources"
+    db: InfrahubDatabase,
+    name: str = DEFAULT_IP_NAMESPACE,
+    description: str = "Used to provide a default space of IP resources",
 ) -> Node:
     obj = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await obj.new(db=db, name=name, description=description)
