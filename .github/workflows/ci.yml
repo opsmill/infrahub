@@ -604,6 +604,8 @@ jobs:
         run: echo "INFRAHUB_DB_BACKUP_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
       - name: Select vmagent port
         run: echo "VMAGENT_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
+      - name: Set job name
+        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
 
       - name: Enable tracing
         run: echo "INFRAHUB_TRACE_ENABLE=true" >> $GITHUB_ENV
@@ -705,7 +707,7 @@ jobs:
         run: "sleep 10"
       - name: "Show graph URL"
         if: always()
-        run: 'echo "https://grafana-prod.tailc018d.ts.net/d/a4461039-bb27-4f57-9b2a-2c7f4e0a3459/e2e-tests?orgId=1&var-pr=$GITHUB_PR_NUMBER&var-job=$GITHUB_JOB&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
+        run: 'echo "https://grafana-prod.tailc018d.ts.net/d/a4461039-bb27-4f57-9b2a-2c7f4e0a3459/e2e-tests?orgId=1&var-pr=$GITHUB_PR_NUMBER&var-job=$JOB_NAME&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
 
   # ------------------------------------------ Benchmarks ------------------------------------------------
   backend-benchmark:
