@@ -99,5 +99,4 @@ RUN poetry install --no-interaction --no-ansi --no-root --no-directory && \
 # Copy in the rest of the source code and install the project
 # --------------------------------------------
 COPY . ./
-RUN poetry install --no-interaction --no-ansi && \
-    rm -rf /root/.local
+RUN poetry install --no-interaction --no-ansi
