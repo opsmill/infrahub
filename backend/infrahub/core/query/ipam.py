@@ -98,12 +98,12 @@ class IPPrefixSubnetFetch(Query):
             UNWIND all_prefixes as prefix
             OPTIONAL MATCH (prefix)<-[:IS_RELATED]-(ch_rel:Relationship)<-[:IS_RELATED]-(children:BuiltinIPPrefix)
             WHERE ch_rel.name = "parent__child"
-            RETURN children.uuid as children_uuids
+            RETURN children
         }
-        WITH collect( distinct children_uuids ) AS all_children_uuids, all_prefixes_and_value
+        WITH collect( distinct children ) AS all_children, all_prefixes_and_value
         UNWIND all_prefixes_and_value as prefixes_to_check
-        WITH prefixes_to_check, all_children_uuids
-        WHERE not prefixes_to_check[0].uuid in all_children_uuids
+        WITH prefixes_to_check, all_children
+        WHERE not prefixes_to_check[0] in all_children
         """ % {
             "ns_label": InfrahubKind.IPNAMESPACE,
             "node_label": InfrahubKind.IPPREFIX,
@@ -374,22 +374,22 @@ class IPPrefixUtilizationPrefix(Query):
             MATCH path = (pfx)<-[r1:IS_RELATED]-(rl:Relationship)<-[r2:IS_RELATED]-(children:%(label)s)
             WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
                 AND rl.name = "parent__child"
-            RETURN r1, r2
+            RETURN r1 as r11, r2 as r21
             ORDER BY r1.branch_level DESC, r1.from DESC, r2.branch_level DESC, r2.from DESC
             LIMIT 1
         }
-        WITH pfx, children, r1, r2
-        WHERE r1.status = "active" AND r2.status = "active"
+        WITH pfx, children, r11, r21
+        WHERE r11.status = "active" AND r21.status = "active"
         CALL {
             WITH children
             MATCH path = (children)-[r1:HAS_ATTRIBUTE]-(:Attribute {name: "prefix"})-[r2:HAS_VALUE]-(av:AttributeIPNetwork)
             WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
-            RETURN r1 as r11, r2 as r22, av
+            RETURN r1 as r12, r2 as r22, av
             ORDER BY r1.branch_level DESC, r1.from DESC, r2.branch_level DESC, r2.from DESC
             LIMIT 1
         }
-        WITH pfx, children, r11 as r1, r22 as r2, av
-        WHERE r1.status = "active" AND r2.status = "active"
+        WITH pfx, children, r12, r22, av
+        WHERE r12.status = "active" AND r22.status = "active"
         """ % {"label": InfrahubKind.IPPREFIX, "branch_filter": branch_filter}  # noqa: E501
 
         self.return_labels = ["av.prefixlen as prefixlen"]
