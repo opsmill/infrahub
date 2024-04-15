@@ -13,6 +13,7 @@ from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttrib
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 
+from .directives import DIRECTIVES
 from .enums import generate_graphql_enum, get_enum_attribute_type_name
 from .metrics import SCHEMA_GENERATE_GRAPHQL_METRICS
 from .mutations import (
@@ -108,7 +109,12 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             subscription = self.get_gql_subscription() if include_subscription else None
 
             graphene_schema = graphene.Schema(
-                query=query, mutation=mutation, subscription=subscription, types=types, auto_camelcase=False
+                query=query,
+                mutation=mutation,
+                subscription=subscription,
+                types=types,
+                auto_camelcase=False,
+                directives=DIRECTIVES,
             )
 
             return graphene_schema.graphql_schema
