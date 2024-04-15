@@ -161,4 +161,3 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-
