@@ -536,7 +536,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: "Setup environment"
-        run: "pip install invoke toml"
+        run: |
+          pipx install poetry
+          poetry config virtualenvs.prefer-active-python true
+          pip install invoke toml
       - name: "Build Test Image"
         run: "invoke dev.build"
       - name: "Validate generated documentation"
