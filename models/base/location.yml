@@ -2,7 +2,7 @@
 ---
 version: '1.0'
 generics:
-  - name: Generic # Location
+  - name: Generic   # Location
     namespace: Location
     description: "Generic hierarchical location"
     label: "Location"
