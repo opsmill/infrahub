@@ -2,7 +2,7 @@
 ---
 version: '1.0'
 generics:
-  - name: Generic
+  - name: Generic   #Organization
     namespace: Organization
     label: Organization
     description: An organization represent a legal entity, a company.
