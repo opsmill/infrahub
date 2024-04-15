@@ -233,8 +233,8 @@ class RelationshipCreateQuery(RelationshipQuery):
         CREATE (rl:Relationship { uuid: $uuid, name: $name, branch_support: $branch_support })
         CREATE (s)%s(rl)
         CREATE (rl)%s(d)
-        CREATE (ip:Boolean { value: $is_protected })
-        CREATE (iv:Boolean { value: $is_visible })
+        MERGE (ip:Boolean { value: $is_protected })
+        MERGE (iv:Boolean { value: $is_visible })
         CREATE (rl)-[r3:IS_PROTECTED $rel_prop ]->(ip)
         CREATE (rl)-[r4:IS_VISIBLE $rel_prop ]->(iv)
         """ % (

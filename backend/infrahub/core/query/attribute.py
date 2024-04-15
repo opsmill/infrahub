@@ -109,7 +109,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
 
         query = """
         MATCH (a:Attribute { uuid: $attr_uuid })
-        CREATE (flag:Boolean { value: $flag_value })
+        MERGE (flag:Boolean { value: $flag_value })
         CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(flag)
         """ % self.flag_name.upper()
 
