@@ -31,6 +31,11 @@ generics:
         optional: true
         peer: InfraAutonomousSystem
         order_weight: 2000
+      - name: contracts
+        cardinality: many
+        optional: true
+        peer: ProcurementContract
+        order_weight: 2500
 
 nodes:
   - name: Manufacturer
@@ -92,3 +97,33 @@ nodes:
         peer: InfraCircuit
         cardinality: many
         optional: true
+  - name: Contract
+    namespace: Procurement
+    description: "Generic Contract"
+    label: "Contract"
+    display_labels:
+      - contract_ref__value
+    order_by:
+      - contract_ref__value
+    attributes:
+      - name: contract_ref
+        label: Contract Reference
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: start_time
+        label: Start of Contract
+        kind: DateTime
+        optional: false
+      - name: end_time
+        label: End of Contract
+        kind: DateTime
+        optional: true
+    relationships:
+      - name: organization
+        peer: OrganizationGeneric
+        optional: false
+        cardinality: one
+        kind: Attribute

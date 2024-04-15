@@ -23,11 +23,11 @@ from tests.helpers.test_client import InfrahubTestClient
 
 
 async def load_infrastructure_schema(db: InfrahubDatabase):
-    models_dir = get_models_dir()
+    base_dir = get_models_dir() + "/base"
 
     infra_schema = {}
-    for file_name in os.listdir(models_dir):
-        file_path = os.path.join(models_dir, file_name)
+    for file_name in os.listdir(base_dir):
+        file_path = os.path.join(base_dir, file_name)
 
         if file_path.endswith((".yml", ".yaml")):
             schema_txt = Path(file_path).read_text()
