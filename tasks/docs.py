@@ -175,7 +175,7 @@ def _generate_infrahub_cli_documentation(context: Context):
 def _generate(context: Context):
     """Generate documentation output from code."""
     _generate_infrahub_cli_documentation(context=context)
-    _generate_infrahubsync_documentation(context=context)
+    # _generate_infrahubsync_documentation(context=context)
     _generate_infrahubctl_documentation(context=context)
     _generate_infrahub_schema_documentation()
     _generate_infrahub_repository_configuration_documentation()
