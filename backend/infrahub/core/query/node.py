@@ -978,7 +978,12 @@ class NodeGetListQuery(Query):
         for profile_attr in profile_attributes:
             self._untrack_variable(profile_attr.profile_value_query_variable)
             profile_value_collects.append(
-                f"head(collect({profile_attr.profile_value_query_variable})) as {profile_attr.profile_final_value_query_variable}"
+                f"""head(
+                    reduce(
+                        non_null_values = [], v in collect({profile_attr.profile_value_query_variable}) |
+                        CASE WHEN v IS NOT NULL AND v <> "NULL" THEN non_null_values + [v] ELSE non_null_values END
+                    )
+                ) as {profile_attr.profile_final_value_query_variable}"""
             )
         self._untrack_variable("profile_n")
         self._untrack_variable("profile_priority")

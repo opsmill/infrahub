@@ -438,3 +438,45 @@ async def test_query_NodeGetListQuery_updated_profile_attributes_on_branch(
     query = await NodeGetListQuery.init(db=db, branch=branch, schema=car_schema, filters={"color__value": "#fffffe"})
     await query.execute(db=db)
     assert query.get_node_ids() == [car_camry_main.id]
+
+
+async def test_query_NodeGetListQuery_updated_profile_attributes_nulled_on_branch(
+    db: InfrahubDatabase,
+    car_camry_main,
+    car_accord_main,
+    car_volt_main,
+    branch: Branch,
+    default_branch: Branch,
+):
+    profile_schema = registry.schema.get("ProfileTestCar", branch=branch, duplicate=False)
+    car_profile_black = await Node.init(db=db, schema=profile_schema)
+    await car_profile_black.new(db=db, profile_name="car_profile_black", color="#000000", profile_priority=1001)
+    await car_profile_black.save(db=db)
+    car_profile_white = await Node.init(db=db, schema=profile_schema)
+    await car_profile_white.new(db=db, profile_name="car_profile_white", color="#ffffff", profile_priority=1002)
+    await car_profile_white.save(db=db)
+    car_schema = registry.schema.get("TestCar", branch=branch, duplicate=False)
+    car = await NodeManager.get_one(db=db, id=car_camry_main.id, branch=default_branch)
+    await car.profiles.update(data=[car_profile_white], db=db)
+    await car.save(db=db)
+    car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=default_branch)
+    await car.profiles.update(data=[car_profile_black], db=db)
+    await car.save(db=db)
+    car = await NodeManager.get_one(db=db, id=car_volt_main.id, branch=default_branch)
+    await car.profiles.update(data=[car_profile_black, car_profile_white], db=db)
+    await car.save(db=db)
+    await branch.rebase(db=db)
+
+    car_profile_black_branch = await NodeManager.get_one(db=db, branch=branch, id=car_profile_black.id)
+    car_profile_black_branch.color.value = None
+    await car_profile_black_branch.save(db=db)
+
+    query = await NodeGetListQuery.init(db=db, branch=branch, schema=car_schema, filters={"color__value": "#444444"})
+    await query.execute(db=db)
+    assert query.get_node_ids() == [car_accord_main.id]
+    query = await NodeGetListQuery.init(db=db, branch=branch, schema=car_schema, filters={"color__value": "#000000"})
+    await query.execute(db=db)
+    assert query.get_node_ids() == []
+    query = await NodeGetListQuery.init(db=db, branch=branch, schema=car_schema, filters={"color__value": "#ffffff"})
+    await query.execute(db=db)
+    assert set(query.get_node_ids()) == {car_camry_main.id, car_volt_main.id}
