@@ -1,0 +1,100 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: '1.0'
+
+nodes:
+  # --------------------  IPAM (VLAN, IP Address)  --------------------
+  - name: IPNamespace
+    namespace: Ipam
+    inherit_from:
+      - "BuiltinIPNamespace"
+    description: "A namespace for IP resources such as a routing table"
+    icon: "mdi:format-list-group"
+    label: "IP Namespace"
+  - name: IPPrefix
+    namespace: Ipam
+    inherit_from:
+      - "BuiltinIPPrefix"
+    menu_placement: "IpamIPNamespace"
+    description: "IPv4 or IPv6 network"
+    icon: "mdi:ip-network"
+    label: "IP Prefix"
+  - name: IPAddress
+    namespace: Ipam
+    inherit_from:
+      - "BuiltinIPAddress"
+    menu_placement: "IpamIPNamespace"
+    description: "IP Address"
+    icon: "mdi:ip-outline"
+    label: "IP Address"
+    relationships:
+      - name: interface
+        peer: InfraInterfaceL3
+        optional: true
+        cardinality: one
+  - name: VLAN
+    namespace: Infra
+    description: "A VLAN is a logical grouping of devices in the same broadcast domain"
+    label: "VLAN"
+    icon: "mdi:lan-pending"   # mdi:lan
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: vlan_id
+        kind: Number
+      - name: status
+        kind: Dropdown
+        choices:
+          - name: active
+            label: Active
+            description: "Fully operational and currently in service"
+            color: "#7fbf7f"
+          - name: provisioning
+            label: Provisioning
+            description: "In the process of being set up and configured"
+            color: "#ffff7f"
+          - name: maintenance
+            label: Maintenance
+            description: "Undergoing routine maintenance or repairs"
+            color: "#ffd27f"
+          - name: drained
+            label: Drained
+            description: "Temporarily taken out of service"
+            color: "#bfbfbf"
+      - name: role
+        kind: Dropdown
+        choices:
+          - name: server
+            label: Server
+            description: "Dedicated systems for managing networked resources"
+            color: "#c4bed7"
+          - name: management
+            label: Management
+            description: "Network segments for administrative and control tasks"
+            color: "#9af1e1"
+          - name: user
+            label: User
+            description: "Segments designed for end-user access and activities"
+            color: "#a0b78d"
+    relationships:
+      - name: site
+        label: "Site"
+        peer: "LocationSite"
+        optional: true
+        cardinality: one
+        kind: Attribute
+        identifier: "site__vlans"
+      - name: gateway
+        label: L3 Gateway
+        peer: InfraInterfaceL3
+        optional: true
+        cardinality: one
+        kind: Attribute

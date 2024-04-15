@@ -1,0 +1,298 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: '1.0'
+generics:
+  - name: Address
+    namespace: Security
+    description: "Generic Security Address."
+    label: "Security Address"
+    default_filter: name__value
+    order_by:
+      - "name__value"
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+
+nodes:
+  - name: IPAddress
+    namespace: Infra
+    description: "IP Address"
+    label: "IP Address"
+    default_filter: address__value
+    order_by:
+      - "address__value"
+    display_labels:
+      - address__value
+    inherit_from:
+      - "SecurityAddress"
+    attributes:
+      - name: address
+        kind: IPHost
+        unique: true
+    relationships:
+      - name: organization
+        peer: CoreOrganization
+        optional: true
+        cardinality: one
+        kind: Attribute
+
+      - name: status
+        peer: BuiltinStatus
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+
+  - name: Prefix
+    namespace: Infra
+    description: "IPv4 or IPv6 network (with mask)"
+    label: "Prefix"
+    default_filter: name__value
+    inherit_from:
+      - "SecurityAddress"
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: prefix
+        kind: IPNetwork
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+    relationships:
+      - name: status
+        peer: BuiltinStatus
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+
+  - name: IPRange
+    namespace: Security
+    description: "Security IP Range"
+    label: "IP Range"
+    display_labels:
+      - name__value
+    inherit_from:
+      - "SecurityAddress"
+    order_by:
+      - name__value
+    relationships:
+      - name: start_address
+        peer: InfraIPAddress
+        identifier: security_iprange__start_address
+        cardinality: one
+        kind: Attribute
+      - name: end_address
+        peer: InfraIPAddress
+        identifier: security_iprange__end_address
+        cardinality: one
+        kind: Attribute
+
+      - name: status
+        peer: BuiltinStatus
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+
+  - name: FQDN
+    namespace: Security
+    description: "Security FQDN"
+    label: "FQDN"
+    display_labels:
+      - name__value
+    inherit_from:
+      - "SecurityAddress"
+    order_by:
+      - name__value
+    relationships:
+      - name: status
+        peer: BuiltinStatus
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+
+  - name: Protocol
+    namespace: Security
+    description: "Security Protocol"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+    relationships:
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+
+  - name: Service
+    namespace: Security
+    description: "Security Service"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: port
+        kind: Number
+        # regex: "^(\\d+)\\-?(\\d+)?$"
+    relationships:
+      - name: ip_protocol
+        peer: SecurityProtocol
+        identifier: service__ip_protocol
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+
+  - name: Application
+    namespace: Security
+    description: "Security Application"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+    relationships:
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+
+  - name: Rule
+    namespace: Security
+    description: "Security Rule"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: action
+        kind: Text
+        enum: ["Accept", "Drop"]
+      - name: index
+        kind: Number
+    relationships:
+      - name: source_addresses
+        peer: SecurityAddress
+        identifier: security_rule__source_addresses
+        cardinality: many
+      - name: destination_addresses
+        peer: SecurityAddress
+        identifier: security_rule__destination_addresses
+        cardinality: many
+
+      - name: source_services
+        peer: SecurityService
+        identifier: security_rule__source_services
+        cardinality: many
+      - name: destination_services
+        peer: SecurityService
+        identifier: security_rule__destination_services
+        cardinality: many
+
+      - name: source_applications
+        peer: SecurityApplication
+        identifier: security_rule__source_applications
+        cardinality: many
+      - name: destination_applications
+        identifier: security_rule__destination_applications
+        peer: SecurityApplication
+        cardinality: many
+
+      - name: status
+        peer: BuiltinStatus
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
