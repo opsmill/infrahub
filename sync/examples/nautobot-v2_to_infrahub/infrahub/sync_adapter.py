@@ -6,12 +6,24 @@ from .sync_models import (
     InfraAutonomousSystem,
     InfraCircuit,
     InfraDevice,
+    InfraFrontPort,
     InfraIPAddress,
+    InfraInterfaceL2L3,
     InfraPlatform,
     InfraPrefix,
+    InfraProviderNetwork,
+    InfraRack,
+    InfraRearPort,
     InfraRouteTarget,
     InfraVLAN,
     InfraVRF,
+    LocationGeneric,
+    NautobotNamespace,
+    OrganizationGeneric,
+    RoleGeneric,
+    TemplateCircuitType,
+    TemplateDeviceType,
+    TemplateLocationType,
 )
 
 
@@ -23,12 +35,24 @@ from .sync_models import (
 class InfrahubSync(InfrahubAdapter):
     CoreStandardGroup = CoreStandardGroup
     BuiltinTag = BuiltinTag
-    InfraPlatform = InfraPlatform
-    InfraDevice = InfraDevice
-    InfraCircuit = InfraCircuit
     InfraAutonomousSystem = InfraAutonomousSystem
+    InfraCircuit = InfraCircuit
+    InfraDevice = InfraDevice
+    InfraFrontPort = InfraFrontPort
     InfraIPAddress = InfraIPAddress
-    InfraVLAN = InfraVLAN
+    InfraInterfaceL2L3 = InfraInterfaceL2L3
+    InfraPlatform = InfraPlatform
     InfraPrefix = InfraPrefix
-    InfraVRF = InfraVRF
+    InfraProviderNetwork = InfraProviderNetwork
+    InfraRack = InfraRack
+    InfraRearPort = InfraRearPort
     InfraRouteTarget = InfraRouteTarget
+    InfraVLAN = InfraVLAN
+    InfraVRF = InfraVRF
+    LocationGeneric = LocationGeneric
+    NautobotNamespace = NautobotNamespace
+    OrganizationGeneric = OrganizationGeneric
+    RoleGeneric = RoleGeneric
+    TemplateCircuitType = TemplateCircuitType
+    TemplateDeviceType = TemplateDeviceType
+    TemplateLocationType = TemplateLocationType

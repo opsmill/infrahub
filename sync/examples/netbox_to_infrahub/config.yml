@@ -4,6 +4,7 @@ source:
   name: netbox
   settings:
     url: "https://demo.netbox.dev"
+    token: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 destination:
   name: infrahub

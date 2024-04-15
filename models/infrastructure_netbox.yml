@@ -755,6 +755,7 @@ nodes:
         optional: true
       - name: height
         label: "Height (U)"
+        optional: true
         kind: Number
       - name: facility_id
         label: Facility ID

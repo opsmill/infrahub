@@ -742,10 +742,10 @@ nodes:
         cardinality: one
         optional: false
         kind: Parent
-      - name: location
+      - name: locations
         peer: LocationGeneric
         optional: true
-        cardinality: one
+        cardinality: many
         kind: Attribute
       - name: status
         peer: StatusGeneric
@@ -795,7 +795,9 @@ nodes:
         kind: Text
         optional: true
       - name: height
-        kind: Text
+        label: "Height (U)"
+        optional: true
+        kind: Number
       - name: facility_id
         label: Facility ID
         kind: Text
@@ -901,10 +903,10 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: location
+      - name: locations
         peer: LocationGeneric
         optional: true
-        cardinality: one
+        cardinality: many
         kind: Attribute
       - name: status
         peer: StatusGeneric
@@ -993,7 +995,7 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-  - name: Generic
+  - name: Generic # Organization
     namespace: Organization
     label: Organization
     description: An organization represent a legal entity, a company.
@@ -1080,8 +1082,6 @@ nodes:
       - kind: Text
         name: description
         optional: true
-      - kind: Text
-        name: type
     relationships:
       - name: racks
         peer: InfraRack

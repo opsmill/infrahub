@@ -761,7 +761,7 @@ nodes:
         kind: Text
         optional: true
       - name: height
-        kind: Text
+        kind: Number
       - name: facility_id
         label: Facility ID
         kind: Text

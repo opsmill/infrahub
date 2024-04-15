@@ -4,6 +4,7 @@ source:
   name: nautobot
   settings:
     url: "https://demo.nautobot.com"
+    token: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 destination:
   name: infrahub
@@ -18,12 +19,12 @@ store:
 
 order: [
   "BuiltinTag",
-  "BuiltinRole",
-  # "BuiltinStatus",
+  "RoleGeneric",
+  # "StatusGeneric",
   "CoreStandardGroup",
-  "CoreOrganization",
+  "OrganizationGeneric",
   "TemplateLocationType",
-  "BuiltinLocation",
+  "LocationGeneric",
   "InfraRack",
   "TemplateDeviceType",
   "InfraPlatform",
@@ -54,7 +55,7 @@ schema_mapping:
         mapping: description
 
   # Roles (Device Role, Rack Role, IPAM Role, and IPAddressRoleChoices)
-  - name: BuiltinRole
+  - name: RoleGeneric
     mapping: extras.roles
     identifiers: ["name"]
     fields:
@@ -66,7 +67,7 @@ schema_mapping:
         mapping: display
 
   # Status (Device Role, Rack Role, IPAM Role, and IPAddressRoleChoices)
-  # - name: BuiltinStatus
+  # - name: StatusGeneric
   #   mapping: extras.statuses
   #   identifiers: ["name"]
   #   fields:
@@ -86,7 +87,7 @@ schema_mapping:
         mapping: name
       - name: description
         mapping: description
-  - name: CoreOrganization
+  - name: OrganizationGeneric
     mapping: tenancy.tenants
     identifiers: ["name"]
     fields:
@@ -109,7 +110,7 @@ schema_mapping:
         mapping: name
       - name: description
         mapping: description
-  - name: BuiltinLocation
+  - name: LocationGeneric
     mapping: dcim.locations
     identifiers: ["name"]
     fields:
@@ -117,15 +118,12 @@ schema_mapping:
         mapping: name
       - name: description
         mapping: description
-      # type should be removed to use location_type only, but need to change Core Schema for that
-      - name: type
-        mapping: location_type.name
       - name: location_type
         mapping: location_type
         reference: TemplateLocationType
       # - name: status
       #   mapping: status
-      #   reference: BuiltinStatus
+      #   reference: StatusGeneric
       - name: tags
         mapping: tags
         reference: BuiltinTag
@@ -139,7 +137,7 @@ schema_mapping:
         mapping: name
       - name: location
         mapping: location
-        reference: BuiltinLocation
+        reference: LocationGeneric
       - name: height
         mapping: u_height
       - name: serial_number
@@ -150,13 +148,13 @@ schema_mapping:
         mapping: facility_id
       - name: role
         mapping: role
-        reference: BuiltinRole
+        reference: RoleGeneric
       - name: tags
         mapping: tags
         reference: BuiltinTag
 
   # Device (manufacturer, device types, platform, devices)
-  - name: CoreOrganization
+  - name: OrganizationGeneric
     mapping: dcim.manufacturers
     identifiers: ["name"]
     fields:
@@ -178,7 +176,7 @@ schema_mapping:
         mapping: napalm_driver
       - name: manufacturer
         mapping: manufacturer
-        reference: CoreOrganization
+        reference: OrganizationGeneric
   - name: TemplateDeviceType
     mapping: dcim.device-types
     identifiers: ["name", "manufacturer"]
@@ -196,7 +194,7 @@ schema_mapping:
         reference: BuiltinTag
       - name: manufacturer
         mapping: manufacturer
-        reference: CoreOrganization
+        reference: OrganizationGeneric
   # -> Device validate_unique()
   # https://github.com/nautobot/nautobot/blob/develop/nautobot/dcim/models/devices.py#L541C9-L541C24
   - name: InfraDevice
@@ -217,16 +215,16 @@ schema_mapping:
         reference: InfraPlatform
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: role
         mapping: role
-        reference: BuiltinRole
+        reference: RoleGeneric
       # - name: status
       #   mapping: status
-      #   reference: BuiltinStatus
+      #   reference: StatusGeneric
       - name: location
         mapping: location
-        reference: BuiltinLocation
+        reference: LocationGeneric
       - name: rack
         mapping: rack
         reference: InfraRack
@@ -235,7 +233,7 @@ schema_mapping:
         reference: BuiltinTag
 
   # Circuits (Provider, Provider Network, Circuits Types, Circuits)
-  - name: CoreOrganization
+  - name: OrganizationGeneric
     mapping: circuits.providers
     identifiers: ["name"]
     fields:
@@ -257,13 +255,13 @@ schema_mapping:
         mapping: description
       # - name: status
       #   mapping: status
-      #   reference: BuiltinStatus
+      #   reference: StatusGeneric
       - name: tags
         mapping: tags
         reference: BuiltinTag
       - name: provider
         mapping: provider
-        reference: CoreOrganization
+        reference: OrganizationGeneric
   - name: TemplateCircuitType
     mapping: circuits.circuit-types
     identifiers: ["name"]
@@ -282,18 +280,18 @@ schema_mapping:
         mapping: cid
       - name: provider
         mapping: provider
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: description
         mapping: description
       # - name: status
       #   mapping: status
-      #   reference: BuiltinStatus
+      #   reference: StatusGeneric
       - name: type
         mapping: circuit_type
         reference: TemplateCircuitType
       # - name: tenant
       #   mapping: tenant
-      #   reference: CoreOrganization
+      #   reference: OrganizationGeneric
       - name: tags
         mapping: tags
         reference: BuiltinTag
@@ -311,7 +309,7 @@ schema_mapping:
         mapping: description
       - name: organization
         mapping: provider
-        reference: CoreOrganization
+        reference: OrganizationGeneric
 
 # IPAM (Namepsace, VRF, VLANs Groups, VLANs, Prefixes, IPs)
   - name: NautobotNamespace
@@ -332,10 +330,10 @@ schema_mapping:
         mapping: description
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
   - name: InfraVRF
     mapping: ipam.vrfs
-    identifiers: ["name", "namespace"]
+    identifiers: ["name", "nautobot_namespace"]
     fields:
       - name: name
         mapping: name
@@ -343,8 +341,8 @@ schema_mapping:
         mapping: description
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
-      - name: namespace
+        reference: OrganizationGeneric
+      - name: nautobot_namespace
         mapping: namespace
         reference: NautobotNamespace
       - name: vrf_rd
@@ -365,10 +363,10 @@ schema_mapping:
         mapping: description
       # - name: location
       #   mapping: location
-      #   reference: BuiltinLocation
+      #   reference: LocationGeneric
   - name: InfraVLAN
     mapping: ipam.vlans
-    identifiers: ["name", "vlan_id", "location", "organization"]
+    identifiers: ["name", "vlan_id", "locations", "organization"]
     fields:
       - name: name
         mapping: name
@@ -376,24 +374,24 @@ schema_mapping:
         mapping: vid
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: description
         mapping: description
-      - name: location
-        mapping: location
-        reference: BuiltinLocation
+      - name: locations
+        mapping: locations
+        reference: LocationGeneric
       - name: role
         mapping: role
-        reference: BuiltinRole
+        reference: RoleGeneric
       # - name: status
       #   mapping: status
-      #   reference: BuiltinStatus
+      #   reference: StatusGeneric
       - name: vlan_group
         mapping: vlan_group
         reference: CoreStandardGroup
   - name: InfraPrefix
     mapping: ipam.prefixes
-    identifiers: ["prefix", "namespace"]
+    identifiers: ["prefix", "nautobot_namespace"]
     fields:
       - name: prefix
         mapping: prefix
@@ -401,22 +399,22 @@ schema_mapping:
         mapping: description
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
-      - name: namespace
+        reference: OrganizationGeneric
+      - name: nautobot_namespace
         mapping: namespace
         reference: NautobotNamespace
       - name: role
         mapping: role
-        reference: BuiltinRole
+        reference: RoleGeneric
       # - name: status
       #   mapping: status
-      #   reference: BuiltinStatus
+      #   reference: StatusGeneric
       - name: vlan
         mapping: vlan
         reference: InfraVLAN
-      - name: location
-        mapping: location
-        reference: BuiltinLocation
+      - name: locations
+        mapping: locations
+        reference: LocationGeneric
   - name: InfraIPAddress
     mapping: ipam.ip-addresses
     identifiers: ["address", "prefix"]
@@ -427,7 +425,7 @@ schema_mapping:
         mapping: description
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: prefix
         mapping: parent
         reference: InfraPrefix
@@ -436,10 +434,10 @@ schema_mapping:
         reference: InfraInterfaceL2L3
       - name: role
         mapping: role
-        reference: BuiltinRole
+        reference: RoleGeneric
       # - name: status
       #   mapping: status
-      #   reference: BuiltinStatus
+      #   reference: StatusGeneric
 
   # Interfaces (interfaces, rear port, front port)
   - name: InfraInterfaceL2L3
@@ -475,7 +473,7 @@ schema_mapping:
         reference: BuiltinTag
       # - name: status
       #   mapping: status
-      #   reference: BuiltinStatus
+      #   reference: StatusGeneric
 
   - name: InfraFrontPort
     identifiers: ["name", "device"]
@@ -495,7 +493,7 @@ schema_mapping:
         reference: InfraDevice
       # - name: status
       #   mapping: status
-      #   reference: BuiltinStatus
+      #   reference: StatusGeneric
   - name: InfraRearPort
     identifiers: ["name", "device"]
     mapping: dcim.rear-ports
@@ -511,4 +509,4 @@ schema_mapping:
         reference: InfraDevice
       # - name: status
       #   mapping: status
-      #   reference: BuiltinStatus
+      #   reference: StatusGeneric
