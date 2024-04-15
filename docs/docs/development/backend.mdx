@@ -39,8 +39,6 @@ export INFRAHUB_IMAGE_VER=local # Force building a local image instead of pullin
 
 The exported environment variables are very important and must be set before moving to another step. Without these, you will likely face some errors or issues later.
 
-Setting `INFRAHUB_IMAGE_VER=local` is important because it tells Docker to do a fresh build and to bind mount the Infrahub repository inside the containers (this ensures containers are in sync with your local code).
-
 ## Required services
 
 Infrahub uses several external services to work:
@@ -65,13 +63,13 @@ poetry install
 Now it's time to bring the required services up, and for that we have demo commands:
 
 ```bash
-invoke demo.destroy dev.deps
+invoke dev.destroy dev.deps
 ```
 
 This will actually pass two commands, one to destroy any remains of a previous run and one to start services. So this will effectively bring up clean services without leftovers. We can see which services are running by using:
 
 ```bash
-poetry run invoke demo.status
+poetry run invoke dev.status
 ```
 
 This should yield a Docker output like the following:
@@ -83,7 +81,7 @@ infrahub-database-1        memgraph/memgraph:2.13.0   "/usr/lib/memgraph/m…"  
 infrahub-message-queue-1   rabbitmq:3.12-management   "docker-entrypoint.s…"   message-queue   2 hours ago   Up 2 hours (healthy)   4369/tcp, 5671/tcp, 0.0.0.0:5672->5672/tcp, 15671/tcp, 15691-15692/tcp, 25672/tcp, 0.0.0.0:15672->15672/tcp
 ```
 
-When following a guide, like the [installation guide](/guides/installation.mdx), the command `demo.start` is mentioned. It is slightly different from the `demo.deps` that is mentioned here. The `demo.start` will bring up a demo environment as a whole including services and Infrahub while the `dev.deps` will only start the services as seen in the code block above.
+When following a guide, like the [installation guide](/guides/installation.mdx), the command `demo.start` is mentioned. It is slightly different from the `dev.deps` that is mentioned here. The `demo.start` will bring up a demo environment as a whole including services and Infrahub while the `dev.deps` will only start the services as seen in the code block above.
 
 ## Running Infrahub test suite
 
