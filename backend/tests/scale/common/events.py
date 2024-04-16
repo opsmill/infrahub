@@ -23,6 +23,8 @@ METRICS_FIELD_NAMES = [
     "rels_amount",
 ]
 
+failed_request: bool = False
+
 
 @events.test_start.add_listener
 def setup_iteration_limit(environment: Environment, **kwargs):
@@ -67,6 +69,9 @@ def request_event_handler(
         "response_time": f"{response_time:.2f}ms",
         "failed": True if exception else False,
     }
+
+    if exception:
+        config.failed_requests = config.failed_requests + 1
 
     if os.getenv("CI") is None:
         server_container_stats = get_container_resource_usage(config.server_container)
