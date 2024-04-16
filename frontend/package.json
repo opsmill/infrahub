@@ -63,6 +63,7 @@
     "query-string": "^9.0.0",
     "ramda": "^0.29.1",
     "react": "^18.2.0",
+    "react-accessible-treeview": "^2.8.3",
     "react-datepicker": "^4.11.0",
     "react-diff-view": "^3.2.0",
     "react-dom": "^18.2.0",
