@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Tuple, Union
 
+from opentelemetry import trace
+
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.query import Query
@@ -74,6 +76,7 @@ class AccountTokenValidateQuery(Query):
         return "read-only"
 
 
+@trace.get_tracer(__name__).start_as_current_span("validate_token")
 async def validate_token(
     token, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
 ) -> Tuple[Optional[str], str]:

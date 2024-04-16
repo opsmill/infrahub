@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 
 import bcrypt
 import jwt
+from opentelemetry import trace
 from pydantic.v1 import BaseModel
 
 from infrahub import config, models
@@ -150,6 +151,7 @@ def generate_refresh_token(account_id: str, session_id: uuid.UUID, expiration: d
     return refresh_token
 
 
+@trace.get_tracer(__name__).start_as_current_span("authentication_token")
 async def authentication_token(
     db: InfrahubDatabase, jwt_token: Optional[str] = None, api_key: Optional[str] = None
 ) -> AccountSession:
