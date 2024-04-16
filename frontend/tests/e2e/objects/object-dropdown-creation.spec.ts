@@ -4,6 +4,14 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 test.describe("object dropdown creation", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test("should open the creation form and open the tag option creation form", async ({ page }) => {
     // Go to home page
     await page.goto("/");

@@ -52,6 +52,8 @@ export const GROUP_OBJECT = "CoreGroup";
 
 export const TASK_OBJECT = "InfrahubTask";
 
+export const IPAM_PREFIX_OBJECT = "IpamIPPrefix";
+
 export const WRITE_ROLES = ["admin", "read-write"];
 
 export const ADMIN_ROLES = ["admin"];

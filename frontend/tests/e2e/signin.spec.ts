@@ -2,6 +2,14 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH, ADMIN_CREDENTIALS } from "../constants";
 
 test.describe("/signin", () => {
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test.describe("When is not logged in", () => {
     test("should log in the user", async ({ page }) => {
       await page.goto("/");

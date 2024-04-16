@@ -26,6 +26,15 @@ export const createBranch = async (page: Page, branchName: string) => {
   await page.getByTestId("create-branch-button").click();
   await page.locator("[id='New branch name']").fill(branchName);
   await page.getByRole("button", { name: "Create" }).click();
+
+  await Promise.all([
+    page.waitForResponse((response) => {
+      const reqData = response.request().postDataJSON();
+      const status = response.status();
+
+      return reqData?.operationName === "BranchCreate" && status === 200;
+    }),
+  ]);
 };
 
 export const deleteBranch = async (page: Page, branchName: string) => {

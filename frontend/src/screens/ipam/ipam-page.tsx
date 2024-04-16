@@ -1,5 +1,6 @@
 import { Card } from "../../components/ui/card";
 import Content from "../layout/content";
+import IpamRouter from "./ipam-router";
 import IpamTree from "./ipam-tree";
 
 export default function IpamPage() {
@@ -12,7 +13,9 @@ export default function IpamPage() {
             <IpamTree />
           </Card>
 
-          <Card className="flex-grow">Table</Card>
+          <Card className="flex-grow">
+            <IpamRouter />
+          </Card>
         </div>
       </Content>
     </>

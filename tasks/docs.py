@@ -54,6 +54,12 @@ def generate_infrahubctl(context: Context):
 
 
 @task
+def generate_infrahubsync_sync(context: Context):
+    """Generate documentation for the infrahub-sync cli."""
+    _generate_infrahubsync_documentation(context=context)
+
+
+@task
 def generate_repository(context: Context):
     """Generate documentation for the repository configuration file."""
     _generate_infrahub_repository_configuration_documentation(context=context)
@@ -169,6 +175,7 @@ def _generate_infrahub_cli_documentation(context: Context):
 def _generate(context: Context):
     """Generate documentation output from code."""
     _generate_infrahub_cli_documentation(context=context)
+    # _generate_infrahubsync_documentation(context=context)
     _generate_infrahubctl_documentation(context=context)
     _generate_infrahub_schema_documentation()
     _generate_infrahub_repository_configuration_documentation()
@@ -192,6 +199,16 @@ def _generate_infrahubctl_documentation(context: Context):
         exec_cmd += f' --name "infrahubctl {cmd.name}" --output docs/docs/infrahubctl/infrahubctl-{cmd.name}.mdx'
         with context.cd(ESCAPED_REPO_PATH):
             context.run(exec_cmd)
+
+
+def _generate_infrahubsync_documentation(context: Context):
+    """Generate the documentation for infrahub-sync using typer-cli."""
+
+    print(" - Generate infrahub-sync CLI documentation")
+    exec_cmd = 'poetry run typer infrahub_sync.cli utils docs --name "infrahub-sync"'
+    exec_cmd += " --output docs/docs/sync/reference/cli.mdx"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
 
 
 def _generate_infrahub_schema_documentation() -> None:

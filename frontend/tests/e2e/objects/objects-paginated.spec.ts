@@ -2,6 +2,14 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("/objects/:objectname", () => {
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test("should display 'kind' column on when the object is a generic", async ({ page }) => {
     await page.goto("/objects/CoreGroup");
     await expect(page.locator("thead")).toContainText("Kind");
@@ -35,10 +43,11 @@ test.describe("/objects/:objectname", () => {
       // When
       const objectDetailsLink = page.getByRole("link", { name: "blue" });
       const linkHref = await objectDetailsLink.getAttribute("href");
+      const newTabPromise = context.waitForEvent("page");
       await objectDetailsLink.click({ button: "middle" });
 
       // then
-      const newTab = await context.waitForEvent("page");
+      const newTab = await newTabPromise;
       await newTab.waitForURL(linkHref);
       expect(newTab.url()).toContain(linkHref);
     });
