@@ -76,6 +76,9 @@ export const constructPath = (path: string, overrideParams?: overrideQueryParams
     }
   });
 
+  // Prevent having a trailing '?'
+  if (!newURLSearchParams.toString()) return path;
+
   return `${path}?${newURLSearchParams.toString()}`;
 };
 
