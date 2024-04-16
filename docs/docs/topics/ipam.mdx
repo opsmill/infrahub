@@ -57,7 +57,7 @@ IPAM generics and nodes that inherit from them have relationships and a hierarch
 
 To simplify day-to-day usage and prevent from doing many operations via the user interface or the GraphQL API, relationships for IP prefixes and IP addresses are automatically managed. This implies that when an IP prefix is created, relations with a parent prefix, children prefixes and IP addresses that belong to it will be discovered automatically. Same goes when an IP address is created, the more specific prefix it belongs to will be automatically discovered. This will result in trees of IP prefixes and IP addresses being built. Building these hierarchies/trees allows Infrahub to determine how IP prefixes and IP addresses are nested as well as computing utilization of the recorded IP spaces.
 
-## GraphQL query and mutation examples
+### GraphQL query and mutation examples
 
 Creating a schema inheriting the IPAM generics will generate GraphQL queries and mutations related to the defined schema. Below a few examples matching the schema defined in a previous section.
 
@@ -70,7 +70,7 @@ query GetPrefixes {
         id
         prefix {
           value
-		}
+        }
         utilization {
           value
         }
@@ -158,7 +158,7 @@ query GetAddresses {
       node {
         address {
           value
-		}
+        }
         ip_prefix {
           node {
             id
