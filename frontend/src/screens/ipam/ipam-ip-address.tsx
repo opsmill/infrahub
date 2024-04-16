@@ -1,3 +1,3 @@
-export default function IpamIPAddress() {
-  return <div>IP Address</div>;
+export default function IpamIPAddresses() {
+  return <div>IP Addresses</div>;
 }

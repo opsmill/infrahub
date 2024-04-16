@@ -13,7 +13,7 @@ export default function IpamPage() {
             <IpamTree />
           </Card>
 
-          <Card className="flex-grow">
+          <Card className="flex-grow p-0 overflow-hidden">
             <IpamRouter />
           </Card>
         </div>
