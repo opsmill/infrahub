@@ -213,7 +213,7 @@ nodes:
         cardinality: many
         kind: Attribute
       - name: primary_address
-        peer: IpamIPAddress
+        peer: BuiltinIPAddress
         label: Primary IP Address
         optional: true
         cardinality: one
@@ -240,7 +240,7 @@ nodes:
       - "CoreArtifactTarget"
     relationships:
       - name: ip_addresses
-        peer: IpamIPAddress
+        peer: BuiltinIPAddress
         optional: true
         cardinality: many
         kind: Component

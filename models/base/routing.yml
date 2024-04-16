@@ -1,7 +1,6 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
 version: '1.0'
-
 nodes:
   # --------------------  BGP (ASN, BGP Groups, BGP Sessions)  --------------------
   - name: AutonomousSystem
@@ -139,13 +138,13 @@ nodes:
         kind: Attribute
       - name: local_ip
         identifier: bgpsession__local_ip
-        peer: IpamIPAddress
+        peer: BuiltinIPAddress
         optional: true
         cardinality: one
         kind: Attribute
       - name: remote_ip
         identifier: bgpsession__remote_ip
-        peer: IpamIPAddress
+        peer: BuiltinIPAddress
         optional: true
         cardinality: one
         kind: Attribute
