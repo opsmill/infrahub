@@ -24,6 +24,8 @@ class Config(BaseSettings):
 
     current_stage: str = ""
 
+    failed_requests: int = 0
+
     class Config:
         env_prefix = "INFRAHUB_"
         case_sensitive = False
