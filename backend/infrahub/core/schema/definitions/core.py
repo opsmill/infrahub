@@ -522,6 +522,12 @@ core_models: dict[str, Any] = {
                     "description": "All IP addresses within this prefix are considered usable",
                 },
                 {
+                    "name": "is_top_level",
+                    "kind": "Boolean",
+                    "read_only": True,
+                    "optional": True,
+                },
+                {
                     "name": "utilization",
                     "kind": "Number",
                     "read_only": True,

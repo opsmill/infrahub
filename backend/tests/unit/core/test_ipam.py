@@ -14,6 +14,7 @@ from infrahub.core.query.ipam import (
     get_container,
     get_ip_addresses,
     get_ip_prefix_for_ip_address,
+    get_utilization,
 )
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -293,11 +294,14 @@ async def test_ipprefix_utilization(
     query = await IPPrefixUtilizationPrefix.init(db, branch=default_branch, ip_prefix=container)
     await query.execute(db)
     assert query.get_percentage() == 100 / 8
+    assert await get_utilization(db=db, branch=default_branch, ip_prefix=container) == 100 / 8
 
     query = await IPPrefixUtilizationPrefix.init(db, branch=default_branch, ip_prefix=prefix2)
     await query.execute(db)
     assert query.get_percentage() == 0
+    assert await get_utilization(db=db, branch=default_branch, ip_prefix=prefix2) == 0
 
     query = await IPPrefixUtilizationAddress.init(db, branch=default_branch, ip_prefix=prefix)
     await query.execute(db)
     assert query.get_percentage() == 50.0
+    assert await get_utilization(db=db, branch=default_branch, ip_prefix=prefix) == 50.0

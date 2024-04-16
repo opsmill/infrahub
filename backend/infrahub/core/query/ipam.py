@@ -463,8 +463,8 @@ async def get_utilization(
 ) -> float:
     if ip_prefix.member_type.value == "address":
         query = await IPPrefixUtilizationAddress.init(db, branch=branch, at=at, ip_prefix=ip_prefix)
-        await query.execute(db=db)
-        return await query.get_percentage()
-    query = await IPPrefixUtilizationPrefix.init(db, branch=branch, at=at, ip_prefix=ip_prefix)
+    else:
+        query = await IPPrefixUtilizationPrefix.init(db, branch=branch, at=at, ip_prefix=ip_prefix)
+
     await query.execute(db=db)
-    return await query.get_percentage()
+    return query.get_percentage()

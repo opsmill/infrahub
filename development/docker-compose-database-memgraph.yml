@@ -21,7 +21,7 @@ services:
     labels:
       infrahub_role: "database"
       com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
-      com.github.job: "${GITHUB_JOB:-unknown}"
+      com.github.job: "${JOB_NAME:-unknown}"
 
 
 volumes:
