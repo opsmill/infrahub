@@ -32,7 +32,7 @@ class NodeSchema(GeneratedNodeSchema):
                 and interface.get_relationship(relationship.name).allow_override == AllowOverrideType.NONE
             ):
                 raise ValueError(
-                    f"{self.kind}'s attribute {attribute.name} inherited from {interface.kind} cannot be overriden"
+                    f"{self.kind}'s relationship {relationship.name} inherited from {interface.kind} cannot be overriden"
                 )
 
     def inherit_from_interface(self, interface: GenericSchema) -> None:
