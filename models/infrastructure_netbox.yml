@@ -22,21 +22,33 @@ generics:
         optional: true
       - name: speed
         kind: Number
+        optional: true
       - name: mtu
         label: MTU
-        default_value: 1500
+        default_value: 2000
         kind: Number
       - name: enabled
         kind: Boolean
         default_value: true
+      - name: mgmt_only
+        label: Management only
+        kind: Boolean
+        default_value: false
+      - name: mac_address
+        label: Mac Address
+        kind: Text
+        optional: true
+      - name: interface_type
+        kind: Text
+        optional: true
     relationships:
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -179,12 +191,12 @@ nodes:
         optional: true
     relationships:
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: false
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -248,12 +260,12 @@ nodes:
         optional: true
     relationships:
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -292,7 +304,7 @@ nodes:
       - "InfraEndpoint"
     relationships:
       - name: location
-        peer: BuiltinLocation
+        peer: LocationGeneric
         optional: false
         cardinality: one
         kind: Attribute
@@ -324,13 +336,15 @@ nodes:
     description: "Generic Device object"
     label: "Device"
     icon: "mdi:router-network"
-    default_filter: name__value
+    # default_filter: name__value
     inherit_from:
       - "CoreArtifactTarget"
     order_by:
       - name__value
     display_labels:
       - name__value
+    uniqueness_constraints:
+      - ["name__value", "rack", "location", "organization"]
     attributes:
       - name: name
         kind: Text
@@ -351,7 +365,7 @@ nodes:
         # unique: true
     relationships:
       - name: location
-        peer: BuiltinLocation
+        peer: LocationGeneric
         optional: false
         cardinality: one
         kind: Attribute
@@ -367,12 +381,12 @@ nodes:
         cardinality: one
         kind: Attribute
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -447,6 +461,47 @@ nodes:
         optional: false
         cardinality: one
         kind: Attribute
+  - name: InterfaceL2L3
+    namespace: Infra
+    description: "Network Interface"
+    label: "Network Interface"
+    include_in_menu: false
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "InfraInterface"
+      - "InfraEndpoint"
+      - "CoreArtifactTarget"
+    attributes:
+      - name: l2_mode
+        label: Layer2 Mode
+        kind: Text
+        enum: ["Access", "Tagged", "Tagged (All)"]
+        optional: true
+    relationships:
+      - name: ip_addresses
+        peer: InfraIPAddress
+        identifier: "interface__addresses"
+        label: IP Addresses
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: untagged_vlan
+        label: Untagged VLAN
+        peer: InfraVLAN
+        optional: true
+        cardinality: one
+        kind: Component
+        identifier: interface_l2__untagged_vlan
+      - name: tagged_vlan
+        label: "Tagged VLAN(s)"
+        peer: InfraVLAN
+        optional: true
+        cardinality: many
+        kind: Attribute
+        identifier: interface_l2__tagged_vlan
   - name: InterfaceL3
     namespace: Infra
     description: "Network Layer 3 Interface"
@@ -540,7 +595,7 @@ nodes:
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -604,7 +659,7 @@ nodes:
       - "InfraEndpoint"
     relationships:
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -644,17 +699,17 @@ nodes:
         cardinality: one
         kind: Attribute
       - name: location
-        peer: BuiltinLocation
+        peer: LocationGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -685,10 +740,12 @@ nodes:
     description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed"
     label: "Rack"
     icon: "mdi:server"
-    menu_placement: "BuiltinLocation"
-    default_filter: name__value
+    menu_placement: "LocationGeneric"
+    # default_filter: name__value
     display_labels:
       - name__value
+    uniqueness_constraints:
+      - ["name__value", "location"]
     attributes:
       - name: name
         kind: Text
@@ -697,7 +754,9 @@ nodes:
         kind: Text
         optional: true
       - name: height
-        kind: Text
+        label: "Height (U)"
+        optional: true
+        kind: Number
       - name: facility_id
         label: Facility ID
         kind: Text
@@ -712,17 +771,17 @@ nodes:
         optional: true
     relationships:
       - name: location
-        peer: BuiltinLocation
+        peer: LocationGeneric
         optional: false
         cardinality: one
         kind: Attribute
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -788,17 +847,17 @@ nodes:
         cardinality: one
         kind: Attribute
       - name: location
-        peer: BuiltinLocation
+        peer: LocationGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -840,12 +899,12 @@ nodes:
         cardinality: one
         kind: Attribute
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -870,7 +929,7 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-  - name: Generic
+  - name: Generic # Organization
     namespace: Organization
     label: Organization
     description: An organization represent a legal entity, a company.
@@ -904,14 +963,14 @@ nodes:
         optional: true
         cardinality: one
         kind: Generic
-  - name: Status
-    namespace: Builtin
+  - name: Generic # Status
+    namespace: Status
     label: Status
     description: 'Represent the status of an object: active, maintenance'
     default_filter: name__value
     display_labels: [label__value]
     icon: mdi:list-status
-    include_in_menu: false
+    include_in_menu: true
     attributes:
       - kind: Text
         name: name
@@ -922,15 +981,15 @@ nodes:
       - kind: Text
         name: description
         optional: true
-  - name: Role
-    namespace: Builtin
+  - name: Generic # Role
+    namespace: Role
     label: Role
     description: Represent the role of an object
     default_filter: name__value
     display_labels: [label__value]
     order_by: [name__value]
     icon: mdi:ballot
-    include_in_menu: false
+    include_in_menu: true
     attributes:
       - kind: Text
         name: name
@@ -941,8 +1000,8 @@ nodes:
       - kind: Text
         name: description
         optional: true
-  - name: Location
-    namespace: Builtin
+  - name: Generic # Location
+    namespace: Location
     label: Location
     description: 'A location represent a physical element: a building, a site, a city'
     default_filter: name__value

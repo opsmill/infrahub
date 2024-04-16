@@ -2,6 +2,14 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("/profile", () => {
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test.describe("when not logged in", () => {
     test("should see 'Sign in' and no user avatar on header", async ({ page }) => {
       await page.goto("/");

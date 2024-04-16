@@ -1,39 +1,42 @@
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+try:
+    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
+except ImportError:
+    import pydantic  # type: ignore[no-redef]
 
 
-class SchemaMappingField(BaseModel):
+class SchemaMappingField(pydantic.BaseModel):
     name: str
-    mapping: Optional[str]
-    static: Optional[Any]
-    reference: Optional[str]
+    mapping: Optional[str] = pydantic.Field(default=None)
+    static: Optional[Any] = pydantic.Field(default=None)
+    reference: Optional[str] = pydantic.Field(default=None)
 
 
-class SchemaMappingModel(BaseModel):
+class SchemaMappingModel(pydantic.BaseModel):
     name: str
     mapping: str
-    identifiers: Optional[List[str]]
-    fields: List[SchemaMappingField]
+    identifiers: Optional[List[str]] = pydantic.Field(default=None)
+    fields: List[SchemaMappingField] = []
 
 
-class SyncAdapter(BaseModel):
+class SyncAdapter(pydantic.BaseModel):
     name: str
-    settings: Optional[Dict[str, Any]]
+    settings: Optional[Dict[str, Any]] = {}
 
 
-class SyncStore(BaseModel):
+class SyncStore(pydantic.BaseModel):
     type: str
-    settings: Optional[Dict[str, Any]]
+    settings: Optional[Dict[str, Any]] = {}
 
 
-class SyncConfig(BaseModel):
+class SyncConfig(pydantic.BaseModel):
     name: str
-    store: Optional[SyncStore]
+    store: Optional[SyncStore] = []
     source: SyncAdapter
     destination: SyncAdapter
-    order: List[str]
-    schema_mapping: List[SchemaMappingModel]
+    order: List[str] = pydantic.Field(default_factory=list)
+    schema_mapping: List[SchemaMappingModel] = []
 
 
 class SyncInstance(SyncConfig):

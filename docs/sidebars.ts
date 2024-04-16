@@ -176,7 +176,8 @@ const sidebars: SidebarsConfig = {
           type: 'category',
           label: 'Reference',
           items: [
-            'sync/reference/config'
+            'sync/reference/config',
+            'sync/reference/cli',
           ],
         },
       ],

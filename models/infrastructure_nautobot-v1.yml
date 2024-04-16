@@ -44,12 +44,12 @@ generics:
         optional: true
     relationships:
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -220,12 +220,12 @@ nodes:
         optional: true
     relationships:
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: false
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -289,7 +289,7 @@ nodes:
         optional: true
     relationships:
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -329,7 +329,7 @@ nodes:
       - "InfraEndpoint"
     relationships:
       - name: location
-        peer: BuiltinLocation
+        peer: LocationGeneric
         optional: false
         cardinality: one
         kind: Attribute
@@ -385,13 +385,13 @@ nodes:
         optional: true
     relationships:
       - name: site
-        peer: BuiltinLocation
+        peer: LocationGeneric
         identifier: device__site
         optional: true
         cardinality: one
         kind: Attribute
       - name: location
-        peer: BuiltinLocation
+        peer: LocationGeneric
         identifier: device__location
         optional: true
         cardinality: one
@@ -408,12 +408,12 @@ nodes:
         cardinality: one
         kind: Attribute
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -587,7 +587,7 @@ nodes:
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -596,7 +596,7 @@ nodes:
     description: "A type of Location"
     label: "Location Type"
     icon: "mdi:map-marker-question"
-    menu_placement: "BuiltinLocation"
+    menu_placement: "LocationGeneric"
     display_labels:
       - name__value
     order_by:
@@ -608,7 +608,7 @@ nodes:
         identifier: location__type
         cardinality: many
         optional: true
-        peer: BuiltinLocation
+        peer: LocationGeneric
   - name: Platform
     namespace: Infra
     description: "A Platform represent the type of software running on a device"
@@ -672,7 +672,7 @@ nodes:
       - "InfraEndpoint"
     relationships:
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -709,17 +709,17 @@ nodes:
         cardinality: one
         kind: Attribute
       - name: location
-        peer: BuiltinLocation
+        peer: LocationGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -750,7 +750,7 @@ nodes:
     description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed"
     label: "Rack"
     icon: "mdi:server"
-    menu_placement: "BuiltinLocation"
+    menu_placement: "LocationGeneric"
     default_filter: name__value
     display_labels:
       - name__value
@@ -761,7 +761,7 @@ nodes:
         kind: Text
         optional: true
       - name: height
-        kind: Text
+        kind: Number
       - name: facility_id
         label: Facility ID
         kind: Text
@@ -776,24 +776,24 @@ nodes:
         optional: true
     relationships:
       - name: location
-        peer: BuiltinLocation
+        peer: LocationGeneric
         identifier: rack__location
         optional: true
         cardinality: one
         kind: Attribute
       - name: site
-        peer: BuiltinLocation
+        peer: LocationGeneric
         identifier: rack__site
         optional: true
         cardinality: one
         kind: Attribute
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -875,17 +875,17 @@ nodes:
         cardinality: one
         kind: Attribute
       - name: location
-        peer: BuiltinLocation
+        peer: LocationGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -927,12 +927,12 @@ nodes:
         cardinality: one
         kind: Attribute
       - name: status
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one
         kind: Attribute
       - name: role
-        peer: BuiltinRole
+        peer: RoleGeneric
         optional: true
         cardinality: one
         kind: Attribute
@@ -991,8 +991,8 @@ nodes:
         optional: true
         cardinality: one
         kind: Generic
-  - name: Status
-    namespace: Builtin
+  - name: Generic # Status
+    namespace: Status
     label: Status
     description: 'Represent the status of an object: active, maintenance'
     default_filter: name__value
@@ -1009,8 +1009,8 @@ nodes:
       - kind: Text
         name: description
         optional: true
-  - name: Role
-    namespace: Builtin
+  - name: Generic # Role
+    namespace: Role
     label: Role
     description: Represent the role of an object
     default_filter: name__value
@@ -1028,8 +1028,8 @@ nodes:
       - kind: Text
         name: description
         optional: true
-  - name: Location
-    namespace: Builtin
+  - name: Generic # Location
+    namespace: Location
     label: Location
     description: 'A location represent a physical element: a building, a site, a city'
     default_filter: name__value
@@ -1074,6 +1074,6 @@ nodes:
         cardinality: one
       - name: status
         identifier: "location__status"
-        peer: BuiltinStatus
+        peer: StatusGeneric
         optional: true
         cardinality: one

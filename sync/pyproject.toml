@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-sync"
-version = "0.3.0"
+version = "0.4.0"
 description = ""
 authors = ["OpsMill <contact@opsmill.com>"]
 readme = "README.md"
@@ -25,7 +25,7 @@ classifiers = [
 python = ">=3.9, < 3.13"
 infrahub-sdk = {version = "^0,>=0.9.1", extras = ["all"]}
 structlog = "^22.3.0"
-diffsync = "^1.10.0"
+diffsync = { version = ">=1.10,<2.0 || >=2.0", extras = ["redis"] }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
