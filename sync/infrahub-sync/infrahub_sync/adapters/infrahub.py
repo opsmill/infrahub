@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Mapping, Optional
 
 from infrahub_sdk import (
     Config,
@@ -11,9 +11,14 @@ from infrahub_sdk import (
 from infrahub_sdk.exceptions import NodeNotFoundError
 from infrahub_sdk.utils import compare_lists
 
-from diffsync import DiffSync, DiffSyncModel
+from diffsync import DiffSyncModel
 from infrahub_sync import DiffSyncMixin, DiffSyncModelMixin, SyncAdapter, SyncConfig
 from infrahub_sync.generator import has_field
+
+try:
+    from diffsync import Adapter as DiffSyncAdapter  # type: ignore[attr-defined]
+except ImportError:
+    from diffsync import DiffSync as DiffSyncAdapter  # type: ignore[no-redef]
 
 
 def update_node(node: InfrahubNodeSync, attrs: dict):
@@ -43,7 +48,7 @@ def update_node(node: InfrahubNodeSync, attrs: dict):
     return node
 
 
-class InfrahubAdapter(DiffSyncMixin, DiffSync):
+class InfrahubAdapter(DiffSyncMixin, DiffSyncAdapter):
     type = "Infrahub"
 
     def __init__(self, *args, target: str, adapter: SyncAdapter, config: SyncConfig, branch: str = None, **kwargs):
@@ -147,21 +152,39 @@ def diffsync_to_infrahub(ids: Mapping[Any, Any], attrs: Mapping[Any, Any], store
 
 class InfrahubModel(DiffSyncModelMixin, DiffSyncModel):
     @classmethod
-    def create(cls, diffsync, ids: Mapping[Any, Any], attrs: Mapping[Any, Any]):
-        schema = diffsync.client.schema.get(kind=cls.__name__)
+    def create(
+        cls,
+        ids: Mapping[Any, Any],
+        attrs: Mapping[Any, Any],
+        diffsync: Optional[DiffSyncAdapter] = None,
+        adapter: Optional[DiffSyncAdapter] = None,
+    ):
+        context = adapter if adapter is not None else diffsync
 
-        data = diffsync_to_infrahub(ids=ids, attrs=attrs, schema=schema, store=diffsync.client.store)
+        if context is None:
+            raise ValueError("Either 'diffsync' or 'adapter' must be provided.")
+
+        schema = context.client.schema.get(kind=cls.__name__)
+        data = diffsync_to_infrahub(ids=ids, attrs=attrs, schema=schema, store=context.client.store)
         unique_id = cls(**ids, **attrs).get_unique_id()
         source_id = None
-        if diffsync.account:
-            source_id = diffsync.account.id
-        create_data = diffsync.client.schema.generate_payload_create(
+        if context.account:
+            source_id = context.account.id
+        create_data = context.client.schema.generate_payload_create(
             schema=schema, data=data, source=source_id, is_protected=True
         )
-        node = diffsync.client.create(kind=cls.__name__, data=create_data)
+        node = context.client.create(kind=cls.__name__, data=create_data)
         node.save(allow_upsert=True)
-        diffsync.client.store.set(key=unique_id, node=node)
-        return super().create(diffsync, ids=ids, attrs=attrs)
+        context.client.store.set(key=unique_id, node=node)
+
+        if diffsync:
+            return super().create(diffsync, ids=ids, attrs=attrs)
+        if adapter:
+            return super().create(adapter, ids=ids, attrs=attrs)
+        if not (diffsync or adapter):
+            raise ValueError("Either 'diffsync' or 'adapter' must be provided.")
+
+        return None
 
     def update(self, attrs):
         node = self.diffsync.client.get(id=self.local_id, kind=self.__class__.__name__)
