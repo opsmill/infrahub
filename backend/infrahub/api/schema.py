@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
-from pydantic import BaseModel, Field, computed_field, model_validator
+from pydantic import BaseModel, Field, computed_field
 from starlette.responses import JSONResponse
 
 from infrahub import config, lock
@@ -42,13 +42,6 @@ class APISchemaMixin:
         ]
         data["hash"] = schema.get_hash()
         return cls(**data)
-
-    @model_validator(mode="before")
-    @classmethod
-    def set_kind(cls, values: Any) -> Any:
-        if isinstance(values, dict):
-            values["kind"] = f'{values["namespace"]}{values["name"]}'
-        return values
 
 
 class APINodeSchema(NodeSchema, APISchemaMixin):
