@@ -1,16 +1,16 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import IpamIPAddress from "./ipam-ip-address";
-import IpamNamespaces from "./ipam-namespaces";
 import IpamIPPrefixes from "./ipam-prefixes";
 
 export default function IpamRouter() {
   return (
     <div>
       <Routes>
-        <Route path="/:namespace" element={<IpamNamespaces />} />
-        <Route path="/:namespace/:prefix" element={<IpamIPPrefixes />} />
-        <Route path="/:namespace/:prefix/:ipaddress" element={<IpamIPAddress />} />
-        <Route path="*" element={<IpamNamespaces />} />
+        {/* <Route path="/:namespace" element={<IpamNamespaces />} /> */}
+        <Route path="/ip-addresses/:ipaddress" element={<IpamIPAddress />} />
+        <Route path="/prefixes/:prefix" element={<IpamIPPrefixes />} />
+        <Route path="/prefixes" element={<IpamIPPrefixes />} />
+        <Route path="/" element={<Navigate to="/ipam/prefixes" />} />
       </Routes>
     </div>
   );
