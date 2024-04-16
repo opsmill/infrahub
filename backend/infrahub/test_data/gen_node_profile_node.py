@@ -53,19 +53,3 @@ class ProfileAttribute(DataGenerator):
         async for _ in batch.execute():
             if self.progress:
                 self.progress.advance(task_person)
-
-        # # -------------------------------------------------------------------------------------
-        # # REPOSITORY
-        # # -------------------------------------------------------------------------------------
-        # batch = self.create_batch()
-        # for _ in range(nbr_repository):
-        #     short_id = str(uuid.uuid4())[:8]
-        #     repo_name = f"repository-{short_id}"
-        #     obj = await Node.init(db=self.db, schema=repository_schema, branch=default_branch)
-        #     await obj.new(db=self.db, name=repo_name, location=f"git://{repo_name}")
-        #     batch.add(task=self.save_obj, obj=obj)
-        #     repository[repo_name] = obj
-
-        # async for _ in batch.execute():
-        #     if self.progress:
-        #         self.progress.advance(task_repo)
