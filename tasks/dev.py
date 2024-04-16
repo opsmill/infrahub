@@ -8,6 +8,7 @@ from invoke.tasks import task
 from .container_ops import (
     build_images,
     destroy_environment,
+    migrate_database,
     pull_images,
     restart_services,
     show_service_status,
@@ -220,3 +221,9 @@ def gen_config_env(context: Context):
     env_vars.remove("PATH")
     for var in sorted(env_vars):
         print(f"{var}:")
+
+
+@task(optional=["database"])
+def migrate(context: Context, database: str = INFRAHUB_DATABASE):
+    """Apply the latest database migrations."""
+    migrate_database(context=context, database=database, namespace=NAMESPACE)
