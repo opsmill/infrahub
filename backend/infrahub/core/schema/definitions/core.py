@@ -461,6 +461,7 @@ core_models: dict[str, Any] = {
                     "identifier": "ip_namespace__ip_prefix",
                     "optional": True,
                     "cardinality": "many",
+                    "allow_override": AllowOverrideType.NONE,
                 },
                 {
                     "name": "ip_addresses",
@@ -468,6 +469,7 @@ core_models: dict[str, Any] = {
                     "identifier": "ip_namespace__ip_address",
                     "optional": True,
                     "cardinality": "many",
+                    "allow_override": AllowOverrideType.NONE,
                 },
             ],
         },
