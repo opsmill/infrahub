@@ -51,7 +51,8 @@ NETWORKS_SUPERNET = IPv4Network("10.0.0.0/8")
 NETWORKS_POOL_INTERNAL = list(NETWORKS_SUPERNET.subnets(new_prefix=16))
 LOOPBACK_POOL = NETWORKS_POOL_INTERNAL[0].hosts()
 P2P_NETWORK_POOL = NETWORKS_POOL_INTERNAL[1].subnets(new_prefix=31)
-NETWORKS_POOL_EXTERNAL = IPv4Network("203.0.113.0/24").subnets(new_prefix=29)
+NETWORKS_POOL_EXTERNAL_SUPERNET = IPv4Network("203.0.113.0/24")
+NETWORKS_POOL_EXTERNAL = NETWORKS_POOL_EXTERNAL_SUPERNET.subnets(new_prefix=29)
 MANAGEMENT_NETWORKS = IPv4Network("172.20.20.0/27")
 MANAGEMENT_IPS = MANAGEMENT_NETWORKS.hosts()
 
@@ -308,10 +309,8 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
     site_name = site.name.value
 
-    peer_networks = {
-        0: next(P2P_NETWORK_POOL).hosts(),
-        1: next(P2P_NETWORK_POOL).hosts(),
-    }
+    peer_networks = [next(P2P_NETWORK_POOL), next(P2P_NETWORK_POOL)]
+    peer_network_hosts = {0: peer_networks[0].hosts(), 1: peer_networks[1].hosts()}
 
     # --------------------------------------------------
     # Create the site specific VLAN
@@ -330,6 +329,13 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         )
         await obj.save()
         store.set(key=vlan_name, node=obj)
+
+    # --------------------------------------------------
+    # Create the site specific IP prefixes
+    # --------------------------------------------------
+    for net in peer_networks:
+        prefix = await client.create(branch=branch, kind="IpamIPPrefix", prefix=str(net))
+        await prefix.save()
 
     for idx, device in enumerate(DEVICES):
         device_name = f"{site_name}-{device[0]}"
@@ -432,17 +438,22 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             if intf_role == "backbone":
                 INTERFACE_OBJS[device_name].append(intf)
 
+            subnet = None
             address = None
             if intf_role == "peer":
-                address = f"{str(next(peer_networks[intf_idx]))}/31"
+                address = f"{str(next(peer_network_hosts[intf_idx]))}/31"
 
             if intf_role in ["upstream", "peering"] and "edge" in device_role:
-                subnet = next(NETWORKS_POOL_EXTERNAL).hosts()
-                address = f"{str(next(subnet))}/29"
-                peer_address = f"{str(next(subnet))}/29"
+                subnet = next(NETWORKS_POOL_EXTERNAL)
+                subnet_hosts = subnet.hosts()
+                address = f"{str(next(subnet_hosts))}/29"
+                peer_address = f"{str(next(subnet_hosts))}/29"
 
-            if not address:
+            if not subnet:
                 continue
+
+            ip_prefix = await client.create(branch=branch, kind="IpamIPPrefix", prefix=str(subnet))
+            await ip_prefix.save()
 
             if address:
                 ip = await client.create(
@@ -1062,8 +1073,14 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # Create IP prefixes
     # ------------------------------------------
     log.info("Creating IP Prefixes")
-    for network in [NETWORKS_SUPERNET, MANAGEMENT_NETWORKS, NETWORKS_POOL_INTERNAL[0], NETWORKS_POOL_INTERNAL[1]]:
-        obj = await client.create(branch=branch, kind="IpamIPPrefix", prefix=str(network))
+    for network in [
+        NETWORKS_SUPERNET,
+        MANAGEMENT_NETWORKS,
+        NETWORKS_POOL_INTERNAL[0],
+        NETWORKS_POOL_INTERNAL[1],
+        NETWORKS_POOL_EXTERNAL_SUPERNET,
+    ]:
+        obj = await client.create(branch=branch, kind="IpamIPPrefix", prefix=str(network), member_type="prefix")
         await obj.save()
     log.debug(f"IP Prefixes Creation Completed")
 

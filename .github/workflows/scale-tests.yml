@@ -46,6 +46,12 @@ jobs:
             rels-amount: 0
             changes-amount: 0
             stager: stage_infranode
+          - name: 100000 nodes
+            node-amount: 100000
+            attrs-amount: 0
+            rels-amount: 0
+            changes-amount: 0
+            stager: stage_infranode
           - name: 100 attrs
             node-amount: 10
             attrs-amount: 100
@@ -127,7 +133,7 @@ jobs:
     name: ${{ matrix.name }}
     runs-on:
       group: huge-runners
-    timeout-minutes: 120
+    timeout-minutes: 300
     env:
       INFRAHUB_DB_TYPE: neo4j
       METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
@@ -164,6 +170,8 @@ jobs:
         run: echo "INFRAHUB_DB_BACKUP_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
       - name: Select vmagent port
         run: echo "VMAGENT_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
+      - name: Set job name
+        run: echo "JOB_NAME=${{ matrix.name }}" >> $GITHUB_ENV
 
       - name: "Start scale environment"
         run: "poetry run invoke backend.test-scale-env-start -g 1"
@@ -176,7 +184,7 @@ jobs:
       - name: "Wait for vmagent to push metrics"
         run: "sleep 10"
       - name: "Show graph URL"
-        run: 'echo "https://grafana-prod.tailc018d.ts.net/d/ebf7ec72-db79-4fb7-9b46-4621ca9c407a/scale-tests?orgId=1&var-run_id=$GITHUB_RUN_ID&var-stage=test&var-node_amount=${{ matrix.node-amount }}&var-attrs_amount=${{ matrix.attrs-amount }}&var-rels_amount=${{ matrix.rels-amount }}&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
+        run: 'echo "https://grafana-prod.tailc018d.ts.net/d/ebf7ec72-db79-4fb7-9b46-4621ca9c407a/scale-tests?orgId=1&var-run_id=$GITHUB_RUN_ID&var-job=$(echo $JOB_NAME | sed ''s/ /%20/g'')&var-stage=test&var-node_amount=${{ matrix.node-amount }}&var-attrs_amount=${{ matrix.attrs-amount }}&var-rels_amount=${{ matrix.rels-amount }}&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
       - name: "Destroy scale environment"
         if: always()
         run: "invoke backend.test-scale-env-destroy"

@@ -42,9 +42,9 @@ class TestInfrahubSchema:
     async def test_schema_load_many(self, client, init_db_base, schema_extension_01, schema_extension_02):
         config = Config(username="admin", password="infrahub", requester=client.async_request)
         ifc = await InfrahubClient.init(config=config)
-        changed, _ = await ifc.schema.load(schemas=[schema_extension_01, schema_extension_02])
+        response = await ifc.schema.load(schemas=[schema_extension_01, schema_extension_02])
 
-        assert changed is True
+        assert response.schema_updated
 
         schema_nodes = await ifc.schema.all(refresh=True)
         assert "InfraRack" in schema_nodes.keys()

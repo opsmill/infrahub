@@ -2,7 +2,10 @@ import ipaddress
 
 from graphql import graphql
 
+from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
+from infrahub.core.node import Node
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
@@ -123,6 +126,7 @@ query GetAddress($address: String!) {
 async def test_ipprefix_create(
     db: InfrahubDatabase,
     default_branch: Branch,
+    default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
@@ -139,6 +143,11 @@ async def test_ipprefix_create(
 
     assert not result.errors
     assert result.data["IpamIPPrefixCreate"]["ok"]
+    assert result.data["IpamIPPrefixCreate"]["object"]["id"]
+
+    ip_prefix = await registry.manager.get_one(id=result.data["IpamIPPrefixCreate"]["object"]["id"], db=db)
+    ip_namespace = await ip_prefix.ip_namespace.get_peer(db=db)
+    assert ip_namespace.id == registry.default_ipnamespace
 
     result = await graphql(
         schema=gql_params.schema,
@@ -176,9 +185,60 @@ async def test_ipprefix_create(
     assert result.data["IpamIPPrefix"]["edges"][0]["node"]["parent"]["node"]["prefix"]["value"] == str(supernet)
 
 
+async def test_ipprefix_create_with_ipnamespace(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE, branch=default_branch)
+    await ns.new(db=db, name="ns1")
+    await ns.save(db=db)
+
+    query = """
+    mutation CreatePrefix($prefix: String!, $namespace: String!) {
+        IpamIPPrefixCreate(
+            data: {
+                prefix: {
+                    value: $prefix
+                }
+                ip_namespace: {
+                    id: $namespace
+                }
+            }
+        ) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    supernet = ipaddress.ip_network("2001:db8::/32")
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(supernet), "namespace": ns.id},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPPrefixCreate"]["ok"]
+    assert result.data["IpamIPPrefixCreate"]["object"]["id"]
+
+    ip_prefix = await registry.manager.get_one(id=result.data["IpamIPPrefixCreate"]["object"]["id"], db=db)
+    ip_namespace = await ip_prefix.ip_namespace.get_peer(db=db)
+    assert ip_namespace.id == ns.id
+
+
 async def test_ipprefix_create_reverse(
     db: InfrahubDatabase,
     default_branch: Branch,
+    default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
@@ -222,6 +282,7 @@ async def test_ipprefix_create_reverse(
 async def test_ipprefix_delete(
     db: InfrahubDatabase,
     default_branch: Branch,
+    default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
@@ -296,6 +357,7 @@ async def test_ipprefix_delete(
 async def test_ipaddress_create(
     db: InfrahubDatabase,
     default_branch: Branch,
+    default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
@@ -313,6 +375,11 @@ async def test_ipaddress_create(
 
     assert not result.errors
     assert result.data["IpamIPAddressCreate"]["ok"]
+    assert result.data["IpamIPAddressCreate"]["object"]["id"]
+
+    ip = await registry.manager.get_one(id=result.data["IpamIPAddressCreate"]["object"]["id"], db=db)
+    ip_namespace = await ip.ip_namespace.get_peer(db=db)
+    assert ip_namespace.id == registry.default_ipnamespace
 
     result = await graphql(
         schema=gql_params.schema,
@@ -365,6 +432,7 @@ async def test_ipaddress_create(
 async def test_ipaddress_change_ipprefix(
     db: InfrahubDatabase,
     default_branch: Branch,
+    default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
@@ -465,3 +533,23 @@ async def test_ipaddress_change_ipprefix(
     assert not result.errors
     assert len(result.data["IpamIPPrefix"]["edges"]) == 1
     assert not result.data["IpamIPPrefix"]["edges"][0]["node"]["ip_addresses"]["edges"]
+
+    # Create a less specific subnet, IP address should not be relocated
+    middle = ipaddress.ip_network("2001:db8::/56")
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(middle)},
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=GET_IPADDRESS,
+        context_value=gql_params.context,
+        variable_values={"address": str(address)},
+    )
+
+    assert not result.errors
+    assert len(result.data["IpamIPAddress"]["edges"]) == 1
+    assert result.data["IpamIPAddress"]["edges"][0]["node"]["ip_prefix"]["node"]["prefix"]["value"] == str(subnet)

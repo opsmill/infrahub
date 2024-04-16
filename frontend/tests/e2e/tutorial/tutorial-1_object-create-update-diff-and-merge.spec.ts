@@ -117,7 +117,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
   });
 
   test("5. Browse historical data", async ({ page }) => {
-    await page.goto("/objects/TenantTenant");
+    await page.goto("/objects/OrganizationTenant");
 
     await test.step("Row my-first-tenant is visible at current time", async () => {
       await expect(page.locator("tbody")).toContainText("my-first-tenant");

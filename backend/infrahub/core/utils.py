@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import re
 from inspect import isclass
 from typing import TYPE_CHECKING, List, Optional, Union
@@ -10,6 +11,8 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from neo4j.graph import Node as Neo4jNode
+
     from infrahub.database import InfrahubDatabase
 
 
@@ -131,6 +134,18 @@ async def count_relationships(db: InfrahubDatabase) -> int:
     return result[0][0]
 
 
+async def get_nodes(db: InfrahubDatabase, label: str) -> List[Neo4jNode]:
+    """Return theall nodes of a given label in the database."""
+    query = """
+    MATCH (node)
+    WHERE $label IN LABELS(node)
+    RETURN node
+    """
+    params: dict = {"label": label}
+    results = await db.execute_query(query=query, params=params, name="get_nodes")
+    return [result[0] for result in results]
+
+
 async def count_nodes(db: InfrahubDatabase, label: str) -> int:
     """Return the total number of nodes of a given label in the database."""
     query = """
@@ -178,6 +193,17 @@ def parse_node_kind(kind: str) -> NodeKind:
         return NodeKind(namespace=match.group(1), name=match.group(2))
 
     raise ValueError("The String provided is not a valid Node kind")
+
+
+def convert_ip_to_binary_str(
+    obj: Union[ipaddress.IPv6Network, ipaddress.IPv4Network, ipaddress.IPv4Interface, ipaddress.IPv6Interface],
+) -> str:
+    if isinstance(obj, (ipaddress.IPv6Network, ipaddress.IPv4Network)):
+        prefix_bin = bin(int(obj.network_address))[2:]
+        return prefix_bin.zfill(obj.max_prefixlen)
+
+    ip_bin = bin(int(obj))[2:]
+    return ip_bin.zfill(obj.max_prefixlen)
 
 
 # --------------------------------------------------------------------------------

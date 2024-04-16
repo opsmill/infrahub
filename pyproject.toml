@@ -13,7 +13,7 @@ packages = [
 optional = true
 
 [tool.poetry.dependencies]
-python = "^3.8, < 3.13"
+python = "^3.9, < 3.13"
 neo4j = "~5.18"
 infrahub-sdk = {path = "python_sdk", extras = ["ctl","tests"], develop=true}
 pydantic = "~2.6"
@@ -71,12 +71,8 @@ deepdiff = "^6.2"
 [tool.poetry.group.test-scale.dependencies]
 locust = "^2.20.1"
 docker = "^7.0.0"
-matplotlib = [
-    { version = "^3.8", python = ">=3.9"},
-]
-pandas = [
-    { version = "^2.2", python = ">=3.9"},
-]
+matplotlib = "^3.8"
+pandas = "^2.2"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
@@ -381,10 +377,6 @@ module = "infrahub.message_bus.operations.*"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.tasks.registry"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.test_data.*"
 ignore_errors = true
 
@@ -486,7 +478,6 @@ ignore = [
     "PLR6301",  # Method could be a function, class method, or static method
     "PLW0603",  # Using the global statement to update `SETTINGS` is discouraged
     "PLW1508",  # Invalid type for environment variable default; expected `str` or `None`
-    "PLW2901",  # `for` loop variable `path` overwritten by assignment target
     "PLW3201",  # Bad or misspelled dunder method name `__init_subclass_with_meta__`
     "RET503",   # Missing explicit `return` at the end of function able to return non-`None` value
     "RET504",   # Unnecessary assignment before `return` statement

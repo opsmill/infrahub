@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
+from infrahub.core.constants import AttributeDBNodeType
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
 from infrahub.core.constants.schema import FlagProperty, NodeProperty
 from infrahub.core.query import Query, QueryNode, QueryRel, QueryType
@@ -54,17 +55,22 @@ class AttributeUpdateValueQuery(AttributeQuery):
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = at.to_string()
         content = self.attr.to_db()
-        self.params["value"] = content["value"]
-        self.params["is_default"] = content["is_default"]
+        self.params.update(self.attr.to_db())
 
-        query = (
-            """
+        prop_list = [f"{key}: ${key}" for key in content.keys()]
+
+        labels = ["AttributeValue"]
+        node_type = self.attr.get_db_node_type()
+        if node_type == AttributeDBNodeType.IPHOST:
+            labels.append("AttributeIPHost")
+        elif node_type == AttributeDBNodeType.IPNETWORK:
+            labels.append("AttributeIPNetwork")
+
+        query = """
         MATCH (a:Attribute { uuid: $attr_uuid })
-        MERGE (av:AttributeValue { value: $value, is_default: $is_default })
-        CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(av)
-        """
-            % self.attr._rel_to_value_label
-        )
+        MERGE (av:%(labels)s { %(props)s } )
+        CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(av)
+        """ % {"rel_label": self.attr._rel_to_value_label, "labels": ":".join(labels), "props": ", ".join(prop_list)}
 
         self.add_to_query(query)
         self.return_labels = ["a", "av", "r"]

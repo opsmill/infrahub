@@ -69,7 +69,7 @@ class TestProposedChangePipeline(TestInfrahubApp):
         await richard.save(db=db)
 
         john = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id="John", schema_name=TestKind.PERSON, branch=branch1
+            db=db, id="John", schema_name=TestKind.PERSON, branch=branch1.name
         )
         john.age.value = 26  # type: ignore[attr-defined]
         await john.save(db=db)

@@ -14,7 +14,7 @@ except ImportError:
     import pydantic  # type: ignore[no-redef]
 
 from infrahub_sdk._importer import import_module
-from infrahub_sdk.exceptions import ModuleImportError, SchemaNotFoundError, ValidationError
+from infrahub_sdk.exceptions import InvalidResponseError, ModuleImportError, SchemaNotFoundError, ValidationError
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.utils import duplicates
@@ -477,19 +477,20 @@ class InfrahubSchemaBase:
         return obj_data
 
     @staticmethod
-    def _validate_response(response: httpx.Response) -> Tuple[bool, Optional[dict]]:
+    def _validate_load_schema_response(response: httpx.Response) -> SchemaLoadResponse:
         if response.status_code == httpx.codes.OK:
-            return True, None
+            status = response.json()
+            return SchemaLoadResponse(hash=status["hash"], previous_hash=status["previous_hash"])
 
         if response.status_code == httpx.codes.BAD_REQUEST:
-            return False, response.json()
+            return SchemaLoadResponse(errors=response.json())
 
         if response.status_code == httpx.codes.UNPROCESSABLE_ENTITY:
-            return False, response.json()
+            return SchemaLoadResponse(errors=response.json())
 
         response.raise_for_status()
 
-        return False, None
+        raise InvalidResponseError(message=f"Invalid response received from server HTTP {response.status_code}")
 
 
 class InfrahubSchema(InfrahubSchemaBase):
@@ -539,14 +540,14 @@ class InfrahubSchema(InfrahubSchemaBase):
 
         return self.cache[branch]
 
-    async def load(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
+    async def load(self, schemas: List[dict], branch: Optional[str] = None) -> SchemaLoadResponse:
         branch = branch or self.client.default_branch
         url = f"{self.client.address}/api/schema/load?branch={branch}"
         response = await self.client._post(
             url=url, timeout=max(120, self.client.default_timeout), payload={"schemas": schemas}
         )
 
-        return self._validate_response(response=response)
+        return self._validate_load_schema_response(response=response)
 
     async def check(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
@@ -904,14 +905,14 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
         return nodes
 
-    def load(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
+    def load(self, schemas: List[dict], branch: Optional[str] = None) -> SchemaLoadResponse:
         branch = branch or self.client.default_branch
         url = f"{self.client.address}/api/schema/load?branch={branch}"
         response = self.client._post(
             url=url, timeout=max(120, self.client.default_timeout), payload={"schemas": schemas}
         )
 
-        return self._validate_response(response=response)
+        return self._validate_load_schema_response(response=response)
 
     def check(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
@@ -928,3 +929,15 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
         response.raise_for_status()
         return False, None
+
+
+class SchemaLoadResponse(pydantic.BaseModel):
+    hash: str = pydantic.Field(default="", description="The new hash for the entire schema")
+    previous_hash: str = pydantic.Field(default="", description="The previous hash for the entire schema")
+    errors: dict = pydantic.Field(default_factory=dict, description="Errors reported by the server")
+
+    @property
+    def schema_updated(self) -> bool:
+        if self.hash and self.previous_hash and self.hash != self.previous_hash:
+            return True
+        return False

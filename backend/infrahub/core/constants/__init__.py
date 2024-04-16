@@ -14,6 +14,8 @@ __all__ = ["InfrahubKind", "FlagProperty", "NodeProperty", "UpdateSupport", "Upd
 
 GLOBAL_BRANCH_NAME = "-global-"
 
+DEFAULT_IP_NAMESPACE = "default"
+
 RESERVED_BRANCH_NAMES = [GLOBAL_BRANCH_NAME]
 
 RESERVED_ATTR_REL_NAMES = [
@@ -250,6 +252,12 @@ class ValidatorState(InfrahubStringEnum):
     QUEUED = "queued"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
+
+
+class AttributeDBNodeType(InfrahubStringEnum):
+    DEFAULT = "default"
+    IPHOST = "iphost"
+    IPNETWORK = "ipnetwork"
 
 
 RESTRICTED_NAMESPACES: List[str] = [

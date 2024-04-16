@@ -3,9 +3,10 @@ from typing import List, Optional
 from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
+from infrahub.core.constants import DEFAULT_IP_NAMESPACE, GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.node import Node
+from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema_manager import SchemaManager
@@ -32,6 +33,22 @@ async def get_root_node(db: InfrahubDatabase, initialize: bool = False) -> Root:
         raise DatabaseError("The Database is corrupted, more than 1 root node found.")
 
     return roots[0]
+
+
+async def get_default_ipnamespace(db: InfrahubDatabase) -> Optional[Node]:
+    if not registry.schema._branches or not registry.schema.has(name=InfrahubKind.NAMESPACE):
+        return None
+
+    nodes = await registry.manager.query(
+        db=db, schema=InfrahubKind.NAMESPACE, filters={"name__value": DEFAULT_IP_NAMESPACE}
+    )
+    if len(nodes) == 0:
+        return None
+
+    if len(nodes) > 1:
+        raise DatabaseError("More than 1 default namespace found.")
+
+    return nodes[0]
 
 
 async def initialization(db: InfrahubDatabase) -> None:
@@ -111,8 +128,15 @@ async def initialization(db: InfrahubDatabase) -> None:
     # ---------------------------------------------------
     # Load internal models into the registry
     # ---------------------------------------------------
-
     registry.node["Node"] = Node
+    registry.node["BuiltinIPPrefix"] = BuiltinIPPrefix
+
+    # ---------------------------------------------------
+    # Load Default Namespace
+    # ---------------------------------------------------
+    ip_namespace = await get_default_ipnamespace(db=db)
+    if ip_namespace:
+        registry.default_ipnamespace = ip_namespace.id
 
     # ---------------------------------------------------
     # Load all existing Groups into the registry
@@ -235,6 +259,19 @@ async def create_account(
     return obj
 
 
+async def create_ipam_namespace(
+    db: InfrahubDatabase,
+    name: str = DEFAULT_IP_NAMESPACE,
+    description: str = "Used to provide a default space of IP resources",
+) -> Node:
+    obj = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await obj.new(db=db, name=name, description=description)
+    await obj.save(db=db)
+    log.info(f"Created IPAM Namespace: {name}")
+
+    return obj
+
+
 async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create the default Branch
@@ -260,10 +297,14 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create Default Users and Groups
     # --------------------------------------------------
-
     await create_account(
         db=db,
         name="admin",
         password=config.SETTINGS.security.initial_admin_password,
         token_value=config.SETTINGS.security.initial_admin_token,
     )
+
+    # --------------------------------------------------
+    # Create Default IPAM Namespace
+    # --------------------------------------------------
+    await create_ipam_namespace(db=db)

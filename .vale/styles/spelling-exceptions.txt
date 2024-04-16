@@ -10,9 +10,11 @@ codespaces
 config
 Config
 content_type
+CoreRepository
 cypher
 Dagster
 datastore
+default_branch
 dev
 devcontainer
 direnv
@@ -58,6 +60,7 @@ openconfig
 opentelemetry
 PyPI
 rebase
+rebased
 repo
 REST
 ressources
@@ -66,10 +69,10 @@ sdk
 template_path
 toml
 uncheck
+validator
 upsert
 validators
 Version Control
 Vitest
 Yaml
 yamllint
-

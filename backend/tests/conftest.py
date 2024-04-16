@@ -17,8 +17,10 @@ from infrahub.core.constants import BranchSupportType, InfrahubKind
 from infrahub.core.initialization import (
     create_default_branch,
     create_global_branch,
+    create_ipam_namespace,
     create_root_node,
 )
+from infrahub.core.node import Node
 from infrahub.core.schema import (
     SchemaRoot,
     core_models,
@@ -91,6 +93,15 @@ async def default_branch(reset_registry, local_storage_dir, empty_database, db: 
     await create_global_branch(db=db)
     registry.schema = SchemaManager()
     return branch
+
+
+@pytest.fixture
+async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Optional[Node]:
+    if not registry._default_ipnamespace:
+        ip_namespace = await create_ipam_namespace(db=db)
+        registry.default_ipnamespace = ip_namespace.id
+        return ip_namespace
+    return None
 
 
 @pytest.fixture
@@ -322,13 +333,14 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
 def tmp_path_module_scope() -> Generator[str, None, None]:
     """Fixture similar to tmp_path but with scope=module"""
     with TemporaryDirectory() as tmpdir:
+        directory = tmpdir
         if sys.platform == "darwin" and tmpdir.startswith("/var/"):
             # On Mac /var is symlinked to /private/var. TemporaryDirectory uses the /var prefix
             # however when using 'git worktree list --porcelain' the path is returned with
             # /prefix/var and InfrahubRepository fails to initialize the repository as the
             # relative path of the repository isn't handled correctly
-            tmpdir = f"/private{tmpdir}"
-        yield tmpdir
+            directory = f"/private{tmpdir}"
+        yield directory
 
 
 @pytest.fixture(scope="module")

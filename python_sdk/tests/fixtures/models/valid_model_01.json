@@ -8,17 +8,17 @@
             "attributes": [
                 {
                     "name": "name",
-                    "kind": "String",
+                    "kind": "Text",
                     "unique": true
                 },
                 {
                     "name": "description",
-                    "kind": "String",
+                    "kind": "Text",
                     "optional": true
                 },
                 {
                     "name": "type",
-                    "kind": "String"
+                    "kind": "Text"
                 }
             ]
         }
