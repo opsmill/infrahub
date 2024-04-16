@@ -188,7 +188,7 @@ class AttributeGetQuery(AttributeQuery):
         self.return_labels = ["a", "ap", "r2"]
 
 
-async def default_attribute_query_filter(  # pylint: disable=unused-argument,disable=too-many-branches
+async def default_attribute_query_filter(  # pylint: disable=unused-argument,too-many-branches,too-many-statements
     name: str,
     filter_name: str,
     branch: Optional[Branch] = None,
@@ -197,6 +197,7 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,dis
     param_prefix: Optional[str] = None,
     db: Optional[InfrahubDatabase] = None,
     partial_match: bool = False,
+    support_profiles: bool = False,
 ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
     """Generate Query String Snippet to filter the right node."""
 
@@ -232,6 +233,9 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,dis
             if partial_match:
                 query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
                 query_where.append(f"toLower(toString(av.value)) CONTAINS toLower(toString(${param_prefix}_value))")
+            elif support_profiles:
+                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+                query_where.append(f"(av.value = ${param_prefix}_value OR av.is_default)")
             else:
                 query_filter.append(
                     QueryNode(name="av", labels=["AttributeValue"], params={"value": f"${param_prefix}_value"})
@@ -242,7 +246,10 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,dis
         query_filter.extend(
             (QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]), QueryNode(name="av", labels=["AttributeValue"]))
         )
-        query_where.append(f"av.value IN ${param_prefix}_value")
+        if support_profiles:
+            query_where.append(f"(av.value IN ${param_prefix}_value OR av.is_default)")
+        else:
+            query_where.append(f"av.value IN ${param_prefix}_value")
         query_params[f"{param_prefix}_value"] = filter_value
 
     elif filter_name in [v.value for v in FlagProperty] and filter_value is not None:

@@ -481,7 +481,7 @@ class NodeManager:
         return node
 
     @classmethod
-    async def get_many(  # pylint: disable=too-many-branches
+    async def get_many(  # pylint: disable=too-many-branches,too-many-statements
         cls,
         db: InfrahubDatabase,
         ids: List[str],
@@ -508,6 +508,12 @@ class NodeManager:
         all_profile_ids = reduce(
             lambda all_ids, these_ids: all_ids | set(these_ids), profile_ids_by_node_id.values(), set()
         )
+
+        if fields and all_profile_ids:
+            if "profile_priority" not in fields:
+                fields["profile_priority"] = {}
+            if "value" not in fields["profile_priority"]:
+                fields["profile_priority"]["value"] = None
 
         # Query list of all Attributes
         query = await NodeListGetAttributeQuery.init(

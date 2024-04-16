@@ -3,7 +3,7 @@ from __future__ import annotations
 import ipaddress
 import re
 from inspect import isclass
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Union
 
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.models import NodeKind
@@ -179,7 +179,7 @@ def element_id_to_id(element_id: Union[str, int]) -> int:
     return int(element_id.split(":")[2])
 
 
-def extract_field_filters(field_name: str, filters: dict) -> dict:
+def extract_field_filters(field_name: str, filters: dict) -> dict[str, Any]:
     """Extract the filters for a given field (attribute or relationship) from a filters dict."""
     return {
         key.replace(f"{field_name}__", ""): value for key, value in filters.items() if key.startswith(f"{field_name}__")
