@@ -15,7 +15,7 @@ nodes:
     namespace: Ipam
     inherit_from:
       - "BuiltinIPAddress"
-    menu_placement: "IpamIPPrefix"
+    menu_placement: "IpamNamespace"
     description: "IP Address"
     icon: "mdi:ip-outline"
     label: "IP Address"
