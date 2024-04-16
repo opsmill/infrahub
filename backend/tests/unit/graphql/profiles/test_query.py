@@ -4,6 +4,7 @@ from graphql import graphql
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
@@ -64,6 +65,52 @@ async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Br
         result.data["ProfileTestCriticality"]["edges"][0]["node"]["display_label"]
         == f"ProfileTestCriticality(ID: {obj1.id})"
     )
+
+
+async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+    profile = registry.schema.get("ProfileTestCriticality", branch=default_branch)
+
+    obj1 = await Node.init(db=db, schema=profile)
+    await obj1.new(db=db, profile_name="prof1", level=8)
+    await obj1.save(db=db)
+
+    query = """
+    mutation {
+        ProfileTestCriticalityUpsert(
+            data: {
+                profile_name: { value: "prof1"},
+                level: { value: 10 }
+                profile_priority: { value: 1234 }
+            }
+        ) {
+            ok
+            object {
+                profile_name { value }
+                level { value }
+                profile_priority { value }
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["ProfileTestCriticalityUpsert"]["ok"] is True
+    gql_object = result.data["ProfileTestCriticalityUpsert"]["object"]
+    assert gql_object["profile_name"]["value"] == "prof1"
+    assert gql_object["level"]["value"] == 10
+    assert gql_object["profile_priority"]["value"] == 1234
+    retrieved_object = await NodeManager.get_one(db=db, id=obj1.id)
+    assert retrieved_object.profile_name.value == "prof1"
+    assert retrieved_object.level.value == 10
+    assert retrieved_object.profile_priority.value == 1234
 
 
 async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
