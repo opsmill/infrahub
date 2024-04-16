@@ -438,7 +438,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             field_names = fields.keys()
         else:
             # REMOVED updated_at for now, need to investigate further how it's being used today
-            field_names = ["__typename", "value", "is_from_profile"] + self._node_properties + self._flag_properties
+            field_names = ["__typename", "value"] + self._node_properties + self._flag_properties
 
         for field_name in field_names:
             if field_name == "updated_at":
