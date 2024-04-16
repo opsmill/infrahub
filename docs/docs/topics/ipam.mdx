@@ -1,0 +1,183 @@
+---
+title: IP address management
+---
+
+# IP address management
+
+IP address management, also known as IPAM, is a critical part of any infrastructure involving IP network and address allocations. Depending on the scale of networks, it can be challenging to keep track of all IP resources, how they are used, and which ones remain available.
+
+:::info
+
+Building an IPAM serves a different purpose as using the `IPHost` or `IPNetwork` attribute kinds in other node definitions. In fact, the IPAM feature leverage those attribute kinds.
+
+:::
+
+## IPAM generics
+
+To keep things extensible, Infrahub provides generics that users can inherit their nodes from in their own schemas and build their own IPAM:
+
+- `BuiltinIPNamespace`: used to model a namespace to manage IP resources, this is a generic representation of what could be, for examples, a routing table, a routing instance or a VRF
+- `BuiltinIPPrefix`: used to model a network, sometimes referred as supernet/subnet
+- `BuiltinIPAddress`: used to model a single IP address
+
+By default, Infrahub comes with a node inheriting from the `BuiltinIPNamespace` generic. This node is called `IpamNamespace`. A object of this kind of node, called "default", is also automatically created when starting Infrahub for the first time.
+
+## Building an IPAM
+
+As mentioned in the previous section, an IPAM namespace is already provided with Infrahub, so there are no needs to redefined this unless more attributes are required. The default implementation is very minimal and attributes only include a name and a description.
+
+```yaml title="Schema definition implementing IPAM generics"
+# yaml-language-server: $schema=https://schema.infrahub.app/develop/schema.schema.json
+---
+version: "1.0"
+nodes:
+  - name: "IPPrefix"
+    namespace: "Ipam"
+    inherit_from:
+      - "BuiltinIPPrefix"
+    description: "IPv4 or IPv6 network"
+    icon: "mdi:ip-network"
+    label: "IP Prefix"
+    menu_placement: "IpamNamespace"
+  - name: "IPAddress"
+    namespace: "Ipam"
+    inherit_from:
+      - "BuiltinIPAddress"
+    description: "IPv4 or IPv6 address"
+    icon: "mdi:ip"
+    label: "IP Address"
+    menu_placement: "IpamNamespace"
+```
+
+## How IPAM works
+
+IPAM generics and nodes that inherit from them have relationships and a hierarchy. This means that an IP prefix can be related to other prefixes (as parent or as child), an IP address can be related to an IP prefix, and, finally, both of these objects are related to an IP namespace.
+
+To simplify day-to-day usage and prevent from doing many operations via the user interface or the GraphQL API, relationships for IP prefixes and IP addresses are automatically managed. This implies that when an IP prefix is created, relations with a parent prefix, children prefixes and IP addresses that belong to it will be discovered automatically. Same goes when an IP address is created, the more specific prefix it belongs to will be automatically discovered. This will result in trees of IP prefixes and IP addresses being built. Building these hierarchies/trees allows Infrahub to determine how IP prefixes and IP addresses are nested as well as computing utilization of the recorded IP spaces.
+
+## GraphQL query and mutation examples
+
+Creating a schema inheriting the IPAM generics will generate GraphQL queries and mutations related to the defined schema. Below a few examples matching the schema defined in a previous section.
+
+```graphql title="Getting prefixes and details"
+query GetPrefixes {
+  IpamIPPrefix {
+    count
+    edges {
+      node {
+        prefix {
+          value
+		}
+        utilization {
+          value
+        }
+        netmask {
+          value
+        }
+        hostmask {
+          value
+        }
+        network_address {
+          value
+        }
+        broadcast_address {
+          value
+        }
+        parent {
+          node {
+            id
+            prefix {
+              value
+              netmask
+            }
+          }
+        }
+        children {
+          edges {
+            node {
+              id
+              prefix {
+                value
+              }
+            }
+          }
+        }
+        ip_addresses {
+          count
+          edges {
+            node {
+              id
+              address {
+                value
+              }
+            }
+          }
+        }
+        ancestors {
+          edges {
+            node {
+              id
+              prefix {
+                value
+              }
+            }
+          }
+        }
+        descendants {
+          edges {
+            node {
+              prefix {
+                value
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+```graphql title="Creating a new prefix"
+mutation CreatePrefix($prefix: String!, $member_type: String) {
+  IpamIPPrefixCreate(data: {prefix: {value: $prefix}, member_type: {value: $member_type}}) {
+    ok
+  }
+}
+```
+
+```graphql title="Getting addresses and details"
+query GetAddresses {
+  IpamIPAddress {
+    count
+    edges {
+      node {
+        address {
+          value
+		}
+        ip_prefix {
+          node {
+            id
+            prefix {
+              value
+              netmask
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+```graphql title="Creating a new address"
+mutation CreateAddress($address: String!) {
+  IpamIPAddressCreate(data: {address: {value: $address}}) {
+    ok
+  }
+}
+```
+
+## Known limitations
+
+- Renumbering an existing IP prefix or IP address won't relocate it in the IPAM relationship tree, which means it won't be showing in the proper location

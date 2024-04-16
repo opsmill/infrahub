@@ -29,6 +29,8 @@ exceptions:
   - Helm
   - Infrahub
   - infrahubctl
+  - IP
+  - IPAM
   - JavaScript
   - Jinja
   - Jinja2

@@ -41,9 +41,11 @@ include_in_menu
 Infrahub
 Infrahub's
 infrahubctl
+IP
 IPAddress
 IPHost
 IPNetwork
+IPAM
 isort
 jinja
 Jotai
