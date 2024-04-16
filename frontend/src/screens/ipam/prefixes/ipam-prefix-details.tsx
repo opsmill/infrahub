@@ -1,13 +1,13 @@
 import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router-dom";
-import { Table } from "../../components/table/table";
-import { Link } from "../../components/utils/link";
-import { IPAM_PREFIX_OBJECT } from "../../config/constants";
-import { GET_PREFIXES } from "../../graphql/queries/ipam/prefixes";
-import useQuery from "../../hooks/useQuery";
-import { constructPath } from "../../utils/fetch";
-import ErrorScreen from "../error-screen/error-screen";
-import LoadingScreen from "../loading-screen/loading-screen";
+import { Table } from "../../../components/table/table";
+import { Link } from "../../../components/utils/link";
+import { IPAM_PREFIX_OBJECT } from "../../../config/constants";
+import { GET_PREFIXES } from "../../../graphql/queries/ipam/prefixes";
+import useQuery from "../../../hooks/useQuery";
+import { constructPath } from "../../../utils/fetch";
+import ErrorScreen from "../../error-screen/error-screen";
+import LoadingScreen from "../../loading-screen/loading-screen";
 
 const constructLink = (data) => {
   switch (data.__typename) {
@@ -20,8 +20,12 @@ const constructLink = (data) => {
   }
 };
 
-export default function IpamIPPrefix() {
+export default function IpamIPPrefixDetails() {
   const { prefix } = useParams();
+
+  if (!prefix) {
+    return <div>Select a prefix</div>;
+  }
 
   const { loading, error, data } = useQuery(GET_PREFIXES, { variables: { prefix: prefix } });
 

@@ -1,11 +1,11 @@
 import { useParams } from "react-router-dom";
-import { Table } from "../../components/table/table";
-import { IPAM_PREFIX_OBJECT } from "../../config/constants";
-import { GET_PREFIXES } from "../../graphql/queries/ipam/prefixes";
-import useQuery from "../../hooks/useQuery";
-import { constructPath } from "../../utils/fetch";
-import ErrorScreen from "../error-screen/error-screen";
-import LoadingScreen from "../loading-screen/loading-screen";
+import { Table } from "../../../components/table/table";
+import { IPAM_PREFIX_OBJECT } from "../../../config/constants";
+import { GET_PREFIXES } from "../../../graphql/queries/ipam/prefixes";
+import useQuery from "../../../hooks/useQuery";
+import { constructPath } from "../../../utils/fetch";
+import ErrorScreen from "../../error-screen/error-screen";
+import LoadingScreen from "../../loading-screen/loading-screen";
 
 const constructLink = (data) => {
   switch (data.__typename) {
@@ -18,7 +18,7 @@ const constructLink = (data) => {
   }
 };
 
-export default function IpamIPPrefixes() {
+export default function IpamIPPrefixesSummaryList() {
   const { prefix } = useParams();
 
   const { loading, error, data } = useQuery(GET_PREFIXES, { variables: { prefix: prefix } });
