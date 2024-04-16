@@ -991,7 +991,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Generic
-  - name: Generic # Status
+  - name: Generic  # Status
     namespace: Status
     label: Status
     description: 'Represent the status of an object: active, maintenance'
@@ -1009,7 +1009,7 @@ nodes:
       - kind: Text
         name: description
         optional: true
-  - name: Generic # Role
+  - name: Generic  # Role
     namespace: Role
     label: Role
     description: Represent the role of an object
@@ -1028,7 +1028,7 @@ nodes:
       - kind: Text
         name: description
         optional: true
-  - name: Generic # Location
+  - name: Generic  # Location
     namespace: Location
     label: Location
     description: 'A location represent a physical element: a building, a site, a city'
