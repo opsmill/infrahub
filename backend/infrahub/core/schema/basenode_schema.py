@@ -33,6 +33,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
     _sort_by: List[str] = ["namespace", "name"]
 
     @computed_field
+    @property
     def kind(self) -> str:
         if self.namespace == "Attribute":
             return self.name
