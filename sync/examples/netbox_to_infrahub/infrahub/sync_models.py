@@ -13,188 +13,204 @@ class CoreStandardGroup(InfrahubModel):
     _identifiers = ("name",)
     _attributes = ("description",)
     name: str
-    description: Optional[str]
-    local_id: Optional[str]
-    local_data: Optional[Any]
+    description: Optional[str] = None
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
 
 class BuiltinTag(InfrahubModel):
     _modelname = "BuiltinTag"
     _identifiers = ("name",)
     _attributes = ("description",)
     name: str
-    description: Optional[str]
-    local_id: Optional[str]
-    local_data: Optional[Any]
+    description: Optional[str] = None
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
 
 class InfraCircuit(InfrahubModel):
     _modelname = "InfraCircuit"
     _identifiers = ("circuit_id",)
     _attributes = ("provider", "type", "tags", "description", "vendor_id")
     circuit_id: str
-    description: Optional[str]
-    vendor_id: Optional[str]
+    description: Optional[str] = None
+    vendor_id: Optional[str] = None
     provider: str
     type: str
-    tags: List[str] = []
-    local_id: Optional[str]
-    local_data: Optional[Any]
-
-class TemplateCircuitType(InfrahubModel):
-    _modelname = "TemplateCircuitType"
-    _identifiers = ("name",)
-    _attributes = ("tags", "description")
-    name: str
-    description: Optional[str]
-    tags: List[str] = []
-    local_id: Optional[str]
-    local_data: Optional[Any]
+    tags: Optional[List[str]] = []
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
 
 class InfraDevice(InfrahubModel):
     _modelname = "InfraDevice"
     _identifiers = ("name", "location", "rack", "organization")
     _attributes = ("model", "role", "tags", "description", "serial_number", "asset_tag")
-    name: Optional[str]
-    description: Optional[str]
-    serial_number: Optional[str]
-    asset_tag: Optional[str]
+    name: Optional[str] = None
+    description: Optional[str] = None
+    serial_number: Optional[str] = None
+    asset_tag: Optional[str] = None
     location: str
     model: str
-    rack: Optional[str]
-    role: Optional[str]
-    tags: List[str] = []
-    organization: Optional[str]
-    local_id: Optional[str]
-    local_data: Optional[Any]
-
-class TemplateDeviceType(InfrahubModel):
-    _modelname = "TemplateDeviceType"
-    _identifiers = ("name", "manufacturer")
-    _attributes = ("tags", "part_number", "height", "full_depth")
-    part_number: Optional[str]
-    height: Optional[int]
-    full_depth: Optional[bool]
-    name: str
-    manufacturer: str
-    tags: List[str] = []
-    local_id: Optional[str]
-    local_data: Optional[Any]
+    rack: Optional[str] = None
+    role: Optional[str] = None
+    tags: Optional[List[str]] = []
+    organization: Optional[str] = None
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
 
 class InfraIPAddress(InfrahubModel):
     _modelname = "InfraIPAddress"
     _identifiers = ("address", "vrf")
     _attributes = ("organization", "description")
     address: str
-    description: Optional[str]
-    organization: Optional[str]
-    vrf: Optional[str]
-    local_id: Optional[str]
-    local_data: Optional[Any]
+    description: Optional[str] = None
+    organization: Optional[str] = None
+    vrf: Optional[str] = None
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
 
-class InfraProviderNetwork(InfrahubModel):
-    _modelname = "InfraProviderNetwork"
-    _identifiers = ("name",)
-    _attributes = ("provider", "tags", "description", "vendor_id")
+class InfraInterfaceL2L3(InfrahubModel):
+    _modelname = "InfraInterfaceL2L3"
+    _identifiers = ("name", "device")
+    _attributes = ("tagged_vlan", "tags", "l2_mode", "description", "mgmt_only", "mac_address", "interface_type")
+    l2_mode: Optional[str] = None
     name: str
-    description: Optional[str]
-    vendor_id: Optional[str]
-    provider: str
-    tags: List[str] = []
-    local_id: Optional[str]
-    local_data: Optional[Any]
+    description: Optional[str] = None
+    mgmt_only: Optional[bool] = False
+    mac_address: Optional[str] = None
+    interface_type: Optional[str] = None
+    untagged_vlan: Optional[str] = None
+    tagged_vlan: Optional[List[str]] = []
+    device: str
+    tags: Optional[List[str]] = []
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
 
 class InfraPrefix(InfrahubModel):
     _modelname = "InfraPrefix"
     _identifiers = ("prefix", "vrf")
     _attributes = ("organization", "location", "role", "description")
     prefix: str
-    description: Optional[str]
-    organization: Optional[str]
-    location: Optional[str]
-    role: Optional[str]
-    vrf: Optional[str]
-    local_id: Optional[str]
-    local_data: Optional[Any]
+    description: Optional[str] = None
+    organization: Optional[str] = None
+    location: Optional[str] = None
+    role: Optional[str] = None
+    vrf: Optional[str] = None
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+class InfraProviderNetwork(InfrahubModel):
+    _modelname = "InfraProviderNetwork"
+    _identifiers = ("name",)
+    _attributes = ("provider", "tags", "description", "vendor_id")
+    name: str
+    description: Optional[str] = None
+    vendor_id: Optional[str] = None
+    provider: str
+    tags: Optional[List[str]] = []
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
 
 class InfraRack(InfrahubModel):
     _modelname = "InfraRack"
     _identifiers = ("name", "location")
     _attributes = ("role", "tags", "height", "facility_id", "serial_number", "asset_tag")
     name: str
-    height: str
-    facility_id: Optional[str]
-    serial_number: Optional[str]
-    asset_tag: Optional[str]
+    height: int
+    facility_id: Optional[str] = None
+    serial_number: Optional[str] = None
+    asset_tag: Optional[str] = None
     location: str
-    role: Optional[str]
-    tags: List[str] = []
-    local_id: Optional[str]
-    local_data: Optional[Any]
+    role: Optional[str] = None
+    tags: Optional[List[str]] = []
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
 
 class InfraRouteTarget(InfrahubModel):
     _modelname = "InfraRouteTarget"
     _identifiers = ("name", "organization")
     _attributes = ("description",)
     name: str
-    description: Optional[str]
-    organization: Optional[str]
-    local_id: Optional[str]
-    local_data: Optional[Any]
+    description: Optional[str] = None
+    organization: Optional[str] = None
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
 
 class InfraVLAN(InfrahubModel):
     _modelname = "InfraVLAN"
     _identifiers = ("name", "vlan_id", "location", "vlan_group")
     _attributes = ("organization", "description")
     name: str
-    description: Optional[str]
+    description: Optional[str] = None
     vlan_id: int
-    organization: Optional[str]
-    location: Optional[str]
-    vlan_group: Optional[str]
-    local_id: Optional[str]
-    local_data: Optional[Any]
+    organization: Optional[str] = None
+    location: Optional[str] = None
+    vlan_group: Optional[str] = None
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
 
 class InfraVRF(InfrahubModel):
     _modelname = "InfraVRF"
     _identifiers = ("name",)
     _attributes = ("organization", "import_rt", "export_rt", "description", "vrf_rd")
     name: str
-    description: Optional[str]
-    vrf_rd: Optional[str]
-    organization: Optional[str]
-    import_rt: List[str] = []
-    export_rt: List[str] = []
-    local_id: Optional[str]
-    local_data: Optional[Any]
+    description: Optional[str] = None
+    vrf_rd: Optional[str] = None
+    organization: Optional[str] = None
+    import_rt: Optional[List[str]] = []
+    export_rt: Optional[List[str]] = []
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
 
-class CoreOrganization(InfrahubModel):
-    _modelname = "CoreOrganization"
-    _identifiers = ("name",)
-    _attributes = ("group", "description", "type")
-    name: str
-    description: Optional[str]
-    type: Optional[str]
-    group: Optional[str]
-    local_id: Optional[str]
-    local_data: Optional[Any]
-
-class BuiltinRole(InfrahubModel):
-    _modelname = "BuiltinRole"
-    _identifiers = ("name",)
-    _attributes = ("description",)
-    name: str
-    description: Optional[str]
-    local_id: Optional[str]
-    local_data: Optional[Any]
-
-class BuiltinLocation(InfrahubModel):
-    _modelname = "BuiltinLocation"
+class LocationGeneric(InfrahubModel):
+    _modelname = "LocationGeneric"
     _identifiers = ("name",)
     _attributes = ("organization", "tags", "group", "description", "type")
     name: str
-    description: Optional[str]
+    description: Optional[str] = None
     type: str
-    organization: Optional[str]
-    tags: List[str] = []
-    group: Optional[str]
-    local_id: Optional[str]
-    local_data: Optional[Any]
+    organization: Optional[str] = None
+    tags: Optional[List[str]] = []
+    group: Optional[str] = None
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+class OrganizationGeneric(InfrahubModel):
+    _modelname = "OrganizationGeneric"
+    _identifiers = ("name",)
+    _attributes = ("group", "description")
+    name: str
+    description: Optional[str] = None
+    group: Optional[str] = None
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+class RoleGeneric(InfrahubModel):
+    _modelname = "RoleGeneric"
+    _identifiers = ("name",)
+    _attributes = ("description",)
+    name: str
+    description: Optional[str] = None
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+class TemplateCircuitType(InfrahubModel):
+    _modelname = "TemplateCircuitType"
+    _identifiers = ("name",)
+    _attributes = ("tags", "description")
+    name: str
+    description: Optional[str] = None
+    tags: Optional[List[str]] = []
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+class TemplateDeviceType(InfrahubModel):
+    _modelname = "TemplateDeviceType"
+    _identifiers = ("name", "manufacturer")
+    _attributes = ("tags", "part_number", "height", "full_depth")
+    part_number: Optional[str] = None
+    height: Optional[int] = None
+    full_depth: Optional[bool] = None
+    name: str
+    manufacturer: str
+    tags: Optional[List[str]] = []
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None

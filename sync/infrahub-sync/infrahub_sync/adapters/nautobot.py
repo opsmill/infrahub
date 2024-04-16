@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict
 
 import pynautobot
 
-from diffsync import DiffSync, DiffSyncModel
+from diffsync import DiffSyncModel
 from infrahub_sync import (
     DiffSyncMixin,
     DiffSyncModelMixin,
@@ -14,6 +14,12 @@ from infrahub_sync import (
     SyncAdapter,
     SyncConfig,
 )
+
+try:
+    from diffsync import Adapter as DiffSync  # type: ignore[attr-defined]
+except ImportError:
+    from diffsync import DiffSync  # type: ignore[no-redef]
+
 
 if TYPE_CHECKING:
     from pynautobot.core.response import Record as NautobotRecord
