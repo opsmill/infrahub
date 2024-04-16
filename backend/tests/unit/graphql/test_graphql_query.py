@@ -2048,6 +2048,7 @@ async def test_query_attribute_node_property_owner(
                                 value
                             }
                         }
+                        is_from_profile
                     }
                 }
             }
@@ -2071,6 +2072,7 @@ async def test_query_attribute_node_property_owner(
         result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["owner"]["name"]["value"]
         == first_account.name.value
     )
+    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["is_from_profile"] is False
     assert gql_params.context.related_node_ids == {p1.id, first_account.id}
 
 

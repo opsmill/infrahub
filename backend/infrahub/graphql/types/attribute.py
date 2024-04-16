@@ -30,6 +30,7 @@ class AttributeInterface(InfrahubInterface):
 
 class BaseAttribute(ObjectType):
     id = Field(String)
+    is_from_profile = Field(Boolean)
 
     @classmethod
     def __init_subclass__(cls, **kwargs):
