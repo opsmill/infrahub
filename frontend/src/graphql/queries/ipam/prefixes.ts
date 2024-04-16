@@ -1,17 +1,34 @@
 import { gql } from "@apollo/client";
 
-export const GET_NAMESPACES = gql`
-  query IpamIPPrefix($ids: [String!]) {
-    IpamIPPrefix(ip_namespace__ids: $ids) {
-        edges {
-          node {
-            display_label
+export const GET_PREFIXES = gql`
+  query IpamIPPrefix($namespace: String, $prefix: String) {
+    IpamIPPrefix(ip_namespace__name__value: $namespace, prefix__value: $prefix) {
+      edges {
+        node {
+          display_label
+          id
+          prefix {
             id
-            name {
+            value
+          }
+          parent {
+            node {
               id
+              display_label
+              prefix {
+                value
+              }
             }
-            description {
-              id
+          }
+          children {
+            edges {
+              node {
+                id
+                display_label
+                prefix {
+                  value
+                }
+              }
             }
           }
         }

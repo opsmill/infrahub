@@ -5,11 +5,22 @@ export const GET_IP_ADDRESS = gql`
     IpamIPAddress(ip_prefix__ids: $ids) {
       edges {
         node {
+          id
           display_label
           ip_namespace {
             node {
               id
+              display_label
             }
+          }
+          ip_prefix {
+            node {
+              id
+              display_label
+            }
+          }
+          description {
+            id
           }
           address {
             id
@@ -21,10 +32,6 @@ export const GET_IP_ADDRESS = gql`
             with_hostmask
             with_netmask
           }
-          description {
-            id
-          }
-          id
         }
       }
     }
