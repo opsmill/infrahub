@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Literal, Optional, Type, Union, overload
 
 from infrahub_sdk.utils import compare_lists, intersection
-from pydantic import computed_field, field_validator
+from pydantic import field_validator
 
 from infrahub.core.models import HashableModelDiff
 
@@ -32,7 +32,6 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
     _exclude_from_hash: List[str] = ["attributes", "relationships", "filters"]
     _sort_by: List[str] = ["namespace", "name"]
 
-    @computed_field
     @property
     def kind(self) -> str:
         if self.namespace == "Attribute":
