@@ -59,6 +59,7 @@ core_models: dict[str, Any] = {
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
+                {"name": "kind", "kind": "Text", "read_only": True, "optional": True},
             ],
         },
         {

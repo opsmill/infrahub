@@ -460,6 +460,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     response[field_name] = None
                 continue
 
+            if field_name == "kind":
+                response[field_name] = {"value": self.get_kind()}
+                continue
+
             field: Optional[BaseAttribute] = getattr(self, field_name, None)
 
             if not field:

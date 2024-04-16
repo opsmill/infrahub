@@ -2001,6 +2001,9 @@ async def test_query_attribute_node_property_source(
                             name {
                                 value
                             }
+                            kind {
+                                value
+                            }
                         }
                     }
                 }
@@ -2025,6 +2028,7 @@ async def test_query_attribute_node_property_source(
         result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["source"]["name"]["value"]
         == first_account.name.value
     )
+    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["source"]["kind"]["value"] == "CoreAccount"
     assert gql_params.context.related_node_ids == {p1.id, first_account.id}
 
 
