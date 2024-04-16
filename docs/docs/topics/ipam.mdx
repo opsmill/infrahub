@@ -26,6 +26,8 @@ By default, Infrahub comes with a node inheriting from the `BuiltinIPNamespace` 
 
 As mentioned in the previous section, an IPAM namespace is already provided with Infrahub, so there are no needs to redefined this unless more attributes are required. The default implementation is very minimal and attributes only include a name and a description.
 
+The below schema defines two nodes: one for IP prefixes `IpamIPPrefix` and one for IP addresses `IpamIPAddress`. Both of these nodes inherit from the built-in generics.
+
 ```yaml title="Schema definition implementing IPAM generics"
 # yaml-language-server: $schema=https://schema.infrahub.app/develop/schema.schema.json
 ---
@@ -49,7 +51,7 @@ nodes:
     menu_placement: "IpamNamespace"
 ```
 
-## How IPAM works
+### How IPAM works
 
 IPAM generics and nodes that inherit from them have relationships and a hierarchy. This means that an IP prefix can be related to other prefixes (as parent or as child), an IP address can be related to an IP prefix, and, finally, both of these objects are related to an IP namespace.
 
@@ -65,6 +67,7 @@ query GetPrefixes {
     count
     edges {
       node {
+        id
         prefix {
           value
 		}
@@ -126,6 +129,7 @@ query GetPrefixes {
         descendants {
           edges {
             node {
+              id
               prefix {
                 value
               }
@@ -181,3 +185,5 @@ mutation CreateAddress($address: String!) {
 ## Known limitations
 
 - Renumbering an existing IP prefix or IP address won't relocate it in the IPAM relationship tree, which means it won't be showing in the proper location
+- There are no ways to programmatically know the next IP prefix available in a namespace or an IP prefix
+- There are no ways to programmatically know the next IP address available in a namespace or an IP prefix
