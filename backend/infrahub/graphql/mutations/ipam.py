@@ -201,6 +201,9 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         super_network = await get_container(db=db, branch=branch, at=at, ip_prefix=ip_network, namespace=namespace_id)
         if super_network:
             data["parent"] = {"id": super_network.id}
+            data["is_top_level"] = False
+        else:
+            data["is_top_level"] = True
 
         # Set subnets if found
         sub_networks = await get_subnets(db=db, branch=branch, at=at, ip_prefix=ip_network, namespace=namespace_id)
