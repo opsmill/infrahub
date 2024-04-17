@@ -34,7 +34,7 @@ services:
       com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
       com.github.job: "${JOB_NAME:-unknown}"
     healthcheck:
-      test: wget -O /dev/null http://localhost:8000/api/schema/summary || exit 1
+      test: curl -s -f -o /dev/null http://localhost:8000/api/schema/summary || exit 1
       interval: 5s
       timeout: 5s
       retries: 20
