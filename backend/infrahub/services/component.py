@@ -8,6 +8,7 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError
 from infrahub.message_bus import messages
+from infrahub.message_bus.types import KVTTL
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
@@ -77,23 +78,25 @@ class InfrahubComponent:
                 await self.service.cache.set(
                     key=f"workers:schema_hash:branch:{branch}:{component}:worker:{WORKER_IDENTITY}",
                     value=hash_value,
-                    expires=7200,
+                    expires=KVTTL.TWO_HOURS,
                 )
 
     async def refresh_heartbeat(self) -> None:
         for component in self.component_names:
             await self.service.cache.set(
-                key=f"workers:active:{component}:worker:{WORKER_IDENTITY}", value=Timestamp().to_string(), expires=15
+                key=f"workers:active:{component}:worker:{WORKER_IDENTITY}",
+                value=Timestamp().to_string(),
+                expires=KVTTL.FIFTEEN,
             )
         if self.service.component_type == ComponentType.API_SERVER:
             await self._set_primary_api_server()
         await self.service.cache.set(
-            key=f"workers:worker:{WORKER_IDENTITY}", value=Timestamp().to_string(), expires=7200
+            key=f"workers:worker:{WORKER_IDENTITY}", value=Timestamp().to_string(), expires=KVTTL.TWO_HOURS
         )
 
     async def _set_primary_api_server(self) -> None:
         result = await self.service.cache.set(
-            key=PRIMARY_API_SERVER, value=WORKER_IDENTITY, expires=15, not_exists=True
+            key=PRIMARY_API_SERVER, value=WORKER_IDENTITY, expires=KVTTL.FIFTEEN, not_exists=True
         )
         if result:
             await self.service.send(message=messages.EventWorkerNewPrimaryAPI(worker_id=WORKER_IDENTITY))
@@ -102,7 +105,7 @@ class InfrahubComponent:
             primary_id = await self.service.cache.get(key=PRIMARY_API_SERVER)
             if primary_id == WORKER_IDENTITY:
                 self.service.log.debug("Primary node set but same as ours, refreshing lifetime")
-                await self.service.cache.set(key=PRIMARY_API_SERVER, value=WORKER_IDENTITY, expires=15)
+                await self.service.cache.set(key=PRIMARY_API_SERVER, value=WORKER_IDENTITY, expires=KVTTL.FIFTEEN)
 
 
 class WorkerInfo:

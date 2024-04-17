@@ -2,7 +2,7 @@ from infrahub import config
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
-from infrahub.message_bus.types import MessageTTL
+from infrahub.message_bus.types import KVTTL, MessageTTL
 from infrahub.services import InfrahubServices
 
 log = get_logger()
@@ -53,7 +53,7 @@ async def execution(message: messages.FinalizeValidatorExecution, service: Infra
 
     if missing_checks:
         remaining_checks = ",".join(missing_checks)
-        await service.cache.set(key=checks_key, value=remaining_checks, expires=7200)
+        await service.cache.set(key=checks_key, value=remaining_checks, expires=KVTTL.TWO_HOURS)
         current_time = Timestamp()
         starting_time = Timestamp(message.start_time)
         deadline = starting_time.add_delta(seconds=config.SETTINGS.miscellaneous.maximum_validator_execution_time)

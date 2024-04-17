@@ -55,10 +55,12 @@ Memgraph is a lightweight, very fast, in-memory database that works great for te
 ### Message bus
 
 The message bus is based on RabbitMQ. It supports both a fanout channel to distribute messages to all members at the same time and a RPC framework to distribute work synchronously.
+Infrahub also supports NATS JetStream for the message bus.
 
 ### Cache
 
 The cache is based on Redis. It's mainly used as a central point to support the distributed lock systems between all the different component of the system.
+Infrahub also supports NATS JetStream for the cache.
 
 ### Git server (GitHub/GitLab)
 

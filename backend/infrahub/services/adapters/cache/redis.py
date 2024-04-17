@@ -3,6 +3,8 @@ from typing import List, Optional
 import redis.asyncio as redis
 
 from infrahub import config
+from infrahub.message_bus.types import KVTTL
+from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache import InfrahubCache
 
 
@@ -13,6 +15,9 @@ class RedisCache(InfrahubCache):
             port=config.SETTINGS.cache.service_port,
             db=config.SETTINGS.cache.database,
         )
+
+    async def initialize(self, service: InfrahubServices) -> None:
+        pass
 
     async def delete(self, key: str) -> None:
         await self.connection.delete(key)
@@ -40,6 +45,6 @@ class RedisCache(InfrahubCache):
         return [key.decode() for key in keys]
 
     async def set(
-        self, key: str, value: str, expires: Optional[int] = None, not_exists: bool = False
+        self, key: str, value: str, expires: Optional[KVTTL] = None, not_exists: bool = False
     ) -> Optional[bool]:
-        return await self.connection.set(name=key, value=value, ex=expires, nx=not_exists)
+        return await self.connection.set(name=key, value=value, ex=expires.value if expires else None, nx=not_exists)

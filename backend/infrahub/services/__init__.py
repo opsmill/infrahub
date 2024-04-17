@@ -73,6 +73,7 @@ class InfrahubServices:
         """Initialize the Services"""
         await self.component.initialize(service=self)
         await self.message_bus.initialize(service=self)
+        await self.cache.initialize(service=self)
         await self.scheduler.initialize(service=self)
 
     async def shutdown(self) -> None:

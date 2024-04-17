@@ -18,7 +18,9 @@ from infrahub.git.actions import sync_remote_repositories
 from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
 from infrahub.services import InfrahubServices
+from infrahub.services.adapters.cache.nats import NATSCache
 from infrahub.services.adapters.cache.redis import RedisCache
+from infrahub.services.adapters.message_bus.nats import NATSMessageBus
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.trace import configure_trace
 
@@ -79,19 +81,27 @@ async def _start(debug: bool, port: int) -> None:
             exporter_protocol=config.SETTINGS.trace.exporter_protocol,
         )
 
-    # Initialize the lock
-    initialize_lock()
-
     driver = await get_db()
     database = InfrahubDatabase(driver=driver)
+
+    message_bus = config.OVERRIDE.message_bus or (
+        NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
+    )
+    cache = config.OVERRIDE.cache or (
+        NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
+    )
+
     service = InfrahubServices(
-        cache=RedisCache(),
+        cache=cache,
         client=client,
         database=database,
-        message_bus=RabbitMQMessageBus(),
+        message_bus=message_bus,
         component_type=ComponentType.GIT_AGENT,
     )
     await service.initialize()
+
+    # Initialize the lock
+    initialize_lock(service=service)
 
     async with service.database.start_session() as db:
         await initialization(db=db)
@@ -101,6 +111,8 @@ async def _start(debug: bool, port: int) -> None:
     await initialize_git_agent(service=service)
 
     build_component_registry()
+
+    log.info("Initialized Git Agent ...")
 
     while not shutdown_event.is_set():
         await asyncio.sleep(1)

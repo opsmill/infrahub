@@ -1,3 +1,5 @@
+from typing import Optional
+
 import ujson
 
 from infrahub.message_bus import RPCErrorResponse, messages
@@ -74,7 +76,7 @@ COMMAND_MAP = {
 }
 
 
-async def execute_message(routing_key: str, message_body: bytes, service: InfrahubServices):
+async def execute_message(routing_key: str, message_body: bytes, service: InfrahubServices) -> Optional[MessageTTL]:
     message_data = ujson.loads(message_body)
     message = messages.MESSAGE_MAP[routing_key](**message_data)
     message.set_log_data(routing_key=routing_key)
@@ -84,10 +86,11 @@ async def execute_message(routing_key: str, message_body: bytes, service: Infrah
         if message.reply_requested:
             response = RPCErrorResponse(errors=[str(exc)], initial_message=message.model_dump())
             await service.reply(message=response, initiator=message)
-            return
+            return None
         if message.reached_max_retries:
             service.log.exception("Message failed after maximum number of retries", error=exc)
             await set_check_status(message, conclusion="failure", service=service)
-            return
+            return None
         message.increase_retry_count()
         await service.send(message, delay=MessageTTL.FIVE)
+        return MessageTTL.FIVE

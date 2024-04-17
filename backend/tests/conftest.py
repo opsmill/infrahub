@@ -150,6 +150,8 @@ def execute_before_any_test(worker_id, tmpdir_factory):
             db_id = 1
 
         config.SETTINGS.cache.address = f"{BUILD_NAME}-cache-{db_id}"
+        if config.SETTINGS.cache.driver == config.CacheDriver.NATS:
+            config.SETTINGS.cache.address = f"{BUILD_NAME}-message-queue-{db_id}"
         config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
         config.SETTINGS.broker.address = f"{BUILD_NAME}-message-queue-{db_id}"
         config.SETTINGS.storage.local = config.FileSystemStorageSettings(path="/opt/infrahub/storage")
