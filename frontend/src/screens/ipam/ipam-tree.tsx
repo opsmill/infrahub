@@ -1,9 +1,181 @@
-import Tree from "../../components/display/tree";
+import { Tree, TreeProps } from "../../components/ui/tree";
+import { useLazyQuery } from "../../hooks/useQuery";
+import { gql } from "@apollo/client";
+import React, { useEffect, useState } from "react";
+import { Spinner } from "../../components/ui/spinner";
+import { ITreeViewOnLoadDataProps } from "react-accessible-treeview";
+
+const GET_PREFIXES = gql`
+  query GET_PREFIXES($parentIds: [ID!]) {
+    IpamIPPrefix(parent__ids: $parentIds) {
+      edges {
+        node {
+          id
+          display_label
+          parent {
+            node {
+              id
+            }
+          }
+          children {
+            count
+          }
+          ip_addresses {
+            count
+          }
+        }
+      }
+    }
+    IpamIPAddress(ip_prefix__ids: $parentIds) {
+      edges {
+        node {
+          id
+          display_label
+          ip_prefix {
+            node {
+              id
+              display_label
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+type PrefixNode = {
+  id: string;
+  display_label: string;
+  parent: string | null;
+  children: string[];
+  isBranch: boolean;
+  icon: string | null;
+  count: number;
+  ipCount?: number;
+};
+
+type PrefixEdge = {
+  node: PrefixNode & {
+    parent: {
+      node: {
+        id: string;
+        display_label: string;
+      } | null;
+    };
+    utilization: {
+      value: number;
+    };
+    children: {
+      count: number;
+    };
+    descendants: {
+      count: number;
+    };
+    ip_addresses: {
+      count: number;
+    };
+  };
+};
+
+type PrefixData = {
+  IpamIPPrefix: {
+    edges: PrefixEdge[];
+  };
+  IpamIPAddress: {
+    edges: {
+      node: {
+        id: string;
+        display_label: string;
+        ip_prefix: {
+          node: {
+            id: string;
+            display_label: string;
+          } | null;
+        };
+      };
+    }[];
+  };
+};
+
+const toTreeNodeFormat = (data: PrefixData): TreeProps["data"] => {
+  const prefixes = data.IpamIPPrefix.edges.map(({ node }) => ({
+    id: node.id,
+    name: node.display_label,
+    parent: node.parent.node?.id ?? "root",
+    children: [],
+    isBranch: node.children.count > 0 || node.ip_addresses.count > 0,
+    category: "IP_PREFIX",
+  }));
+
+  const ipAddresses = data.IpamIPAddress.edges.map(({ node }) => ({
+    id: node.id,
+    name: node.display_label,
+    parent: node.ip_prefix.node?.id ?? "root",
+    children: [],
+    isBranch: false,
+    category: "IP_ADDRESS",
+  }));
+
+  return [...prefixes, ...ipAddresses];
+};
+
+const updateTreeData = (list: TreeProps["data"], id: string, children: TreeProps["data"]) => {
+  const data = list.map((node) => {
+    if (node.id === id) {
+      node.children = children.map((el) => {
+        return el.id;
+      });
+    }
+    return node;
+  });
+  return [...data, ...children];
+};
 
 export default function IpamTree() {
+  const [treeData, setTreeData] = useState<TreeProps["data"]>([
+    {
+      id: "root",
+      name: "",
+      parent: null,
+      children: [],
+      isBranch: true,
+    },
+  ]);
+  const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds: string[] }>(GET_PREFIXES);
+
+  useEffect(() => {
+    fetchPrefixes().then(({ data }) => {
+      if (!data) return;
+
+      const treeNodes = toTreeNodeFormat(data);
+
+      const rootTreeNodes = treeNodes.filter(({ parent }) => parent === "root");
+
+      // assign all prefixes and IP addresses without parent to the root node
+      setTreeData((tree) => updateTreeData(tree, "root", rootTreeNodes));
+    });
+  }, []);
+
+  if (treeData.length === 1) return <Spinner />;
+
+  const onLoadData = async ({ element }: ITreeViewOnLoadDataProps) => {
+    if (element.children.length > 0) return;
+
+    const { data } = await fetchPrefixes({
+      variables: { parentIds: [element.id.toString()] },
+    });
+
+    if (!data) return;
+
+    const treeNodes = toTreeNodeFormat(data);
+    setTreeData((tree) => updateTreeData(tree, element.id.toString(), treeNodes));
+  };
+
   return (
-    <div>
-      <Tree />
-    </div>
+    <nav className="min-w-48">
+      <h3 className="font-semibold mb-2">Navigation</h3>
+
+      <Tree data={treeData} onLoadData={onLoadData} />
+    </nav>
   );
 }
