@@ -1,38 +1,80 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { StringParam, useQueryParam } from "use-query-params";
 import { Tabs } from "../../components/tabs";
-import IpamIPAddress from "./ipam-ip-address";
-import { IPAM_QSP, IPAM_TABS } from "./prefixes/constants";
+import { IPAM_QSP, IPAM_TABS } from "./constants";
+import IpamIPAddress from "./ip-addresses/ipam-ip-address";
 import IpamIPPrefixes from "./prefixes/ipam-prefixes";
 
-const tabs = [
-  {
-    label: "Summary",
-    name: IPAM_TABS.SUMMARY,
-  },
-  {
-    label: "Prefix Details",
-    name: IPAM_TABS.PREFIX_DETAILS,
-  },
-  {
-    label: "IP Details",
-    name: IPAM_TABS.IP_DETAILS,
-  },
-];
-
 export default function IpamRouter() {
+  const [qspTab] = useQueryParam(IPAM_QSP, StringParam);
+  const navigate = useNavigate();
+  const { prefix } = useParams();
+
+  const tabs = [
+    {
+      label: "Summary",
+      name: IPAM_TABS.SUMMARY,
+      onClick: () => {
+        if (prefix) {
+          navigate(`/ipam/prefixes/${encodeURIComponent(prefix)}`);
+          return;
+        }
+
+        navigate("/ipam/prefixes");
+        return;
+      },
+    },
+    {
+      label: "Prefix Details",
+      name: IPAM_TABS.PREFIX_DETAILS,
+      onClick: () => {
+        if (prefix) {
+          navigate(
+            `/ipam/prefixes/${encodeURIComponent(prefix)}?${IPAM_QSP}=${IPAM_TABS.PREFIX_DETAILS}`
+          );
+          return;
+        }
+
+        navigate(`/ipam/prefixes?${IPAM_QSP}=${IPAM_TABS.PREFIX_DETAILS}`);
+        return;
+      },
+    },
+    {
+      label: "IP Details",
+      name: IPAM_TABS.IP_DETAILS,
+      onClick: () => {
+        if (prefix) {
+          navigate(
+            `/ipam/prefixes/${encodeURIComponent(prefix)}?${IPAM_QSP}=${IPAM_TABS.IP_DETAILS}`
+          );
+          return;
+        }
+
+        navigate(`/ipam/ip-addresses?${IPAM_QSP}=${IPAM_TABS.IP_DETAILS}`);
+        return;
+      },
+    },
+  ];
+
+  const renderContent = () => {
+    switch (qspTab) {
+      case IPAM_TABS.IP_DETAILS: {
+        return <IpamIPAddress />;
+      }
+      case IPAM_TABS.PREFIX_DETAILS: {
+        return <IpamIPPrefixes />;
+      }
+      default: {
+        return <IpamIPPrefixes />;
+      }
+    }
+  };
+
   return (
     <div>
       <Tabs tabs={tabs} qsp={IPAM_QSP} />
 
-      <div className="m-4">
-        <Routes>
-          {/* <Route path="/:namespace" element={<IpamNamespaces />} /> */}
-          <Route path="/ip-addresses/:ipaddress" element={<IpamIPAddress />} />
-          <Route path="/prefixes/:prefix" element={<IpamIPPrefixes />} />
-          <Route path="/prefixes" element={<IpamIPPrefixes />} />
-          <Route path="/" element={<Navigate to="/ipam/prefixes" />} />
-        </Routes>
-      </div>
+      <div className="m-4">{renderContent()}</div>
     </div>
   );
 }

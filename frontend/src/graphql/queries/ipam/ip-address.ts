@@ -1,8 +1,8 @@
 import { gql } from "@apollo/client";
 
-export const GET_IP_ADDRESS = gql`
-  query IpamIPAddress($ids: [String!]) {
-    IpamIPAddress(ip_prefix__ids: $ids) {
+export const GET_IP_ADDRESSES = gql`
+  query IpamIPAddress($prefix: String, $ipaddress: String) {
+    IpamIPAddress(ip_prefix__prefix__value: $prefix, address__value: $ipaddress) {
       edges {
         node {
           id
