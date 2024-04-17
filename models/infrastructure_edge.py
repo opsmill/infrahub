@@ -1,7 +1,7 @@
 import logging
 import uuid
 from collections import defaultdict
-from ipaddress import IPv4Network
+from ipaddress import IPv4Network, IPv6Network
 from typing import Dict, List
 
 from infrahub_sdk import UUIDT, InfrahubClient, InfrahubNode, NodeStore
@@ -48,7 +48,9 @@ DEVICES = (
 
 
 NETWORKS_SUPERNET = IPv4Network("10.0.0.0/8")
+NETWORKS_SUPERNET_IPV6 = IPv6Network("2001:DB8::/96")
 NETWORKS_POOL_INTERNAL = list(NETWORKS_SUPERNET.subnets(new_prefix=16))
+NETWORKS_POOL_INTERNAL_IPV6 = list(NETWORKS_SUPERNET_IPV6.subnets(new_prefix=120))
 LOOPBACK_POOL = NETWORKS_POOL_INTERNAL[0].hosts()
 P2P_NETWORK_POOL = NETWORKS_POOL_INTERNAL[1].subnets(new_prefix=31)
 NETWORKS_POOL_EXTERNAL_SUPERNET = IPv4Network("203.0.113.0/24")
@@ -239,6 +241,7 @@ GROUPS = (
     ("cisco_devices", "Cisco Devices"),
     ("arista_devices", "Arista Devices"),
     ("upstream_interfaces", "Upstream Interface"),
+    ("backbone_interfaces", "Backbone Interface"),
 )
 
 BGP_PEER_GROUPS = (
@@ -249,6 +252,12 @@ BGP_PEER_GROUPS = (
     ("IX_DEFAULT", "IMPORT_IX", "EXPORT_PUBLIC_PREFIX", "Duff", None),
 )
 
+INTERFACE_PROFILES = (
+    # profile_name, mtu
+    ("upstream_profile", 1500, "InterfaceL3"),
+    ("backbone_profile", 9216, "InterfaceL3"),
+)
+
 VLANS = (
     ("200", "server"),
     ("400", "management"),
@@ -256,6 +265,47 @@ VLANS = (
 
 store = NodeStore()
 
+
+async def create_profile(client: InfrahubClient, profile_type: str, data: dict, branch: str) -> Dict:
+    data_fields = ", ".join(f"{key}: {{value: \"{value}\"}}" if isinstance(value, str) else f"{key}: {{value: {value}}}" for key, value in data.items())
+
+    query = f"""
+    mutation {{
+      Profile{profile_type}Create(
+        data: {{
+          {data_fields}
+        }}
+      ) {{
+        ok
+        object {{
+          id
+        }}
+      }}
+    }}
+    """
+
+    return await client.execute_graphql(query=query, branch_name=branch)
+
+async def update_interface_add_profile(client: InfrahubClient, obj: InfrahubNode, profile_id: str, branch: str) -> Dict:
+    obj_id = obj.id
+    mutation_type = f"{obj._schema.kind}Update"
+    query = f"""
+    mutation {{
+      {mutation_type}(
+        data: {{
+          id: "{obj_id}",
+          profiles: {{ id: "{profile_id}" }}
+        }}
+      ) {{
+        ok
+        object {{
+          id
+        }}
+      }}
+    }}
+    """
+
+    return await client.execute_graphql(query=query, branch_name=branch)
 
 async def group_add_member(client: InfrahubClient, group: InfrahubNode, members: List[InfrahubNode], branch: str):
     members_str = ["{ id: " + f'"{member.id}"' + " }" for member in members]
@@ -291,6 +341,9 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
     group_cisco_devices = store.get(kind="CoreStandardGroup", key="cisco_devices")
     group_arista_devices = store.get(kind="CoreStandardGroup", key="arista_devices")
     group_upstream_interfaces = store.get(kind="CoreStandardGroup", key="upstream_interfaces")
+    group_backbone_interfaces = store.get(kind="CoreStandardGroup", key="backbone_interfaces")
+    upstream_interfaces = []
+    backbone_interfaces = []
 
     country = store.get(kind="LocationCountry", key=site["country"])
     # --------------------------------------------------
@@ -437,11 +490,15 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             store.set(key=f"{device_name}-l3-{intf_idx}", node=intf)
             if intf_role == "backbone":
                 INTERFACE_OBJS[device_name].append(intf)
+                backbone_interfaces.append(intf)
 
             subnet = None
             address = None
             if intf_role == "peer":
                 address = f"{str(next(peer_network_hosts[intf_idx]))}/31"
+
+            if intf_role == "upstream":
+                upstream_interfaces.append(intf)
 
             if intf_role in ["upstream", "peering"] and "edge" in device_role:
                 subnet = next(NETWORKS_POOL_EXTERNAL)
@@ -569,6 +626,21 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         await intf2.save()
 
         log.info(f" - Connected '{site_name}-edge1::{intf1.name.value}' <> '{site_name}-edge2::{intf2.name.value}'")
+
+    # --------------------------------------------------
+    # Update upstream & backbone Groups with the associated interfaces of the site
+    # --------------------------------------------------
+    if len(upstream_interfaces) > 0:
+        upstream_interface_ids = [interface.id for interface in upstream_interfaces]
+        await group_upstream_interfaces.add_relationships(relation_to_update="members", related_nodes=upstream_interface_ids)
+    if len(backbone_interfaces) > 0:
+        backbone_interface_ids = [interface.id for interface in backbone_interfaces]
+        await group_backbone_interfaces.add_relationships(relation_to_update="members", related_nodes=backbone_interface_ids)
+
+    # --------------------------------------------------
+    # Apply profile on upstream & backbone interfaces
+    # --------------------------------------------------
+    # TODO
 
     # --------------------------------------------------
     # Create iBGP Sessions within the Site
@@ -1078,11 +1150,57 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         MANAGEMENT_NETWORKS,
         NETWORKS_POOL_INTERNAL[0],
         NETWORKS_POOL_INTERNAL[1],
+        NETWORKS_POOL_INTERNAL[2],
         NETWORKS_POOL_EXTERNAL_SUPERNET,
+        NETWORKS_SUPERNET_IPV6,
     ]:
         obj = await client.create(branch=branch, kind="IpamIPPrefix", prefix=str(network), member_type="prefix")
         await obj.save()
+    # ------------------------------------------
+    # Create Pool IPv6 prefixes
+    # ------------------------------------------
+    for network in [
+        NETWORKS_POOL_INTERNAL_IPV6[0],
+        NETWORKS_POOL_INTERNAL_IPV6[1],
+        NETWORKS_POOL_INTERNAL_IPV6[2],
+    ]:
+        obj = await client.create(branch=branch, kind="IpamIPPrefix", is_pool=True, prefix=str(network), member_type="prefix")
+        await obj.save()
     log.debug(f"IP Prefixes Creation Completed")
+    # ------------------------------------------
+    # Create IPv6 IP from IPv6 Prefix pool
+    # ------------------------------------------
+    ipv6_addresses = []
+    for network in NETWORKS_POOL_INTERNAL_IPV6[:1]:
+        ipv6_addresses.extend(list(network.hosts()))
+    batch = await client.create_batch()
+    for ipv6_addr in ipv6_addresses:
+        obj = await client.create(
+            branch=branch,
+            kind="IpamIPAddress",
+            address={"value": ipv6_addr, "source": account_pop.id},
+        )
+        batch.add(task=obj.save, node=obj)
+
+    async for _, response in batch.execute():
+        log.debug(f"{response} - Creation Completed")
+
+    # ------------------------------------------
+    # Create Profiles
+    # ------------------------------------------
+    # FIXME when profile are present in the SDK
+    profile_id_map = {}
+    for intf_profile in INTERFACE_PROFILES:
+        data_profile = {
+            "profile_name": intf_profile[0],
+            "mtu": intf_profile[1]
+        }
+        profile_type = f"Infra{intf_profile[2]}"
+        created_profile = await create_profile(client=client, profile_type=profile_type, data=data_profile, branch=branch)
+        profile_key = f"Profile{profile_type}Create"
+        if created_profile[profile_key]["ok"]:
+            profile_id = created_profile[profile_key]["object"]["id"]
+            profile_id_map[intf_profile[0]] = profile_id
 
     # ------------------------------------------
     # Create Sites
@@ -1095,6 +1213,27 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
 
     async for _, response in batch.execute():
         log.debug(f"{response} - Creation Completed")
+
+    # ------------------------------------------
+    # Add profile on interfaces upstream/backbone
+    # ------------------------------------------
+    # FIXME - Could do it better
+    upstream_interfaces = await client.filters(
+        branch=branch,
+        kind="InfraInterfaceL3",
+        role__value="upstream"
+    )
+    backbone_interfaces = await client.filters(
+        branch=branch,
+        kind="InfraInterfaceL3",
+        role__value="backbone"
+    )
+    for interface in upstream_interfaces:
+        profile_id = profile_id_map["upstream_profile"]
+        await update_interface_add_profile(client=client, obj=interface, profile_id=profile_id, branch=branch)
+    for interface in backbone_interfaces:
+        profile_id = profile_id_map["backbone_profile"]
+        await update_interface_add_profile(client=client, obj=interface, profile_id=profile_id, branch=branch)
 
     # --------------------------------------------------
     # CREATE Full Mesh iBGP SESSION between all the Edge devices
