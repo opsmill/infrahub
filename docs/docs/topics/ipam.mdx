@@ -57,6 +57,14 @@ IPAM generics and nodes that inherit from them have relationships and a hierarch
 
 To simplify day-to-day usage and prevent from doing many operations via the user interface or the GraphQL API, relationships for IP prefixes and IP addresses are automatically managed. This implies that when an IP prefix is created, relations with a parent prefix, children prefixes and IP addresses that belong to it will be discovered automatically. Same goes when an IP address is created, the more specific prefix it belongs to will be automatically discovered. This will result in trees of IP prefixes and IP addresses being built. Building these hierarchies/trees allows Infrahub to determine how IP prefixes and IP addresses are nested as well as computing utilization of the recorded IP spaces.
 
+### Prefix utilization
+
+By default, IP prefixes have a read-only field called `utilization`. This field value is computed on the fly based on the value of the `member_type` field. Member type refers to the kind of objects that an IP prefix serves as a container of. It can be either other prefixes or IP addresses.
+
+When the member type value is set to "prefix", the utilization of the IP prefix will be computed using the children prefixes and their sizes. For example, if `192.0.2.0/24` has one subnet, `192.0.2.0/26`, it's utilization will report 25%.
+
+When the member type value is set to "address", the utilization of the IP prefix will be computed using the number of IP addresses it contains. For example, subnet `192.0.2.0/26` can have up to 62 IP addresses once network and broadcast addresses excluded. So if this subnet has 20 IP addresses, its utilization will report 32%. Broadcast and network addresses can be taken into account while computing utilization for IPv4 prefixes if the `is_pool` value is set to `true` (checkbox checked) or if the prefix' length is 31 as defined in [RFC 3021](https://datatracker.ietf.org/doc/html/rfc3021).
+
 ### GraphQL query and mutation examples
 
 Creating a schema inheriting the IPAM generics will generate GraphQL queries and mutations related to the defined schema. Below a few examples matching the schema defined in a previous section.
