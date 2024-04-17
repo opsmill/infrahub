@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from pydantic import BaseModel, Field, computed_field, model_validator
@@ -43,38 +43,27 @@ class APISchemaMixin:
         data["hash"] = schema.get_hash()
         return cls(**data)
 
+    @model_validator(mode="before")
+    @classmethod
+    def set_kind(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            values["kind"] = f'{values["namespace"]}{values["name"]}'
+        return values
+
 
 class APINodeSchema(NodeSchema, APISchemaMixin):
     api_kind: Optional[str] = Field(default=None, alias="kind", validate_default=True)
     hash: str
-
-    @model_validator(mode="before")
-    @classmethod
-    def set_kind(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        values["kind"] = f'{values["namespace"]}{values["name"]}'
-        return values
 
 
 class APIGenericSchema(GenericSchema, APISchemaMixin):
     api_kind: Optional[str] = Field(default=None, alias="kind", validate_default=True)
     hash: str
 
-    @model_validator(mode="before")
-    @classmethod
-    def set_kind(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        values["kind"] = f'{values["namespace"]}{values["name"]}'
-        return values
-
 
 class APIProfileSchema(ProfileSchema, APISchemaMixin):
     api_kind: Optional[str] = Field(default=None, alias="kind", validate_default=True)
     hash: str
-
-    @model_validator(mode="before")
-    @classmethod
-    def set_kind(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        values["kind"] = f'{values["namespace"]}{values["name"]}'
-        return values
 
 
 class SchemaReadAPI(BaseModel):

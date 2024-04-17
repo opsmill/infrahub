@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import Field
 
-from infrahub.core.constants import HashableModelState
+from infrahub.core.constants import AllowOverrideType, HashableModelState
 from infrahub.core.models import HashableModel
 from infrahub.core.schema.dropdown import DropdownChoice  # noqa: TCH001
 
@@ -103,4 +103,9 @@ class GeneratedAttributeSchema(HashableModel):
         default=HashableModelState.PRESENT,
         description="Expected state of the attribute after loading the schema",
         json_schema_extra={"update": "not_applicable"},
+    )
+    allow_override: AllowOverrideType = Field(
+        default=AllowOverrideType.ANY,
+        description="Type of allowed override for the attribute.",
+        json_schema_extra={"update": "allowed"},
     )
