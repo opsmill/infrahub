@@ -42,6 +42,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'guides/installation',
         'guides/create-schema',
+        'guides/generator',
         'guides/repository',
         'guides/jinja2-transform',
         'guides/python-transform',
@@ -61,6 +62,7 @@ const sidebars: SidebarsConfig = {
         'topics/check',
 	      'topics/hardware-requirements',
         'topics/local-demo-environment',
+        'topics/generator',
         'topics/graphql',
         'topics/object-storage',
         'topics/version-control',

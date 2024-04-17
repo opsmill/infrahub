@@ -29,6 +29,7 @@ eslint
 excalidraw
 fanout
 file_path
+generator_definition
 generator_definitions
 github
 graphene
