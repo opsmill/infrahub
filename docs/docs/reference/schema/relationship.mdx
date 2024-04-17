@@ -15,6 +15,7 @@ Below is the list of all available options to define a Relationship in the schem
 
 | Name | Type | Description | Mandatory |
 | ---- | ---- | ---- | --------- |
+| [**allow_override**](#allow_override) | Attribute | Type of allowed override for the relationship. | False |
 | [**branch**](#branch) | Attribute | Type of branch support for the relatioinship, if not defined it will be determine based both peers. | False |
 | [**cardinality**](#cardinality) | Attribute | Defines how many objects are expected on the other side of the relationship. | False |
 | [**description**](#description) | Attribute | Short description of the relationship. | False |
@@ -33,6 +34,18 @@ Below is the list of all available options to define a Relationship in the schem
 | [**state**](#state) | Attribute | Expected state of the relationship after loading the schema | False |
 
 ## Reference Guide
+
+### allow_override
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | allow_override |
+| **Kind** | `Text` |
+| **Description** | Type of allowed override for the relationship. |
+| **Optional** | True |
+| **Default Value** | any |
+| **Constraints** |  |
+| **Accepted Values** | `none` `any`  |
 
 ### branch
 

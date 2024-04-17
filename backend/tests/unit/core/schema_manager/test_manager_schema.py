@@ -8,6 +8,7 @@ from infrahub_sdk.utils import compare_lists
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
+    AllowOverrideType,
     BranchSupportType,
     FilterSchemaKind,
     HashableModelState,
@@ -147,6 +148,91 @@ async def test_schema_branch_add_groups(schema_all_in_one):
     std_group = schema.get(name=InfrahubKind.STANDARDGROUP)
     assert std_group.get_relationship_or_none(name="member_of_groups") is None
     assert std_group.get_relationship_or_none(name="subscriber_of_groups") is None
+
+
+@pytest.mark.parametrize(
+    "schema_dict,expected_error",
+    [
+        (
+            {
+                "nodes": [
+                    {
+                        "name": "Criticality",
+                        "namespace": "Test",
+                        "inherit_from": ["InfraGenericInterface"],
+                        "default_filter": "name__value",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                        "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+                    },
+                    {
+                        "name": "Status",
+                        "namespace": "Test",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                        "attributes": [{"name": "name", "kind": "Text", "label": "Name", "unique": True}],
+                    },
+                ],
+                "generics": [
+                    {
+                        "name": "GenericInterface",
+                        "namespace": "Infra",
+                        "attributes": [{"name": "name", "kind": "Text", "allow_override": AllowOverrideType.NONE}],
+                        "relationships": [
+                            {"name": "status", "peer": "TestStatus", "optional": True, "cardinality": "one"}
+                        ],
+                    },
+                ],
+            },
+            "TestCriticality's attribute name inherited from InfraGenericInterface cannot be overriden",
+        ),
+        (
+            {
+                "nodes": [
+                    {
+                        "name": "Criticality",
+                        "namespace": "Test",
+                        "inherit_from": ["InfraGenericInterface"],
+                        "default_filter": "name__value",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                        "relationships": [
+                            {"name": "status", "peer": "BuiltinStatus", "optional": True, "cardinality": "one"}
+                        ],
+                    },
+                    {
+                        "name": "Status",
+                        "namespace": "Test",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                        "attributes": [{"name": "name", "kind": "Text", "label": "Name", "unique": True}],
+                    },
+                ],
+                "generics": [
+                    {
+                        "name": "GenericInterface",
+                        "namespace": "Infra",
+                        "attributes": [{"name": "name", "kind": "Text"}],
+                        "relationships": [
+                            {
+                                "name": "status",
+                                "peer": "TestStatus",
+                                "optional": True,
+                                "cardinality": "one",
+                                "allow_override": AllowOverrideType.NONE,
+                            }
+                        ],
+                    },
+                ],
+            },
+            "TestCriticality's relationship status inherited from InfraGenericInterface cannot be overriden",
+        ),
+    ],
+)
+async def test_schema_protected_generics(schema_dict, expected_error):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_dict))
+
+    with pytest.raises(ValueError) as exc:
+        schema.process_inheritance()
+
+    assert str(exc.value) == expected_error
 
 
 async def test_schema_branch_generate_weight(schema_all_in_one):

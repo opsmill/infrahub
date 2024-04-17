@@ -7,6 +7,7 @@ from typing import Optional
 from pydantic import Field
 
 from infrahub.core.constants import (
+    AllowOverrideType,
     BranchSupportType,
     HashableModelState,
     RelationshipCardinality,
@@ -120,5 +121,10 @@ class GeneratedRelationshipSchema(HashableModel):
     on_delete: Optional[RelationshipDeleteBehavior] = Field(
         default=None,
         description="Default is no-action. If cascade, related node(s) are deleted when this node is deleted.",
+        json_schema_extra={"update": "allowed"},
+    )
+    allow_override: AllowOverrideType = Field(
+        default=AllowOverrideType.ANY,
+        description="Type of allowed override for the relationship.",
         json_schema_extra={"update": "allowed"},
     )
