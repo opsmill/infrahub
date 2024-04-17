@@ -74,6 +74,11 @@ class BranchConflictKeep(InfrahubStringEnum):
     SOURCE = "source"
 
 
+class AllowOverrideType(InfrahubStringEnum):
+    NONE = "none"
+    ANY = "any"
+
+
 class ContentType(InfrahubStringEnum):
     APPLICATION_JSON = "application/json"
     TEXT_PLAIN = "text/plain"

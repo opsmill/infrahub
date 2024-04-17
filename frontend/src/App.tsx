@@ -67,6 +67,10 @@ const App = () => {
           <Route path="/graphql/:branch" element={<RedirectToGraphiQLPage />} />
           <Route path="/graphql" element={<GraphiQLPage />} />
           <Route path="/schema" element={<SchemaPage />} />
+          <Route path="/ipam/ip-addresses/:ipaddress" element={<IpamPage />} />
+          <Route path="/ipam/ip-addresses" element={<IpamPage />} />
+          <Route path="/ipam/prefixes/:prefix/:ipaddress" element={<IpamPage />} />
+          <Route path="/ipam/prefixes/:prefix" element={<IpamPage />} />
           <Route path="/ipam/*" element={<IpamPage />} />
           <Route path="/" element={<Homepage />} />
           <Route path="*" element={<Navigate to="/" />} />
