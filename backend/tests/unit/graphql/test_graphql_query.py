@@ -1998,9 +1998,7 @@ async def test_query_attribute_node_property_source(
                     firstname {
                         value
                         source {
-                            name {
-                                value
-                            }
+                            id
                         }
                     }
                 }
@@ -2021,10 +2019,7 @@ async def test_query_attribute_node_property_source(
 
     assert result1.errors is None
     assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["source"]
-    assert (
-        result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["source"]["name"]["value"]
-        == first_account.name.value
-    )
+    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["source"]["id"] == first_account.id
     assert gql_params.context.related_node_ids == {p1.id, first_account.id}
 
 
@@ -2044,9 +2039,8 @@ async def test_query_attribute_node_property_owner(
                     firstname {
                         value
                         owner {
-                            name {
-                                value
-                            }
+                            id
+                            display_label
                         }
                         is_from_profile
                     }
@@ -2068,10 +2062,10 @@ async def test_query_attribute_node_property_owner(
 
     assert result1.errors is None
     assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["owner"]
-    assert (
-        result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["owner"]["name"]["value"]
-        == first_account.name.value
-    )
+    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["owner"]["id"] == first_account.id
+    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["owner"][
+        "display_label"
+    ] == await first_account.render_display_label(db=db)
     assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["is_from_profile"] is False
     assert gql_params.context.related_node_ids == {p1.id, first_account.id}
 

@@ -1139,6 +1139,9 @@ class SchemaBranch:
             if isinstance(schema, ProfileSchema) or schema.namespace == "Profile":
                 continue
 
+            if schema.kind in (InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE):
+                continue
+
             if "member_of_groups" not in schema.relationship_names:
                 if not changed:
                     schema = schema.duplicate()
