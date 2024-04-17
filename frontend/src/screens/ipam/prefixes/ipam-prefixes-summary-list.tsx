@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Table } from "../../../components/table/table";
+import { Pagination } from "../../../components/utils/pagination";
 import { IPAM_PREFIX_OBJECT } from "../../../config/constants";
 import { GET_PREFIXES } from "../../../graphql/queries/ipam/prefixes";
 import useQuery from "../../../hooks/useQuery";
@@ -62,6 +63,8 @@ export default function IpamIPPrefixesSummaryList() {
       {loading && <LoadingScreen hideText />}
 
       {data && <Table rows={rows} columns={columns} />}
+
+      <Pagination count={data && data[IPAM_PREFIX_OBJECT]?.count} />
     </div>
   );
 }
