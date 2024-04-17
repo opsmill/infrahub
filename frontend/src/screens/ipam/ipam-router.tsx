@@ -2,7 +2,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Tabs } from "../../components/tabs";
 import { IPAM_QSP, IPAM_TABS } from "./constants";
-import IpamIPAddress from "./ip-addresses/ipam-ip-address";
+import IpamIPAddresses from "./ip-addresses/ipam-ip-address";
 import IpamIPPrefixes from "./prefixes/ipam-prefixes";
 
 export default function IpamRouter() {
@@ -59,7 +59,7 @@ export default function IpamRouter() {
   const renderContent = () => {
     switch (qspTab) {
       case IPAM_TABS.IP_DETAILS: {
-        return <IpamIPAddress />;
+        return <IpamIPAddresses />;
       }
       case IPAM_TABS.PREFIX_DETAILS: {
         return <IpamIPPrefixes />;
