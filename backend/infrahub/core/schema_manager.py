@@ -1255,6 +1255,7 @@ class SchemaBranch:
             description=f"Profile for {node.kind}",
             branch=node.branch,
             include_in_menu=False,
+            inherit_from=[InfrahubKind.LINEAGESOURCE],
             default_filter="profile_name__value",
             attributes=[
                 AttributeSchema(
