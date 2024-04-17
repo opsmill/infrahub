@@ -9,6 +9,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.node import NodeGetListQuery
 from infrahub.core.registry import registry
+from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.database import InfrahubDatabase
 
@@ -239,10 +240,10 @@ async def test_query_NodeGetListQuery_filter_with_profiles(
 ):
     profile_schema = registry.schema.get("ProfileTestPerson", branch=branch, duplicate=False)
     person_profile = await Node.init(db=db, schema=profile_schema)
-    await person_profile.new(db=db, profile_name="person_profile_1", height=172, profile_priority=1001)
+    await person_profile.new(db=db, name="person_profile_1", height=172, profile_priority=1001)
     await person_profile.save(db=db)
     person_profile_2 = await Node.init(db=db, schema=profile_schema)
-    await person_profile_2.new(db=db, profile_name="person_profile_2", height=177, profile_priority=1002)
+    await person_profile_2.new(db=db, name="person_profile_2", height=177, profile_priority=1002)
     await person_profile_2.save(db=db)
 
     person_schema = registry.schema.get("TestPerson", branch=branch, duplicate=False)
@@ -277,10 +278,10 @@ async def test_query_NodeGetListQuery_order_with_profiles(
 ):
     profile_schema = registry.schema.get("ProfileTestCar", branch=branch, duplicate=False)
     car_profile_black = await Node.init(db=db, schema=profile_schema)
-    await car_profile_black.new(db=db, profile_name="car_profile_black", color="#000000", profile_priority=1001)
+    await car_profile_black.new(db=db, name="car_profile_black", color="#000000", profile_priority=1001)
     await car_profile_black.save(db=db)
     car_profile_white = await Node.init(db=db, schema=profile_schema)
-    await car_profile_white.new(db=db, profile_name="car_profile_white", color="#ffffff", profile_priority=1002)
+    await car_profile_white.new(db=db, name="car_profile_white", color="#ffffff", profile_priority=1002)
     await car_profile_white.save(db=db)
 
     car_schema = registry.schema.get("TestCar", branch=branch, duplicate=False)
@@ -312,10 +313,10 @@ async def test_query_NodeGetListQuery_with_profiles_deleted(
 ):
     profile_schema = registry.schema.get("ProfileTestCar", branch=branch, duplicate=False)
     car_profile_black = await Node.init(db=db, schema=profile_schema)
-    await car_profile_black.new(db=db, profile_name="car_profile_black", color="#000000", profile_priority=1001)
+    await car_profile_black.new(db=db, name="car_profile_black", color="#000000", profile_priority=1001)
     await car_profile_black.save(db=db)
     car_profile_white = await Node.init(db=db, schema=profile_schema)
-    await car_profile_white.new(db=db, profile_name="car_profile_white", color="#ffffff", profile_priority=1002)
+    await car_profile_white.new(db=db, name="car_profile_white", color="#ffffff", profile_priority=1002)
     await car_profile_white.save(db=db)
     await branch.rebase(db=db)
 
@@ -354,10 +355,10 @@ async def test_query_NodeGetListQuery_updated_profile_priorities_on_branch(
 ):
     profile_schema = registry.schema.get("ProfileTestCar", branch=branch, duplicate=False)
     car_profile_black = await Node.init(db=db, schema=profile_schema)
-    await car_profile_black.new(db=db, profile_name="car_profile_black", color="#000000", profile_priority=1001)
+    await car_profile_black.new(db=db, name="car_profile_black", color="#000000", profile_priority=1001)
     await car_profile_black.save(db=db)
     car_profile_white = await Node.init(db=db, schema=profile_schema)
-    await car_profile_white.new(db=db, profile_name="car_profile_white", color="#ffffff", profile_priority=1002)
+    await car_profile_white.new(db=db, name="car_profile_white", color="#ffffff", profile_priority=1002)
     await car_profile_white.save(db=db)
     car_schema = registry.schema.get("TestCar", branch=branch, duplicate=False)
     car = await NodeManager.get_one(db=db, id=car_camry_main.id, branch=default_branch)
@@ -399,10 +400,10 @@ async def test_query_NodeGetListQuery_updated_profile_attributes_on_branch(
 ):
     profile_schema = registry.schema.get("ProfileTestCar", branch=branch, duplicate=False)
     car_profile_black = await Node.init(db=db, schema=profile_schema)
-    await car_profile_black.new(db=db, profile_name="car_profile_black", color="#000000", profile_priority=1001)
+    await car_profile_black.new(db=db, name="car_profile_black", color="#000000", profile_priority=1001)
     await car_profile_black.save(db=db)
     car_profile_white = await Node.init(db=db, schema=profile_schema)
-    await car_profile_white.new(db=db, profile_name="car_profile_white", color="#ffffff", profile_priority=1002)
+    await car_profile_white.new(db=db, name="car_profile_white", color="#ffffff", profile_priority=1002)
     await car_profile_white.save(db=db)
     car_schema = registry.schema.get("TestCar", branch=branch, duplicate=False)
     car = await NodeManager.get_one(db=db, id=car_camry_main.id, branch=default_branch)
@@ -450,10 +451,10 @@ async def test_query_NodeGetListQuery_updated_profile_attributes_nulled_on_branc
 ):
     profile_schema = registry.schema.get("ProfileTestCar", branch=branch, duplicate=False)
     car_profile_black = await Node.init(db=db, schema=profile_schema)
-    await car_profile_black.new(db=db, profile_name="car_profile_black", color="#000000", profile_priority=1001)
+    await car_profile_black.new(db=db, name="car_profile_black", color="#000000", profile_priority=1001)
     await car_profile_black.save(db=db)
     car_profile_white = await Node.init(db=db, schema=profile_schema)
-    await car_profile_white.new(db=db, profile_name="car_profile_white", color="#ffffff", profile_priority=1002)
+    await car_profile_white.new(db=db, name="car_profile_white", color="#ffffff", profile_priority=1002)
     await car_profile_white.save(db=db)
     car_schema = registry.schema.get("TestCar", branch=branch, duplicate=False)
     car = await NodeManager.get_one(db=db, id=car_camry_main.id, branch=default_branch)
@@ -480,3 +481,71 @@ async def test_query_NodeGetListQuery_updated_profile_attributes_nulled_on_branc
     query = await NodeGetListQuery.init(db=db, branch=branch, schema=car_schema, filters={"color__value": "#ffffff"})
     await query.execute(db=db)
     assert set(query.get_node_ids()) == {car_camry_main.id, car_volt_main.id}
+
+
+async def test_query_NodeGetListQuery_restricted_profile_attributes_not_included(
+    db: InfrahubDatabase,
+    car_camry_main,
+    car_accord_main,
+    car_volt_main,
+    branch: Branch,
+    default_branch: Branch,
+):
+    SCHEMA = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "level", "kind": "Number", "optional": True},
+            {"name": "fancy", "kind": "Text", "optional": True},
+            {"name": "description", "kind": "Text", "optional": True},
+        ],
+    }
+
+    tmp_schema = NodeSchema(**SCHEMA)
+    registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
+    registry.schema.process_schema_branch(name=default_branch.name)
+
+    profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch, duplicate=False)
+    crit_prof_1 = await Node.init(db=db, schema=profile_schema)
+    await crit_prof_1.new(db=db, name="crit_prof_1", description="crit_prof_1_description", profile_priority=1001)
+    await crit_prof_1.save(db=db)
+    crit_prof_2 = await Node.init(db=db, schema=profile_schema)
+    await crit_prof_2.new(db=db, name="crit_prof_2", description="crit_prof_2_description", profile_priority=1002)
+    await crit_prof_2.save(db=db)
+
+    crit_schema = registry.schema.get("TestCriticality", branch=branch, duplicate=False)
+    crit_1 = await Node.init(db=db, schema=crit_schema)
+    await crit_1.new(db=db, name="crit_1", profiles=[crit_prof_1])
+    await crit_1.save(db=db)
+    crit_2 = await Node.init(db=db, schema=crit_schema)
+    await crit_2.new(db=db, name="crit_2", profiles=[crit_prof_2])
+    await crit_2.save(db=db)
+
+    query = await NodeGetListQuery.init(
+        db=db, branch=branch, schema=crit_schema, filters={"name__value": "crit_prof_1"}
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == []
+    query = await NodeGetListQuery.init(
+        db=db, branch=branch, schema=crit_schema, filters={"name__value": "crit_prof_2"}
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == []
+    query = await NodeGetListQuery.init(db=db, branch=branch, schema=crit_schema, filters={"name__value": "crit_1"})
+    await query.execute(db=db)
+    assert query.get_node_ids() == [crit_1.id]
+    query = await NodeGetListQuery.init(db=db, branch=branch, schema=crit_schema, filters={"name__value": "crit_2"})
+    await query.execute(db=db)
+    assert query.get_node_ids() == [crit_2.id]
+    query = await NodeGetListQuery.init(
+        db=db, branch=branch, schema=crit_schema, filters={"description__value": "crit_prof_1_description"}
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == []
+    query = await NodeGetListQuery.init(
+        db=db, branch=branch, schema=crit_schema, filters={"description__value": "crit_prof_2_description"}
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == []

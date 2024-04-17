@@ -107,10 +107,10 @@ async def test_query_NodeListGetInfoQuery_with_profiles(
 ):
     profile_schema = registry.schema.get("ProfileTestPerson", branch=branch)
     person_profile = await Node.init(db=db, schema=profile_schema)
-    await person_profile.new(db=db, profile_name="person_profile_1", height=172, profile_priority=1001)
+    await person_profile.new(db=db, name="person_profile_1", height=172, profile_priority=1001)
     await person_profile.save(db=db)
     person_profile_2 = await Node.init(db=db, schema=profile_schema)
-    await person_profile_2.new(db=db, profile_name="person_profile_2", height=177, profile_priority=1002)
+    await person_profile_2.new(db=db, name="person_profile_2", height=177, profile_priority=1002)
     await person_profile_2.save(db=db)
     person = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
     await person.profiles.update(data=[person_profile, person_profile_2], db=db)
@@ -132,10 +132,10 @@ async def test_query_NodeListGetInfoQuery_with_profiles_some_deleted(
 ):
     profile_schema = registry.schema.get("ProfileTestPerson", branch=branch)
     person_profile = await Node.init(db=db, schema=profile_schema)
-    await person_profile.new(db=db, profile_name="person_profile_1", height=172, profile_priority=1001)
+    await person_profile.new(db=db, name="person_profile_1", height=172, profile_priority=1001)
     await person_profile.save(db=db)
     person_profile_2 = await Node.init(db=db, schema=profile_schema)
-    await person_profile_2.new(db=db, profile_name="person_profile_2", height=177, profile_priority=1002)
+    await person_profile_2.new(db=db, name="person_profile_2", height=177, profile_priority=1002)
     await person_profile_2.save(db=db)
     for person_id in (person_albert_main.id, person_alfred_main.id, person_john_main.id):
         person = await NodeManager.get_one(db=db, id=person_id, branch=branch)

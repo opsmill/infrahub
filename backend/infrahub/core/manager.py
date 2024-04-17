@@ -57,11 +57,13 @@ class ProfileAttributeIndex:
         self,
         profile_attributes_id_map: dict[str, dict[str, AttributeFromDB]],
         profile_ids_by_node_id: dict[str, list[str]],
+        branch: Branch,
     ):
         self._profile_attributes_id_map = profile_attributes_id_map
         self._profile_ids_by_node_id = profile_ids_by_node_id
+        self.branch = branch
 
-    def apply_profiles(self, node_data_dict: dict[str, Any]) -> dict[str, Any]:
+    def apply_profiles(self, node_data_dict: dict[str, Any], node_schema_kind: str) -> dict[str, Any]:
         updated_data: dict[str, Any] = {**node_data_dict}
         node_id = node_data_dict.get("id")
         profile_ids = self._profile_ids_by_node_id.get(node_id, [])
@@ -71,11 +73,16 @@ class ProfileAttributeIndex:
             self._profile_attributes_id_map[p_id] for p_id in profile_ids if p_id in self._profile_attributes_id_map
         ]
         profiles.sort(key=lambda p: str(p.attrs.get("profile_priority").value))
+        profile_kind = f"Profile{node_schema_kind}"
+        profile_schema = registry.schema.get(name=profile_kind, branch=self.branch, duplicate=False)
+        restricted_attribute_names = profile_schema.get_restricted_attribute_names()
 
         for attr_name, attr_data in updated_data.items():
             if not isinstance(attr_data, AttributeFromDB):
                 continue
             if not attr_data.is_default:
+                continue
+            if attr_name in restricted_attribute_names:
                 continue
             profile_value, profile_uuid = None, None
             index = 0
@@ -540,7 +547,7 @@ class NodeManager:
             else:
                 node_attributes[node_id] = attribute_dict
         profile_index = ProfileAttributeIndex(
-            profile_attributes_id_map=profile_attributes, profile_ids_by_node_id=profile_ids_by_node_id
+            profile_attributes_id_map=profile_attributes, profile_ids_by_node_id=profile_ids_by_node_id, branch=branch
         )
 
         # if prefetch_relationships is enabled
@@ -607,7 +614,9 @@ class NodeManager:
                         elif rel_schema.cardinality == "many":
                             new_node_data[rel_schema.name] = rel_peers
 
-            new_node_data_with_profile_overrides = profile_index.apply_profiles(new_node_data)
+            new_node_data_with_profile_overrides = profile_index.apply_profiles(
+                new_node_data, node_schema_kind=node.schema.kind
+            )
             node_class = identify_node_class(node=node)
             item = await node_class.init(schema=node.schema, branch=branch, at=at, db=db)
             await item.load(**new_node_data_with_profile_overrides, db=db)
