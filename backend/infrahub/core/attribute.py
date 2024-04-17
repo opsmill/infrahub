@@ -77,6 +77,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         data: Optional[Union[dict, str, AttributeFromDB]] = None,
         updated_at: Optional[Union[Timestamp, str]] = None,
         is_default: bool = False,
+        is_from_profile: bool = False,
         **kwargs,
     ):
         self.id = id
@@ -89,6 +90,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         self.branch = branch
         self.at = at
         self.is_default = is_default
+        self.is_from_profile = is_from_profile
 
         self._init_node_property_mixin(kwargs)
         self._init_flag_property_mixin(kwargs)
@@ -103,6 +105,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
             if "is_default" in data:
                 self.is_default = data.get("is_default")
+            if "is_from_profile" in data:
+                self.is_from_profile = data.get("is_from_profile")
 
             fields_to_extract_from_data = ["id"] + self._flag_properties + self._node_properties
             for field_name in fields_to_extract_from_data:
@@ -243,6 +247,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     def load_from_db(self, data: AttributeFromDB) -> None:
         self.value = self.value_from_db(data=data)
         self.is_default = data.is_default
+        self.is_from_profile = data.is_from_profile
 
         self.id = data.attr_uuid
         self.db_id = data.attr_id

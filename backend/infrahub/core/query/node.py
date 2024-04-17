@@ -70,6 +70,7 @@ class AttributeFromDB:
     branch: str
 
     is_default: bool
+    is_from_profile: bool = dataclass_field(default=False)
 
     node_properties: Dict[str, AttributeNodePropertyFromDB] = dataclass_field(default_factory=dict)
     flag_properties: Dict[str, bool] = dataclass_field(default_factory=dict)
