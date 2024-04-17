@@ -37,7 +37,7 @@ spec:
               command:
                 - sh
                 - -c
-                - wget -O /dev/null http://localhost:{{ (index .Values.infrahubServer.ports 0).port }}/api/schema || exit 1
+                - curl -s -f -o /dev/null http://localhost:{{ (index .Values.infrahubServer.ports 0).port }}/api/schema/summary || exit 1
             failureThreshold: 20
             initialDelaySeconds: 10
             periodSeconds: 5
