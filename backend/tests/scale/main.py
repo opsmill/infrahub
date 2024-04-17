@@ -47,7 +47,7 @@ from locust.stats import PERCENTILES_TO_REPORT, StatsCSVFileWriter
 def main(schema: Path, stager: str, amount: int, attrs: int, rels: int, changes: int, test: str) -> int:
     if not hasattr(common.users, test):
         print(f"Invalid test class provided: {test}")
-        return 1
+        raise SystemExit(1)
 
     user_class = getattr(common.users, test)
 
@@ -73,8 +73,13 @@ def main(schema: Path, stager: str, amount: int, attrs: int, rels: int, changes:
     runner.greenlet.join()
 
     print("--- done")
-    return 0
+
+    if config.failed_requests > 0:
+        print(f"--- failed requests: {config.failed_requests}")
+        raise SystemExit(1)
+
+    raise SystemExit(0)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

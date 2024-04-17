@@ -66,6 +66,7 @@ class RelationshipSchema(GeneratedRelationshipSchema):
         include_match: bool = True,
         param_prefix: Optional[str] = None,
         partial_match: bool = False,
+        support_profiles: bool = False,  # pylint: disable=unused-argument
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
         """Generate Query String Snippet to filter the right node."""
 
