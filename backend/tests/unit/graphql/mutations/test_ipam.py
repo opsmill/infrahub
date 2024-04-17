@@ -48,6 +48,9 @@ query GetPrefix($prefix: String!) {
                 prefix {
                     value
                 }
+                is_top_level {
+                    value
+                }
                 parent {
                     node {
                         id
@@ -160,6 +163,7 @@ async def test_ipprefix_create(
     assert len(result.data["IpamIPPrefix"]["edges"]) == 1
     assert not result.data["IpamIPPrefix"]["edges"][0]["node"]["parent"]["node"]
     assert result.data["IpamIPPrefix"]["edges"][0]["node"]["prefix"]["value"] == str(supernet)
+    assert result.data["IpamIPPrefix"]["edges"][0]["node"]["is_top_level"]["value"]
 
     networks = list(supernet.subnets(new_prefix=36))
     for n in networks:
@@ -183,6 +187,7 @@ async def test_ipprefix_create(
     assert not result.errors
     assert len(result.data["IpamIPPrefix"]["edges"]) == 1
     assert result.data["IpamIPPrefix"]["edges"][0]["node"]["parent"]["node"]["prefix"]["value"] == str(supernet)
+    assert not result.data["IpamIPPrefix"]["edges"][0]["node"]["is_top_level"]["value"]
 
 
 async def test_ipprefix_create_with_ipnamespace(
@@ -277,6 +282,7 @@ async def test_ipprefix_create_reverse(
     assert not result.errors
     assert len(result.data["IpamIPPrefix"]["edges"]) == 1
     assert result.data["IpamIPPrefix"]["edges"][0]["node"]["parent"]["node"]["prefix"]["value"] == str(supernet)
+    assert not result.data["IpamIPPrefix"]["edges"][0]["node"]["is_top_level"]["value"]
 
 
 async def test_ipprefix_delete(

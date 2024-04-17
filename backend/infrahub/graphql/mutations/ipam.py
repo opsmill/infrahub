@@ -215,6 +215,13 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
                 root=root, info=info, data=data, branch=branch, at=at, database=dbt
             )
 
+            # Mark subnets as not top level if they were
+            for sub_network in sub_networks:
+                node = await NodeManager.get_one(sub_network.id, dbt, branch=branch, at=at)
+                if node.is_top_level.value:
+                    node.is_top_level.value = False
+                    await node.save(db=dbt)
+
             # Fix ip_prefix for addresses if needed
             addresses = await get_ip_addresses(
                 db=dbt, branch=branch, at=at, ip_prefix=ip_network, namespace=namespace_id
