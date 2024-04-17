@@ -956,6 +956,9 @@ class SchemaBranch:
                 if generic_kind_schema.hierarchical:
                     generic_with_hierarchical_support.append(generic_kind)
 
+                # Check if a node redefine protected generic attributes or relationships
+                node.validate_inheritance(interface=generic_kind_schema)
+
                 # Store the list of node referencing a specific generics
                 generics_used_by[generic_kind].append(node.kind)
                 node.inherit_from_interface(interface=generic_kind_schema)

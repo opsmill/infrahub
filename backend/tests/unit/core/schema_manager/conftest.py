@@ -1,9 +1,6 @@
 import pytest
 
-from infrahub.core.constants import (
-    BranchSupportType,
-    InfrahubKind,
-)
+from infrahub.core.constants import BranchSupportType, InfrahubKind
 
 
 def _get_schema_by_kind(full_schema, kind):
