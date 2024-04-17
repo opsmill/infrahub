@@ -15,6 +15,7 @@ Below is the list of all available options to define an Attribute in the schema
 
 | Name | Type | Description | Mandatory |
 | ---- | ---- | ---- | --------- |
+| [**allow_override**](#allow_override) | Attribute | Type of allowed override for the attribute. | False |
 | [**branch**](#branch) | Attribute | Type of branch support for the attribute, if not defined it will be inherited from the node. | False |
 | [**choices**](#choices) | Attribute | Define a list of valid choices for a dropdown attribute. | False |
 | [**default_value**](#default_value) | Attribute | Default value of the attribute. | False |
@@ -54,6 +55,18 @@ extensions:
 ```
 
 ## Reference Guide
+
+### allow_override
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | allow_override |
+| **Kind** | `Text` |
+| **Description** | Type of allowed override for the attribute. |
+| **Optional** | True |
+| **Default Value** | any |
+| **Constraints** |  |
+| **Accepted Values** | `none` `any` |
 
 ### branch
 
