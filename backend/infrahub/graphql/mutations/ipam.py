@@ -25,6 +25,39 @@ if TYPE_CHECKING:
 log = get_logger()
 
 
+class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
+    @classmethod
+    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+        cls,
+        schema: NodeSchema,
+        _meta: Optional[Any] = None,
+        **options: Dict[str, Any],
+    ) -> None:
+        # Make sure schema is a valid NodeSchema Node Class
+        if not isinstance(schema, NodeSchema):
+            raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
+
+        if not _meta:
+            _meta = InfrahubMutationOptions(cls)
+        _meta.schema = schema
+
+        super().__init_subclass_with_meta__(_meta=_meta, **options)
+
+    @classmethod
+    async def mutate_delete(
+        cls,
+        root,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+        at: str,
+    ):
+        if data["id"] == registry.default_ipnamespace:
+            raise ValueError("Cannot delete default IPAM namespace")
+
+        return await super().mutate_delete(root=root, info=info, data=data, branch=branch, at=at)
+
+
 class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     def __init_subclass_with_meta__(  # pylint: disable=arguments-differ

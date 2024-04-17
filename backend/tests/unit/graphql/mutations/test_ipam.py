@@ -122,6 +122,44 @@ query GetAddress($address: String!) {
 }
 """
 
+DELETE_IPNAMESPACE = """
+mutation NamespaceDelete($namespace_id: String!) {
+    IpamNamespaceDelete(data: {id: $namespace_id}) {
+        ok
+    }
+}
+"""
+
+
+async def test_protected_default_ipnamespace(db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node):
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=DELETE_IPNAMESPACE,
+        context_value=gql_params.context,
+        variable_values={"namespace_id": registry.default_ipnamespace},
+    )
+
+    assert result.errors
+    assert result.errors[0].message == "Cannot delete default IPAM namespace"
+
+
+async def test_delete_regular_ipnamespace(db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node):
+    ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns1.new(db=db, name="ns1")
+    await ns1.save(db=db)
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=DELETE_IPNAMESPACE,
+        context_value=gql_params.context,
+        variable_values={"namespace_id": ns1.id},
+    )
+
+    assert not result.errors
+    assert result.data["IpamNamespaceDelete"]["ok"]
+
 
 async def test_ipprefix_create(
     db: InfrahubDatabase,

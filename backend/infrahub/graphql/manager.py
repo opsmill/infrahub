@@ -18,6 +18,7 @@ from .metrics import SCHEMA_GENERATE_GRAPHQL_METRICS
 from .mutations import (
     InfrahubArtifactDefinitionMutation,
     InfrahubIPAddressMutation,
+    InfrahubIPNamespaceMutation,
     InfrahubIPPrefixMutation,
     InfrahubMutation,
     InfrahubProposedChangeMutation,
@@ -358,6 +359,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 InfrahubKind.READONLYREPOSITORY: InfrahubRepositoryMutation,
                 InfrahubKind.PROPOSEDCHANGE: InfrahubProposedChangeMutation,
                 InfrahubKind.GRAPHQLQUERY: InfrahubGraphQLQueryMutation,
+                InfrahubKind.NAMESPACE: InfrahubIPNamespaceMutation,
             }
 
             if isinstance(node_schema, NodeSchema) and node_schema.is_ip_prefix():
