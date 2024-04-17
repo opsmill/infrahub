@@ -275,27 +275,6 @@ async def create_profile(client: InfrahubClient, mutation: str, data: dict, bran
 
     return await client.execute_graphql(query=query.render(), branch_name=branch)
 
-async def update_interface_add_profile(client: InfrahubClient, obj: InfrahubNode, profile_id: str, branch: str) -> Dict:
-    obj_id = obj.id
-    mutation_type = f"{obj._schema.kind}Update"
-    query = f"""
-    mutation {{
-      {mutation_type}(
-        data: {{
-          id: "{obj_id}",
-          profiles: {{ id: "{profile_id}" }}
-        }}
-      ) {{
-        ok
-        object {{
-          id
-        }}
-      }}
-    }}
-    """
-    print(f"query update_interface_add_profile = {query}")
-    return await client.execute_graphql(query=query, branch_name=branch)
-
 async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str, site: Dict[str, str]):
     group_eng = store.get("Engineering Team")
     group_ops = store.get("Operation Team")
@@ -1210,10 +1189,14 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     )
     for interface in upstream_interfaces:
         profile_id = profile_id_map["upstream_profile"]
-        await update_interface_add_profile(client=client, obj=interface, profile_id=profile_id, branch=branch)
+        await interface.profiles.fetch()
+        interface.profiles.add(profile_id)
+        await interface.save()
     for interface in backbone_interfaces:
         profile_id = profile_id_map["backbone_profile"]
-        await update_interface_add_profile(client=client, obj=interface, profile_id=profile_id, branch=branch)
+        await interface.profiles.fetch()
+        interface.profiles.add(profile_id)
+        await interface.save()
 
     # --------------------------------------------------
     # CREATE Full Mesh iBGP SESSION between all the Edge devices
