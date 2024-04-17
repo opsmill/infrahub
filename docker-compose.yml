@@ -51,7 +51,10 @@ services:
   infrahub-server:
     image: "9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub:${VERSION:-latest}"
     restart: unless-stopped
-    command: gunicorn --config backend/infrahub/serve/gunicorn_config.py --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app
+    command: >
+      gunicorn --config backend/infrahub/serve/gunicorn_config.py
+      --logger-class infrahub.serve.log.GunicornLogger
+      infrahub.server:app
     depends_on:
       database:
         condition: service_healthy

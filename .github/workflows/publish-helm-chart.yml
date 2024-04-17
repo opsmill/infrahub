@@ -50,8 +50,10 @@ jobs:
 
       - name: Login to Private Registry
         if: ${{ inputs.publish }}
-        run: |
-          helm registry login ${{ vars.HARBOR_HOST }} --username ${{ secrets.HARBOR_USERNAME }} --password ${{ secrets.HARBOR_PASSWORD }}
+        run: >
+          helm registry login ${{ vars.HARBOR_HOST }}
+          --username ${{ secrets.HARBOR_USERNAME }}
+          --password ${{ secrets.HARBOR_PASSWORD }}
 
       - name: Push Helm Chart to Private Registry
         if: ${{ inputs.publish }}
