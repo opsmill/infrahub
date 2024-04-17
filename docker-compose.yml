@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       - "RABBITMQ_DEFAULT_USER=infrahub"
-      - "RABBITMQ_DEFAULT_PASS=r2BoR$!&&AAYbP"
+      - "RABBITMQ_DEFAULT_PASS=infrahub"
     healthcheck:
       test: rabbitmq-diagnostics -q ping
       interval: 5s
@@ -27,7 +27,7 @@ services:
     image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.18.1-enterprise}
     restart: unless-stopped
     environment:
-      - "NEO4J_AUTH=neo4j/ArB3EXGM!wQvQc"
+      - "NEO4J_AUTH=neo4j/admin"
       - "NEO4J_dbms_security_procedures_unrestricted=apoc.*"
       - "NEO4J_dbms_security_auth__minimum__password__length=4"
       - "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes"
@@ -64,11 +64,16 @@ services:
         condition: service_healthy
     environment:
       - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
-      - "INFRAHUB_PRODUCTION=False"
+      - "INFRAHUB_PRODUCTION=false"
       - "INFRAHUB_LOG_LEVEL=INFO"
       - "INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN=06438eb2-8019-4776-878c-0941b1f1d1ec"
       - "INFRAHUB_SECURITY_SECRET_KEY=327f747f-efac-42be-9e73-999f08f86b92"
       - "INFRAHUB_ALLOW_ANONYMOUS_ACCESS=true"
+      - "INFRAHUB_TRACE_ENABLE=${INFRAHUB_TRACE_ENABLE:-false}"
+      - "INFRAHUB_TRACE_INSECURE=${INFRAHUB_TRACE_INSECURE:-true}"
+      - "INFRAHUB_TRACE_EXPORTER_TYPE=${INFRAHUB_TRACE_EXPORTER_TYPE:-otlp}"
+      - "INFRAHUB_TRACE_EXPORTER_ENDPOINT=${INFRAHUB_TRACE_EXPORTER_ENDPOINT:-http://jaeger:4317}"
+      - "OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES:-}"
       - "INFRAHUB_DB_TYPE=neo4j"
     ports:
       - 8000:8000
@@ -94,10 +99,15 @@ services:
     environment:
       - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
       - "INFRAHUB_ADDRESS=http://infrahub-server:8000"
-      - "INFRAHUB_PRODUCTION=False"
-      - "INFRAHUB_LOG_LEVEL=INFO"
+      - "INFRAHUB_PRODUCTION=false"
+      - "INFRAHUB_LOG_LEVEL=DEBUG"
       - "INFRAHUB_SDK_API_TOKEN=06438eb2-8019-4776-878c-0941b1f1d1ec"
-      - "INFRAHUB_SDK_TIMEOUT=30"
+      - "INFRAHUB_SDK_TIMEOUT=20"
+      - "INFRAHUB_TRACE_ENABLE=${INFRAHUB_TRACE_ENABLE:-false}"
+      - "INFRAHUB_TRACE_INSECURE=${INFRAHUB_TRACE_INSECURE:-true}"
+      - "INFRAHUB_TRACE_EXPORTER_TYPE=${INFRAHUB_TRACE_EXPORTER_TYPE:-otlp}"
+      - "INFRAHUB_TRACE_EXPORTER_ENDPOINT=${INFRAHUB_TRACE_EXPORTER_ENDPOINT:-http://jaeger:4317}"
+      - "OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES:-}"
       - "INFRAHUB_DB_TYPE=neo4j"
     volumes:
       - "git_data:/opt/infrahub/git"
