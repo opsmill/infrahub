@@ -69,6 +69,7 @@ REST
 ressources
 schema_mapping
 sdk
+subnet
 template_path
 toml
 uncheck
