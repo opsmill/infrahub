@@ -10,7 +10,7 @@ from uuid import UUID, uuid4
 import httpx
 import ujson
 from git.repo import Repo
-from graphql import (  # pylint: disable=no-name-in-module
+from graphql import (
     FieldNode,
     InlineFragmentNode,
     SelectionSetNode,
@@ -285,7 +285,7 @@ async def extract_fields(selection_set: Optional[SelectionSetNode]) -> Optional[
         return None
 
     fields = {}
-    for node in getattr(selection_set, "selections", []):
+    for node in selection_set.selections:
         sub_selection_set = getattr(node, "selection_set", None)
         if isinstance(node, FieldNode):
             value = await extract_fields(sub_selection_set)
