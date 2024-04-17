@@ -1,0 +1,60 @@
+---
+# yamllint disable rule:truthy
+name: Publish Helm Chart
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        type: boolean
+        description: Wether to publish the Chart to Infrahub Private Registry
+        required: false
+        default: false
+      version:
+        type: string
+        required: false
+        description: The string to extract semver labels from.
+        default: ''
+  workflow_call:
+    inputs:
+      publish:
+        type: boolean
+        description: Wether to publish the Chart to Infrahub Private Registry
+        required: false
+        default: false
+      version:
+        type: string
+        required: false
+        description: The string to extract semver labels from.
+        default: ''
+
+jobs:
+  publish-helm-chart:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4.2.0
+
+      - name: Package Helm Chart
+        run: |
+          if [[ "${{ inputs.version }}" == "" ]]; then
+            echo "No version specified, using Chart.yaml version."
+            helm package ./helm
+          else
+            helm package ./helm --version ${{ inputs.version }}
+          fi
+
+      - name: Login to Private Registry
+        if: ${{ inputs.publish }}
+        run: |
+          helm registry login ${{ vars.HARBOR_HOST }} --username ${{ secrets.HARBOR_USERNAME }} --password ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Push Helm Chart to Private Registry
+        if: ${{ inputs.publish }}
+        id: push
+        run: |
+          helm push ./infrahub-${{ inputs.version }}.tgz oci://${{ vars.HARBOR_HOST }}/${{ github.repository }}

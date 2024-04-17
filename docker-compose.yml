@@ -1,0 +1,109 @@
+---
+services:
+  message-queue:
+    image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:3.13.1-management}
+    restart: unless-stopped
+    environment:
+      - "RABBITMQ_DEFAULT_USER=infrahub"
+      - "RABBITMQ_DEFAULT_PASS=r2BoR$!&&AAYbP"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 5s
+      timeout: 30s
+      retries: 3
+    ports:
+      - 15692:15692
+
+  cache:
+    image: ${CACHE_DOCKER_IMAGE:-redis:7.2.4}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  database:
+    image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.18.1-enterprise}
+    restart: unless-stopped
+    environment:
+      - "NEO4J_AUTH=neo4j/ArB3EXGM!wQvQc"
+      - "NEO4J_dbms_security_procedures_unrestricted=apoc.*"
+      - "NEO4J_dbms_security_auth__minimum__password__length=4"
+      - "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes"
+      - "NEO4J_server_backup_enabled=true"
+      - "NEO4J_server_backup_listen__address=0.0.0.0:6362"
+      - "NEO4J_metrics_prometheus_enabled=true"
+      - "NEO4J_metrics_prometheus_endpoint=0.0.0.0:2004"
+    volumes:
+      - "database_data:/data"
+      - "database_logs:/logs"
+    healthcheck:
+      test: wget http://localhost:7474 || exit 1
+      interval: 2s
+      timeout: 10s
+      retries: 20
+      start_period: 3s
+    ports:
+      - 2004:2004
+      - 6362:6362
+
+  infrahub-server:
+    image: "9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub:${VERSION:-latest}"
+    restart: unless-stopped
+    command: gunicorn --config backend/infrahub/serve/gunicorn_config.py --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app
+    depends_on:
+      database:
+        condition: service_healthy
+      message-queue:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    environment:
+      - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
+      - "INFRAHUB_PRODUCTION=False"
+      - "INFRAHUB_LOG_LEVEL=INFO"
+      - "INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN=06438eb2-8019-4776-878c-0941b1f1d1ec"
+      - "INFRAHUB_SECURITY_SECRET_KEY=327f747f-efac-42be-9e73-999f08f86b92"
+      - "INFRAHUB_ALLOW_ANONYMOUS_ACCESS=true"
+      - "INFRAHUB_DB_TYPE=neo4j"
+    ports:
+      - 8000:8000
+    volumes:
+      - "storage_data:/opt/infrahub/storage"
+    tty: true
+    healthcheck:
+      test: wget -O /dev/null http://localhost:8000/api/schema || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  infrahub-git:
+    deploy:
+      mode: replicated
+      replicas: 2
+    image: "9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub:${VERSION:-latest}"
+    command: infrahub git-agent start --debug
+    restart: unless-stopped
+    depends_on:
+      - infrahub-server
+    environment:
+      - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
+      - "INFRAHUB_ADDRESS=http://infrahub-server:8000"
+      - "INFRAHUB_PRODUCTION=False"
+      - "INFRAHUB_LOG_LEVEL=INFO"
+      - "INFRAHUB_SDK_API_TOKEN=06438eb2-8019-4776-878c-0941b1f1d1ec"
+      - "INFRAHUB_SDK_TIMEOUT=30"
+      - "INFRAHUB_DB_TYPE=neo4j"
+    volumes:
+      - "git_data:/opt/infrahub/git"
+      - "git_remote_data:/remote"
+    tty: true
+
+volumes:
+  database_data:
+  database_logs:
+  git_data:
+  git_remote_data:
+  storage_data:
