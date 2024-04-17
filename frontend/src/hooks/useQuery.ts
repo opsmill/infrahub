@@ -15,8 +15,6 @@ const useQuery = (QUERY: any, options?: OperationVariables) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [{ offset, limit }] = usePagination();
-  console.log("limit: ", limit);
-  console.log("offset: ", offset);
 
   return useApolloQuery(QUERY, {
     ...options,
