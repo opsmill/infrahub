@@ -451,10 +451,10 @@ class SchemaBranch:
         self.generate_identifiers()
         self.process_default_values()
         self.process_cardinality_counts()
-        self.add_profile_schemas()
         self.process_inheritance()
         self.process_hierarchy()
         self.process_branch_support()
+        self.add_profile_schemas()
 
     def process_validate(self) -> None:
         self.validate_names()
@@ -932,7 +932,7 @@ class SchemaBranch:
         generics_used_by = defaultdict(list)
 
         # For all node_schema, add the attributes & relationships from the generic / interface
-        for name in list(self.nodes.keys()) + list(self.profiles.keys()):
+        for name in self.nodes.keys():
             node = self.get(name=name, duplicate=False)
             if not node.inherit_from:
                 continue
@@ -1255,11 +1255,10 @@ class SchemaBranch:
             description=f"Profile for {node.kind}",
             branch=node.branch,
             include_in_menu=False,
-            default_filter="name__value",
-            inherit_from=[InfrahubKind.LINEAGESOURCE],
+            default_filter="profile_name__value",
             attributes=[
                 AttributeSchema(
-                    name="name",
+                    name="profile_name",
                     kind="Text",
                     min_length=3,
                     max_length=32,
@@ -1285,9 +1284,6 @@ class SchemaBranch:
 
         for node_attr in node.attributes:
             if node_attr.read_only:
-                continue
-
-            if node_attr.name in ("name", "description"):
                 continue
 
             attr = AttributeSchema(

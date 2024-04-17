@@ -7,12 +7,10 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, Generator, List, Optional, Tuple, Union
 
 from infrahub import config
-from infrahub.core import registry
 from infrahub.core.constants import AttributeDBNodeType, RelationshipDirection, RelationshipHierarchyDirection
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.query.utils import find_node_schema
-from infrahub.core.schema.profile_schema import ProfileSchema
 from infrahub.core.utils import extract_field_filters
 from infrahub.exceptions import QueryError
 
@@ -25,6 +23,7 @@ if TYPE_CHECKING:
     from infrahub.core.relationship import RelationshipCreateData, RelationshipManager
     from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.core.schema.attribute_schema import AttributeSchema
+    from infrahub.core.schema.profile_schema import ProfileSchema
     from infrahub.core.schema.relationship_schema import RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
@@ -672,8 +671,11 @@ class FieldAttributeRequirement:
     field_attr_name: str
     field_attr_value: Any
     index: int
-    supports_profile: bool
     types: list[FieldAttributeRequirementType] = dataclass_field(default_factory=list)
+
+    @property
+    def supports_profile(self) -> bool:
+        return bool(self.field and self.field.is_attribute and self.field_attr_name in ("value", "values"))
 
     @property
     def is_filter(self) -> bool:
@@ -716,14 +718,6 @@ class NodeGetListQuery(Query):
         self._variables_to_track = ["n", "rb"]
 
         super().__init__(*args, **kwargs)
-
-        self.restricted_profile_attribute_names = []
-        if isinstance(self.schema, ProfileSchema):
-            return
-        profile_kind = f"Profile{self.schema.kind}"
-        profile_schema = registry.schema.get(name=profile_kind, branch=self.branch, duplicate=False)
-        if profile_schema:
-            self.restricted_profile_attribute_names = profile_schema.get_restricted_attribute_names()
 
     def _track_variable(self, variable: str) -> None:
         if variable not in self._variables_to_track:
@@ -1051,12 +1045,6 @@ class NodeGetListQuery(Query):
                     continue
                 field = self.schema.get_field(field_name, raise_on_error=False)
                 for field_attr_name, field_attr_value in attr_filters.items():
-                    supports_profile = bool(
-                        field
-                        and field.is_attribute
-                        and field_attr_name in ("value", "values")
-                        and field_name not in self.restricted_profile_attribute_names
-                    )
                     field_requirements_map[(field_name, field_attr_name)] = FieldAttributeRequirement(
                         field_name=field_name,
                         field=field,
@@ -1066,7 +1054,6 @@ class NodeGetListQuery(Query):
                         else field_attr_value,
                         index=index,
                         types=[FieldAttributeRequirementType.FILTER],
-                        supports_profile=supports_profile,
                     )
                     index += 1
         if not self.schema.order_by:
@@ -1076,12 +1063,6 @@ class NodeGetListQuery(Query):
             order_by_field_name, order_by_attr_property_name = order_by_path.split("__", maxsplit=1)
 
             field = self.schema.get_field(order_by_field_name)
-            supports_profile = bool(
-                field
-                and field.is_attribute
-                and order_by_attr_property_name in ("value", "values")
-                and order_by_field_name not in self.restricted_profile_attribute_names
-            )
             field_req = field_requirements_map.get(
                 (order_by_field_name, order_by_attr_property_name),
                 FieldAttributeRequirement(
@@ -1090,7 +1071,6 @@ class NodeGetListQuery(Query):
                     field_attr_name=order_by_attr_property_name,
                     field_attr_value=None,
                     index=index,
-                    supports_profile=supports_profile,
                     types=[],
                 ),
             )

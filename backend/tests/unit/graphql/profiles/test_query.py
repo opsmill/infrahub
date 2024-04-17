@@ -33,7 +33,7 @@ async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Br
     profile = registry.schema.get("ProfileTestCriticality", branch=default_branch)
 
     obj1 = await Node.init(db=db, schema=profile)
-    await obj1.new(db=db, name="prof1", level=8)
+    await obj1.new(db=db, profile_name="prof1", level=8)
     await obj1.save(db=db)
 
     query = """
@@ -71,21 +71,21 @@ async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Br
     profile = registry.schema.get("ProfileTestCriticality", branch=default_branch)
 
     obj1 = await Node.init(db=db, schema=profile)
-    await obj1.new(db=db, name="prof1", level=8)
+    await obj1.new(db=db, profile_name="prof1", level=8)
     await obj1.save(db=db)
 
     query = """
     mutation {
         ProfileTestCriticalityUpsert(
             data: {
-                name: { value: "prof1"},
+                profile_name: { value: "prof1"},
                 level: { value: 10 }
                 profile_priority: { value: 1234 }
             }
         ) {
             ok
             object {
-                name { value }
+                profile_name { value }
                 level { value }
                 profile_priority { value }
             }
@@ -104,11 +104,11 @@ async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Br
     assert result.errors is None
     assert result.data["ProfileTestCriticalityUpsert"]["ok"] is True
     gql_object = result.data["ProfileTestCriticalityUpsert"]["object"]
-    assert gql_object["name"]["value"] == "prof1"
+    assert gql_object["profile_name"]["value"] == "prof1"
     assert gql_object["level"]["value"] == 10
     assert gql_object["profile_priority"]["value"] == 1234
     retrieved_object = await NodeManager.get_one(db=db, id=obj1.id)
-    assert retrieved_object.name.value == "prof1"
+    assert retrieved_object.profile_name.value == "prof1"
     assert retrieved_object.level.value == 10
     assert retrieved_object.profile_priority.value == 1234
 
@@ -116,10 +116,10 @@ async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Br
 async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_schema)
-    await prof_1.new(db=db, name="prof1", profile_priority=1, level=8)
+    await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
     await prof_1.save(db=db)
     prof_2 = await Node.init(db=db, schema=profile_schema)
-    await prof_2.new(db=db, name="prof2", profile_priority=2, level=9)
+    await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9)
     await prof_2.save(db=db)
 
     crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
@@ -187,10 +187,10 @@ async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criti
 async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_schema)
-    await prof_1.new(db=db, name="prof1", profile_priority=1, level=8)
+    await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
     await prof_1.save(db=db)
     prof_2 = await Node.init(db=db, schema=profile_schema)
-    await prof_2.new(db=db, name="prof2", profile_priority=2, level=9, fancy="sometimes")
+    await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9, fancy="sometimes")
     await prof_2.save(db=db)
 
     crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
@@ -263,130 +263,6 @@ async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branc
             "name": {"value": "crit_2_profile", "is_from_profile": False},
             "level": {"value": 7, "is_from_profile": False},
             "fancy": {"value": "sometimes", "is_from_profile": True},
-            "id": crit_2_profile.id,
-        }
-    } in crits
-
-
-async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
-    prof_1 = await Node.init(db=db, schema=profile_schema)
-    await prof_1.new(db=db, name="prof1", profile_priority=1, level=8)
-    await prof_1.save(db=db)
-    prof_2 = await Node.init(db=db, schema=profile_schema)
-    await prof_2.new(db=db, name="prof2", profile_priority=2, level=9, fancy="sometimes")
-    await prof_2.save(db=db)
-
-    crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
-    crit_no_profile = await Node.init(db=db, schema=crit_schema)
-    await crit_no_profile.new(db=db, name="crit_no_profile")
-    crit_no_profile.level.is_default = True
-    crit_no_profile.fancy.value = "always"
-    await crit_no_profile.save(db=db)
-
-    crit_1_profile = await Node.init(db=db, schema=crit_schema)
-    await crit_1_profile.new(db=db, name="crit_1_profile")
-    crit_1_profile.level.is_default = True
-    crit_1_profile.fancy.value = "never"
-    await crit_1_profile.profiles.update(db=db, data=[prof_1])
-    await crit_1_profile.save(db=db)
-
-    crit_2_profile = await Node.init(db=db, schema=crit_schema)
-    await crit_2_profile.new(db=db, name="crit_2_profile")
-    crit_2_profile.level.value = 7
-    crit_2_profile.fancy.is_default = True
-    await crit_2_profile.profiles.update(db=db, data=[prof_1, prof_2])
-    await crit_2_profile.save(db=db)
-
-    query = """
-    query {
-        TestCriticality {
-            edges {
-                node {
-                    id
-                    name {
-                        value
-                        is_from_profile
-                        source {
-                            id
-                            display_label
-                            __typename
-                        }
-                    }
-                    level {
-                        value
-                        is_from_profile
-                        source {
-                            id
-                            display_label
-                            __typename
-                        }
-                    }
-                    fancy {
-                        value
-                        is_from_profile
-                        source {
-                            id
-                            display_label
-                            __typename
-                        }
-                    }
-                }
-            }
-        }
-    }
-    """
-    gql_params = prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    crits = result.data["TestCriticality"]["edges"]
-    assert len(crits) == 3
-    assert {
-        "node": {
-            "name": {"value": "crit_no_profile", "is_from_profile": False, "source": None},
-            "level": {"value": None, "is_from_profile": False, "source": None},
-            "fancy": {"value": "always", "is_from_profile": False, "source": None},
-            "id": crit_no_profile.id,
-        }
-    } in crits
-    assert {
-        "node": {
-            "name": {"value": "crit_1_profile", "is_from_profile": False, "source": None},
-            "level": {
-                "value": 8,
-                "is_from_profile": True,
-                "source": {
-                    "id": prof_1.id,
-                    "display_label": await prof_1.render_display_label(db=db),
-                    "__typename": "ProfileTestCriticality",
-                },
-            },
-            "fancy": {"value": "never", "is_from_profile": False, "source": None},
-            "id": crit_1_profile.id,
-        }
-    } in crits
-    assert {
-        "node": {
-            "name": {"value": "crit_2_profile", "is_from_profile": False, "source": None},
-            "level": {"value": 7, "is_from_profile": False, "source": None},
-            "fancy": {
-                "value": "sometimes",
-                "is_from_profile": True,
-                "source": {
-                    "id": prof_2.id,
-                    "display_label": await prof_2.render_display_label(db=db),
-                    "__typename": "ProfileTestCriticality",
-                },
-            },
             "id": crit_2_profile.id,
         }
     } in crits

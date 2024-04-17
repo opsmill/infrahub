@@ -223,10 +223,10 @@ async def test_get_many_prefetch(db: InfrahubDatabase, default_branch: Branch, p
 async def test_get_many_with_profile(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium):
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
     crit_profile_1 = await Node.init(db=db, schema=profile_schema)
-    await crit_profile_1.new(db=db, name="crit_profile_1", color="green", profile_priority=1001)
+    await crit_profile_1.new(db=db, profile_name="crit_profile_1", color="green", profile_priority=1001)
     await crit_profile_1.save(db=db)
     crit_profile_2 = await Node.init(db=db, schema=profile_schema)
-    await crit_profile_2.new(db=db, name="crit_profile_2", color="blue", profile_priority=1002)
+    await crit_profile_2.new(db=db, profile_name="crit_profile_2", color="blue", profile_priority=1002)
     await crit_profile_2.save(db=db)
     crit_low = await NodeManager.get_one(db=db, id=criticality_low.id, branch=default_branch)
     await crit_low.profiles.update(db=db, data=[crit_profile_1, crit_profile_2])
@@ -235,33 +235,6 @@ async def test_get_many_with_profile(db: InfrahubDatabase, default_branch: Branc
     node_map = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
     assert len(node_map) == 2
     assert node_map[criticality_low.id].color.value == "green"
-    source = await node_map[criticality_low.id].color.get_source(db=db)
-    assert source.id == crit_profile_1.id
-
-
-async def test_get_many_with_profile_restricted_names_respected(
-    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
-):
-    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
-    crit_profile_1 = await Node.init(db=db, schema=profile_schema)
-    await crit_profile_1.new(
-        db=db, name="crit_profile_1", description="crit_profile_1_description", color="green", profile_priority=1001
-    )
-    await crit_profile_1.save(db=db)
-    crit_profile_2 = await Node.init(db=db, schema=profile_schema)
-    await crit_profile_2.new(
-        db=db, name="crit_profile_2", description="crit_profile_1_description", color="blue", profile_priority=1002
-    )
-    await crit_profile_2.save(db=db)
-    crit_low = await NodeManager.get_one(db=db, id=criticality_low.id, branch=default_branch)
-    await crit_low.profiles.update(db=db, data=[crit_profile_1, crit_profile_2])
-    await crit_low.save(db=db)
-
-    node_map = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
-    assert len(node_map) == 2
-    assert node_map[criticality_low.id].color.value == "green"
-    assert node_map[criticality_low.id].description.value is None
-    assert node_map[criticality_low.id].name.value == "low"
     source = await node_map[criticality_low.id].color.get_source(db=db)
     assert source.id == crit_profile_1.id
 
