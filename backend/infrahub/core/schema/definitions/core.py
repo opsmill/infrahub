@@ -427,6 +427,7 @@ core_models: dict[str, Any] = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
+            "icon": "mdi:format-list-group",
             "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {
@@ -471,6 +472,7 @@ core_models: dict[str, Any] = {
             "default_filter": "prefix__value",
             "order_by": ["prefix__value"],
             "display_labels": ["prefix__value"],
+            "icon": "mdi:ip-network",
             "branch": BranchSupportType.AWARE.value,
             "hierarchical": True,
             "attributes": [
@@ -584,6 +586,7 @@ core_models: dict[str, Any] = {
             "default_filter": "address__value",
             "order_by": ["address__value"],
             "display_labels": ["address__value"],
+            "icon": "mdi:ip-outline",
             "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {
