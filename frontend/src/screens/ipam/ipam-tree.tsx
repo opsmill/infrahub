@@ -193,9 +193,9 @@ export default function IpamTree() {
           if (!isSelected) return;
 
           const url = constructPath(
-            element.category === "IP_PREFIX"
-              ? `/ipam/prefixes/${element.name}`
-              : `/ipam/ip_address/${element.name}`
+            element.metadata?.category === "IP_PREFIX"
+              ? `/ipam/prefixes/${encodeURIComponent(element.name)}`
+              : `/ipam/ip_address/${encodeURIComponent(element.name)}`
           );
           navigate(url);
         }}
@@ -208,8 +208,8 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
   const url = element.metadata
     ? constructPath(
         element.metadata.category === "IP_PREFIX"
-          ? `/ipam/prefixes/${element.name}`
-          : `/ipam/ip_address/${element.name}`
+          ? `/ipam/prefixes/${encodeURIComponent(element.name)}`
+          : `/ipam/ip_address/${encodeURIComponent(element.name)}`
       )
     : "";
 
