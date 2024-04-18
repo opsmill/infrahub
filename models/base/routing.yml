@@ -1,0 +1,164 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: '1.0'
+nodes:
+  # --------------------  BGP (ASN, BGP Groups, BGP Sessions)  --------------------
+  - name: AutonomousSystem
+    namespace: Infra
+    description: "An Autonomous System (AS) is a set of Internet routable IP prefixes belonging to a network"
+    label: "Autonomous System"
+    icon: "mdi:bank-circle-outline"
+    menu_placement: InfraBGPSession
+    default_filter: name__value
+    order_by: ["asn__value"]
+    display_labels:
+      - name__value
+      - asn__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: asn
+        kind: Number
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+    relationships:
+      - name: organization
+        peer: OrganizationGeneric
+        optional: false
+        cardinality: one
+        kind: Attribute
+  - name: BGPPeerGroup
+    namespace: Infra
+    description: "A BGP Peer Group is used to regroup parameters that are shared across multiple peers"
+    label: "BGP Peer Group"
+    icon: "mdi:view-grid-plus-outline"
+    menu_placement: InfraBGPSession
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: import_policies
+        kind: Text
+        optional: true
+      - name: export_policies
+        kind: Text
+        optional: true
+    relationships:
+      - name: local_as
+        identifier: bgppeergroup__local_as
+        peer: InfraAutonomousSystem
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: remote_as
+        identifier: bgppeergroup__remote_as
+        peer: InfraAutonomousSystem
+        optional: true
+        cardinality: one
+        kind: Attribute
+  - name: BGPSession
+    namespace: Infra
+    description: "A BGP Session represent a point to point connection between two routers"
+    label: "BGP Session"
+    icon: "mdi:router"
+    inherit_from:
+      - "CoreArtifactTarget"
+    order_by:
+      - device__name__value
+      - remote_as__asn__value
+    attributes:
+      - name: type
+        kind: Text
+        enum: [EXTERNAL, INTERNAL]
+      - name: description
+        kind: Text
+        optional: true
+      - name: import_policies
+        kind: Text
+        optional: true
+      - name: export_policies
+        kind: Text
+        optional: true
+      - name: status
+        kind: Dropdown
+        choices:
+          - name: active
+            label: Active
+            description: "Fully operational and currently in service"
+            color: "#7fbf7f"
+          - name: provisioning
+            label: Provisioning
+            description: "In the process of being set up and configured"
+            color: "#ffff7f"
+          - name: maintenance
+            label: Maintenance
+            description: "Undergoing routine maintenance or repairs"
+            color: "#ffd27f"
+          - name: drained
+            label: Drained
+            description: "Temporarily taken out of service"
+            color: "#bfbfbf"
+      - name: role
+        kind: Dropdown
+        choices:
+          - name: backbone
+            label: Backbone
+            description: "Provide main data routes"
+            color: "#6a5acd"
+          - name: upstream
+            label: Upstream
+            description: "Connect to Internet service provider"
+            color: "#9090de"
+          - name: peering
+            label: Peering
+            description: "Connect with other networks via an IX"
+            color: "#85db9b"
+    relationships:
+      - name: local_as
+        identifier: bgpsession__local_as
+        peer: InfraAutonomousSystem
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: remote_as
+        identifier: bgpsession__remote_as
+        peer: InfraAutonomousSystem
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: local_ip
+        identifier: bgpsession__local_ip
+        peer: BuiltinIPAddress
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: remote_ip
+        identifier: bgpsession__remote_ip
+        peer: BuiltinIPAddress
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: device
+        peer: InfraDevice
+        optional: true
+        cardinality: one
+      - name: peer_group
+        peer: InfraBGPPeerGroup
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: peer_session
+        peer: InfraBGPSession
+        optional: true
+        cardinality: one
+        kind: Attribute
