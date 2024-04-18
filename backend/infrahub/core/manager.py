@@ -94,6 +94,7 @@ class ProfileAttributeIndex:
             if profile_value is not None:
                 attr_data.value = profile_value
                 attr_data.is_from_profile = True
+                attr_data.is_default = False
                 attr_data.node_properties["source"] = AttributeNodePropertyFromDB(uuid=profile_uuid, labels=[])
         return updated_data
 
