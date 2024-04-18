@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional
 
-from graphql.language import FieldNode, InlineFragmentNode, NameNode, SelectionSetNode
+from graphql.language import FieldNode, InlineFragmentNode, ListValueNode, NameNode, SelectionSetNode, StringValueNode
 
 if TYPE_CHECKING:
     from infrahub.core.schema import NodeSchema
@@ -35,6 +35,14 @@ class GraphQLExtracter:
     def process_directives(self, node: FieldNode, path: str) -> None:
         for directive in node.directives:
             if directive.name.value == "expand":
+                excluded_fields = []
+                for argument in directive.arguments:
+                    if argument.name.value == "exclude":
+                        if isinstance(argument.value, ListValueNode):
+                            excluded_fields.extend(
+                                [value.value for value in argument.value.values if isinstance(value, StringValueNode)]
+                            )
+
                 if path not in self.typename_paths:
                     self.typename_paths[path] = []
                 self.typename_paths[path].append(
@@ -67,7 +75,10 @@ class GraphQLExtracter:
                         )
                     )
                     attribute_enrichers = []
-                    for attribute in self.schema.attributes:
+                    attributes = [
+                        attribute for attribute in self.schema.attributes if attribute.name not in excluded_fields
+                    ]
+                    for attribute in attributes:
                         attribute_path = f"{path}{attribute.name}/"
                         if attribute_path not in self.node_path:
                             self.node_path[attribute_path] = []
