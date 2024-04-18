@@ -28,7 +28,7 @@ from .mutations import (
     TaskCreate,
     TaskUpdate,
 )
-from .parser import extract_selection_set_fields
+from .parser import extract_selection
 from .queries import BranchQueryList, DiffSummary, DiffSummaryOld, InfrahubInfo, InfrahubStatus, Relationship, Task
 
 if TYPE_CHECKING:
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 
 
 async def default_paginated_list_resolver(root: dict, info: GraphQLResolveInfo, **kwargs):
-    fields = extract_selection_set_fields(info.field_nodes[0])
+    fields = await extract_selection(info.field_nodes[0], schema=info.return_type.graphene_type._meta.schema)
 
     return await info.return_type.graphene_type.get_paginated_list(**kwargs, fields=fields, context=info.context)
 
