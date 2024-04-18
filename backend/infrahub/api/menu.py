@@ -70,15 +70,13 @@ async def get_menu(
             InterfaceMenu(
                 title="Namespaces",
                 path=f"/objects/{InfrahubKind.IPNAMESPACE}",
-                icon=_extract_node_icon(full_schema[InfrahubKind.IPNAMESPACE]),
+                icon="mdi:format-list-group",
             ),
-            InterfaceMenu(
-                title="Prefixes", path="/ipam/prefixes", icon=_extract_node_icon(full_schema[InfrahubKind.IPPREFIX])
-            ),
+            InterfaceMenu(title="Prefixes", path="/ipam/prefixes", icon="mdi:ip-network"),
             InterfaceMenu(
                 title="IP Addresses",
-                path="/ipam/ip-addresses",
-                icon=_extract_node_icon(full_schema[InfrahubKind.IPADDRESS]),
+                path="/ipam/ip-addresses?ipam-tab=ip-details",
+                icon="mdi:ip-outline",
             ),
         ],
     )
