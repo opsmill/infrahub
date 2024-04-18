@@ -49,7 +49,7 @@ services:
       - 6362:6362
 
   infrahub-server:
-    image: "9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub:${VERSION:-latest}"
+    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-latest}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
