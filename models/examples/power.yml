@@ -2,8 +2,8 @@
 ---
 version: '1.0'
 generics:
-  - name: Power
-    namespace: Infra
+  - name: Generic
+    namespace: Power
     description: "Generic Power"
     label: "Power"
     display_labels:
@@ -19,17 +19,33 @@ generics:
       - name: enabled
         kind: Boolean
         default_value: true
-    relationships:
       - name: status
-        peer: BuiltinStatus
-        optional: false
-        cardinality: one
-        kind: Attribute
-      - name: role
-        peer: BuiltinRole
+        kind: Dropdown
         optional: true
-        cardinality: one
-        kind: Attribute
+        choices:
+          - name: active
+            label: Active
+            description: "Fully operational and currently in service"
+            color: "#7fbf7f"
+          - name: provisioning
+            label: Provisioning
+            description: "In the process of being set up and configured"
+            color: "#ffff7f"
+          - name: maintenance
+            label: Maintenance
+            description: "Undergoing routine maintenance or repairs"
+            color: "#ffd27f"
+      - name: role
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: primary
+            label: Primary
+            color: "#6a5acd"
+          - name: backup
+            label: Backup
+            color: "#9090de"
+    relationships:
       - name: device
         peer: InfraDevice
         identifier: "device__power"
@@ -42,7 +58,7 @@ generics:
         cardinality: many
         kind: Attribute
       - name: connected_endpoint
-        peer: InfraPower
+        peer: PowerPower
         optional: true
         cardinality: one
         kind: Attribute
@@ -76,6 +92,7 @@ nodes:
     namespace: Infra
     description: "Generic Device object"
     label: "Device"
+    icon: "mdi:server"
     default_filter: name__value
     inherit_from:
       - "CoreArtifactTarget"
@@ -86,48 +103,97 @@ nodes:
     attributes:
       - name: name
         kind: Text
+        unique: true
       - name: description
         kind: Text
         optional: true
-      - name: serial_number
-        label: Serial Number
+      - name: type
         kind: Text
+      - name: status
+        kind: Dropdown
         optional: true
-      - name: asset_tag
-        label: Asset Tag
-        kind: Text
+        choices:
+          - name: active
+            label: Active
+            description: "Fully operational and currently in service"
+            color: "#7fbf7f"
+          - name: provisioning
+            label: Provisioning
+            description: "In the process of being set up and configured"
+            color: "#ffff7f"
+          - name: maintenance
+            label: Maintenance
+            description: "Undergoing routine maintenance or repairs"
+            color: "#ffd27f"
+          - name: drained
+            label: Drained
+            description: "Temporarily taken out of service"
+            color: "#bfbfbf"
+      - name: role
+        kind: Dropdown
         optional: true
-        unique: true
+        choices:
+          - name: core
+            label: Core Router
+            description: "Central part of the network"
+            color: "#7f7fff"
+          - name: edge
+            label: Edge Router
+            description: "Network boundary with external networks"
+            color: "#bf7fbf"
+          - name: cpe
+            label: Customer Premise Equipment
+            description: "Devices located at the customer's premises"
+            color: "#bf7f7f"
+          - name: firewall
+            label: Firewall
+            description: "Ensures network security"
+            color: "#ffa07a"
+          - name: spine
+            label: Spine Router
+            description: "Aggregation router part of a Fabric"
+            color: "#aeeeee"
+          - name: leaf
+            label: Leaf Switch
+            description: "Top of Rack part of a Fabric"
+            color: "#e6e6fa"
     relationships:
       - name: site
-        peer: InfraSite
+        label: Site
+        peer: LocationSite
         optional: false
         cardinality: one
         kind: Attribute
-      - name: status
-        peer: BuiltinStatus
-        optional: false
-        cardinality: one
-        kind: Attribute
-      - name: role
-        peer: BuiltinRole
-        optional: true
-        cardinality: one
-        kind: Attribute
-      - name: power
-        label: "Power Outlet & Ports"
-        peer: InfraPower
-        identifier: "device__power"
+        identifier: "site__devices"
+      - name: interfaces
+        peer: PowerInterface
+        identifier: "device__interface"
         optional: true
         cardinality: many
         kind: Component
+      - name: asn
+        peer: PowerAutonomousSystem
+        optional: true
+        cardinality: one
+        kind: Attribute
       - name: tags
         peer: BuiltinTag
         optional: true
         cardinality: many
         kind: Attribute
+      - name: primary_address
+        peer: IpamIPAddress
+        label: Primary IP Address
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: platform
+        peer: PowerPlatform
+        optional: true
+        cardinality: one
+        kind: Attribute
   - name: PowerOutlet
-    namespace: Infra
+    namespace: Power
     description: "Power Outlet"
     label: "Power Outlet"
     display_labels:
@@ -135,7 +201,7 @@ nodes:
     order_by:
       - name__value
     inherit_from:
-      - "InfraPower"
+      - "PowerGeneric"
     attributes:
       - name: feed
         label: Feed
@@ -149,7 +215,7 @@ nodes:
         optional: false
         cardinality: one
   - name: PowerPort
-    namespace: Infra
+    namespace: Power
     description: "Power Port"
     label: "Power Port"
     display_labels:
@@ -157,7 +223,7 @@ nodes:
     order_by:
       - name__value
     inherit_from:
-      - "InfraPower"
+      - "PowerGeneric"
     attributes:
       - name: alloc_draw
         label: Allocated Draw
@@ -184,10 +250,10 @@ nodes:
       - "TemplateChoice"
     relationships:
       - cardinality: many
-        identifier: poweroutlet__type
         name: power_outlet
+        identifier: poweroutlet__type
         optional: true
-        peer: InfraPowerOutlet
+        peer: PowerPowerOutlet
   - name: PowerPortType
     namespace: Template
     description: "Power Port Type"
@@ -200,7 +266,7 @@ nodes:
       - "TemplateChoice"
     relationships:
       - cardinality: many
-        identifier: powerport__type
         name: power_port
+        identifier: powerport__type
         optional: true
-        peer: InfraPowerPort
+        peer: PowerPowerPort

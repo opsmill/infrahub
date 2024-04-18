@@ -5,6 +5,7 @@ import { MockedProvider } from "@apollo/client/testing";
 import { Route, Routes } from "react-router-dom";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
 import { withSchemaContext } from "../../../src/decorators/withSchemaContext";
+import { AuthProvider } from "../../../src/hooks/useAuth";
 import { ArtifactsDiff } from "../../../src/screens/diff/artifact-diff/artifacts-diff";
 import { proposedChangedState } from "../../../src/state/atoms/proposedChanges.atom";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
@@ -17,10 +18,10 @@ import {
   artifactWithoutThreadMockData,
 } from "../../mocks/data/artifact";
 import { proposedChangesId } from "../../mocks/data/conversations";
-import { profileId } from "../../mocks/data/profile";
+
+import { profileId } from "../../mocks/data/account-profile";
 import { proposedChangesDetails } from "../../mocks/data/proposedChanges";
 import { TestProvider } from "../../mocks/jotai/atom";
-import { AuthProvider } from "../../../src/hooks/useAuth";
 
 const url = `/proposed-changes/${proposedChangesId}&pr_tab=artifacts`;
 const path = "/proposed-changes/:proposedchange";
@@ -32,6 +33,7 @@ const mocks = [
       query: gql`
         ${artifactThreadMockQuery}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: artifactThreadMockData,
@@ -92,6 +94,7 @@ describe("Artifact Diff", () => {
           query: gql`
             ${artifactThreadMockQuery}
           `,
+          variables: { offset: 0, limit: 10 },
         },
         result: {
           data: artifactWithoutThreadMockData,
@@ -129,6 +132,7 @@ describe("Artifact Diff", () => {
           query: gql`
             ${artifactThreadMockQuery}
           `,
+          variables: { offset: 0, limit: 10 },
         },
         result: {
           data: artifactThreadMockData,

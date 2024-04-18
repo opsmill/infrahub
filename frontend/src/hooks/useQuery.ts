@@ -1,21 +1,28 @@
 import {
   OperationVariables,
-  useQuery as useApolloQuery,
   useLazyQuery as useApolloLazyQuery,
+  useQuery as useApolloQuery,
   useSubscription as useApolloSubscription,
 } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../state/atoms/branches.atom";
-import { datetimeAtom } from "../state/atoms/time.atom";
 import { CONFIG } from "../config/config";
 import { WSClient } from "../graphql/websocket";
+import { currentBranchAtom } from "../state/atoms/branches.atom";
+import { datetimeAtom } from "../state/atoms/time.atom";
+import usePagination from "./usePagination";
 
 const useQuery = (QUERY: any, options?: OperationVariables) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const [{ offset, limit }] = usePagination();
 
   return useApolloQuery(QUERY, {
     ...options,
+    variables: {
+      ...options?.variables,
+      offset,
+      limit,
+    },
     context: {
       uri: CONFIG.GRAPHQL_URL(branch?.name, date),
     },

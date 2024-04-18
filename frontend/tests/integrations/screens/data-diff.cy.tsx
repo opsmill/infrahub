@@ -1,31 +1,31 @@
 /// <reference types="cypress" />
 
 import { gql } from "@apollo/client";
-import { proposedChangedState } from "../../../src/state/atoms/proposedChanges.atom";
-import { schemaState } from "../../../src/state/atoms/schema.atom";
-import { accountDetailsMocksSchema } from "../../mocks/data/account";
-import { proposedChangesId } from "../../mocks/data/conversations";
-import { TestProvider } from "../../mocks/jotai/atom";
 import { MockedProvider } from "@apollo/client/testing";
 import { Route, Routes } from "react-router-dom";
-import { DataDiff } from "../../../src/screens/diff/data-diff";
-import {
-  DataDiffProposedChangesState,
-  objectThreadSchema,
-  getAllCoreObjectThreadMockData,
-  getAllCoreObjectThreadMockQuery,
-  getCoreObjectWithoutThreadMockData,
-  getCoreObjectThreadMockQuery,
-  getCoreObjectThreadMockData,
-  getProposedChangesCommentsMockQuery,
-  createThreadMockData,
-  getProposedChangesCommentsMockData,
-} from "../../mocks/data/data-changes";
-import { profileId } from "../../mocks/data/profile";
-import { encodeJwt } from "../../../src/utils/common";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
 import graphqlClient from "../../../src/graphql/graphqlClientApollo";
 import { AuthProvider } from "../../../src/hooks/useAuth";
+import { DataDiff } from "../../../src/screens/diff/data-diff";
+import { proposedChangedState } from "../../../src/state/atoms/proposedChanges.atom";
+import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { encodeJwt } from "../../../src/utils/common";
+import { accountDetailsMocksSchema } from "../../mocks/data/account";
+import { profileId } from "../../mocks/data/account-profile";
+import { proposedChangesId } from "../../mocks/data/conversations";
+import {
+  DataDiffProposedChangesState,
+  createThreadMockData,
+  getAllCoreObjectThreadMockData,
+  getAllCoreObjectThreadMockQuery,
+  getCoreObjectThreadMockData,
+  getCoreObjectThreadMockQuery,
+  getCoreObjectWithoutThreadMockData,
+  getProposedChangesCommentsMockData,
+  getProposedChangesCommentsMockQuery,
+  objectThreadSchema,
+} from "../../mocks/data/data-changes";
+import { TestProvider } from "../../mocks/jotai/atom";
 
 const url = `/proposed-changes/${proposedChangesId}`;
 const path = "/proposed-changes/:proposedchange";
@@ -36,6 +36,7 @@ const mocksWithComments = [
       query: gql`
         ${getAllCoreObjectThreadMockQuery}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: getAllCoreObjectThreadMockData,
   },
@@ -44,6 +45,7 @@ const mocksWithComments = [
       query: gql`
         ${getCoreObjectThreadMockQuery}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: getCoreObjectThreadMockData,
   },
@@ -55,6 +57,7 @@ const mocksWithoutComments = [
       query: gql`
         ${getAllCoreObjectThreadMockQuery}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: getCoreObjectWithoutThreadMockData,
   },
@@ -63,6 +66,7 @@ const mocksWithoutComments = [
       query: gql`
         ${getCoreObjectThreadMockQuery}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: getCoreObjectWithoutThreadMockData,
   },
@@ -203,6 +207,7 @@ describe("Data Diff", () => {
             query: gql`
               ${getProposedChangesCommentsMockQuery}
             `,
+            variables: { offset: 0, limit: 10 },
           },
           result: getCoreObjectWithoutThreadMockData,
         },
@@ -253,6 +258,7 @@ describe("Data Diff", () => {
             query: gql`
               ${getProposedChangesCommentsMockQuery}
             `,
+            variables: { offset: 0, limit: 10 },
           },
           result: getProposedChangesCommentsMockData,
         },

@@ -1,0 +1,163 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: '1.0'
+generics:
+  - name: Generic   # Location
+    namespace: Location
+    description: "Generic hierarchical location"
+    label: "Location"
+    hierarchical: true
+    icon: "mingcute:location-line"
+    include_in_menu: true
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+
+nodes:
+  # --------------------  Location (Continent, Country, Site, Rack)  --------------------
+  - name: Continent
+    namespace: Location
+    description: "A continent on planet earth."
+    menu_placement: "LocationGeneric"
+    icon: "jam:world"
+    inherit_from:
+      - "LocationGeneric"
+    default_filter: "name__value"
+    order_by:
+      - "name__value"
+    display_labels:
+      - "name__value"
+    children: "LocationCountry"
+    parent: ""
+  - name: Country
+    namespace: Location
+    description: "A country within a continent."
+    menu_placement: "LocationGeneric"
+    icon: "gis:search-country"
+    inherit_from:
+      - "LocationGeneric"
+    default_filter: "name__value"
+    order_by:
+      - "name__value"
+    display_labels:
+      - "name__value"
+    children: "LocationSite"
+    parent: "LocationContinent"
+  - name: Site
+    namespace: Location
+    description: "A site within a country."
+    menu_placement: "LocationGeneric"
+    icon: "ri:building-line"
+    inherit_from:
+      - "LocationGeneric"
+    default_filter: "name__value"
+    order_by:
+      - "name__value"
+    display_labels:
+      - "name__value"
+    children: "LocationRack"
+    parent: "LocationCountry"
+    attributes:
+      - name: city
+        kind: Text
+        optional: true
+      - name: address
+        kind: Text
+        optional: true
+      - name: contact
+        kind: Text
+        optional: true
+    relationships:
+      - name: devices
+        cardinality: many
+        peer: InfraDevice
+        kind: Component
+      - name: vlans
+        cardinality: many
+        kind: Component
+        peer: InfraVLAN
+      - name: circuit_endpoints
+        cardinality: many
+        kind: Component
+        peer: InfraCircuitEndpoint
+      - cardinality: many
+        kind: Attribute
+        name: tags
+        optional: true
+        peer: BuiltinTag
+  - name: Rack
+    namespace: Location
+    description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed"
+    label: "Rack"
+    icon: clarity:rack-server-solid
+    inherit_from:
+      - "LocationGeneric"
+    order_by:
+      - "site__name__value"
+      - "name__value"
+    display_labels:
+      - "name__value"
+    parent: "LocationSite"
+    children: ""
+    uniqueness_constraints:
+      - ["site", "name__value"]
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: height
+        kind: Text
+      - name: facility_id
+        label: Facility ID
+        kind: Text
+        optional: true
+      - name: serial_number
+        label: Serial Number
+        kind: Text
+        optional: true
+      - name: asset_tag
+        label: Asset Tag
+        kind: Text
+        optional: true
+      - name: status
+        kind: Dropdown
+        choices:
+          - name: active
+            label: Active
+            description: "Functional and ready for production"
+            color: "#009933"
+          - name: planned
+            label: Planned
+            description: "Not physically present yet"
+            color: "#cc66ff"
+        default_value: "active"
+      - name: role
+        kind: Dropdown
+        choices:
+          - name: compute
+            description: "Rack mainly composed of compute"
+            color: "#0099ff"
+          - name: storage
+            description: "Rack mainly composed of Storage devices"
+            color: "#993399"
+          - name: networking
+            description: "Rack mainly composed of Network devices"
+            color: "#ff6600"
+        optional: true
+    relationships:
+      - name: site
+        peer: LocationSite
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute

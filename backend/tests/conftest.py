@@ -168,19 +168,11 @@ async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
             {
                 "name": "Owner",
                 "namespace": "Lineage",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
             },
             {
                 "name": "Source",
                 "description": "Any Entities that stores or produces data.",
                 "namespace": "Lineage",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
             },
         ]
     }
