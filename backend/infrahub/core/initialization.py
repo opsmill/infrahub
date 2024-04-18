@@ -75,13 +75,6 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     registry.node["Node"] = Node
     registry.node["BuiltinIPPrefix"] = BuiltinIPPrefix
 
-    # ---------------------------------------------------
-    # Load Default Namespace
-    # ---------------------------------------------------
-    ip_namespace = await get_default_ipnamespace(db=db)
-    if ip_namespace:
-        registry.default_ipnamespace = ip_namespace.id
-
 
 async def initialization(db: InfrahubDatabase) -> None:
     if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
@@ -141,6 +134,13 @@ async def initialization(db: InfrahubDatabase) -> None:
                     f" {hash_in_db!r} >> {branch.active_schema_hash.main!r}",
                     branch=branch.name,
                 )
+
+    # ---------------------------------------------------
+    # Load Default Namespace
+    # ---------------------------------------------------
+    ip_namespace = await get_default_ipnamespace(db=db)
+    if ip_namespace:
+        registry.default_ipnamespace = ip_namespace.id
 
 
 async def create_root_node(db: InfrahubDatabase) -> Root:
