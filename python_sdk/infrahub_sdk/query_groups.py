@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.exceptions import NodeNotFoundError
@@ -10,7 +10,7 @@ from infrahub_sdk.utils import dict_hash
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
     from infrahub_sdk.node import InfrahubNode, InfrahubNodeSync, RelatedNodeBase
-    from infrahub_sdk.schema import GenericSchema, NodeSchema
+    from infrahub_sdk.schema import MainSchemaTypes
 
 
 class InfrahubGroupContextBase:
@@ -64,7 +64,7 @@ class InfrahubGroupContextBase:
 
         return group_name
 
-    def _generate_group_description(self, schema: Union[NodeSchema, GenericSchema]) -> str:
+    def _generate_group_description(self, schema: MainSchemaTypes) -> str:
         """Generate the description of the group from the params
         and ensure it's not longer than the maximum length of the description field."""
         if not self.params:

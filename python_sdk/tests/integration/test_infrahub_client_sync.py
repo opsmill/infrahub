@@ -13,6 +13,7 @@ from infrahub_sdk.exceptions import BranchNotFoundError
 from infrahub_sdk.node import InfrahubNodeSync
 from infrahub_sdk.playback import JSONPlayback
 from infrahub_sdk.recorder import JSONRecorder
+from infrahub_sdk.schema import ProfileSchema
 
 from .conftest import InfrahubTestClient
 
@@ -256,3 +257,22 @@ class TestInfrahubClientSync:
         assert len(nodes) == 1
         assert nodes == recorded_nodes
         assert recorded_nodes[0].name.value == "repository1"
+
+    def test_profile(self, client: InfrahubClientSync, db: InfrahubDatabase, init_db_base, base_dataset):
+        profile_schema_kind = "ProfileBuiltinStatus"
+        profile_schema = client.schema.get(kind=profile_schema_kind)
+        assert isinstance(profile_schema, ProfileSchema)
+
+        profile1 = client.create(
+            kind=profile_schema_kind,
+            profile_name="profile1",
+            profile_priority=1000,
+            description="description in profile",
+        )
+        profile1.save()
+
+        obj = client.create(kind="BuiltinStatus", name="planned", profiles=[profile1])
+        obj.save()
+
+        obj1 = client.get(kind="BuiltinStatus", id=obj.id)
+        assert obj1.description.value == "description in profile"
