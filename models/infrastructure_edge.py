@@ -257,7 +257,7 @@ BGP_PEER_GROUPS = (
 
 INTERFACE_PROFILES = (
     # profile_name, mtu
-    ("upstream_profile", 1500, "InfraInterfaceL3"),
+    ("upstream_profile", 1515, "InfraInterfaceL3"),
     ("backbone_profile", 9216, "InfraInterfaceL3"),
 )
 
@@ -268,12 +268,6 @@ VLANS = (
 
 store = NodeStore()
 
-
-async def create_profile(client: InfrahubClient, mutation: str, data: dict, branch: str) -> Dict:
-    query_data = {"ok": None, "object": {"id": None}}
-    query = Mutation(mutation=mutation, query=query_data, input_data=data)
-
-    return await client.execute_graphql(query=query.render(), branch_name=branch)
 
 async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str, site: Dict[str, str]):
     group_eng = store.get("Engineering Team")
@@ -1141,25 +1135,18 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # ------------------------------------------
     # Create Profiles
     # ------------------------------------------
-    # FIXME when profile are present in the SDK
-    profile_id_map = {}
     for intf_profile in INTERFACE_PROFILES:
         data_profile = {
-            "data": {
-                "profile_name": {"value": intf_profile[0]},
-                "mtu": {"value": intf_profile[1]},
-            }
+            "profile_name": {"value": intf_profile[0]},
+            "mtu": {"value": intf_profile[1]},
         }
-        mutation = f"Profile{intf_profile[2]}Create"
-        created_profile = await create_profile(
-            client=client,
-            mutation=mutation,
-            data=data_profile,
-            branch=branch
+        profile = await client.create(
+            branch=branch,
+            kind=f"Profile{intf_profile[2]}",
+            data=data_profile
         )
-        if created_profile[mutation]["ok"]:
-            profile_id = created_profile[mutation]["object"]["id"]
-            profile_id_map[intf_profile[0]] = profile_id
+        await profile.save()
+        store.set(key=intf_profile[0], node=profile)
 
     # ------------------------------------------
     # Create Sites
@@ -1188,12 +1175,12 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         role__value="backbone"
     )
     for interface in upstream_interfaces:
-        profile_id = profile_id_map["upstream_profile"]
+        profile_id = store.get(key="upstream_profile", kind="ProfileInfraInterfaceL3").id
         await interface.profiles.fetch()
         interface.profiles.add(profile_id)
         await interface.save()
     for interface in backbone_interfaces:
-        profile_id = profile_id_map["backbone_profile"]
+        profile_id = store.get(key="backbone_profile", kind="ProfileInfraInterfaceL3").id
         await interface.profiles.fetch()
         interface.profiles.add(profile_id)
         await interface.save()
