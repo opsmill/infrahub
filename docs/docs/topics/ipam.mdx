@@ -65,132 +65,37 @@ When the member type value is set to "prefix", the utilization of the IP prefix 
 
 When the member type value is set to "address", the utilization of the IP prefix will be computed using the number of IP addresses it contains. For example, subnet `192.0.2.0/26` can have up to 62 IP addresses once network and broadcast addresses excluded. So if this subnet has 20 IP addresses, its utilization will report 32%. Broadcast and network addresses can be taken into account while computing utilization for IPv4 prefixes if the `is_pool` value is set to `true` (checkbox checked) or if the prefix' length is 31 as defined in [RFC 3021](https://datatracker.ietf.org/doc/html/rfc3021).
 
-### GraphQL query and mutation examples
+### GraphQL queries and mutations
 
-Creating a schema inheriting the IPAM generics will generate GraphQL queries and mutations related to the defined schema. Below a few examples matching the schema defined in a previous section.
+Creating a schema inheriting the IPAM generics will generate GraphQL queries and mutations related to the defined schema. For example, the schema defined in a previous section will generate the following queries:
 
-```graphql title="Getting prefixes and details"
-query GetPrefixes {
-  IpamIPPrefix {
-    count
-    edges {
-      node {
-        id
-        prefix {
-          value
-        }
-        utilization {
-          value
-        }
-        netmask {
-          value
-        }
-        hostmask {
-          value
-        }
-        network_address {
-          value
-        }
-        broadcast_address {
-          value
-        }
-        parent {
-          node {
-            id
-            prefix {
-              value
-              netmask
-            }
-          }
-        }
-        children {
-          edges {
-            node {
-              id
-              prefix {
-                value
-              }
-            }
-          }
-        }
-        ip_addresses {
-          count
-          edges {
-            node {
-              id
-              address {
-                value
-              }
-            }
-          }
-        }
-        ancestors {
-          edges {
-            node {
-              id
-              prefix {
-                value
-              }
-            }
-          }
-        }
-        descendants {
-          edges {
-            node {
-              id
-              prefix {
-                value
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-```
+- `IpamIPPrefix`
+- `IpamIPAddress`
 
-```graphql title="Creating a new prefix"
-mutation CreatePrefix($prefix: String!, $member_type: String) {
-  IpamIPPrefixCreate(data: {prefix: {value: $prefix}, member_type: {value: $member_type}}) {
-    ok
-  }
-}
-```
+The following mutations will also be available after schema load:
 
-```graphql title="Getting addresses and details"
-query GetAddresses {
-  IpamIPAddress {
-    count
-    edges {
-      node {
-        address {
-          value
-        }
-        ip_prefix {
-          node {
-            id
-            prefix {
-              value
-              netmask
-            }
-          }
-        }
-      }
-    }
-  }
-}
-```
+- `IpamIPPrefixCreate`
+- `IpamIPPrefixUpdate`
+- `IpamIPPrefixUpsert`
+- `IpamIPPrefixDelete`
+- `IpamIPAddressCreate`
+- `IpamIPAddressUpdate`
+- `IpamIPAddressUpsert`
+- `IpamIPAddressDelete`
 
-```graphql title="Creating a new address"
-mutation CreateAddress($address: String!) {
-  IpamIPAddressCreate(data: {address: {value: $address}}) {
-    ok
-  }
-}
-```
+As mentioned previously, IP prefixes are organised as a hierarchy. Hierarchical nodes have special relationships called `parent`, `children`, `ancestors` and `descendants`. These relationships can be used in the queries. However, in the case of IPAM, they cannot be used in mutations due to the fact that Infrahub manage them automatically.
+
+IP prefixes also have default read-only attributes which can be queried and can bring details about a particular networks. These attributes are:
+
+- `utilization`, utilization of an IP prefix in percent
+- `netmask`, network mask of an IP prefix like `255.255.255.0`
+- `hostmask`, host mask of an IP prefix like `0.0.0.255`
+- `network_address`, network address of an IP prefix, usually the first IP address of the prefix
+- `broadcast_address`, broadcast address of an IP prefix, usually the last IP address of the prefix
 
 ## Known limitations
+
+These are a non-exhaustive list of known issues and limitations of Infrahub IPAM. These will be addressed in future releases.
 
 - Renumbering an existing IP prefix or IP address won't relocate it in the IPAM relationship tree, which means it won't be showing in the proper location
 - There are no ways to programmatically know the next IP prefix available in a namespace or an IP prefix
