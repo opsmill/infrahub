@@ -300,7 +300,7 @@ class BranchDiffer:
         Path for a relationship : ("relationships", rel_name, rel_id, prop_type
 
         Returns:
-            Dict[str, set]: Returns a dictionnary by branch with a set of paths
+            Dict[str, set]: Returns a Dictionary by branch with a set of paths
         """
 
         paths: Dict[str, Set[ModifiedPath]] = {}
