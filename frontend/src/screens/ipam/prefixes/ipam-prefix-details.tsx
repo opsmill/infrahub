@@ -39,6 +39,8 @@ export default function IpamIPPrefixDetails() {
   const { loading, error, data } = useQuery(GET_PREFIX, { variables: { prefix: prefix } });
 
   const parent = data && data[IPAM_PREFIX_OBJECT]?.edges[0]?.node?.parent?.node;
+  console.log("data: ", data);
+  console.log("parent: ", parent);
 
   const children = data && data[IPAM_PREFIX_OBJECT]?.edges[0]?.node?.children;
 
@@ -46,7 +48,7 @@ export default function IpamIPPrefixDetails() {
     ? constructPath(`/ipam/prefixes/${encodeURIComponent(parent?.prefix?.value)}`, [
         { name: IPAM_QSP, value: qspTab },
       ])
-    : constructPath("/ipam/prefixes");
+    : "";
 
   const columns = [
     { name: "prefix", label: "Prefix" },
@@ -86,8 +88,12 @@ export default function IpamIPPrefixDetails() {
   return (
     <div>
       <div className="flex items-center mb-2">
-        <Link to={parentLink}>{parent?.display_label ?? "All Prefixes"}</Link>
-        <Icon icon={"mdi:chevron-right"} />
+        {parentLink && (
+          <>
+            <Link to={parentLink}>{parent?.display_label}</Link>
+            <Icon icon={"mdi:chevron-right"} />
+          </>
+        )}
         <span>{prefix}</span>
       </div>
 

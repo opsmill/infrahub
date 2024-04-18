@@ -84,6 +84,14 @@ export const GET_PREFIX = gql`
       count
       edges {
         node {
+          parent {
+            node {
+              display_label
+              prefix {
+                value
+              }
+            }
+          }
           children {
             count
             edges {
