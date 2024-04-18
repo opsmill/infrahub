@@ -1,12 +1,12 @@
-import { Card } from "../../components/ui/card";
-import Content from "../layout/content";
-import IpamRouter from "./ipam-router";
-import IpamTree from "./ipam-tree";
-import { useMemo } from "react";
 import { useAtomValue } from "jotai/index";
+import { useMemo } from "react";
+import { Card } from "../../components/ui/card";
 import { genericsState } from "../../state/atoms/schema.atom";
+import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { IP_PREFIX_DEFAULT_SCHEMA_KIND } from "./constants";
+import IpamRouter from "./ipam-router";
+import IpamTree from "./ipam-tree";
 
 export default function IpamPage() {
   const generics = useAtomValue(genericsState);
@@ -23,7 +23,7 @@ export default function IpamPage() {
     <>
       <Content.Title title="IP Address Manager" />
       <Content>
-        <div className="p-2 flex flex-wrap gap-2 items-stretch min-h-full">
+        <div className="p-2 flex flex-no-wrap gap-2 items-stretch min-h-full">
           <Card>
             <IpamTree />
           </Card>
