@@ -219,9 +219,10 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             if sub_networks:
                 nodes = await NodeManager.get_many(dbt, [s.id for s in sub_networks], branch=branch, at=at)
                 for node in nodes.values():
+                    await node.parent.update(prefix, dbt)
                     if node.is_top_level.value:
                         node.is_top_level.value = False
-                        await node.save(db=dbt)
+                    await node.save(db=dbt)
 
             # Fix ip_prefix for addresses if needed
             addresses = await get_ip_addresses(
