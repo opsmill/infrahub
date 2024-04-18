@@ -3,13 +3,23 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, List, Optional, Sequence, Union
 
 from pydantic import BaseModel, ConfigDict, Field
+from typing_extensions import Self
 
+from infrahub.core import registry
 from infrahub.core.path import SchemaPath  # noqa: TCH001
 from infrahub.core.query import Query, QueryType
-from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema  # noqa: TCH001
+from infrahub.core.schema import (
+    AttributeSchema,
+    GenericSchema,
+    NodeSchema,
+    RelationshipSchema,
+    SchemaRoot,
+    internal_schema,
+)
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.schema_manager import SchemaBranch
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
@@ -98,6 +108,10 @@ class GraphMigration(BaseModel):
     name: str = Field(..., description="Name of the migration")
     queries: Sequence[type[Query]] = Field(..., description="List of queries to execute for this migration")
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
+
+    @classmethod
+    def init(cls) -> Self:
+        return cls()
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         raise NotImplementedError
