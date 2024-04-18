@@ -12,7 +12,6 @@ from typing import (
     Optional,
     Tuple,
     Type,
-    TypeAlias,
     TypedDict,
     TypeVar,
     Union,
@@ -20,6 +19,7 @@ from typing import (
 from urllib.parse import urlencode
 
 import httpx
+from typing_extensions import TypeAlias
 
 try:
     from pydantic import v1 as pydantic  # type: ignore[attr-defined]
