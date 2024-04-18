@@ -5,6 +5,8 @@ import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { initials } from "../../../src/components/display/avatar";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
+import { AuthProvider } from "../../../src/hooks/useAuth";
+import Header from "../../../src/screens/layout/header";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
 import { encodeJwt } from "../../../src/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
@@ -12,10 +14,8 @@ import {
   profileDetailsMocksData,
   profileDetailsMocksQuery,
   profileId,
-} from "../../mocks/data/profile";
+} from "../../mocks/data/account-profile";
 import { TestProvider } from "../../mocks/jotai/atom";
-import { AuthProvider } from "../../../src/hooks/useAuth";
-import Header from "../../../src/screens/layout/header";
 
 // Mock the apollo query and data
 const mocks: any[] = [

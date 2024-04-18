@@ -1,8 +1,14 @@
 import { gql } from "@apollo/client";
 
 export const GET_PREFIXES = gql`
-  query IpamIPPrefix($namespace: String, $prefix: String) {
-    IpamIPPrefix(ip_namespace__name__value: $namespace, prefix__value: $prefix) {
+  query IpamIPPrefix($namespace: String, $prefix: String, $offset: Int, $limit: Int) {
+    IpamIPPrefix(
+      ip_namespace__name__value: $namespace
+      prefix__value: $prefix
+      offset: $offset
+      limit: $limit
+    ) {
+      count
       edges {
         node {
           display_label
@@ -21,6 +27,7 @@ export const GET_PREFIXES = gql`
             }
           }
           children {
+            count
             edges {
               node {
                 id
