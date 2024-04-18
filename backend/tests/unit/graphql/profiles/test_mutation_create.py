@@ -33,7 +33,7 @@ async def test_create_profile(db: InfrahubDatabase, default_branch, car_person_s
     assert result.data["ProfileTestPersonCreate"]["ok"] is True
 
     person_id = result.data["ProfileTestPersonCreate"]["object"]["id"]
-    assert len(person_id) == 36  # lenght of an UUID
+    assert len(person_id) == 36  # length of an UUID
 
     profile = await NodeManager.get_one(db=db, id=person_id)
     assert profile.height.value == 182

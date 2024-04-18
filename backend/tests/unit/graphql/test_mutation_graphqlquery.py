@@ -56,7 +56,7 @@ async def test_create_query_no_vars(db: InfrahubDatabase, default_branch, regist
     assert result.errors is None
     assert result.data["CoreGraphQLQueryCreate"]["ok"] is True
     query_id = result.data["CoreGraphQLQueryCreate"]["object"]["id"]
-    assert len(query_id) == 36  # lenght of an UUID
+    assert len(query_id) == 36  # length of an UUID
 
     query1 = await registry.manager.get_one(id=query_id, db=db)
     assert query1.depth.value == 6
@@ -122,7 +122,7 @@ async def test_create_query_with_vars(db: InfrahubDatabase, default_branch, regi
     assert result.errors is None
     assert result.data["CoreGraphQLQueryCreate"]["ok"] is True
     query_id = result.data["CoreGraphQLQueryCreate"]["object"]["id"]
-    assert len(query_id) == 36  # lenght of an UUID
+    assert len(query_id) == 36  # length of an UUID
 
     query2 = await registry.manager.get_one(id=query_id, db=db)
     assert query2.depth.value == 8
