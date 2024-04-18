@@ -41,11 +41,11 @@ const TreeItemWrapper = (props: INodeRendererProps & { children: React.ReactNode
   return (
     <div
       {...getNodeProps()}
-      style={{ marginLeft: (level - 1) * 20 }}
+      style={{ paddingLeft: (level - 1) * 20 }}
       className={classNames(
         "flex items-center",
         "text-gray-600 mix-blend-multiply",
-        "h-8 rounded-md cursor-pointer",
+        "h-8 px-1.5 rounded-md cursor-pointer",
         "focus-visible:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2",
         isSelected ? "bg-custom-blue-500 text-custom-white" : "hover:bg-custom-blue-400"
       )}>
