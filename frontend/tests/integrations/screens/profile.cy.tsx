@@ -24,7 +24,6 @@ const mocks: any[] = [
       query: gql`
         ${profileDetailsMocksQuery}
       `,
-      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: profileDetailsMocksData,
