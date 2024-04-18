@@ -181,7 +181,9 @@ export default function IpamTree() {
       <Tree
         data={treeData}
         onLoadData={onLoadData}
-        onSelect={({ element }) => {
+        onSelect={({ element, isSelected }) => {
+          if (!isSelected) return;
+
           const url = constructPath(
             element.category === "IP_PREFIX"
               ? `/ipam/prefixes/${element.name}`
