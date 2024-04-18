@@ -28,6 +28,7 @@ const mocks: any[] = [
       query: gql`
         ${graphqlQueriesMocksQuery}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: graphqlQueriesMocksData,
@@ -39,6 +40,7 @@ const mocks: any[] = [
       query: gql`
         ${graphqlQueriesMocksQueryWithLimit}
       `,
+      variables: { offset: 0, limit: 50 },
     },
     result: {
       data: graphqlQueriesMocksData,

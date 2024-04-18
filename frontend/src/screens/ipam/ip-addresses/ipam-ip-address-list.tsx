@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Table } from "../../../components/table/table";
+import { Pagination } from "../../../components/utils/pagination";
 import { IPAM_IP_ADDRESS_OBJECT } from "../../../config/constants";
 import { GET_IP_ADDRESSES } from "../../../graphql/queries/ipam/ip-address";
 import useQuery from "../../../hooks/useQuery";
@@ -55,6 +56,8 @@ export default function IpamIPAddressesList() {
       {loading && <LoadingScreen hideText />}
 
       {data && <Table rows={rows} columns={columns} />}
+
+      <Pagination count={data && data[IPAM_IP_ADDRESS_OBJECT]?.count} />
     </div>
   );
 }
