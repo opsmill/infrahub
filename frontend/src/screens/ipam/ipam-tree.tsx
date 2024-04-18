@@ -23,9 +23,6 @@ const GET_PREFIXES = gql`
           children {
             count
           }
-          ip_addresses {
-            count
-          }
         }
       }
     }
@@ -60,9 +57,6 @@ type PrefixEdge = {
     descendants: {
       count: number;
     };
-    ip_addresses: {
-      count: number;
-    };
   };
 };
 
@@ -78,7 +72,7 @@ const toTreeNodeFormat = (data: PrefixData): TreeItemProps["element"][] => {
     name: node.display_label,
     parent: node.parent.node?.id ?? "root",
     children: [],
-    isBranch: node.children.count > 0 || node.ip_addresses.count > 0,
+    isBranch: node.children.count > 0,
     metadata: {
       category: "IP_PREFIX",
       icon: "mdi:ip-network",
@@ -152,11 +146,7 @@ export default function IpamTree() {
         onNodeSelect={({ element, isSelected }) => {
           if (!isSelected) return;
 
-          const url = constructPath(
-            element.metadata?.category === "IP_PREFIX"
-              ? `/ipam/prefixes/${encodeURIComponent(element.name)}`
-              : `/ipam/ip_address/${encodeURIComponent(element.name)}`
-          );
+          const url = constructPath(`/ipam/prefixes/${encodeURIComponent(element.name)}`);
           navigate(url);
         }}
       />
@@ -166,21 +156,17 @@ export default function IpamTree() {
 
 const IpamTreeItem = ({ element }: TreeItemProps) => {
   const url = element.metadata
-    ? constructPath(
-        element.metadata.category === "IP_PREFIX"
-          ? `/ipam/prefixes/${encodeURIComponent(element.name)}`
-          : `/ipam/ip_address/${encodeURIComponent(element.name)}`
-      )
+    ? constructPath(`/ipam/prefixes/${encodeURIComponent(element.name)}`)
     : "";
 
   return (
-    <Link to={url} tabIndex={-1} className="flex items-center gap-2">
+    <Link to={url} tabIndex={-1} className="flex items-center gap-2 overflow-hidden">
       {element.metadata?.icon ? (
         <Icon icon={element.metadata.icon as string} />
       ) : (
         <div className="w-4" />
       )}
-      {element.name}
+      <span className="truncate">{element.name}</span>
     </Link>
   );
 };
