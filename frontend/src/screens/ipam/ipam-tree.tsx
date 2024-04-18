@@ -29,20 +29,6 @@ const GET_PREFIXES = gql`
         }
       }
     }
-    IpamIPAddress(ip_prefix__ids: $parentIds) {
-      edges {
-        node {
-          id
-          display_label
-          ip_prefix {
-            node {
-              id
-              display_label
-            }
-          }
-        }
-      }
-    }
   }
 `;
 
@@ -84,20 +70,6 @@ type PrefixData = {
   IpamIPPrefix: {
     edges: PrefixEdge[];
   };
-  IpamIPAddress: {
-    edges: {
-      node: {
-        id: string;
-        display_label: string;
-        ip_prefix: {
-          node: {
-            id: string;
-            display_label: string;
-          } | null;
-        };
-      };
-    }[];
-  };
 };
 
 const toTreeNodeFormat = (data: PrefixData): TreeItemProps["element"][] => {
@@ -113,19 +85,7 @@ const toTreeNodeFormat = (data: PrefixData): TreeItemProps["element"][] => {
     },
   }));
 
-  const ipAddresses = data.IpamIPAddress.edges.map(({ node }) => ({
-    id: node.id,
-    name: node.display_label,
-    parent: node.ip_prefix.node?.id ?? "root",
-    children: [],
-    isBranch: false,
-    metadata: {
-      category: "IP_ADDRESS",
-      icon: "mdi:ip",
-    },
-  }));
-
-  return [...prefixes, ...ipAddresses];
+  return prefixes;
 };
 
 const updateTreeData = (list: TreeProps["data"], id: string, children: TreeProps["data"]) => {
