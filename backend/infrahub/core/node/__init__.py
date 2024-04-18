@@ -291,6 +291,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if not self.id and hasattr(self, "label") and hasattr(self, "name"):
             if self.label.value is None and self.name.value:
                 self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
+                self.label.is_default = False
 
     async def new(self, db: InfrahubDatabase, id: Optional[str] = None, **kwargs) -> Self:
         if id and not is_valid_uuid(id):

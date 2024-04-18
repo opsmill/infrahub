@@ -1663,6 +1663,11 @@ async def all_attribute_default_types_schema(
             {"name": "myint_default", "kind": "Number", "optional": True, "default_value": 10},
             {"name": "mylist_default", "kind": "List", "optional": True, "default_value": [10, 11, 12]},
             {"name": "myjson_default", "kind": "JSON", "optional": True, "default_value": {"name": "value"}},
+            {"name": "mystring_none", "kind": "Text", "optional": True},
+            {"name": "mybool_none", "kind": "Boolean", "optional": True},
+            {"name": "myint_none", "kind": "Number", "optional": True},
+            {"name": "mylist_none", "kind": "List", "optional": True},
+            {"name": "myjson_none", "kind": "JSON", "optional": True},
         ],
     }
 

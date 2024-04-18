@@ -34,6 +34,7 @@ const mocks: any[] = [
       query: gql`
         ${deviceDetailsMocksQuery}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: deviceDetailsMocksData,
@@ -44,6 +45,7 @@ const mocks: any[] = [
       query: gql`
         ${deviceDetailsMocksQuery}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: deviceDetailsMocksData,
@@ -55,6 +57,7 @@ const mocks: any[] = [
       query: gql`
         ${deviceDetailsMocksQuery}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: deviceDetailsMocksData,
@@ -66,6 +69,7 @@ const mocks: any[] = [
       query: gql`
         ${deviceDetailsInterfacesMocksQuery}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: deviceDetailsInterfacesMocksData,
@@ -76,6 +80,7 @@ const mocks: any[] = [
       query: gql`
         ${deviceDetailsInterfacesMocksQuery}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: deviceDetailsInterfacesMocksData,

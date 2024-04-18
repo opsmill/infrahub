@@ -79,17 +79,21 @@ class ProfileAttributeIndex:
                 continue
             profile_value, profile_uuid = None, None
             index = 0
+
             while profile_value is None and index <= (len(profiles) - 1):
                 try:
                     profile_value = profiles[index].attrs[attr_name].value
-                    profile_uuid = profiles[index].node["uuid"]
-                    break
+                    if profile_value != "NULL":
+                        profile_uuid = profiles[index].node["uuid"]
+                        break
+                    profile_value = None
                 except (IndexError, KeyError, AttributeError):
                     ...
                 index += 1
 
             if profile_value is not None:
                 attr_data.value = profile_value
+                attr_data.is_from_profile = True
                 attr_data.node_properties["source"] = AttributeNodePropertyFromDB(uuid=profile_uuid, labels=[])
         return updated_data
 

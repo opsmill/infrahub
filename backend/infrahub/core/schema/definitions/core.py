@@ -42,12 +42,7 @@ core_models: dict[str, Any] = {
             "description": "Any Entities that is responsible for some data.",
             "label": "Owner",
             "include_in_menu": False,
-            "display_labels": ["name__value"],
             "documentation": "/topics/metadata",
-            "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "description", "kind": "Text", "optional": True},
-            ],
         },
         {
             "name": "Source",
@@ -55,12 +50,7 @@ core_models: dict[str, Any] = {
             "description": "Any Entities that stores or produces data.",
             "label": "Source",
             "include_in_menu": False,
-            "display_labels": ["name__value"],
             "documentation": "/topics/metadata",
-            "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "description", "kind": "Text", "optional": True},
-            ],
         },
         {
             "name": "Comment",

@@ -5,7 +5,7 @@ from graphene import InputObjectType
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import NodeSchema
+from infrahub.core.schema import MainSchemaTypes
 from infrahub.database import InfrahubDatabase
 
 from .interface import MutationNodeGetterInterface
@@ -18,7 +18,7 @@ class MutationNodeGetterByDefaultFilter(MutationNodeGetterInterface):
 
     async def get_node(
         self,
-        node_schema: NodeSchema,
+        node_schema: MainSchemaTypes,
         data: InputObjectType,
         branch: Branch,
         at: str,

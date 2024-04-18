@@ -228,9 +228,9 @@ class InfrahubMutationMixin:
         at: str,
         node_getters: List[MutationNodeGetterInterface],
         database: Optional[InfrahubDatabase] = None,
-    ):
+    ) -> Tuple[Node, Self, bool]:
         schema_name = cls._meta.schema.kind
-        node_schema = registry.get_node_schema(name=schema_name, branch=branch)
+        node_schema = registry.schema.get(name=schema_name, branch=branch)
 
         node = None
         for getter in node_getters:
