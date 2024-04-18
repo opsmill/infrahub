@@ -7,6 +7,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { constructPath } from "../../utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { GET_PREFIXES_ONLY } from "../../graphql/queries/ipam/prefixes";
+import { useAtomValue } from "jotai/index";
+import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 
 type PrefixNode = {
   id: string;
@@ -31,7 +33,7 @@ type PrefixData = {
 
 const ROOT_NODE_ID = "root" as const;
 
-const toTreeNodeFormat = (data: PrefixData): TreeItemProps["element"][] => {
+const formatIPPrefixResponseForTreeView = (data: PrefixData): TreeItemProps["element"][] => {
   const prefixes = data.IpamIPPrefix.edges.map(({ node }) => ({
     id: node.id,
     name: node.display_label,
@@ -39,8 +41,7 @@ const toTreeNodeFormat = (data: PrefixData): TreeItemProps["element"][] => {
     children: [],
     isBranch: node.children.count > 0,
     metadata: {
-      kind: "IP_PREFIX",
-      icon: "mdi:ip-network",
+      kind: node.__typename,
     },
   }));
 
@@ -76,7 +77,7 @@ export default function IpamTree() {
     fetchPrefixes().then(({ data }) => {
       if (!data) return;
 
-      const treeNodes = toTreeNodeFormat(data);
+      const treeNodes = formatIPPrefixResponseForTreeView(data);
 
       const rootTreeNodes = treeNodes.filter(({ parent }) => parent === ROOT_NODE_ID);
 
@@ -88,7 +89,7 @@ export default function IpamTree() {
   if (treeData.length === 1) return <Spinner />;
 
   const onLoadData = async ({ element }: ITreeViewOnLoadDataProps) => {
-    if (element.children.length > 0) return;
+    if (element.children.length > 0) return; // To avoid refetching data
 
     const { data } = await fetchPrefixes({
       variables: { parentIds: [element.id.toString()] },
@@ -96,7 +97,7 @@ export default function IpamTree() {
 
     if (!data) return;
 
-    const treeNodes = toTreeNodeFormat(data);
+    const treeNodes = formatIPPrefixResponseForTreeView(data);
     setTreeData((tree) => updateTreeData(tree, element.id.toString(), treeNodes));
   };
 
@@ -120,17 +121,15 @@ export default function IpamTree() {
 }
 
 const IpamTreeItem = ({ element }: TreeItemProps) => {
-  const url = element.metadata
-    ? constructPath(`/ipam/prefixes/${encodeURIComponent(element.name)}`)
-    : "";
+  const nodes = useAtomValue(schemaState);
+  const generics = useAtomValue(genericsState);
+
+  const schema = [...nodes, ...generics].find(({ kind }) => kind === element.metadata?.kind);
+  const url = constructPath(`/ipam/prefixes/${encodeURIComponent(element.name)}`);
 
   return (
     <Link to={url} tabIndex={-1} className="flex items-center gap-2 overflow-hidden">
-      {element.metadata?.icon ? (
-        <Icon icon={element.metadata.icon as string} />
-      ) : (
-        <div className="w-4" />
-      )}
+      {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}
       <span className="truncate">{element.name}</span>
     </Link>
   );
