@@ -26,6 +26,9 @@ export const GET_PREFIXES = gql`
           is_pool {
             value
           }
+          is_top_level {
+            value
+          }
           utilization {
             value
           }
@@ -98,6 +101,9 @@ export const GET_PREFIX = gql`
                   value
                 }
                 is_pool {
+                  value
+                }
+                is_top_level {
                   value
                 }
                 utilization {
