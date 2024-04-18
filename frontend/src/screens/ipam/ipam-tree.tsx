@@ -215,7 +215,11 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
 
   return (
     <Link to={url} tabIndex={-1} className="flex items-center gap-2">
-      {element.metadata?.icon && <Icon icon={element.metadata.icon as string} />}
+      {element.metadata?.icon ? (
+        <Icon icon={element.metadata.icon as string} />
+      ) : (
+        <div className="w-4" />
+      )}
       {element.name}
     </Link>
   );

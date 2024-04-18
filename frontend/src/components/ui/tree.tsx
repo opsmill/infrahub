@@ -23,7 +23,7 @@ export const Tree = ({ itemContent, ...props }: TreeProps) => {
               className="px-1.5"
             />
           ) : (
-            <div className="px-1.5" />
+            <div className="w-7" />
           )}
           {<NodeComp element={nodeRendererProps.element} />}
         </TreeItemWrapper>
