@@ -35,7 +35,7 @@ async def test_create_simple_object(db: InfrahubDatabase, default_branch, car_pe
     assert result.data["TestPersonCreate"]["ok"] is True
 
     person_id = result.data["TestPersonCreate"]["object"]["id"]
-    assert len(person_id) == 36  # lenght of an UUID
+    assert len(person_id) == 36  # length of an UUID
 
     person = await NodeManager.get_one(db=db, id=person_id)
     assert person.name.is_default is False
@@ -366,7 +366,7 @@ async def test_all_attributes(db: InfrahubDatabase, default_branch, all_attribut
 
     assert result.errors is None
     assert result.data["TestAllAttributeTypesCreate"]["ok"] is True
-    assert len(result.data["TestAllAttributeTypesCreate"]["object"]["id"]) == 36  # lenght of an UUID
+    assert len(result.data["TestAllAttributeTypesCreate"]["object"]["id"]) == 36  # length of an UUID
 
     objs = await NodeManager.query(db=db, schema="TestAllAttributeTypes")
     obj1 = objs[0]
@@ -416,7 +416,7 @@ async def test_all_attributes_default_value(db: InfrahubDatabase, default_branch
     assert result.errors is None
     assert result.data["TestAllAttributeTypesCreate"]["ok"] is True
     obj_id = result.data["TestAllAttributeTypesCreate"]["object"]["id"]
-    assert len(obj_id) == 36  # lenght of an UUID
+    assert len(obj_id) == 36  # length of an UUID
 
     obj1 = await NodeManager.get_one(db=db, id=obj_id)
 
@@ -437,6 +437,15 @@ async def test_all_attributes_default_value(db: InfrahubDatabase, default_branch
     assert obj1.myint_default.is_default is True
     assert obj1.mylist_default.value == [10, 11, 12]
     assert obj1.mylist_default.is_default is True
+
+    assert obj1.mystring_none.value is None
+    assert obj1.mystring_none.is_default is True
+    assert obj1.mybool_none.value is None
+    assert obj1.mybool_none.is_default is True
+    assert obj1.myint_none.value is None
+    assert obj1.myint_none.is_default is True
+    assert obj1.mylist_none.value is None
+    assert obj1.mylist_none.is_default is True
 
 
 async def test_create_object_with_flag_property(db: InfrahubDatabase, default_branch, car_person_schema):
@@ -466,7 +475,7 @@ async def test_create_object_with_flag_property(db: InfrahubDatabase, default_br
 
     assert result.errors is None
     assert result.data["TestPersonCreate"]["ok"] is True
-    assert len(result.data["TestPersonCreate"]["object"]["id"]) == 36  # lenght of an UUID
+    assert len(result.data["TestPersonCreate"]["object"]["id"]) == 36  # length of an UUID
 
     # Query the newly created Node to ensure everything is as expected
     query = """
@@ -534,7 +543,7 @@ async def test_create_object_with_node_property(
 
     assert result.errors is None
     assert result.data["TestPersonCreate"]["ok"] is True
-    assert len(result.data["TestPersonCreate"]["object"]["id"]) == 36  # lenght of an UUID
+    assert len(result.data["TestPersonCreate"]["object"]["id"]) == 36  # length of an UUID
 
     # Query the newly created Node to ensure everything is as expected
     query = """
@@ -615,7 +624,7 @@ async def test_create_object_with_single_relationship(db: InfrahubDatabase, defa
 
     assert result.errors is None
     assert result.data["TestCarCreate"]["ok"] is True
-    assert len(result.data["TestCarCreate"]["object"]["id"]) == 36  # lenght of an UUID
+    assert len(result.data["TestCarCreate"]["object"]["id"]) == 36  # length of an UUID
 
 
 async def test_create_object_with_single_relationship_flag_property(
@@ -742,7 +751,7 @@ async def test_create_object_with_multiple_relationships(db: InfrahubDatabase, d
 
     assert result.errors is None
     assert result.data["GardenFruitCreate"]["ok"] is True
-    assert len(result.data["GardenFruitCreate"]["object"]["id"]) == 36  # lenght of an UUID
+    assert len(result.data["GardenFruitCreate"]["object"]["id"]) == 36  # length of an UUID
 
     fruit = await NodeManager.get_one(db=db, id=result.data["GardenFruitCreate"]["object"]["id"])
     assert len(await fruit.tags.get(db=db)) == 3
@@ -796,7 +805,7 @@ async def test_create_object_with_multiple_relationships_with_node_property(
 
     assert result.errors is None
     assert result.data["GardenFruitCreate"]["ok"] is True
-    assert len(result.data["GardenFruitCreate"]["object"]["id"]) == 36  # lenght of an UUID
+    assert len(result.data["GardenFruitCreate"]["object"]["id"]) == 36  # length of an UUID
 
     fruit = await NodeManager.get_one(
         db=db, id=result.data["GardenFruitCreate"]["object"]["id"], include_owner=True, include_source=True
@@ -866,7 +875,7 @@ async def test_create_object_with_multiple_relationships_flag_property(
 
     assert result.errors is None
     assert result.data["GardenFruitCreate"]["ok"] is True
-    assert len(result.data["GardenFruitCreate"]["object"]["id"]) == 36  # lenght of an UUID
+    assert len(result.data["GardenFruitCreate"]["object"]["id"]) == 36  # length of an UUID
 
     fruit = await NodeManager.get_one(db=db, id=result.data["GardenFruitCreate"]["object"]["id"])
     rels = await fruit.tags.get(db=db)

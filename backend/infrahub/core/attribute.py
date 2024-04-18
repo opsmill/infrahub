@@ -65,7 +65,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     _rel_to_node_label: str = RELATIONSHIP_TO_NODE_LABEL
     _rel_to_value_label: str = RELATIONSHIP_TO_VALUE_LABEL
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-branches
         self,
         name: str,
         schema: AttributeSchema,
@@ -114,6 +114,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
             if not self.updated_at and "updated_at" in data:
                 self.updated_at = Timestamp(data.get("updated_at"))
+        elif data is None:
+            self.is_default = True
         else:
             self.value = data
 

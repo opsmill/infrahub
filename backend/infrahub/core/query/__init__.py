@@ -110,9 +110,9 @@ class QueryRel(QueryElement):
     length_max: Optional[int] = None
 
     def __str__(self):
-        lenght_str = ""
+        length_str = ""
         if self.length_max:
-            lenght_str = "*%s..%s" % (
+            length_str = "*%s..%s" % (
                 self.length_min,
                 self.length_max,
             )
@@ -120,7 +120,7 @@ class QueryRel(QueryElement):
         main_str = "[%s%s%s%s]" % (
             self.name or "",
             self.labels_as_str,
-            lenght_str,
+            length_str,
             self.params_as_str,
         )
 
