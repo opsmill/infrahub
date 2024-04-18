@@ -4,6 +4,8 @@ import { gql } from "@apollo/client";
 import React, { useEffect, useState } from "react";
 import { Spinner } from "../../components/ui/spinner";
 import { ITreeViewOnLoadDataProps } from "react-accessible-treeview";
+import { useNavigate } from "react-router-dom";
+import { constructPath } from "../../utils/fetch";
 
 const GET_PREFIXES = gql`
   query GET_PREFIXES($parentIds: [ID!]) {
@@ -142,6 +144,7 @@ export default function IpamTree() {
     },
   ]);
   const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds: string[] }>(GET_PREFIXES);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchPrefixes().then(({ data }) => {
@@ -175,7 +178,18 @@ export default function IpamTree() {
     <nav className="min-w-48">
       <h3 className="font-semibold mb-2">Navigation</h3>
 
-      <Tree data={treeData} onLoadData={onLoadData} />
+      <Tree
+        data={treeData}
+        onLoadData={onLoadData}
+        onSelect={({ element }) => {
+          const url = constructPath(
+            element.category === "IP_PREFIX"
+              ? `/ipam/prefixes/${element.name}`
+              : `/ipam/ip_address/${element.name}`
+          );
+          navigate(url);
+        }}
+      />
     </nav>
   );
 }
