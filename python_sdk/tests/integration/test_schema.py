@@ -23,7 +23,10 @@ class TestInfrahubSchema:
         nodes = [node for node in core_models["nodes"] if node["namespace"] != "Internal"]
         generics = [node for node in core_models["generics"] if node["namespace"] != "Internal"]
 
-        assert len(schema_nodes) == len(nodes) + len(generics)
+        profiles = [node for node in schema_nodes.values() if node.namespace == "Profile"]
+        assert profiles
+
+        assert len(schema_nodes) == len(nodes) + len(generics) + len(profiles)
         assert "BuiltinTag" in schema_nodes
         assert isinstance(schema_nodes["BuiltinTag"], NodeSchema)
 
@@ -37,7 +40,10 @@ class TestInfrahubSchema:
         nodes = [node for node in core_models["nodes"] if node["namespace"] != "Internal"]
         generics = [node for node in core_models["generics"] if node["namespace"] != "Internal"]
 
-        assert len(ifc.schema.cache[ifc.default_branch]) == len(nodes) + len(generics)
+        schema_without_profiles = [
+            node for node in ifc.schema.cache[ifc.default_branch].values() if node.namespace != "Profile"
+        ]
+        assert len(schema_without_profiles) == len(nodes) + len(generics)
 
     async def test_schema_load_many(self, client, init_db_base, schema_extension_01, schema_extension_02):
         config = Config(username="admin", password="infrahub", requester=client.async_request)
