@@ -1,10 +1,10 @@
-import { Tree, TreeProps } from "../../components/ui/tree";
+import { TreeItemProps, Tree, TreeProps } from "../../components/ui/tree";
 import { useLazyQuery } from "../../hooks/useQuery";
 import { gql } from "@apollo/client";
 import React, { useEffect, useState } from "react";
 import { Spinner } from "../../components/ui/spinner";
 import { ITreeViewOnLoadDataProps } from "react-accessible-treeview";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { constructPath } from "../../utils/fetch";
 
 const GET_PREFIXES = gql`
@@ -180,6 +180,7 @@ export default function IpamTree() {
 
       <Tree
         data={treeData}
+        itemContent={IpamTreeItem}
         onLoadData={onLoadData}
         onSelect={({ element, isSelected }) => {
           if (!isSelected) return;
@@ -195,3 +196,16 @@ export default function IpamTree() {
     </nav>
   );
 }
+
+const IpamTreeItem = ({ element }: TreeItemProps) => {
+  const url = constructPath(
+    element.category === "IP_PREFIX"
+      ? `/ipam/prefixes/${element.name}`
+      : `/ipam/ip_address/${element.name}`
+  );
+  return (
+    <Link to={url} tabIndex={-1}>
+      {element.name}
+    </Link>
+  );
+};

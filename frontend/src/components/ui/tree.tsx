@@ -3,26 +3,29 @@ import TreeViewPrimitive, { ITreeViewProps, INodeRendererProps } from "react-acc
 import { Icon } from "@iconify-icon/react";
 import { classNames } from "../../utils/common";
 
+export type TreeItemProps = Pick<INodeRendererProps, "element">;
+
 export interface TreeProps extends Omit<ITreeViewProps, "nodeRenderer"> {
-  nodeRenderer?: (props: INodeRendererProps) => React.ReactNode;
+  itemContent?: (props: TreeItemProps) => React.ReactNode;
 }
 
-export const Tree = (props: TreeProps) => {
+export const Tree = ({ itemContent, ...props }: TreeProps) => {
+  const NodeComp = itemContent || DefaultTreeItem;
   return (
     <TreeViewPrimitive
       {...props}
-      nodeRenderer={(props) => (
-        <TreeItemWrapper {...props}>
-          {props.isBranch ? (
+      nodeRenderer={(nodeRendererProps) => (
+        <TreeItemWrapper {...nodeRendererProps}>
+          {nodeRendererProps.isBranch ? (
             <Icon
-              icon={props.isExpanded ? "mdi:chevron-down" : "mdi:chevron-right"}
-              onClick={props.handleExpand}
+              icon={nodeRendererProps.isExpanded ? "mdi:chevron-down" : "mdi:chevron-right"}
+              onClick={nodeRendererProps.handleExpand}
               className="px-1.5"
             />
           ) : (
             <div className="px-1.5" />
           )}
-          <DefaultItem element={props.element} />
+          {<NodeComp element={nodeRendererProps.element} />}
         </TreeItemWrapper>
       )}
       className={classNames(
@@ -34,7 +37,7 @@ export const Tree = (props: TreeProps) => {
 };
 
 const TreeItemWrapper = (props: INodeRendererProps & { children: React.ReactNode }) => {
-  const { getNodeProps, isSelected, level } = props;
+  const { children, getNodeProps, isSelected, level } = props;
   return (
     <div
       {...getNodeProps()}
@@ -46,13 +49,11 @@ const TreeItemWrapper = (props: INodeRendererProps & { children: React.ReactNode
         "focus-visible:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2",
         isSelected ? "bg-custom-blue-500 text-custom-white" : "hover:bg-custom-blue-400"
       )}>
-      {props.children}
+      {children}
     </div>
   );
 };
 
-type RenderNodeProps = Pick<INodeRendererProps, "element">;
-
-const DefaultItem: React.FC<RenderNodeProps> = ({ element }) => {
+const DefaultTreeItem: React.FC<TreeItemProps> = ({ element }) => {
   return <span>{element.name}</span>;
 };
