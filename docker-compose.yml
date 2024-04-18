@@ -24,17 +24,12 @@ services:
       retries: 3
 
   database:
-    image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.18.1-enterprise}
+    image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.18.1-community}
     restart: unless-stopped
     environment:
       - "NEO4J_AUTH=neo4j/admin"
       - "NEO4J_dbms_security_procedures_unrestricted=apoc.*"
       - "NEO4J_dbms_security_auth__minimum__password__length=4"
-      - "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes"
-      - "NEO4J_server_backup_enabled=true"
-      - "NEO4J_server_backup_listen__address=0.0.0.0:6362"
-      - "NEO4J_metrics_prometheus_enabled=true"
-      - "NEO4J_metrics_prometheus_endpoint=0.0.0.0:2004"
     volumes:
       - "database_data:/data"
       - "database_logs:/logs"
@@ -63,12 +58,15 @@ services:
       cache:
         condition: service_healthy
     environment:
-      - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
+      - "INFRAHUB_DB_ADDRESS=${INFRAHUB_DB_ADDRESS:-database}"
+      - "INFRAHUB_BROKER_ADDRESS=${INFRAHUB_BROKER_ADDRESS:-message-queue}"
+      - "INFRAHUB_CACHE_ADDRESS=${INFRAHUB_CACHE_ADDRESS:-cache}"
+      - "INFRAHUB_STORAGE=local"
+      - "INFRAHUB_STORAGE_LOCAL_PATH=${INFRAHUB_STORAGE_LOCAL_PATH:-/opt/infrahub/storage}"
       - "INFRAHUB_PRODUCTION=false"
       - "INFRAHUB_LOG_LEVEL=INFO"
       - "INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN=06438eb2-8019-4776-878c-0941b1f1d1ec"
       - "INFRAHUB_SECURITY_SECRET_KEY=327f747f-efac-42be-9e73-999f08f86b92"
-      - "INFRAHUB_ALLOW_ANONYMOUS_ACCESS=true"
       - "INFRAHUB_TRACE_ENABLE=${INFRAHUB_TRACE_ENABLE:-false}"
       - "INFRAHUB_TRACE_INSECURE=${INFRAHUB_TRACE_INSECURE:-true}"
       - "INFRAHUB_TRACE_EXPORTER_TYPE=${INFRAHUB_TRACE_EXPORTER_TYPE:-otlp}"
@@ -78,10 +76,10 @@ services:
     ports:
       - 8000:8000
     volumes:
-      - "storage_data:/opt/infrahub/storage"
+      - "storage_data:${INFRAHUB_STORAGE_LOCAL_PATH:-/opt/infrahub/storage}"
     tty: true
     healthcheck:
-      test: wget -O /dev/null http://localhost:8000/api/schema || exit 1
+      test: curl -s -f -o /dev/null http://localhost:8000/api/schema/summary || exit 1
       interval: 5s
       timeout: 5s
       retries: 20
@@ -97,7 +95,12 @@ services:
     depends_on:
       - infrahub-server
     environment:
-      - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
+      - "INFRAHUB_DB_ADDRESS=${INFRAHUB_DB_ADDRESS:-database}"
+      - "INFRAHUB_BROKER_ADDRESS=${INFRAHUB_BROKER_ADDRESS:-message-queue}"
+      - "INFRAHUB_CACHE_ADDRESS=${INFRAHUB_CACHE_ADDRESS:-cache}"
+      - "INFRAHUB_STORAGE=local"
+      - "INFRAHUB_STORAGE_LOCAL_PATH=${INFRAHUB_STORAGE_LOCAL_PATH:-/opt/infrahub/storage}"
+      - "INFRAHUB_INTERNAL_ADDRESS=http://infrahub-server:8000"
       - "INFRAHUB_ADDRESS=http://infrahub-server:8000"
       - "INFRAHUB_PRODUCTION=false"
       - "INFRAHUB_LOG_LEVEL=DEBUG"

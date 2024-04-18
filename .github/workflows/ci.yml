@@ -66,6 +66,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
+      - name: "Install Helm"
+        uses: azure/setup-helm@v4.2.0
       - name: "Linting: helm lint"
         run: "helm lint helm/"
 
@@ -77,17 +79,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
-      - name: "Identify which files have changed"
-        uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            src:
-              - '**.yml'
-              - '**.yaml'
-              - 'development/workflows/ci.yml'
       - name: "Setup environment"
-        run: "pip install yamllint==1.33.0"
+        run: "pip install yamllint==1.35.1"
       - name: "Linting: yamllint"
         run: "yamllint ."
 
@@ -531,7 +524,7 @@ jobs:
       - name: "Build website"
         run: "invoke docs.build"
 
-  validate_generated_documentation:
+  validate-generated-documentation:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -554,7 +547,7 @@ jobs:
       - name: "Validate generated documentation"
         run: "invoke docs.validate --docker"
 
-  validate_documentation_style:
+  validate-documentation-style:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
