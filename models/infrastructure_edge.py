@@ -581,7 +581,6 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
     await group_arista_devices.save()
     await group_cisco_devices.save()
 
-
     # --------------------------------------------------
     # Create iBGP Sessions within the Site
     # --------------------------------------------------
@@ -1108,7 +1107,9 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         NETWORKS_POOL_INTERNAL_IPV6[2],
         NETWORKS_POOL_INTERNAL_IPV6[3],
     ]:
-        obj = await client.create(branch=branch, kind="IpamIPPrefix", is_pool=True, prefix=str(network), member_type="address")
+        obj = await client.create(
+            branch=branch, kind="IpamIPPrefix", is_pool=True, prefix=str(network), member_type="address"
+        )
         await obj.save()
     log.debug(f"IP Prefixes Creation Completed")
     # ------------------------------------------
@@ -1140,11 +1141,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
             "profile_name": {"value": intf_profile[0]},
             "mtu": {"value": intf_profile[1]},
         }
-        profile = await client.create(
-            branch=branch,
-            kind=f"Profile{intf_profile[2]}",
-            data=data_profile
-        )
+        profile = await client.create(branch=branch, kind=f"Profile{intf_profile[2]}", data=data_profile)
         await profile.save()
         store.set(key=intf_profile[0], node=profile)
 
@@ -1164,16 +1161,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # Add profile on interfaces upstream/backbone
     # ------------------------------------------
     # FIXME - Could do it better
-    upstream_interfaces = await client.filters(
-        branch=branch,
-        kind="InfraInterfaceL3",
-        role__value="upstream"
-    )
-    backbone_interfaces = await client.filters(
-        branch=branch,
-        kind="InfraInterfaceL3",
-        role__value="backbone"
-    )
+    upstream_interfaces = await client.filters(branch=branch, kind="InfraInterfaceL3", role__value="upstream")
+    backbone_interfaces = await client.filters(branch=branch, kind="InfraInterfaceL3", role__value="backbone")
     for interface in upstream_interfaces:
         profile_id = store.get(key="upstream_profile", kind="ProfileInfraInterfaceL3").id
         await interface.profiles.fetch()
