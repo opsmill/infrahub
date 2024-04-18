@@ -13,6 +13,7 @@ export const Tree = ({ itemContent, ...props }: TreeProps) => {
   const NodeComp = itemContent || DefaultTreeItem;
   return (
     <TreeViewPrimitive
+      propagateSelectUpwards
       {...props}
       nodeRenderer={(nodeRendererProps) => (
         <TreeItemWrapper {...nodeRendererProps}>
@@ -36,7 +37,7 @@ export const Tree = ({ itemContent, ...props }: TreeProps) => {
 };
 
 const TreeItemWrapper = (props: INodeRendererProps & { children: React.ReactNode }) => {
-  const { children, getNodeProps, isSelected, level } = props;
+  const { children, getNodeProps, isSelected, isHalfSelected, level } = props;
   return (
     <div
       {...getNodeProps()}
@@ -46,7 +47,8 @@ const TreeItemWrapper = (props: INodeRendererProps & { children: React.ReactNode
         "text-gray-600",
         "h-8 px-1.5 rounded cursor-pointer",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300",
-        isSelected ? "bg-sky-300" : "hover:bg-sky-100"
+        isSelected ? "bg-sky-300" : "hover:bg-sky-100",
+        isHalfSelected && "bg-gray-100"
       )}>
       {children}
     </div>

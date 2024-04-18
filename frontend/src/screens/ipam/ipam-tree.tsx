@@ -189,7 +189,7 @@ export default function IpamTree() {
         data={treeData}
         itemContent={IpamTreeItem}
         onLoadData={onLoadData}
-        onSelect={({ element, isSelected }) => {
+        onNodeSelect={({ element, isSelected }) => {
           if (!isSelected) return;
 
           const url = constructPath(
