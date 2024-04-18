@@ -18,7 +18,6 @@ export default function IpamIPAddressesList() {
   const [qspTab] = useQueryParam(IPAM_QSP, StringParam);
   const schemas = useAtomValue(schemaState);
   const schemaData = schemas.find((schema) => schema.kind === IPAM_IP_ADDRESS_OBJECT);
-
   const columns = getSchemaObjectColumns(schemaData);
 
   const constructLink = (data) => {
@@ -44,7 +43,6 @@ export default function IpamIPAddressesList() {
       },
       link: constructLink(edge?.node),
     }));
-  console.log("rows: ", rows);
 
   if (error) {
     return <ErrorScreen message="An error occured while retrieving prefixes" />;
@@ -52,8 +50,6 @@ export default function IpamIPAddressesList() {
 
   return (
     <div>
-      <div>IP Addresses</div>
-
       {loading && <LoadingScreen hideText />}
 
       {data && <Table rows={rows} columns={columns} />}
