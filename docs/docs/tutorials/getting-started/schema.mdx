@@ -2,7 +2,12 @@
 title: Extend the schema
 ---
 import CodeBlock from '@theme/CodeBlock';
-import infrastructureBaseYaml from '!!raw-loader!../../../../models/infrastructure_base.yml';
+import dcimYaml from '!!raw-loader!../../../../models/base/dcim.yml';
+import ipamYaml from '!!raw-loader!../../../../models/base/ipam.yml';
+import locationYaml from '!!raw-loader!../../../../models/base/location.yml';
+import organizationYaml from '!!raw-loader!../../../../models/base/organization.yml';
+import routingYaml from '!!raw-loader!../../../../models/base/routing.yml';
+
 import ReferenceLink from "../../../src/components/Card";
 
 # Extend the schema
@@ -27,11 +32,15 @@ You can explore the current schema by visiting the schema page, you can find it 
 
 In order to model a network, we need to extend the current models to capture more information like: `Device`, `Interface`, `IPAddress`, `BGPSession`, `Location`, `Role`, `Status` etc.
 
-A "base" schema with these types of models and more is available in the `models/` directory
+A "base" schema with these types of models and more is available in the `models/base` directory
 
 <details>
   <summary>Infrastructure Base Schema</summary>
-  <CodeBlock language="yaml">{infrastructureBaseYaml}</CodeBlock>
+  <CodeBlock language="yaml" title="DCIM Base Schema">{dcimYaml}</CodeBlock>
+  <CodeBlock language="yaml" title="IPAM Base Schema">{ipamYaml}</CodeBlock>
+  <CodeBlock language="yaml" title="Location Base Schema">{locationYaml}</CodeBlock>
+  <CodeBlock language="yaml" title="Organization Base Schema">{organizationYaml}</CodeBlock>
+  <CodeBlock language="yaml" title="Routing Base Schema">{routingYaml}</CodeBlock>
 </details>
 
 Use the following command to load these new models into Infrahub
@@ -45,7 +54,14 @@ invoke demo.load-infra-schema
   ```bash
   > invoke demo.load-infra-schema
   --- abbreviated ---
-  schema 'models/infrastructure_base.yml' loaded successfully in 12.352 sec!
+  schema 'models/base/dcim.yml' loaded successfully
+  schema 'models/base/ipam.yml' loaded successfully
+  schema 'models/base/location.yml' loaded successfully
+  schema 'models/base/organization.yml' loaded successfully
+  schema 'models/base/routing.yml' loaded successfully
+  5 schemas processed in 26.640 seconds.
+  Waiting for schema to sync across all workers
+  Schema updated on all workers.
   --- abbreviated ---
   [+] Restarting 1/1
   ✔ Container infrahub-infrahub-server-1  Started                                                                                                 1.5s
