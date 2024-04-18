@@ -5,6 +5,7 @@ nodes:
   # --------------------  IPAM (VLAN, IP Address)  --------------------
   - name: IPPrefix
     namespace: Ipam
+    include_in_menu: false
     inherit_from:
       - "BuiltinIPPrefix"
     menu_placement: "IpamNamespace"
@@ -13,6 +14,7 @@ nodes:
     label: "IP Prefix"
   - name: IPAddress
     namespace: Ipam
+    include_in_menu: false
     inherit_from:
       - "BuiltinIPAddress"
     menu_placement: "IpamNamespace"

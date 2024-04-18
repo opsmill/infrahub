@@ -1587,7 +1587,7 @@ core_models: dict[str, Any] = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "include_in_menu": True,
+            "include_in_menu": False,
             "icon": "mdi:format-list-group",
             "branch": BranchSupportType.AWARE.value,
             "inherit_from": [InfrahubKind.IPNAMESPACE],

@@ -64,6 +64,14 @@ async def get_menu(
 
     structure: Dict[str, List[InterfaceMenu]] = {}
 
+    ipam = InterfaceMenu(
+        title="IPAM",
+        children=[
+            InterfaceMenu(title="Namespaces", path=f"/objects/{InfrahubKind.IPNAMESPACE}", icon=_extract_node_icon(full_schema[InfrahubKind.IPNAMESPACE])),
+            InterfaceMenu(title="Prefixes", path="/ipam/prefixes", icon=_extract_node_icon(full_schema[InfrahubKind.IPPREFIX])),
+            InterfaceMenu(title="IP Addresses", path="/ipam/ip-addresses", icon=_extract_node_icon(full_schema[InfrahubKind.IPADDRESS])),
+        ],
+    )
     groups = InterfaceMenu(
         title="Groups",
     )
@@ -128,7 +136,6 @@ async def get_menu(
             ),
         ],
     )
-
     change_control = InterfaceMenu(
         title="Change Control",
         children=[
@@ -202,4 +209,4 @@ async def get_menu(
         ],
     )
 
-    return [objects, groups, unified_storage, change_control, deployment, admin]
+    return [objects, ipam, groups, unified_storage, change_control, deployment, admin]
