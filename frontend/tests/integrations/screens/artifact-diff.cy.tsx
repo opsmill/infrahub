@@ -18,7 +18,8 @@ import {
   artifactWithoutThreadMockData,
 } from "../../mocks/data/artifact";
 import { proposedChangesId } from "../../mocks/data/conversations";
-import { profileId } from "../../mocks/data/profile";
+
+import { profileId } from "../../mocks/data/account-profile";
 import { proposedChangesDetails } from "../../mocks/data/proposedChanges";
 import { TestProvider } from "../../mocks/jotai/atom";
 

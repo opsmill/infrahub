@@ -15,7 +15,7 @@ import {
   profileDetailsMocksData,
   profileDetailsMocksQuery,
   profileId,
-} from "../../mocks/data/profile";
+} from "../../mocks/data/account-profile";
 import {
   taskMocksData as taskMocksData1,
   taskMocksQuery as taskMocksQuery1,

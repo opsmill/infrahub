@@ -11,6 +11,7 @@ import { proposedChangedState } from "../../../src/state/atoms/proposedChanges.a
 import { schemaState } from "../../../src/state/atoms/schema.atom";
 import { encodeJwt } from "../../../src/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
+import { profileId } from "../../mocks/data/account-profile";
 import { proposedChangesId } from "../../mocks/data/conversations";
 import {
   DataDiffProposedChangesState,
@@ -24,7 +25,6 @@ import {
   getProposedChangesCommentsMockQuery,
   objectThreadSchema,
 } from "../../mocks/data/data-changes";
-import { profileId } from "../../mocks/data/profile";
 import { TestProvider } from "../../mocks/jotai/atom";
 
 const url = `/proposed-changes/${proposedChangesId}`;
