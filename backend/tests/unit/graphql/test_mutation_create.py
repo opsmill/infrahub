@@ -438,6 +438,15 @@ async def test_all_attributes_default_value(db: InfrahubDatabase, default_branch
     assert obj1.mylist_default.value == [10, 11, 12]
     assert obj1.mylist_default.is_default is True
 
+    assert obj1.mystring_none.value is None
+    assert obj1.mystring_none.is_default is True
+    assert obj1.mybool_none.value is None
+    assert obj1.mybool_none.is_default is True
+    assert obj1.myint_none.value is None
+    assert obj1.myint_none.is_default is True
+    assert obj1.mylist_none.value is None
+    assert obj1.mylist_none.is_default is True
+
 
 async def test_create_object_with_flag_property(db: InfrahubDatabase, default_branch, car_person_schema):
     query = """
