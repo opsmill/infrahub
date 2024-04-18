@@ -551,7 +551,7 @@ class InfrahubSchema(InfrahubSchemaBase):
             refresh (bool, optional): Force a refresh of the schema. Defaults to False.
 
         Returns:
-            Dict[str, MainSchemaTypes]: Dictionnary of all schema organized by kind
+            Dict[str, MainSchemaTypes]: Dictionary of all schema organized by kind
         """
         branch = branch or self.client.default_branch
         if refresh or branch not in self.cache:
@@ -707,7 +707,7 @@ class InfrahubSchema(InfrahubSchemaBase):
             branch (str): Name of the branch to fetch the schema for.
 
         Returns:
-            Dict[str, MainSchemaTypes]: Dictionnary of all schema organized by kind
+            Dict[str, MainSchemaTypes]: Dictionary of all schema organized by kind
         """
         url_parts = [("branch", branch)]
         if namespaces:
@@ -754,7 +754,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
             refresh (bool, optional): Force a refresh of the schema. Defaults to False.
 
         Returns:
-            Dict[str, MainSchemaTypes]: Dictionnary of all schema organized by kind
+            Dict[str, MainSchemaTypes]: Dictionary of all schema organized by kind
         """
         branch = branch or self.client.default_branch
         if refresh or branch not in self.cache:
@@ -900,7 +900,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
             branch (str): Name of the branch to fetch the schema for.
 
         Returns:
-            Dict[str, MainSchemaTypes]: Dictionnary of all schema organized by kind
+            Dict[str, MainSchemaTypes]: Dictionary of all schema organized by kind
         """
         url_parts = [("branch", branch)]
         if namespaces:
