@@ -1,4 +1,4 @@
-export const IP_PREFIX_SCHEMA_KIND = "BuiltinIPPrefix";
+export const IP_PREFIX_DEFAULT_SCHEMA_KIND = "BuiltinIPPrefix";
 
 export const IPAM_TABS = {
   SUMMARY: "summary",

@@ -6,13 +6,13 @@ import { useMemo } from "react";
 import { useAtomValue } from "jotai/index";
 import { genericsState } from "../../state/atoms/schema.atom";
 import LoadingScreen from "../loading-screen/loading-screen";
-import { IP_PREFIX_SCHEMA_KIND } from "./constants";
+import { IP_PREFIX_DEFAULT_SCHEMA_KIND } from "./constants";
 
 export default function IpamPage() {
   const generics = useAtomValue(genericsState);
 
   const prefixSchema = useMemo(
-    () => generics.find(({ kind }) => kind === IP_PREFIX_SCHEMA_KIND),
+    () => generics.find(({ kind }) => kind === IP_PREFIX_DEFAULT_SCHEMA_KIND),
     [generics.length]
   );
 

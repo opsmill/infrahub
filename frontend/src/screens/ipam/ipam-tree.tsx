@@ -1,80 +1,45 @@
 import { TreeItemProps, Tree, TreeProps } from "../../components/ui/tree";
 import { useLazyQuery } from "../../hooks/useQuery";
-import { gql } from "@apollo/client";
 import React, { useEffect, useState } from "react";
 import { Spinner } from "../../components/ui/spinner";
 import { ITreeViewOnLoadDataProps } from "react-accessible-treeview";
 import { Link, useNavigate } from "react-router-dom";
 import { constructPath } from "../../utils/fetch";
 import { Icon } from "@iconify-icon/react";
-
-const GET_PREFIXES = gql`
-  query GET_PREFIXES($parentIds: [ID!]) {
-    IpamIPPrefix(parent__ids: $parentIds) {
-      edges {
-        node {
-          id
-          display_label
-          parent {
-            node {
-              id
-            }
-          }
-          children {
-            count
-          }
-        }
-      }
-    }
-  }
-`;
+import { GET_PREFIXES_ONLY } from "../../graphql/queries/ipam/prefixes";
 
 type PrefixNode = {
   id: string;
   display_label: string;
-  parent: string | null;
-  children: string[];
-  isBranch: boolean;
-  icon: string | null;
-  count: number;
-  ipCount?: number;
-};
-
-type PrefixEdge = {
-  node: PrefixNode & {
-    parent: {
-      node: {
-        id: string;
-        display_label: string;
-      } | null;
-    };
-    utilization: {
-      value: number;
-    };
-    children: {
-      count: number;
-    };
-    descendants: {
-      count: number;
-    };
+  parent: {
+    node: {
+      id: string;
+      display_label: string;
+    } | null;
   };
+  children: {
+    count: number;
+  };
+  __typename: string;
 };
 
 type PrefixData = {
   IpamIPPrefix: {
-    edges: PrefixEdge[];
+    edges: Array<{ node: PrefixNode }>;
   };
 };
+
+const ROOT_NODE_ID = "root" as const;
 
 const toTreeNodeFormat = (data: PrefixData): TreeItemProps["element"][] => {
   const prefixes = data.IpamIPPrefix.edges.map(({ node }) => ({
     id: node.id,
     name: node.display_label,
-    parent: node.parent.node?.id ?? "root",
+    parent: node.parent.node?.id ?? ROOT_NODE_ID,
     children: [],
     isBranch: node.children.count > 0,
     metadata: {
-      category: "IP_PREFIX",
+      kind: "IP_PREFIX",
       icon: "mdi:ip-network",
     },
   }));
@@ -97,14 +62,14 @@ const updateTreeData = (list: TreeProps["data"], id: string, children: TreeProps
 export default function IpamTree() {
   const [treeData, setTreeData] = useState<TreeProps["data"]>([
     {
-      id: "root",
+      id: ROOT_NODE_ID,
       name: "",
       parent: null,
       children: [],
       isBranch: true,
     },
   ]);
-  const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds: string[] }>(GET_PREFIXES);
+  const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds: string[] }>(GET_PREFIXES_ONLY);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -113,10 +78,10 @@ export default function IpamTree() {
 
       const treeNodes = toTreeNodeFormat(data);
 
-      const rootTreeNodes = treeNodes.filter(({ parent }) => parent === "root");
+      const rootTreeNodes = treeNodes.filter(({ parent }) => parent === ROOT_NODE_ID);
 
       // assign all prefixes and IP addresses without parent to the root node
-      setTreeData((tree) => updateTreeData(tree, "root", rootTreeNodes));
+      setTreeData((tree) => updateTreeData(tree, ROOT_NODE_ID, rootTreeNodes));
     });
   }, []);
 

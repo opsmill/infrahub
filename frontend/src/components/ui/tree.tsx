@@ -9,7 +9,7 @@ export interface TreeProps extends Omit<ITreeViewProps, "nodeRenderer"> {
   itemContent?: (props: TreeItemProps) => React.ReactNode;
 }
 
-export const Tree = ({ itemContent, ...props }: TreeProps) => {
+export const Tree = ({ itemContent, className, ...props }: TreeProps) => {
   const NodeComp = itemContent || DefaultTreeItem;
   return (
     <TreeViewPrimitive
@@ -17,27 +17,20 @@ export const Tree = ({ itemContent, ...props }: TreeProps) => {
       {...props}
       nodeRenderer={(nodeRendererProps) => (
         <TreeItemWrapper {...nodeRendererProps}>
-          {nodeRendererProps.isBranch ? (
-            <Icon
-              icon={nodeRendererProps.isExpanded ? "mdi:chevron-down" : "mdi:chevron-right"}
-              className="px-1.5"
-            />
-          ) : (
-            <DotIcon />
-          )}
-          {<NodeComp element={nodeRendererProps.element} />}
+          <NodeComp element={nodeRendererProps.element} />
         </TreeItemWrapper>
       )}
       className={classNames(
         "border rounded text-sm",
-        "[&_li:focus-visible]:rounded [&_li:focus-visible]:outline-none [&_li:focus-visible]:ring-2 [&_li:focus-visible]:ring-custom-blue-500 [&_li:focus-visible]:ring-offset-2"
+        "[&_li:focus-visible]:rounded [&_li:focus-visible]:outline-none [&_li:focus-visible]:ring-2 [&_li:focus-visible]:ring-custom-blue-500 [&_li:focus-visible]:ring-offset-2",
+        className
       )}
     />
   );
 };
 
 const TreeItemWrapper = (props: INodeRendererProps & { children: React.ReactNode }) => {
-  const { children, getNodeProps, isSelected, isHalfSelected, level } = props;
+  const { children, getNodeProps, isBranch, isExpanded, isSelected, isHalfSelected, level } = props;
   return (
     <div
       {...getNodeProps()}
@@ -50,6 +43,11 @@ const TreeItemWrapper = (props: INodeRendererProps & { children: React.ReactNode
         isSelected ? "bg-gray-200" : "hover:bg-gray-100",
         isHalfSelected && "bg-gray-50"
       )}>
+      {isBranch ? (
+        <Icon icon={isExpanded ? "mdi:chevron-down" : "mdi:chevron-right"} className="px-1.5" />
+      ) : (
+        <DotIcon />
+      )}
       {children}
     </div>
   );
