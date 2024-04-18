@@ -6,6 +6,7 @@ import { Spinner } from "../../components/ui/spinner";
 import { ITreeViewOnLoadDataProps } from "react-accessible-treeview";
 import { Link, useNavigate } from "react-router-dom";
 import { constructPath } from "../../utils/fetch";
+import { Icon } from "@iconify-icon/react";
 
 const GET_PREFIXES = gql`
   query GET_PREFIXES($parentIds: [ID!]) {
@@ -99,14 +100,17 @@ type PrefixData = {
   };
 };
 
-const toTreeNodeFormat = (data: PrefixData): TreeProps["data"] => {
+const toTreeNodeFormat = (data: PrefixData): TreeItemProps["element"][] => {
   const prefixes = data.IpamIPPrefix.edges.map(({ node }) => ({
     id: node.id,
     name: node.display_label,
     parent: node.parent.node?.id ?? "root",
     children: [],
     isBranch: node.children.count > 0 || node.ip_addresses.count > 0,
-    category: "IP_PREFIX",
+    metadata: {
+      category: "IP_PREFIX",
+      icon: "mdi:ip-network",
+    },
   }));
 
   const ipAddresses = data.IpamIPAddress.edges.map(({ node }) => ({
@@ -115,7 +119,10 @@ const toTreeNodeFormat = (data: PrefixData): TreeProps["data"] => {
     parent: node.ip_prefix.node?.id ?? "root",
     children: [],
     isBranch: false,
-    category: "IP_ADDRESS",
+    metadata: {
+      category: "IP_ADDRESS",
+      icon: "mdi:ip",
+    },
   }));
 
   return [...prefixes, ...ipAddresses];
@@ -198,13 +205,17 @@ export default function IpamTree() {
 }
 
 const IpamTreeItem = ({ element }: TreeItemProps) => {
-  const url = constructPath(
-    element.category === "IP_PREFIX"
-      ? `/ipam/prefixes/${element.name}`
-      : `/ipam/ip_address/${element.name}`
-  );
+  const url = element.metadata
+    ? constructPath(
+        element.metadata.category === "IP_PREFIX"
+          ? `/ipam/prefixes/${element.name}`
+          : `/ipam/ip_address/${element.name}`
+      )
+    : "";
+
   return (
-    <Link to={url} tabIndex={-1}>
+    <Link to={url} tabIndex={-1} className="flex items-center gap-2">
+      {element.metadata?.icon && <Icon icon={element.metadata.icon as string} />}
       {element.name}
     </Link>
   );
