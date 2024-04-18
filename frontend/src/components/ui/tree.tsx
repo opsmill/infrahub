@@ -11,7 +11,20 @@ export const Tree = (props: TreeProps) => {
   return (
     <TreeViewPrimitive
       {...props}
-      nodeRenderer={props.nodeRenderer ?? TreeItem}
+      nodeRenderer={(props) => (
+        <TreeItemWrapper {...props}>
+          {props.isBranch ? (
+            <Icon
+              icon={props.isExpanded ? "mdi:chevron-down" : "mdi:chevron-right"}
+              onClick={props.handleExpand}
+              className="px-1.5"
+            />
+          ) : (
+            <div className="px-1.5" />
+          )}
+          <DefaultItem element={props.element} />
+        </TreeItemWrapper>
+      )}
       className={classNames(
         "border rounded-md p-2",
         "[&_li:focus]:rounded-md [&_li:focus]:outline-none [&_li:focus]:ring-2 [&_li:focus]:ring-custom-blue-500 [&_li:focus]:ring-offset-2"
@@ -20,21 +33,11 @@ export const Tree = (props: TreeProps) => {
   );
 };
 
-export const TreeItem = ({
-  element,
-  getNodeProps,
-  handleExpand,
-  handleSelect,
-  isBranch,
-  isSelected,
-  isExpanded,
-  level,
-}: INodeRendererProps) => {
+const TreeItemWrapper = (props: INodeRendererProps & { children: React.ReactNode }) => {
+  const { getNodeProps, isSelected, level } = props;
   return (
     <div
-      {...getNodeProps({
-        onClick: handleSelect,
-      })}
+      {...getNodeProps()}
       style={{ marginLeft: (level - 1) * 20 }}
       className={classNames(
         "flex items-center",
@@ -43,16 +46,13 @@ export const TreeItem = ({
         "focus-visible:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2",
         isSelected ? "bg-custom-blue-500 text-custom-white" : "hover:bg-custom-blue-400"
       )}>
-      {isBranch ? (
-        <Icon
-          icon={isExpanded ? "mdi:chevron-down" : "mdi:chevron-right"}
-          onClick={handleExpand}
-          className="px-1.5"
-        />
-      ) : (
-        <div className="px-1.5" />
-      )}
-      <span>{element.name}</span>
+      {props.children}
     </div>
   );
+};
+
+type RenderNodeProps = Pick<INodeRendererProps, "element">;
+
+const DefaultItem: React.FC<RenderNodeProps> = ({ element }) => {
+  return <span>{element.name}</span>;
 };
