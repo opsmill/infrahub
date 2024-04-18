@@ -216,23 +216,28 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             )
 
             # Mark subnets as not top level if they were
-            for sub_network in sub_networks:
-                node = await NodeManager.get_one(sub_network.id, dbt, branch=branch, at=at)
-                if node.is_top_level.value:
-                    node.is_top_level.value = False
-                    await node.save(db=dbt)
+            if sub_networks:
+                nodes = await NodeManager.get_many(dbt, [s.id for s in sub_networks], branch=branch, at=at)
+                for node in nodes.values():
+                    if node.is_top_level.value:
+                        node.is_top_level.value = False
+                        await node.save(db=dbt)
 
             # Fix ip_prefix for addresses if needed
             addresses = await get_ip_addresses(
                 db=dbt, branch=branch, at=at, ip_prefix=ip_network, namespace=namespace_id
             )
-            for ip_address in addresses:
-                node = await NodeManager.get_one(ip_address.id, dbt, branch=branch, at=at)
-                node_prefix = await node.ip_prefix.get_peer(dbt)
-                if not node_prefix or ip_network.prefixlen > ipaddress.ip_network(node_prefix.prefix.value).prefixlen:
-                    # Change address' prefix only if none set or new one is more specific
-                    await node.ip_prefix.update(prefix, dbt)
-                    await node.ip_prefix.save(db=dbt)
+            if addresses:
+                nodes = await NodeManager.get_many(dbt, [a.id for a in addresses], branch=branch, at=at)
+                for node in nodes.values():
+                    node_prefix = await node.ip_prefix.get_peer(dbt)
+                    if (
+                        not node_prefix
+                        or ip_network.prefixlen > ipaddress.ip_network(node_prefix.prefix.value).prefixlen
+                    ):
+                        # Change address' prefix only if none set or new one is more specific
+                        await node.ip_prefix.update(prefix, dbt)
+                        await node.ip_prefix.save(db=dbt)
 
         return prefix, result
 
