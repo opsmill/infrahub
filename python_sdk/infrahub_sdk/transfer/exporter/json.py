@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple
 
 import ujson
 from rich.console import Console
@@ -8,7 +8,7 @@ from rich.progress import Progress
 
 from infrahub_sdk.client import InfrahubClient
 from infrahub_sdk.queries import QUERY_RELATIONSHIPS
-from infrahub_sdk.schema import GenericSchema, NodeSchema
+from infrahub_sdk.schema import MainSchemaTypes, NodeSchema
 
 from ..constants import ILLEGAL_NAMESPACES
 from ..exceptions import FileAlreadyExistsError, InvalidNamespaceError
@@ -32,7 +32,7 @@ class LineDelimitedJSONExporter(ExporterInterface):
             self.console.print(f"{end}")
 
     def identify_many_to_many_relationships(
-        self, node_schema_map: Dict[str, Union[NodeSchema, GenericSchema]]
+        self, node_schema_map: Dict[str, MainSchemaTypes]
     ) -> Dict[Tuple[str, str], str]:
         # Identify many to many relationships by src/dst couples
         many_relationship_identifiers: Dict[Tuple[str, str], str] = {}
@@ -60,7 +60,7 @@ class LineDelimitedJSONExporter(ExporterInterface):
         return many_relationship_identifiers
 
     async def retrieve_many_to_many_relationships(
-        self, node_schema_map: Dict[str, Union[NodeSchema, GenericSchema]], branch: str
+        self, node_schema_map: Dict[str, MainSchemaTypes], branch: str
     ) -> List[Dict[str, Any]]:
         has_remaining_items = True
         page_number = 1

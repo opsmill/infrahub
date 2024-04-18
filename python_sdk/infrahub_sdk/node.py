@@ -35,7 +35,11 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
-    from infrahub_sdk.schema import AttributeSchema, NodeSchema, RelationshipSchema
+    from infrahub_sdk.schema import (
+        AttributeSchema,
+        MainSchemaTypes,
+        RelationshipSchema,
+    )
 
 # pylint: disable=too-many-lines
 
@@ -673,13 +677,13 @@ class InfrahubNodeBase:
 
     def __init__(
         self,
-        schema: Union[NodeSchema, GenericSchema],
+        schema: MainSchemaTypes,
         branch: str,
         data: Optional[dict] = None,
     ) -> None:
         """
         Args:
-            schema (Union[NodeSchema, GenericSchema]): The schema of the node.
+            schema (MainSchemaTypes): The schema of the node.
             branch (str): The branch where the node resides.
             data (Optional[dict]): Optional data to initialize the node.
         """
@@ -1011,14 +1015,14 @@ class InfrahubNode(InfrahubNodeBase):
     def __init__(
         self,
         client: InfrahubClient,
-        schema: Union[NodeSchema, GenericSchema],
+        schema: MainSchemaTypes,
         branch: Optional[str] = None,
         data: Optional[dict] = None,
     ) -> None:
         """
         Args:
             client (InfrahubClient): The client used to interact with the backend.
-            schema (Union[NodeSchema, GenericSchema]): The schema of the node.
+            schema (MainSchemaTypes): The schema of the node.
             branch (Optional[str]): The branch where the node resides.
             data (Optional[dict]): Optional data to initialize the node.
         """
@@ -1036,7 +1040,7 @@ class InfrahubNode(InfrahubNodeBase):
         client: InfrahubClient,
         branch: str,
         data: dict,
-        schema: Optional[Union[NodeSchema, GenericSchema]] = None,
+        schema: Optional[MainSchemaTypes] = None,
     ) -> Self:
         if not schema:
             node_kind = data.get("__typename", None) or data.get("node", {}).get("__typename", None)
@@ -1353,14 +1357,14 @@ class InfrahubNodeSync(InfrahubNodeBase):
     def __init__(
         self,
         client: InfrahubClientSync,
-        schema: Union[NodeSchema, GenericSchema],
+        schema: MainSchemaTypes,
         branch: Optional[str] = None,
         data: Optional[dict] = None,
     ) -> None:
         """
         Args:
             client (InfrahubClientSync): The client used to interact with the backend synchronously.
-            schema (Union[NodeSchema, GenericSchema]): The schema of the node.
+            schema (MainSchemaTypes): The schema of the node.
             branch (Optional[str]): The branch where the node resides.
             data (Optional[dict]): Optional data to initialize the node.
         """
@@ -1378,7 +1382,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
         client: InfrahubClientSync,
         branch: str,
         data: dict,
-        schema: Optional[Union[NodeSchema, GenericSchema]] = None,
+        schema: Optional[MainSchemaTypes] = None,
     ) -> Self:
         if not schema:
             node_kind = data.get("__typename", None) or data.get("node", {}).get("__typename", None)
