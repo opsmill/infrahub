@@ -14,7 +14,7 @@ import {
   profileDetailsMocksData,
   profileDetailsMocksQuery,
   profileId,
-} from "../../mocks/data/profile";
+} from "../../mocks/data/account-profile";
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // Mock the apollo query and data
