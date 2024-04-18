@@ -22,22 +22,6 @@ type tTableProps = {
   onDelete?: Function;
 };
 
-const getDisplayValue = (data) => {
-  if (data?.display_label) {
-    return data?.display_label;
-  }
-
-  if (data?.value) {
-    return data?.value;
-  }
-
-  if (data?.node) {
-    return getDisplayValue(data?.node);
-  }
-
-  return "-";
-};
-
 export const Table = (props: tTableProps) => {
   const { columns, rows, onDelete } = props;
 
@@ -72,13 +56,13 @@ export const Table = (props: tTableProps) => {
                     <Link
                       className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
                       to={row.link}>
-                      <div>{getDisplayValue(row.values[column.name])}</div>
+                      {row.values[column.name] ?? "-"}
                     </Link>
                   )}
 
                   {!row.link && (
                     <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center">
-                      {getDisplayValue(row.values[column.name])}
+                      {row.values[column.name] ?? "-"}
                     </div>
                   )}
                 </td>
