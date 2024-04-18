@@ -29,11 +29,14 @@ const useQuery = (QUERY: any, options?: OperationVariables) => {
   });
 };
 
-export const useLazyQuery = (QUERY: any, options?: OperationVariables) => {
+export const useLazyQuery = <TData, TVariables extends OperationVariables>(
+  QUERY: any,
+  options?: OperationVariables
+) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
-  return useApolloLazyQuery(QUERY, {
+  return useApolloLazyQuery<TData, TVariables>(QUERY, {
     context: {
       uri: CONFIG.GRAPHQL_URL(branch?.name, date),
     },
