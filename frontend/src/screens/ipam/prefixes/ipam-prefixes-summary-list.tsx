@@ -40,10 +40,6 @@ export default function IpamIPPrefixesSummaryList() {
     { name: "is_pool", label: "Is Pool" },
     { name: "is_top_level", label: "Is Top Level" },
     { name: "utilization", label: "Utilization" },
-    { name: "netmask", label: "Netmask" },
-    { name: "hostmask", label: "Hostmask" },
-    { name: "network_address", label: "Network Address" },
-    { name: "broadcast_address", label: "Broadcast Address" },
     { name: "ip_namespace", label: "Ip Namespace" },
     { name: "parent", label: "Parent" },
   ];
