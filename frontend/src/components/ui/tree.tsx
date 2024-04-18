@@ -19,7 +19,6 @@ export const Tree = ({ itemContent, ...props }: TreeProps) => {
           {nodeRendererProps.isBranch ? (
             <Icon
               icon={nodeRendererProps.isExpanded ? "mdi:chevron-down" : "mdi:chevron-right"}
-              onClick={nodeRendererProps.handleExpand}
               className="px-1.5"
             />
           ) : (
@@ -29,8 +28,8 @@ export const Tree = ({ itemContent, ...props }: TreeProps) => {
         </TreeItemWrapper>
       )}
       className={classNames(
-        "border rounded-md p-2",
-        "[&_li:focus]:rounded-md [&_li:focus]:outline-none [&_li:focus]:ring-2 [&_li:focus]:ring-custom-blue-500 [&_li:focus]:ring-offset-2"
+        "border rounded p-2",
+        "[&_li:focus-visible]:rounded [&_li:focus-visible]:outline-none [&_li:focus-visible]:ring-2 [&_li:focus-visible]:ring-sky-300 [&_li:focus-visible]:ring-offset-2"
       )}
     />
   );
@@ -44,10 +43,10 @@ const TreeItemWrapper = (props: INodeRendererProps & { children: React.ReactNode
       style={{ paddingLeft: (level - 1) * 20 }}
       className={classNames(
         "flex items-center",
-        "text-gray-600 mix-blend-multiply",
-        "h-8 px-1.5 rounded-md cursor-pointer",
-        "focus-visible:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2",
-        isSelected ? "bg-custom-blue-500 text-custom-white" : "hover:bg-custom-blue-400"
+        "text-gray-600",
+        "h-8 px-1.5 rounded cursor-pointer",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300",
+        isSelected ? "bg-sky-300" : "hover:bg-sky-100"
       )}>
       {children}
     </div>

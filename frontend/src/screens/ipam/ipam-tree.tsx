@@ -182,7 +182,7 @@ export default function IpamTree() {
   };
 
   return (
-    <nav className="min-w-48">
+    <nav className="min-w-64">
       <h3 className="font-semibold mb-2">Navigation</h3>
 
       <Tree
