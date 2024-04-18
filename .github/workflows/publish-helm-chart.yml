@@ -39,24 +39,45 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4.2.0
 
-      - name: Package Helm Chart
+      - name: Install Helm Push Plugin
+        run: helm plugin install https://github.com/chartmuseum/helm-push
+
+      - name: Determine Chart Version
+        id: version
         run: |
           if [[ "${{ inputs.version }}" == "" ]]; then
-            echo "No version specified, using Chart.yaml version."
-            helm package ./helm
+            VERSION=$(helm show chart ./helm | grep '^version:' | cut -d ' ' -f2)
+            echo "No version input provided, using Chart.yaml version: $VERSION"
           else
-            helm package ./helm --version ${{ inputs.version }}
+            VERSION="${{ inputs.version }}"
+            echo "Using input version: $VERSION"
           fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Login to Private Registry
-        if: ${{ inputs.publish }}
+      - name: Login to Helm Registry
         run: >
           helm registry login ${{ vars.HARBOR_HOST }}
-          --username ${{ secrets.HARBOR_USERNAME }}
-          --password ${{ secrets.HARBOR_PASSWORD }}
+          --username '${{ secrets.HARBOR_USERNAME }}'
+          --password '${{ secrets.HARBOR_PASSWORD }}'
 
-      - name: Push Helm Chart to Private Registry
-        if: ${{ inputs.publish }}
-        id: push
+      - name: Add Helm repository
+        run: helm repo add opsmill https://${{ vars.HARBOR_HOST }}/chartrepo/opsmill
+
+      - name: Package Helm Chart
         run: |
-          helm push ./infrahub-${{ inputs.version }}.tgz oci://${{ vars.HARBOR_HOST }}/${{ github.repository }}
+          helm package --dependency-update ./helm --version ${{ steps.version.outputs.version }}
+
+      - name: Push Helm Chart to OCI Registry
+        if: ${{ inputs.publish }}
+        run: |
+          helm push infrahub-${{ steps.version.outputs.version }}.tgz oci://${{ vars.HARBOR_HOST }}/opsmill
+
+      - name: Push Helm Chart to traditional repository
+        if: ${{ inputs.publish }}
+        run: >
+          helm cm-push infrahub-${{ steps.version.outputs.version }}.tgz opsmill
+          --username '${{ secrets.HARBOR_USERNAME }}'
+          --password '${{ secrets.HARBOR_PASSWORD }}'
+
+      - name: Cleanup
+        run: rm -f infrahub-${{ steps.version.outputs.version }}.tgz
