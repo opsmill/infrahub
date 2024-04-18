@@ -1,5 +1,26 @@
 import { gql } from "@apollo/client";
 
+export const GET_PREFIXES_ONLY = gql`
+  query GET_PREFIXES($parentIds: [ID!]) {
+    IpamIPPrefix(parent__ids: $parentIds) {
+      edges {
+        node {
+          id
+          display_label
+          parent {
+            node {
+              id
+            }
+          }
+          children {
+            count
+          }
+        }
+      }
+    }
+  }
+`;
+
 export const GET_PREFIXES = gql`
   query IpamIPPrefix($namespace: String, $prefix: String, $offset: Int, $limit: Int) {
     IpamIPPrefix(
