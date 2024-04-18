@@ -1604,6 +1604,9 @@ core_models: dict[str, Any] = {
             "icon": "mdi:format-list-group",
             "branch": BranchSupportType.AWARE.value,
             "inherit_from": [InfrahubKind.IPNAMESPACE],
+            "attributes": [
+                {"name": "default", "kind": "Boolean", "optional": True, "read_only": True, "order_weight": 9000}
+            ],
         },
     ],
 }
