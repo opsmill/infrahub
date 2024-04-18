@@ -56,13 +56,13 @@ export const Table = (props: tTableProps) => {
                     <Link
                       className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
                       to={row.link}>
-                      <div>{row.values[column.name]}</div>
+                      {row.values[column.name] ?? "-"}
                     </Link>
                   )}
 
                   {!row.link && (
                     <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center">
-                      {row.values[column.name]}
+                      {row.values[column.name] ?? "-"}
                     </div>
                   )}
                 </td>

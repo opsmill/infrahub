@@ -15,28 +15,24 @@ export const GET_IP_ADDRESSES = gql`
           display_label
           ip_namespace {
             node {
-              id
               display_label
             }
           }
           ip_prefix {
             node {
-              id
               display_label
             }
           }
           description {
-            id
+            value
           }
           address {
-            id
             value
-            hostmask
-            netmask
-            prefixlen
-            version
-            with_hostmask
-            with_netmask
+          }
+          interface {
+            node {
+              display_label
+            }
           }
         }
       }
