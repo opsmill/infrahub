@@ -116,7 +116,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 self.updated_at = Timestamp(data.get("updated_at"))
         elif data is None:
             self.is_default = True
-            self.value = None
         else:
             self.value = data
 
