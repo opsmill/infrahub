@@ -65,7 +65,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     _rel_to_node_label: str = RELATIONSHIP_TO_NODE_LABEL
     _rel_to_value_label: str = RELATIONSHIP_TO_VALUE_LABEL
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-branches
         self,
         name: str,
         schema: AttributeSchema,
