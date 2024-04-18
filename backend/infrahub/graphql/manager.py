@@ -698,7 +698,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             top_level (bool, optional): Flag to indicate if are at the top level or not. Defaults to False.
 
         Returns:
-            dict: A Dictionnary containing all the filters with their name as the key and their Type as value
+            dict: A Dictionary containing all the filters with their name as the key and their Type as value
         """
 
         filters: Dict[str, Any] = {"offset": graphene.Int(), "limit": graphene.Int()}

@@ -117,7 +117,7 @@ def compare_lists(list1: List[Any], list2: List[Any]) -> Tuple[List[Any], List[A
 
 
 def deep_merge_dict(dicta: dict, dictb: dict, path: Optional[List] = None) -> dict:
-    """Deep Merge dictionnary B into Dictionnary A.
+    """Deep Merge Dictionary B into Dictionary A.
     Code is inspired by https://stackoverflow.com/a/7205107
     """
     if path is None:
@@ -253,14 +253,14 @@ def dict_hash(dictionary: Dict[str, Any]) -> str:
 
 
 def calculate_dict_depth(data: dict, level: int = 1) -> int:
-    """Calculate the depth of a nested dictionnary recursively."""
+    """Calculate the depth of a nested Dictionary recursively."""
     if not isinstance(data, dict) or not data:
         return level
     return max(calculate_dict_depth(data=data[key], level=level + 1) for key in data)
 
 
 def calculate_dict_height(data: dict, cnt: int = 0) -> int:
-    """Calculate the number of fields (height) in a nested dictionnary recursively."""
+    """Calculate the number of fields (height) in a nested Dictionary recursively."""
     for key in data:
         if isinstance(data[key], dict):
             cnt = calculate_dict_height(data=data[key], cnt=cnt + 1)
