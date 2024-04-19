@@ -21,6 +21,12 @@ async def test_simple_directive(db: InfrahubDatabase, default_branch: Branch, cr
             edges {
                 node @expand {
                     id
+                    level {
+                        __typename
+                    }
+                    label {
+                        value
+                    }
                 }
             }
         }
@@ -49,7 +55,7 @@ async def test_simple_directive(db: InfrahubDatabase, default_branch: Branch, cr
             "__typename": "TestCriticality",
             "name": {"value": "low"},
             "label": {"value": "Low"},
-            "level": {"value": 4},
+            "level": {"value": 4, "__typename": "NumberAttribute"},
             "color": {"value": "#444444"},
             "mylist": {"value": ["one", "two"]},
             "is_true": {"value": True},
