@@ -627,20 +627,20 @@ jobs:
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
       - name: Build Demo
-        run: invoke demo.build
+        run: invoke dev.build
 
       - name: Pull External Docker Images
-        run: invoke demo.pull
+        run: invoke dev.pull
 
       - name: Initialize Demo
         id: init-demo
-        run: invoke demo.start demo.load-infra-schema
+        run: invoke dev.start dev.load-infra-schema
 
       - name: Check Demo Status
-        run: invoke demo.status
+        run: invoke dev.status
 
       - name: Load Data
-        run: invoke demo.load-infra-data
+        run: invoke dev.load-infra-data
 
       - name: Set infrahub address
         run: echo "INFRAHUB_ADDRESS=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
