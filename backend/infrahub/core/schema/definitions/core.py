@@ -13,6 +13,7 @@ from infrahub.core.constants import (
     GeneratorInstanceStatus,
     InfrahubKind,
     ProposedChangeState,
+    RelationshipDeleteBehavior,
     Severity,
     ValidatorConclusion,
     ValidatorState,
@@ -104,7 +105,7 @@ core_models: dict[str, Any] = {
                     "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
-                    "on_delete": "cascade",
+                    "on_delete": RelationshipDeleteBehavior.CASCADE,
                 },
                 {
                     "name": "created_by",
@@ -191,7 +192,7 @@ core_models: dict[str, Any] = {
                     "optional": True,
                     "cardinality": "many",
                     "identifier": "validator__check",
-                    "on_delete": "cascade",
+                    "on_delete": RelationshipDeleteBehavior.CASCADE,
                 },
             ],
         },
@@ -451,6 +452,7 @@ core_models: dict[str, Any] = {
                     "identifier": "ip_namespace__ip_prefix",
                     "optional": True,
                     "cardinality": "many",
+                    "on_delete": RelationshipDeleteBehavior.CASCADE,
                     "allow_override": AllowOverrideType.NONE,
                 },
                 {
@@ -459,6 +461,7 @@ core_models: dict[str, Any] = {
                     "identifier": "ip_namespace__ip_address",
                     "optional": True,
                     "cardinality": "many",
+                    "on_delete": RelationshipDeleteBehavior.CASCADE,
                     "allow_override": AllowOverrideType.NONE,
                 },
             ],
@@ -825,7 +828,7 @@ core_models: dict[str, Any] = {
                     "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
-                    "on_delete": "cascade",
+                    "on_delete": RelationshipDeleteBehavior.CASCADE,
                 },
                 {
                     "name": "threads",
@@ -834,7 +837,7 @@ core_models: dict[str, Any] = {
                     "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
-                    "on_delete": "cascade",
+                    "on_delete": RelationshipDeleteBehavior.CASCADE,
                 },
                 {
                     "name": "validations",
@@ -843,7 +846,7 @@ core_models: dict[str, Any] = {
                     "identifier": "proposed_change__validator",
                     "optional": True,
                     "cardinality": "many",
-                    "on_delete": "cascade",
+                    "on_delete": RelationshipDeleteBehavior.CASCADE,
                 },
             ],
         },
@@ -1591,6 +1594,9 @@ core_models: dict[str, Any] = {
             "icon": "mdi:format-list-group",
             "branch": BranchSupportType.AWARE.value,
             "inherit_from": [InfrahubKind.IPNAMESPACE],
+            "attributes": [
+                {"name": "default", "kind": "Boolean", "optional": True, "read_only": True, "order_weight": 9000}
+            ],
         },
     ],
 }
