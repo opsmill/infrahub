@@ -1,5 +1,5 @@
-import { CardWithBorder } from "../../components/ui/card";
-import { PieChart } from "../../components/stats/pie-chart";
+import { CardWithBorder } from "../../../components/ui/card";
+import { PieChart } from "../../../components/stats/pie-chart";
 
 type PrefixUsageChartProps = {
   usagePercentage: number;

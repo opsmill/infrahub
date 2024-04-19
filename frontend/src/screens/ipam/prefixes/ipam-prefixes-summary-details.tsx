@@ -2,7 +2,7 @@ import { useAtomValue } from "jotai";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "@iconify-icon/react";
 import { genericsState } from "../../../state/atoms/schema.atom";
-import { PrefixUsageChart } from "../styled";
+import { PrefixUsageChart } from "../common/prefix-usage-chart";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import { IP_PREFIX_DEFAULT_SCHEMA_KIND } from "../constants";
 import { getObjectAttributes, getObjectRelationships } from "../../../utils/getSchemaObjectColumns";
