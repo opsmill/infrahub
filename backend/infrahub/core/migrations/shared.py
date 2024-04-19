@@ -150,8 +150,8 @@ class InternalSchemaMigration(BaseModel):
         return schema_branch
 
     @classmethod
-    def init(cls) -> Self:
-        return cls()
+    def init(cls, *args: Any, **kwargs: Dict[str, Any]) -> Self:
+        return cls(*args, **kwargs)  # type: ignore[arg-type]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         raise NotImplementedError
