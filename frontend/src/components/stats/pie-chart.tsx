@@ -14,7 +14,7 @@ type PieChartProps = {
 };
 export const PieChart = ({ data, tooltipFormatter, legendFormatter }: PieChartProps) => {
   return (
-    <ResponsiveContainer height={308}>
+    <ResponsiveContainer height={308} width={308}>
       <PieChartPrimitive>
         <Pie data={data} nameKey="name" dataKey="value" />
         <ChartTooltip formatter={tooltipFormatter} />
