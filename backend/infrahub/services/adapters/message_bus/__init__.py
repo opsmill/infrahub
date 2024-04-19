@@ -11,6 +11,8 @@ if TYPE_CHECKING:
 
 
 class InfrahubMessageBus:
+    DELIVER_TIMEOUT: int = 30
+
     async def initialize(self, service: InfrahubServices) -> None:
         """Initialize the Message bus"""
 

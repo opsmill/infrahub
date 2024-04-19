@@ -186,6 +186,7 @@ class NATSMessageBus(InfrahubMessageBus):
         consumer_config = nats.js.api.ConsumerConfig(
             ack_policy=nats.js.api.AckPolicy.EXPLICIT,
             max_deliver=self.settings.maximum_message_retries,
+            ack_wait=self.DELIVER_TIMEOUT,
             # Does not work as expected, must switch to pull-based consumer...
             # max_ack_pending=self.settings.maximum_concurrent_messages,
             # flow_control=True,
