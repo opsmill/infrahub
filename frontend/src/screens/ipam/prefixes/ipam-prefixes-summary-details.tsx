@@ -1,16 +1,24 @@
+import { Link, useParams } from "react-router-dom";
+import { PrefixUsageChart } from "../styled";
 import { Icon } from "@iconify-icon/react";
-import { useParams } from "react-router-dom";
-import { Link } from "../../../components/utils/link";
+
+function PrefixSummary() {
+  return null;
+}
 
 export default function IpamIPPrefixesSummaryDetails() {
   const { prefix } = useParams();
+
   return (
-    <div>
-      <div className="flex items-center mb-2">
+    <section>
+      <header className="flex items-center mb-2">
         <Link to={"/ipam/prefixes"}>All Prefixes</Link>
         <Icon icon={"mdi:chevron-right"} />
         <span>{prefix} summary</span>
-      </div>
-    </div>
+      </header>
+
+      <PrefixSummary />
+      <PrefixUsageChart usagePercentage={70} />
+    </section>
   );
 }
