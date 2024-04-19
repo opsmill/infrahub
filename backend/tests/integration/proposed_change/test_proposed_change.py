@@ -3,7 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk.exceptions import GraphQLError
 
+from infrahub import config
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -85,6 +87,7 @@ class TestProposedChangePipeline(TestInfrahubApp):
             db=db, id="John", schema_name=TestKind.PERSON, branch=branch1
         )
         john_branch.description.value = "Oh boy"  # type: ignore[attr-defined]
+        john_branch.age.value = 30  # type: ignore[attr-defined]
         await john_branch.save(db=db)
 
     async def test_happy_pipeline(self, db: InfrahubDatabase, happy_dataset: None, client: InfrahubClient) -> None:
@@ -139,3 +142,30 @@ class TestProposedChangePipeline(TestInfrahubApp):
         assert peers
         data_integrity = [validator for validator in peers.values() if validator.label.value == "Data Integrity"][0]
         assert data_integrity.conclusion.value.value == ValidatorConclusion.FAILURE.value
+
+        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
+
+        data_checks = await client.filters(kind=InfrahubKind.DATACHECK, validator__ids=data_integrity.id)
+        assert len(data_checks) == 1
+        data_check = data_checks[0]
+
+        if config.SETTINGS.database.db_type != "memgraph":
+            # When using Memgraph the transactions are broken so it's not possible to update the state
+            # after the conflict has been resolved as such it's not possible to save the changes
+            # in the next call to proposed_change.save() as the proposed change is already marked
+            # as being merged in the database and it's not possibly to make changes to it after that.
+            with pytest.raises(
+                GraphQLError, match="Data conflicts found on branch and missing decisions about what branch to keep"
+            ):
+                await proposed_change_create.save()
+
+        data_check.keep_branch.value = "source"  # type: ignore[attr-defined]
+        await data_check.save()
+        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
+        await proposed_change_create.save()
+        john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="John", schema_name=TestKind.PERSON)
+        # The value of the description should match that of the source branch that was selected
+        # as the branch to keep in the data conflict
+        if config.SETTINGS.database.db_type != "memgraph":
+            # The conflict resolution or merge operation doesn't seem to work with memgraph..
+            assert john.description.value == "Oh boy"  # type: ignore[attr-defined]
