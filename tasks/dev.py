@@ -14,6 +14,7 @@ from .container_ops import (
     show_service_status,
     start_services,
     stop_services,
+    update_core_schema,
 )
 from .infra_ops import load_infrastructure_data, load_infrastructure_schema
 from .shared import (
@@ -227,3 +228,4 @@ def gen_config_env(context: Context):
 def migrate(context: Context, database: str = INFRAHUB_DATABASE):
     """Apply the latest database migrations."""
     migrate_database(context=context, database=database, namespace=NAMESPACE)
+    update_core_schema(context=context, database=database, namespace=NAMESPACE, debug=True)
