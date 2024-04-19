@@ -305,11 +305,18 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                         peer_type, required=False, resolver=many_relationship_resolver, **peer_filters
                     )
 
-            if isinstance(node_schema, NodeSchema) and node_schema.hierarchy:
-                schema = self.schema.get(name=node_schema.hierarchy, duplicate=False)
+            if (isinstance(node_schema, NodeSchema) and node_schema.hierarchy) or (
+                isinstance(node_schema, GenericSchema) and node_schema.hierarchical
+            ):
+                if isinstance(node_schema, NodeSchema):
+                    schema = self.schema.get(name=node_schema.hierarchy, duplicate=False)
+                    hierarchy_name = node_schema.hierarchy
+                else:
+                    schema = node_schema
+                    hierarchy_name = node_schema.kind
 
                 peer_filters = self.generate_filters(schema=schema, top_level=False)
-                peer_type = self.get_type(name=f"NestedPaginated{node_schema.hierarchy}")
+                peer_type = self.get_type(name=f"NestedPaginated{hierarchy_name}")
 
                 node_type._meta.fields["ancestors"] = graphene.Field(
                     peer_type, required=False, resolver=ancestors_resolver, **peer_filters
