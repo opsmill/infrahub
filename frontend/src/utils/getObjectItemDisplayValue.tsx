@@ -152,7 +152,7 @@ export const ObjectAttributeValue = ({
   attributeSchema,
   attributeValue,
 }: {
-  attributeSchema: components["schemas"]["AttributeSchema"];
+  attributeSchema: components["schemas"]["AttributeSchema-Output"];
   attributeValue:
     | TextAttribute
     | NumberAttribute
