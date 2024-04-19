@@ -152,8 +152,6 @@ export default function IpamIPPrefixDetails() {
     return <ErrorScreen message="An error occured while retrieving prefixes" />;
   }
 
-  console.log("relatedObjectToEdit: ", relatedObjectToEdit);
-
   return (
     <div>
       <div className="flex items-center mb-2">
