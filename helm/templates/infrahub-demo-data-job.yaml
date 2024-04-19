@@ -14,7 +14,7 @@ spec:
         - command:
             - sh
             - -c
-            - "infrahubctl schema load models/infrastructure_base.yml && infrahubctl run models/infrastructure_edge.py"
+            - "infrahubctl schema load models/base || infrahubctl schema load models/infrastructure_base.yml && infrahubctl run models/infrastructure_edge.py"
           env:
             - name: INFRAHUB_ADDRESS
               value: http://{{ include "infrahub-helm.fullname" . }}-infrahub-server.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}:8000

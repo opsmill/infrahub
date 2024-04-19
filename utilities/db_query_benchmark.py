@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import typer
 from infrahub_sdk.async_typer import AsyncTyper
@@ -14,6 +15,7 @@ from infrahub.core.graph.index import node_indexes, rel_indexes
 from infrahub.core.graph.schema import GRAPH_SCHEMA
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.manager import NodeManager
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
 from infrahub.core.validators.uniqueness.model import NodeUniquenessQueryRequest
 from infrahub.core.validators.uniqueness.query import NodeUniqueAttributeConstraintQuery
@@ -23,6 +25,7 @@ from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
 from infrahub.test_data.gen_connected_nodes import GenerateConnectedNodes
 from infrahub.test_data.gen_isolated_node import GenerateIsolatedNodes
+from infrahub.test_data.gen_node_profile_node import ProfileAttribute
 
 app = AsyncTyper()
 
@@ -141,6 +144,89 @@ async def node_constraints_uniqueness(
         loader.add_callback(callback_name="query_unique_tag_name", task=query_unique_tag_name.execute)
 
         await loader.load_data(nbr_tags=count, nbr_repository=count)
+
+    query_stats.create_graphs()
+
+
+@app.command()
+async def profile_attribute(
+    test_name: str = "profile_attribute",
+    config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+    count: int = typer.Option(1000),
+    parallel: int = typer.Option(5),
+) -> None:
+    config.load_and_exit(config_file_name=config_file)
+
+    db = InfrahubDatabaseAnalyzer(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
+    db.manager.index.init(nodes=node_indexes, rels=rel_indexes)
+
+    constraint_manager = ConstraintManagerNeo4j.from_graph_schema(db=db, schema=GRAPH_SCHEMA)
+
+    async with db.start_transaction() as dbt:
+        log.info("Delete All Nodes")
+        await delete_all_nodes(db=dbt)
+
+        log.info("Remove existing constraints & indexes")
+        await dbt.manager.index.drop()
+        await constraint_manager.drop()
+
+        await constraint_manager.add()
+        await first_time_initialization(db=dbt)
+
+    log.info("Starting initialization .. ")
+    initialize_lock()
+    await initialization(db=db)
+
+    SCHEMA: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value", "color__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "nbr_seats", "kind": "Number"},
+                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
+                    {"name": "is_electric", "kind": "Boolean"},
+                ],
+                "relationships": [
+                    {"name": "owner", "peer": "TestPerson", "optional": False, "cardinality": "one"},
+                ],
+            },
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "order_by": ["height__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "height", "kind": "Number", "optional": True},
+                ],
+                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many"}],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+
+    default_branch = await registry.get_branch(db=db)
+
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+    person_schema = registry.schema.get_node_schema(name="TestPerson", branch=default_branch)
+
+    query_stats.name = test_name
+    query_stats.measure_memory_usage = False
+    query_stats.output_location = Path.cwd() / "query_performance_results"
+    query_stats.start_tracking()
+
+    log.info("Start loading data .. ")
+    with Progress() as progress:
+        loader = ProfileAttribute(db=db, progress=progress, concurrent_execution=parallel)
+        loader.add_callback(callback_name="query_50_person", task=NodeManager.query, limit=50, schema=person_schema)
+        await loader.load_data(nbr_person=count)
 
     query_stats.create_graphs()
 

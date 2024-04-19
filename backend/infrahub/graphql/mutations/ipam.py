@@ -25,6 +25,57 @@ if TYPE_CHECKING:
 log = get_logger()
 
 
+async def validate_namespace(db: InfrahubDatabase, data: InputObjectType) -> str:
+    """Validate or set (if not present) the namespace to pass to the mutation and return its ID."""
+    namespace_id: Optional[str] = None
+    if "ip_namespace" not in data or not data["ip_namespace"]:
+        data["ip_namespace"] = {"id": registry.default_ipnamespace}
+        namespace_id = registry.default_ipnamespace
+    elif "id" in data["ip_namespace"]:
+        namespace = await registry.manager.get_one_by_id_or_default_filter(
+            db=db, schema_name=InfrahubKind.IPNAMESPACE, id=data["ip_namespace"]["id"]
+        )
+        namespace_id = namespace.id
+    else:
+        raise ValidationError(
+            "A valid ip_namespace must be provided or ip_namespace should be left empty in order to use the default value."
+        )
+    return namespace_id
+
+
+class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
+    @classmethod
+    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+        cls,
+        schema: NodeSchema,
+        _meta: Optional[Any] = None,
+        **options: Dict[str, Any],
+    ) -> None:
+        # Make sure schema is a valid NodeSchema Node Class
+        if not isinstance(schema, NodeSchema):
+            raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
+
+        if not _meta:
+            _meta = InfrahubMutationOptions(cls)
+        _meta.schema = schema
+
+        super().__init_subclass_with_meta__(_meta=_meta, **options)
+
+    @classmethod
+    async def mutate_delete(
+        cls,
+        root,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+        at: str,
+    ):
+        if data["id"] == registry.default_ipnamespace:
+            raise ValueError("Cannot delete default IPAM namespace")
+
+        return await super().mutate_delete(root=root, info=info, data=data, branch=branch, at=at)
+
+
 class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
@@ -45,7 +96,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
 
     @classmethod
     def forbid_managed_attributes(cls, data: InputObjectType) -> None:
-        if "ip_prefix" in data:
+        if "ip_prefix" in data and data["ip_prefix"] is not None:
             raise ValueError("Cannot set 'ip_prefix', attribute is managed automatically.")
 
     @classmethod
@@ -63,20 +114,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         context: GraphqlContext = info.context
         db = database or context.db
         ip_address = ipaddress.ip_interface(data["address"]["value"])
-
-        namespace_id: Optional[str] = None
-        if "ip_namespace" not in data:
-            data["ip_namespace"] = {"id": registry.default_ipnamespace}
-            namespace_id = registry.default_ipnamespace
-        elif "ip_namespace" in data and "id" in data["ip_namespace"]:
-            namespace = await registry.manager.get_one_by_id_or_default_filter(
-                db=db, schema_name=InfrahubKind.IPNAMESPACE, id=data["ip_namespace"]["id"]
-            )
-            namespace_id = namespace.id
-        else:
-            raise ValidationError(
-                "A Valid ip_namespace must be provided or ip_namespace should be left empty in order to use the default value."
-            )
+        namespace_id = await validate_namespace(db, data)
 
         ip_network = await get_ip_prefix_for_ip_address(
             db=db, branch=branch, at=at, ip_address=ip_address, namespace=namespace_id
@@ -99,6 +137,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
     ) -> Tuple[Node, Self]:
         cls.forbid_managed_attributes(data)
 
+        await validate_namespace(database, data)
         prefix, result = await super().mutate_update(
             root=root, info=info, data=data, branch=branch, at=at, database=database, node=node
         )
@@ -123,6 +162,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
     ):
         cls.forbid_managed_attributes(data)
 
+        await validate_namespace(database, data)
         prefix, result, created = await super().mutate_upsert(
             root=root, info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=database
         )
@@ -164,7 +204,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         managed_attributes = ["parent", "children", "ip_addresses"]
 
         for attr in managed_attributes:
-            if attr in data:
+            if attr in data and data[attr] is not None:
                 raise ValueError(f"Cannot set '{attr}', attribute is managed automatically.")
 
     @classmethod
@@ -182,20 +222,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         context: GraphqlContext = info.context
         db = database or context.db
         ip_network = ipaddress.ip_network(data["prefix"]["value"])
-
-        namespace_id: Optional[str] = None
-        if "ip_namespace" not in data:
-            data["ip_namespace"] = {"id": registry.default_ipnamespace}
-            namespace_id = registry.default_ipnamespace
-        elif "ip_namespace" in data and "id" in data["ip_namespace"]:
-            namespace = await registry.manager.get_one_by_id_or_default_filter(
-                db=db, schema_name=InfrahubKind.IPNAMESPACE, id=data["ip_namespace"]["id"]
-            )
-            namespace_id = namespace.id
-        else:
-            raise ValidationError(
-                "A Valid ip_namespace must be provided or ip_namespace should be left empty in order to use the default value."
-            )
+        namespace_id = await validate_namespace(db, data)
 
         # Set supernet if found
         super_network = await get_container(db=db, branch=branch, at=at, ip_prefix=ip_network, namespace=namespace_id)
@@ -255,6 +282,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
     ) -> Tuple[Node, Self]:
         cls.forbid_managed_attributes(data)
 
+        await validate_namespace(database, data)
         prefix, result = await super().mutate_update(
             root=root, info=info, data=data, branch=branch, at=at, database=database, node=node
         )
@@ -281,6 +309,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
     ):
         cls.forbid_managed_attributes(data)
 
+        await validate_namespace(database, data)
         prefix, result, created = await super().mutate_upsert(
             root=root, info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=database
         )

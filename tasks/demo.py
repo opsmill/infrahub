@@ -112,7 +112,9 @@ def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE):
     """Load the base schema for infrastructure.
     FIXME: This command needs to be updated to remove the restart before releasing 0.13.0
     """
-    load_infrastructure_schema(context=context, database=database, namespace=NAMESPACE, add_wait=False)
+    load_infrastructure_schema(
+        context=context, database=database, namespace=NAMESPACE, add_wait=False, target="models/infrastructure_base.yml"
+    )
     restart_services(context=context, database=database, namespace=NAMESPACE)
 
 
