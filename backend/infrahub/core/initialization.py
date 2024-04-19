@@ -39,9 +39,7 @@ async def get_default_ipnamespace(db: InfrahubDatabase) -> Optional[Node]:
     if not registry.schema._branches or not registry.schema.has(name=InfrahubKind.NAMESPACE):
         return None
 
-    nodes = await registry.manager.query(
-        db=db, schema=InfrahubKind.NAMESPACE, filters={"name__value": DEFAULT_IP_NAMESPACE}
-    )
+    nodes = await registry.manager.query(db=db, schema=InfrahubKind.NAMESPACE, filters={"default__value": True})
     if len(nodes) == 0:
         return None
 
@@ -265,7 +263,7 @@ async def create_ipam_namespace(
     description: str = "Used to provide a default space of IP resources",
 ) -> Node:
     obj = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
-    await obj.new(db=db, name=name, description=description)
+    await obj.new(db=db, name=name, description=description, default=True)
     await obj.save(db=db)
     log.info(f"Created IPAM Namespace: {name}")
 

@@ -6,6 +6,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 import SlideOver from "../../components/display/slide-over";
 import { Tabs } from "../../components/tabs";
+import { Card } from "../../components/ui/card";
 import {
   DEFAULT_BRANCH_NAME,
   IPAM_IP_ADDRESS_GENERIC,
@@ -114,7 +115,7 @@ export default function IpamRouter() {
   );
 
   return (
-    <div>
+    <Card className="p-0 overflow-hidden flex flex-col h-full">
       <Tabs tabs={tabs} qsp={IPAM_QSP} rightItems={rightitems} />
 
       <div className="m-4">{renderContent()}</div>
@@ -153,6 +154,6 @@ export default function IpamRouter() {
           // refetch={refetch}
         />
       </SlideOver>
-    </div>
+    </Card>
   );
 }
