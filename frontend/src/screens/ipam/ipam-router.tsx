@@ -71,10 +71,10 @@ export default function IpamRouter() {
   };
 
   return (
-    <div>
+    <div className="flex flex-col h-full">
       <Tabs tabs={tabs} qsp={IPAM_QSP} />
 
-      <div className="m-4">{renderContent()}</div>
+      <div className="flex-grow overflow-auto p-4">{renderContent()}</div>
     </div>
   );
 }
