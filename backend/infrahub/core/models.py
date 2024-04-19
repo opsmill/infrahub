@@ -76,6 +76,20 @@ class SchemaDiff(BaseModel):
         merged_dict = deep_merge_dict(self.model_dump(), other.model_dump())
         return self.__class__(**merged_dict)
 
+    def print(self, indentation: int = 4, column_size: int = 32) -> None:
+        data = self.model_dump()
+
+        indent_str = " " * indentation
+
+        for node_action, node_info in data.items():
+            for node_name, elements in node_info.items():
+                print(f"{str(node_name).ljust(column_size)} | {str(node_action).title()}")
+                for element_action, element_info in elements.items():
+                    for element_name, _ in element_info.items():
+                        print(
+                            f"{indent_str}{str(element_name).ljust(column_size - indentation)} | {str(element_action).title()}"
+                        )
+
 
 class SchemaUpdateValidationError(BaseModel):
     model_config = ConfigDict(extra="forbid")
