@@ -20,8 +20,8 @@ export default function IpamIPPrefixesSummaryDetails() {
 
   const builtinIPPrefixSchema = generics.find(({ kind }) => kind === IP_PREFIX_DEFAULT_SCHEMA_KIND);
 
-  const attributes = getObjectAttributes(builtinIPPrefixSchema, true);
-  const relationships = getObjectRelationships(builtinIPPrefixSchema, true);
+  const attributes = getObjectAttributes(builtinIPPrefixSchema);
+  const relationships = getObjectRelationships(builtinIPPrefixSchema);
 
   const query = gql(
     getObjectItemsPaginated({
