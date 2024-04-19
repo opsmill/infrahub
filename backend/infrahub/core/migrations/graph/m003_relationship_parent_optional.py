@@ -47,7 +47,7 @@ class Migration003Query01(Query):
 class Migration003(GraphMigration):
     name: str = "003_relationship_parent_mandatory"
     queries: Sequence[type[Query]] = [Migration003Query01]
-    minimum_version: int = 1
+    minimum_version: int = 2
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         result = MigrationResult()
