@@ -4,16 +4,14 @@ from typing import TYPE_CHECKING, List, Sequence
 
 from .m001_add_version_to_graph import Migration001
 from .m002_attribute_is_default import Migration002
+from .m003_relationship_parent_optional import Migration003
 
 if TYPE_CHECKING:
     from infrahub.core.root import Root
 
     from ..shared import GraphMigration
 
-MIGRATIONS: List[GraphMigration] = [
-    Migration001,
-    Migration002,
-]
+MIGRATIONS: List[type[GraphMigration]] = [Migration001, Migration002, Migration003]
 
 
 async def get_graph_migrations(root: Root) -> Sequence[GraphMigration]:
