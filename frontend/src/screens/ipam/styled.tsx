@@ -13,7 +13,8 @@ export function PrefixUsageChart({ usagePercentage }: PrefixUsageChartProps) {
 
   return (
     <CardWithBorder className="max-w-xs">
-      <header className="bg-neutral-100 p-2 font-semibold text-sm">IP Availability</header>
+      <CardWithBorder.Title>IP Availability</CardWithBorder.Title>
+
       <ResponsiveContainer height={208}>
         <PieChart title="usage">
           <Pie data={data} nameKey="name" dataKey="usagePercentage" />
