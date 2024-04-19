@@ -102,3 +102,14 @@ def migrate_database(context: Context, database: str, namespace: str) -> None:
         base_cmd = f"{get_env_vars(context, namespace=namespace)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
         command = f"{base_cmd} run infrahub-server infrahub db migrate"
         execute_command(context=context, command=command)
+
+
+def update_core_schema(context: Context, database: str, namespace: str, debug: bool = False) -> None:
+    """Update the core schema."""
+    with context.cd(ESCAPED_REPO_PATH):
+        compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
+        base_cmd = f"{get_env_vars(context, namespace=namespace)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
+        command = f"{base_cmd} run infrahub-server infrahub db update-core-schema"
+        if debug:
+            command += " --debug"
+        execute_command(context=context, command=command)
