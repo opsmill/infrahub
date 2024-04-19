@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Self
@@ -110,8 +110,8 @@ class GraphMigration(BaseModel):
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
 
     @classmethod
-    def init(cls) -> Self:
-        return cls()
+    def init(cls, *args: Any, **kwargs: Dict[str, Any]) -> Self:
+        return cls(*args, **kwargs)  # type: ignore[arg-type]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         raise NotImplementedError
@@ -127,6 +127,47 @@ class GraphMigration(BaseModel):
                 except Exception as exc:  # pylint: disable=broad-exception-caught
                     result.errors.append(str(exc))
                     return result
+
+        return result
+
+
+class InternalSchemaMigration(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    name: str = Field(..., description="Name of the migration")
+    migrations: Sequence[SchemaMigration] = Field(..., description="")
+    minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
+
+    @staticmethod
+    def get_internal_schema() -> SchemaBranch:
+        from infrahub.core.schema_manager import SchemaBranch  # pylint: disable=import-outside-toplevel
+
+        # load the internal schema from
+        schema = SchemaRoot(**internal_schema)
+        schema_branch = SchemaBranch(cache={}, name="default_branch")
+        schema_branch.load_schema(schema=schema)
+        schema_branch.process()
+
+        return schema_branch
+
+    @classmethod
+    def init(cls) -> Self:
+        return cls()
+
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+        raise NotImplementedError
+
+    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+        result = MigrationResult()
+
+        default_branch = registry.get_branch_from_registry()
+
+        for migration in self.migrations:
+            try:
+                execution_result = await migration.execute(db=db, branch=default_branch)
+                result.errors.extend(execution_result.errors)
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                result.errors.append(str(exc))
+                return result
 
         return result
 
