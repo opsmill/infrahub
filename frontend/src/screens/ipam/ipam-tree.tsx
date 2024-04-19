@@ -1,14 +1,14 @@
 import { TreeItemProps, Tree, TreeProps } from "../../components/ui/tree";
 import { useLazyQuery } from "../../hooks/useQuery";
 import React, { useEffect, useState } from "react";
-import { Spinner } from "../../components/ui/spinner";
 import { ITreeViewOnLoadDataProps } from "react-accessible-treeview";
 import { Link, useNavigate } from "react-router-dom";
 import { constructPath } from "../../utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { GET_PREFIXES_ONLY } from "../../graphql/queries/ipam/prefixes";
 import { useAtomValue } from "jotai/index";
-import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { genericsState, IModelSchema, schemaState } from "../../state/atoms/schema.atom";
+import { Skeleton } from "../../components/skeleton";
 
 type PrefixNode = {
   id: string;
@@ -60,7 +60,7 @@ const updateTreeData = (list: TreeProps["data"], id: string, children: TreeProps
   return [...data, ...children];
 };
 
-export default function IpamTree() {
+export default function IpamTree({ prefixSchema }: { prefixSchema?: IModelSchema }) {
   const [treeData, setTreeData] = useState<TreeProps["data"]>([
     {
       id: ROOT_NODE_ID,
@@ -86,7 +86,7 @@ export default function IpamTree() {
     });
   }, []);
 
-  if (treeData.length === 1) return <Spinner />;
+  const isLoading = !prefixSchema || treeData.length === 1;
 
   const onLoadData = async ({ element }: ITreeViewOnLoadDataProps) => {
     if (element.children.length > 0) return; // To avoid refetching data
@@ -105,17 +105,21 @@ export default function IpamTree() {
     <nav className="min-w-64">
       <h3 className="font-semibold mb-2">Navigation</h3>
 
-      <Tree
-        data={treeData}
-        itemContent={IpamTreeItem}
-        onLoadData={onLoadData}
-        onNodeSelect={({ element, isSelected }) => {
-          if (!isSelected) return;
+      {isLoading ? (
+        <IpamTreeLoader />
+      ) : (
+        <Tree
+          data={treeData}
+          itemContent={IpamTreeItem}
+          onLoadData={onLoadData}
+          onNodeSelect={({ element, isSelected }) => {
+            if (!isSelected) return;
 
-          const url = constructPath(`/ipam/prefixes/${encodeURIComponent(element.name)}`);
-          navigate(url);
-        }}
-      />
+            const url = constructPath(`/ipam/prefixes/${encodeURIComponent(element.name)}`);
+            navigate(url);
+          }}
+        />
+      )}
     </nav>
   );
 }
@@ -132,5 +136,21 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
       {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}
       <span className="truncate">{element.name}</span>
     </Link>
+  );
+};
+
+const IpamTreeLoader = () => {
+  return (
+    <div className="space-y-2 border rounded p-1.5">
+      <Skeleton className="h-4 w-11/12" />
+      <Skeleton className="h-4 w-8/12" />
+      <Skeleton className="h-4 w-4/5" />
+      <Skeleton className="h-4 w-10/12" />
+      <Skeleton className="h-4 w-9/12" />
+      <Skeleton className="h-4 w-11/12" />
+      <Skeleton className="h-4 w-8/12" />
+      <Skeleton className="h-4 w-8/12" />
+      <Skeleton className="h-4 w-10/12" />
+    </div>
   );
 };
