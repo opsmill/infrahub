@@ -1,8 +1,8 @@
 import { gql } from "@apollo/client";
-import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
+import { Select } from "../../components/inputs/select";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
@@ -39,14 +39,21 @@ export default function ObjectItemCreate(props: iProps) {
     submitLabel,
   } = props;
 
-  const [schemaList] = useAtom(schemaState);
-  const [schemaKindName] = useAtom(schemaKindNameState);
-  const [genericsList] = useAtom(genericsState);
+  const schemaList = useAtomValue(schemaState);
+  const schemaKindName = useAtomValue(schemaKindNameState);
+  const genericsList = useAtomValue(genericsState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
+  const [kind, setKind] = useState("");
 
-  const schema = schemaList.find((s) => s.kind === objectname);
+  const generic = genericsList.find((s) => s.kind === objectname);
+
+  const isGeneric = !!generic;
+
+  const schema = schemaList.find((s) => (isGeneric ? s.kind === kind : s.kind === objectname));
+
+  const kindOptions = generic?.used_by?.map((kind: string) => ({ id: kind, name: kind }));
 
   const fields =
     formStructure ??
@@ -55,6 +62,10 @@ export default function ObjectItemCreate(props: iProps) {
       schemas: schemaList,
       generics: genericsList,
     });
+
+  const handleKindChange = (newKind: string) => {
+    setKind(newKind);
+  };
 
   async function onSubmit(data: any) {
     setIsLoading(true);
@@ -105,7 +116,16 @@ export default function ObjectItemCreate(props: iProps) {
   }
 
   return (
-    <div className="bg-custom-white flex-1 overflow-auto flex">
+    <div className="bg-custom-white flex-1 overflow-auto flex-col">
+      {isGeneric && (
+        <div className="p-4 pt-3 bg-gray-200">
+          <div className="flex items-center">
+            <label className="block text-sm font-medium leading-6 text-gray-900">Kind</label>
+          </div>
+          <Select options={kindOptions} value={kind} onChange={handleKindChange} preventEmpty />
+        </div>
+      )}
+
       {schema && fields && (
         <div className="flex-1">
           <EditFormHookComponent
