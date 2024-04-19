@@ -1,6 +1,14 @@
+import { useAtomValue } from "jotai";
 import { Link, useParams } from "react-router-dom";
-import { PrefixUsageChart } from "../styled";
 import { Icon } from "@iconify-icon/react";
+import { genericsState } from "../../../state/atoms/schema.atom";
+import { PrefixUsageChart } from "../styled";
+import LoadingScreen from "../../loading-screen/loading-screen";
+import { IP_PREFIX_DEFAULT_SCHEMA_KIND } from "../constants";
+import { getObjectAttributes, getObjectRelationships } from "../../../utils/getSchemaObjectColumns";
+import { getObjectItemsPaginated } from "../../../graphql/queries/objects/getObjectItems";
+import { gql } from "@apollo/client";
+import useQuery from "../../../hooks/useQuery";
 
 function PrefixSummary() {
   return null;
@@ -8,6 +16,30 @@ function PrefixSummary() {
 
 export default function IpamIPPrefixesSummaryDetails() {
   const { prefix } = useParams();
+  const generics = useAtomValue(genericsState);
+
+  const builtinIPPrefixSchema = generics.find(({ kind }) => kind === IP_PREFIX_DEFAULT_SCHEMA_KIND);
+
+  const attributes = getObjectAttributes(builtinIPPrefixSchema, true);
+  const relationships = getObjectRelationships(builtinIPPrefixSchema, true);
+
+  const query = gql(
+    getObjectItemsPaginated({
+      kind: IP_PREFIX_DEFAULT_SCHEMA_KIND,
+      attributes,
+      relationships,
+      filters: `prefix__value: "${prefix}"`,
+    })
+  );
+
+  const { loading, data } = useQuery(query, {
+    skip: !builtinIPPrefixSchema,
+    notifyOnNetworkStatusChange: true,
+  });
+
+  if (loading || !data) return <LoadingScreen />;
+
+  const prefixData = data[IP_PREFIX_DEFAULT_SCHEMA_KIND].edges[0].node;
 
   return (
     <section>
@@ -18,7 +50,7 @@ export default function IpamIPPrefixesSummaryDetails() {
       </header>
 
       <PrefixSummary />
-      <PrefixUsageChart usagePercentage={70} />
+      <PrefixUsageChart usagePercentage={prefixData.utilization.value} />
     </section>
   );
 }
