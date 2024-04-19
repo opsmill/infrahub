@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
 
 from typing_extensions import Self
 
@@ -20,7 +20,7 @@ class Migration004(InternalSchemaMigration):
     minimum_version: int = 3
 
     @classmethod
-    def init(cls) -> Self:
+    def init(cls, *args: Any, **kwargs: Dict[str, Any]) -> Self:
         internal_schema = cls.get_internal_schema()
         schema_node = internal_schema.get_node(name="SchemaNode")
         schema_generic = internal_schema.get_node(name="SchemaGeneric")
@@ -41,8 +41,7 @@ class Migration004(InternalSchemaMigration):
                 ),
             ),
         ]
-
-        return cls(migrations=migrations)
+        return cls(*args, migrations=migrations, **kwargs)  # type: ignore[arg-type]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         result = MigrationResult()
