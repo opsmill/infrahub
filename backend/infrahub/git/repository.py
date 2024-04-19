@@ -46,6 +46,7 @@ from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
     Error,
+    FileOutOfRepositoryError,
     InitializationError,
     RepositoryError,
     RepositoryFileNotFoundError,
@@ -1834,15 +1835,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
     async def get_file(self, commit: str, location: str) -> str:
         commit_worktree = self.get_commit_worktree(commit=commit)
+        path = self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=location)
 
-        self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=location)
-
-        full_filename = os.path.join(commit_worktree.directory, location)
-
-        with open(full_filename, "r", encoding="UTF-8") as obj:
-            content = obj.read()
-
-        return content
+        return path.read_text(encoding="UTF-8")
 
     async def render_jinja2_template(self, commit: str, location: str, data: dict):
         commit_worktree = self.get_commit_worktree(commit=commit)
@@ -2093,9 +2088,17 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         await artifact.save()
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
-    def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> None:
-        if not os.path.exists(os.path.join(worktree_directory, file_path)):
+    def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> Path:
+        """Validate that a file is found inside a repository and return a corresponding `pathlib.Path` object for it."""
+        path = Path(worktree_directory, file_path).resolve()
+
+        if not str(path).startswith(worktree_directory):
+            raise FileOutOfRepositoryError(repository_name=self.name, commit=commit, location=file_path)
+
+        if not path.exists():
             raise RepositoryFileNotFoundError(repository_name=self.name, commit=commit, location=file_path)
+
+        return path
 
 
 class InfrahubRepository(InfrahubRepositoryBase):
