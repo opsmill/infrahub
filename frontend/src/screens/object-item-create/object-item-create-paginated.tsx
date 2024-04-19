@@ -120,7 +120,9 @@ export default function ObjectItemCreate(props: iProps) {
       {isGeneric && (
         <div className="p-4 pt-3 bg-gray-200">
           <div className="flex items-center">
-            <label className="block text-sm font-medium leading-6 text-gray-900">Kind</label>
+            <label className="block text-sm font-medium leading-6 text-gray-900">
+              Select an object type
+            </label>
           </div>
           <Select options={kindOptions} value={kind} onChange={handleKindChange} preventEmpty />
         </div>
