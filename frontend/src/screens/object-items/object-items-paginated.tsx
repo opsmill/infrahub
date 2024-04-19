@@ -4,9 +4,14 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import { Button, ButtonWithTooltip } from "../../components/buttons/button-primitive";
 import SlideOver from "../../components/display/slide-over";
 import { Filters } from "../../components/filters/filters";
+import { ObjectHelpButton } from "../../components/menu/object-help-button";
 import ModalDelete from "../../components/modals/modal-delete";
+import { Badge } from "../../components/ui/badge";
+import { SearchInput } from "../../components/ui/search-input";
+import { Tooltip } from "../../components/ui/tooltip";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { Pagination } from "../../components/utils/pagination";
 import {
@@ -44,11 +49,6 @@ import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
-import { Badge } from "../../components/ui/badge";
-import { Tooltip } from "../../components/ui/tooltip";
-import { SearchInput } from "../../components/ui/search-input";
-import { Button, ButtonWithTooltip } from "../../components/buttons/button-primitive";
-import { ObjectHelpButton } from "../../components/menu/object-help-button";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -82,7 +82,6 @@ export default function ObjectItems(props: any) {
   const generic = genericList.find((s) => s.kind === objectname);
 
   const schemaData = schema || generic;
-  const isGeneric = !!generic;
 
   if ((schemaList?.length || genericList?.length) && !schemaData) {
     // If there is no schema nor generics, go to home page
@@ -255,21 +254,20 @@ export default function ObjectItems(props: any) {
           />
 
           <Filters schema={schemaData} />
-          {!isGeneric && (
-            <Tooltip
-              enabled={!permission.write.allow}
-              content={permission.write.message ?? undefined}>
-              <Button
-                data-cy="create"
-                data-testid="create-object-button"
-                disabled={!permission.write.allow}
-                onClick={() => setShowCreateDrawer(true)}
-                size="sm">
-                <Icon icon="mdi:plus" className="text-sm" />
-                Add {schemaData?.label}
-              </Button>
-            </Tooltip>
-          )}
+
+          <Tooltip
+            enabled={!permission.write.allow}
+            content={permission.write.message ?? undefined}>
+            <Button
+              data-cy="create"
+              data-testid="create-object-button"
+              disabled={!permission.write.allow}
+              onClick={() => setShowCreateDrawer(true)}
+              size="sm">
+              <Icon icon="mdi:plus" className="text-sm" />
+              Add {schemaData?.label}
+            </Button>
+          </Tooltip>
         </div>
 
         {loading && !rows && <LoadingScreen />}
