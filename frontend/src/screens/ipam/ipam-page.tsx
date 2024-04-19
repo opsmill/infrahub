@@ -1,9 +1,10 @@
+import { useMemo } from "react";
+import { Outlet } from "react-router-dom";
+import { useAtomValue } from "jotai";
+
 import { Card } from "../../components/ui/card";
 import Content from "../layout/content";
-import IpamRouter from "./ipam-router";
 import IpamTree from "./ipam-tree";
-import { useMemo } from "react";
-import { useAtomValue } from "jotai/index";
 import { currentSchemaHashAtom, genericsState } from "../../state/atoms/schema.atom";
 import { IP_PREFIX_DEFAULT_SCHEMA_KIND } from "./constants";
 
@@ -25,9 +26,9 @@ export default function IpamPage() {
           <IpamTree prefixSchema={prefixSchema} />
         </Card>
 
-        <Card className="flex-grow p-0 overflow-hidden">
-          <IpamRouter />
-        </Card>
+        <section className="flex-grow">
+          <Outlet />
+        </section>
       </Content>
     </>
   );
