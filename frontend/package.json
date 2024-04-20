@@ -10,7 +10,7 @@
     "build-serve": "npm run build && npm run serve",
     "codegen": "graphql-codegen --config graphql.config.ts",
     "codegen:openapi": "npx openapi-typescript http://localhost:8000/api/openapi.json --output src/infraops.d.ts",
-    "ci:test:e2e": "CI=1 npm run test:e2e",
+    "ci:test:e2e": "CI=1 DEBUG=pw:browser npm run test:e2e 2>/dev/null",
     "test": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
