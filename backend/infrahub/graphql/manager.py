@@ -224,8 +224,6 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         # Generate all GraphQL Interface  Object first and store them in the registry
         for node_name, node_schema in full_schema.items():
-            if not isinstance(node_schema, GenericSchema):
-                continue
             interface = self.generate_interface_object(schema=node_schema, populate_cache=True)
             edged_interface = self.generate_graphql_edged_object(
                 schema=node_schema, node=interface, populate_cache=True
@@ -244,9 +242,6 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         # Generate all Nested, Edged and NestedEdged Interfaces and store them in the registry
         for node_name, node_schema in full_schema.items():
-            if not isinstance(node_schema, GenericSchema):
-                continue
-
             node_interface = self.get_type(name=node_name)
 
             nested_edged_interface = self.generate_nested_interface_object(

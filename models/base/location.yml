@@ -31,8 +31,8 @@ nodes:
       - "name__value"
     display_labels:
       - "name__value"
-    # children: "LocationCountry"
-    # parent: ""
+    children: "LocationCountry"
+    parent: ""
   - name: Country
     namespace: Location
     description: "A country within a continent."
@@ -45,8 +45,8 @@ nodes:
       - "name__value"
     display_labels:
       - "name__value"
-    # children: "LocationSite"
-    # parent: "LocationContinent"
+    children: "LocationSite"
+    parent: "LocationContinent"
   - name: Site
     namespace: Location
     description: "A site within a country."
@@ -59,8 +59,8 @@ nodes:
       - "name__value"
     display_labels:
       - "name__value"
-    # children: "LocationRack"
-    # parent: "LocationCountry"
+    children: "LocationRack"
+    parent: "LocationCountry"
     attributes:
       - name: city
         kind: Text
@@ -101,8 +101,8 @@ nodes:
       - "name__value"
     display_labels:
       - "name__value"
-    # parent: "LocationSite"
-    # children: ""
+    parent: "LocationSite"
+    children: ""
     uniqueness_constraints:
       - ["site", "name__value"]
     attributes:
