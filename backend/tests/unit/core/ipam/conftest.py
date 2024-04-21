@@ -16,6 +16,7 @@ async def ip_dataset_01(
     register_ipam_schema: SchemaBranch,
 ):
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
     # -----------------------
     # Namespace NS1
@@ -57,6 +58,14 @@ async def ip_dataset_01(
     await net145.new(db=db, prefix="10.10.3.0/27", parent=net140, ip_namespace=ns1)
     await net145.save(db=db)
 
+    address10 = await Node.init(db=db, schema=address_schema)
+    await address10.new(db=db, address="10.10.0.0", ip_prefix=net140, ip_namespace=ns1)
+    await address10.save(db=db)
+
+    address11 = await Node.init(db=db, schema=address_schema)
+    await address11.new(db=db, address="10.10.1.1", ip_prefix=net143, ip_namespace=ns1)
+    await address11.save(db=db)
+
     # -----------------------
     # Namespace NS2
     # -----------------------
@@ -76,25 +85,19 @@ async def ip_dataset_01(
     await net242.new(db=db, prefix="10.10.4.0/27", parent=net240, ip_namespace=ns2)
     await net242.save(db=db)
 
-    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
-
-    address10 = await Node.init(db=db, schema=address_schema)
-    await address10.new(db=db, address="10.10.0.0", ip_namespace=ns1)
-    await address10.save(db=db)
-
-    address11 = await Node.init(db=db, schema=address_schema)
-    await address11.new(db=db, address="10.10.1.1", ip_namespace=ns1)
-    await address11.save(db=db)
-
     data = {
         "ns1": ns1,
         "ns2": ns2,
+        "net161": net161,
+        "net162": net162,
         "net140": net140,
         "net142": net142,
         "net143": net143,
         "net144": net144,
         "net145": net145,
         "net146": net146,
+        "address10": address10,
+        "address11": address11,
         "net240": net240,
         "net241": net241,
         "net242": net242,

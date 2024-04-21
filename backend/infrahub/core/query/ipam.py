@@ -513,6 +513,7 @@ class IPPrefixReconcileQuery(Query):
         self.add_to_query(namespace_query)
 
         if self.ip_uuid:
+            self.params["node_uuid"] = self.ip_uuid
             get_node_by_id_query = """
             // Get IP Prefix node by UUID
             MATCH (ip_prefix_node {uuid: $node_uuid})
@@ -522,31 +523,39 @@ class IPPrefixReconcileQuery(Query):
         else:
             get_node_by_prefix_query = """
             // Get IP Prefix node by prefix value
-            MATCH prefix_attribute_path = (:Root)<-[:IS_PART_OF]-(ip_prefix_node:%(ip_prefix_kind)s)-[:HAS_ATTRIBUTE]->(a:Attribute)-[:HAS_VALUE]->(aipn:AttributeIPNetwork)
-            MATCH prefix_namespace_path = (ip_namespace)-[:IS_RELATED]-(nsr:Relationship)-[:IS_RELATED]-(ip_prefix_node)
+            OPTIONAL MATCH prefix_node_path = (:Root)<-[:IS_PART_OF]-(ip_prefix_node:BuiltinIPPrefix)-[:HAS_ATTRIBUTE]->(a:Attribute)-[:HAS_VALUE]->(aipn:%(ip_prefix_attribute_kind)s), (ip_namespace)-[:IS_RELATED]-(nsr:Relationship)-[:IS_RELATED]-(ip_prefix_node)
             WHERE a.name = "prefix"
             AND nsr.name = $ip_namespace_prefix_relationship_identifier
             AND aipn.binary_address = $prefix_binary
             AND aipn.prefixlen = $prefixlen
             AND aipn.version = $ip_version
-            AND all(r IN relationships(prefix_attribute_path) + relationships(prefix_namespace_path) WHERE (%(branch_filter)s) and r.status = "active")
-            """ % {"branch_filter": branch_filter, "ip_prefix_kind": self.params["ip_prefix_kind"]}
+            AND all(r IN relationships(prefix_node_path) WHERE (%(branch_filter)s) and r.status = "active")
+            """ % {"branch_filter": branch_filter, "ip_prefix_attribute_kind": self.params["ip_prefix_attribute_kind"]}
             self.add_to_query(get_node_by_prefix_query)
 
         get_current_parent_query = """
         // Get prefix node's current parent, if it exists
         OPTIONAL MATCH parent_prefix_path = (ip_prefix_node)-[:IS_RELATED]->(:Relationship {name: "parent__child"})-[:IS_RELATED]->(current_parent:%(ip_prefix_kind)s)
         WHERE all(r IN relationships(parent_prefix_path) WHERE (%(branch_filter)s) and r.status = "active")
-        """ % {"branch_filter": branch_filter, "ip_prefix_kind": self.params["ip_prefix_kind"]}
+        """ % {
+            "branch_filter": branch_filter,
+            "ip_prefix_kind": self.params["ip_prefix_kind"],
+
+        }
         self.add_to_query(get_current_parent_query)
 
         get_current_children_query = """
         // Get prefix node's current children, if any exist
-        OPTIONAL MATCH child_ip_path = (ip_prefix_node)<-[:IS_RELATED]-(:Relationship {name: "parent__child"})<-[:IS_RELATED]-(current_child)
-        WHERE any(label IN LABELS(current_child) WHERE label IN [$ip_prefix_kind, $ip_address_kind])
-        AND all(r IN relationships(child_ip_path) WHERE (%(branch_filter)s) and r.status = "active")
-        WITH ip_namespace, ip_prefix_node, current_parent, collect(current_child) AS current_children
-        """ % {"branch_filter": branch_filter}
+        OPTIONAL MATCH child_prefix_path = (ip_prefix_node)<-[:IS_RELATED]-(:Relationship {name: "parent__child"})<-[:IS_RELATED]-(current_prefix_child:%(ip_prefix_kind)s)
+        WHERE all(r IN relationships(child_prefix_path) WHERE (%(branch_filter)s) and r.status = "active")
+        OPTIONAL MATCH child_address_path = (ip_prefix_node)-[:IS_RELATED]-(:Relationship {name: "ip_prefix__ip_address"})-[:IS_RELATED]-(current_address_child:%(ip_address_kind)s)
+        WHERE all(r IN relationships(child_address_path) WHERE (%(branch_filter)s) and r.status = "active")
+        WITH ip_namespace, ip_prefix_node, current_parent, (collect(current_prefix_child) + collect(current_address_child)) AS current_children
+        """ % {
+            "branch_filter": branch_filter,
+            "ip_prefix_kind": self.params["ip_prefix_kind"],
+            "ip_address_kind": self.params["ip_address_kind"],
+        }
         self.add_to_query(get_current_children_query)
 
         get_new_parent_query = """
@@ -557,7 +566,7 @@ class IPPrefixReconcileQuery(Query):
             WHERE ns_rel.name = "ip_namespace__ip_prefix"
             AND all(r IN relationships(ns_path) WHERE (%(branch_filter)s) AND r.status = "active")
 
-            MATCH attribute_path = (maybe_new_parent)-[har:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})-[hvr:HAS_VALUE]->(av:AttributeIPNetwork)
+            MATCH attribute_path = (maybe_new_parent)-[har:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})-[hvr:HAS_VALUE]->(av:%(ip_prefix_attribute_kind)s)
             WHERE av.binary_address IN $possible_prefixes
             AND av.prefixlen < $prefixlen
             AND av.version = $ip_version
@@ -574,9 +583,13 @@ class IPPrefixReconcileQuery(Query):
             LIMIT 1
         }
         WITH ip_namespace, ip_prefix_node, current_parent, current_children, maybe_new_parent, mnp_is_active, mnp_prefixlen
-        ORDER BY ip_prefix_node.uuid, mnp_is_active DESC, mnp_prefixlen ASC
+        ORDER BY ip_prefix_node.uuid, mnp_is_active DESC, mnp_prefixlen DESC
         WITH ip_namespace, ip_prefix_node, current_parent, current_children, head(collect(maybe_new_parent)) as new_parent
-        """ % {"branch_filter": branch_filter, "ip_prefix_kind": self.params["ip_prefix_kind"]}
+        """ % {
+            "branch_filter": branch_filter,
+            "ip_prefix_kind": self.params["ip_prefix_kind"],
+            "ip_prefix_attribute_kind": self.params["ip_prefix_attribute_kind"],
+        }
         self.add_to_query(get_new_parent_query)
 
         get_new_children_query = """
@@ -584,20 +597,18 @@ class IPPrefixReconcileQuery(Query):
         CALL {
             // Get ALL possible children for the prefix node
             WITH ip_namespace
-            MATCH ns_path = (ip_namespace)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(maybe_new_child)
+            OPTIONAL MATCH child_path = (ip_namespace)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(maybe_new_child)-[har:HAS_ATTRIBUTE]->(a:Attribute)-[hvr:HAS_VALUE]->(av:AttributeValue)
             WHERE ns_rel.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
+            AND a.name in ["prefix", "address"]
             AND any(label IN LABELS(maybe_new_child) WHERE label IN [$ip_prefix_kind, $ip_address_kind])
-            AND all(r IN relationships(ns_path) WHERE (%(branch_filter)s) AND r.status = "active")
-
-            MATCH attribute_path = (maybe_new_child)-[har:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})-[hvr:HAS_VALUE]->(av:AttributeValue)
-            WHERE any(label IN LABELS(av) WHERE label IN [$ip_prefix_attribute_kind, $ip_address_attribute_kind])
+            AND any(label IN LABELS(av) WHERE label IN [$ip_prefix_attribute_kind, $ip_address_attribute_kind])
             AND (
                 ($ip_prefix_kind IN LABELS(maybe_new_child) AND av.prefixlen > $prefixlen)
                 OR ($ip_address_kind IN LABELS(maybe_new_child) AND av.prefixlen >= $prefixlen)
             )
             AND av.version = $ip_version
             AND av.binary_address STARTS WITH SUBSTRING($prefix_binary, 0, $prefixlen)
-            AND all(r IN relationships(attribute_path) WHERE (%(branch_filter)s))
+            AND all(r IN relationships(child_path) WHERE (%(branch_filter)s) AND r.status = "active")
             WITH
                 maybe_new_child,
                 av AS mnc_attribute,
@@ -610,18 +621,20 @@ class IPPrefixReconcileQuery(Query):
             RETURN maybe_new_child, latest_mnc_details[0] AS latest_mnc_attribute, latest_mnc_details[1] AS mnc_is_active
         }
         WITH ip_namespace, ip_prefix_node, current_parent, current_children, new_parent, maybe_new_child, latest_mnc_attribute, mnc_is_active
-        WHERE mnc_is_active = TRUE
+        WHERE mnc_is_active = TRUE OR mnc_is_active IS NULL
         WITH ip_namespace, ip_prefix_node, current_parent, current_children, new_parent, collect([maybe_new_child, latest_mnc_attribute]) AS maybe_children_ips
         WITH ip_namespace, ip_prefix_node, current_parent, current_children, new_parent, maybe_children_ips, range(0, size(maybe_children_ips) - 1) AS child_indices
         UNWIND child_indices as ind
         CALL {
             // Filter all possible children to remove those that have a more-specific parent
             // among the list of all possible children
+            WITH ind, maybe_children_ips
             WITH ind, maybe_children_ips AS ips
             RETURN REDUCE(
                 has_more_specific_parent = FALSE, potential_parent IN ips |
                 CASE
                     WHEN has_more_specific_parent THEN has_more_specific_parent  // keep it True once set
+                    WHEN potential_parent IS NULL OR ips[ind][0] IS NULL THEN has_more_specific_parent
                     WHEN potential_parent[0] = ips[ind][0] THEN has_more_specific_parent  // skip comparison to self
                     WHEN $ip_address_kind in LABELS(potential_parent[0]) THEN has_more_specific_parent  // address cannot be a parent
                     WHEN $ip_prefix_attribute_kind IN LABELS(ips[ind][1]) AND (potential_parent[1]).prefixlen >= (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with same or greater prefixlen for prefix cannot be parent
@@ -648,7 +661,10 @@ class IPPrefixReconcileQuery(Query):
         if not results:
             return None
         result = results[0]
-        parent_uuid = result.get("current_parent").get("uuid")
+        parent = result.get("current_parent")
+        if not parent:
+            return None
+        parent_uuid = parent.get("uuid")
         if parent_uuid:
             return str(parent_uuid)
         return None
@@ -670,7 +686,10 @@ class IPPrefixReconcileQuery(Query):
         if not results:
             return None
         result = results[0]
-        parent_uuid = result.get("new_parent").get("uuid")
+        parent = result.get("new_parent")
+        if not parent:
+            return None
+        parent_uuid = parent.get("uuid")
         if parent_uuid:
             return str(parent_uuid)
         return None
