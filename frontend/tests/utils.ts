@@ -25,7 +25,6 @@ export const saveScreenshotForDocs = async (page: Page, filename: string) => {
 export const createBranch = async (page: Page, branchName: string) => {
   await page.getByTestId("create-branch-button").click();
   await page.locator("[id='New branch name']").fill(branchName);
-  await page.getByRole("button", { name: "Create" }).click();
 
   await Promise.all([
     page.waitForResponse((response) => {
@@ -34,7 +33,14 @@ export const createBranch = async (page: Page, branchName: string) => {
 
       return reqData?.operationName === "BranchCreate" && status === 200;
     }),
-  ]);
+    page.waitForURL("/?branch=" + branchName), // createBranch redirects to this URL, we must wait for it to avoid ERR_ABORTED errors in the next goto
+    page.waitForResponse((response) => {
+      const status = response.status();
+
+      return response.url().includes("/graphql/" + branchName) && status === 200;
+    }),
+    page.getByRole("button", { name: "Create" }).click(),
+  ]); // to avoid ERR_ABORTED
 };
 
 export const deleteBranch = async (page: Page, branchName: string) => {
