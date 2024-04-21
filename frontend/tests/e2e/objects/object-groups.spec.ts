@@ -16,7 +16,6 @@ test.describe("Object groups update", () => {
 
   test("should contain initial values and update them", async ({ page }) => {
     await test.step("access the tags and create a new one", async () => {
-      await page.goto("/objects/BuiltinTag");
       await Promise.all([
         page.waitForResponse((response) => {
           const reqData = response.request().postDataJSON();
@@ -24,6 +23,7 @@ test.describe("Object groups update", () => {
 
           return reqData?.operationName === "BuiltinTag" && status === 200;
         }),
+        page.goto("/objects/BuiltinTag"),
       ]);
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Name *").fill(NEW_TAG);

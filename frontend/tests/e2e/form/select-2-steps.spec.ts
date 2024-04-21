@@ -20,7 +20,6 @@ test.describe("Verifies the object creation", () => {
 
   test("creates and verifies the objects values", async ({ page }) => {
     await test.step("creates the object", async () => {
-      await page.goto("/objects/InfraInterfaceL3");
       // FIXME: fix showing dropdown when InfraInterfaceL3 takes some time
       await Promise.all([
         page.waitForResponse((response) => {
@@ -29,6 +28,7 @@ test.describe("Verifies the object creation", () => {
 
           return reqData?.operationName === "InfraInterfaceL3" && status === 200;
         }),
+        page.goto("/objects/InfraInterfaceL3"),
       ]);
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Name *").fill(ETHERNET_NAME);

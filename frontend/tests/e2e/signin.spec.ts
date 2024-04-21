@@ -85,9 +85,7 @@ test.describe("/signin", () => {
         return reqData?.operationName === "BuiltinTag" && status === 200;
       });
 
-      await page.goto("/objects/BuiltinTag");
-
-      await Promise.all([waitForResponse]);
+      await Promise.all([waitForResponse, page.goto("/objects/BuiltinTag")]);
 
       await expect(page.getByRole("cell", { name: "blue" })).toBeVisible();
     });
