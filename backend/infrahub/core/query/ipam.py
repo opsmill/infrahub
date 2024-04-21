@@ -540,17 +540,18 @@ class IPPrefixReconcileQuery(Query):
         """ % {
             "branch_filter": branch_filter,
             "ip_prefix_kind": self.params["ip_prefix_kind"],
-
         }
         self.add_to_query(get_current_parent_query)
 
         get_current_children_query = """
-        // Get prefix node's current children, if any exist
+        // Get prefix node's current prefix children, if any exist
         OPTIONAL MATCH child_prefix_path = (ip_prefix_node)<-[:IS_RELATED]-(:Relationship {name: "parent__child"})<-[:IS_RELATED]-(current_prefix_child:%(ip_prefix_kind)s)
         WHERE all(r IN relationships(child_prefix_path) WHERE (%(branch_filter)s) and r.status = "active")
+        WITH ip_namespace, ip_prefix_node, current_parent, collect(current_prefix_child) AS current_children
+        // Get prefix node's current address children, if any exist
         OPTIONAL MATCH child_address_path = (ip_prefix_node)-[:IS_RELATED]-(:Relationship {name: "ip_prefix__ip_address"})-[:IS_RELATED]-(current_address_child:%(ip_address_kind)s)
         WHERE all(r IN relationships(child_address_path) WHERE (%(branch_filter)s) and r.status = "active")
-        WITH ip_namespace, ip_prefix_node, current_parent, (collect(current_prefix_child) + collect(current_address_child)) AS current_children
+        WITH ip_namespace, ip_prefix_node, current_parent, (current_children + collect(current_address_child)) AS current_children
         """ % {
             "branch_filter": branch_filter,
             "ip_prefix_kind": self.params["ip_prefix_kind"],
@@ -646,11 +647,58 @@ class IPPrefixReconcileQuery(Query):
         }
         WITH ip_namespace, ip_prefix_node, current_parent, current_children, new_parent, maybe_children_ips[ind][0] AS new_child, has_parent_among_maybe_children
         WHERE has_parent_among_maybe_children = FALSE
-        WITH  ip_namespace, ip_prefix_node, current_parent, current_children, new_parent, collect(new_child) as new_children
+        WITH
+            ip_namespace,
+            ip_prefix_node,
+            current_parent,
+            current_children,
+            new_parent,
+            collect(new_child) as new_children
+        WITH
+            ip_namespace,
+            ip_prefix_node,
+            current_parent,
+            current_children,
+            new_parent,
+            new_children,
+            CASE
+                WHEN current_parent IS NULL THEN new_parent
+                WHEN new_parent IS NOT NULL AND current_parent.uuid <> new_parent.uuid THEN new_parent
+                ELSE NULL
+            END  AS parent_to_link,
+            CASE
+                WHEN new_parent IS NULL THEN current_parent
+                WHEN current_parent IS NOT NULL AND new_parent.uuid <> current_parent.uuid THEN current_parent
+                ELSE NULL
+            END  AS parent_to_unlink,
+            CASE
+                WHEN current_children IS NULL OR current_children = [NULL] THEN NULL
+                ELSE REDUCE(
+                    unlinks = [], cc IN current_children |
+                    CASE WHEN any(nc IN new_children WHERE nc.uuid = cc.uuid) THEN unlinks
+                    ELSE unlinks + [cc]
+                    END
+                )
+            END AS children_to_unlink,
+            CASE
+                WHEN new_children IS NULL OR new_children = [NULL] THEN NULL
+                ELSE REDUCE(
+                    to_links = [], nc IN new_children |
+                    CASE WHEN any(cc IN current_children WHERE cc.uuid = nc.uuid) THEN to_links
+                    ELSE to_links + [nc]
+                    END
+                )
+            END AS children_to_link
         """ % {"branch_filter": branch_filter}
         self.add_to_query(get_new_children_query)
         self.return_labels = ["ip_prefix_node", "current_parent", "current_children", "new_parent", "new_children"]
 
+        # unlink_parent_query = """
+        # MERGE (ip_prefix_node)-[r1:IS_RELATED]->(rel:Relationship {name: "parent__child"})-[r2:IS_RELATED]->(parent_to_unlink)
+        # """
+        # link_parent_query = """
+        # MERGE (ip_prefix_node)-[r1:IS_RELATED]->(rel:Relationship {name: "parent__child"})-[r2:IS_RELATED]->(parent_to_unlink)
+        # """
         # TODO: delete old prefix-parent relationship, if necessary
         # TODO: create new prefix-parent relationship, if necessary
         # TODO: delete old prefix-child relationships, if necessary
