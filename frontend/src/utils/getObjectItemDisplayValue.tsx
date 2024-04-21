@@ -148,21 +148,27 @@ export const getObjectItemDisplayValue = (
   );
 };
 
+export type AttributeSchema =
+  | components["schemas"]["AttributeSchema-Output"]
+  | components["schemas"]["RelationshipSchema-Output"];
+
+export type AttributeType =
+  | TextAttribute
+  | NumberAttribute
+  | CheckboxAttribute
+  | Dropdown
+  | IpHost
+  | IpNetwork
+  | JsonAttribute
+  | ListAttribute
+  | AnyAttribute;
+
 export const ObjectAttributeValue = ({
   attributeSchema,
   attributeValue,
 }: {
-  attributeSchema: components["schemas"]["AttributeSchema-Output"];
-  attributeValue:
-    | TextAttribute
-    | NumberAttribute
-    | CheckboxAttribute
-    | Dropdown
-    | IpHost
-    | IpNetwork
-    | JsonAttribute
-    | ListAttribute
-    | AnyAttribute;
+  attributeSchema: AttributeSchema;
+  attributeValue: AttributeType;
 }) => {
   if (!attributeValue.value && attributeValue.value !== 0) return "-";
 
