@@ -1,7 +1,7 @@
 import { useAtomValue } from "jotai";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "@iconify-icon/react";
-import { genericsState, IModelSchema } from "../../../state/atoms/schema.atom";
+import { genericsState, IModelSchema, schemaState } from "../../../state/atoms/schema.atom";
 import { PrefixUsageChart } from "../common/prefix-usage-chart";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import { IP_PREFIX_DEFAULT_SCHEMA_KIND } from "../constants";
@@ -12,6 +12,8 @@ import useQuery from "../../../hooks/useQuery";
 import { CardWithBorder } from "../../../components/ui/card";
 import { AttributeType, ObjectAttributeValue } from "../../../utils/getObjectItemDisplayValue";
 import { Property, PropertyList } from "../../../components/table/property-list";
+import { GET_PREFIX_KIND } from "../../../graphql/queries/ipam/prefixes";
+import { Badge } from "../../../components/ui/badge";
 
 function PrefixSummary({
   schema,
@@ -40,7 +42,15 @@ function PrefixSummary({
 
   return (
     <CardWithBorder>
-      <CardWithBorder.Title>Prefix summary</CardWithBorder.Title>
+      <CardWithBorder.Title>
+        <div className="flex justify-between">
+          <h4>Prefix summary</h4>
+          <div className="space-x-1">
+            <Badge variant="blue">{schema.namespace}</Badge>
+            <span className="text-sm">{schema.name}</span>
+          </div>
+        </div>
+      </CardWithBorder.Title>
 
       <PropertyList properties={properties} />
     </CardWithBorder>
@@ -49,30 +59,16 @@ function PrefixSummary({
 
 export default function IpamIPPrefixesSummaryDetails() {
   const { prefix } = useParams();
-  const generics = useAtomValue(genericsState);
 
-  const builtinIPPrefixSchema = generics.find(({ kind }) => kind === IP_PREFIX_DEFAULT_SCHEMA_KIND);
-
-  const attributes = getObjectAttributes(builtinIPPrefixSchema);
-  const relationships = getObjectRelationships(builtinIPPrefixSchema);
-
-  const query = gql(
-    getObjectItemsPaginated({
-      kind: IP_PREFIX_DEFAULT_SCHEMA_KIND,
-      attributes,
-      relationships,
-      filters: `prefix__value: "${prefix}"`,
-    })
-  );
-
-  const { loading, data } = useQuery(query, {
-    skip: !builtinIPPrefixSchema,
-    notifyOnNetworkStatusChange: true,
+  const { loading, data } = useQuery(GET_PREFIX_KIND, {
+    variables: {
+      ip: prefix,
+    },
   });
 
-  if (loading || !data || !builtinIPPrefixSchema) return <LoadingScreen />;
+  if (loading || !data) return <LoadingScreen />;
 
-  const prefixData = data[IP_PREFIX_DEFAULT_SCHEMA_KIND].edges[0].node;
+  const prefixKind = data[IP_PREFIX_DEFAULT_SCHEMA_KIND].edges[0].node.__typename;
 
   return (
     <section>
@@ -82,10 +78,43 @@ export default function IpamIPPrefixesSummaryDetails() {
         <span>{prefix} summary</span>
       </header>
 
-      <div className="flex items-start gap-2">
-        <PrefixSummary schema={builtinIPPrefixSchema} data={prefixData} />
-        <PrefixUsageChart usagePercentage={prefixData.utilization.value} />
-      </div>
+      <PrefixSummaryContent prefixKind={prefixKind} />
     </section>
   );
 }
+
+const PrefixSummaryContent = ({ prefixKind }: { prefixKind: string }) => {
+  const { prefix } = useParams();
+  const nodes = useAtomValue(schemaState);
+  const generics = useAtomValue(genericsState);
+
+  const prefixSchema = [...nodes, ...generics].find(({ kind }) => kind === prefixKind);
+
+  const attributes = getObjectAttributes(prefixSchema);
+  const relationships = getObjectRelationships(prefixSchema);
+
+  const query = gql(
+    getObjectItemsPaginated({
+      kind: prefixKind,
+      attributes,
+      relationships,
+      filters: `prefix__value: "${prefix}"`,
+    })
+  );
+
+  const { loading, data } = useQuery(query, {
+    skip: !prefixSchema,
+    notifyOnNetworkStatusChange: true,
+  });
+
+  if (loading || !data || !prefixSchema) return <LoadingScreen />;
+
+  const prefixData = data[prefixKind].edges[0].node;
+
+  return (
+    <div className="flex items-start gap-2">
+      <PrefixSummary schema={prefixSchema} data={prefixData} />
+      <PrefixUsageChart usagePercentage={prefixData.utilization.value} />
+    </div>
+  );
+};
