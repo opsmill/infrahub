@@ -20,5 +20,5 @@ class ProfileSchema(BaseNodeSchema):
 
         labels: List[str] = [self.kind] + self.inherit_from
         if self.namespace not in ["Schema", "Internal"] and InfrahubKind.GENERICGROUP not in self.inherit_from:
-            labels.append("CoreProfile")
+            labels.append(InfrahubKind.PROFILE)
         return labels
