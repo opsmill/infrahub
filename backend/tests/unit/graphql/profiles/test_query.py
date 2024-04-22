@@ -61,10 +61,7 @@ async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Br
 
     assert result.errors is None
     assert len(result.data["ProfileTestCriticality"]["edges"]) == 1
-    assert (
-        result.data["ProfileTestCriticality"]["edges"][0]["node"]["display_label"]
-        == f"ProfileTestCriticality(ID: {obj1.id})"
-    )
+    assert result.data["ProfileTestCriticality"]["edges"][0]["node"]["display_label"] == obj1.profile_name.value
 
 
 async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
