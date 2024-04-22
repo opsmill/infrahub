@@ -224,6 +224,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         # Generate all GraphQL Interface  Object first and store them in the registry
         for node_name, node_schema in full_schema.items():
+            if not isinstance(node_schema, GenericSchema):
+                continue
             interface = self.generate_interface_object(schema=node_schema, populate_cache=True)
             edged_interface = self.generate_graphql_edged_object(
                 schema=node_schema, node=interface, populate_cache=True
@@ -242,6 +244,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         # Generate all Nested, Edged and NestedEdged Interfaces and store them in the registry
         for node_name, node_schema in full_schema.items():
+            if not isinstance(node_schema, GenericSchema):
+                continue
             node_interface = self.get_type(name=node_name)
 
             nested_edged_interface = self.generate_nested_interface_object(
@@ -279,6 +283,13 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             node_type = self.get_type(name=node_name)
 
             for rel in node_schema.relationships:
+                # Exclude hierarchical relationships, we will add them later
+                if (
+                    (isinstance(node_schema, NodeSchema) and node_schema.hierarchy)
+                    or (isinstance(node_schema, GenericSchema) and node_schema.hierarchical)
+                ) and rel.name in ("parent", "children", "ancestors", "descendants"):
+                    continue
+
                 peer_schema = self.schema.get(name=rel.peer, duplicate=False)
                 if peer_schema.namespace == "Internal":
                     continue
@@ -312,7 +323,14 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
                 peer_filters = self.generate_filters(schema=schema, top_level=False)
                 peer_type = self.get_type(name=f"NestedPaginated{hierarchy_name}")
+                peer_type_edge = self.get_type(name=f"NestedEdged{hierarchy_name}")
 
+                node_type._meta.fields["parent"] = graphene.Field(
+                    peer_type_edge, required=False, resolver=single_relationship_resolver
+                )
+                node_type._meta.fields["children"] = graphene.Field(
+                    peer_type, required=False, resolver=many_relationship_resolver, **peer_filters
+                )
                 node_type._meta.fields["ancestors"] = graphene.Field(
                     peer_type, required=False, resolver=ancestors_resolver, **peer_filters
                 )

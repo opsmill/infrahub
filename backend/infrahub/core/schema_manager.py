@@ -1180,6 +1180,43 @@ class SchemaBranch:
                 self.set(name=node_name, schema=schema)
 
     def add_hierarchy(self):
+        for generic_name in self.generics.keys():
+            generic = self.get_generic(name=generic_name, duplicate=False)
+
+            if not generic.hierarchical:
+                continue
+
+            generic = generic.duplicate()
+            if "parent" not in generic.relationship_names:
+                generic.relationships.append(
+                    RelationshipSchema(
+                        name="parent",
+                        identifier="parent__child",
+                        peer=generic_name,
+                        kind=RelationshipKind.HIERARCHY,
+                        cardinality=RelationshipCardinality.ONE,
+                        max_count=1,
+                        branch=BranchSupportType.AWARE,
+                        direction=RelationshipDirection.OUTBOUND,
+                        hierarchical=generic_name,
+                    )
+                )
+            if "children" not in generic.relationship_names:
+                generic.relationships.append(
+                    RelationshipSchema(
+                        name="children",
+                        identifier="parent__child",
+                        peer=generic_name,
+                        kind=RelationshipKind.HIERARCHY,
+                        cardinality=RelationshipCardinality.MANY,
+                        branch=BranchSupportType.AWARE,
+                        direction=RelationshipDirection.INBOUND,
+                        hierarchical=generic_name,
+                    )
+                )
+
+            self.set(name=generic_name, schema=generic)
+
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
 
