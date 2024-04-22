@@ -21,8 +21,8 @@ import { stringifyWithoutQuotes } from "../../../utils/string";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
-import { IPAM_QSP, IPAM_TABS } from "../constants";
 import { constructPathForIpam } from "../common/utils";
+import { IPAM_QSP, IPAM_TABS } from "../constants";
 
 export default function IpamIPAddressesList() {
   const { prefix } = useParams();
@@ -74,12 +74,10 @@ export default function IpamIPAddressesList() {
   };
 
   const handleDelete = (data) => {
-    console.log("data: ", data);
     setRelatedRowToDelete(data);
   };
 
   const handleDeleteObject = async () => {
-    console.log("relatedRowToDelete: ", relatedRowToDelete);
     if (!relatedRowToDelete?.id) {
       return;
     }
