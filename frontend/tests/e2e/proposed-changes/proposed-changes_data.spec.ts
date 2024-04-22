@@ -42,7 +42,21 @@ test.describe("/proposed-changes diff data", () => {
     });
 
     await test.step("go to Data tab and open comment form", async () => {
+      var count = 0;
       await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          if (
+            reqData?.operationName === "getProposedChangesThreadsForCoreObjectThread" &&
+            status === 200
+          ) {
+            count++;
+          }
+
+          return count == 6; // waiting for 6 diff elements
+        }),
         page.waitForResponse((response) => {
           const status = response.status();
 
