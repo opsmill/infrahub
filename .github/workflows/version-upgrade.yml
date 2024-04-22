@@ -69,7 +69,7 @@ jobs:
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
       - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=${{ matric.source_version }} >> $GITHUB_ENV
+        run: echo INFRAHUB_IMAGE_VER=${{ matrix.source_version }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
