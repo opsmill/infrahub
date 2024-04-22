@@ -7,63 +7,15 @@ import { Icon } from "@iconify-icon/react";
 import { GET_PREFIXES_ONLY } from "../../graphql/queries/ipam/prefixes";
 import { useAtomValue } from "jotai/index";
 import { genericsState, IModelSchema, schemaState } from "../../state/atoms/schema.atom";
-import { Skeleton } from "../../components/skeleton";
 import { constructPathForIpam } from "./common/utils";
-
-type PrefixNode = {
-  id: string;
-  display_label: string;
-  parent: {
-    node: {
-      id: string;
-      display_label: string;
-    } | null;
-  };
-  children: {
-    count: number;
-  };
-  __typename: string;
-};
-
-type PrefixData = {
-  IpamIPPrefix: {
-    edges: Array<{ node: PrefixNode }>;
-  };
-};
-
-const ROOT_NODE_ID = "root" as const;
-
-const formatIPPrefixResponseForTreeView = (data: PrefixData): TreeItemProps["element"][] => {
-  const prefixes = data.IpamIPPrefix.edges.map(({ node }) => ({
-    id: node.id,
-    name: node.display_label,
-    parent: node.parent.node?.id ?? ROOT_NODE_ID,
-    children: [],
-    isBranch: node.children.count > 0,
-    metadata: {
-      kind: node.__typename,
-    },
-  }));
-
-  return prefixes;
-};
-
-const updateTreeData = (list: TreeProps["data"], id: string, children: TreeProps["data"]) => {
-  const data = list.map((node) => {
-    if (node.id === id) {
-      node.children = children.map((el) => {
-        return el.id;
-      });
-    }
-    return node;
-  });
-  return [...data, ...children];
-};
+import { IpamTreeSkeleton } from "./ipam-tree/ipam-tree-skeleton";
+import { IPAM_TREE_ROOT_ID } from "./constants";
+import { formatIPPrefixResponseForTreeView, PrefixData, updateTreeData } from "./ipam-tree/utils";
 
 export default function IpamTree({ prefixSchema }: { prefixSchema?: IModelSchema }) {
   const [treeData, setTreeData] = useState<TreeProps["data"]>([
     {
-      id: ROOT_NODE_ID,
+      id: IPAM_TREE_ROOT_ID,
       name: "",
       parent: null,
       children: [],
@@ -79,10 +31,10 @@ export default function IpamTree({ prefixSchema }: { prefixSchema?: IModelSchema
 
       const treeNodes = formatIPPrefixResponseForTreeView(data);
 
-      const rootTreeNodes = treeNodes.filter(({ parent }) => parent === ROOT_NODE_ID);
+      const rootTreeNodes = treeNodes.filter(({ parent }) => parent === IPAM_TREE_ROOT_ID);
 
       // assign all prefixes and IP addresses without parent to the root node
-      setTreeData((tree) => updateTreeData(tree, ROOT_NODE_ID, rootTreeNodes));
+      setTreeData((tree) => updateTreeData(tree, IPAM_TREE_ROOT_ID, rootTreeNodes));
     });
   }, []);
 
@@ -106,7 +58,7 @@ export default function IpamTree({ prefixSchema }: { prefixSchema?: IModelSchema
       <h3 className="font-semibold mb-2">Navigation</h3>
 
       {isLoading ? (
-        <IpamTreeLoader />
+        <IpamTreeSkeleton />
       ) : (
         <Tree
           data={treeData}
@@ -136,21 +88,5 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
       {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}
       <span className="truncate">{element.name}</span>
     </Link>
-  );
-};
-
-const IpamTreeLoader = () => {
-  return (
-    <div className="space-y-2 border rounded p-1.5">
-      <Skeleton className="h-4 w-11/12" />
-      <Skeleton className="h-4 w-8/12" />
-      <Skeleton className="h-4 w-4/5" />
-      <Skeleton className="h-4 w-10/12" />
-      <Skeleton className="h-4 w-9/12" />
-      <Skeleton className="h-4 w-11/12" />
-      <Skeleton className="h-4 w-8/12" />
-      <Skeleton className="h-4 w-8/12" />
-      <Skeleton className="h-4 w-10/12" />
-    </div>
   );
 };
