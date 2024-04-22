@@ -1186,6 +1186,7 @@ class SchemaBranch:
                 continue
 
             node = node.duplicate()
+            read_only = InfrahubKind.IPPREFIX in node.inherit_from
 
             if node.parent and "parent" not in node.relationship_names:
                 node.relationships.append(
@@ -1199,6 +1200,7 @@ class SchemaBranch:
                         branch=BranchSupportType.AWARE,
                         direction=RelationshipDirection.OUTBOUND,
                         hierarchical=node.hierarchy,
+                        read_only=read_only,
                     )
                 )
 
@@ -1213,6 +1215,7 @@ class SchemaBranch:
                         branch=BranchSupportType.AWARE,
                         direction=RelationshipDirection.INBOUND,
                         hierarchical=node.hierarchy,
+                        read_only=read_only,
                     )
                 )
 
