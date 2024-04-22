@@ -14,7 +14,7 @@ jobs:
       tags: ${{ steps.meta.outputs.tags }}
       labels: ${{ steps.meta.outputs.labels }}
     steps:
-      - name: Set docker image meta data
+      - name: Set docker image metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -27,7 +27,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
 
-  # Until we agreee to link infrahub version and chart version
+  # Commented until we agree to link Infrahub version and chart version
   # extract-version:
   #   runs-on: ubuntu-22.04
   #   outputs:

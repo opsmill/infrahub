@@ -1,6 +1,6 @@
 ---
 # yamllint disable rule:truthy
-name: Update Docker Compose on Release
+name: Update Docker Compose on Pyproject update in Stable
 
 # This will bump the infrahub docker image in the docker-compose.yml
 # when pyproject.toml is change in the stable branch

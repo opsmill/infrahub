@@ -70,12 +70,12 @@ jobs:
       - name: Push Helm Chart to OCI Registry
         if: ${{ inputs.publish }}
         run: |
-          helm push infrahub-${{ steps.version.outputs.version }}.tgz oci://${{ vars.HARBOR_HOST }}/opsmill
+          helm push infrahub-${{ steps.version.outputs.version }}.tgz oci://${{ vars.HARBOR_HOST }}/opsmill/chart
 
       - name: Push Helm Chart to traditional repository
         if: ${{ inputs.publish }}
         run: >
-          helm cm-push infrahub-${{ steps.version.outputs.version }}.tgz opsmill
+          helm cm-push -f infrahub-${{ steps.version.outputs.version }}.tgz opsmill
           --username '${{ secrets.HARBOR_USERNAME }}'
           --password '${{ secrets.HARBOR_PASSWORD }}'
 
