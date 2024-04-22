@@ -6,7 +6,7 @@ import { Card } from "../../components/ui/card";
 import { currentSchemaHashAtom, genericsState } from "../../state/atoms/schema.atom";
 import Content from "../layout/content";
 import { IP_PREFIX_DEFAULT_SCHEMA_KIND } from "./constants";
-import IpamTree from "./ipam-tree";
+import IpamTree from "./ipam-tree/ipam-tree";
 
 export default function IpamPage() {
   const generics = useAtomValue(genericsState);

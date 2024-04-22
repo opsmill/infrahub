@@ -1,21 +1,21 @@
-import { TreeItemProps, Tree } from "../../components/ui/tree";
-import { useLazyQuery } from "../../hooks/useQuery";
+import { TreeItemProps, Tree } from "../../../components/ui/tree";
+import { useLazyQuery } from "../../../hooks/useQuery";
 import React, { useEffect, useState } from "react";
 import { ITreeViewOnLoadDataProps } from "react-accessible-treeview";
 import { Link, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify-icon/react";
-import { GET_PREFIXES_ONLY, GET_TOP_LEVEL_PREFIXES } from "../../graphql/queries/ipam/prefixes";
+import { GET_PREFIXES_ONLY, GET_TOP_LEVEL_PREFIXES } from "../../../graphql/queries/ipam/prefixes";
 import { useAtomValue } from "jotai/index";
-import { genericsState, IModelSchema, schemaState } from "../../state/atoms/schema.atom";
-import { constructPathForIpam } from "./common/utils";
-import { IpamTreeSkeleton } from "./ipam-tree/ipam-tree-skeleton";
-import { IPAM_TREE_ROOT_ID } from "./constants";
+import { genericsState, IModelSchema, schemaState } from "../../../state/atoms/schema.atom";
+import { constructPathForIpam } from "../common/utils";
+import { IpamTreeSkeleton } from "./ipam-tree-skeleton";
+import { IPAM_TREE_ROOT_ID } from "../constants";
 import {
   formatIPPrefixResponseForTreeView,
   PrefixData,
   ROOT_TREE_ITEM,
   updateTreeData,
-} from "./ipam-tree/utils";
+} from "./utils";
 
 export default function IpamTree({ prefixSchema }: { prefixSchema?: IModelSchema }) {
   const [treeData, setTreeData] = useState([ROOT_TREE_ITEM]);
