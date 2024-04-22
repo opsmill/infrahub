@@ -361,7 +361,7 @@ jobs:
       group: "huge-runners"
     timeout-minutes: 30
     env:
-      INFRAHUB_DB_TYPE: memgraph
+      INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"

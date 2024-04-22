@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
-from infrahub import config
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -149,15 +148,10 @@ class TestProposedChangePipeline(TestInfrahubApp):
         assert len(data_checks) == 1
         data_check = data_checks[0]
 
-        if config.SETTINGS.database.db_type != "memgraph":
-            # When using Memgraph the transactions are broken so it's not possible to update the state
-            # after the conflict has been resolved as such it's not possible to save the changes
-            # in the next call to proposed_change.save() as the proposed change is already marked
-            # as being merged in the database and it's not possibly to make changes to it after that.
-            with pytest.raises(
-                GraphQLError, match="Data conflicts found on branch and missing decisions about what branch to keep"
-            ):
-                await proposed_change_create.save()
+        with pytest.raises(
+            GraphQLError, match="Data conflicts found on branch and missing decisions about what branch to keep"
+        ):
+            await proposed_change_create.save()
 
         data_check.keep_branch.value = "source"  # type: ignore[attr-defined]
         await data_check.save()
@@ -166,6 +160,4 @@ class TestProposedChangePipeline(TestInfrahubApp):
         john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="John", schema_name=TestKind.PERSON)
         # The value of the description should match that of the source branch that was selected
         # as the branch to keep in the data conflict
-        if config.SETTINGS.database.db_type != "memgraph":
-            # The conflict resolution or merge operation doesn't seem to work with memgraph..
-            assert john.description.value == "Oh boy"  # type: ignore[attr-defined]
+        assert john.description.value == "Oh boy"  # type: ignore[attr-defined]
