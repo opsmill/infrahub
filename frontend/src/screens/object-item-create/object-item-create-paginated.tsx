@@ -116,7 +116,7 @@ export default function ObjectItemCreate(props: iProps) {
   }
 
   return (
-    <div className="bg-custom-white flex-1 overflow-auto flex-col">
+    <div className="bg-custom-white flex-1 overflow-auto">
       {isGeneric && (
         <div className="p-4 pt-3 bg-gray-200">
           <div className="flex items-center">
