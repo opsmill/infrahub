@@ -64,7 +64,7 @@ class ObjectConflictValidatorRecorder:
 
                 await conflict_obj.new(
                     db=self.db,
-                    label="Data Conflict",
+                    label=f"{conflict.name} ({conflict.id})",
                     origin="internal",
                     kind="DataIntegrity",
                     validator=validator.id,
