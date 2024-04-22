@@ -35,9 +35,15 @@ export const createBranch = async (page: Page, branchName: string) => {
     }),
     page.waitForURL("/?branch=" + branchName), // createBranch redirects to this URL, we must wait for it to avoid ERR_ABORTED errors in the next goto
     page.waitForResponse((response) => {
+      const reqData = response.request().postDataJSON();
       const status = response.status();
 
-      return response.url().includes("/graphql/" + branchName) && status === 200;
+      // filter the BranchCreate request that happens on the same url
+      return (
+        reqData?.operationName !== "BranchCreate" &&
+        response.url().match(new RegExp("graphql/(main|" + branchName + ")")) != null &&
+        status === 200
+      );
     }),
     page.getByRole("button", { name: "Create" }).click(),
   ]); // to avoid ERR_ABORTED
