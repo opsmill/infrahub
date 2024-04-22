@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import SlideOver from "../../../components/display/slide-over";
@@ -23,7 +23,7 @@ import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
 
-export default function IpamIPPrefixesSummaryList() {
+const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
   const { prefix } = useParams();
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
@@ -45,6 +45,8 @@ export default function IpamIPPrefixesSummaryList() {
   const { loading, error, data, refetch } = useQuery(GET_PREFIXES, {
     variables: { prefix: prefix },
   });
+
+  useImperativeHandle(ref, () => ({ refetch }));
 
   const columns = [
     { name: "prefix", label: "Prefix" },
@@ -211,4 +213,6 @@ export default function IpamIPPrefixesSummaryList() {
       <Pagination count={data && data[IPAM_PREFIX_OBJECT]?.count} />
     </div>
   );
-}
+});
+
+export default IpamIPPrefixesSummaryList;

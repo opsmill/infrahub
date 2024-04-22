@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import SlideOver from "../../../components/display/slide-over";
@@ -24,7 +24,7 @@ import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-pag
 import { constructPathForIpam } from "../common/utils";
 import { IPAM_QSP, IPAM_TABS } from "../constants";
 
-export default function IpamIPAddressesList() {
+const IpamIPAddressesList = forwardRef((props, ref) => {
   const { prefix } = useParams();
   const [isLoading, setIsLoading] = useState(false);
   const branch = useAtomValue(currentBranchAtom);
@@ -45,6 +45,9 @@ export default function IpamIPAddressesList() {
   const { loading, error, data, refetch } = useQuery(GET_IP_ADDRESSES, {
     variables: { prefix: prefix },
   });
+
+  // Provide refetch function to parent
+  useImperativeHandle(ref, () => ({ refetch }));
 
   const columns = [
     { name: "address", label: "Address" },
@@ -209,4 +212,6 @@ export default function IpamIPAddressesList() {
       <Pagination count={data && data[IPAM_IP_ADDRESS_OBJECT]?.count} />
     </div>
   );
-}
+});
+
+export default IpamIPAddressesList;

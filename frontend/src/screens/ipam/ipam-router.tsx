@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
@@ -34,6 +34,8 @@ export default function IpamRouter() {
   const branch = useAtomValue(currentBranchAtom);
   const schemaList = useAtomValue(schemaState);
   const genericList = useAtomValue(genericsState);
+  const refetchRef = useRef(null);
+
   const objectname = qspTab ? tabToKind[qspTab] : IPAM_PREFIX_OBJECT;
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
@@ -90,13 +92,13 @@ export default function IpamRouter() {
   const renderContent = () => {
     switch (qspTab) {
       case IPAM_TABS.IP_DETAILS: {
-        return <IpamIPAddresses />;
+        return <IpamIPAddresses ref={refetchRef} />;
       }
       case IPAM_TABS.PREFIX_DETAILS: {
-        return <IpamIPPrefixes />;
+        return <IpamIPPrefixes ref={refetchRef} />;
       }
       default: {
-        return <IpamIPPrefixes />;
+        return <IpamIPPrefixes ref={refetchRef} />;
       }
     }
   };
@@ -151,7 +153,7 @@ export default function IpamRouter() {
           onCreate={() => setShowCreateDrawer(false)}
           onCancel={() => setShowCreateDrawer(false)}
           objectname={objectname!}
-          // refetch={refetch}
+          refetch={refetchRef?.current?.refetch}
         />
       </SlideOver>
     </Card>
