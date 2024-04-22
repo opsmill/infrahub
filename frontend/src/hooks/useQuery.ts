@@ -29,7 +29,7 @@ const useQuery = (QUERY: any, options?: OperationVariables) => {
   });
 };
 
-export const useLazyQuery = <TData, TVariables extends OperationVariables>(
+export const useLazyQuery = <TData, TVariables extends OperationVariables = OperationVariables>(
   QUERY: any,
   options?: OperationVariables
 ) => {
