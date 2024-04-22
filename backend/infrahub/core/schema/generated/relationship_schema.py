@@ -128,3 +128,8 @@ class GeneratedRelationshipSchema(HashableModel):
         description="Type of allowed override for the relationship.",
         json_schema_extra={"update": "allowed"},
     )
+    read_only: bool = Field(
+        default=False,
+        description="Set the relationship as read-only, users won't be able to change its value.",
+        json_schema_extra={"update": "allowed"},
+    )
