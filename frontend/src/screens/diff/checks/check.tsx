@@ -69,13 +69,15 @@ const getCheckBorderColor = (severity?: string) => {
 };
 
 const getCheckData = (check: any, refetch: Function) => {
+  console.log("check: ", check);
   const { __typename } = check;
 
   switch (__typename) {
+    case "CoreSchemaCheck":
     case "CoreDataCheck": {
       const { id, conflicts } = check;
 
-      if (!conflicts?.values?.length) return null;
+      if (!conflicts?.value?.length) return null;
 
       return (
         <div>
@@ -102,7 +104,6 @@ export const Check = ({ id }: tCheckProps) => {
 
   const {
     __typename,
-    conflicts,
     kind,
     origin,
     created_at,
@@ -183,10 +184,6 @@ export const Check = ({ id }: tCheckProps) => {
               </Accordion>
             </div>
           )}
-
-          {conflicts?.value?.map((conflict: any, index: number) => (
-            <Conflict key={index} {...conflict} check={check} id={id} refetch={refetch} />
-          ))}
         </div>
       </div>
 
