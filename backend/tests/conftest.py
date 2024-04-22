@@ -174,6 +174,11 @@ async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
                 "description": "Any Entities that stores or produces data.",
                 "namespace": "Lineage",
             },
+            {
+                "name": "Profile",
+                "description": "Base Profile in Infrahub.",
+                "namespace": "Core",
+            },
         ]
     }
 
