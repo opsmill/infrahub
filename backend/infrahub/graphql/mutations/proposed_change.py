@@ -135,7 +135,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                                     "Data conflicts found on branch and missing decisions about what branch to keep"
                                 )
                             if check.conflicts.value:
-                                keep_source_value = check.keep_branch.value == "source"
+                                keep_source_value = check.keep_branch.value.value == "source"
                                 conflict_resolution[check.conflicts.value[0]["path"]] = keep_source_value
 
                 async with lock.registry.global_graph_lock():
