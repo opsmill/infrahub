@@ -1,44 +1,40 @@
-import { TreeItemProps, Tree, TreeProps } from "../../components/ui/tree";
+import { TreeItemProps, Tree } from "../../components/ui/tree";
 import { useLazyQuery } from "../../hooks/useQuery";
 import React, { useEffect, useState } from "react";
 import { ITreeViewOnLoadDataProps } from "react-accessible-treeview";
 import { Link, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify-icon/react";
-import { GET_PREFIXES_ONLY } from "../../graphql/queries/ipam/prefixes";
+import { GET_PREFIXES_ONLY, GET_TOP_LEVEL_PREFIXES } from "../../graphql/queries/ipam/prefixes";
 import { useAtomValue } from "jotai/index";
 import { genericsState, IModelSchema, schemaState } from "../../state/atoms/schema.atom";
 import { constructPathForIpam } from "./common/utils";
 import { IpamTreeSkeleton } from "./ipam-tree/ipam-tree-skeleton";
 import { IPAM_TREE_ROOT_ID } from "./constants";
-import { formatIPPrefixResponseForTreeView, PrefixData, updateTreeData } from "./ipam-tree/utils";
+import {
+  formatIPPrefixResponseForTreeView,
+  PrefixData,
+  ROOT_TREE_ITEM,
+  updateTreeData,
+} from "./ipam-tree/utils";
 
 export default function IpamTree({ prefixSchema }: { prefixSchema?: IModelSchema }) {
-  const [treeData, setTreeData] = useState<TreeProps["data"]>([
-    {
-      id: IPAM_TREE_ROOT_ID,
-      name: "",
-      parent: null,
-      children: [],
-      isBranch: true,
-    },
-  ]);
+  const [treeData, setTreeData] = useState([ROOT_TREE_ITEM]);
+  const [fetchTopLevelIpPrefixes, { loading }] = useLazyQuery<PrefixData>(GET_TOP_LEVEL_PREFIXES);
   const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds: string[] }>(GET_PREFIXES_ONLY);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchPrefixes().then(({ data }) => {
+    fetchTopLevelIpPrefixes().then(({ data }) => {
       if (!data) return;
 
-      const treeNodes = formatIPPrefixResponseForTreeView(data);
-
-      const rootTreeNodes = treeNodes.filter(({ parent }) => parent === IPAM_TREE_ROOT_ID);
+      const topLevelTreeItems = formatIPPrefixResponseForTreeView(data);
 
       // assign all prefixes and IP addresses without parent to the root node
-      setTreeData((tree) => updateTreeData(tree, IPAM_TREE_ROOT_ID, rootTreeNodes));
+      setTreeData((tree) => updateTreeData(tree, IPAM_TREE_ROOT_ID, topLevelTreeItems));
     });
   }, []);
 
-  const isLoading = !prefixSchema || treeData.length === 1;
+  const isLoading = !prefixSchema || loading;
 
   const onLoadData = async ({ element }: ITreeViewOnLoadDataProps) => {
     if (element.children.length > 0) return; // To avoid refetching data
