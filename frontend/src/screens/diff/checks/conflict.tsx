@@ -180,9 +180,11 @@ export const Conflict = (props: any) => {
           })}
       </div>
 
-      <div className="flex items-center">
-        Accept: <ToggleButtons tabs={tabs} isLoading={isLoading} />
-      </div>
+      {keep_branch && (
+        <div className="flex items-center">
+          Accept: <ToggleButtons tabs={tabs} isLoading={isLoading} />
+        </div>
+      )}
     </div>
   );
 };
