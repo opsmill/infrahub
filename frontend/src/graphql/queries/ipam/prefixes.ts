@@ -163,3 +163,15 @@ export const GET_PREFIX = gql`
     }
   }
 `;
+
+export const GET_PREFIX_KIND = gql`
+  query GET_PREFIX_KIND($ip: String) {
+    BuiltinIPPrefix(prefix__value: $ip) {
+      edges {
+        node {
+          __typename
+        }
+      }
+    }
+  }
+`;
