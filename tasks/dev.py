@@ -180,3 +180,43 @@ def start(context: Context, database: str = INFRAHUB_DATABASE):
 def stop(context: Context, database: str = INFRAHUB_DATABASE):
     """Stop the running instance of Infrahub."""
     stop_services(context=context, database=database, namespace=NAMESPACE)
+
+
+@task
+def gen_config_env(context: Context):
+    """Generate list of env vars required for configuration."""
+    from pydantic_settings import BaseSettings
+    from pydantic_settings.sources import EnvSettingsSource
+
+    from infrahub.config import Settings
+
+    # These are environment variables used outside of Pydantic settings
+    env_vars = {
+        "INFRAHUB_LOG_LEVEL",
+        "INFRAHUB_PRODUCTION",
+        "INFRAHUB_CONFIG",
+        "OTEL_RESOURCE_ATTRIBUTES",
+        "INFRAHUB_ADDRESS",
+    }
+    settings = Settings()
+
+    def fetch_fields(subset: BaseSettings):
+        env_settings = EnvSettingsSource(
+            subset.__class__,
+            env_prefix=subset.model_config.get("env_prefix"),
+        )
+        for field_name, field in subset.model_fields.items():
+            field_inst = getattr(subset, field_name)
+            if issubclass(field_inst.__class__, BaseSettings):
+                fetch_fields(field_inst)
+            else:
+                for _, field_env_name, _ in env_settings._extract_field_info(field, field_name):
+                    env_vars.add(field_env_name.upper())
+
+    for subsetting in dict(settings):
+        subsettings = getattr(settings, subsetting)
+        fetch_fields(subsettings)
+
+    env_vars.remove("PATH")
+    for var in sorted(env_vars):
+        print(f"{var}:")

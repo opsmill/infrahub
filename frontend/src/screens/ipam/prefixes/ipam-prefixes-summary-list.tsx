@@ -4,7 +4,6 @@ import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
 import SlideOver from "../../../components/display/slide-over";
 import ModalDelete from "../../../components/modals/modal-delete";
 import ProgressBar from "../../../components/stats/progress-bar";
@@ -18,16 +17,14 @@ import { GET_PREFIXES } from "../../../graphql/queries/ipam/prefixes";
 import useQuery from "../../../hooks/useQuery";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
-import { constructPath } from "../../../utils/fetch";
 import { stringifyWithoutQuotes } from "../../../utils/string";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
-import { IPAM_QSP } from "../constants";
+import { constructPathForIpam } from "../common/utils";
 
 export default function IpamIPPrefixesSummaryList() {
   const { prefix } = useParams();
-  const [qspTab] = useQueryParam(IPAM_QSP, StringParam);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState();
@@ -37,14 +34,10 @@ export default function IpamIPPrefixesSummaryList() {
   const constructLink = (data) => {
     switch (data.__typename) {
       case IPAM_PREFIX_OBJECT: {
-        return constructPath(`/ipam/prefixes/${encodeURIComponent(data?.prefix?.value)}`, [
-          { name: IPAM_QSP, value: qspTab },
-        ]);
+        return constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(data?.prefix?.value)}`);
       }
       default: {
-        return constructPath(`/ipam/ip_address/${encodeURIComponent(data?.prefix?.value)}`, [
-          { name: IPAM_QSP, value: qspTab },
-        ]);
+        return constructPathForIpam(`/ipam/ip_address/${encodeURIComponent(data?.prefix?.value)}`);
       }
     }
   };

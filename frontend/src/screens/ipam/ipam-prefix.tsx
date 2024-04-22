@@ -5,17 +5,17 @@ import { Link } from "../../components/utils/link";
 import { IPAM_PREFIX_OBJECT } from "../../config/constants";
 import { GET_PREFIXES } from "../../graphql/queries/ipam/prefixes";
 import useQuery from "../../hooks/useQuery";
-import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
+import { constructPathForIpam } from "./common/utils";
 
 const constructLink = (data) => {
   switch (data.__typename) {
     case IPAM_PREFIX_OBJECT: {
-      return constructPath(`/ipam/prefixes/${encodeURIComponent(data?.prefix?.value)}`);
+      return constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(data?.prefix?.value)}`);
     }
     default: {
-      return constructPath(`/ipam/ip_address/${encodeURIComponent(data?.prefix?.value)}`);
+      return constructPathForIpam(`/ipam/ip_address/${encodeURIComponent(data?.prefix?.value)}`);
     }
   }
 };
@@ -28,8 +28,8 @@ export default function IpamIPPrefix() {
   const parent = data && data[IPAM_PREFIX_OBJECT]?.edges[0]?.node?.parent?.node;
 
   const parentLink = parent?.prefix?.value
-    ? constructPath(`/ipam/prefixes/${encodeURIComponent(parent?.prefix?.value)}`)
-    : constructPath("/ipam/prefixes");
+    ? constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(parent?.prefix?.value)}`)
+    : constructPathForIpam("/ipam/prefixes");
 
   const rows =
     data &&

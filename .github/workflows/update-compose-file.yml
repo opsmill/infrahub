@@ -1,0 +1,44 @@
+---
+# yamllint disable rule:truthy
+name: Update Docker Compose on Pyproject update in Stable
+
+# This will bump the infrahub docker image in the docker-compose.yml
+# when pyproject.toml is change in the stable branch
+
+on:
+  push:
+    branches:
+      - stable
+    paths:
+      - 'pyproject.toml'
+
+jobs:
+  update-docker-compose:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+      - name: "Setup environment"
+        run: "pip install invoke toml"
+
+      - name: Update docker-compose.yml
+        run: |
+          VERSION=$(python -c "import toml; print(toml.load('pyproject.toml')['tool']['poetry']['version'])")
+          sed -i'' -e "s|\(image: \)\(.*\)/infrahub:.*\"|\1\2/infrahub:\${VERSION:-$VERSION}\"|g" docker-compose.yml
+
+      - name: Commit docker-compose.yml
+        uses: github-actions-x/commit@v2.9
+        with:
+          github-token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
+          push-branch: 'stable'
+          commit-message: 'chore: update docker-compose'
+          files: |
+            docker-compose.yml
+          name: opsmill-bot
+          email: github-bot@opsmill.com
+          rebase: true

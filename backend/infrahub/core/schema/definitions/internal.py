@@ -790,6 +790,14 @@ relationship_schema = SchemaNode(
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
+        SchemaAttribute(
+            name="read_only",
+            kind="Boolean",
+            description="Set the relationship as read-only, users won't be able to change its value.",
+            default_value=False,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
     ],
     relationships=[
         SchemaRelationship(

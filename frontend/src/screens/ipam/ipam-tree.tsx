@@ -3,12 +3,12 @@ import { useLazyQuery } from "../../hooks/useQuery";
 import React, { useEffect, useState } from "react";
 import { ITreeViewOnLoadDataProps } from "react-accessible-treeview";
 import { Link, useNavigate } from "react-router-dom";
-import { constructPath } from "../../utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { GET_PREFIXES_ONLY } from "../../graphql/queries/ipam/prefixes";
 import { useAtomValue } from "jotai/index";
 import { genericsState, IModelSchema, schemaState } from "../../state/atoms/schema.atom";
 import { Skeleton } from "../../components/skeleton";
+import { constructPathForIpam } from "./common/utils";
 
 type PrefixNode = {
   id: string;
@@ -115,7 +115,7 @@ export default function IpamTree({ prefixSchema }: { prefixSchema?: IModelSchema
           onNodeSelect={({ element, isSelected }) => {
             if (!isSelected) return;
 
-            const url = constructPath(`/ipam/prefixes/${encodeURIComponent(element.name)}`);
+            const url = constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(element.name)}`);
             navigate(url);
           }}
         />
@@ -129,7 +129,7 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
   const generics = useAtomValue(genericsState);
 
   const schema = [...nodes, ...generics].find(({ kind }) => kind === element.metadata?.kind);
-  const url = constructPath(`/ipam/prefixes/${encodeURIComponent(element.name)}`);
+  const url = constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(element.name)}`);
 
   return (
     <Link to={url} tabIndex={-1} className="flex items-center gap-2 overflow-hidden">

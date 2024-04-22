@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.initialization import create_branch
@@ -85,6 +86,7 @@ class TestProposedChangePipeline(TestInfrahubApp):
             db=db, id="John", schema_name=TestKind.PERSON, branch=branch1
         )
         john_branch.description.value = "Oh boy"  # type: ignore[attr-defined]
+        john_branch.age.value = 30  # type: ignore[attr-defined]
         await john_branch.save(db=db)
 
     async def test_happy_pipeline(self, db: InfrahubDatabase, happy_dataset: None, client: InfrahubClient) -> None:
@@ -139,3 +141,23 @@ class TestProposedChangePipeline(TestInfrahubApp):
         assert peers
         data_integrity = [validator for validator in peers.values() if validator.label.value == "Data Integrity"][0]
         assert data_integrity.conclusion.value.value == ValidatorConclusion.FAILURE.value
+
+        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
+
+        data_checks = await client.filters(kind=InfrahubKind.DATACHECK, validator__ids=data_integrity.id)
+        assert len(data_checks) == 1
+        data_check = data_checks[0]
+
+        with pytest.raises(
+            GraphQLError, match="Data conflicts found on branch and missing decisions about what branch to keep"
+        ):
+            await proposed_change_create.save()
+
+        data_check.keep_branch.value = "source"  # type: ignore[attr-defined]
+        await data_check.save()
+        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
+        await proposed_change_create.save()
+        john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="John", schema_name=TestKind.PERSON)
+        # The value of the description should match that of the source branch that was selected
+        # as the branch to keep in the data conflict
+        assert john.description.value == "Oh boy"  # type: ignore[attr-defined]
