@@ -42,14 +42,8 @@ function PrefixSummary({
 
   return (
     <CardWithBorder>
-      <CardWithBorder.Title>
-        <div className="flex justify-between">
-          <h4>Prefix summary</h4>
-          <div className="space-x-1">
-            <Badge variant="blue">{schema.namespace}</Badge>
-            <span className="text-sm">{schema.name}</span>
-          </div>
-        </div>
+      <CardWithBorder.Title className="flex items-center gap-1">
+        <Badge variant="blue">{schema.namespace}</Badge> {schema.name} summary
       </CardWithBorder.Title>
 
       <PropertyList properties={properties} />
