@@ -58,12 +58,16 @@ type overrideQueryParams = {
 };
 
 // Construct link with path that contains all QSP
-export const constructPath = (path: string, overrideParams?: overrideQueryParams[]) => {
+export const constructPath = (
+  path: string,
+  overrideParams?: overrideQueryParams[],
+  preserveQspLib: string[] = []
+) => {
   const currentURLSearchParams = getCurrentQsp();
   const newURLSearchParams = new URLSearchParams();
 
   // Remove some QSP if not needed to be forwarded
-  QSP_TO_INCLUDE.forEach((qsp) => {
+  [...QSP_TO_INCLUDE, ...preserveQspLib].forEach((qsp) => {
     const paramValue = currentURLSearchParams.get(qsp);
     if (paramValue) newURLSearchParams.set(qsp, paramValue);
   });

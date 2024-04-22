@@ -115,7 +115,11 @@ export default function IpamTree({ prefixSchema }: { prefixSchema?: IModelSchema
           onNodeSelect={({ element, isSelected }) => {
             if (!isSelected) return;
 
-            const url = constructPath(`/ipam/prefixes/${encodeURIComponent(element.name)}`);
+            const url = constructPath(
+              `/ipam/prefixes/${encodeURIComponent(element.name)}`,
+              undefined,
+              ["ipam-tab"]
+            );
             navigate(url);
           }}
         />
@@ -129,7 +133,9 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
   const generics = useAtomValue(genericsState);
 
   const schema = [...nodes, ...generics].find(({ kind }) => kind === element.metadata?.kind);
-  const url = constructPath(`/ipam/prefixes/${encodeURIComponent(element.name)}`);
+  const url = constructPath(`/ipam/prefixes/${encodeURIComponent(element.name)}`, undefined, [
+    "ipam-tab",
+  ]);
 
   return (
     <Link to={url} tabIndex={-1} className="flex items-center gap-2 overflow-hidden">
