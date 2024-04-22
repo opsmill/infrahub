@@ -32,8 +32,6 @@ export default function IpamIPPrefixDetails() {
   const { loading, error, data } = useQuery(GET_PREFIX, { variables: { prefix: prefix } });
 
   const parent = data && data[IPAM_PREFIX_OBJECT]?.edges[0]?.node?.parent?.node;
-  console.log("data: ", data);
-  console.log("parent: ", parent);
 
   const children = data && data[IPAM_PREFIX_OBJECT]?.edges[0]?.node?.children;
 
