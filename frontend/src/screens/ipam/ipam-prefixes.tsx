@@ -3,17 +3,17 @@ import { Table } from "../../components/table/table";
 import { IPAM_PREFIX_OBJECT } from "../../config/constants";
 import { GET_PREFIXES } from "../../graphql/queries/ipam/prefixes";
 import useQuery from "../../hooks/useQuery";
-import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
+import { constructPathForIpam } from "./common/utils";
 
 const constructLink = (data) => {
   switch (data.__typename) {
     case IPAM_PREFIX_OBJECT: {
-      return constructPath(`/ipam/prefixes/${encodeURIComponent(data?.prefix?.value)}`);
+      return constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(data?.prefix?.value)}`);
     }
     default: {
-      return constructPath(`/ipam/ip_address/${encodeURIComponent(data?.prefix?.value)}`);
+      return constructPathForIpam(`/ipam/ip_address/${encodeURIComponent(data?.prefix?.value)}`);
     }
   }
 };

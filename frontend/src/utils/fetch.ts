@@ -51,19 +51,23 @@ export const fetchStream = async (url: string, payload?: any) => {
 
 const QSP_TO_INCLUDE = [QSP.BRANCH, QSP.DATETIME];
 
-type overrideQueryParams = {
+export type overrideQueryParams = {
   name: string;
   value?: string | null;
   exclude?: boolean;
 };
 
 // Construct link with path that contains all QSP
-export const constructPath = (path: string, overrideParams?: overrideQueryParams[]) => {
+export const constructPath = (
+  path: string,
+  overrideParams?: overrideQueryParams[],
+  preserveQspLib: string[] = []
+) => {
   const currentURLSearchParams = getCurrentQsp();
   const newURLSearchParams = new URLSearchParams();
 
   // Remove some QSP if not needed to be forwarded
-  QSP_TO_INCLUDE.forEach((qsp) => {
+  [...QSP_TO_INCLUDE, ...preserveQspLib].forEach((qsp) => {
     const paramValue = currentURLSearchParams.get(qsp);
     if (paramValue) newURLSearchParams.set(qsp, paramValue);
   });
