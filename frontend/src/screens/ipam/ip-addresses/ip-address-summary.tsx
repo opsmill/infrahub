@@ -3,7 +3,6 @@ import { useParams } from "react-router-dom";
 import { Link } from "../../../components/utils/link";
 import { GET_IP_ADDRESS_KIND } from "../../../graphql/queries/ipam/ip-address";
 import useQuery from "../../../hooks/useQuery";
-import { constructPath } from "../../../utils/fetch";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import { IP_ADDRESS_DEFAULT_SCHEMA_KIND } from "../constants";
@@ -13,6 +12,7 @@ import { getObjectAttributes, getObjectRelationships } from "../../../utils/getS
 import { gql } from "@apollo/client";
 import { getObjectItemsPaginated } from "../../../graphql/queries/objects/getObjectItems";
 import { IpDetailsCard } from "../common/ip-details-card";
+import { constructPathForIpam } from "../common/utils";
 
 export default function IpAddressSummary() {
   const { prefix, ipaddress } = useParams();
@@ -26,8 +26,8 @@ export default function IpAddressSummary() {
   if (loading || !data) return <LoadingScreen />;
 
   const parentLink = prefix
-    ? constructPath(`/ipam/prefixes/${encodeURIComponent(prefix)}`, undefined, ["ipam-tab"])
-    : constructPath("/ipam/ip-addresses", undefined, ["ipam-tab"]);
+    ? constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(prefix)}`)
+    : constructPathForIpam("/ipam/ip-addresses");
 
   const ipAddressKind = data[IP_ADDRESS_DEFAULT_SCHEMA_KIND].edges[0].node.__typename;
 
