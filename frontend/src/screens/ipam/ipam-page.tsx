@@ -1,12 +1,12 @@
+import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { Outlet } from "react-router-dom";
-import { useAtomValue } from "jotai";
 
 import { Card } from "../../components/ui/card";
-import Content from "../layout/content";
-import IpamTree from "./ipam-tree";
 import { currentSchemaHashAtom, genericsState } from "../../state/atoms/schema.atom";
+import Content from "../layout/content";
 import { IP_PREFIX_DEFAULT_SCHEMA_KIND } from "./constants";
+import IpamTree from "./ipam-tree";
 
 export default function IpamPage() {
   const generics = useAtomValue(genericsState);
