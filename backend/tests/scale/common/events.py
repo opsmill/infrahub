@@ -49,7 +49,7 @@ def setup_iteration_limit(environment: Environment, **kwargs):
                     # need to trigger this in a separate greenlet, in case test_stop handlers do something async
                     gevent.spawn_later(0.1, runner.quit)
                 raise StopUser()
-            runner.iterations_started = runner.iterations_started + 1
+            runner.iterations_started += 1
             method(self, task)
 
         return wrapped
@@ -71,7 +71,7 @@ def request_event_handler(
     }
 
     if exception:
-        config.failed_requests = config.failed_requests + 1
+        config.failed_requests += 1
 
     if os.getenv("CI") is None:
         server_container_stats = get_container_resource_usage(config.server_container)
