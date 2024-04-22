@@ -1,0 +1,83 @@
+---
+# yamllint disable rule:truthy
+name: Publish Helm Chart
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        type: boolean
+        description: Wether to publish the Chart to Infrahub Private Registry
+        required: false
+        default: false
+      version:
+        type: string
+        required: false
+        description: The string to extract semver labels from.
+        default: ''
+  workflow_call:
+    inputs:
+      publish:
+        type: boolean
+        description: Wether to publish the Chart to Infrahub Private Registry
+        required: false
+        default: false
+      version:
+        type: string
+        required: false
+        description: The string to extract semver labels from.
+        default: ''
+
+jobs:
+  publish-helm-chart:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4.2.0
+
+      - name: Install Helm Push Plugin
+        run: helm plugin install https://github.com/chartmuseum/helm-push
+
+      - name: Determine Chart Version
+        id: version
+        run: |
+          if [[ "${{ inputs.version }}" == "" ]]; then
+            VERSION=$(helm show chart ./helm | grep '^version:' | cut -d ' ' -f2)
+            echo "No version input provided, using Chart.yaml version: $VERSION"
+          else
+            VERSION="${{ inputs.version }}"
+            echo "Using input version: $VERSION"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Login to Helm Registry
+        run: >
+          helm registry login ${{ vars.HARBOR_HOST }}
+          --username '${{ secrets.HARBOR_USERNAME }}'
+          --password '${{ secrets.HARBOR_PASSWORD }}'
+
+      - name: Add Helm repository
+        run: helm repo add opsmill https://${{ vars.HARBOR_HOST }}/chartrepo/opsmill
+
+      - name: Package Helm Chart
+        run: |
+          helm package --dependency-update ./helm --version ${{ steps.version.outputs.version }}
+
+      - name: Push Helm Chart to OCI Registry
+        if: ${{ inputs.publish }}
+        run: |
+          helm push infrahub-${{ steps.version.outputs.version }}.tgz oci://${{ vars.HARBOR_HOST }}/opsmill/chart
+
+      - name: Push Helm Chart to traditional repository
+        if: ${{ inputs.publish }}
+        run: >
+          helm cm-push -f infrahub-${{ steps.version.outputs.version }}.tgz opsmill
+          --username '${{ secrets.HARBOR_USERNAME }}'
+          --password '${{ secrets.HARBOR_PASSWORD }}'
+
+      - name: Cleanup
+        run: rm -f infrahub-${{ steps.version.outputs.version }}.tgz
