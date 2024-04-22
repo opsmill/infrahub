@@ -1,16 +1,17 @@
-import { useAtomValue } from "jotai";
-import { Link, useParams } from "react-router-dom";
-import { Icon } from "@iconify-icon/react";
-import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
-import { PrefixUsageChart } from "../common/prefix-usage-chart";
-import LoadingScreen from "../../loading-screen/loading-screen";
-import { IP_PREFIX_DEFAULT_SCHEMA_KIND } from "../constants";
-import { getObjectAttributes, getObjectRelationships } from "../../../utils/getSchemaObjectColumns";
-import { getObjectItemsPaginated } from "../../../graphql/queries/objects/getObjectItems";
 import { gql } from "@apollo/client";
-import useQuery from "../../../hooks/useQuery";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useParams } from "react-router-dom";
+import { Link } from "../../../components/utils/link";
 import { GET_PREFIX_KIND } from "../../../graphql/queries/ipam/prefixes";
+import { getObjectItemsPaginated } from "../../../graphql/queries/objects/getObjectItems";
+import useQuery from "../../../hooks/useQuery";
+import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
+import { getObjectAttributes, getObjectRelationships } from "../../../utils/getSchemaObjectColumns";
+import LoadingScreen from "../../loading-screen/loading-screen";
 import { IpDetailsCard } from "../common/ip-details-card";
+import { PrefixUsageChart } from "../common/prefix-usage-chart";
+import { IP_PREFIX_DEFAULT_SCHEMA_KIND } from "../constants";
 
 export default function IpamIPPrefixesSummaryDetails() {
   const { prefix } = useParams();
