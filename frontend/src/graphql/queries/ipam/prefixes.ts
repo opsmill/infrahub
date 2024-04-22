@@ -196,3 +196,22 @@ export const GET_TOP_LEVEL_PREFIXES = gql`
     }
   }
 `;
+
+export const GET_PREFIX_ANCESTORS = gql`
+  query GET_PREFIX_ANCESTORS($ip: String) {
+    IpamIPPrefix(children__prefix__value: $ip) {
+      edges {
+        node {
+          id
+          display_label
+          parent {
+            node {
+              id
+              display_label
+            }
+          }
+        }
+      }
+    }
+  }
+`;
