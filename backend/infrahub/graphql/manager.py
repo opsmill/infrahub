@@ -525,7 +525,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             attrs[attr.name] = graphene.InputField(attr_type, required=required, description=attr.description)
 
         for rel in schema.relationships:
-            if rel.internal_peer:
+            if rel.internal_peer or rel.read_only:
                 continue
             required = not rel.optional
             if rel.cardinality == "one":
@@ -561,7 +561,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             attrs[attr.name] = graphene.InputField(attr_type, required=False, description=attr.description)
 
         for rel in schema.relationships:
-            if rel.internal_peer:
+            if rel.internal_peer or rel.read_only:
                 continue
             if rel.cardinality == "one":
                 attrs[rel.name] = graphene.InputField(RelatedNodeInput, required=False, description=rel.description)
@@ -601,7 +601,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             attrs[attr.name] = graphene.InputField(attr_type, required=required, description=attr.description)
 
         for rel in schema.relationships:
-            if rel.internal_peer:
+            if rel.internal_peer or rel.read_only:
                 continue
             required = not rel.optional
             if rel.cardinality == "one":
