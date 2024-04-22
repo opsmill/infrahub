@@ -612,6 +612,8 @@ jobs:
       - name: Set tracing configuration
         run: echo "INFRAHUB_TRACE_INSECURE=false" >> $GITHUB_ENV
       - name: Set tracing configuration
+        run: echo "INFRAHUB_TRACE_EXPORTER_TYPE=otlp" >> $GITHUB_ENV
+      - name: Set tracing configuration
         run: echo "INFRAHUB_TRACE_EXPORTER_ENDPOINT=${{ secrets.TRACING_ENDPOINT }}" >> $GITHUB_ENV
       - name: Set tracing configuration
         run: echo "OTEL_RESOURCE_ATTRIBUTES=github.run_id=${GITHUB_RUN_ID}" >> $GITHUB_ENV
