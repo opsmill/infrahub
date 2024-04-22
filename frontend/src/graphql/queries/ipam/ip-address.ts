@@ -1,5 +1,17 @@
 import { gql } from "@apollo/client";
 
+export const GET_IP_ADDRESS_KIND = gql`
+  query GET_IP_ADDRESS_KIND($ip: String) {
+    BuiltinIPAddress(address__value: $ip) {
+      edges {
+        node {
+          __typename
+        }
+      }
+    }
+  }
+`;
+
 export const GET_IP_ADDRESSES = gql`
   query IpamIPAddress($prefix: String, $ipaddress: String, $offset: Int, $limit: Int) {
     IpamIPAddress(

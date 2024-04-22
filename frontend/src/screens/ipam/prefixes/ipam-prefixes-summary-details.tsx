@@ -1,7 +1,7 @@
 import { useAtomValue } from "jotai";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "@iconify-icon/react";
-import { genericsState, IModelSchema, schemaState } from "../../../state/atoms/schema.atom";
+import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { PrefixUsageChart } from "../common/prefix-usage-chart";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import { IP_PREFIX_DEFAULT_SCHEMA_KIND } from "../constants";
@@ -9,47 +9,8 @@ import { getObjectAttributes, getObjectRelationships } from "../../../utils/getS
 import { getObjectItemsPaginated } from "../../../graphql/queries/objects/getObjectItems";
 import { gql } from "@apollo/client";
 import useQuery from "../../../hooks/useQuery";
-import { CardWithBorder } from "../../../components/ui/card";
-import { AttributeType, ObjectAttributeValue } from "../../../utils/getObjectItemDisplayValue";
-import { Property, PropertyList } from "../../../components/table/property-list";
 import { GET_PREFIX_KIND } from "../../../graphql/queries/ipam/prefixes";
-import { Badge } from "../../../components/ui/badge";
-
-function PrefixSummary({
-  schema,
-  data,
-}: {
-  schema: IModelSchema;
-  data: { id: string } & Record<string, AttributeType>;
-}) {
-  const schemaPropertiesOrdered = [
-    ...(schema.attributes ?? []),
-    ...(schema.relationships ?? []),
-  ].sort((a, b) => (a.order_weight ?? 0) - (b.order_weight ?? 0));
-
-  const properties: Property[] = [
-    { name: "ID", value: data.id },
-    ...schemaPropertiesOrdered.map((schemaProperty) => ({
-      name: schemaProperty.label || schemaProperty.name,
-      value: (
-        <ObjectAttributeValue
-          attributeSchema={schemaProperty}
-          attributeValue={data[schemaProperty.name] ?? "-"}
-        />
-      ),
-    })),
-  ];
-
-  return (
-    <CardWithBorder>
-      <CardWithBorder.Title className="flex items-center gap-1">
-        <Badge variant="blue">{schema.namespace}</Badge> {schema.name} summary
-      </CardWithBorder.Title>
-
-      <PropertyList properties={properties} />
-    </CardWithBorder>
-  );
-}
+import { IpDetailsCard } from "../common/ip-details-card";
 
 export default function IpamIPPrefixesSummaryDetails() {
   const { prefix } = useParams();
@@ -107,7 +68,7 @@ const PrefixSummaryContent = ({ prefixKind }: { prefixKind: string }) => {
 
   return (
     <div className="flex items-start gap-2">
-      <PrefixSummary schema={prefixSchema} data={prefixData} />
+      <IpDetailsCard schema={prefixSchema} data={prefixData} />
       <PrefixUsageChart usagePercentage={prefixData.utilization.value} />
     </div>
   );
