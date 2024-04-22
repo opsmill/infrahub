@@ -4,6 +4,7 @@ import { Tabs } from "../../components/tabs";
 import { IPAM_QSP, IPAM_TABS } from "./constants";
 import IpamIPAddresses from "./ip-addresses/ipam-ip-address";
 import IpamIPPrefixes from "./prefixes/ipam-prefixes";
+import { Card } from "../../components/ui/card";
 
 export default function IpamRouter() {
   const [qspTab] = useQueryParam(IPAM_QSP, StringParam);
@@ -71,10 +72,10 @@ export default function IpamRouter() {
   };
 
   return (
-    <div>
+    <Card className="p-0 overflow-hidden flex flex-col h-full">
       <Tabs tabs={tabs} qsp={IPAM_QSP} />
 
-      <div className="m-4">{renderContent()}</div>
-    </div>
+      <div className="flex-grow overflow-auto m-4">{renderContent()}</div>
+    </Card>
   );
 }

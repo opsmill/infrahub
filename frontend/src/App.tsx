@@ -38,6 +38,7 @@ const ObjectItemDetailsPaginated = loadable(
 const Homepage = loadable(() => import("./screens/homepage"));
 const SignIn = loadable(() => import("./screens/sign-in/sign-in"));
 const IpamPage = loadable(() => import("./screens/ipam/ipam-page"));
+const IpamRouter = loadable(() => import("./screens/ipam/ipam-router"));
 
 const App = () => {
   return (
@@ -67,11 +68,13 @@ const App = () => {
           <Route path="/graphql/:branch" element={<RedirectToGraphiQLPage />} />
           <Route path="/graphql" element={<GraphiQLPage />} />
           <Route path="/schema" element={<SchemaPage />} />
-          <Route path="/ipam/ip-addresses/:ipaddress" element={<IpamPage />} />
-          <Route path="/ipam/ip-addresses" element={<IpamPage />} />
-          <Route path="/ipam/prefixes/:prefix/:ipaddress" element={<IpamPage />} />
-          <Route path="/ipam/prefixes/:prefix" element={<IpamPage />} />
-          <Route path="/ipam/*" element={<IpamPage />} />
+          <Route path="/ipam" element={<IpamPage />}>
+            <Route path="/ipam/ip-addresses/:ipaddress" element={<IpamRouter />} />
+            <Route path="/ipam/ip-addresses" element={<IpamRouter />} />
+            <Route path="/ipam/prefixes/:prefix/:ipaddress" element={<IpamRouter />} />
+            <Route path="/ipam/prefixes/:prefix" element={<IpamRouter />} />
+            <Route path="/ipam/*" index element={<IpamRouter />} />
+          </Route>
           <Route path="/" element={<Homepage />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Route>

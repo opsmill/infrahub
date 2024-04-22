@@ -13,6 +13,7 @@ from infrahub.core.constants import (
     GeneratorInstanceStatus,
     InfrahubKind,
     ProposedChangeState,
+    RelationshipDeleteBehavior,
     Severity,
     ValidatorConclusion,
     ValidatorState,
@@ -104,7 +105,7 @@ core_models: dict[str, Any] = {
                     "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
-                    "on_delete": "cascade",
+                    "on_delete": RelationshipDeleteBehavior.CASCADE,
                 },
                 {
                     "name": "created_by",
@@ -191,7 +192,7 @@ core_models: dict[str, Any] = {
                     "optional": True,
                     "cardinality": "many",
                     "identifier": "validator__check",
-                    "on_delete": "cascade",
+                    "on_delete": RelationshipDeleteBehavior.CASCADE,
                 },
             ],
         },
@@ -427,6 +428,7 @@ core_models: dict[str, Any] = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
+            "icon": "mdi:format-list-group",
             "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {
@@ -451,6 +453,7 @@ core_models: dict[str, Any] = {
                     "identifier": "ip_namespace__ip_prefix",
                     "optional": True,
                     "cardinality": "many",
+                    "on_delete": RelationshipDeleteBehavior.CASCADE,
                     "allow_override": AllowOverrideType.NONE,
                 },
                 {
@@ -459,6 +462,7 @@ core_models: dict[str, Any] = {
                     "identifier": "ip_namespace__ip_address",
                     "optional": True,
                     "cardinality": "many",
+                    "on_delete": RelationshipDeleteBehavior.CASCADE,
                     "allow_override": AllowOverrideType.NONE,
                 },
             ],
@@ -471,6 +475,7 @@ core_models: dict[str, Any] = {
             "default_filter": "prefix__value",
             "order_by": ["prefix__value"],
             "display_labels": ["prefix__value"],
+            "icon": "mdi:ip-network",
             "branch": BranchSupportType.AWARE.value,
             "hierarchical": True,
             "attributes": [
@@ -584,6 +589,7 @@ core_models: dict[str, Any] = {
             "default_filter": "address__value",
             "order_by": ["address__value"],
             "display_labels": ["address__value"],
+            "icon": "mdi:ip-outline",
             "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {
@@ -825,7 +831,7 @@ core_models: dict[str, Any] = {
                     "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
-                    "on_delete": "cascade",
+                    "on_delete": RelationshipDeleteBehavior.CASCADE,
                 },
                 {
                     "name": "threads",
@@ -834,7 +840,7 @@ core_models: dict[str, Any] = {
                     "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
-                    "on_delete": "cascade",
+                    "on_delete": RelationshipDeleteBehavior.CASCADE,
                 },
                 {
                     "name": "validations",
@@ -843,7 +849,7 @@ core_models: dict[str, Any] = {
                     "identifier": "proposed_change__validator",
                     "optional": True,
                     "cardinality": "many",
-                    "on_delete": "cascade",
+                    "on_delete": RelationshipDeleteBehavior.CASCADE,
                 },
             ],
         },
@@ -1587,10 +1593,13 @@ core_models: dict[str, Any] = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "include_in_menu": True,
+            "include_in_menu": False,
             "icon": "mdi:format-list-group",
             "branch": BranchSupportType.AWARE.value,
             "inherit_from": [InfrahubKind.IPNAMESPACE],
+            "attributes": [
+                {"name": "default", "kind": "Boolean", "optional": True, "read_only": True, "order_weight": 9000}
+            ],
         },
     ],
 }

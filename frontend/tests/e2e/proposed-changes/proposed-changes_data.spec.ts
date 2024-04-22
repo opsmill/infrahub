@@ -42,19 +42,33 @@ test.describe("/proposed-changes diff data", () => {
     });
 
     await test.step("go to Data tab and open comment form", async () => {
-      await page.getByLabel("Tabs").getByText("Data").click();
+      var count = 0;
       await Promise.all([
         page.waitForResponse((response) => {
           const reqData = response.request().postDataJSON();
           const status = response.status();
 
-          return (
+          if (
             reqData?.operationName === "getProposedChangesThreadsForCoreObjectThread" &&
             status === 200
-          );
+          ) {
+            count++;
+          }
+
+          return count == 6; // waiting for 6 diff elements
         }),
+        page.waitForResponse((response) => {
+          const status = response.status();
+
+          return (
+            response
+              .url()
+              .includes("/api/diff/data?branch=atl1-delete-upstream&branch_only=true") &&
+            status === 200
+          );
+        }), // wait for diff data otherwise hover won't show comment button
+        page.getByLabel("Tabs").getByText("Data").click(),
       ]);
-      await page.waitForLoadState("networkidle"); // need that because we might have multiple getProposedChangesThreadsForCoreObjectThread requests in parallel
       await page.getByText("InfraCircuit").first().hover();
       await page.getByTestId("data-diff-add-comment").first().click();
       await expect(page.getByText("Conversation")).toBeVisible();

@@ -3,8 +3,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import Field as FieldV2
-from pydantic import field_validator
+from pydantic import Field, field_validator
 
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
@@ -26,19 +25,19 @@ if TYPE_CHECKING:
 
 
 class Branch(StandardNode):  # pylint: disable=too-many-public-methods
-    name: str = FieldV2(
+    name: str = Field(
         max_length=250, min_length=3, description="Name of the branch (git ref standard)", validate_default=True
     )
     status: str = "OPEN"  # OPEN, CLOSED
     description: str = ""
     origin_branch: str = "main"
-    branched_from: Optional[str] = FieldV2(default=None, validate_default=True)
+    branched_from: Optional[str] = Field(default=None, validate_default=True)
     hierarchy_level: int = 2
-    created_at: Optional[str] = FieldV2(default=None, validate_default=True)
+    created_at: Optional[str] = Field(default=None, validate_default=True)
     is_default: bool = False
     is_global: bool = False
     is_protected: bool = False
-    sync_with_git: bool = FieldV2(
+    sync_with_git: bool = Field(
         default=True,
         description="Indicate if the branch should be extended to Git and if Infrahub should merge the branch in Git as part of a proposed change",
     )

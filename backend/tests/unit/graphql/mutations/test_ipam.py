@@ -48,6 +48,9 @@ query GetPrefix($prefix: String!) {
                 prefix {
                     value
                 }
+                is_top_level {
+                    value
+                }
                 parent {
                     node {
                         id
@@ -122,6 +125,44 @@ query GetAddress($address: String!) {
 }
 """
 
+DELETE_IPNAMESPACE = """
+mutation NamespaceDelete($namespace_id: String!) {
+    IpamNamespaceDelete(data: {id: $namespace_id}) {
+        ok
+    }
+}
+"""
+
+
+async def test_protected_default_ipnamespace(db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node):
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=DELETE_IPNAMESPACE,
+        context_value=gql_params.context,
+        variable_values={"namespace_id": registry.default_ipnamespace},
+    )
+
+    assert result.errors
+    assert result.errors[0].message == "Cannot delete default IPAM namespace"
+
+
+async def test_delete_regular_ipnamespace(db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node):
+    ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns1.new(db=db, name="ns1")
+    await ns1.save(db=db)
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=DELETE_IPNAMESPACE,
+        context_value=gql_params.context,
+        variable_values={"namespace_id": ns1.id},
+    )
+
+    assert not result.errors
+    assert result.data["IpamNamespaceDelete"]["ok"]
+
 
 async def test_ipprefix_create(
     db: InfrahubDatabase,
@@ -160,6 +201,7 @@ async def test_ipprefix_create(
     assert len(result.data["IpamIPPrefix"]["edges"]) == 1
     assert not result.data["IpamIPPrefix"]["edges"][0]["node"]["parent"]["node"]
     assert result.data["IpamIPPrefix"]["edges"][0]["node"]["prefix"]["value"] == str(supernet)
+    assert result.data["IpamIPPrefix"]["edges"][0]["node"]["is_top_level"]["value"]
 
     networks = list(supernet.subnets(new_prefix=36))
     for n in networks:
@@ -183,6 +225,7 @@ async def test_ipprefix_create(
     assert not result.errors
     assert len(result.data["IpamIPPrefix"]["edges"]) == 1
     assert result.data["IpamIPPrefix"]["edges"][0]["node"]["parent"]["node"]["prefix"]["value"] == str(supernet)
+    assert not result.data["IpamIPPrefix"]["edges"][0]["node"]["is_top_level"]["value"]
 
 
 async def test_ipprefix_create_with_ipnamespace(
@@ -277,6 +320,7 @@ async def test_ipprefix_create_reverse(
     assert not result.errors
     assert len(result.data["IpamIPPrefix"]["edges"]) == 1
     assert result.data["IpamIPPrefix"]["edges"][0]["node"]["parent"]["node"]["prefix"]["value"] == str(supernet)
+    assert not result.data["IpamIPPrefix"]["edges"][0]["node"]["is_top_level"]["value"]
 
 
 async def test_ipprefix_delete(

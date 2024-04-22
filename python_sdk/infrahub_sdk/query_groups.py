@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 
 from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.exceptions import NodeNotFoundError
-from infrahub_sdk.timestamp import Timestamp
 from infrahub_sdk.utils import dict_hash
 
 if TYPE_CHECKING:
@@ -167,7 +166,7 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
             members=members,
             children=children,
         )
-        await group.save(at=Timestamp(), allow_upsert=True, update_group_context=False)
+        await group.save(allow_upsert=True, update_group_context=False)
 
         if not existing_group:
             return
@@ -273,7 +272,7 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
             members=members,
             children=children,
         )
-        group.save(at=Timestamp(), allow_upsert=True, update_group_context=False)
+        group.save(allow_upsert=True, update_group_context=False)
 
         if not existing_group:
             return

@@ -77,11 +77,22 @@ class DataTypeNotFoundError(Error):
 class RepositoryFileNotFoundError(Error):
     HTTP_CODE: int = 404
 
-    def __init__(self, repository_name, location, commit, message=None):
+    def __init__(self, repository_name: str, location: str, commit: str, message=None):
         self.repository_name = repository_name
         self.location = location
         self.commit = commit
         self.message = message or f"Unable to find the file at '{repository_name}::{commit}::{location}'."
+        super().__init__(self.message)
+
+
+class FileOutOfRepositoryError(Error):
+    HTTP_CODE: int = 403
+
+    def __init__(self, repository_name: str, location: str, commit: str, message=None):
+        self.repository_name = repository_name
+        self.location = location
+        self.commit = commit
+        self.message = message or f"File not in repository '{repository_name}::{commit}::{location}'."
         super().__init__(self.message)
 
 

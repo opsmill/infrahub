@@ -22,11 +22,11 @@ import { DIFF_TABS } from "../diff/diff";
 import { FilesDiff } from "../diff/file-diff/files-diff";
 import { SchemaDiff } from "../diff/schema-diff";
 import ErrorScreen from "../error-screen/error-screen";
+import Content from "../layout/content";
 import { TaskItemDetails } from "../tasks/task-item-details";
 import { TaskItems } from "../tasks/task-items";
 import { Conversations } from "./conversations";
 import { ProposedChangesChecksTab } from "./proposed-changes-checks-tab";
-import Content from "../layout/content";
 
 export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
@@ -38,7 +38,6 @@ const ProposedChangesDetails = () => {
   const { pathname } = location;
   const [qspTab, setQspTab] = useQueryParam(QSP.PROPOSED_CHANGES_TAB, StringParam);
   const [qspTaskId, setQspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
-  const [, setValidatorQsp] = useQueryParam(QSP.VALIDATOR_DETAILS, StringParam);
   const [schemaList] = useAtom(schemaState);
   const [proposedChange, setProposedChange] = useAtom(proposedChangedState);
   useTitle(
@@ -114,8 +113,6 @@ const ProposedChangesDetails = () => {
     {
       label: "Checks",
       name: DIFF_TABS.CHECKS,
-      // Go back to the validators list when clicking on the tab if we are on the validator details view
-      onClick: () => setValidatorQsp(undefined),
       component: ProposedChangesChecksTab,
     },
     {
