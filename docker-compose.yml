@@ -1,0 +1,176 @@
+---
+# yamllint disable rule:line-length
+x-infrahub-config: &infrahub_config
+  AWS_ACCESS_KEY_ID:
+  AWS_DEFAULT_ACL:
+  AWS_QUERYSTRING_AUTH:
+  AWS_S3_BUCKET_NAME:
+  AWS_S3_CUSTOM_DOMAIN:
+  AWS_S3_ENDPOINT_URL:
+  AWS_S3_USE_SSL:
+  AWS_SECRET_ACCESS_KEY:
+  DB_TYPE:
+  INFRAHUB_ADDRESS: "http://infrahub-server:8000"
+  INFRAHUB_ALLOW_ANONYMOUS_ACCESS: "true"
+  INFRAHUB_ANALYTICS_ADDRESS:
+  INFRAHUB_ANALYTICS_API_KEY:
+  INFRAHUB_ANALYTICS_ENABLE:
+  INFRAHUB_API_CORS_ALLOW_CREDENTIALS:
+  INFRAHUB_API_CORS_ALLOW_HEADERS:
+  INFRAHUB_API_CORS_ALLOW_METHODS:
+  INFRAHUB_API_CORS_ALLOW_ORIGINS:
+  INFRAHUB_BROKER_ADDRESS: "message-queue"
+  INFRAHUB_BROKER_ENABLE:
+  INFRAHUB_BROKER_MAXIMUM_CONCURRENT_MESSAGES:
+  INFRAHUB_BROKER_MAXIMUM_MESSAGE_RETRIES:
+  INFRAHUB_BROKER_NAMESPACE:
+  INFRAHUB_BROKER_PASSWORD: &broker_password "infrahub"
+  INFRAHUB_BROKER_PORT:
+  INFRAHUB_BROKER_TLS_ENABLED:
+  INFRAHUB_BROKER_USERNAME: &broker_username "infrahub"
+  INFRAHUB_BROKER_VIRTUALHOST:
+  INFRAHUB_CACHE_ADDRESS: "cache"
+  INFRAHUB_CACHE_DATABASE:
+  INFRAHUB_CACHE_ENABLE:
+  INFRAHUB_CACHE_PORT:
+  INFRAHUB_CONFIG:
+  INFRAHUB_DB_ADDRESS: "database"
+  INFRAHUB_DB_DATABASE:
+  INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY:
+  INFRAHUB_DB_PASSWORD:
+  INFRAHUB_DB_PORT:
+  INFRAHUB_DB_PROTOCOL:
+  INFRAHUB_DB_QUERY_SIZE_LIMIT:
+  INFRAHUB_DB_RETRY_LIMIT:
+  INFRAHUB_DB_TYPE: "neo4j"
+  INFRAHUB_DB_USERNAME:
+  INFRAHUB_DOCS_INDEX_PATH:
+  INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS:
+  INFRAHUB_EXPERIMENTAL_PULL_REQUEST:
+  INFRAHUB_GIT_REPOSITORIES_DIRECTORY:
+  INFRAHUB_GIT_SYNC_INTERVAL:
+  INFRAHUB_INITIAL_DEFAULT_BRANCH:
+  INFRAHUB_INTERNAL_ADDRESS: "http://infrahub-server:8000"
+  INFRAHUB_LOGGING_REMOTE_API_SERVER_DSN:
+  INFRAHUB_LOGGING_REMOTE_ENABLE:
+  INFRAHUB_LOGGING_REMOTE_FRONTEND_DSN:
+  INFRAHUB_LOGGING_REMOTE_GIT_AGENT_DSN:
+  INFRAHUB_LOG_LEVEL: "INFO"
+  INFRAHUB_MISC_MAXIMUM_VALIDATOR_EXECUTION_TIME:
+  INFRAHUB_MISC_PRINT_QUERY_DETAILS:
+  INFRAHUB_MISC_START_BACKGROUND_RUNNER:
+  INFRAHUB_PRODUCTION: "false"
+  INFRAHUB_SECURITY_ACCESS_TOKEN_LIFETIME:
+  INFRAHUB_SECURITY_INITIAL_ADMIN_PASSWORD:
+  INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN: "06438eb2-8019-4776-878c-0941b1f1d1ec"
+  INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME:
+  INFRAHUB_SECURITY_SECRET_KEY: "327f747f-efac-42be-9e73-999f08f86b92"
+  INFRAHUB_STORAGE_BUCKET_NAME:
+  INFRAHUB_STORAGE_CUSTOM_DOMAIN:
+  INFRAHUB_STORAGE_DEFAULT_ACL:
+  INFRAHUB_STORAGE_DRIVER: "local"
+  INFRAHUB_STORAGE_ENDPOINT_URL:
+  INFRAHUB_STORAGE_LOCAL_PATH: "/opt/infrahub/storage"
+  INFRAHUB_STORAGE_QUERYTSTRING_AUTH:
+  INFRAHUB_STORAGE_USE_SSL:
+  INFRAHUB_TRACE_ENABLE: "false"
+  INFRAHUB_TRACE_EXPORTER_ENDPOINT:
+  INFRAHUB_TRACE_EXPORTER_PROTOCOL:
+  INFRAHUB_TRACE_EXPORTER_TYPE:
+  INFRAHUB_TRACE_INSECURE:
+  OTEL_RESOURCE_ATTRIBUTES:
+
+services:
+  message-queue:
+    image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:3.13.1-management}
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: *broker_username
+      RABBITMQ_DEFAULT_PASS: *broker_password
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 5s
+      timeout: 30s
+      retries: 3
+    ports:
+      - 15692:15692
+
+  cache:
+    image: ${CACHE_DOCKER_IMAGE:-redis:7.2.4}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  database:
+    image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.18.1-community}
+    restart: unless-stopped
+    environment:
+      - "NEO4J_AUTH=neo4j/admin"
+      - "NEO4J_dbms_security_procedures_unrestricted=apoc.*"
+      - "NEO4J_dbms_security_auth__minimum__password__length=4"
+    volumes:
+      - "database_data:/data"
+      - "database_logs:/logs"
+    healthcheck:
+      test: wget http://localhost:7474 || exit 1
+      interval: 2s
+      timeout: 10s
+      retries: 20
+      start_period: 3s
+    ports:
+      - 2004:2004
+      - 6362:6362
+
+  infrahub-server:
+    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.12.1}"
+    restart: unless-stopped
+    command: >
+      gunicorn --config backend/infrahub/serve/gunicorn_config.py
+      --logger-class infrahub.serve.log.GunicornLogger
+      infrahub.server:app
+    depends_on:
+      database:
+        condition: service_healthy
+      message-queue:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    environment:
+      <<: *infrahub_config
+    ports:
+      - 8000:8000
+    volumes:
+      - "storage_data:${INFRAHUB_STORAGE_LOCAL_PATH:-/opt/infrahub/storage}"
+    tty: true
+    healthcheck:
+      test: curl -s -f -o /dev/null http://localhost:8000/api/schema/summary || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  infrahub-git:
+    deploy:
+      mode: replicated
+      replicas: 2
+    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.12.1}"
+    command: infrahub git-agent start --debug
+    restart: unless-stopped
+    depends_on:
+      - infrahub-server
+    environment:
+      <<: *infrahub_config
+    volumes:
+      - "git_data:/opt/infrahub/git"
+      - "git_remote_data:/remote"
+    tty: true
+
+volumes:
+  database_data:
+  database_logs:
+  git_data:
+  git_remote_data:
+  storage_data:

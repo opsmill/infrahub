@@ -37,6 +37,7 @@ jobs:
       backend: ${{ steps.changes.outputs.backend_all }}
       documentation: ${{ steps.changes.outputs.documentation_all }}
       frontend: ${{ steps.changes.outputs.frontend_all }}
+      helm: ${{ steps.changes.outputs.helm_all }}
       sdk: ${{ steps.changes.outputs.sdk_all }}
       sync: ${{ steps.changes.outputs.sync_all }}
       e2e: ${{ steps.changes.outputs.e2e_all }}
@@ -57,6 +58,19 @@ jobs:
           filters: .github/file-filters.yml
 
  # ------------------------------------------ All Linter  ------------------------------------------
+  helm-lint:
+    if: needs.files-changed.outputs.helm == 'true'
+    needs: ["files-changed"]
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: "Install Helm"
+        uses: azure/setup-helm@v4.2.0
+      - name: "Linting: helm lint"
+        run: "helm lint helm/"
+
   yaml-lint:
     if: needs.files-changed.outputs.yaml == 'true'
     needs: ["files-changed"]
@@ -65,17 +79,8 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
-      - name: "Identify which files have changed"
-        uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            src:
-              - '**.yml'
-              - '**.yaml'
-              - 'development/workflows/ci.yml'
       - name: "Setup environment"
-        run: "pip install yamllint==1.33.0"
+        run: "pip install yamllint==1.35.1"
       - name: "Linting: yamllint"
         run: "yamllint ."
 
@@ -519,7 +524,7 @@ jobs:
       - name: "Build website"
         run: "invoke docs.build"
 
-  validate_generated_documentation:
+  validate-generated-documentation:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -542,7 +547,7 @@ jobs:
       - name: "Validate generated documentation"
         run: "invoke docs.validate --docker"
 
-  validate_documentation_style:
+  validate-documentation-style:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
