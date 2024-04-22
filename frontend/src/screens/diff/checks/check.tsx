@@ -69,11 +69,9 @@ const getCheckBorderColor = (severity?: string) => {
 };
 
 const getCheckData = (check: any, refetch: Function) => {
-  console.log("check: ", check);
   const { __typename } = check;
 
   switch (__typename) {
-    case "CoreSchemaCheck":
     case "CoreDataCheck": {
       const { id, conflicts } = check;
 
