@@ -31,6 +31,7 @@ Below is the list of all available options to define a Relationship in the schem
 | [**optional**](#optional) | Attribute | Indicate if this relationship is mandatory or optional. | False |
 | [**order_weight**](#order_weight) | Attribute | Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first. | False |
 | [**peer**](#peer) | Attribute | Type (kind) of objects supported on the other end of the relationship. | True |
+| [**read_only**](#read_only) | Attribute | Set the relationship as read-only, users won't be able to change its value. | False |
 | [**state**](#state) | Attribute | Expected state of the relationship after loading the schema | False |
 
 ## Reference Guide
@@ -227,6 +228,17 @@ Below is the list of all available options to define a Relationship in the schem
 | **Optional** | False |
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br /> Length: min 3, max 32 |
+
+### read_only
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | read_only |
+| **Kind** | `Boolean` |
+| **Description** | Set the relationship as read-only, users won't be able to change its value. |
+| **Optional** | True |
+| **Default Value** | False |
+| **Constraints** |  |
 
 ### state
 
