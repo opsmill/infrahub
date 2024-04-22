@@ -315,7 +315,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 isinstance(node_schema, GenericSchema) and node_schema.hierarchical
             ):
                 if isinstance(node_schema, NodeSchema):
-                    schema = self.schema.get(name=node_schema.hierarchy, duplicate=False)
+                    schema = self.schema.get(name=node_schema.hierarchy, duplicate=False)  # type: ignore[arg-type]
                     hierarchy_name = node_schema.hierarchy
                 else:
                     schema = node_schema
