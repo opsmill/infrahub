@@ -1,0 +1,221 @@
+---
+version: '1.0'
+generics:
+  - name: Choice
+    namespace: Template
+    description: "Generic Choice"
+    include_in_menu: false
+    label: "Choice"
+    default_filter: name__value
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: color
+        kind: Text
+        optional: true
+    relationships:
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+nodes:
+  - name: Organization
+    namespace: Core
+    label: Organization
+    description: An organization represent a legal entity, a company.
+    default_filter: name__value
+    display_labels: [label__value]
+    order_by: [name__value]
+    icon: mdi:domain
+    include_in_menu: true
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: label
+        optional: true
+      - kind: Text
+        name: description
+        optional: true
+      - name: type
+        kind: Text
+        optional: true
+    relationships:
+      - cardinality: many
+        kind: Attribute
+        name: tags
+        optional: true
+        peer: BuiltinTag
+      - name: group
+        identifier: "organization__group"
+        peer: CoreStandardGroup
+        optional: true
+        cardinality: one
+        kind: Generic
+  - name: Location
+    namespace: Builtin
+    label: Location
+    description: 'A location represent a physical element: a building, a site, a city'
+    default_filter: name__value
+    display_labels: [name__value]
+    order_by: [name__value]
+    icon: mdi:map-marker-radius-outline
+    include_in_menu: true
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: description
+        optional: true
+      - kind: Text
+        name: type
+    relationships:
+      - name: organization
+        peer: CoreOrganization
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: group
+        identifier: "location__group"
+        peer: CoreStandardGroup
+        optional: true
+        cardinality: one
+        kind: Generic
+  - name: Platform
+    namespace: Infra
+    description: "A Platform represent the type of software running on a device"
+    label: "Platform"
+    icon: "mdi:application-cog-outline"  # mdi:application-brackets-outline
+    menu_placement: "InfraDevice"
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: nornir_platform
+        kind: Text
+        optional: true
+      - name: napalm_driver
+        kind: Text
+        optional: true
+      - name: netmiko_device_type
+        kind: Text
+        optional: true
+      - name: ansible_network_os
+        kind: Text
+        optional: true
+    relationships:
+      - name: devices
+        peer: InfraDevice
+        optional: true
+        cardinality: many
+  - name: DeviceType
+    namespace: Template
+    description: "Device Type"
+    label: "Device Type"
+    icon: "mdi:poll"
+    menu_placement: "InfraDevice"
+    default_filter: name__value
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "TemplateChoice"
+    attributes:
+      - name: part_number
+        label: Part Number
+        optional: true
+        kind: Text
+      - name: height
+        label: "Height (U)"
+        optional: true
+        kind: Number
+      - name: full_depth
+        label: "Full Depth"
+        optional: true
+        kind: Boolean
+    relationships:
+      - cardinality: many
+        identifier: device__type
+        name: device
+        optional: true
+        peer: InfraDevice
+      - name: manufacturer
+        peer: CoreOrganization
+        optional: false
+        cardinality: one
+        kind: Attribute
+  - name: Device
+    namespace: Infra
+    description: IP Fabric Device
+    icon: "mdi:router-network"
+    default_filter: hostname__value
+    inherit_from: 
+      - "CoreArtifactTarget"
+    order_by:
+      - hostname__value
+    display_labels:
+      - hostname__value
+    attributes:
+      - name: hostname
+        kind: Text
+      - name: serial_number
+        label: Unique Serial Number
+        kind: Text
+      - name: hardware_serial_number
+        label: Hardware Serial Number
+        kind: Text
+      - name: fqdn
+        label: FQDN
+        kind: Text
+    relationships:
+      - name: organization
+        peer: CoreOrganization
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: location
+        peer: BuiltinLocation
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: platform
+        peer: InfraPlatform
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: model
+        label: Model
+        peer: TemplateDeviceType
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute

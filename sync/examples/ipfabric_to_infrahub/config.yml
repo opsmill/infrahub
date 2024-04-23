@@ -1,0 +1,58 @@
+---
+name: from-ipfabric
+source:
+  name: ipfabricsync
+  settings:
+    base_url: ""
+    token: ""
+
+destination:
+  name: infrahub
+  settings:
+    url: "http://localhost:8000"
+
+order: [
+  "BuiltinLocation",
+  "CoreOrganization",
+  "InfraPlatform",
+  "TemplateDeviceType"
+]
+schema_mapping:
+  - name: BuiltinLocation
+    mapping: tables/inventory/sites
+    fields:
+      - name: name
+        mapping: siteName
+      - name: description
+        mapping: name
+      - name: type
+        static: "Site"
+
+  # Device (manufacturer, device types, devices, interfaces)
+  - name: CoreOrganization
+    mapping: tables/inventory/summary/vendors
+    fields:
+      - name: name
+        mapping: vendor
+      - name: type
+        static: "Vendor"
+
+  - name: InfraPlatform
+    mapping: tables/inventory/summary/platforms
+    fields:
+      - name: name
+        mapping: platform
+      - name: description
+        static: "Platform"
+
+  - name: TemplateDeviceType
+    mapping: tables/inventory/summary/models
+    identifiers: ["name", "manufacturer"]
+    fields:
+      - name: name
+        mapping: model
+      - name: description
+        static: "Device Template"
+      - name: manufacturer
+        mapping: vendor
+        reference: CoreOrganization
