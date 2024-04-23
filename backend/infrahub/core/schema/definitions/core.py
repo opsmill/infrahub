@@ -21,6 +21,33 @@ from infrahub.core.constants import (
 
 # pylint: disable=too-many-lines
 
+core_profile_schema_definition = {
+    "name": "Profile",
+    "namespace": "Core",
+    "include_in_menu": False,
+    "description": "Base Profile in Infrahub.",
+    "label": "Profile",
+    "display_labels": ["profile_name__value"],
+    "default_filter": "profile_name__value",
+    "attributes": [
+        {
+            "name": "profile_name",
+            "kind": "Text",
+            "min_length": 3,
+            "max_length": 32,
+            "optional": False,
+            "unique": True,
+        },
+        {
+            "name": "profile_priority",
+            "kind": "Number",
+            "default_value": 1000,
+            "optional": True,
+        },
+    ],
+}
+
+
 core_models: dict[str, Any] = {
     "generics": [
         {
@@ -31,31 +58,6 @@ core_models: dict[str, Any] = {
             "label": "Node",
         },
         {
-            "name": "Profile",
-            "namespace": "Core",
-            "include_in_menu": False,
-            "description": "Base Profile in Infrahub.",
-            "label": "Profile",
-            "display_labels": ["profile_name__value"],
-            "default_filter": "profile_name__value",
-            "attributes": [
-                {
-                    "name": "profile_name",
-                    "kind": "Text",
-                    "min_length": 3,
-                    "max_length": 32,
-                    "optional": False,
-                    "unique": True,
-                },
-                {
-                    "name": "profile_priority",
-                    "kind": "Number",
-                    "default_value": 1000,
-                    "optional": True,
-                },
-            ],
-        },
-        {
             "name": "Owner",
             "namespace": "Lineage",
             "description": "Any Entities that is responsible for some data.",
@@ -63,6 +65,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "documentation": "/topics/metadata",
         },
+        core_profile_schema_definition,
         {
             "name": "Source",
             "namespace": "Lineage",

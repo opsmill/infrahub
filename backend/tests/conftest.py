@@ -26,6 +26,7 @@ from infrahub.core.schema import (
     core_models,
     internal_schema,
 )
+from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
@@ -174,14 +175,9 @@ async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
                 "description": "Any Entities that stores or produces data.",
                 "namespace": "Lineage",
             },
+            core_profile_schema_definition,
         ]
     }
-    for generic in core_models["generics"]:
-        if generic["name"] == "Profile" and generic["namespace"] == "Core":
-            core_profile = generic
-            break
-    if core_profile:
-        SCHEMA["generics"].append(core_profile)
 
     schema = SchemaRoot(**SCHEMA)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)

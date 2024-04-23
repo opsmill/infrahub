@@ -49,6 +49,7 @@ from infrahub.core.schema import (
     SchemaRoot,
     internal_schema,
 )
+from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.utils import parse_node_kind
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.exceptions import SchemaNotFoundError
@@ -120,7 +121,7 @@ class SchemaBranch:
     def get_all_kind_id_map(self, exclude_profiles: bool = False) -> Dict[str, str]:
         kind_id_map = {}
         if exclude_profiles:
-            names = self.node_names + self.generic_names
+            names = self.node_names + [gn for gn in self.generic_names if gn != InfrahubKind.PROFILE]
         else:
             names = self.all_names
         for name in names:
@@ -1223,7 +1224,10 @@ class SchemaBranch:
 
     def add_profile_schemas(self):
         if not self.has(name=InfrahubKind.PROFILE):
-            return
+            core_profile_schema = GenericSchema(**core_profile_schema_definition)
+            self.set(name=core_profile_schema.kind, schema=core_profile_schema)
+        else:
+            core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
         profile_schema_kinds = set()
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
@@ -1245,8 +1249,6 @@ class SchemaBranch:
         self.set(name=core_profile_schema.kind, schema=core_profile_schema)
 
     def add_profile_relationships(self):
-        if not self.has(name=InfrahubKind.PROFILE):
-            return
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
             if node.namespace in RESTRICTED_NAMESPACES:
@@ -1289,8 +1291,9 @@ class SchemaBranch:
             namespace="Profile",
             description=f"Profile for {node.kind}",
             branch=node.branch,
-            inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE],
+            include_in_menu=False,
             display_labels=["profile_name__value"],
+            inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE],
             default_filter="profile_name__value",
             attributes=[profile_name_attr, profile_priority_attr],
             relationships=[
@@ -1561,6 +1564,8 @@ class SchemaManager(NodeManager):
         branch = await registry.get_branch(branch=branch, db=db)
 
         for item_kind in schema.node_names + schema.generic_names:
+            if item_kind == InfrahubKind.PROFILE:
+                continue
             if limit and item_kind not in limit:
                 continue
             item = schema.get(name=item_kind, duplicate=False)

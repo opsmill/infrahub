@@ -293,6 +293,14 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
     assert profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
     assert profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
     assert set(profile.attribute_names) == {"profile_name", "profile_priority", "name", "level", "color", "description"}
+    core_profile_schema = schema.get("CoreProfile")
+    assert set(core_profile_schema.used_by) == {
+        "ProfileBuiltinCriticality",
+        "ProfileBuiltinTag",
+        "ProfileBuiltinStatus",
+        "ProfileBuiltinBadge",
+        "ProfileCoreStandardGroup",
+    }
 
 
 async def test_schema_branch_generate_identifiers(schema_all_in_one):
@@ -2183,7 +2191,8 @@ async def test_load_schema_from_db(
     schema2 = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
 
     assert len(schema2.nodes) == 6
-    assert len(schema2.generics) == 1
+    assert set(schema2.generics.keys()) == {"CoreProfile", "TestGenericInterface"}
+    assert set(schema2.profiles.keys()) == {"ProfileBuiltinTag", "ProfileTestCriticality"}
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name="BuiltinTag").get_hash()
@@ -2256,7 +2265,8 @@ async def test_load_schema(
     schema2 = await registry.schema.load_schema(db=db, branch=default_branch.name)
 
     assert len(schema2.nodes) == 6
-    assert len(schema2.generics) == 1
+    assert set(schema2.generics.keys()) == {"CoreProfile", "TestGenericInterface"}
+    assert set(schema2.profiles.keys()) == {"ProfileBuiltinTag", "ProfileTestCriticality"}
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name=InfrahubKind.TAG).get_hash()
