@@ -16,6 +16,7 @@ import { RoundedButton } from "../../components/buttons/rounded-button";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { Tooltip } from "../../components/ui/tooltip";
 import { Badge } from "../../components/ui/badge";
+import { constructPath } from "../../utils/fetch";
 
 const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);
@@ -72,7 +73,7 @@ const ProposedChanges = () => {
         isReloadLoading={loading}>
         <div className="flex-grow text-right">
           {permission.write.allow ? (
-            <Link to={"/proposed-changes/new"}>
+            <Link to={constructPath("/proposed-changes/new")}>
               <RoundedButton
                 disabled={!permission.write.allow}
                 data-testid="add-proposed-changes-button">
