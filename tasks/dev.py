@@ -184,6 +184,13 @@ def stop(context: Context, database: str = INFRAHUB_DATABASE):
     stop_services(context=context, database=database, namespace=NAMESPACE)
 
 
+@task(optional=["database"])
+def migrate(context: Context, database: str = INFRAHUB_DATABASE):
+    """Apply the latest database migrations."""
+    migrate_database(context=context, database=database, namespace=NAMESPACE)
+    update_core_schema(context=context, database=database, namespace=NAMESPACE, debug=True)
+
+
 @task
 def gen_config_env(context: Context):
     """Generate list of env vars required for configuration."""
@@ -222,10 +229,3 @@ def gen_config_env(context: Context):
     env_vars.remove("PATH")
     for var in sorted(env_vars):
         print(f"{var}:")
-
-
-@task(optional=["database"])
-def migrate(context: Context, database: str = INFRAHUB_DATABASE):
-    """Apply the latest database migrations."""
-    migrate_database(context=context, database=database, namespace=NAMESPACE)
-    update_core_schema(context=context, database=database, namespace=NAMESPACE, debug=True)
