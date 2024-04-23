@@ -175,3 +175,43 @@ export const GET_PREFIX_KIND = gql`
     }
   }
 `;
+
+export const GET_TOP_LEVEL_PREFIXES = gql`
+  query GET_TOP_LEVEL_PREFIXES {
+    IpamIPPrefix(is_top_level__value: true) {
+      edges {
+        node {
+          id
+          display_label
+          parent {
+            node {
+              id
+            }
+          }
+          children {
+            count
+          }
+        }
+      }
+    }
+  }
+`;
+
+export const GET_PREFIX_ANCESTORS = gql`
+  query GET_PREFIX_ANCESTORS($ip: String) {
+    IpamIPPrefix(children__prefix__value: $ip) {
+      edges {
+        node {
+          id
+          display_label
+          parent {
+            node {
+              id
+              display_label
+            }
+          }
+        }
+      }
+    }
+  }
+`;
