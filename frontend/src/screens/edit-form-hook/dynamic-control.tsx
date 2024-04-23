@@ -15,7 +15,6 @@ import { DynamicFieldData } from "./dynamic-control-types";
 export const DynamicControl = (props: DynamicFieldData) => {
   const {
     type,
-    name,
     value,
     options = {
       values: [],
@@ -23,9 +22,7 @@ export const DynamicControl = (props: DynamicFieldData) => {
     parent,
   } = props;
 
-  const { register, setValue, getValues } = useFormContext();
-
-  const existingValue = getValues(name);
+  const { register, setValue } = useFormContext();
 
   switch (type) {
     case "password":
@@ -37,35 +34,18 @@ export const DynamicControl = (props: DynamicFieldData) => {
           inputType={type}
           register={register}
           setValue={setValue}
-          value={existingValue ?? value}
+          value={value}
         />
       );
     case "textarea":
       return (
-        <OpsTextareaRegister
-          {...props}
-          register={register}
-          setValue={setValue}
-          value={existingValue ?? value}
-        />
+        <OpsTextareaRegister {...props} register={register} setValue={setValue} value={value} />
       );
     case "switch":
-      return (
-        <OpsSwitchRegister
-          {...props}
-          register={register}
-          setValue={setValue}
-          value={existingValue ?? value}
-        />
-      );
+      return <OpsSwitchRegister {...props} register={register} setValue={setValue} value={value} />;
     case "checkbox":
       return (
-        <OpsCheckboxRegister
-          {...props}
-          register={register}
-          setValue={setValue}
-          value={existingValue ?? value}
-        />
+        <OpsCheckboxRegister {...props} register={register} setValue={setValue} value={value} />
       );
     case "select":
       return (
@@ -74,7 +54,7 @@ export const DynamicControl = (props: DynamicFieldData) => {
           options={options}
           register={register}
           setValue={setValue}
-          value={existingValue ?? value}
+          value={value}
         />
       );
     case "dropdown": {
@@ -84,7 +64,7 @@ export const DynamicControl = (props: DynamicFieldData) => {
           options={options}
           register={register}
           setValue={setValue}
-          value={existingValue ?? value}
+          value={value}
           dropdown
         />
       );
@@ -96,7 +76,7 @@ export const DynamicControl = (props: DynamicFieldData) => {
           options={options}
           register={register}
           setValue={setValue}
-          value={existingValue ?? value}
+          value={value}
           enum
         />
       );
@@ -143,22 +123,12 @@ export const DynamicControl = (props: DynamicFieldData) => {
     }
     case "datepicker": {
       return (
-        <OpsDatePickerRegister
-          {...props}
-          value={existingValue || value}
-          register={register}
-          setValue={setValue}
-        />
+        <OpsDatePickerRegister {...props} value={value} register={register} setValue={setValue} />
       );
     }
     case "json": {
       return (
-        <CodeEditorRegister
-          {...props}
-          value={existingValue ?? value}
-          register={register}
-          setValue={setValue}
-        />
+        <CodeEditorRegister {...props} value={value} register={register} setValue={setValue} />
       );
     }
     case "color": {
