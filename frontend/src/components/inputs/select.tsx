@@ -156,7 +156,7 @@ export const Select = (props: SelectProps) => {
         option?.name?.toString().toLowerCase().includes(query.toLowerCase())
       );
 
-  const finalOptions = [...(preventEmpty ? [] : [emptyOption]), ...filteredOptions];
+  const finalOptions = [...(preventEmpty ? [] : [emptyOption]), ...(filteredOptions || [])];
 
   const textColor =
     typeof selectedOption === "object" && !Array.isArray(selectedOption)
