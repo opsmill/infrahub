@@ -1340,10 +1340,12 @@ class InfrahubNode(InfrahubNodeBase):
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
             if rel and isinstance(rel, RelatedNode):
-                related_node = await InfrahubNode.from_graphql(
-                    client=self._client, branch=branch, data=node_data["node"].get(rel_name)
-                )
-                related_nodes.append(related_node)
+                relation = node_data["node"].get(rel_name)
+                if relation.get("node"):
+                    related_node = await InfrahubNode.from_graphql(
+                        client=self._client, branch=branch, data=node_data["node"].get(rel_name)
+                    )
+                    related_nodes.append(related_node)
             elif rel and isinstance(rel, RelationshipManager):
                 peers = node_data["node"].get(rel_name)
                 if peers:
@@ -1680,10 +1682,12 @@ class InfrahubNodeSync(InfrahubNodeBase):
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
             if rel and isinstance(rel, RelatedNodeSync):
-                related_node = InfrahubNodeSync.from_graphql(
-                    client=self._client, branch=branch, data=node_data["node"].get(rel_name)
-                )
-                related_nodes.append(related_node)
+                relation = node_data["node"].get(rel_name)
+                if relation.get("node"):
+                    related_node = InfrahubNodeSync.from_graphql(
+                        client=self._client, branch=branch, data=node_data["node"].get(rel_name)
+                    )
+                    related_nodes.append(related_node)
             elif rel and isinstance(rel, RelationshipManagerSync):
                 peers = node_data["node"].get(rel_name)
                 if peers:
