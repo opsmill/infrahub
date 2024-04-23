@@ -28,7 +28,7 @@ env:
   INFRAHUB_IMAGE_VER: "local"
 
 jobs:
-  scale-tests:
+  migration-tests:
     strategy:
       fail-fast: false
       max-parallel: 4
