@@ -33,7 +33,7 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const [isLoading, setIsLoading] = useState(false);
 
   if (!prefix) {
-    return <div>Select a prefix</div>;
+    return <div>Select a Prefix in the Tree to the left to see details</div>;
   }
 
   const constructLink = (data) => {
