@@ -19,16 +19,31 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+IPNetworkType = Union[ipaddress.IPv6Network, ipaddress.IPv4Network]
+IPAddressType = Union[ipaddress.IPv6Interface, ipaddress.IPv4Interface]
+AllIPTypes = Union[IPNetworkType, IPAddressType]
+
+
 @dataclass
 class IPPrefixData:
     id: UUID
-    prefix: Union[ipaddress.IPv6Network, ipaddress.IPv4Network]
+    prefix: IPNetworkType
 
 
 @dataclass
 class IPAddressData:
     id: UUID
-    address: Union[ipaddress.IPv6Interface, ipaddress.IPv4Interface]
+    address: IPAddressType
+
+
+def _get_namespace_id(
+    namespace: Optional[Union[Node, str]] = None,
+) -> str:
+    if namespace and isinstance(namespace, str):
+        return namespace
+    if namespace and hasattr(namespace, "id"):
+        return namespace.id
+    return registry.default_ipnamespace
 
 
 class IPPrefixSubnetFetch(Query):
@@ -36,19 +51,13 @@ class IPPrefixSubnetFetch(Query):
 
     def __init__(
         self,
-        obj: Union[ipaddress.IPv6Network, ipaddress.IPv4Network],
+        obj: IPNetworkType,
         namespace: Optional[Union[Node, str]] = None,
         *args,
         **kwargs,
     ):
         self.obj = obj
-
-        if namespace and isinstance(namespace, str):
-            self.namespace_id = namespace
-        elif namespace and hasattr(namespace, "id"):
-            self.namespace_id = namespace.id
-        else:
-            self.namespace_id = registry.default_ipnamespace
+        self.namespace_id = _get_namespace_id(namespace)
 
         super().__init__(*args, **kwargs)
 
@@ -138,13 +147,7 @@ class IPPrefixContainerFetch(Query):
         **kwargs,
     ):
         self.obj = obj
-
-        if namespace and isinstance(namespace, str):
-            self.namespace_id = namespace
-        elif namespace and hasattr(namespace, "id"):
-            self.namespace_id = namespace.id
-        else:
-            self.namespace_id = registry.default_ipnamespace
+        self.namespace_id = _get_namespace_id(namespace)
 
         if isinstance(obj, (ipaddress.IPv6Network, ipaddress.IPv4Network)):
             self.prefixlen = obj.prefixlen
@@ -226,19 +229,13 @@ class IPPrefixIPAddressFetch(Query):
 
     def __init__(
         self,
-        obj: Union[ipaddress.IPv6Network, ipaddress.IPv4Network],
+        obj: IPNetworkType,
         namespace: Optional[Union[Node, str]] = None,
         *args,
         **kwargs,
     ):
         self.obj = obj
-
-        if namespace and isinstance(namespace, str):
-            self.namespace_id = namespace
-        elif namespace and hasattr(namespace, "id"):
-            self.namespace_id = namespace.id
-        else:
-            self.namespace_id = registry.default_ipnamespace
+        self.namespace_id = _get_namespace_id(namespace)
 
         super().__init__(*args, **kwargs)
 
@@ -301,7 +298,7 @@ class IPPrefixIPAddressFetch(Query):
 
 async def get_container(
     db: InfrahubDatabase,
-    ip_prefix: Union[ipaddress.IPv6Network, ipaddress.IPv4Network],
+    ip_prefix: IPNetworkType,
     namespace: Optional[Union[Node, str]] = None,
     branch: Optional[Union[Branch, str]] = None,
     at: Optional[Union[Timestamp, str]] = None,
@@ -314,7 +311,7 @@ async def get_container(
 
 async def get_subnets(
     db: InfrahubDatabase,
-    ip_prefix: Union[ipaddress.IPv6Network, ipaddress.IPv4Network],
+    ip_prefix: IPNetworkType,
     namespace: Optional[Union[Node, str]] = None,
     branch: Optional[Union[Branch, str]] = None,
     at: Optional[Union[Timestamp, str]] = None,
@@ -327,7 +324,7 @@ async def get_subnets(
 
 async def get_ip_addresses(
     db: InfrahubDatabase,
-    ip_prefix: Union[ipaddress.IPv6Network, ipaddress.IPv4Network],
+    ip_prefix: IPNetworkType,
     namespace: Optional[Union[Node, str]] = None,
     branch: Optional[Union[Branch, str]] = None,
     at=None,
@@ -340,7 +337,7 @@ async def get_ip_addresses(
 
 async def get_ip_prefix_for_ip_address(
     db: InfrahubDatabase,
-    ip_address: Union[ipaddress.IPv6Interface, ipaddress.IPv4Interface],
+    ip_address: IPAddressType,
     namespace: Optional[str] = None,
     branch: Optional[Union[Branch, str]] = None,
     at: Optional[Union[Timestamp, str]] = None,
@@ -468,3 +465,244 @@ async def get_utilization(
 
     await query.execute(db=db)
     return query.get_percentage()
+
+
+class IPPrefixReconcileQuery(Query):
+    name: str = "ip_prefix_reconcile"
+
+    def __init__(
+        self,
+        ip_value: AllIPTypes,
+        namespace: Optional[Union[Node, str]] = None,
+        node_uuid: Optional[str] = None,
+        *args,
+        **kwargs,
+    ):
+        self.ip_value = ip_value
+        self.ip_uuid = node_uuid
+        self.namespace_id = _get_namespace_id(namespace)
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        self.params.update(branch_params)
+        self.params["ip_prefix_kind"] = InfrahubKind.IPPREFIX
+        self.params["ip_address_kind"] = InfrahubKind.IPADDRESS
+        self.params["ip_prefix_attribute_kind"] = "AttributeIPNetwork"
+        self.params["ip_address_attribute_kind"] = "AttributeIPHost"
+        self.params["namespace_kind"] = InfrahubKind.IPNAMESPACE
+        self.params["namespace_id"] = self.namespace_id
+        prefix_bin = convert_ip_to_binary_str(self.ip_value)
+        self.params["prefix_binary"] = prefix_bin
+        if isinstance(self.ip_value, IPAddressType):
+            prefixlen = self.ip_value.max_prefixlen
+        else:
+            prefixlen = self.ip_value.prefixlen
+        self.params["prefixlen"] = prefixlen
+        self.params["ip_version"] = self.ip_value.version
+        possible_prefixes = set()
+        for idx in range(1, prefixlen):
+            tmp_prefix = prefix_bin[: prefixlen - idx]
+            padding = "0" * (self.ip_value.max_prefixlen - len(tmp_prefix))
+            possible_prefixes.add(f"{tmp_prefix}{padding}")
+        self.params["possible_prefixes"] = list(possible_prefixes)
+
+        namespace_query = """
+        // Get IP Namespace
+        MATCH (ip_namespace:%(namespace_kind)s)-[r:IS_PART_OF]->(root:Root)
+        WHERE ip_namespace.uuid = $namespace_id
+        AND %(branch_filter)s
+        """ % {"branch_filter": branch_filter, "namespace_kind": self.params["namespace_kind"]}
+        self.add_to_query(namespace_query)
+
+        if self.ip_uuid:
+            self.params["node_uuid"] = self.ip_uuid
+            get_node_by_id_query = """
+            // Get IP Prefix node by UUID
+            MATCH (ip_node {uuid: $node_uuid})
+            """
+            self.add_to_query(get_node_by_id_query)
+
+        else:
+            get_node_by_prefix_query = """
+            // Get IP Prefix node by prefix value
+            OPTIONAL MATCH ip_node_path = (:Root)<-[:IS_PART_OF]-(ip_node:Node)-[:HAS_ATTRIBUTE]->(a:Attribute)-[:HAS_VALUE]->(aipn), (ip_namespace)-[:IS_RELATED]-(nsr:Relationship)-[:IS_RELATED]-(ip_node)
+            WHERE any(label IN LABELS(ip_node) WHERE label IN [$ip_prefix_kind, $ip_address_kind])
+            AND nsr.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
+            AND any(label IN LABELS(aipn) WHERE label IN [$ip_prefix_attribute_kind, $ip_address_attribute_kind])
+            AND aipn.binary_address = $prefix_binary
+            AND aipn.prefixlen = $prefixlen
+            AND aipn.version = $ip_version
+            AND all(r IN relationships(ip_node_path) WHERE (%(branch_filter)s) and r.status = "active")
+            """ % {
+                "branch_filter": branch_filter,
+            }
+            self.add_to_query(get_node_by_prefix_query)
+
+        get_current_parent_query = """
+        // Get prefix node's current parent, if it exists
+        OPTIONAL MATCH parent_prefix_path = (ip_node)-[:IS_RELATED]->(:Relationship {name: "parent__child"})-[:IS_RELATED]->(current_parent:%(ip_prefix_kind)s)
+        WHERE all(r IN relationships(parent_prefix_path) WHERE (%(branch_filter)s) and r.status = "active")
+        """ % {
+            "branch_filter": branch_filter,
+            "ip_prefix_kind": self.params["ip_prefix_kind"],
+        }
+        self.add_to_query(get_current_parent_query)
+
+        get_current_children_query = """
+        // Get prefix node's current prefix children, if any exist
+        OPTIONAL MATCH child_prefix_path = (ip_node)<-[:IS_RELATED]-(:Relationship {name: "parent__child"})<-[:IS_RELATED]-(current_prefix_child:%(ip_prefix_kind)s)
+        WHERE all(r IN relationships(child_prefix_path) WHERE (%(branch_filter)s) and r.status = "active")
+        WITH ip_namespace, ip_node, current_parent, collect(current_prefix_child) AS current_prefix_children
+        // Get prefix node's current address children, if any exist
+        OPTIONAL MATCH child_address_path = (ip_node)-[:IS_RELATED]-(:Relationship {name: "ip_prefix__ip_address"})-[:IS_RELATED]-(current_address_child:%(ip_address_kind)s)
+        WHERE all(r IN relationships(child_address_path) WHERE (%(branch_filter)s) and r.status = "active")
+        WITH ip_namespace, ip_node, current_parent, current_prefix_children, collect(current_address_child) AS current_address_children
+        WITH ip_namespace, ip_node, current_parent, current_prefix_children + current_address_children AS current_children
+        """ % {
+            "branch_filter": branch_filter,
+            "ip_prefix_kind": self.params["ip_prefix_kind"],
+            "ip_address_kind": self.params["ip_address_kind"],
+        }
+        self.add_to_query(get_current_children_query)
+
+        get_new_parent_query = """
+        // Identify the correct parent, if any, for the prefix node
+        CALL {
+            WITH ip_namespace
+            MATCH ns_path = (ip_namespace)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(maybe_new_parent:%(ip_prefix_kind)s)
+            WHERE ns_rel.name = "ip_namespace__ip_prefix"
+            AND all(r IN relationships(ns_path) WHERE (%(branch_filter)s) AND r.status = "active")
+
+            MATCH attribute_path = (maybe_new_parent)-[har:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})-[hvr:HAS_VALUE]->(av:%(ip_prefix_attribute_kind)s)
+            WHERE av.binary_address IN $possible_prefixes
+            AND av.prefixlen < $prefixlen
+            AND av.version = $ip_version
+            AND all(r IN relationships(attribute_path) WHERE (%(branch_filter)s))
+            WITH
+                maybe_new_parent,
+                har,
+                hvr,
+                av.prefixlen as prefixlen,
+                (har.status = "active" AND hvr.status = "active") AS is_active,
+                har.branch_level + hvr.branch_level AS branch_level
+            RETURN maybe_new_parent, prefixlen AS mnp_prefixlen, is_active AS mnp_is_active
+            ORDER BY branch_level DESC, har.from DESC, hvr.from DESC
+            LIMIT 1
+        }
+        WITH ip_namespace, ip_node, current_parent, current_children, maybe_new_parent, mnp_is_active, mnp_prefixlen
+        ORDER BY ip_node.uuid, mnp_is_active DESC, mnp_prefixlen DESC
+        WITH ip_namespace, ip_node, current_parent, current_children, head(collect(maybe_new_parent)) as new_parent
+        """ % {
+            "branch_filter": branch_filter,
+            "ip_prefix_kind": self.params["ip_prefix_kind"],
+            "ip_prefix_attribute_kind": self.params["ip_prefix_attribute_kind"],
+        }
+        self.add_to_query(get_new_parent_query)
+
+        get_new_children_query = """
+        // Identify the correct children, if any, for the prefix node
+        CALL {
+            // Get ALL possible children for the prefix node
+            WITH ip_namespace
+            OPTIONAL MATCH child_path = (ip_namespace)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(maybe_new_child)-[har:HAS_ATTRIBUTE]->(a:Attribute)-[hvr:HAS_VALUE]->(av:AttributeValue)
+            WHERE ns_rel.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
+            AND a.name in ["prefix", "address"]
+            AND any(label IN LABELS(maybe_new_child) WHERE label IN [$ip_prefix_kind, $ip_address_kind])
+            AND any(label IN LABELS(av) WHERE label IN [$ip_prefix_attribute_kind, $ip_address_attribute_kind])
+            AND (
+                ($ip_prefix_kind IN LABELS(maybe_new_child) AND av.prefixlen > $prefixlen)
+                OR ($ip_address_kind IN LABELS(maybe_new_child) AND av.prefixlen >= $prefixlen)
+            )
+            AND av.version = $ip_version
+            AND av.binary_address STARTS WITH SUBSTRING($prefix_binary, 0, $prefixlen)
+            AND all(r IN relationships(child_path) WHERE (%(branch_filter)s) AND r.status = "active")
+            WITH
+                maybe_new_child,
+                av AS mnc_attribute,
+                har,
+                hvr,
+                (har.status = "active" AND hvr.status = "active") AS is_active,
+                har.branch_level + hvr.branch_level AS branch_level
+            ORDER BY maybe_new_child.uuid, branch_level DESC, har.from DESC, hvr.from DESC
+            WITH maybe_new_child, head(collect([mnc_attribute, is_active])) AS latest_mnc_details
+            RETURN maybe_new_child, latest_mnc_details[0] AS latest_mnc_attribute, latest_mnc_details[1] AS mnc_is_active
+        }
+        WITH ip_namespace, ip_node, current_parent, current_children, new_parent, maybe_new_child, latest_mnc_attribute, mnc_is_active
+        WHERE mnc_is_active = TRUE OR mnc_is_active IS NULL
+        WITH ip_namespace, ip_node, current_parent, current_children, new_parent, collect([maybe_new_child, latest_mnc_attribute]) AS maybe_children_ips
+        WITH ip_namespace, ip_node, current_parent, current_children, new_parent, maybe_children_ips, range(0, size(maybe_children_ips) - 1) AS child_indices
+        UNWIND child_indices as ind
+        CALL {
+            // Filter all possible children to remove those that have a more-specific parent
+            // among the list of all possible children
+            WITH ind, maybe_children_ips
+            WITH ind, maybe_children_ips AS ips
+            RETURN REDUCE(
+                has_more_specific_parent = FALSE, potential_parent IN ips |
+                CASE
+                    WHEN has_more_specific_parent THEN has_more_specific_parent  // keep it True once set
+                    WHEN potential_parent IS NULL OR ips[ind][0] IS NULL THEN has_more_specific_parent
+                    WHEN potential_parent[0] = ips[ind][0] THEN has_more_specific_parent  // skip comparison to self
+                    WHEN $ip_address_kind in LABELS(potential_parent[0]) THEN has_more_specific_parent  // address cannot be a parent
+                    WHEN $ip_prefix_attribute_kind IN LABELS(ips[ind][1]) AND (potential_parent[1]).prefixlen >= (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with same or greater prefixlen for prefix cannot be parent
+                    WHEN $ip_address_attribute_kind IN LABELS(ips[ind][1]) AND (potential_parent[1]).prefixlen > (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with greater prefixlen for address cannot be parent
+                    WHEN (ips[ind][1]).binary_address STARTS WITH SUBSTRING((potential_parent[1]).binary_address, 0, (potential_parent[1]).prefixlen) THEN TRUE  // we found a parent
+                    ELSE has_more_specific_parent
+                END
+            ) as has_parent_among_maybe_children
+        }
+        WITH ip_namespace, ip_node, current_parent, current_children, new_parent, maybe_children_ips[ind][0] AS new_child, has_parent_among_maybe_children
+        WHERE has_parent_among_maybe_children = FALSE
+        WITH
+            ip_namespace,
+            ip_node,
+            current_parent,
+            current_children,
+            new_parent,
+            collect(new_child) as new_children
+        """ % {"branch_filter": branch_filter}
+        self.add_to_query(get_new_children_query)
+        self.return_labels = ["ip_node", "current_parent", "current_children", "new_parent", "new_children"]
+
+    def _get_uuid_from_query(self, node_name: str) -> Optional[str]:
+        results = list(self.get_results())
+        if not results:
+            return None
+        result = results[0]
+        node = result.get(node_name)
+        if not node:
+            return None
+        node_uuid = node.get("uuid")
+        if node_uuid:
+            return str(node_uuid)
+        return None
+
+    def _get_uuids_from_query_list(self, alias_name: str) -> list[str]:
+        results = list(self.get_results())
+        if not results:
+            return []
+        result = results[0]
+        element_uuids = []
+        for element in result.get(alias_name):
+            if not element:
+                continue
+            element_uuid = element.get("uuid")
+            if element_uuid:
+                element_uuids.append(str(element_uuid))
+        return element_uuids
+
+    def get_ip_node_uuid(self) -> Optional[str]:
+        return self._get_uuid_from_query("ip_node")
+
+    def get_current_parent_uuid(self) -> Optional[str]:
+        return self._get_uuid_from_query("current_parent")
+
+    def get_calculated_parent_uuid(self) -> Optional[str]:
+        return self._get_uuid_from_query("new_parent")
+
+    def get_current_children_uuids(self) -> list[str]:
+        return self._get_uuids_from_query_list("current_children")
+
+    def get_calculated_children_uuids(self) -> Optional[str]:
+        return self._get_uuids_from_query_list("new_children")
