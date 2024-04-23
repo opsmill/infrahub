@@ -125,7 +125,7 @@ export default function IpamTree() {
 
   return (
     <nav className="min-w-64">
-      <h3 className="font-semibold mb-2">Navigation</h3>
+      <h3 className="font-semibold text-sm px-1 pt-1.5 pb-4">Navigation</h3>
 
       {isLoading ? (
         <IpamTreeSkeleton />
