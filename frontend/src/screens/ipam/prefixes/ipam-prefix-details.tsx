@@ -32,6 +32,12 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
   const [isLoading, setIsLoading] = useState(false);
 
+  const { loading, error, data, refetch } = useQuery(GET_PREFIX, {
+    variables: { prefix: prefix },
+  });
+
+  useImperativeHandle(ref, () => ({ refetch }));
+
   if (!prefix) {
     return <div>Select a Prefix in the Tree to the left to see details</div>;
   }
@@ -46,12 +52,6 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
       }
     }
   };
-
-  const { loading, error, data, refetch } = useQuery(GET_PREFIX, {
-    variables: { prefix: prefix },
-  });
-
-  useImperativeHandle(ref, () => ({ refetch }));
 
   const parent = data && data[IPAM_PREFIX_OBJECT]?.edges[0]?.node?.parent?.node;
 
