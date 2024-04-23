@@ -82,7 +82,7 @@ jobs:
       - name: "Setup environment"
         run: "pip install yamllint==1.35.1"
       - name: "Linting: yamllint"
-        run: "yamllint ."
+        run: "yamllint -s ."
 
   javascript-lint:
     if: needs.files-changed.outputs.javascript == 'true'
