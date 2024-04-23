@@ -15,7 +15,9 @@ from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 
 
-async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
+async def test_query_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, car_profile1_main
+):
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     prev_car_schema = schema.get(name="TestCar")
     prev_attr = prev_car_schema.get_attribute(name="color")
@@ -37,22 +39,24 @@ async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch
     query = await AttributeNameUpdateMigrationQuery01.init(db=db, branch=default_branch, migration=migration)
     await query.execute(db=db)
 
-    assert query.get_nbr_migrations_executed() == 2
+    assert query.get_nbr_migrations_executed() == 3
 
-    # We expect 8 more relationships because there are 2 attributes with 4 relationships each
-    assert await count_relationships(db=db) == count_rels + 8
-    assert await count_nodes(db=db, label="Attribute") == count_attr_node + 2
+    # We expect 12 more relationships because there are 3 attributes with 4 relationships each
+    assert await count_relationships(db=db) == count_rels + 12
+    assert await count_nodes(db=db, label="Attribute") == count_attr_node + 3
 
     # Re-execute the query once to ensure that it won't change anything
     query = await AttributeNameUpdateMigrationQuery01.init(db=db, branch=default_branch, migration=migration)
     await query.execute(db=db)
     assert query.get_nbr_migrations_executed() == 0
 
-    assert await count_nodes(db=db, label="Attribute") == count_attr_node + 2
-    assert await count_relationships(db=db) == count_rels + 8
+    assert await count_nodes(db=db, label="Attribute") == count_attr_node + 3
+    assert await count_relationships(db=db) == count_rels + 12
 
 
-async def test_query_branch1(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
+async def test_query_branch1(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, car_profile1_main
+):
     branch1 = await create_branch(db=db, branch_name="branch1", isolated=True)
 
     schema = registry.schema.get_schema_branch(name=branch1.name)
@@ -76,22 +80,24 @@ async def test_query_branch1(db: InfrahubDatabase, default_branch: Branch, car_a
     query = await AttributeNameUpdateMigrationQuery01.init(db=db, branch=branch1, migration=migration)
 
     await query.execute(db=db)
-    assert query.get_nbr_migrations_executed() == 2
+    assert query.get_nbr_migrations_executed() == 3
 
-    # We expect 16 more relationships because there are 2 attributes with 4 relationships each
-    assert await count_relationships(db=db) == count_rels + 16
-    assert await count_nodes(db=db, label="Attribute") == count_attr_node + 2
+    # We expect 24 more relationships because there are 3 attributes with 8 relationships each
+    assert await count_relationships(db=db) == count_rels + 24
+    assert await count_nodes(db=db, label="Attribute") == count_attr_node + 3
 
     # Re-execute the query once to ensure that it won't change anything
     query = await AttributeNameUpdateMigrationQuery01.init(db=db, branch=branch1, migration=migration)
     await query.execute(db=db)
     assert query.get_nbr_migrations_executed() == 0
 
-    assert await count_nodes(db=db, label="Attribute") == count_attr_node + 2
-    assert await count_relationships(db=db) == count_rels + 16
+    assert await count_nodes(db=db, label="Attribute") == count_attr_node + 3
+    assert await count_relationships(db=db) == count_rels + 24
 
 
-async def test_migration(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
+async def test_migration(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, car_profile1_main
+):
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     prev_car_schema = schema.get(name="TestCar")
     prev_attr = prev_car_schema.get_attribute(name="color")
@@ -114,7 +120,7 @@ async def test_migration(db: InfrahubDatabase, default_branch: Branch, car_accor
     execution_result = await migration.execute(db=db, branch=default_branch)
     assert not execution_result.errors
 
-    assert execution_result.nbr_migrations_executed == 2
+    assert execution_result.nbr_migrations_executed == 3
 
-    assert await count_nodes(db=db, label="Attribute") == count_attr_node + 2
-    assert await count_relationships(db=db) == count_rels + 8
+    assert await count_nodes(db=db, label="Attribute") == count_attr_node + 3
+    assert await count_relationships(db=db) == count_rels + 12
