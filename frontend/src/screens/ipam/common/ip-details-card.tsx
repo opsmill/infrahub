@@ -35,7 +35,7 @@ export function IpDetailsCard({
         <Badge variant="blue">{schema.namespace}</Badge> {schema.name} summary
       </CardWithBorder.Title>
 
-      <PropertyList properties={properties} />
+      <PropertyList properties={properties} labelClassName="font-semibold" />
     </CardWithBorder>
   );
 }
