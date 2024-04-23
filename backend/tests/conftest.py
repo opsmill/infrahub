@@ -174,13 +174,14 @@ async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
                 "description": "Any Entities that stores or produces data.",
                 "namespace": "Lineage",
             },
-            {
-                "name": "Profile",
-                "description": "Base Profile in Infrahub.",
-                "namespace": "Core",
-            },
         ]
     }
+    for generic in core_models["generics"]:
+        if generic["name"] == "Profile" and generic["namespace"] == "Core":
+            core_profile = generic
+            break
+    if core_profile:
+        SCHEMA["generics"].append(core_profile)
 
     schema = SchemaRoot(**SCHEMA)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)

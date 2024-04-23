@@ -1222,6 +1222,9 @@ class SchemaBranch:
             self.set(name=node_name, schema=node)
 
     def add_profile_schemas(self):
+        if not self.has(name=InfrahubKind.PROFILE):
+            return
+        profile_schema_kinds = set()
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
             if node.namespace in RESTRICTED_NAMESPACES:
@@ -1229,8 +1232,21 @@ class SchemaBranch:
 
             profile = self.generate_profile_from_node(node=node)
             self.set(name=profile.kind, schema=profile)
+            profile_schema_kinds.add(profile.kind)
+        if not profile_schema_kinds:
+            return
+        core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
+        current_used_by = set(core_profile_schema.used_by)
+        new_used_by = profile_schema_kinds - current_used_by
+        if not new_used_by:
+            return
+        core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=True)
+        core_profile_schema.used_by = sorted(list(profile_schema_kinds))
+        self.set(name=core_profile_schema.kind, schema=core_profile_schema)
 
     def add_profile_relationships(self):
+        if not self.has(name=InfrahubKind.PROFILE):
+            return
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
             if node.namespace in RESTRICTED_NAMESPACES:
@@ -1256,31 +1272,27 @@ class SchemaBranch:
     def _get_profile_kind(self, node_kind: str) -> str:
         return f"Profile{node_kind}"
 
-    @staticmethod
-    def generate_profile_from_node(node: NodeSchema) -> ProfileSchema:
+    def generate_profile_from_node(self, node: NodeSchema) -> ProfileSchema:
+        core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
+        core_name_attr = core_profile_schema.get_attribute(name="profile_name")
+        profile_name_attr = AttributeSchema(
+            **core_name_attr.model_dump(exclude=["id", "inherited"]),
+        )
+        profile_name_attr.branch = node.branch
+        core_priority_attr = core_profile_schema.get_attribute(name="profile_priority")
+        profile_priority_attr = AttributeSchema(
+            **core_priority_attr.model_dump(exclude=["id", "inherited"]),
+        )
+        profile_priority_attr.branch = node.branch
         profile = ProfileSchema(
             name=node.kind,
             namespace="Profile",
             description=f"Profile for {node.kind}",
             branch=node.branch,
-            include_in_menu=False,
-            display_labels=["profile_name__value"],
             inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE],
+            display_labels=["profile_name__value"],
             default_filter="profile_name__value",
-            attributes=[
-                AttributeSchema(
-                    name="profile_name",
-                    kind="Text",
-                    min_length=3,
-                    max_length=32,
-                    optional=False,
-                    unique=True,
-                    branch=node.branch,
-                ),
-                AttributeSchema(
-                    name="profile_priority", kind="Number", default_value=1000, optional=True, branch=node.branch
-                ),
-            ],
+            attributes=[profile_name_attr, profile_priority_attr],
             relationships=[
                 RelationshipSchema(
                     name="related_nodes",

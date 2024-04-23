@@ -281,6 +281,20 @@ async def test_schema_branch_generate_weight(schema_all_in_one):
     assert len(in_second) == 1 and in_second[0].startswith(new_attr2_partial_id)
 
 
+async def test_schema_branch_add_profile_schema(schema_all_in_one):
+    core_profile_schema = _get_schema_by_kind(core_models, kind="CoreProfile")
+    schema_all_in_one["generics"].append(core_profile_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    schema.add_profile_schemas()
+
+    profile = schema.get(name="ProfileBuiltinCriticality")
+    assert profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
+    assert profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
+    assert set(profile.attribute_names) == {"profile_name", "profile_priority", "name", "level", "color", "description"}
+
+
 async def test_schema_branch_generate_identifiers(schema_all_in_one):
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
@@ -2170,7 +2184,6 @@ async def test_load_schema_from_db(
 
     assert len(schema2.nodes) == 6
     assert len(schema2.generics) == 1
-    assert set(schema2.profiles.keys()) == {"ProfileBuiltinTag", "ProfileTestCriticality"}
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name="BuiltinTag").get_hash()
@@ -2244,7 +2257,6 @@ async def test_load_schema(
 
     assert len(schema2.nodes) == 6
     assert len(schema2.generics) == 1
-    assert set(schema2.profiles.keys()) == {"ProfileBuiltinTag", "ProfileTestCriticality"}
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name=InfrahubKind.TAG).get_hash()
