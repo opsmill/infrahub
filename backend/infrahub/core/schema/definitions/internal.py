@@ -481,7 +481,7 @@ attribute_schema = SchemaNode(
         SchemaAttribute(
             name="regex",
             kind="Text",
-            description="Regex uses to limit limit the characters allowed in for the attributes.",
+            description="Regex uses to limit the characters allowed in for the attributes.",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
