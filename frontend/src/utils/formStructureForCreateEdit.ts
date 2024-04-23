@@ -76,6 +76,7 @@ type FormParameters = {
   user?: any;
   isUpdate?: boolean;
   isFilters?: boolean;
+  profile?: iNodeSchema | undefined;
 };
 
 const getFormStructureForCreateEdit = ({
@@ -86,6 +87,7 @@ const getFormStructureForCreateEdit = ({
   user,
   isUpdate,
   isFilters,
+  profile,
 }: FormParameters): DynamicFieldData[] => {
   if (!schema) {
     return [];
@@ -131,7 +133,7 @@ const getFormStructureForCreateEdit = ({
       }
 
       // Parse an attribute
-      const fieldValue = getFieldValue(row, field);
+      const fieldValue = getFieldValue(row, field, profile);
 
       // Quick fix to prevent password in update field,
       // TODO: remove HashedPassword test after new mutations are available to better handle accounts

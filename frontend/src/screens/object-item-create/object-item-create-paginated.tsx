@@ -6,12 +6,15 @@ import { Select } from "../../components/inputs/select";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
+import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
+import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
+import { getObjectAttributes } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
@@ -46,6 +49,7 @@ export default function ObjectItemCreate(props: iProps) {
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
   const [kind, setKind] = useState("");
+  const [profile, setProfile] = useState("");
 
   const generic = genericsList.find((s) => s.kind === objectname);
 
@@ -53,7 +57,35 @@ export default function ObjectItemCreate(props: iProps) {
 
   const schema = schemaList.find((s) => (isGeneric ? s.kind === kind : s.kind === objectname));
 
-  const kindOptions = generic?.used_by?.map((kind: string) => ({ id: kind, name: kind }));
+  const profileName = `Profile${objectname}`;
+
+  // Get object's attributes to get them from the profile data
+  const attributes = getObjectAttributes(schema);
+  // const relationships = getObjectRelationships(schema);
+
+  const queryString = getObjectItemsPaginated({
+    kind: profileName,
+    attributes,
+    // relationships,
+  });
+
+  const query = gql`
+    ${queryString}
+  `;
+
+  const { data } = useQuery(query, { skip: !(!!generic || !!schema) });
+
+  const profiles = data && data[profileName]?.edges?.map((edge) => edge.node);
+
+  const profilesOptions =
+    profiles &&
+    profiles.map((profile) => ({
+      id: profile.id,
+      name: profile.display_label,
+      values: profile,
+    }));
+
+  const kindOptions = generic?.used_by?.map((kind: string) => ({ id: kind, name: kind })) ?? [];
 
   const fields =
     formStructure ??
@@ -61,7 +93,12 @@ export default function ObjectItemCreate(props: iProps) {
       schema,
       schemas: schemaList,
       generics: genericsList,
+      profile: profilesOptions?.find((p) => p.id === profile)?.values,
     });
+
+  const handleProfileChange = (newProfile: string) => {
+    setProfile(newProfile);
+  };
 
   const handleKindChange = (newKind: string) => {
     setKind(newKind);
@@ -127,6 +164,20 @@ export default function ObjectItemCreate(props: iProps) {
           <Select options={kindOptions} value={kind} onChange={handleKindChange} preventEmpty />
         </div>
       )}
+
+      <div className="p-4 pt-3 bg-gray-200">
+        <div className="flex items-center">
+          <label className="block text-sm font-medium leading-6 text-gray-900">
+            Select a Profile (optionnal)
+          </label>
+        </div>
+        <Select
+          options={profilesOptions}
+          value={profile}
+          onChange={handleProfileChange}
+          preventEmpty
+        />
+      </div>
 
       {schema && fields && (
         <div className="flex-1">
