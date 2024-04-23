@@ -9,20 +9,28 @@ export type Property = {
 export interface PropertyListProps extends React.HTMLAttributes<HTMLTableElement> {
   properties: Array<Property>;
   bodyClassName?: string;
-  cellClassName?: string;
+  labelClassName?: string;
+  valueClassName?: string;
 }
 
 export interface PropertyRowProps extends React.HTMLAttributes<HTMLTableCellElement> {
   data: Property;
+  labelClassName?: string;
+  valueClassName?: string;
 }
 
-export const PropertyRow = ({ data, className, ...props }: PropertyRowProps) => {
+export const PropertyRow = ({
+  data,
+  labelClassName,
+  valueClassName,
+  ...props
+}: PropertyRowProps) => {
   return (
     <tr>
-      <td className={classNames("p-2 text-gray-600", className)} {...props}>
+      <td className={classNames("p-2 text-gray-600", labelClassName)} {...props}>
         {data.name}
       </td>
-      <td className={classNames("p-2", className)} {...props}>
+      <td className={classNames("p-2", valueClassName)} {...props}>
         {data.value ?? "-"}
       </td>
     </tr>
@@ -33,7 +41,8 @@ export const PropertyList = ({
   properties,
   className,
   bodyClassName,
-  cellClassName,
+  labelClassName,
+  valueClassName,
   ...props
 }: PropertyListProps) => {
   return (
@@ -42,7 +51,14 @@ export const PropertyList = ({
       {...props}>
       <tbody className={classNames("divide-y", bodyClassName)}>
         {properties.map((property) => {
-          return <PropertyRow key={property.name} data={property} className={cellClassName} />;
+          return (
+            <PropertyRow
+              key={property.name}
+              data={property}
+              labelClassName={labelClassName}
+              valueClassName={valueClassName}
+            />
+          );
         })}
       </tbody>
     </table>
