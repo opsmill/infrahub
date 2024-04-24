@@ -1,0 +1,103 @@
+---
+title: IP address management
+---
+
+# IP address management
+
+IP address management, also known as IPAM, is a critical part of any infrastructure involving IP network and address allocations. Depending on the scale of networks, it can be challenging to keep track of all IP resources, how they are used, and which ones remain available.
+
+:::info
+
+Building an IPAM serves a different purpose as using the `IPHost` or `IPNetwork` attribute kinds in other node definitions. In fact, the IPAM feature leverage those attribute kinds.
+
+:::
+
+## IPAM generics
+
+To keep things extensible, Infrahub provides generics that users can inherit their nodes from in their own schemas and build their own IPAM:
+
+- `BuiltinIPNamespace`: used to model a namespace to manage IP resources, this is a generic representation of what could be, for examples, a routing table, a routing instance or a VRF
+- `BuiltinIPPrefix`: used to model a network, sometimes referred as supernet/subnet
+- `BuiltinIPAddress`: used to model a single IP address
+
+By default, Infrahub comes with a node inheriting from the `BuiltinIPNamespace` generic. This node is called `IpamNamespace`. A object of this kind of node, called "default", is also automatically created when starting Infrahub for the first time.
+
+## Building an IPAM
+
+As mentioned in the previous section, an IPAM namespace is already provided with Infrahub, so there are no needs to redefined this unless more attributes are required. The default implementation is very minimal and attributes only include a name and a description.
+
+The below schema defines two nodes: one for IP prefixes `IpamIPPrefix` and one for IP addresses `IpamIPAddress`. Both of these nodes inherit from the built-in generics.
+
+```yaml title="Schema definition implementing IPAM generics"
+# yaml-language-server: $schema=https://schema.infrahub.app/develop/schema.schema.json
+---
+version: "1.0"
+nodes:
+  - name: "IPPrefix"
+    namespace: "Ipam"
+    inherit_from:
+      - "BuiltinIPPrefix"
+    description: "IPv4 or IPv6 network"
+    icon: "mdi:ip-network"
+    label: "IP Prefix"
+    menu_placement: "IpamNamespace"
+  - name: "IPAddress"
+    namespace: "Ipam"
+    inherit_from:
+      - "BuiltinIPAddress"
+    description: "IPv4 or IPv6 address"
+    icon: "mdi:ip"
+    label: "IP Address"
+    menu_placement: "IpamNamespace"
+```
+
+### How IPAM works
+
+IPAM generics and nodes that inherit from them have relationships and a hierarchy. This means that an IP prefix can be related to other prefixes (as parent or as child), an IP address can be related to an IP prefix, and, finally, both of these objects are related to an IP namespace.
+
+To simplify day-to-day usage and prevent from doing many operations via the user interface or the GraphQL API, relationships for IP prefixes and IP addresses are automatically managed. This implies that when an IP prefix is created, relations with a parent prefix, children prefixes and IP addresses that belong to it will be discovered automatically. Same goes when an IP address is created, the more specific prefix it belongs to will be automatically discovered. This will result in trees of IP prefixes and IP addresses being built. Building these hierarchies/trees allows Infrahub to determine how IP prefixes and IP addresses are nested as well as computing utilization of the recorded IP spaces.
+
+### Prefix utilization
+
+By default, IP prefixes have a read-only field called `utilization`. This field value is computed on the fly based on the value of the `member_type` field. Member type refers to the kind of objects that an IP prefix serves as a container of. It can be either other prefixes or IP addresses.
+
+When the member type value is set to "prefix", the utilization of the IP prefix will be computed using the children prefixes and their sizes. For example, if `192.0.2.0/24` has one subnet, `192.0.2.0/26`, it's utilization will report 25%.
+
+When the member type value is set to "address", the utilization of the IP prefix will be computed using the number of IP addresses it contains. For example, subnet `192.0.2.0/26` can have up to 62 IP addresses once network and broadcast addresses excluded. So if this subnet has 20 IP addresses, its utilization will report 32%. Broadcast and network addresses can be taken into account while computing utilization for IPv4 prefixes if the `is_pool` value is set to `true` (checkbox checked) or if the prefix' length is 31 as defined in [RFC 3021](https://datatracker.ietf.org/doc/html/rfc3021).
+
+### GraphQL queries and mutations
+
+Creating a schema inheriting the IPAM generics will generate GraphQL queries and mutations related to the defined schema. For example, the schema defined in a previous section will generate the following queries:
+
+- `IpamIPPrefix`
+- `IpamIPAddress`
+
+The following mutations will also be available after schema load:
+
+- `IpamIPPrefixCreate`
+- `IpamIPPrefixUpdate`
+- `IpamIPPrefixUpsert`
+- `IpamIPPrefixDelete`
+- `IpamIPAddressCreate`
+- `IpamIPAddressUpdate`
+- `IpamIPAddressUpsert`
+- `IpamIPAddressDelete`
+
+As mentioned previously, IP prefixes are organised as a hierarchy. Hierarchical nodes have special relationships called `parent`, `children`, `ancestors` and `descendants`. These relationships can be used in the queries. However, in the case of IPAM, they cannot be used in mutations due to the fact that Infrahub manage them automatically.
+
+IP prefixes also have default read-only attributes which can be queried and can bring details about a particular networks. These attributes are:
+
+- `utilization`, utilization of an IP prefix in percent
+- `netmask`, network mask of an IP prefix like `255.255.255.0`
+- `hostmask`, host mask of an IP prefix like `0.0.0.255`
+- `network_address`, network address of an IP prefix, usually the first IP address of the prefix
+- `broadcast_address`, broadcast address of an IP prefix, usually the last IP address of the prefix
+
+## Known limitations
+
+These are a non-exhaustive list of known issues and limitations of Infrahub IPAM. These will be addressed in future releases.
+
+- [#3020](https://github.com/opsmill/infrahub/issues/3020) Sorting IP prefix aand IP address does not follow a natural way of doing it
+- [#3047](https://github.com/opsmill/infrahub/issues/3047) Renumbering an existing IP prefix or IP address won't relocate it in the IPAM relationship tree, which means it won't be showing in the proper location
+- [2955](https://github.com/opsmill/infrahub/issues/2955) There are no ways to programmatically know the next IP prefix available in a namespace or an IP prefix
+- [2954](https://github.com/opsmill/infrahub/issues/2954) There are no ways to programmatically know the next IP address available in a namespace or an IP prefix
