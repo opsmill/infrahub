@@ -120,3 +120,50 @@ async def test_directive_exclude(db: InfrahubDatabase, default_branch: Branch, c
             "status": {"value": None},
         }
     } in result.data["TestCriticality"]["edges"]
+
+
+async def test_directive_merge_fields(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, person_tag_schema, first_account
+):
+    """This test validates that the @expand directive doesn't override the source field under username."""
+    p1 = await Node.init(db=db, schema="TestPerson")
+    await p1.new(db=db, firstname="John", lastname="Doe", _source=first_account)
+    await p1.save(db=db)
+
+    query = """
+    query {
+        TestPerson {
+            edges {
+                node @expand {
+                    id
+                    firstname {
+                        source {
+                            id
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+    assert result.data
+    assert len(result.data["TestPerson"]["edges"]) == 1
+    assert result.data["TestPerson"]["edges"][0] == {
+        "node": {
+            "id": p1.id,
+            "firstname": {"source": {"id": first_account.id}, "value": "John"},
+            "__typename": "TestPerson",
+            "lastname": {"value": "Doe"},
+        }
+    }
