@@ -1,17 +1,11 @@
 import { gql } from "@apollo/client";
-import {
-  EyeSlashIcon,
-  LockClosedIcon,
-  PencilSquareIcon,
-  PlusIcon,
-} from "@heroicons/react/24/outline";
+import { EyeSlashIcon, LockClosedIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue } from "jotai";
 import { Fragment, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { BUTTON_TYPES } from "../../components/buttons/button";
-import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
+import { ButtonWithTooltip } from "../../components/buttons/button-primitive";
 import { RoundedButton } from "../../components/buttons/rounded-button";
 import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
 import SlideOver from "../../components/display/slide-over";
@@ -258,42 +252,18 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   {relationshipsData.properties && (
                     <div className="px-2">
                       <MetaDetailsTooltip
-                        items={[
-                          {
-                            label: "Updated at",
-                            value: relationshipsData.properties.updated_at,
-                            type: "date",
-                          },
-                          {
-                            label: "Update time",
-                            value: `${new Date(
-                              relationshipsData.properties.updated_at
-                            ).toLocaleDateString()} ${new Date(
-                              relationshipsData.properties.updated_at
-                            ).toLocaleTimeString()}`,
-                            type: "text",
-                          },
-                          {
-                            label: "Source",
-                            value: relationshipsData.properties.source,
-                            type: "link",
-                          },
-                          {
-                            label: "Owner",
-                            value: relationshipsData.properties.owner,
-                            type: "link",
-                          },
-                          {
-                            label: "Is protected",
-                            value: relationshipsData.properties.is_protected ? "True" : "False",
-                            type: "text",
-                          },
-                        ]}
+                        updatedAt={relationshipsData.properties.updated_at}
+                        source={relationshipsData.properties.source}
+                        owner={relationshipsData.properties.owner}
+                        isProtected={relationshipsData.properties.is_protected}
+                        isInherited={relationshipsData.properties.is_inherited}
                         header={
-                          <div className="flex justify-between items-center w-full p-4">
+                          <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
                             <div className="font-semibold">{relationshipSchema.label}</div>
+
                             <ButtonWithTooltip
-                              buttonType={BUTTON_TYPES.INVISIBLE}
+                              variant="ghost"
+                              size="icon"
                               disabled={!permission.write.allow}
                               tooltipEnabled={!permission.write.allow}
                               tooltipContent={permission.write.message ?? undefined}
@@ -306,7 +276,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                 setShowMetaEditModal(true);
                               }}
                               data-cy="metadata-edit-button">
-                              <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
+                              <Icon icon="mdi:pencil" className="text-custom-blue-500" />
                             </ButtonWithTooltip>
                           </div>
                         }
@@ -349,7 +319,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                 </thead>
 
                 <tbody className="bg-custom-white">
-                  {relationshipsData?.map(({ node, properties }: any, index: number) => (
+                  {relationshipsData?.map(({ node }: any, index: number) => (
                     <tr
                       key={index}
                       className="hover:bg-gray-50 cursor-pointer"
@@ -381,64 +351,39 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           index !== relationshipsData.length - 1 ? "border-b border-gray-200" : "",
                           "whitespace-nowrap px-2 py-1 text-xs font-medium text-gray-900 flex justify-end"
                         )}>
-                        <div
-                          className="flex px-2"
-                          onClick={() => {
-                            setRowForMetaEdit(node);
-                            setShowRelationMetaEditModal(true);
-                          }}>
-                          <MetaDetailsTooltip
-                            items={[
-                              {
-                                label: "Updated at",
-                                value: properties?.updated_at,
-                                type: "date",
-                              },
-                              {
-                                label: "Update time",
-                                value: `${new Date(
-                                  properties?.updated_at
-                                ).toLocaleDateString()} ${new Date(
-                                  properties?.updated_at
-                                ).toLocaleTimeString()}`,
-                                type: "text",
-                              },
-                              {
-                                label: "Source",
-                                value: properties?.source?.display_label,
-                                type: "link",
-                              },
-                              {
-                                label: "Owner",
-                                value: properties?.owner?.display_label,
-                                type: "link",
-                              },
-                              {
-                                label: "Is protected",
-                                value: properties?.is_protected ? "True" : "False",
-                                type: "text",
-                              },
-                            ]}
-                          />
-                        </div>
-
                         <ButtonWithTooltip
                           disabled={!permission.write.allow}
                           tooltipEnabled={!permission.write.allow}
                           tooltipContent={permission.write.message ?? undefined}
-                          buttonType={BUTTON_TYPES.INVISIBLE}
+                          variant="ghost"
+                          size="icon"
                           onClick={() => {
-                            setRelatedObjectToEdit(node);
+                            setRowForMetaEdit(node);
+                            setShowRelationMetaEditModal(true);
                           }}
                           data-cy="metadata-edit-button">
-                          <PencilSquareIcon className="w-4 h-4 text-gray-500" />
+                          <Icon icon="mdi:tune" className="text-gray-500" />
                         </ButtonWithTooltip>
 
                         <ButtonWithTooltip
                           disabled={!permission.write.allow}
                           tooltipEnabled={!permission.write.allow}
                           tooltipContent={permission.write.message ?? undefined}
-                          buttonType={BUTTON_TYPES.INVISIBLE}
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setRelatedObjectToEdit(node);
+                          }}
+                          data-cy="metadata-edit-button">
+                          <Icon icon="mdi:pencil" className="text-custom-blue-500" />
+                        </ButtonWithTooltip>
+
+                        <ButtonWithTooltip
+                          disabled={!permission.write.allow}
+                          tooltipEnabled={!permission.write.allow}
+                          tooltipContent={permission.write.message ?? undefined}
+                          variant="ghost"
+                          size="icon"
                           onClick={() => {
                             setRelatedRowToDelete(node);
                           }}
@@ -472,37 +417,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       {node && (
                         <div className="p-2">
                           <MetaDetailsTooltip
-                            items={[
-                              {
-                                label: "Updated at",
-                                value: properties.updated_at,
-                                type: "date",
-                              },
-                              {
-                                label: "Update time",
-                                value: `${new Date(
-                                  properties.updated_at
-                                ).toLocaleDateString()} ${new Date(
-                                  properties.updated_at
-                                ).toLocaleTimeString()}`,
-                                type: "text",
-                              },
-                              {
-                                label: "Source",
-                                value: properties._relation__source,
-                                type: "link",
-                              },
-                              {
-                                label: "Owner",
-                                value: properties.owner?.display_label,
-                                type: "link",
-                              },
-                              {
-                                label: "Is protected",
-                                value: properties.is_protected ? "True" : "False",
-                                type: "text",
-                              },
-                            ]}
+                            updatedAt={properties.updated_at}
+                            source={properties._relation__source}
+                            owner={properties.owner}
+                            isProtected={properties.is_protected}
+                            isInherited={properties.is_inherited}
                           />
                         </div>
                       )}

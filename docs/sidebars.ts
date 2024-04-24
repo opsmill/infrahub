@@ -58,10 +58,10 @@ const sidebars: SidebarsConfig = {
       items: [
         'topics/infrahub-yml',
         'topics/architecture',
-
         'topics/artifact',
         'topics/check',
-        'topics/hardware-requirements',
+	      'topics/hardware-requirements',
+        'topics/ipam',
         'topics/local-demo-environment',
         'topics/generator',
         'topics/graphql',

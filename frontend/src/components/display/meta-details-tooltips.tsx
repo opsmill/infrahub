@@ -1,85 +1,87 @@
-import { Popover } from "@headlessui/react";
-import { InformationCircleIcon } from "@heroicons/react/24/outline";
-import { formatDistance } from "date-fns";
-import { useAtom } from "jotai";
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
-import { classNames } from "../../utils/common";
+import React from "react";
+import { PropertyList } from "../table/property-list";
+import { Icon } from "@iconify-icon/react";
+import { Button } from "../buttons/button-primitive";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { formatFullDate, formatRelativeTimeFromNow } from "../../utils/date";
+import { Link } from "../utils/link";
 import { constructPath } from "../../utils/fetch";
-import { usePopper } from "react-popper";
+import { AnyAttribute } from "../../generated/graphql";
 
-export type TooltipDetailItemType = "date" | "text" | "link";
-
-interface TooltipListItem {
-  label: string;
-  type: TooltipDetailItemType;
-  value: any;
-}
-
-interface Props {
-  items: TooltipListItem[];
+interface MetaDetailsTooltipProps {
   header?: React.ReactNode;
+  updatedAt: AnyAttribute["updated_at"];
+  source: AnyAttribute["source"] & { __typename: string };
+  owner: AnyAttribute["owner"] & { __typename: string };
+  isProtected: AnyAttribute["is_protected"];
+  isInherited: AnyAttribute["is_inherited"];
 }
 
-export default function MetaDetailsTooltip(props: Props) {
-  const { header, items } = props;
+export default function MetaDetailsTooltip({
+  header,
+  updatedAt,
+  source,
+  owner,
+  isProtected,
+  isInherited,
+}: MetaDetailsTooltipProps) {
+  const items = [
+    {
+      name: "Updated at",
+      value: updatedAt ? formatFullDate(updatedAt) : "-",
+    },
+    {
+      name: "Update time",
+      value: updatedAt ? formatRelativeTimeFromNow(updatedAt) : "-",
+    },
+    {
+      name: "Source",
+      value: source ? (
+        <Link to={constructPath(`/objects/${source.__typename}/${source.id}`)}>
+          {source.display_label}
+        </Link>
+      ) : (
+        "-"
+      ),
+    },
+    {
+      name: "Owner",
+      value: owner ? (
+        <Link to={constructPath(`/objects/${owner.__typename}/${owner.id}`)}>
+          {owner.display_label}
+        </Link>
+      ) : (
+        "-"
+      ),
+    },
+    {
+      name: "Is protected",
+      value: isProtected ? "True" : "False",
+    },
+    {
+      name: "Is inherited",
+      value: isInherited ? "True" : "False",
+    },
+  ];
 
-  const navigate = useNavigate();
-  const [schemaKindName] = useAtom(schemaKindNameState);
-  let [referenceElement, setReferenceElement] = useState<HTMLButtonElement | null>();
-  let [popperElement, setPopperElement] = useState<HTMLDivElement | null>();
-  let { styles, attributes } = usePopper(referenceElement, popperElement, {
-    modifiers: [
-      {
-        name: "flip",
-      },
-    ],
-  });
-
-  const navigateToObjectDetailsPage = (obj: any) =>
-    navigate(constructPath(`/objects/${schemaKindName[obj.__typename]}/${obj.id}`));
-
-  // TODO: use the popover component
   return (
-    <Popover className="flex">
-      <Popover.Button data-testid="view-metadata-button" ref={setReferenceElement}>
-        <div className="w-4 h-4" data-cy="metadata-button">
-          <InformationCircleIcon className="w-4 h-4 text-gray-500" />
-        </div>
-      </Popover.Button>
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="text-gray-500 focus-visible:ring-0"
+          data-cy="metadata-button"
+          data-testid="view-metadata-button">
+          <Icon icon="mdi:information-slab-circle-outline" />
+        </Button>
+      </PopoverTrigger>
 
-      <Popover.Panel
-        ref={setPopperElement}
-        style={styles.popper}
-        {...attributes.popper}
-        className={classNames("z-10 bg-custom-white rounded-lg border shadow-xl")}
-        data-testid="metadata-tooltip"
-        data-cy="metadata-tooltip">
-        <div className="w-80 text-sm divide-y">
-          {!!header && header}
-          {items.map((item) => {
-            return (
-              <div key={item.label} className="flex justify-between items-center w-full p-4">
-                <div>{item.label}: </div>
-                {item.type === "date" && item.value && (
-                  <div>{formatDistance(new Date(item.value), new Date(), { addSuffix: true })}</div>
-                )}
+      <PopoverContent data-testid="metadata-tooltip" data-cy="metadata-tooltip">
+        {!!header && header}
 
-                {item.type === "link" && (
-                  <div
-                    className="underline cursor-pointer"
-                    onClick={() => navigateToObjectDetailsPage(item.value)}>
-                    {item.value?.display_label}
-                  </div>
-                )}
-
-                {item.type === "text" && <div>{item.value}</div>}
-              </div>
-            );
-          })}
-        </div>
-      </Popover.Panel>
+        <PropertyList properties={items} valueClassName="text-right" />
+      </PopoverContent>
     </Popover>
   );
 }
