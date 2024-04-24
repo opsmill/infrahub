@@ -21,7 +21,7 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
 
     await test.step("Explore Description attribute metadata", async () => {
       await page.getByText("Description-").getByTestId("view-metadata-button").click();
-      await expect(page.getByText("Is protected: False")).toBeVisible();
+      await expect(page.getByText("Is protectedFalse")).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_4_metadata");
     });
 
@@ -37,7 +37,7 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
 
       await page.getByText("Description-").getByTestId("view-metadata-button").click();
 
-      await expect(page.getByText("Is protected: True")).toBeVisible();
+      await expect(page.getByText("Is protectedTrue")).toBeVisible();
     });
 
     await test.step("Not allowed to updated description because user is not admin", async () => {
