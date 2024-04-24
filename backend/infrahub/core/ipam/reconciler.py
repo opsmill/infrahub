@@ -44,8 +44,8 @@ class IPNodesToReconcile:
                 self._calculated_child_nodes.add(self.node_map[ccu])
 
     @property
-    def node(self) -> Optional[Node]:
-        return self.node_map.get(self.node_uuid)
+    def node(self) -> Node:
+        return self.node_map[self.node_uuid]
 
     @property
     def current_parent(self) -> Optional[Node]:
@@ -92,6 +92,7 @@ class IpamReconciler:
         ip_value: AllIPTypes,
         namespace: Optional[Union[Node, str]] = None,
         node_uuid: Optional[str] = None,
+        is_delete: bool = False,
         at: Optional[Timestamp] = None,
     ) -> None:
         self.at = Timestamp(at)
@@ -130,13 +131,19 @@ class IpamReconciler:
             node_map=all_nodes,
         )
 
-        updated_uuids = await self.update_node(reconcile_nodes)
-        updated_uuids |= await self.update_current_children(reconcile_nodes)
-        updated_uuids |= await self.update_calculated_children(reconcile_nodes)
+        if is_delete:
+            updated_uuids = await self.update_children_for_delete(reconcile_nodes)
+        else:
+            updated_uuids = await self.update_node(reconcile_nodes)
+            updated_uuids |= await self.update_current_children(reconcile_nodes)
+            updated_uuids |= await self.update_calculated_children(reconcile_nodes)
 
         for updated_uuid in updated_uuids:
             node = reconcile_nodes.get_node_by_uuid(updated_uuid)
             await node.save(db=self.db, at=self.at)
+
+        if is_delete:
+            await reconcile_nodes.node.delete(db=self.db, at=self.at)
 
     async def _update_node_parent(self, node: Node, new_parent_uuid: Optional[str]) -> None:
         node_kinds = {node.get_kind()} | set(node.get_schema().inherit_from)
@@ -154,10 +161,13 @@ class IpamReconciler:
             node.is_top_level.value = True  # type: ignore[attr-defined]
 
     async def update_node(self, reconcile_nodes: IPNodesToReconcile) -> set[str]:
-        calculated_parent_uuid = reconcile_nodes.calculated_parent_uuid
-        if not reconcile_nodes.node:
-            return set()
-        await self._update_node_parent(node=reconcile_nodes.node, new_parent_uuid=calculated_parent_uuid)
+        await self._update_node_parent(
+            node=reconcile_nodes.node, new_parent_uuid=reconcile_nodes.calculated_parent_uuid
+        )
+        return {reconcile_nodes.node.get_id()}
+
+    async def update_node_for_delete(self, reconcile_nodes: IPNodesToReconcile) -> set[str]:
+        await self._update_node_parent(node=reconcile_nodes.node, new_parent_uuid=None)
         return {reconcile_nodes.node.get_id()}
 
     async def update_current_children(self, reconcile_nodes: IPNodesToReconcile) -> set[str]:
@@ -182,4 +192,12 @@ class IpamReconciler:
             # set parent of new child to the node
             await self._update_node_parent(node=calculated_child_node, new_parent_uuid=reconcile_nodes.node_uuid)
             updated_uuids.add(calculated_child_uuid)
+        return updated_uuids
+
+    async def update_children_for_delete(self, reconcile_nodes: IPNodesToReconcile) -> set[str]:
+        updated_uuids = set()
+        for current_child_node in reconcile_nodes.current_child_nodes:
+            current_child_uuid = current_child_node.get_id()
+            await self._update_node_parent(node=current_child_node, new_parent_uuid=reconcile_nodes.current_parent_uuid)
+            updated_uuids.add(current_child_uuid)
         return updated_uuids

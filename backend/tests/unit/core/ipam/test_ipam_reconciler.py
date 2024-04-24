@@ -103,3 +103,65 @@ async def test_ipprefix_reconciler_new_address_update(db: InfrahubDatabase, defa
     ip_address_rels = await updated_prefix.ip_addresses.get_relationships(db=db)
     assert len(ip_address_rels) == 1
     assert ip_address_rels[0].peer_id == new_address.id
+
+
+async def test_ip_prefix_reconciler_delete_prefix(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+    await create_ipam_namespace(db=db)
+    default_ipnamespace = await get_default_ipnamespace(db=db)
+    registry.default_ipnamespace = default_ipnamespace.id
+    namespace = ip_dataset_01["ns1"]
+    net_140_prefix = ip_dataset_01["net140"]
+    ip_network = ipaddress.ip_network(net_140_prefix.prefix.value)
+
+    reconciler = IpamReconciler(db=db, branch=default_branch)
+    await reconciler.reconcile(ip_value=ip_network, node_uuid=net_140_prefix.id, namespace=namespace, is_delete=True)
+
+    # check prefix is deleted
+    deleted = await NodeManager.get_one(db=db, branch=default_branch, id=net_140_prefix.id)
+    assert deleted is None
+    # check children of former parent
+    expected_child_prefix_ids = [ip_dataset_01["net142"].id, ip_dataset_01["net144"].id, ip_dataset_01["net145"].id]
+    expected_child_address_ids = [ip_dataset_01["address10"].id]
+    updated_parent = await NodeManager.get_one(db=db, branch=default_branch, id=ip_dataset_01["net146"].id)
+    updated_prefix_child_rels = await updated_parent.children.get_relationships(db=db)
+    assert len(updated_prefix_child_rels) == 3
+    assert {rel.peer_id for rel in updated_prefix_child_rels} == set(expected_child_prefix_ids)
+    updated_address_child_rels = await updated_parent.ip_addresses.get_relationships(db=db)
+    assert len(updated_address_child_rels) == 1
+    assert {rel.peer_id for rel in updated_address_child_rels} == set(expected_child_address_ids)
+    # check parent of former child prefixes
+    updated_children = await NodeManager.get_many(db=db, branch=default_branch, ids=expected_child_prefix_ids)
+    for child in updated_children.values():
+        child_parent_rels = await child.parent.get_relationships(db=db)
+        assert len(child_parent_rels) == 1
+        assert child_parent_rels[0].peer_id == updated_parent.id
+    # check parent of former child addresses
+    updated_children = await NodeManager.get_many(db=db, branch=default_branch, ids=expected_child_address_ids)
+    for child in updated_children.values():
+        child_parent_rels = await child.ip_prefix.get_relationships(db=db)
+        assert len(child_parent_rels) == 1
+        assert child_parent_rels[0].peer_id == updated_parent.id
+
+
+async def test_ip_prefix_reconciler_delete_address(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+    await create_ipam_namespace(db=db)
+    default_ipnamespace = await get_default_ipnamespace(db=db)
+    registry.default_ipnamespace = default_ipnamespace.id
+    namespace = ip_dataset_01["ns1"]
+    address10 = ip_dataset_01["address10"]
+    ip_network = ipaddress.ip_interface(address10.address.value)
+
+    reconciler = IpamReconciler(db=db, branch=default_branch)
+    await reconciler.reconcile(ip_value=ip_network, node_uuid=address10.id, namespace=namespace, is_delete=True)
+
+    # check prefix is deleted
+    deleted = await NodeManager.get_one(db=db, branch=default_branch, id=address10.id)
+    assert deleted is None
+    # check children of former parent
+    expected_child_prefix_ids = [ip_dataset_01["net142"].id, ip_dataset_01["net144"].id, ip_dataset_01["net145"].id]
+    updated_parent = await NodeManager.get_one(db=db, branch=default_branch, id=ip_dataset_01["net140"].id)
+    updated_prefix_child_rels = await updated_parent.children.get_relationships(db=db)
+    assert len(updated_prefix_child_rels) == 3
+    assert {rel.peer_id for rel in updated_prefix_child_rels} == set(expected_child_prefix_ids)
+    updated_address_child_rels = await updated_parent.ip_addresses.get_relationships(db=db)
+    assert len(updated_address_child_rels) == 0
