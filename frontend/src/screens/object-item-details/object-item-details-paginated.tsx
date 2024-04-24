@@ -54,7 +54,7 @@ import Content from "../layout/content";
 import { usePermission } from "../../hooks/usePermission";
 import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 import { ButtonWithTooltip as ButtonWithTooltip2 } from "../../components/buttons/button-primitive";
-import { format, formatDistance } from "date-fns";
+import { formatFullDate, formatRelativeTimeFromNow } from "../../utils/date";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -260,17 +260,12 @@ export default function ObjectItemDetails(props: any) {
                         items={[
                           {
                             name: "Updated at",
-                            value: format(
-                              objectDetailsData[attribute.name].updated_at,
-                              "MM/dd/yyy HH:mm"
-                            ),
+                            value: formatFullDate(objectDetailsData[attribute.name].updated_at),
                           },
                           {
                             name: "Update time",
-                            value: formatDistance(
-                              objectDetailsData[attribute.name].updated_at,
-                              new Date(),
-                              { addSuffix: true }
+                            value: formatRelativeTimeFromNow(
+                              objectDetailsData[attribute.name].updated_at
                             ),
                           },
                           {
