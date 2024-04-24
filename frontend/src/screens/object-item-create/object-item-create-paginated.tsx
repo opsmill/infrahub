@@ -87,13 +87,15 @@ export default function ObjectItemCreate(props: iProps) {
 
   const kindOptions = generic?.used_by?.map((kind: string) => ({ id: kind, name: kind })) ?? [];
 
+  const currentProfile = profilesOptions?.find((p) => p.id === profile)?.values;
+
   const fields =
     formStructure ??
     getFormStructureForCreateEdit({
       schema,
       schemas: schemaList,
       generics: genericsList,
-      profile: profilesOptions?.find((p) => p.id === profile)?.values,
+      profile: currentProfile,
     });
 
   const handleProfileChange = (newProfile: string) => {
