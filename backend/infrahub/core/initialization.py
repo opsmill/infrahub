@@ -90,12 +90,12 @@ async def initialization(db: InfrahubDatabase) -> None:
         log.debug("Checking Root Node")
         await initialize_registry(db=db, initialize=True)
 
-    # Add Indexes to the database
-    if db.manager.index.initialized:
-        log.debug("Loading database indexes ..")
-        await db.manager.index.add()
-    else:
-        log.warning("The database index manager hasn't been initialized.")
+        # Add Indexes to the database
+        if db.manager.index.initialized:
+            log.debug("Loading database indexes ..")
+            await db.manager.index.add()
+        else:
+            log.warning("The database index manager hasn't been initialized.")
 
     # ---------------------------------------------------
     # Load all schema in the database into the registry
