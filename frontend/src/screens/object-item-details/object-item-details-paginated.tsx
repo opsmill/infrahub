@@ -262,7 +262,7 @@ export default function ObjectItemDetails(props: any) {
                         isProtected={objectDetailsData[attribute.name].is_protected}
                         isInherited={objectDetailsData[attribute.name].is_inherited}
                         header={
-                          <div className="flex justify-between items-center pl-2 p-1 pt-0">
+                          <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
                             <div className="font-semibold">{attribute.label}</div>
                             <ButtonWithTooltip2
                               disabled={!permission.write.allow}
