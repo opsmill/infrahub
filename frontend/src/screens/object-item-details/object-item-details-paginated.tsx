@@ -1,18 +1,12 @@
 import { gql } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
-import {
-  LockClosedIcon,
-  PencilIcon,
-  PencilSquareIcon,
-  RectangleGroupIcon,
-} from "@heroicons/react/24/outline";
+import { LockClosedIcon, PencilIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { BUTTON_TYPES } from "../../components/buttons/button";
 import { Retry } from "../../components/buttons/retry";
 import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
 import SlideOver from "../../components/display/slide-over";
@@ -59,6 +53,8 @@ import { RelationshipsDetails } from "./relationships-details-paginated";
 import Content from "../layout/content";
 import { usePermission } from "../../hooks/usePermission";
 import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
+import { ButtonWithTooltip as ButtonWithTooltip2 } from "../../components/buttons/button-primitive";
+import { format, formatDistance } from "date-fns";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -263,49 +259,67 @@ export default function ObjectItemDetails(props: any) {
                       <MetaDetailsTooltip
                         items={[
                           {
-                            label: "Updated at",
-                            value: objectDetailsData[attribute.name].updated_at,
-                            type: "date",
+                            name: "Updated at",
+                            value: format(
+                              objectDetailsData[attribute.name].updated_at,
+                              "MM/dd/yyy HH:mm"
+                            ),
                           },
                           {
-                            label: "Update time",
-                            value: `${new Date(
-                              objectDetailsData[attribute.name].updated_at
-                            ).toLocaleDateString()} ${new Date(
-                              objectDetailsData[attribute.name].updated_at
-                            ).toLocaleTimeString()}`,
-                            type: "text",
+                            name: "Update time",
+                            value: formatDistance(
+                              objectDetailsData[attribute.name].updated_at,
+                              new Date(),
+                              { addSuffix: true }
+                            ),
                           },
                           {
-                            label: "Source",
-                            value: objectDetailsData[attribute.name].source,
-                            type: "link",
+                            name: "Source",
+                            value: objectDetailsData[attribute.name].source ? (
+                              <Link
+                                to={constructPath(
+                                  `/objects/${
+                                    objectDetailsData[attribute.name].source.__typename
+                                  }/${objectDetailsData[attribute.name].source.id}`
+                                )}>
+                                {objectDetailsData[attribute.name].source.display_label}
+                              </Link>
+                            ) : (
+                              "-"
+                            ),
                           },
                           {
-                            label: "Owner",
-                            value: objectDetailsData[attribute.name].owner,
-                            type: "link",
+                            name: "Owner",
+                            value: objectDetailsData[attribute.name].owner ? (
+                              <Link
+                                to={constructPath(
+                                  `/objects/${objectDetailsData[attribute.name].owner.__typename}/${
+                                    objectDetailsData[attribute.name].owner.id
+                                  }`
+                                )}>
+                                {objectDetailsData[attribute.name].owner.display_label}
+                              </Link>
+                            ) : (
+                              "-"
+                            ),
                           },
                           {
-                            label: "Is protected",
+                            name: "Is protected",
                             value: objectDetailsData[attribute.name].is_protected
                               ? "True"
                               : "False",
-                            type: "text",
                           },
                           {
-                            label: "Is inherited",
+                            name: "Is inherited",
                             value: objectDetailsData[attribute.name].is_inherited
                               ? "True"
                               : "False",
-                            type: "text",
                           },
                         ]}
                         header={
-                          <div className="flex justify-between items-center w-full p-4">
+                          <div className="flex justify-between items-center pl-2 p-1 pt-0">
                             <div className="font-semibold">{attribute.label}</div>
-                            <ButtonWithTooltip
-                              buttonType={BUTTON_TYPES.INVISIBLE}
+                            <ButtonWithTooltip2
                               disabled={!permission.write.allow}
                               tooltipEnabled={!permission.write.allow}
                               tooltipContent={permission.write.message ?? undefined}
@@ -317,10 +331,12 @@ export default function ObjectItemDetails(props: any) {
                                 });
                                 setShowMetaEditModal(true);
                               }}
+                              variant="ghost"
+                              size="icon"
                               data-testid="edit-metadata-button"
                               data-cy="metadata-edit-button">
-                              <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
-                            </ButtonWithTooltip>
+                              <Icon icon="mdi:pencil" className="text-custom-blue-500" />
+                            </ButtonWithTooltip2>
                           </div>
                         }
                       />
