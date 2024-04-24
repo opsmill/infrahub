@@ -1341,7 +1341,7 @@ class InfrahubNode(InfrahubNodeBase):
             rel = getattr(self, rel_name)
             if rel and isinstance(rel, RelatedNode):
                 relation = node_data["node"].get(rel_name)
-                if relation.get("node"):
+                if relation.get("node", None):
                     related_node = await InfrahubNode.from_graphql(client=self._client, branch=branch, data=relation)
                     related_nodes.append(related_node)
             elif rel and isinstance(rel, RelationshipManager):
@@ -1681,7 +1681,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
             rel = getattr(self, rel_name)
             if rel and isinstance(rel, RelatedNodeSync):
                 relation = node_data["node"].get(rel_name)
-                if relation.get("node"):
+                if relation.get("node", None):
                     related_node = InfrahubNodeSync.from_graphql(client=self._client, branch=branch, data=relation)
                     related_nodes.append(related_node)
             elif rel and isinstance(rel, RelationshipManagerSync):
