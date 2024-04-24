@@ -1,7 +1,7 @@
 import { format, formatDistance } from "date-fns";
 
 export const formatFullDate = (date: number | Date) => {
-  return format(date, "MM/dd/yyyy hh:mma");
+  return format(date, "dd/MM/yyyy HH:mm");
 };
 
 export const formatRelativeTimeFromNow = (date: number | Date) => {
