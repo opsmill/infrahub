@@ -1,12 +1,11 @@
 ---
 # yamllint disable rule:truthy
-name: New Release
+name: New Preview Release
 
 on:
   push:
     tags:
-      - 'infrahub-v*'
-      - '!infrahub-v*rc*'
+      - 'infrahub-v*rc*'
 
 jobs:
   meta_data:
@@ -22,9 +21,9 @@ jobs:
           images: |
             ${{ vars.HARBOR_HOST }}/${{ github.repository }}
           tags: |
-            type=match,pattern=infrahub-v(\d+\.\d+\.\d+),group=1
-            type=match,pattern=infrahub-v(\d+\.\d+),group=1
-            type=raw,value=stable
+            type=match,pattern=infrahub-v(\d+\.\d+\.\d+rc\d+),group=1
+            type=match,pattern=infrahub-v(\d+\.\d+rc\d+),group=1
+            type=raw,value=rc
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
 
