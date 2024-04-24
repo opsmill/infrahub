@@ -1,6 +1,5 @@
 import { TreeItemProps, TreeProps } from "../../../components/ui/tree";
-import { IPAM_TREE_ROOT_ID } from "../constants";
-import { IPAM_PREFIX_GENERIC } from "../../../config/constants";
+import { IP_PREFIX_GENERIC, IPAM_TREE_ROOT_ID } from "../constants";
 
 export type PrefixNode = {
   id: string;
@@ -32,7 +31,7 @@ export const ROOT_TREE_ITEM: TreeItemProps["element"] = {
 };
 
 export const formatIPPrefixResponseForTreeView = (data: PrefixData): TreeItemProps["element"][] => {
-  const prefixes = data[IPAM_PREFIX_GENERIC].edges.map(({ node }) => ({
+  const prefixes = data[IP_PREFIX_GENERIC].edges.map(({ node }) => ({
     id: node.id,
     name: node.display_label,
     parent: node.parent.node?.id ?? IPAM_TREE_ROOT_ID,

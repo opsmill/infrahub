@@ -10,7 +10,7 @@ import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { getObjectAttributes, getObjectRelationships } from "../../../utils/getSchemaObjectColumns";
 import { IpDetailsCard } from "../common/ip-details-card";
 import { PrefixUsageChart } from "../common/prefix-usage-chart";
-import { IP_PREFIX_DEFAULT_SCHEMA_KIND } from "../constants";
+import { IP_PREFIX_GENERIC } from "../constants";
 import { IpamSummarySkeleton } from "./ipam-summary-skeleton";
 
 export default function IpamIPPrefixesSummaryDetails() {
@@ -24,7 +24,7 @@ export default function IpamIPPrefixesSummaryDetails() {
 
   if (loading || !data) return <IpamSummarySkeleton withChart />;
 
-  const prefixKind = data[IP_PREFIX_DEFAULT_SCHEMA_KIND].edges[0].node.__typename;
+  const prefixKind = data[IP_PREFIX_GENERIC].edges[0].node.__typename;
 
   return (
     <section>

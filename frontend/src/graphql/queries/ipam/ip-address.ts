@@ -13,8 +13,8 @@ export const GET_IP_ADDRESS_KIND = gql`
 `;
 
 export const GET_IP_ADDRESSES = gql`
-  query IpamIPAddress($prefix: String, $ipaddress: String, $offset: Int, $limit: Int) {
-    IpamIPAddress(
+  query GET_IP_ADDRESSES($prefix: String, $ipaddress: String, $offset: Int, $limit: Int) {
+    BuiltinIPAddress(
       ip_prefix__prefix__value: $prefix
       address__value: $ipaddress
       offset: $offset
@@ -40,11 +40,6 @@ export const GET_IP_ADDRESSES = gql`
           }
           address {
             value
-          }
-          interface {
-            node {
-              display_label
-            }
           }
         }
       }

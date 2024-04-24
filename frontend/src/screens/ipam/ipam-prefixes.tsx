@@ -1,15 +1,15 @@
 import { useParams } from "react-router-dom";
 import { Table } from "../../components/table/table";
-import { IPAM_PREFIX_OBJECT } from "../../config/constants";
 import { GET_PREFIXES } from "../../graphql/queries/ipam/prefixes";
 import useQuery from "../../hooks/useQuery";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { constructPathForIpam } from "./common/utils";
+import { IP_PREFIX_GENERIC } from "./constants";
 
 const constructLink = (data) => {
   switch (data.__typename) {
-    case IPAM_PREFIX_OBJECT: {
+    case IP_PREFIX_GENERIC: {
       return constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(data?.prefix?.value)}`);
     }
     default: {
@@ -25,7 +25,7 @@ export default function IpamIPPrefixes() {
 
   const rows =
     data &&
-    data[IPAM_PREFIX_OBJECT]?.edges.map((edge) => ({
+    data[IP_PREFIX_GENERIC]?.edges.map((edge) => ({
       values: {
         ...edge?.node,
         children_count: edge?.node?.children?.edges?.length,

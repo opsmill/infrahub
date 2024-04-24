@@ -10,7 +10,7 @@ import { Table } from "../../../components/table/table";
 import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
 import { Link } from "../../../components/utils/link";
 import { Pagination } from "../../../components/utils/pagination";
-import { DEFAULT_BRANCH_NAME, IPAM_IP_ADDRESS_OBJECT } from "../../../config/constants";
+import { DEFAULT_BRANCH_NAME } from "../../../config/constants";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
 import { GET_IP_ADDRESSES } from "../../../graphql/queries/ipam/ip-address";
@@ -22,7 +22,7 @@ import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
-import { IPAM_QSP, IPAM_TABS } from "../constants";
+import { IP_ADDRESS_GENERIC, IPAM_QSP, IPAM_TABS } from "../constants";
 
 const IpamIPAddressesList = forwardRef((props, ref) => {
   const { prefix } = useParams();
@@ -59,7 +59,7 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
 
   const rows =
     data &&
-    data[IPAM_IP_ADDRESS_OBJECT]?.edges.map((edge) => ({
+    data[IP_ADDRESS_GENERIC]?.edges.map((edge) => ({
       id: edge?.node?.id,
       __typename: edge?.node?.__typename,
       values: {
@@ -209,7 +209,7 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
         </SlideOver>
       )}
 
-      <Pagination count={data && data[IPAM_IP_ADDRESS_OBJECT]?.count} />
+      <Pagination count={data && data[IP_ADDRESS_GENERIC]?.count} />
     </div>
   );
 });

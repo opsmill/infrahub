@@ -23,7 +23,7 @@ export const GET_PREFIXES_ONLY = gql`
 
 export const GET_PREFIXES = gql`
   query GET_PREFIXES($namespace: String, $prefix: String, $offset: Int, $limit: Int) {
-    IpamIPPrefix(
+    BuiltinIPPrefix(
       ip_namespace__name__value: $namespace
       prefix__value: $prefix
       offset: $offset
@@ -96,7 +96,7 @@ export const GET_PREFIXES = gql`
 
 export const GET_PREFIX = gql`
   query GET_PREFIX($namespace: String, $prefix: String, $offset: Int, $limit: Int) {
-    IpamIPPrefix(
+    BuiltinIPPrefix(
       ip_namespace__name__value: $namespace
       prefix__value: $prefix
       offset: $offset

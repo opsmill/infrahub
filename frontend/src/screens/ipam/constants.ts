@@ -1,5 +1,5 @@
-export const IP_ADDRESS_DEFAULT_SCHEMA_KIND = "BuiltinIPAddress";
-export const IP_PREFIX_DEFAULT_SCHEMA_KIND = "BuiltinIPPrefix";
+export const IP_ADDRESS_GENERIC = "BuiltinIPAddress";
+export const IP_PREFIX_GENERIC = "BuiltinIPPrefix";
 
 export const IPAM_TREE_ROOT_ID = "root" as const;
 

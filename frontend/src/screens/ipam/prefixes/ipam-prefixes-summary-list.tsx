@@ -10,7 +10,7 @@ import ProgressBar from "../../../components/stats/progress-bar";
 import { Table } from "../../../components/table/table";
 import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
 import { Pagination } from "../../../components/utils/pagination";
-import { DEFAULT_BRANCH_NAME, IPAM_PREFIX_OBJECT } from "../../../config/constants";
+import { DEFAULT_BRANCH_NAME } from "../../../config/constants";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
 import { GET_PREFIXES } from "../../../graphql/queries/ipam/prefixes";
@@ -22,6 +22,7 @@ import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
+import { IP_PREFIX_GENERIC } from "../constants";
 
 const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
   const { prefix } = useParams();
@@ -33,7 +34,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
 
   const constructLink = (data) => {
     switch (data.__typename) {
-      case IPAM_PREFIX_OBJECT: {
+      case IP_PREFIX_GENERIC: {
         return constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(data?.prefix?.value)}`);
       }
       default: {
@@ -61,7 +62,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
 
   const rows =
     data &&
-    data[IPAM_PREFIX_OBJECT]?.edges.map((edge) => ({
+    data[IP_PREFIX_GENERIC]?.edges.map((edge) => ({
       id: edge?.node?.id,
       __typename: edge?.node?.__typename,
       values: {
@@ -210,7 +211,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
         </SlideOver>
       )}
 
-      <Pagination count={data && data[IPAM_PREFIX_OBJECT]?.count} />
+      <Pagination count={data && data[IP_PREFIX_GENERIC]?.count} />
     </div>
   );
 });
