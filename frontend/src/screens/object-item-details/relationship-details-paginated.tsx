@@ -258,7 +258,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         isProtected={relationshipsData.properties.is_protected}
                         isInherited={relationshipsData.properties.is_inherited}
                         header={
-                          <div className="flex justify-between items-center pl-2 p-1 pt-0">
+                          <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
                             <div className="font-semibold">{relationshipSchema.label}</div>
 
                             <ButtonWithTooltip
