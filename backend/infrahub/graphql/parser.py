@@ -3,7 +3,16 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional
 
-from graphql.language import FieldNode, InlineFragmentNode, ListValueNode, NameNode, SelectionSetNode, StringValueNode
+from graphql.language import (
+    DirectiveNode,
+    FieldNode,
+    InlineFragmentNode,
+    ListValueNode,
+    NameNode,
+    SelectionSetNode,
+    StringValueNode,
+)
+from infrahub_sdk.utils import deep_merge_dict
 
 if TYPE_CHECKING:
     from infrahub.core.schema import NodeSchema
@@ -29,103 +38,103 @@ class GraphQLExtractor:
         self.typename_paths: dict[str, list[FieldEnricher]] = {}
         self.node_path: dict[str, list[FieldEnricher]] = {}
 
+    def _define_node_path(self, path: str) -> None:
+        if path not in self.node_path:
+            self.node_path[path] = []
+
     async def get_fields(self) -> dict:
         return await self.extract_fields(selection_set=self.field_node.selection_set) or {}
 
-    def process_directives(self, node: FieldNode, path: str) -> None:
-        for directive in node.directives:
-            if directive.name.value != "expand":
-                continue
+    def _process_expand_directive(self, path: str, directive: DirectiveNode) -> None:
+        excluded_fields = []
+        for argument in directive.arguments:
+            if argument.name.value == "exclude":
+                if isinstance(argument.value, ListValueNode):
+                    excluded_fields.extend(
+                        [value.value for value in argument.value.values if isinstance(value, StringValueNode)]
+                    )
 
-            excluded_fields = []
-            for argument in directive.arguments:
-                if argument.name.value == "exclude":
-                    if isinstance(argument.value, ListValueNode):
-                        excluded_fields.extend(
-                            [value.value for value in argument.value.values if isinstance(value, StringValueNode)]
-                        )
+        if path not in self.typename_paths:
+            self.typename_paths[path] = []
+        self.typename_paths[path].append(
+            FieldEnricher(
+                key="__typename",
+                node=FieldNode(
+                    kind="field",
+                    name=NameNode(kind="name", value="__typename"),
+                    directives=[],
+                    arguments=[],
+                ),
+                path=f"{path}/__typename/",
+            )
+        )
+        if path == "/edges/node/":
+            self._define_node_path(path=path)
 
-            if path not in self.typename_paths:
-                self.typename_paths[path] = []
-            self.typename_paths[path].append(
+            self.node_path[path].append(
                 FieldEnricher(
-                    key="__typename",
+                    key="id",
                     node=FieldNode(
                         kind="field",
-                        name=NameNode(kind="name", value="__typename"),
+                        name=NameNode(kind="name", value="id"),
                         directives=[],
                         arguments=[],
                     ),
-                    path=f"{path}/__typename/",
+                    path=f"{path}id/",
+                    fields={"id": None},
                 )
             )
-            if path == "/edges/node/":
-                if path not in self.node_path:
-                    self.node_path[path] = []
+            attribute_enrichers = []
+            attributes = [attribute for attribute in self.schema.attributes if attribute.name not in excluded_fields]
+            for attribute in attributes:
+                attribute_path = f"{path}{attribute.name}/"
+                self._define_node_path(path=attribute_path)
 
-                self.node_path[path].append(
-                    FieldEnricher(
-                        key="id",
-                        node=FieldNode(
-                            kind="field",
-                            name=NameNode(kind="name", value="id"),
-                            directives=[],
-                            arguments=[],
-                        ),
-                        path=f"{path}id/",
-                        fields={"id": None},
-                    )
+                attribute_enricher_node = FieldNode(
+                    kind="field",
+                    name=NameNode(
+                        kind="name",
+                        value="value",
+                        directives=[],
+                        arguments=[],
+                    ),
                 )
-                attribute_enrichers = []
-                attributes = [
-                    attribute for attribute in self.schema.attributes if attribute.name not in excluded_fields
-                ]
-                for attribute in attributes:
-                    attribute_path = f"{path}{attribute.name}/"
-                    if attribute_path not in self.node_path:
-                        self.node_path[attribute_path] = []
 
-                    attribute_enricher_node = FieldNode(
+                attribute_enricher = FieldEnricher(
+                    key=attribute.name,
+                    node=attribute_enricher_node,
+                    path=attribute_path,
+                    fields={"value": None},
+                )
+                self.node_path[attribute_path].append(attribute_enricher)
+                attribute_enrichers.append(
+                    FieldNode(
                         kind="field",
-                        name=NameNode(
-                            kind="name",
-                            value="value",
-                            directives=[],
-                            arguments=[],
-                        ),
-                    )
-
-                    attribute_enricher = FieldEnricher(
-                        key=attribute.name,
-                        node=attribute_enricher_node,
-                        path=attribute_path,
-                        fields={"value": None},
-                    )
-                    self.node_path[attribute_path].append(attribute_enricher)
-                    attribute_enrichers.append(
-                        FieldNode(
-                            kind="field",
-                            name=NameNode(kind="name", value=attribute.name),
-                            selection_set=SelectionSetNode(selections=tuple([attribute_enricher])),
-                        )
-                    )
-
-                if path not in self.node_path:
-                    self.node_path[path] = []
-                self.node_path[path].append(
-                    FieldEnricher(
-                        key="node",
-                        path=path,
-                        node=FieldNode(
-                            kind="field",
-                            name=NameNode(kind="name", value="node"),
-                            selection_set=SelectionSetNode(selections=tuple(attribute_enrichers)),
-                        ),
-                        fields={attribute.name: {"value": None} for attribute in self.schema.attributes},
+                        name=NameNode(kind="name", value=attribute.name),
+                        selection_set=SelectionSetNode(selections=tuple([attribute_enricher])),
                     )
                 )
 
-    def apply_directives(self, selection_set: SelectionSetNode, fields: dict, path: str) -> None:
+            self._define_node_path(path=path)
+            self.node_path[path].append(
+                FieldEnricher(
+                    key="node",
+                    path=path,
+                    node=FieldNode(
+                        kind="field",
+                        name=NameNode(kind="name", value="node"),
+                        selection_set=SelectionSetNode(selections=tuple(attribute_enrichers)),
+                    ),
+                    fields={attribute.name: {"value": None} for attribute in self.schema.attributes},
+                )
+            )
+
+    def process_directives(self, node: FieldNode, path: str) -> None:
+        for directive in node.directives:
+            if directive.name.value == "expand":
+                self._process_expand_directive(path=path, directive=directive)
+
+    def apply_directives(self, selection_set: SelectionSetNode, fields: dict, path: str) -> dict:
         if path in self.typename_paths:
             for node in self.typename_paths[path]:
                 if "__typename" not in fields:
@@ -136,12 +145,13 @@ class GraphQLExtractor:
         if path in self.node_path:
             for node in self.node_path[path]:
                 if node.key not in fields:
-                    fields.update(node.fields)
+                    fields = deep_merge_dict(dicta=fields.copy(), dictb=node.fields)
                     selections = list(selection_set.selections)
                     selections.append(node.node)
                     selection_set.selections = tuple(selections)
 
-            undefined_paths = [key for key in self.node_path if key.startswith(path) and len(key) > len(path)]
+            undefined_paths = [key for key in self.node_path if is_child_path(path=path, child=key)]
+
             for undefined in undefined_paths:
                 for sub_node in self.node_path[undefined]:
                     selections = list(selection_set.selections)
@@ -156,11 +166,12 @@ class GraphQLExtractor:
 
             del self.node_path[path]
 
+        return fields
+
     async def extract_fields(
         self, selection_set: Optional[SelectionSetNode], path: str = "/"
     ) -> Optional[dict[str, Optional[dict]]]:
         """Extract fields and apply Directives"""
-
         if not selection_set:
             return None
 
@@ -190,6 +201,10 @@ class GraphQLExtractor:
                         elif isinstance(fields[sub_node.name.value], dict) and isinstance(value, dict):
                             fields[sub_node.name.value].update(value)  # type: ignore[union-attr]
 
-        self.apply_directives(selection_set=selection_set, fields=fields, path=path)
+        return self.apply_directives(selection_set=selection_set, fields=fields, path=path)
 
-        return fields
+
+def is_child_path(path: str, child: str) -> bool:
+    if child.startswith(path) and len(child) > len(path):
+        return True
+    return False
