@@ -1,0 +1,253 @@
+---
+title: Creating and assigning profiles
+---
+
+# Creating and assigning profiles
+
+In this tutorial we will be creating a Profile for a network device interface, and then create multiple interfaces using that profile.
+
+The profile will be used to create interfaces that will connect end-users. We want all the end-user interfaces in our network to have exactly the same configuration.
+
+The following configuration attributes need to be defined in the profile:
+
+- Profile: end-user-interface
+- Status: active
+- Enabled: true
+- Auto negotiation: enabled
+- MTU: 1500 bytes
+- Mode: Access
+- Untagged VLAN: 10
+- Role: end-user
+
+We will be assuming the following schema has been loaded into Infrahub, this is a requirement to be able to complete the rest of this guide.
+
+```yaml
+---
+version: "1.0"
+nodes:
+  - name: Interface
+    namespace: Infra
+    description: "Network Interface"
+    label: "Interface"
+    include_in_menu: true
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    uniqueness_constraints:
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: speed
+        kind: Number
+        optional: true
+      - name: auto_negotiation
+        kind: Boolean
+        default_value: false
+      - name: mtu
+        label: MTU
+        kind: Number
+        default_value: 1500
+      - name: enabled
+        kind: Boolean
+        default_value: false
+      - name: untagged_vlan
+        label: Untagged VLAN
+        kind: Number
+        optional: true
+      - name: mode
+        kind: Dropdown
+        default_value: access
+        choices:
+          - name: access
+            label: Access
+          - name: trunk
+            label: Trunk
+      - name: status
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: active
+            label: Active
+            description: "Fully operational and currently in service"
+            color: "#7fbf7f"
+          - name: provisioning
+            label: Provisioning
+            description: "In the process of being set up and configured"
+            color: "#ffff7f"
+          - name: maintenance
+            label: Maintenance
+            description: "Undergoing routine maintenance or repairs"
+            color: "#ffd27f"
+          - name: drained
+            label: Drained
+            description: "Temporarily taken out of service"
+            color: "#bfbfbf"
+      - name: role
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: uplink
+            label: Uplink
+            description: "Interface connected to other network device"
+            color: "#9090de"
+          - name: end_user
+            label: End user
+            description: "Interface to connect end-user devices"
+            color: "#ffa07a"
+          - name: server
+            label: Server
+            description: "Interfaces to connect to servers"
+            color: "#98b2d1"
+```
+
+From this schema Infrahub will generate a `ProfileInfraInterface` schema. Infrahub will also generate a GraphQL query `ProfileInfraInterface` and the GraphQL mutations `ProfileInfraInterfaceCreate`, `ProfileInfraInterfaceDelete`, `ProfileInfraInterfaceUpdate` and `ProfileInfraInterfaceUpsert`.
+
+Profiles, at this stage, can be only be used from the GraphQL API or the Python SDK. In a future release we will add support for managing profiles using the web frontend.
+
+## Creating the profile
+
+We can create the profile by executing the following GraphQL mutation:
+
+```graphql
+mutation {
+  ProfileInfraInterfaceCreate(
+    data: {
+      profile_name: {value: "end-user-interface"},
+      status: {value: "active"},
+      enabled: {value: true},
+      auto_negotiation: {value: true},
+      mtu: {value:1500},
+      mode: {value: "access"},
+      untagged_vlan: {value: 10},
+      role: {value: "end_user"},
+    }
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
+## Retrieving profiles from Infrahub
+
+We can query Infrahub to retrieve the interface profile using the following GraphQL query
+
+```graphql
+query {
+  ProfileInfraInterface(profile_name__value: "end-user-interface") {
+    edges {
+      node {
+        id
+        profile_name {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+## Creating a node using a profile
+
+We can now create multiple interfaces that will inherited the attributes we defined in our `end-user-interface` profile.
+
+```graphql
+mutation {
+  int0: InfraInterfaceCreate(
+    data: {name: {value: "GigabitEthernet0/0/0"}, profiles: [{id: "end-user-interface"}]}
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+  int1: InfraInterfaceCreate(
+    data: {name: {value: "GigabitEthernet0/0/1"}, profiles: [{id: "end-user-interface"}]}
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+  int2: InfraInterfaceCreate(
+    data: {name: {value: "GigabitEthernet0/0/2"}, profiles: [{id: "end-user-interface"}]}
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
+We will now query for one of the interfaces we created and check the values of the name and status attribute and the metadata.
+
+```graphql
+query {
+  InfraInterface(name__value: "GigabitEthernet0/0/0") {
+    edges {
+      node {
+        name {
+          value
+          is_from_profile
+        }
+        status {
+          value
+          is_default
+          is_from_profile
+          source {
+            id
+            display_label
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+On the name attribute we can see that the `is_from_profile` property is `False`, indicating the name attribute was not inherited from a profile. The status attribute has the `is_from_profile` property set to `True` and the `source__id` property is set to the id of the profile from which the value was inherited.
+
+The status attribute value is inherited from the profile, because we didn't specify a value for that attribute when we created the interface, hence the `is_default` property of the status attribute is `True`.
+
+## Overriding profile attribute values
+
+We will now create another interface `GigabitEthernet0/0/3` using the profile. But we want to override the value of the MTU attribute, which is defined in the profile. To do this we have to explicitly provide a value for the attribute.
+
+```graphql
+mutation {
+  InfraInterfaceCreate(
+    data: {name: {value: "GigabitEthernet0/0/3"}, mtu: {value: 9000}, profiles: [{id: "end-user-interface"}]}
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
+Using this query we can verify that the value for the MTU attribute and that it was not inherited from a profile.
+
+```query
+query {
+  InfraInterface(name__value: "GigabitEthernet0/0/3") {
+    edges {
+      node {
+        mtu {
+          value
+          is_from_profile
+        }
+      }
+    }
+  }
+}
+```

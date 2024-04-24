@@ -12,7 +12,7 @@ export function PrefixUsageChart({ usagePercentage }: PrefixUsageChartProps) {
   ];
 
   return (
-    <CardWithBorder className="max-w-xs">
+    <CardWithBorder>
       <CardWithBorder.Title>IP Availability</CardWithBorder.Title>
 
       <PieChart

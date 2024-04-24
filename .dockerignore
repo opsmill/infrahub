@@ -20,3 +20,7 @@ frontend/playwright-report
 # Direnv files (https://direnv.net/)
 .direnv/
 .envrc
+
+# Generated files
+generated/
+query_performance_results/

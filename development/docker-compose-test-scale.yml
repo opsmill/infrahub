@@ -102,7 +102,7 @@ services:
       <<: *infrahub_config
       INFRAHUB_CONFIG: /source/development/infrahub.toml
       INFRAHUB_PRODUCTION: false
-      INFRAHUB_LOG_LEVEL: INFO"
+      INFRAHUB_LOG_LEVEL: INFO
       INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
       INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
     volumes:
