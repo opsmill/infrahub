@@ -604,9 +604,10 @@ class IPPrefixReconcileQuery(Query):
         // Identify the correct children, if any, for the prefix node
         CALL {
             // Get ALL possible children for the prefix node
-            WITH ip_namespace
+            WITH ip_namespace, ip_node
             OPTIONAL MATCH child_path = (ip_namespace)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(maybe_new_child)-[har:HAS_ATTRIBUTE]->(a:Attribute)-[hvr:HAS_VALUE]->(av:AttributeValue)
-            WHERE ns_rel.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
+            WHERE (ip_node IS NULL OR maybe_new_child.uuid <> ip_node.uuid)
+            AND ns_rel.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
             AND a.name in ["prefix", "address"]
             AND any(label IN LABELS(maybe_new_child) WHERE label IN [$ip_prefix_kind, $ip_address_kind])
             AND any(label IN LABELS(av) WHERE label IN [$ip_prefix_attribute_kind, $ip_address_attribute_kind])
@@ -704,5 +705,5 @@ class IPPrefixReconcileQuery(Query):
     def get_current_children_uuids(self) -> list[str]:
         return self._get_uuids_from_query_list("current_children")
 
-    def get_calculated_children_uuids(self) -> Optional[str]:
+    def get_calculated_children_uuids(self) -> list[str]:
         return self._get_uuids_from_query_list("new_children")
