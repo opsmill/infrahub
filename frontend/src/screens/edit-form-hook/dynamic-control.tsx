@@ -27,10 +27,17 @@ export const DynamicControl = (props: DynamicFieldData) => {
 
   const { setValue, getValues, register } = useFormContext();
 
-  register(name, {
-    value: value || "",
-    ...config,
-  });
+  if (type === "checkbox") {
+    register(name, {
+      value,
+      ...config,
+    });
+  } else {
+    register(name, {
+      value: value || "",
+      ...config,
+    });
+  }
 
   // Initial state to reuse user value or value from props if not defined
   const [localValue, setLocalValue] = useState(getValues(name) && !value ? getValues(name) : value);
