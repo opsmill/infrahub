@@ -17,7 +17,7 @@ import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFo
 import { getObjectAttributes } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
-import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
+import { Form } from "../edit-form-hook/form";
 
 interface iProps {
   objectname?: string;
@@ -115,7 +115,11 @@ export default function ObjectItemCreate(props: iProps) {
 
       const mutationString = createObject({
         kind: schema?.kind,
-        data: stringifyWithoutQuotes({ ...newObject, ...customObject }),
+        data: stringifyWithoutQuotes({
+          ...newObject,
+          ...customObject,
+          ...(profile ? { profiles: [{ id: profile }] } : {}),
+        }),
       });
 
       const mutation = gql`
@@ -165,23 +169,20 @@ export default function ObjectItemCreate(props: iProps) {
         </div>
       )}
 
-      <div className="p-4 pt-3 bg-gray-200">
-        <div className="flex items-center">
-          <label className="block text-sm font-medium leading-6 text-gray-900">
-            Select a Profile (optionnal)
-          </label>
+      {!isGeneric && (
+        <div className="p-4 pt-3 bg-gray-200">
+          <div className="flex items-center">
+            <label className="block text-sm font-medium leading-6 text-gray-900">
+              Select a Profile (optionnal)
+            </label>
+          </div>
+          <Select options={profilesOptions} value={profile} onChange={handleProfileChange} />
         </div>
-        <Select
-          options={profilesOptions}
-          value={profile}
-          onChange={handleProfileChange}
-          preventEmpty
-        />
-      </div>
+      )}
 
       {schema && fields && (
         <div className="flex-1">
-          <EditFormHookComponent
+          <Form
             onSubmit={onSubmit}
             onCancel={onCancel}
             fields={fields}
