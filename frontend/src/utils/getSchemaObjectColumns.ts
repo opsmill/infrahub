@@ -163,6 +163,7 @@ export const getObjectPeers = (schema?: iNodeSchema | iGenericSchema) => {
 };
 
 const getValue = (row: any, attribute: any, profile: any) => {
+  // What comes from the object is priority
   if (row && row[attribute.name]?.value) {
     return row[attribute.name]?.value;
   }
