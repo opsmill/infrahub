@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 
 export const GET_PREFIXES_ONLY = gql`
   query GET_PREFIXES_ONLY($parentIds: [ID!]) {
-    IpamIPPrefix(parent__ids: $parentIds) {
+    BuiltinIPPrefix(parent__ids: $parentIds) {
       edges {
         node {
           id
@@ -199,7 +199,7 @@ export const GET_TOP_LEVEL_PREFIXES = gql`
 
 export const GET_PREFIX_ANCESTORS = gql`
   query GET_PREFIX_ANCESTORS($ip: String) {
-    IpamIPPrefix(children__prefix__value: $ip) {
+    BuiltinIPPrefix(children__prefix__value: $ip) {
       edges {
         node {
           id
