@@ -54,7 +54,6 @@ import Content from "../layout/content";
 import { usePermission } from "../../hooks/usePermission";
 import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 import { ButtonWithTooltip as ButtonWithTooltip2 } from "../../components/buttons/button-primitive";
-import { formatFullDate, formatRelativeTimeFromNow } from "../../utils/date";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -257,60 +256,11 @@ export default function ObjectItemDetails(props: any) {
 
                     {objectDetailsData[attribute.name] && (
                       <MetaDetailsTooltip
-                        items={[
-                          {
-                            name: "Updated at",
-                            value: formatFullDate(objectDetailsData[attribute.name].updated_at),
-                          },
-                          {
-                            name: "Update time",
-                            value: formatRelativeTimeFromNow(
-                              objectDetailsData[attribute.name].updated_at
-                            ),
-                          },
-                          {
-                            name: "Source",
-                            value: objectDetailsData[attribute.name].source ? (
-                              <Link
-                                to={constructPath(
-                                  `/objects/${
-                                    objectDetailsData[attribute.name].source.__typename
-                                  }/${objectDetailsData[attribute.name].source.id}`
-                                )}>
-                                {objectDetailsData[attribute.name].source.display_label}
-                              </Link>
-                            ) : (
-                              "-"
-                            ),
-                          },
-                          {
-                            name: "Owner",
-                            value: objectDetailsData[attribute.name].owner ? (
-                              <Link
-                                to={constructPath(
-                                  `/objects/${objectDetailsData[attribute.name].owner.__typename}/${
-                                    objectDetailsData[attribute.name].owner.id
-                                  }`
-                                )}>
-                                {objectDetailsData[attribute.name].owner.display_label}
-                              </Link>
-                            ) : (
-                              "-"
-                            ),
-                          },
-                          {
-                            name: "Is protected",
-                            value: objectDetailsData[attribute.name].is_protected
-                              ? "True"
-                              : "False",
-                          },
-                          {
-                            name: "Is inherited",
-                            value: objectDetailsData[attribute.name].is_inherited
-                              ? "True"
-                              : "False",
-                          },
-                        ]}
+                        updatedAt={objectDetailsData[attribute.name].updated_at}
+                        source={objectDetailsData[attribute.name].source}
+                        owner={objectDetailsData[attribute.name].owner}
+                        isProtected={objectDetailsData[attribute.name].is_protected}
+                        isInherited={objectDetailsData[attribute.name].is_inherited}
                         header={
                           <div className="flex justify-between items-center pl-2 p-1 pt-0">
                             <div className="font-semibold">{attribute.label}</div>
