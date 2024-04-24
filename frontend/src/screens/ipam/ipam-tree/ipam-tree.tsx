@@ -22,6 +22,7 @@ import {
   ROOT_TREE_ITEM,
   updateTreeData,
 } from "./utils";
+import { IPAM_PREFIX_GENERIC } from "../../../config/constants";
 
 export default function IpamTree() {
   const { prefix } = useParams();
@@ -56,7 +57,7 @@ export default function IpamTree() {
           .then(({ data }) => {
             if (!data) return;
 
-            const ancestors = data.IpamIPPrefix.edges.map(({ node }) => ({
+            const ancestors = data[IPAM_PREFIX_GENERIC].edges.map(({ node }) => ({
               id: node.id,
               parentId: node.parent.node?.id ?? IPAM_TREE_ROOT_ID,
             }));
