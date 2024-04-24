@@ -1,15 +1,69 @@
 import React from "react";
-import { Property, PropertyList } from "../table/property-list";
+import { PropertyList } from "../table/property-list";
 import { Icon } from "@iconify-icon/react";
 import { Button } from "../buttons/button-primitive";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { formatFullDate, formatRelativeTimeFromNow } from "../../utils/date";
+import { Link } from "../utils/link";
+import { constructPath } from "../../utils/fetch";
+import { AnyAttribute } from "../../generated/graphql";
 
 interface MetaDetailsTooltipProps {
-  items: Property[];
   header?: React.ReactNode;
+  updatedAt: AnyAttribute["updated_at"];
+  source: AnyAttribute["source"] & { __typename: string };
+  owner: AnyAttribute["owner"] & { __typename: string };
+  isProtected: AnyAttribute["is_protected"];
+  isInherited: AnyAttribute["is_inherited"];
 }
 
-export default function MetaDetailsTooltip({ header, items }: MetaDetailsTooltipProps) {
+export default function MetaDetailsTooltip({
+  header,
+  updatedAt,
+  source,
+  owner,
+  isProtected,
+  isInherited,
+}: MetaDetailsTooltipProps) {
+  const items = [
+    {
+      name: "Updated at",
+      value: updatedAt ? formatFullDate(updatedAt) : "-",
+    },
+    {
+      name: "Update time",
+      value: updatedAt ? formatRelativeTimeFromNow(updatedAt) : "-",
+    },
+    {
+      name: "Source",
+      value: source ? (
+        <Link to={constructPath(`/objects/${source.__typename}/${source.id}`)}>
+          {source.display_label}
+        </Link>
+      ) : (
+        "-"
+      ),
+    },
+    {
+      name: "Owner",
+      value: owner ? (
+        <Link to={constructPath(`/objects/${owner.__typename}/${owner.id}`)}>
+          {owner.display_label}
+        </Link>
+      ) : (
+        "-"
+      ),
+    },
+    {
+      name: "Is protected",
+      value: isProtected ? "True" : "False",
+    },
+    {
+      name: "Is inherited",
+      value: isInherited ? "True" : "False",
+    },
+  ];
+
   return (
     <Popover>
       <PopoverTrigger asChild>
