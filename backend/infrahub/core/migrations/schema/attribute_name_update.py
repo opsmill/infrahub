@@ -54,6 +54,7 @@ class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery):
         self.params.update(branch_params)
 
         self.params["node_kind"] = self.migration.new_schema.kind
+        self.params["profile_kind"] = f"Profile{self.migration.new_schema.kind}"
         self.params["new_attr_name"] = self.migration.new_attribute_schema.name
 
         attr_id = self.migration.new_attribute_schema.id
@@ -95,7 +96,8 @@ class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery):
         query = """
         // Find all the active nodes
         MATCH (node:Node)
-        WHERE $node_kind IN LABELS(node) AND exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $prev_attr_name }))
+        WHERE ($node_kind IN LABELS(node) OR $profile_kind IN LABELS(node))
+           AND exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $prev_attr_name }))
         CALL {
             WITH node
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
