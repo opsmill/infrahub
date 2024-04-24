@@ -49,6 +49,33 @@ async def get_default_ipnamespace(db: InfrahubDatabase) -> Optional[Node]:
     return nodes[0]
 
 
+async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) -> None:
+    # ---------------------------------------------------
+    # Initialize the database and Load the Root node
+    # ---------------------------------------------------
+    root = await get_root_node(db=db, initialize=initialize)
+    registry.id = str(root.get_uuid())
+    registry.default_branch = root.default_branch
+
+    # ---------------------------------------------------
+    # Initialize the Storage Driver
+    # ---------------------------------------------------
+    registry.storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
+
+    # ---------------------------------------------------
+    # Load existing branches into the registry
+    # ---------------------------------------------------
+    branches: List[Branch] = await Branch.get_list(db=db)
+    for branch in branches:
+        registry.branch[branch.name] = branch
+
+    # ---------------------------------------------------
+    # Load internal models into the registry
+    # ---------------------------------------------------
+    registry.node["Node"] = Node
+    registry.node["BuiltinIPPrefix"] = BuiltinIPPrefix
+
+
 async def initialization(db: InfrahubDatabase) -> None:
     if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
         session = await db.session()
@@ -61,10 +88,7 @@ async def initialization(db: InfrahubDatabase) -> None:
     # ---------------------------------------------------
     async with lock.registry.initialization():
         log.debug("Checking Root Node")
-
-        root = await get_root_node(db=db, initialize=True)
-        registry.id = str(root.get_uuid())
-        registry.default_branch = root.default_branch
+        await initialize_registry(db=db, initialize=True)
 
         # Add Indexes to the database
         if db.manager.index.initialized:
@@ -72,18 +96,6 @@ async def initialization(db: InfrahubDatabase) -> None:
             await db.manager.index.add()
         else:
             log.warning("The database index manager hasn't been initialized.")
-
-    # ---------------------------------------------------
-    # Initialize the Storage Driver
-    # ---------------------------------------------------
-    registry.storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
-
-    # ---------------------------------------------------
-    # Load all existing branches into the registry
-    # ---------------------------------------------------
-    branches: List[Branch] = await Branch.get_list(db=db)
-    for branch in branches:
-        registry.branch[branch.name] = branch
 
     # ---------------------------------------------------
     # Load all schema in the database into the registry
@@ -108,7 +120,7 @@ async def initialization(db: InfrahubDatabase) -> None:
                 branch=default_branch.name,
             )
 
-        for branch in branches:
+        for branch in registry.branch.values():
             if branch.name in [default_branch.name, GLOBAL_BRANCH_NAME]:
                 continue
 
@@ -124,29 +136,11 @@ async def initialization(db: InfrahubDatabase) -> None:
                 )
 
     # ---------------------------------------------------
-    # Load internal models into the registry
-    # ---------------------------------------------------
-    registry.node["Node"] = Node
-    registry.node["BuiltinIPPrefix"] = BuiltinIPPrefix
-
-    # ---------------------------------------------------
     # Load Default Namespace
     # ---------------------------------------------------
     ip_namespace = await get_default_ipnamespace(db=db)
     if ip_namespace:
         registry.default_ipnamespace = ip_namespace.id
-
-    # ---------------------------------------------------
-    # Load all existing Groups into the registry
-    # ---------------------------------------------------
-    # group_schema = await registry.schema.get(db=db, name="Group")
-    # groups = await NodeManager.query(group_schema, db=db)
-    # for group in groups:
-    #     registry.node_group[group.name.value] = group
-
-    # groups = AttrGroup.get_list()
-    # for group in groups:
-    #     registry.attr_group[group.name.value] = group
 
 
 async def create_root_node(db: InfrahubDatabase) -> Root:

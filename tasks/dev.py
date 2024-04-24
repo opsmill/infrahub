@@ -8,11 +8,13 @@ from invoke.tasks import task
 from .container_ops import (
     build_images,
     destroy_environment,
+    migrate_database,
     pull_images,
     restart_services,
     show_service_status,
     start_services,
     stop_services,
+    update_core_schema,
 )
 from .infra_ops import load_infrastructure_data, load_infrastructure_schema
 from .shared import (
@@ -180,6 +182,13 @@ def start(context: Context, database: str = INFRAHUB_DATABASE):
 def stop(context: Context, database: str = INFRAHUB_DATABASE):
     """Stop the running instance of Infrahub."""
     stop_services(context=context, database=database, namespace=NAMESPACE)
+
+
+@task(optional=["database"])
+def migrate(context: Context, database: str = INFRAHUB_DATABASE):
+    """Apply the latest database migrations."""
+    migrate_database(context=context, database=database, namespace=NAMESPACE)
+    update_core_schema(context=context, database=database, namespace=NAMESPACE, debug=True)
 
 
 @task
