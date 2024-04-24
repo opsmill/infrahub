@@ -635,8 +635,6 @@ relationship_schema = SchemaNode(
             kind="Text",
             description="Type (kind) of objects supported on the other end of the relationship.",
             regex=str(NODE_KIND_REGEX),
-            min_length=DEFAULT_KIND_MIN_LENGTH,
-            max_length=DEFAULT_KIND_MAX_LENGTH,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(

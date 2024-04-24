@@ -37,8 +37,6 @@ class GeneratedRelationshipSchema(HashableModel):
         ...,
         description="Type (kind) of objects supported on the other end of the relationship.",
         pattern="^[A-Z][a-zA-Z0-9]+$",
-        min_length=3,
-        max_length=32,
         json_schema_extra={"update": "validate_constraint"},
     )
     kind: RelationshipKind = Field(
