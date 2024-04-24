@@ -13,6 +13,7 @@ import { gql } from "@apollo/client";
 import { getObjectItemsPaginated } from "../../../graphql/queries/objects/getObjectItems";
 import { IpDetailsCard } from "../common/ip-details-card";
 import { constructPathForIpam } from "../common/utils";
+import { IpamSummarySkeleton } from "../prefixes/ipam-summary-skeleton";
 
 export default function IpAddressSummary() {
   const { prefix, ipaddress } = useParams();
@@ -23,7 +24,7 @@ export default function IpAddressSummary() {
     },
   });
 
-  if (loading || !data) return <LoadingScreen />;
+  if (loading || !data) return <IpamSummarySkeleton />;
 
   const parentLink = prefix
     ? constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(prefix)}`)
@@ -70,7 +71,7 @@ const IpAddressSummaryContent = ({ ipAddressKind }: { ipAddressKind: string }) =
     notifyOnNetworkStatusChange: true,
   });
 
-  if (loading || !data || !ipAddressSchema) return <LoadingScreen />;
+  if (loading || !data || !ipAddressSchema) return <IpamSummarySkeleton />;
 
   if (error) {
     return <ErrorScreen message="An error occured while retrieving prefixes" />;
