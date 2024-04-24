@@ -110,8 +110,8 @@ export const Select = (props: SelectProps) => {
   const [localOptions, setLocalOptions] = useState(options);
   const [selectedOption, setSelectedOption] = useState(
     multiple
-      ? options.filter((option) => value.includes(option.id))
-      : options?.find((option) => option?.id === value || option.name === value)
+      ? localOptions.filter((option) => value.includes(option.id))
+      : localOptions?.find((option) => option?.id === value || option.name === value)
   );
 
   // Query to fetch options only if a peer is defined
@@ -713,14 +713,6 @@ export const Select = (props: SelectProps) => {
   useEffect(() => {
     setLocalOptions(options);
   }, [options?.length]);
-
-  useEffect(() => {
-    const newOption = multiple
-      ? options.filter((option) => value.includes(option.id))
-      : options?.find((option) => option?.id === value || option.name === value);
-
-    setSelectedOption(newOption ?? "");
-  }, [value]);
 
   // Fetch option display label if not defined by current selected option
   const handleFetchLabel = async () => {
