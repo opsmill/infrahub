@@ -89,29 +89,32 @@ class GraphQLExtractor:
             for attribute in attributes:
                 attribute_path = f"{path}{attribute.name}/"
                 self._define_node_path(path=attribute_path)
+                field_attributes = {"value": None, "is_default": None, "is_from_profile": None}
 
-                attribute_enricher_node = FieldNode(
-                    kind="field",
-                    name=NameNode(
-                        kind="name",
-                        value="value",
-                        directives=[],
-                        arguments=[],
-                    ),
-                )
+                enrichers = [
+                    FieldEnricher(
+                        key=attribute.name,
+                        node=FieldNode(
+                            kind="field",
+                            name=NameNode(
+                                kind="name",
+                                value=key,
+                                directives=[],
+                                arguments=[],
+                            ),
+                        ),
+                        path=attribute_path,
+                        fields={key: None},
+                    )
+                    for key in field_attributes
+                ]
 
-                attribute_enricher = FieldEnricher(
-                    key=attribute.name,
-                    node=attribute_enricher_node,
-                    path=attribute_path,
-                    fields={"value": None},
-                )
-                self.node_path[attribute_path].append(attribute_enricher)
+                self.node_path[attribute_path].extend(enrichers)
                 attribute_enrichers.append(
                     FieldNode(
                         kind="field",
                         name=NameNode(kind="name", value=attribute.name),
-                        selection_set=SelectionSetNode(selections=tuple([attribute_enricher])),
+                        selection_set=SelectionSetNode(selections=tuple(enrichers)),
                     )
                 )
 
@@ -125,7 +128,7 @@ class GraphQLExtractor:
                         name=NameNode(kind="name", value="node"),
                         selection_set=SelectionSetNode(selections=tuple(attribute_enrichers)),
                     ),
-                    fields={attribute.name: {"value": None} for attribute in self.schema.attributes},
+                    fields={attribute.name: field_attributes for attribute in self.schema.attributes},
                 )
             )
 
