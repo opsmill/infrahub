@@ -9,6 +9,15 @@ query {{kind}} {
         id
         display_label
 
+        profiles{
+          edges{
+            node{
+              display_label
+              id
+            }
+          }
+        }
+
         {{#each columns}}
 
           {{#if this.isAttribute}}
@@ -88,6 +97,31 @@ query {{kind}} {
 
   {{taskKind}}(related_node__ids: ["{{objectid}}"]) {
     count
+  }
+
+  {{/if}}
+
+  {{#if profile}}
+
+  {{profile}} {
+    edges {
+      node {
+        id
+        display_label
+        __typename
+
+        {{#each attributes}}
+          {{this.name}} {
+              value
+              {{#if (eq this.kind "Dropdown")}}
+              color
+              description
+              label
+              {{/if}}
+          }
+        {{/each}}
+      }
+    }
   }
 
   {{/if}}
