@@ -73,7 +73,7 @@ export default function ObjectItemCreate(props: iProps) {
     ${queryString}
   `;
 
-  const { data } = useQuery(query, { skip: !(!!generic || !!schema) });
+  const { data } = useQuery(query, { skip: !(!!generic || !!schema) || isGeneric });
 
   const profiles = data && data[profileName]?.edges?.map((edge) => edge.node);
 
