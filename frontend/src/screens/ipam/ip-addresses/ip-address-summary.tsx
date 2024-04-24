@@ -5,7 +5,7 @@ import { GET_IP_ADDRESS_KIND } from "../../../graphql/queries/ipam/ip-address";
 import useQuery from "../../../hooks/useQuery";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
-import { IP_ADDRESS_DEFAULT_SCHEMA_KIND } from "../constants";
+import { IP_ADDRESS_GENERIC } from "../constants";
 import { useAtomValue } from "jotai/index";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { getObjectAttributes, getObjectRelationships } from "../../../utils/getSchemaObjectColumns";
@@ -30,7 +30,7 @@ export default function IpAddressSummary() {
     ? constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(prefix)}`)
     : constructPathForIpam("/ipam/ip-addresses");
 
-  const ipAddressKind = data[IP_ADDRESS_DEFAULT_SCHEMA_KIND].edges[0].node.__typename;
+  const ipAddressKind = data[IP_ADDRESS_GENERIC].edges[0].node.__typename;
 
   return (
     <div>
