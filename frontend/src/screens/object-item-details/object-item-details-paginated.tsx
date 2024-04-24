@@ -259,6 +259,7 @@ export default function ObjectItemDetails(props: any) {
                         updatedAt={objectDetailsData[attribute.name].updated_at}
                         source={objectDetailsData[attribute.name].source}
                         owner={objectDetailsData[attribute.name].owner}
+                        isFromProfile={objectDetailsData[attribute.name].is_from_profile}
                         isProtected={objectDetailsData[attribute.name].is_protected}
                         isInherited={objectDetailsData[attribute.name].is_inherited}
                         header={
