@@ -39,7 +39,7 @@ export const OpsTextarea = (props: OpsInputProps) => {
 
       <TextareaWithEditor
         onChange={onChange}
-        defaultValue={value ?? ""}
+        value={value ?? ""}
         placeholder={placeholder}
         className={classNames(className ?? "")}
         error={error}
