@@ -3,6 +3,7 @@ import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
+import { Select } from "../../components/inputs/select";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
@@ -48,15 +49,19 @@ export default function ObjectItemEditComponent(props: Props) {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
+  const [profile, setProfile] = useState("");
 
   const schema = schemaList.find((s) => s.kind === objectname);
   const columns = getSchemaObjectColumns(schema);
+
+  const profileName = `Profile${objectname}`;
 
   const queryString = schema
     ? getObjectDetailsPaginated({
         ...schema,
         columns,
         objectid,
+        profile: profileName,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema
@@ -82,6 +87,23 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const objectDetailsData = data[schema.kind]?.edges[0]?.node;
 
+  const profiles = data && data[profileName]?.edges?.map((edge) => edge.node);
+
+  const profilesOptions =
+    profiles &&
+    profiles.map((p) => ({
+      id: p.id,
+      name: p.display_label,
+      values: p,
+    }));
+
+  const objectProfiles = objectDetailsData?.profiles?.edges?.map((edge) => edge?.node) ?? [];
+
+  const currentProfile =
+    objectProfiles && objectProfiles[0]?.id
+      ? profilesOptions?.find((p) => p.id === objectProfiles[0].id)?.values
+      : profilesOptions?.find((p) => p.id === profile)?.values;
+
   const formStructure =
     formStructureFromProps ??
     getFormStructureForCreateEdit({
@@ -91,12 +113,17 @@ export default function ObjectItemEditComponent(props: Props) {
       row: objectDetailsData,
       user,
       isUpdate: true,
+      profile: currentProfile,
     });
+
+  const handleProfileChange = (newProfile: string) => {
+    setProfile(newProfile);
+  };
 
   async function onSubmit(data: any) {
     const updatedObject = getMutationDetailsFromFormData(schema, data, "update", objectDetailsData);
 
-    if (Object.keys(updatedObject).length) {
+    if (Object.keys(updatedObject).length || objectProfiles[0]?.id !== profile) {
       setIsLoading(true);
 
       try {
@@ -105,6 +132,7 @@ export default function ObjectItemEditComponent(props: Props) {
           data: stringifyWithoutQuotes({
             id: objectid,
             ...updatedObject,
+            ...(profile ? { profiles: [{ id: profile }] } : {}),
           }),
         });
 
@@ -135,6 +163,19 @@ export default function ObjectItemEditComponent(props: Props) {
 
   return (
     <div className="bg-custom-white flex-1 overflow-auto flex flex-col" data-cy="object-item-edit">
+      <div className="p-4 pt-3 bg-gray-200">
+        <div className="flex items-center">
+          <label className="block text-sm font-medium leading-6 text-gray-900">
+            Select a Profile <span className="text-xs italic text-gray-500 ml-1">optionnal</span>
+          </label>
+        </div>
+        <Select
+          options={profilesOptions}
+          value={profile || currentProfile?.id}
+          onChange={handleProfileChange}
+        />
+      </div>
+
       {formStructure && (
         <EditFormHookComponent
           onCancel={closeDrawer}
