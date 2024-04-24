@@ -31,7 +31,7 @@ const getIsDisabled = ({ owner, user, isProtected, isReadOnly }: any) => {
 const validate = (value: any, attribute: any = {}, optional?: boolean) => {
   const { default_value: defaultValue } = attribute;
 
-  // If optionnal, no validator is needed (we try to validate if the value is defined or not)
+  // If optional, no validator is needed (we try to validate if the value is defined or not)
   if (optional) {
     return true;
   }

@@ -173,7 +173,7 @@ export default function ObjectItemCreate(props: iProps) {
         <div className="p-4 pt-3 bg-gray-200">
           <div className="flex items-center">
             <label className="block text-sm font-medium leading-6 text-gray-900">
-              Select a Profile <span className="text-xs italic text-gray-500 ml-1">optionnal</span>
+              Select a Profile <span className="text-xs italic text-gray-500 ml-1">optional</span>
             </label>
           </div>
           <Select options={profilesOptions} value={profile} onChange={handleProfileChange} />
