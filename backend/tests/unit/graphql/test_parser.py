@@ -52,18 +52,18 @@ async def test_simple_directive(db: InfrahubDatabase, default_branch: Branch, cr
     assert {
         "node": {
             "id": obj1.id,
+            "level": {"__typename": "NumberAttribute", "value": 4, "is_default": False, "is_from_profile": False},
+            "label": {"value": "Low", "is_default": False, "is_from_profile": False},
             "__typename": "TestCriticality",
-            "name": {"value": "low"},
-            "label": {"value": "Low"},
-            "level": {"value": 4, "__typename": "NumberAttribute"},
-            "color": {"value": "#444444"},
-            "mylist": {"value": ["one", "two"]},
-            "is_true": {"value": True},
-            "is_false": {"value": False},
-            "json_no_default": {"value": None},
-            "json_default": {"value": {"value": "bob"}},
-            "description": {"value": None},
-            "status": {"value": None},
+            "name": {"value": "low", "is_default": False, "is_from_profile": False},
+            "color": {"value": "#444444", "is_default": True, "is_from_profile": False},
+            "mylist": {"value": ["one", "two"], "is_default": True, "is_from_profile": False},
+            "is_true": {"value": True, "is_default": True, "is_from_profile": False},
+            "is_false": {"value": False, "is_default": True, "is_from_profile": False},
+            "json_no_default": {"value": None, "is_default": True, "is_from_profile": False},
+            "json_default": {"value": {"value": "bob"}, "is_default": True, "is_from_profile": False},
+            "description": {"value": None, "is_default": True, "is_from_profile": False},
+            "status": {"value": None, "is_default": True, "is_from_profile": False},
         }
     } in result.data["TestCriticality"]["edges"]
 
@@ -109,15 +109,15 @@ async def test_directive_exclude(db: InfrahubDatabase, default_branch: Branch, c
         "node": {
             "id": obj1.id,
             "__typename": "TestCriticality",
-            "name": {"value": "low"},
-            "label": {"value": "Low"},
-            "level": {"value": 4},
-            "is_true": {"value": True},
-            "is_false": {"value": False},
-            "json_no_default": {"value": None},
-            "json_default": {"value": {"value": "bob"}},
-            "description": {"value": None},
-            "status": {"value": None},
+            "name": {"value": "low", "is_default": False, "is_from_profile": False},
+            "label": {"value": "Low", "is_default": False, "is_from_profile": False},
+            "level": {"value": 4, "is_default": False, "is_from_profile": False},
+            "is_true": {"value": True, "is_default": True, "is_from_profile": False},
+            "is_false": {"value": False, "is_default": True, "is_from_profile": False},
+            "json_no_default": {"value": None, "is_default": True, "is_from_profile": False},
+            "json_default": {"value": {"value": "bob"}, "is_default": True, "is_from_profile": False},
+            "description": {"value": None, "is_default": True, "is_from_profile": False},
+            "status": {"value": None, "is_default": True, "is_from_profile": False},
         }
     } in result.data["TestCriticality"]["edges"]
 
@@ -162,8 +162,17 @@ async def test_directive_merge_fields(
     assert result.data["TestPerson"]["edges"][0] == {
         "node": {
             "id": p1.id,
-            "firstname": {"source": {"id": first_account.id}, "value": "John"},
+            "firstname": {
+                "source": {"id": first_account.id},
+                "value": "John",
+                "is_default": False,
+                "is_from_profile": False,
+            },
             "__typename": "TestPerson",
-            "lastname": {"value": "Doe"},
+            "lastname": {
+                "value": "Doe",
+                "is_default": False,
+                "is_from_profile": False,
+            },
         }
     }
