@@ -30,14 +30,6 @@ export default function MetaDetailsTooltip({
 }: MetaDetailsTooltipProps) {
   const items = [
     {
-      name: "Updated at",
-      value: updatedAt ? formatFullDate(updatedAt) : "-",
-    },
-    {
-      name: "Update time",
-      value: updatedAt ? formatRelativeTimeFromNow(updatedAt) : "-",
-    },
-    {
       name: "Source",
       value: source ? (
         isFromProfile ? (
@@ -55,6 +47,14 @@ export default function MetaDetailsTooltip({
       ) : (
         "-"
       ),
+    },
+    {
+      name: "Updated at",
+      value: updatedAt ? formatFullDate(updatedAt) : "-",
+    },
+    {
+      name: "Update time",
+      value: updatedAt ? formatRelativeTimeFromNow(updatedAt) : "-",
     },
     {
       name: "Owner",
