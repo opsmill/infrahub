@@ -7,12 +7,14 @@ import { formatFullDate, formatRelativeTimeFromNow } from "../../utils/date";
 import { Link } from "../utils/link";
 import { constructPath } from "../../utils/fetch";
 import { AnyAttribute } from "../../generated/graphql";
+import { Badge } from "../ui/badge";
 
 interface MetaDetailsTooltipProps {
   header?: React.ReactNode;
   updatedAt: AnyAttribute["updated_at"];
   source: AnyAttribute["source"] & { __typename: string };
   owner: AnyAttribute["owner"] & { __typename: string };
+  isFromProfile?: AnyAttribute["is_from_profile"];
   isProtected: AnyAttribute["is_protected"];
   isInherited: AnyAttribute["is_inherited"];
 }
@@ -22,6 +24,7 @@ export default function MetaDetailsTooltip({
   updatedAt,
   source,
   owner,
+  isFromProfile,
   isProtected,
   isInherited,
 }: MetaDetailsTooltipProps) {
@@ -37,9 +40,18 @@ export default function MetaDetailsTooltip({
     {
       name: "Source",
       value: source ? (
-        <Link to={constructPath(`/objects/${source.__typename}/${source.id}`)}>
-          {source.display_label}
-        </Link>
+        isFromProfile ? (
+          <Link to={constructPath(`/objects/CoreProfile/${source.id}`)}>
+            <Badge variant="green" className="font-normal hover:underline">
+              <Icon icon="mdi:shape-plus-outline" className="mr-1" />
+              {source.display_label}
+            </Badge>
+          </Link>
+        ) : (
+          <Link to={constructPath(`/objects/${source.__typename}/${source.id}`)}>
+            {source.display_label}
+          </Link>
+        )
       ) : (
         "-"
       ),
