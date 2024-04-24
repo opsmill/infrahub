@@ -182,6 +182,7 @@ export const accountDetailsMocksQuery = `query CoreAccount {
           name {
               value
               updated_at
+              is_from_profile
               is_protected
               is_visible
               source {
@@ -198,6 +199,7 @@ export const accountDetailsMocksQuery = `query CoreAccount {
           label {
               value
               updated_at
+              is_from_profile
               is_protected
               is_visible
               source {
@@ -214,6 +216,7 @@ export const accountDetailsMocksQuery = `query CoreAccount {
           description {
               value
               updated_at
+              is_from_profile
               is_protected
               is_visible
               source {
@@ -230,6 +233,7 @@ export const accountDetailsMocksQuery = `query CoreAccount {
           type {
               value
               updated_at
+              is_from_profile
               is_protected
               is_visible
               source {
@@ -246,6 +250,7 @@ export const accountDetailsMocksQuery = `query CoreAccount {
           role {
               value
               updated_at
+              is_from_profile
               is_protected
               is_visible
               source {
