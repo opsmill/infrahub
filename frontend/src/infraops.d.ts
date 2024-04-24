@@ -450,6 +450,11 @@ export interface components {
        */
       access_token: string;
     };
+    /**
+     * AllowOverrideType
+     * @enum {string}
+     */
+    AllowOverrideType: "none" | "any";
     /** AnalyticsSettings */
     AnalyticsSettings: {
       /**
@@ -510,7 +515,7 @@ export interface components {
       choices?: components["schemas"]["DropdownChoice"][] | null;
       /**
        * Regex
-       * @description Regex uses to limit limit the characters allowed in for the attributes.
+       * @description Regex uses to limit the characters allowed in for the attributes.
        */
       regex?: string | null;
       /**
@@ -569,6 +574,11 @@ export interface components {
        * @default false
        */
       inherited?: boolean;
+      /**
+       * @description Type of allowed override for the attribute.
+       * @default any
+       */
+      allow_override?: components["schemas"]["AllowOverrideType"];
     };
     /** AttributeSchema */
     "AttributeSchema-Output": {
@@ -604,7 +614,7 @@ export interface components {
       choices?: components["schemas"]["DropdownChoice"][] | null;
       /**
        * Regex
-       * @description Regex uses to limit limit the characters allowed in for the attributes.
+       * @description Regex uses to limit the characters allowed in for the attributes.
        */
       regex?: string | null;
       /**
@@ -663,6 +673,11 @@ export interface components {
        * @default false
        */
       inherited?: boolean;
+      /**
+       * @description Type of allowed override for the attribute.
+       * @default any
+       */
+      allow_override?: components["schemas"]["AllowOverrideType"];
     };
     /** Body_upload_file_api_storage_upload_file_post */
     Body_upload_file_api_storage_upload_file_post: {
@@ -1442,6 +1457,17 @@ export interface components {
       filters?: components["schemas"]["FilterSchema"][];
       /** @description Default is no-action. If cascade, related node(s) are deleted when this node is deleted. */
       on_delete?: components["schemas"]["RelationshipDeleteBehavior"] | null;
+      /**
+       * @description Type of allowed override for the relationship.
+       * @default any
+       */
+      allow_override?: components["schemas"]["AllowOverrideType"];
+      /**
+       * Read Only
+       * @description Set the relationship as read-only, users won't be able to change its value.
+       * @default false
+       */
+      read_only?: boolean;
     };
     /** RelationshipSchema */
     "RelationshipSchema-Output": {
@@ -1538,6 +1564,17 @@ export interface components {
       filters?: components["schemas"]["FilterSchema"][];
       /** @description Default is no-action. If cascade, related node(s) are deleted when this node is deleted. */
       on_delete?: components["schemas"]["RelationshipDeleteBehavior"] | null;
+      /**
+       * @description Type of allowed override for the relationship.
+       * @default any
+       */
+      allow_override?: components["schemas"]["AllowOverrideType"];
+      /**
+       * Read Only
+       * @description Set the relationship as read-only, users won't be able to change its value.
+       * @default false
+       */
+      read_only?: boolean;
     };
     /** RemoteLoggingSettings */
     RemoteLoggingSettings: {
