@@ -145,7 +145,8 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
             include_owner=True,
             include_source=True,
         )
-        namespace_id = await validate_namespace(db, data, existing_namespace_id=address.ip_namespace.peer_id)
+        namespace = await address.ip_namespace.get_peer(db)
+        namespace_id = await validate_namespace(db, data, existing_namespace_id=namespace.id)
         try:
             async with db.start_transaction() as dbt:
                 address = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=address)
@@ -248,7 +249,6 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
     ) -> Tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
-        namespace_id = await validate_namespace(db, data)
 
         prefix = node or await NodeManager.get_one_by_id_or_default_filter(
             db=db,
@@ -259,7 +259,8 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             include_owner=True,
             include_source=True,
         )
-        namespace_id = await validate_namespace(db, data, existing_namespace_id=prefix.ip_namespace.peer_id)
+        namespace = await prefix.ip_namespace.get_peer(db)
+        namespace_id = await validate_namespace(db, data, existing_namespace_id=namespace.id)
         try:
             async with db.start_transaction() as dbt:
                 prefix = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=prefix)
