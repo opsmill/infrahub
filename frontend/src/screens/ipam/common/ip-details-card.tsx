@@ -29,7 +29,7 @@ export function IpDetailsCard({
     }),
     ...(schema.relationships ?? []).map((schemaAttribute) => {
       const relationshipData = data[schemaAttribute.name]?.node;
-      console.log(relationshipData);
+
       return {
         name: schemaAttribute.label || schemaAttribute.name,
         value: relationshipData && (

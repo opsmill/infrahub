@@ -12,7 +12,13 @@ import { usePermission } from "../../hooks/usePermission";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
-import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC, IPAM_QSP, IPAM_TABS } from "./constants";
+import {
+  IP_ADDRESS_GENERIC,
+  IP_PREFIX_GENERIC,
+  IPAM_QSP,
+  IPAM_ROUTE,
+  IPAM_TABS,
+} from "./constants";
 import IpamIPAddresses from "./ip-addresses/ipam-ip-address";
 import IpamIPPrefixes from "./prefixes/ipam-prefixes";
 
@@ -44,11 +50,11 @@ export default function IpamRouter() {
       name: IPAM_TABS.SUMMARY,
       onClick: () => {
         if (prefix) {
-          navigate(`/ipam/prefixes/${encodeURIComponent(prefix)}`);
+          navigate(`${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(prefix)}`);
           return;
         }
 
-        navigate("/ipam/prefixes");
+        navigate(IPAM_ROUTE.PREFIXES);
         return;
       },
     },
@@ -58,12 +64,14 @@ export default function IpamRouter() {
       onClick: () => {
         if (prefix) {
           navigate(
-            `/ipam/prefixes/${encodeURIComponent(prefix)}?${IPAM_QSP}=${IPAM_TABS.PREFIX_DETAILS}`
+            `${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(prefix)}?${IPAM_QSP}=${
+              IPAM_TABS.PREFIX_DETAILS
+            }`
           );
           return;
         }
 
-        navigate(`/ipam/prefixes?${IPAM_QSP}=${IPAM_TABS.PREFIX_DETAILS}`);
+        navigate(`${IPAM_ROUTE.PREFIXES}?${IPAM_QSP}=${IPAM_TABS.PREFIX_DETAILS}`);
         return;
       },
     },
@@ -73,12 +81,14 @@ export default function IpamRouter() {
       onClick: () => {
         if (prefix) {
           navigate(
-            `/ipam/prefixes/${encodeURIComponent(prefix)}?${IPAM_QSP}=${IPAM_TABS.IP_DETAILS}`
+            `${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(prefix)}?${IPAM_QSP}=${
+              IPAM_TABS.IP_DETAILS
+            }`
           );
           return;
         }
 
-        navigate(`/ipam/ip-addresses?${IPAM_QSP}=${IPAM_TABS.IP_DETAILS}`);
+        navigate(`${IPAM_ROUTE.ADDRESSES}?${IPAM_QSP}=${IPAM_TABS.IP_DETAILS}`);
         return;
       },
     },
@@ -89,9 +99,7 @@ export default function IpamRouter() {
       case IPAM_TABS.IP_DETAILS: {
         return <IpamIPAddresses ref={refetchRef} />;
       }
-      case IPAM_TABS.PREFIX_DETAILS: {
-        return <IpamIPPrefixes ref={refetchRef} />;
-      }
+      case IPAM_TABS.PREFIX_DETAILS:
       default: {
         return <IpamIPPrefixes ref={refetchRef} />;
       }

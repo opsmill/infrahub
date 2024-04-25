@@ -22,7 +22,7 @@ import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
-import { IP_PREFIX_GENERIC } from "../constants";
+import { IP_PREFIX_GENERIC, IPAM_ROUTE } from "../constants";
 
 const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
   const { prefix } = useParams();
@@ -31,17 +31,6 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
   const [relatedRowToDelete, setRelatedRowToDelete] = useState();
   const [isLoading, setIsLoading] = useState(false);
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
-
-  const constructLink = (data) => {
-    switch (data.__typename) {
-      case IP_PREFIX_GENERIC: {
-        return constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(data?.prefix?.value)}`);
-      }
-      default: {
-        return constructPathForIpam(`/ipam/ip_address/${encodeURIComponent(data?.prefix?.value)}`);
-      }
-    }
-  };
 
   const { loading, error, data, refetch } = useQuery(GET_PREFIXES, {
     variables: { prefix: prefix },
@@ -83,7 +72,9 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
         ip_namespace: edge?.node?.ip_namespace?.node?.display_label,
         parent: edge?.node?.parent?.node?.display_label,
       },
-      link: constructLink(edge?.node),
+      link: constructPathForIpam(
+        `${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(edge?.node?.prefix?.value)}`
+      ),
     }));
 
   const handleUpdate = (data) => {

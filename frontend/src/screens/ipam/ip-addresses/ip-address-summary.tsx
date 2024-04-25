@@ -5,7 +5,7 @@ import { GET_IP_ADDRESS_KIND } from "../../../graphql/queries/ipam/ip-address";
 import useQuery from "../../../hooks/useQuery";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
-import { IP_ADDRESS_GENERIC } from "../constants";
+import { IP_ADDRESS_GENERIC, IPAM_ROUTE } from "../constants";
 import { useAtomValue } from "jotai/index";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { getObjectAttributes, getObjectRelationships } from "../../../utils/getSchemaObjectColumns";
@@ -16,19 +16,19 @@ import { constructPathForIpam } from "../common/utils";
 import { IpamSummarySkeleton } from "../prefixes/ipam-summary-skeleton";
 
 export default function IpAddressSummary() {
-  const { prefix, ipaddress } = useParams();
+  const { prefix, ip_address } = useParams();
 
   const { loading, data } = useQuery(GET_IP_ADDRESS_KIND, {
     variables: {
-      ip: ipaddress,
+      ip: ip_address,
     },
   });
 
   if (loading || !data) return <IpamSummarySkeleton />;
 
   const parentLink = prefix
-    ? constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(prefix)}`)
-    : constructPathForIpam("/ipam/ip-addresses");
+    ? constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(prefix)}`)
+    : constructPathForIpam(IPAM_ROUTE.ADDRESSES);
 
   const ipAddressKind = data[IP_ADDRESS_GENERIC].edges[0].node.__typename;
 
@@ -37,7 +37,7 @@ export default function IpAddressSummary() {
       <div className="flex items-center mb-2">
         <Link to={parentLink}>All IP Addresses</Link>
         <Icon icon={"mdi:chevron-right"} />
-        <span>{ipaddress}</span>
+        <span>{ip_address}</span>
       </div>
 
       {loading && <LoadingScreen hideText />}
@@ -48,7 +48,7 @@ export default function IpAddressSummary() {
 }
 
 const IpAddressSummaryContent = ({ ipAddressKind }: { ipAddressKind: string }) => {
-  const { ipaddress } = useParams();
+  const { ip_address } = useParams();
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
 
@@ -62,7 +62,7 @@ const IpAddressSummaryContent = ({ ipAddressKind }: { ipAddressKind: string }) =
       kind: ipAddressKind,
       attributes,
       relationships,
-      filters: `address__value: "${ipaddress}"`,
+      filters: `address__value: "${ip_address}"`,
     })
   );
 
