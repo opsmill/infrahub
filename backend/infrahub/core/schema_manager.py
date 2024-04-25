@@ -559,7 +559,7 @@ class SchemaBranch:
     ) -> SchemaAttributePath:
         error_header = f"{node_schema.kind}"
         error_header += f".{schema_attribute_name}" if schema_attribute_name else ""
-        allowed_leaf_properties = ["value"]
+        allowed_leaf_properties = ["value", "version", "binary_address"]
         try:
             schema_attribute_path = node_schema.parse_attribute_path(path, schema_map_override=schema_map_override)
         except AttributePathParsingError as exc:

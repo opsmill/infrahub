@@ -8,7 +8,6 @@ nodes:
     include_in_menu: false
     inherit_from:
       - "BuiltinIPPrefix"
-    menu_placement: "IpamNamespace"
     description: "IPv4 or IPv6 network"
     icon: "mdi:ip-network"
     label: "IP Prefix"
@@ -17,7 +16,6 @@ nodes:
     include_in_menu: false
     inherit_from:
       - "BuiltinIPAddress"
-    menu_placement: "IpamNamespace"
     description: "IP Address"
     icon: "mdi:ip-outline"
     label: "IP Address"
