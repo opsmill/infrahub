@@ -8,9 +8,9 @@ from typing_extensions import Self
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.query.ipam import get_container, get_ip_addresses, get_ip_prefix_for_ip_address, get_subnets
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFoundError, ValidationError
@@ -109,13 +109,16 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         ip_address = ipaddress.ip_interface(data["address"]["value"])
         namespace_id = await validate_namespace(db, data)
 
-        ip_network = await get_ip_prefix_for_ip_address(
-            db=db, branch=branch, at=at, ip_address=ip_address, namespace=namespace_id
-        )
-        if ip_network:
-            data["ip_prefix"] = {"id": ip_network.id}
+        async with db.start_transaction() as dbt:
+            address = await cls.mutate_create_object(data=data, db=dbt, branch=branch, at=at)
+            reconciler = IpamReconciler(db=dbt, branch=branch)
+            reconciled_address = await reconciler.reconcile(
+                ip_value=ip_address, namespace=namespace_id, node_uuid=address.get_id()
+            )
 
-        return await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at, database=db)
+        result = await cls.mutate_create_to_graphql(info=info, db=db, obj=reconciled_address)
+
+        return reconciled_address, result
 
     @classmethod
     async def mutate_update(
@@ -129,6 +132,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         node: Optional[Node] = None,
     ) -> Tuple[Node, Self]:
         await validate_namespace(database, data)
+
         prefix, result = await super().mutate_update(
             root=root, info=info, data=data, branch=branch, at=at, database=database, node=node
         )
@@ -203,50 +207,16 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         ip_network = ipaddress.ip_network(data["prefix"]["value"])
         namespace_id = await validate_namespace(db, data)
 
-        # Set supernet if found
-        super_network = await get_container(db=db, branch=branch, at=at, ip_prefix=ip_network, namespace=namespace_id)
-        if super_network:
-            data["parent"] = {"id": super_network.id}
-            data["is_top_level"] = False
-        else:
-            data["is_top_level"] = True
-
-        # Set subnets if found
-        sub_networks = await get_subnets(db=db, branch=branch, at=at, ip_prefix=ip_network, namespace=namespace_id)
-        if sub_networks:
-            data["children"] = [s.id for s in sub_networks]
-
         async with db.start_transaction() as dbt:
-            prefix, result = await super().mutate_create(
-                root=root, info=info, data=data, branch=branch, at=at, database=dbt
+            prefix = await cls.mutate_create_object(data=data, db=dbt, branch=branch, at=at)
+            reconciler = IpamReconciler(db=dbt, branch=branch)
+            reconciled_prefix = await reconciler.reconcile(
+                ip_value=ip_network, namespace=namespace_id, node_uuid=prefix.get_id()
             )
 
-            # Mark subnets as not top level if they were
-            if sub_networks:
-                nodes = await NodeManager.get_many(dbt, [s.id for s in sub_networks], branch=branch, at=at)
-                for node in nodes.values():
-                    await node.parent.update(prefix, dbt)
-                    if node.is_top_level.value:
-                        node.is_top_level.value = False
-                    await node.save(db=dbt)
+        result = await cls.mutate_create_to_graphql(info=info, db=db, obj=reconciled_prefix)
 
-            # Fix ip_prefix for addresses if needed
-            addresses = await get_ip_addresses(
-                db=dbt, branch=branch, at=at, ip_prefix=ip_network, namespace=namespace_id
-            )
-            if addresses:
-                nodes = await NodeManager.get_many(dbt, [a.id for a in addresses], branch=branch, at=at)
-                for node in nodes.values():
-                    node_prefix = await node.ip_prefix.get_peer(dbt)
-                    if (
-                        not node_prefix
-                        or ip_network.prefixlen > ipaddress.ip_network(node_prefix.prefix.value).prefixlen
-                    ):
-                        # Change address' prefix only if none set or new one is more specific
-                        await node.ip_prefix.update(prefix, dbt)
-                        await node.ip_prefix.save(db=dbt)
-
-        return prefix, result
+        return reconciled_prefix, result
 
     @classmethod
     async def mutate_update(

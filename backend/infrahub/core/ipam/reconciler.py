@@ -8,6 +8,7 @@ from infrahub.core.node import Node
 from infrahub.core.query.ipam import IPPrefixReconcileQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import NodeNotFoundError
 
 if TYPE_CHECKING:
     from infrahub.core.relationship.model import RelationshipManager
@@ -94,7 +95,7 @@ class IpamReconciler:
         node_uuid: Optional[str] = None,
         is_delete: bool = False,
         at: Optional[Timestamp] = None,
-    ) -> None:
+    ) -> Node:
         self.at = Timestamp(at)
 
         query = await IPPrefixReconcileQuery.init(
@@ -104,7 +105,10 @@ class IpamReconciler:
 
         ip_node_uuid = query.get_ip_node_uuid()
         if not ip_node_uuid:
-            return
+            node_type = InfrahubKind.IPPREFIX
+            if isinstance(ip_value, (ipaddress.IPv6Interface, ipaddress.IPv4Interface)):
+                node_type = InfrahubKind.IPADDRESS
+            raise NodeNotFoundError(node_type=node_type, identifier=str(ip_value))
         current_parent_uuid = query.get_current_parent_uuid()
         calculated_parent_uuid = query.get_calculated_parent_uuid()
         current_children_uuids = set(query.get_current_children_uuids())
@@ -145,6 +149,8 @@ class IpamReconciler:
         if is_delete:
             await reconcile_nodes.node.delete(db=self.db, at=self.at)
 
+        return reconcile_nodes.node
+
     async def _update_node_parent(self, node: Node, new_parent_uuid: Optional[str]) -> None:
         node_kinds = {node.get_kind()} | set(node.get_schema().inherit_from)
         is_prefix = False
@@ -157,8 +163,9 @@ class IpamReconciler:
             return
 
         await rel_manager.update(db=self.db, data=new_parent_uuid)
-        if is_prefix and new_parent_uuid is None and node.is_top_level.value is False:  # type: ignore[attr-defined]
-            node.is_top_level.value = True  # type: ignore[attr-defined]
+        if not is_prefix:
+            return
+        node.is_top_level.value = new_parent_uuid is None  # type: ignore[attr-defined]
 
     async def update_node(self, reconcile_nodes: IPNodesToReconcile) -> set[str]:
         await self._update_node_parent(

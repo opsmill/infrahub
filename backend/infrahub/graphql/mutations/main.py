@@ -118,7 +118,6 @@ class InfrahubMutationMixin:
         return mutation
 
     @classmethod
-    @retry_db_transaction(name="object_create")
     async def mutate_create(
         cls,
         root: dict,
@@ -130,9 +129,21 @@ class InfrahubMutationMixin:
     ) -> Tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
+        obj = await cls.mutate_create_object(data=data, db=db, branch=branch, at=at)
+        result = await cls.mutate_create_to_graphql(info=info, db=db, obj=obj)
+        return obj, result
+
+    @classmethod
+    @retry_db_transaction(name="object_create")
+    async def mutate_create_object(
+        cls,
+        data: InputObjectType,
+        db: InfrahubDatabase,
+        branch: Branch,
+        at: str,
+    ) -> Node:
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
-
         node_class = Node
         if cls._meta.schema.kind in registry.node:
             node_class = registry.node[cls._meta.schema.kind]
@@ -146,18 +157,20 @@ class InfrahubMutationMixin:
             if db.is_transaction:
                 await obj.save(db=db)
             else:
-                async with db.start_transaction() as db:
-                    await obj.save(db=db)
+                async with db.start_transaction() as dbt:
+                    await obj.save(db=dbt)
 
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
+        return obj
 
+    @classmethod
+    async def mutate_create_to_graphql(cls, info: GraphQLResolveInfo, db: InfrahubDatabase, obj: Node) -> Self:
         fields = await extract_fields(info.field_nodes[0].selection_set)
         result = {"ok": True}
         if "object" in fields:
-            result["object"] = await obj.to_graphql(db=context.db, fields=fields.get("object", {}))
-
-        return obj, cls(**result)
+            result["object"] = await obj.to_graphql(db=db, fields=fields.get("object", {}))
+        return cls(**result)
 
     @classmethod
     @retry_db_transaction(name="object_update")

@@ -570,15 +570,14 @@ class IPPrefixReconcileQuery(Query):
         // Identify the correct parent, if any, for the prefix node
         CALL {
             WITH ip_namespace
-            MATCH ns_path = (ip_namespace)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(maybe_new_parent:%(ip_prefix_kind)s)
+            OPTIONAL MATCH parent_path = (ip_namespace)-[pr1:IS_RELATED]-(ns_rel:Relationship)-[pr2:IS_RELATED]-(maybe_new_parent:%(ip_prefix_kind)s)-[har:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})-[hvr:HAS_VALUE]->(av:%(ip_prefix_attribute_kind)s)
             WHERE ns_rel.name = "ip_namespace__ip_prefix"
-            AND all(r IN relationships(ns_path) WHERE (%(branch_filter)s) AND r.status = "active")
-
-            MATCH attribute_path = (maybe_new_parent)-[har:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})-[hvr:HAS_VALUE]->(av:%(ip_prefix_attribute_kind)s)
-            WHERE av.binary_address IN $possible_prefixes
+            AND all(r IN relationships(parent_path) WHERE (%(branch_filter)s))
+            AND pr1.status = "active"
+            AND pr2.status = "active"
+            AND av.binary_address IN $possible_prefixes
             AND av.prefixlen < $prefixlen
             AND av.version = $ip_version
-            AND all(r IN relationships(attribute_path) WHERE (%(branch_filter)s))
             WITH
                 maybe_new_parent,
                 har,
