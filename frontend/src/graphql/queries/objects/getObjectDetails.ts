@@ -8,10 +8,9 @@ query {{kind}} {
       node {
         id
         display_label
-
-        profiles{
-          edges{
-            node{
+        profiles {
+          edges {
+            node {
               display_label
               id
             }
