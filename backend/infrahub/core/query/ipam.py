@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterable, List, Optional, Union
 
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.ipam.constants import AllIPTypes, IPAddressType, IPNetworkType
 from infrahub.core.registry import registry
 from infrahub.core.utils import convert_ip_to_binary_str
 
@@ -17,11 +18,6 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-
-
-IPNetworkType = Union[ipaddress.IPv6Network, ipaddress.IPv4Network]
-IPAddressType = Union[ipaddress.IPv6Interface, ipaddress.IPv4Interface]
-AllIPTypes = Union[IPNetworkType, IPAddressType]
 
 
 @dataclass
@@ -570,15 +566,14 @@ class IPPrefixReconcileQuery(Query):
         // Identify the correct parent, if any, for the prefix node
         CALL {
             WITH ip_namespace
-            MATCH ns_path = (ip_namespace)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(maybe_new_parent:%(ip_prefix_kind)s)
+            OPTIONAL MATCH parent_path = (ip_namespace)-[pr1:IS_RELATED]-(ns_rel:Relationship)-[pr2:IS_RELATED]-(maybe_new_parent:%(ip_prefix_kind)s)-[har:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})-[hvr:HAS_VALUE]->(av:%(ip_prefix_attribute_kind)s)
             WHERE ns_rel.name = "ip_namespace__ip_prefix"
-            AND all(r IN relationships(ns_path) WHERE (%(branch_filter)s) AND r.status = "active")
-
-            MATCH attribute_path = (maybe_new_parent)-[har:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})-[hvr:HAS_VALUE]->(av:%(ip_prefix_attribute_kind)s)
-            WHERE av.binary_address IN $possible_prefixes
+            AND all(r IN relationships(parent_path) WHERE (%(branch_filter)s))
+            AND pr1.status = "active"
+            AND pr2.status = "active"
+            AND av.binary_address IN $possible_prefixes
             AND av.prefixlen < $prefixlen
             AND av.version = $ip_version
-            AND all(r IN relationships(attribute_path) WHERE (%(branch_filter)s))
             WITH
                 maybe_new_parent,
                 har,
@@ -604,9 +599,10 @@ class IPPrefixReconcileQuery(Query):
         // Identify the correct children, if any, for the prefix node
         CALL {
             // Get ALL possible children for the prefix node
-            WITH ip_namespace
+            WITH ip_namespace, ip_node
             OPTIONAL MATCH child_path = (ip_namespace)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(maybe_new_child)-[har:HAS_ATTRIBUTE]->(a:Attribute)-[hvr:HAS_VALUE]->(av:AttributeValue)
-            WHERE ns_rel.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
+            WHERE (ip_node IS NULL OR maybe_new_child.uuid <> ip_node.uuid)
+            AND ns_rel.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
             AND a.name in ["prefix", "address"]
             AND any(label IN LABELS(maybe_new_child) WHERE label IN [$ip_prefix_kind, $ip_address_kind])
             AND any(label IN LABELS(av) WHERE label IN [$ip_prefix_attribute_kind, $ip_address_attribute_kind])
@@ -704,5 +700,5 @@ class IPPrefixReconcileQuery(Query):
     def get_current_children_uuids(self) -> list[str]:
         return self._get_uuids_from_query_list("current_children")
 
-    def get_calculated_children_uuids(self) -> Optional[str]:
+    def get_calculated_children_uuids(self) -> list[str]:
         return self._get_uuids_from_query_list("new_children")

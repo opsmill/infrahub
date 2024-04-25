@@ -738,7 +738,7 @@ class RelationshipManager:
 
         return self._relationships.as_list()
 
-    async def update(
+    async def update(  # pylint: disable=too-many-branches
         self, data: Union[List[Union[str, Node]], Dict[str, Any], str, Node, None], db: InfrahubDatabase
     ) -> bool:
         """Replace and Update the list of relationships with this one."""
@@ -762,10 +762,11 @@ class RelationshipManager:
                     self._relationships.append(previous_relationships[str(item_id)])
                     continue
 
-            if isinstance(item, type(None)) and previous_relationships:
-                for rel in previous_relationships.values():
-                    await rel.delete(db=db)
-                changed = True
+            if isinstance(item, type(None)):
+                if previous_relationships:
+                    for rel in previous_relationships.values():
+                        await rel.delete(db=db)
+                    changed = True
                 continue
 
             if isinstance(item, str) and item in previous_relationships:
