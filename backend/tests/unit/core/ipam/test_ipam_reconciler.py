@@ -200,3 +200,54 @@ async def test_ip_prefix_reconciler_delete_address(db: InfrahubDatabase, default
     assert {rel.peer_id for rel in updated_prefix_child_rels} == set(expected_child_prefix_ids)
     updated_address_child_rels = await updated_parent.ip_addresses.get_relationships(db=db)
     assert len(updated_address_child_rels) == 0
+
+
+async def test_ipprefix_reconciler_prefix_value_update(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+    await create_ipam_namespace(db=db)
+    default_ipnamespace = await get_default_ipnamespace(db=db)
+    registry.default_ipnamespace = default_ipnamespace.id
+    namespace = ip_dataset_01["ns1"]
+    net_146 = ip_dataset_01["net146"]
+    net_146.prefix.value = "10.10.0.0/18"
+    await net_146.save(db=db)
+    ip_network = ipaddress.ip_network(net_146.prefix.value)
+
+    reconciler = IpamReconciler(db=db, branch=default_branch)
+    await reconciler.reconcile(ip_value=ip_network, namespace=namespace)
+
+    # check new prefix parent
+    new_parent = await NodeManager.get_one(db=db, branch=default_branch, id=ip_dataset_01["net140"].id)
+    assert new_parent.is_top_level.value is True
+    new_parent_parent_rels = await new_parent.parent.get_relationships(db=db)
+    assert len(new_parent_parent_rels) == 0
+    new_parent_child_rels = await new_parent.children.get_relationships(db=db)
+    assert len(new_parent_child_rels) == 1
+    assert new_parent_child_rels[0].peer_id == net_146.id
+    # check updated prefix parent relationship
+    updated_prefix = await NodeManager.get_one(db=db, branch=default_branch, id=net_146.id)
+    assert updated_prefix.is_top_level.value is False
+    updated_prefix_parent_rels = await updated_prefix.parent.get_relationships(db=db)
+    assert len(updated_prefix_parent_rels) == 1
+    assert updated_prefix_parent_rels[0].peer_id == ip_dataset_01["net140"].id
+    # check updated prefix child relationships
+    expected_child_prefix_ids = [ip_dataset_01["net142"].id, ip_dataset_01["net144"].id, ip_dataset_01["net145"].id]
+    expected_child_address_ids = [ip_dataset_01["address10"].id]
+    updated_prefix_child_rels = await updated_prefix.children.get_relationships(db=db)
+    assert len(updated_prefix_child_rels) == 3
+    assert {rel.peer_id for rel in updated_prefix_child_rels} == set(expected_child_prefix_ids)
+    updated_address_child_rels = await updated_prefix.ip_addresses.get_relationships(db=db)
+    assert len(updated_address_child_rels) == 1
+    assert {rel.peer_id for rel in updated_address_child_rels} == set(expected_child_address_ids)
+    # check new child prefixes parents
+    updated_children = await NodeManager.get_many(db=db, branch=default_branch, ids=expected_child_prefix_ids)
+    for child in updated_children.values():
+        child_parent_rels = await child.parent.get_relationships(db=db)
+        assert len(child_parent_rels) == 1
+        assert child_parent_rels[0].peer_id == updated_prefix.id
+        assert child.is_top_level.value is False
+    # check new child address parents
+    updated_children = await NodeManager.get_many(db=db, branch=default_branch, ids=expected_child_address_ids)
+    for child in updated_children.values():
+        child_parent_rels = await child.ip_prefix.get_relationships(db=db)
+        assert len(child_parent_rels) == 1
+        assert child_parent_rels[0].peer_id == updated_prefix.id
