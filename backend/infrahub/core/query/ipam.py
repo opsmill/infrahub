@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterable, List, Optional, Union
 
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.ipam.constants import AllIPTypes, IPAddressType, IPNetworkType
 from infrahub.core.registry import registry
 from infrahub.core.utils import convert_ip_to_binary_str
 
@@ -17,11 +18,6 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-
-
-IPNetworkType = Union[ipaddress.IPv6Network, ipaddress.IPv4Network]
-IPAddressType = Union[ipaddress.IPv6Interface, ipaddress.IPv4Interface]
-AllIPTypes = Union[IPNetworkType, IPAddressType]
 
 
 @dataclass

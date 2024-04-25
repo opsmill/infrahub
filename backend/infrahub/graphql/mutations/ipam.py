@@ -149,7 +149,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         try:
             async with db.start_transaction() as dbt:
                 address = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=address)
-                reconciler = IpamReconciler(db=db, branch=branch)
+                reconciler = IpamReconciler(db=dbt, branch=branch)
                 ip_address = ipaddress.ip_interface(address.address.value)
                 reconciled_address = await reconciler.reconcile(
                     ip_value=ip_address, node_uuid=address.get_id(), namespace=namespace_id
@@ -263,7 +263,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         try:
             async with db.start_transaction() as dbt:
                 prefix = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=prefix)
-                reconciler = IpamReconciler(db=db, branch=branch)
+                reconciler = IpamReconciler(db=dbt, branch=branch)
                 ip_network = ipaddress.ip_network(prefix.prefix.value)
                 reconciled_prefix = await reconciler.reconcile(
                     ip_value=ip_network, node_uuid=prefix.get_id(), namespace=namespace_id

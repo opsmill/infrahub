@@ -10,13 +10,10 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFoundError
 
+from .constants import AllIPTypes
+
 if TYPE_CHECKING:
     from infrahub.core.relationship.model import RelationshipManager
-
-
-IPNetworkType = Union[ipaddress.IPv6Network, ipaddress.IPv4Network]
-IPAddressType = Union[ipaddress.IPv6Interface, ipaddress.IPv4Interface]
-AllIPTypes = Union[IPNetworkType, IPAddressType]
 
 
 class IPNodesToReconcile:
