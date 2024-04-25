@@ -99,8 +99,9 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const objectProfiles = objectDetailsData?.profiles?.edges?.map((edge) => edge?.node) ?? [];
 
+  // Get profile from object or from the locally selected one
   const currentProfile =
-    objectProfiles && objectProfiles[0]?.id
+    objectProfiles && objectProfiles[0]?.id && objectProfiles[0]?.id === profile
       ? profilesOptions?.find((p) => p.id === objectProfiles[0].id)?.values
       : profilesOptions?.find((p) => p.id === profile)?.values;
 

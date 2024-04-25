@@ -163,6 +163,11 @@ export const getObjectPeers = (schema?: iNodeSchema | iGenericSchema) => {
 };
 
 const getValue = (row: any, attribute: any, profile: any) => {
+  // If the value defined was from the profile, then override it from the new profile value
+  if (row && row[attribute.name]?.is_from_profile) {
+    return profile[attribute.name]?.value;
+  }
+
   // What comes from the object is priority
   if (row && row[attribute.name]?.value) {
     return row[attribute.name]?.value;
