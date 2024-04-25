@@ -1079,6 +1079,7 @@ query InfraDevice {
           name {
               value
               updated_at
+              is_from_profile
               is_protected
               is_visible
               source {
@@ -1095,6 +1096,7 @@ query InfraDevice {
           description {
               value
               updated_at
+              is_from_profile
               is_protected
               is_visible
               source {
@@ -1111,6 +1113,7 @@ query InfraDevice {
           type {
               value
               updated_at
+              is_from_profile
               is_protected
               is_visible
               source {
