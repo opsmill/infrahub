@@ -338,7 +338,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         branch: Optional[Union[Branch, str]] = None,
         schema_map_override: Optional[Dict[str, Union[NodeSchema, GenericSchema]]] = None,
     ) -> SchemaAttributePath:
-        allowed_leaf_properties = ["value"]
+        allowed_leaf_properties = ["value", "version", "binary_address"]
         schema_path = SchemaAttributePath()
         relationship_piece: Optional[str] = None
         attribute_piece: Optional[str] = None
