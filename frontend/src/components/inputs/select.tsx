@@ -768,7 +768,7 @@ export const Select = (props: SelectProps) => {
     <div className="relative" data-testid="select-container">
       <Combobox
         as="div"
-        value={selectedOption ?? ""}
+        value={selectedOption ?? multiple ? [] : ""}
         onChange={handleChange}
         disabled={disabled}
         multiple={multiple}
