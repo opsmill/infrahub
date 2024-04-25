@@ -92,26 +92,27 @@ def validate_schema_content_and_exit(client: InfrahubClient, console: Console, s
 def display_schema_load_errors(console: Console, response: Dict[str, Any], schemas_data: List[Dict]) -> None:
     console.print("[red]Unable to load the schema:")
     if "detail" not in response:
-        handle_non_detail_errors(console, response)
+        handle_non_detail_errors(console=console, response=response)
         return
 
     for error in response["detail"]:
         loc_path = error.get("loc", [])
-        if not valid_error_path(loc_path):
+        if not valid_error_path(loc_path=loc_path):
             continue
 
         schema_index = int(loc_path[2])
         node_index = int(loc_path[4])
-        node = get_node(schemas_data, schema_index, node_index)
+        node = get_node(schemas_data=schemas_data, schema_index=schema_index, node_index=node_index)
 
         if not node:
             console.print("Node data not found.")
             continue
 
-        element_label = loc_path[-1].title()  # Capitalize the last element of loc_path here
+        input_label = loc_path[-1]
+        element_label = loc_path[-3][0:-1].title()
 
-        input_str = error.get("input", "No Input")
-        error_message = f"{element_label}: {input_str} | {error['msg']} ({error['type']})"
+        input_str = error.get("input", None)
+        error_message = f"{element_label} {input_label}: {input_str} | {error['msg']} ({error['type']})"
 
         console.print(f"  Node: {node.get('namespace', None)}.{node.get('name', None)} | {error_message}")
 
