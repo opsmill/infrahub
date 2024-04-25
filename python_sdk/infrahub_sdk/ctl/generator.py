@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from rich.console import Console
 
+from infrahub_sdk import InfrahubNode
 from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.ctl.repository import get_repository_config
@@ -47,7 +48,16 @@ async def run(
         data = execute_graphql_query(
             query=generator_config.query, variables_dict=variables_dict, branch=branch, debug=False
         )
-        generator = generator_class(query=generator_config.query, client=client, branch=branch, params=variables_dict)
+        generator = generator_class(
+            query=generator_config.query,
+            client=client,
+            branch=branch,
+            params=variables_dict,
+            convert_query_response=generator_config.convert_query_response,
+            infrahub_node=InfrahubNode,
+        )
+        await generator._init_client.schema.all(branch=generator.branch_name)
+        await generator.process_nodes(data=data)
         await generator.run(identifier=generator_config.name, data=data)
 
     else:
@@ -59,10 +69,18 @@ async def run(
                 attribute = getattr(member.peer, identifier)
                 check_parameter = {identifier: attribute.value}
             params = {"name": member.peer.name.value}
-            generator = generator_class(query=generator_config.query, client=client, branch=branch, params=params)
+            generator = generator_class(
+                query=generator_config.query,
+                client=client,
+                branch=branch,
+                params=params,
+                convert_query_response=generator_config.convert_query_response,
+                infrahub_node=InfrahubNode,
+            )
             data = execute_graphql_query(
                 query=generator_config.query, variables_dict=check_parameter, branch=branch, debug=False
             )
+            await generator._init_client.schema.all(branch=generator.branch_name)
             await generator.run(identifier=generator_config.name, data=data)
 
 

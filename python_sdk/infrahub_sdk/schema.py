@@ -118,6 +118,10 @@ class InfrahubGeneratorDefinitionConfig(InfrahubRepositoryConfigElement):
     )
     targets: str = pydantic.Field(..., description="The group to target when running this generator")
     class_name: str = pydantic.Field(default="Generator", description="The name of the generator class to run.")
+    convert_query_response: bool = pydantic.Field(
+        default=False,
+        description="Decide if the generator should convert the result of the GraphQL query to SDK InfrahubNode objects.",
+    )
 
     class Config:
         extra = "forbid"
