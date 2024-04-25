@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from graphene import Boolean, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.core.branch import Branch
 from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, ValidatorConclusion
 from infrahub.core.manager import NodeManager
@@ -143,7 +143,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     await merger.merge(conflict_resolution=conflict_resolution)
                     await merger.update_schema()
 
-                if config.SETTINGS.broker.enable and context.background:
+                if context.background:
                     log_data = get_log_data()
                     request_id = log_data.get("request_id", "")
                     message = messages.EventBranchMerge(
