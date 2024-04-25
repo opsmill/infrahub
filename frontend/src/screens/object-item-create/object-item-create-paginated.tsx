@@ -9,8 +9,7 @@ import { createObject } from "../../graphql/mutations/objects/createObject";
 import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
 import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { genericsState, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
+import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
@@ -18,6 +17,7 @@ import { getObjectAttributes } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import { Form } from "../edit-form-hook/form";
+import { PROFILE_KIND } from "../../config/constants";
 
 interface iProps {
   objectname?: string;
@@ -43,8 +43,8 @@ export default function ObjectItemCreate(props: iProps) {
   } = props;
 
   const schemaList = useAtomValue(schemaState);
-  const schemaKindName = useAtomValue(schemaKindNameState);
   const genericsList = useAtomValue(genericsState);
+  const profilesList = useAtomValue(profilesAtom);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
@@ -54,8 +54,11 @@ export default function ObjectItemCreate(props: iProps) {
   const generic = genericsList.find((s) => s.kind === objectname);
 
   const isGeneric = !!generic;
+  const isProfileCreationForm = objectname === PROFILE_KIND;
 
-  const schema = schemaList.find((s) => (isGeneric ? s.kind === kind : s.kind === objectname));
+  const schema = isProfileCreationForm
+    ? profilesList.find((profile) => profile.kind === kind)
+    : schemaList.find((s) => (isGeneric ? s.kind === kind : s.kind === objectname));
 
   const profileName = `Profile${objectname}`;
 
@@ -143,13 +146,9 @@ export default function ObjectItemCreate(props: iProps) {
         },
       });
 
-      toast(
-        <Alert
-          type={ALERT_TYPES.SUCCESS}
-          message={`${schema?.kind && schemaKindName[schema?.kind]} created`}
-        />,
-        { toastId: `alert-success-${schema?.kind && schemaKindName[schema?.kind]}-created` }
-      );
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
+        toastId: `alert-success-${schema?.name}-created`,
+      });
 
       if (onCreate) {
         onCreate(result?.data?.[`${schema?.kind}Create`]);

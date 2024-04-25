@@ -1,7 +1,7 @@
 import asyncio
 import time
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 import typer
 import yaml
@@ -89,19 +89,52 @@ def validate_schema_content_and_exit(client: InfrahubClient, console: Console, s
         raise typer.Exit(2)
 
 
-def display_schema_load_errors(console: Console, response: Dict):
+def display_schema_load_errors(console: Console, response: Dict[str, Any], schemas_data: List[Dict]) -> None:
     console.print("[red]Unable to load the schema:")
-    if "detail" in response:
-        for error in response.get("detail"):
-            loc_str = [str(item) for item in error["loc"][1:]]
-            console.print(f"  '{'/'.join(loc_str)}' | {error['msg']} ({error['type']})")
-    elif "error" in response:
+    if "detail" not in response:
+        handle_non_detail_errors(console=console, response=response)
+        return
+
+    for error in response["detail"]:
+        loc_path = error.get("loc", [])
+        if not valid_error_path(loc_path=loc_path):
+            continue
+
+        schema_index = int(loc_path[2])
+        node_index = int(loc_path[4])
+        node = get_node(schemas_data=schemas_data, schema_index=schema_index, node_index=node_index)
+
+        if not node:
+            console.print("Node data not found.")
+            continue
+
+        input_label = loc_path[-1]
+        element_label = loc_path[-3][0:-1].title()
+
+        input_str = error.get("input", None)
+        error_message = f"{element_label} {input_label}: {input_str} | {error['msg']} ({error['type']})"
+
+        console.print(f"  Node: {node.get('namespace', None)}.{node.get('name', None)} | {error_message}")
+
+
+def handle_non_detail_errors(console: Console, response: Dict[str, Any]) -> None:
+    if "error" in response:
         console.print(f"  {response.get('error')}")
     elif "errors" in response:
         for error in response.get("errors"):
             console.print(f"  {error.get('message')}")
     else:
         console.print(f"  '{response}'")
+
+
+def valid_error_path(loc_path: List[Any]) -> bool:
+    return len(loc_path) >= 6 and loc_path[0] == "body" and loc_path[1] == "schemas"
+
+
+def get_node(schemas_data: List[Dict], schema_index: int, node_index: int) -> Optional[Dict]:
+    if schema_index < len(schemas_data) and node_index < len(schemas_data[schema_index].content["nodes"]):
+        return schemas_data[schema_index].content["nodes"][node_index]
+    return None
 
 
 @app.command()
@@ -128,7 +161,7 @@ async def load(
     loading_time = time.time() - start_time
 
     if response.errors:
-        display_schema_load_errors(console=console, response=response.errors)
+        display_schema_load_errors(console=console, response=response.errors, schemas_data=schemas_data)
         raise typer.Exit(1)
 
     if response.schema_updated:
@@ -176,7 +209,7 @@ async def check(
     success, response = await client.schema.check(schemas=[item.content for item in schemas_data], branch=branch)
 
     if not success:
-        display_schema_load_errors(console=console, response=response)
+        display_schema_load_errors(console=console, response=response, schemas_data=schemas_data)
     else:
         for schema_file in schemas_data:
             console.print(f"[green] schema '{schema_file.location}' is Valid!")

@@ -38,6 +38,7 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
     events: List[InfrahubMessage] = [
         messages.RefreshRegistryBranches(),
         messages.TriggerArtifactDefinitionGenerate(branch=message.target_branch),
+        messages.TriggerGeneratorDefinitionRun(branch=message.target_branch),
     ]
 
     for event in events:

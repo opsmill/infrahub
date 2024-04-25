@@ -22,7 +22,7 @@ import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
-import { IP_ADDRESS_GENERIC, IPAM_QSP, IPAM_TABS } from "../constants";
+import { IP_ADDRESS_GENERIC, IPAM_QSP, IPAM_ROUTE, IPAM_TABS } from "../constants";
 
 const IpamIPAddressesList = forwardRef((props, ref) => {
   const { prefix } = useParams();
@@ -35,11 +35,15 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
   const constructLink = (data) => {
     if (prefix) {
       return constructPathForIpam(
-        `/ipam/prefixes/${encodeURIComponent(prefix)}/${encodeURIComponent(data?.address?.value)}`
+        `${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(prefix)}/${encodeURIComponent(
+          data?.address?.value
+        )}`
       );
     }
 
-    return constructPathForIpam(`/ipam/ip-addresses/${encodeURIComponent(data?.address?.value)}`);
+    return constructPathForIpam(
+      `${IPAM_ROUTE.ADDRESSES}/${encodeURIComponent(data?.address?.value)}`
+    );
   };
 
   const { loading, error, data, refetch } = useQuery(GET_IP_ADDRESSES, {
@@ -132,7 +136,9 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
           <span className="mr-2">Prefix:</span>
           <Link
             to={constructPathForIpam(
-              `/ipam/prefixes/${encodeURIComponent(prefix)}?${IPAM_QSP}=${IPAM_TABS.PREFIX_DETAILS}`
+              `${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(prefix)}?${IPAM_QSP}=${
+                IPAM_TABS.PREFIX_DETAILS
+              }`
             )}>
             {prefix}
           </Link>

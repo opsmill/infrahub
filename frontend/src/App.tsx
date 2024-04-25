@@ -7,6 +7,7 @@ import { ARTIFACT_OBJECT } from "./config/constants";
 import { AuthProvider, RequireAuth } from "./hooks/useAuth";
 
 import "react-toastify/dist/ReactToastify.css";
+import { IPAM_ROUTE } from "./screens/ipam/constants";
 
 addCollection(mdiIcons);
 
@@ -68,12 +69,12 @@ const App = () => {
           <Route path="/graphql/:branch" element={<RedirectToGraphiQLPage />} />
           <Route path="/graphql" element={<GraphiQLPage />} />
           <Route path="/schema" element={<SchemaPage />} />
-          <Route path="/ipam" element={<IpamPage />}>
-            <Route path="/ipam/ip-addresses/:ipaddress" element={<IpamRouter />} />
-            <Route path="/ipam/ip-addresses" element={<IpamRouter />} />
-            <Route path="/ipam/prefixes/:prefix/:ipaddress" element={<IpamRouter />} />
-            <Route path="/ipam/prefixes/:prefix" element={<IpamRouter />} />
-            <Route path="/ipam/*" index element={<IpamRouter />} />
+          <Route path={IPAM_ROUTE.INDEX} element={<IpamPage />}>
+            <Route path={`${IPAM_ROUTE.ADDRESSES}/:ip_address`} element={<IpamRouter />} />
+            <Route path={IPAM_ROUTE.ADDRESSES} element={<IpamRouter />} />
+            <Route path={`${IPAM_ROUTE.PREFIXES}/:prefix/:ip_address`} element={<IpamRouter />} />
+            <Route path={`${IPAM_ROUTE.PREFIXES}/:prefix`} element={<IpamRouter />} />
+            <Route path={`${IPAM_ROUTE.INDEX}/*`} index element={<IpamRouter />} />
           </Route>
           <Route path="/" element={<Homepage />} />
           <Route path="*" element={<Navigate to="/" />} />
