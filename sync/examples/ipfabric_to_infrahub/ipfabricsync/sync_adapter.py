@@ -3,7 +3,12 @@ from infrahub_sync.adapters.ipfabricsync import IpfabricsyncAdapter
 from .sync_models import (
     BuiltinLocation,
     CoreOrganization,
+    InfraDevice,
+    InfraNOSVersion,
+    InfraPartNumber,
     InfraPlatform,
+    InfraVLAN,
+    InfraVRF,
     TemplateDeviceType,
 )
 
@@ -16,5 +21,10 @@ from .sync_models import (
 class IpfabricsyncSync(IpfabricsyncAdapter):
     BuiltinLocation = BuiltinLocation
     CoreOrganization = CoreOrganization
+    InfraDevice = InfraDevice
+    InfraNOSVersion = InfraNOSVersion
     InfraPlatform = InfraPlatform
     TemplateDeviceType = TemplateDeviceType
+    InfraVLAN = InfraVLAN
+    InfraVRF = InfraVRF
+    InfraPartNumber = InfraPartNumber

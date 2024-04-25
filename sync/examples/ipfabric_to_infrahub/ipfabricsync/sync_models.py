@@ -27,12 +27,38 @@ class CoreOrganization(IpfabricsyncModel):
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
+class InfraDevice(IpfabricsyncModel):
+    _modelname = "InfraDevice"
+    _identifiers = ("hostname", "location")
+    _attributes = ("platform", "version", "model", "serial_number", "fqdn", "hardware_serial_number")
+    serial_number: str
+    fqdn: Optional[str] = None
+    hostname: str
+    hardware_serial_number: str
+    platform: Optional[str] = None
+    location: str
+    version: Optional[str] = None
+    model: Optional[str] = None
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+class InfraNOSVersion(IpfabricsyncModel):
+    _modelname = "InfraNOSVersion"
+    _identifiers = ("manufacturer", "version")
+    _attributes = ("platform", "model")
+    version: str
+    platform: Optional[str] = None
+    manufacturer: str
+    model: Optional[str] = None
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
 class InfraPlatform(IpfabricsyncModel):
     _modelname = "InfraPlatform"
     _identifiers = ("name",)
     _attributes = ("description",)
-    description: Optional[str] = None
     name: str
+    description: Optional[str] = None
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -40,8 +66,43 @@ class TemplateDeviceType(IpfabricsyncModel):
     _modelname = "TemplateDeviceType"
     _identifiers = ("name", "manufacturer")
     _attributes = ("description",)
-    description: Optional[str] = None
     name: str
+    description: Optional[str] = None
     manufacturer: str
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+class InfraVLAN(IpfabricsyncModel):
+    _modelname = "InfraVLAN"
+    _identifiers = ("location", "vlan_id")
+    _attributes = ("name", "description")
+    name: Optional[str] = None
+    description: Optional[str] = None
+    vlan_id: int
+    location: Optional[str] = None
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+class InfraVRF(IpfabricsyncModel):
+    _modelname = "InfraVRF"
+    _identifiers = ("name",)
+    _attributes = ("vrf_rd",)
+    name: str
+    vrf_rd: Optional[str] = None
+    local_id: Optional[str] = None
+    local_data: Optional[Any] = None
+
+class InfraPartNumber(IpfabricsyncModel):
+    _modelname = "InfraPartNumber"
+    _identifiers = ("device", "name")
+    _attributes = ("manufacturer", "model", "part_sn", "part_vid", "description", "part_id")
+    part_sn: Optional[str] = None
+    name: Optional[str] = None
+    part_vid: Optional[str] = None
+    description: Optional[str] = None
+    part_id: Optional[str] = None
+    manufacturer: Optional[str] = None
+    model: Optional[str] = None
+    device: Optional[str] = None
     local_id: Optional[str] = None
     local_data: Optional[Any] = None

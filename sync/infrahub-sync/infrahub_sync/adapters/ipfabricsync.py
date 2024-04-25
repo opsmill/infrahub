@@ -37,6 +37,16 @@ ipf_filters = {"tables/inventory/summary/platforms": {
         ]
       }
     ]
+  }, 
+  "tables/inventory/pn": {
+    "and": [
+      {
+        "name": [
+          "empty",
+          False
+        ]
+      }
+    ]
   }}
 
 try:
@@ -59,6 +69,30 @@ class IpfabricsyncAdapter(DiffSyncMixin, DiffSync):
         settings = adapter.settings or {}
         return IPFClient(**settings)
 
+    def build_mapping(self, reference, obj):
+        # Get object class and model name from the store
+        object_class, modelname = self.store._get_object_class_and_model(model=reference)
+
+        # Find the schema element matching the model name
+        schema_element = next(
+            (element for element in self.config.schema_mapping if element.name == modelname),
+            None
+        )
+
+        # Collect all relevant field mappings for identifiers
+        new_identifiers = []
+
+        # Convert schema_element.fields to a dictionary for fast lookup
+        field_dict = {field.name: field.mapping for field in schema_element.fields}
+
+        # Loop through object_class._identifiers to find corresponding field mappings
+        for identifier in object_class._identifiers:
+            if identifier in field_dict:
+                new_identifiers.append(field_dict[identifier])
+
+        # Construct the unique identifier, using a fallback if a key isn't found
+        unique_id = "__".join(str(obj.get(key, '')) for key in new_identifiers)
+        return unique_id
 
     def model_loader(self, model_name, model):
         for element in self.config.schema_mapping:
@@ -89,11 +123,10 @@ class IpfabricsyncAdapter(DiffSyncMixin, DiffSync):
                 raise NotImplementedError(
                     "it's not supported yet to have an attribute of type list with a simple mapping"
                 )
-            
-            
+
+
             elif field.mapping and field.reference:
-                print("hi")
-            #     breakpoint()
+
                 all_nodes_for_reference = self.store.get_all(model=field.reference)
 
                 nodes = [item for item in all_nodes_for_reference]  # noqa: C416
@@ -105,27 +138,13 @@ class IpfabricsyncAdapter(DiffSyncMixin, DiffSync):
                 if not field_is_list:
                     if node := obj[field.mapping]:
                         matching_nodes = []
-                        matching_nodes = [item for item in nodes if item.name == node]
+                        node_id = self.build_mapping(field.reference, obj)
+                        matching_nodes = [item for item in nodes if str(item) == node_id]
                         if len(matching_nodes) == 0:
                             raise IndexError(f"Unable to locate the node {model} {node_id}")
                         node = matching_nodes[0]
                         data[field.name] = node.get_unique_id()
 
-            #     else:
-            #         data[field.name] = []
-            #         for node in get_value(obj, field.mapping):
-            #             if not node:
-            #                 continue
-            #             node_id = getattr(node, "id", None)
-            #             if not node_id:
-            #                 if isinstance(node, tuple):
-            #                     node_id = node[1] if node[0] == "id" else None
-            #                     if not node_id:
-            #                         continue
-            #             matching_nodes = [item for item in nodes if item.local_id == str(node_id)]
-            #             if len(matching_nodes) == 0:
-            #                 raise IndexError(f"Unable to locate the node {field.reference} {node_id}")
-            #             data[field.name].append(matching_nodes[0].get_unique_id())
         return data
 
 

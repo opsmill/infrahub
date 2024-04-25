@@ -192,6 +192,7 @@ nodes:
       - name: fqdn
         label: FQDN
         kind: Text
+        optional: true
     relationships:
       - name: organization
         peer: CoreOrganization
@@ -211,11 +212,139 @@ nodes:
       - name: model
         label: Model
         peer: TemplateDeviceType
-        optional: false
+        optional: true
         cardinality: one
         kind: Attribute
+      - name: version
+        peer: InfraNOSVersion
+        kind: Attribute
+        cardinality: one
       - name: tags
         peer: BuiltinTag
         optional: true
         cardinality: many
         kind: Attribute
+  - name: PartNumber
+    namespace: Infra
+    label: Part Number
+    description: Modules and part numbers from inventory of network infrastructure devices.
+    icon: "mdi:format-list-bulleted"
+    default_filter: name__value
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        optional: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: part_id
+        label: Part ID
+        kind: Text
+        optional: true
+      - name: part_sn
+        label: Part Serial Number
+        kind: Text
+        optional: true
+      - name: part_vid
+        label: Part Version ID
+        kind: Text
+        optional: true
+    relationships:
+      - name: manufacturer
+        peer: CoreOrganization
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: model
+        label: Model
+        peer: TemplateDeviceType
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: device
+        peer: InfraDevice
+        cardinality: one
+  - name: NOSVersion
+    namespace: Infra
+    description: NOS Version
+    icon: "mdi:content-copy"
+    default_filter: version__value
+    order_by:
+      - version__value
+    display_labels:
+      - version__value
+    attributes:
+      - name: version
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+    relationships:
+      - name: manufacturer
+        peer: CoreOrganization
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: platform
+        peer: InfraPlatform
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: model
+        label: Model
+        peer: TemplateDeviceType
+        optional: true
+        cardinality: one
+        kind: Attribute
+  - name: VLAN
+    namespace: Infra
+    description: "A VLAN is isolated layer two domain"
+    label: "VLAN"
+    icon: "mdi:lan-pending"   # mdi:lan
+    default_filter: name__value
+    order_by:
+      - vlan_id__value
+    display_labels:
+      - name__value
+      - vlan_id__value
+    uniqueness_constraints:
+      - ["location", "vlan_id__value"]
+    attributes:
+      - name: name
+        kind: Text
+        optional: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: vlan_id
+        kind: Number
+    relationships:
+      - name: location
+        peer: BuiltinLocation
+        optional: true
+        cardinality: one
+        kind: Attribute
+  - name: VRF
+    namespace: Infra
+    description: "A VRF is isolated layer three domain"
+    label: "VRF"
+    icon: "mdi:router"
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: vrf_rd
+        label: Route Distinguisher
+        kind: Text
+        optional: true
