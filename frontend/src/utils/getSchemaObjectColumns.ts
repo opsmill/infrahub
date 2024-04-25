@@ -162,8 +162,20 @@ export const getObjectPeers = (schema?: iNodeSchema | iGenericSchema) => {
   return peers;
 };
 
-export const getFieldValue = (row: any, attribute: any) => {
-  const value = row?.[attribute.name] ? row[attribute.name].value : attribute.default_value;
+const getValue = (row: any, attribute: any, profile: any) => {
+  if (row && row[attribute.name]?.value) {
+    return row[attribute.name]?.value;
+  }
+
+  if (profile && profile[attribute.name]?.value) {
+    return profile[attribute.name]?.value;
+  }
+
+  return attribute.default_value;
+};
+
+export const getFieldValue = (row: any, attribute: any, profile: any) => {
+  const value = getValue(row, attribute, profile);
 
   if (value === null || value === undefined) return null;
 
