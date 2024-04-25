@@ -112,7 +112,7 @@ export const Select = (props: SelectProps) => {
   const [optionToDelete, setOptionToDelete] = useState<null | number | string>(null);
   const [localOptions, setLocalOptions] = useState(options);
   const [selectedOption, setSelectedOption] = useState(
-    multiple && Array.isArray(value)
+    multiple
       ? localOptions.filter((option) => value?.includes(option.id))
       : localOptions?.find((option) => option?.id === value || option.name === value)
   );
@@ -768,7 +768,7 @@ export const Select = (props: SelectProps) => {
     <div className="relative" data-testid="select-container">
       <Combobox
         as="div"
-        value={selectedOption ?? multiple ? [] : ""}
+        value={multiple ? selectedOption ?? [] : selectedOption ?? ""}
         onChange={handleChange}
         disabled={disabled}
         multiple={multiple}
