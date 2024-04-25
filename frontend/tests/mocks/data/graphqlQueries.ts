@@ -15,12 +15,14 @@ query CoreGraphQLQuery {
         }
         repository {
           node {
+            id
             display_label
           }
         }
         tags {
           edges {
             node {
+              id
               display_label
             }
           }
@@ -48,12 +50,14 @@ query CoreGraphQLQuery {
         }
         repository {
           node {
+            id
             display_label
           }
         }
         tags {
           edges {
             node {
+              id
               display_label
             }
           }

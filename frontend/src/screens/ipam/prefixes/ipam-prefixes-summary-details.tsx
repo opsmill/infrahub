@@ -8,11 +8,10 @@ import { getObjectItemsPaginated } from "../../../graphql/queries/objects/getObj
 import useQuery from "../../../hooks/useQuery";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { getObjectAttributes, getObjectRelationships } from "../../../utils/getSchemaObjectColumns";
-import LoadingScreen from "../../loading-screen/loading-screen";
 import { IpDetailsCard } from "../common/ip-details-card";
 import { PrefixUsageChart } from "../common/prefix-usage-chart";
-import { IP_PREFIX_DEFAULT_SCHEMA_KIND } from "../constants";
-import { IpamPrefixSummarySkeleton } from "./ipam-prefix-summary-skeleton";
+import { IP_PREFIX_GENERIC } from "../constants";
+import { IpamSummarySkeleton } from "./ipam-summary-skeleton";
 
 export default function IpamIPPrefixesSummaryDetails() {
   const { prefix } = useParams();
@@ -23,9 +22,9 @@ export default function IpamIPPrefixesSummaryDetails() {
     },
   });
 
-  if (loading || !data) return <LoadingScreen />;
+  if (loading || !data) return <IpamSummarySkeleton withChart />;
 
-  const prefixKind = data[IP_PREFIX_DEFAULT_SCHEMA_KIND].edges[0].node.__typename;
+  const prefixKind = data[IP_PREFIX_GENERIC].edges[0].node.__typename;
 
   return (
     <section>
@@ -64,7 +63,7 @@ const PrefixSummaryContent = ({ prefixKind }: { prefixKind: string }) => {
     notifyOnNetworkStatusChange: true,
   });
 
-  if (loading || !data || !prefixSchema) return <IpamPrefixSummarySkeleton />;
+  if (loading || !data || !prefixSchema) return <IpamSummarySkeleton withChart />;
 
   const prefixData = data[prefixKind].edges[0].node;
 

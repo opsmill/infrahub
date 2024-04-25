@@ -2,16 +2,16 @@ import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router-dom";
 import { Table } from "../../components/table/table";
 import { Link } from "../../components/utils/link";
-import { IPAM_PREFIX_OBJECT } from "../../config/constants";
 import { GET_PREFIXES } from "../../graphql/queries/ipam/prefixes";
 import useQuery from "../../hooks/useQuery";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { constructPathForIpam } from "./common/utils";
+import { IP_PREFIX_GENERIC } from "./constants";
 
 const constructLink = (data) => {
   switch (data.__typename) {
-    case IPAM_PREFIX_OBJECT: {
+    case IP_PREFIX_GENERIC: {
       return constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(data?.prefix?.value)}`);
     }
     default: {
@@ -25,7 +25,7 @@ export default function IpamIPPrefix() {
 
   const { loading, error, data } = useQuery(GET_PREFIXES, { variables: { prefix: prefix } });
 
-  const parent = data && data[IPAM_PREFIX_OBJECT]?.edges[0]?.node?.parent?.node;
+  const parent = data && data[IP_PREFIX_GENERIC]?.edges[0]?.node?.parent?.node;
 
   const parentLink = parent?.prefix?.value
     ? constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(parent?.prefix?.value)}`)
@@ -33,7 +33,7 @@ export default function IpamIPPrefix() {
 
   const rows =
     data &&
-    data[IPAM_PREFIX_OBJECT]?.edges.reduce(
+    data[IP_PREFIX_GENERIC]?.edges.reduce(
       (acc, edge) => [
         ...acc,
         ...edge.node.children.edges.map((child) => ({

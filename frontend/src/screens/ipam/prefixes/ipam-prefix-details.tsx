@@ -11,7 +11,7 @@ import { Table } from "../../../components/table/table";
 import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
 import { Link } from "../../../components/utils/link";
 import { Pagination } from "../../../components/utils/pagination";
-import { DEFAULT_BRANCH_NAME, IPAM_PREFIX_OBJECT } from "../../../config/constants";
+import { DEFAULT_BRANCH_NAME } from "../../../config/constants";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
 import { GET_PREFIX } from "../../../graphql/queries/ipam/prefixes";
@@ -23,6 +23,7 @@ import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
+import { IP_PREFIX_GENERIC } from "../constants";
 
 const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const { prefix } = useParams();
@@ -44,7 +45,7 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
 
   const constructLink = (data) => {
     switch (data.__typename) {
-      case IPAM_PREFIX_OBJECT: {
+      case IP_PREFIX_GENERIC: {
         return constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(data?.prefix?.value)}`);
       }
       default: {
@@ -53,9 +54,9 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
     }
   };
 
-  const parent = data && data[IPAM_PREFIX_OBJECT]?.edges[0]?.node?.parent?.node;
+  const parent = data && data[IP_PREFIX_GENERIC]?.edges[0]?.node?.parent?.node;
 
-  const children = data && data[IPAM_PREFIX_OBJECT]?.edges[0]?.node?.children;
+  const children = data && data[IP_PREFIX_GENERIC]?.edges[0]?.node?.children;
 
   const parentLink = parent?.prefix?.value
     ? constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(parent?.prefix?.value)}`)
