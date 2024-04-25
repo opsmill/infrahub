@@ -236,7 +236,6 @@ export const Select = (props: SelectProps) => {
   };
 
   const handleFocus = () => {
-    console.log("FOCUS");
     // Do not fetch if there is no peer
     if (!peer || hasBeenOpened) return;
 
