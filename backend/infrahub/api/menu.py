@@ -83,7 +83,7 @@ async def get_menu(
         ],
     )
     groups = InterfaceMenu(
-        title="Groups",
+        title="Groups & Profiles",
     )
     for key in full_schema.keys():
         model = full_schema[key]
@@ -123,6 +123,14 @@ async def get_menu(
             title="All Groups",
             path="/objects/CoreGroup",
             icon=_extract_node_icon(full_schema[InfrahubKind.GENERICGROUP]),
+        ),
+    )
+    groups.children.insert(
+        0,
+        InterfaceMenu(
+            title="All Profiles",
+            path=f"/objects/{InfrahubKind.PROFILE}",
+            icon=_extract_node_icon(full_schema[InfrahubKind.PROFILE]),
         ),
     )
     unified_storage = InterfaceMenu(
