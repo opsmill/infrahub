@@ -25,6 +25,7 @@ query {{kind}} {
             {{this.name}} {
               value
               updated_at
+              is_from_profile
               is_protected
               is_visible
               source {

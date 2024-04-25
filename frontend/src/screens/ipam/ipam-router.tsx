@@ -7,23 +7,18 @@ import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip"
 import SlideOver from "../../components/display/slide-over";
 import { Tabs } from "../../components/tabs";
 import { Card } from "../../components/ui/card";
-import {
-  DEFAULT_BRANCH_NAME,
-  IPAM_IP_ADDRESS_GENERIC,
-  IPAM_PREFIX_GENERIC,
-  IPAM_PREFIX_OBJECT,
-} from "../../config/constants";
+import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { usePermission } from "../../hooks/usePermission";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
-import { IPAM_QSP, IPAM_TABS } from "./constants";
+import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC, IPAM_QSP, IPAM_TABS } from "./constants";
 import IpamIPAddresses from "./ip-addresses/ipam-ip-address";
 import IpamIPPrefixes from "./prefixes/ipam-prefixes";
 
 const tabToKind = {
-  [IPAM_TABS.IP_DETAILS]: IPAM_IP_ADDRESS_GENERIC,
-  [IPAM_TABS.PREFIX_DETAILS]: IPAM_PREFIX_GENERIC,
+  [IPAM_TABS.IP_DETAILS]: IP_ADDRESS_GENERIC,
+  [IPAM_TABS.PREFIX_DETAILS]: IP_PREFIX_GENERIC,
 };
 
 export default function IpamRouter() {
@@ -36,7 +31,7 @@ export default function IpamRouter() {
   const genericList = useAtomValue(genericsState);
   const refetchRef = useRef(null);
 
-  const objectname = qspTab ? tabToKind[qspTab] : IPAM_PREFIX_OBJECT;
+  const objectname = qspTab ? tabToKind[qspTab] : IP_PREFIX_GENERIC;
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
   const schemaData = schema || generic;

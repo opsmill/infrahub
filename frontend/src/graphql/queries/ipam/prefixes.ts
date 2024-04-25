@@ -1,8 +1,8 @@
 import { gql } from "@apollo/client";
 
 export const GET_PREFIXES_ONLY = gql`
-  query GET_PREFIXES($parentIds: [ID!]) {
-    IpamIPPrefix(parent__ids: $parentIds) {
+  query GET_PREFIXES_ONLY($parentIds: [ID!]) {
+    BuiltinIPPrefix(parent__ids: $parentIds) {
       edges {
         node {
           id
@@ -22,8 +22,8 @@ export const GET_PREFIXES_ONLY = gql`
 `;
 
 export const GET_PREFIXES = gql`
-  query IpamIPPrefix($namespace: String, $prefix: String, $offset: Int, $limit: Int) {
-    IpamIPPrefix(
+  query GET_PREFIXES($namespace: String, $prefix: String, $offset: Int, $limit: Int) {
+    BuiltinIPPrefix(
       ip_namespace__name__value: $namespace
       prefix__value: $prefix
       offset: $offset
@@ -95,8 +95,8 @@ export const GET_PREFIXES = gql`
 `;
 
 export const GET_PREFIX = gql`
-  query IpamIPPrefix($namespace: String, $prefix: String, $offset: Int, $limit: Int) {
-    IpamIPPrefix(
+  query GET_PREFIX($namespace: String, $prefix: String, $offset: Int, $limit: Int) {
+    BuiltinIPPrefix(
       ip_namespace__name__value: $namespace
       prefix__value: $prefix
       offset: $offset
@@ -178,7 +178,7 @@ export const GET_PREFIX_KIND = gql`
 
 export const GET_TOP_LEVEL_PREFIXES = gql`
   query GET_TOP_LEVEL_PREFIXES {
-    IpamIPPrefix(is_top_level__value: true) {
+    BuiltinIPPrefix(is_top_level__value: true) {
       edges {
         node {
           id
@@ -199,7 +199,7 @@ export const GET_TOP_LEVEL_PREFIXES = gql`
 
 export const GET_PREFIX_ANCESTORS = gql`
   query GET_PREFIX_ANCESTORS($ip: String) {
-    IpamIPPrefix(children__prefix__value: $ip) {
+    BuiltinIPPrefix(children__prefix__value: $ip) {
       edges {
         node {
           id

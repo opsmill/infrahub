@@ -5,7 +5,7 @@ import { GET_IP_ADDRESS_KIND } from "../../../graphql/queries/ipam/ip-address";
 import useQuery from "../../../hooks/useQuery";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
-import { IP_ADDRESS_DEFAULT_SCHEMA_KIND } from "../constants";
+import { IP_ADDRESS_GENERIC } from "../constants";
 import { useAtomValue } from "jotai/index";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { getObjectAttributes, getObjectRelationships } from "../../../utils/getSchemaObjectColumns";
@@ -13,6 +13,7 @@ import { gql } from "@apollo/client";
 import { getObjectItemsPaginated } from "../../../graphql/queries/objects/getObjectItems";
 import { IpDetailsCard } from "../common/ip-details-card";
 import { constructPathForIpam } from "../common/utils";
+import { IpamSummarySkeleton } from "../prefixes/ipam-summary-skeleton";
 
 export default function IpAddressSummary() {
   const { prefix, ipaddress } = useParams();
@@ -23,13 +24,13 @@ export default function IpAddressSummary() {
     },
   });
 
-  if (loading || !data) return <LoadingScreen />;
+  if (loading || !data) return <IpamSummarySkeleton />;
 
   const parentLink = prefix
     ? constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(prefix)}`)
     : constructPathForIpam("/ipam/ip-addresses");
 
-  const ipAddressKind = data[IP_ADDRESS_DEFAULT_SCHEMA_KIND].edges[0].node.__typename;
+  const ipAddressKind = data[IP_ADDRESS_GENERIC].edges[0].node.__typename;
 
   return (
     <div>
@@ -70,7 +71,7 @@ const IpAddressSummaryContent = ({ ipAddressKind }: { ipAddressKind: string }) =
     notifyOnNetworkStatusChange: true,
   });
 
-  if (loading || !data || !ipAddressSchema) return <LoadingScreen />;
+  if (loading || !data || !ipAddressSchema) return <IpamSummarySkeleton />;
 
   if (error) {
     return <ErrorScreen message="An error occured while retrieving prefixes" />;

@@ -15,7 +15,7 @@ import { useAtomValue } from "jotai/index";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { constructPathForIpam } from "../common/utils";
 import { IpamTreeSkeleton } from "./ipam-tree-skeleton";
-import { IPAM_TREE_ROOT_ID } from "../constants";
+import { IP_PREFIX_GENERIC, IPAM_TREE_ROOT_ID } from "../constants";
 import {
   formatIPPrefixResponseForTreeView,
   PrefixData,
@@ -56,7 +56,7 @@ export default function IpamTree() {
           .then(({ data }) => {
             if (!data) return;
 
-            const ancestors = data.IpamIPPrefix.edges.map(({ node }) => ({
+            const ancestors = data[IP_PREFIX_GENERIC].edges.map(({ node }) => ({
               id: node.id,
               parentId: node.parent.node?.id ?? IPAM_TREE_ROOT_ID,
             }));
