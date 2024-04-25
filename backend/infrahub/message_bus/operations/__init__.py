@@ -41,7 +41,9 @@ COMMAND_MAP = {
     "refresh.registry.branches": refresh.registry.branches,
     "refresh.registry.rebased_branch": refresh.registry.rebased_branch,
     "refresh.webhook.configuration": refresh.webhook.configuration,
+    "request.generator.run": requests.generator.run,
     "request.generator_definition.check": requests.generator_definition.check,
+    "request.generator_definition.run": requests.generator_definition.run,
     "request.git.create_branch": requests.git.create_branch,
     "request.git.sync": requests.git.sync,
     "request.graphql_query_group.update": requests.graphql_query_group.update,
@@ -65,6 +67,7 @@ COMMAND_MAP = {
     "transform.jinja.template": transform.jinja.template,
     "transform.python.data": transform.python.data,
     "trigger.artifact_definition.generate": trigger.artifact_definition.generate,
+    "trigger.generator_definition.run": trigger.generator_definition.run,
     "trigger.proposed_change.cancel": trigger.proposed_change.cancel,
     "trigger.webhook.actions": trigger.webhook.actions,
 }

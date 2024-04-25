@@ -682,13 +682,12 @@ class InfrahubClient(BaseClient):
 
             url += "?" + "&".join(url_params_str)
 
-        payload = None
+        payload = {}
         if variables:
-            payload = {"variables": variables}
+            payload["variables"] = variables
 
-        resp = await self._request(
+        resp = await self._post(
             url=url,
-            method=HTTPMethod.POST,
             headers=headers,
             payload=payload,
             timeout=timeout or self.default_timeout,
@@ -1195,13 +1194,12 @@ class InfrahubClientSync(BaseClient):
 
             url += "?" + "&".join(url_params_str)
 
-        payload = None
+        payload = {}
         if variables:
-            payload = {"variables": variables}
+            payload["variables"] = variables
 
-        resp = self._request(
+        resp = self._post(
             url=url,
-            method=HTTPMethod.POST,
             headers=headers,
             payload=payload,
             timeout=timeout or self.default_timeout,
