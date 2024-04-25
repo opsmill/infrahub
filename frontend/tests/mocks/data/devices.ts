@@ -1076,223 +1076,231 @@ query InfraDevice {
       node {
         id
         display_label
-          name {
-              value
-              updated_at
-              is_from_profile
-              is_protected
-              is_visible
-              source {
+        profiles {
+          edges {
+            node {
+              display_label
+              id
+            }
+          }
+        }
+        name {
+            value
+            updated_at
+            is_from_profile
+            is_protected
+            is_visible
+            source {
+              id
+              display_label
+              __typename
+            }
+            owner {
+              id
+              display_label
+              __typename
+            }
+        }
+        description {
+            value
+            updated_at
+            is_from_profile
+            is_protected
+            is_visible
+            source {
+              id
+              display_label
+              __typename
+            }
+            owner {
+              id
+              display_label
+              __typename
+            }
+        }
+        type {
+            value
+            updated_at
+            is_from_profile
+            is_protected
+            is_visible
+            source {
+              id
+              display_label
+              __typename
+            }
+            owner {
+              id
+              display_label
+              __typename
+            }
+        }
+          site {
+              node {
                 id
                 display_label
                 __typename
               }
-              owner {
-                id
-                display_label
+              properties {
+                updated_at
+                is_protected
+                is_visible
+                source {
+                  id
+                  display_label
+                  __typename
+                }
+                owner {
+                  id
+                  display_label
+                  __typename
+                }
                 __typename
               }
           }
-          description {
-              value
-              updated_at
-              is_from_profile
-              is_protected
-              is_visible
-              source {
+          status {
+              node {
                 id
                 display_label
                 __typename
               }
-              owner {
-                id
-                display_label
-                __typename
-              }
-          }
-          type {
-              value
-              updated_at
-              is_from_profile
-              is_protected
-              is_visible
-              source {
-                id
-                display_label
-                __typename
-              }
-              owner {
-                id
-                display_label
+              properties {
+                updated_at
+                is_protected
+                is_visible
+                source {
+                  id
+                  display_label
+                  __typename
+                }
+                owner {
+                  id
+                  display_label
+                  __typename
+                }
                 __typename
               }
           }
-            site {
-                node {
+          role {
+              node {
+                id
+                display_label
+                __typename
+              }
+              properties {
+                updated_at
+                is_protected
+                is_visible
+                source {
                   id
                   display_label
                   __typename
                 }
-                properties {
-                  updated_at
-                  is_protected
-                  is_visible
-                  source {
-                    id
-                    display_label
-                    __typename
-                  }
-                  owner {
-                    id
-                    display_label
-                    __typename
-                  }
-                  __typename
-                }
-            }
-            status {
-                node {
+                owner {
                   id
                   display_label
                   __typename
                 }
-                properties {
-                  updated_at
-                  is_protected
-                  is_visible
-                  source {
-                    id
-                    display_label
-                    __typename
-                  }
-                  owner {
-                    id
-                    display_label
-                    __typename
-                  }
-                  __typename
-                }
-            }
-            role {
-                node {
+                __typename
+              }
+          }
+          asn {
+              node {
+                id
+                display_label
+                __typename
+              }
+              properties {
+                updated_at
+                is_protected
+                is_visible
+                source {
                   id
                   display_label
                   __typename
                 }
-                properties {
-                  updated_at
-                  is_protected
-                  is_visible
-                  source {
-                    id
-                    display_label
-                    __typename
-                  }
-                  owner {
-                    id
-                    display_label
-                    __typename
-                  }
-                  __typename
-                }
-            }
-            asn {
-                node {
+                owner {
                   id
                   display_label
                   __typename
                 }
-                properties {
-                  updated_at
-                  is_protected
-                  is_visible
-                  source {
-                    id
-                    display_label
-                    __typename
-                  }
-                  owner {
-                    id
-                    display_label
-                    __typename
-                  }
-                  __typename
-                }
-            }
-            tags(limit: 100) {
-                edges {
-                node {
+                __typename
+              }
+          }
+          tags(limit: 100) {
+              edges {
+              node {
+                id
+                display_label
+                __typename
+              }
+              properties {
+                updated_at
+                is_protected
+                is_visible
+                source {
                   id
                   display_label
                   __typename
                 }
-                properties {
-                  updated_at
-                  is_protected
-                  is_visible
-                  source {
-                    id
-                    display_label
-                    __typename
-                  }
-                  owner {
-                    id
-                    display_label
-                    __typename
-                  }
+                owner {
+                  id
+                  display_label
                   __typename
                 }
+                __typename
               }
             }
-            primary_address {
-                node {
+          }
+          primary_address {
+              node {
+                id
+                display_label
+                __typename
+              }
+              properties {
+                updated_at
+                is_protected
+                is_visible
+                source {
                   id
                   display_label
                   __typename
                 }
-                properties {
-                  updated_at
-                  is_protected
-                  is_visible
-                  source {
-                    id
-                    display_label
-                    __typename
-                  }
-                  owner {
-                    id
-                    display_label
-                    __typename
-                  }
-                  __typename
-                }
-            }
-            platform {
-                node {
+                owner {
                   id
                   display_label
                   __typename
                 }
-                properties {
-                  updated_at
-                  is_protected
-                  is_visible
-                  source {
-                    id
-                    display_label
-                    __typename
-                  }
-                  owner {
-                    id
-                    display_label
-                    __typename
-                  }
+                __typename
+              }
+          }
+          platform {
+              node {
+                id
+                display_label
+                __typename
+              }
+              properties {
+                updated_at
+                is_protected
+                is_visible
+                source {
+                  id
+                  display_label
                   __typename
                 }
-            }
-            interfaces(limit: 100) {
-              count
-            }
+                owner {
+                  id
+                  display_label
+                  __typename
+                }
+                __typename
+              }
+          }
+        interfaces(limit: 100) {
+          count
+        }
       }
     }
   }
