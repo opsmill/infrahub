@@ -5,11 +5,13 @@ import { Select, SelectOption } from "../inputs/select";
 type SelectProps = {
   label: string;
   value?: string | number | null;
-  options: Array<SelectOption>;
+  options?: Array<SelectOption>;
   onChange: (value: string | number) => void;
   error?: FormFieldError;
   isProtected?: boolean;
   isOptional?: boolean;
+  dropdown?: boolean;
+  enum?: boolean;
 };
 
 export const OpsSelect = (props: SelectProps) => {

@@ -69,6 +69,9 @@ type SelectProps = {
   isInherited?: boolean;
 };
 
+// Needed for async options to avoid duplicates issues
+const comparedOptions = (a: SelectOption, b: SelectOption) => a?.id === b?.id;
+
 export const Select = (props: SelectProps) => {
   const {
     options,
@@ -110,8 +113,8 @@ export const Select = (props: SelectProps) => {
   const [localOptions, setLocalOptions] = useState(options);
   const [selectedOption, setSelectedOption] = useState(
     multiple
-      ? options.filter((option) => value.includes(option.id))
-      : options?.find((option) => option?.id === value || option.name === value)
+      ? localOptions.filter((option) => value?.includes(option.id))
+      : localOptions?.find((option) => option?.id === value || option.name === value)
   );
 
   // Query to fetch options only if a peer is defined
@@ -156,7 +159,7 @@ export const Select = (props: SelectProps) => {
         option?.name?.toString().toLowerCase().includes(query.toLowerCase())
       );
 
-  const finalOptions = [...(preventEmpty ? [] : [emptyOption]), ...filteredOptions];
+  const finalOptions = [...(preventEmpty ? [] : [emptyOption]), ...(filteredOptions || [])];
 
   const textColor =
     typeof selectedOption === "object" && !Array.isArray(selectedOption)
@@ -692,7 +695,7 @@ export const Select = (props: SelectProps) => {
       return selectedOption?.name;
     }
 
-    return selectedOption;
+    return selectedOption ?? "";
   };
 
   const getInputStyle = () => {
@@ -706,26 +709,12 @@ export const Select = (props: SelectProps) => {
     return {};
   };
 
-  useEffect(() => {
-    setLocalOptions(optionsData);
-  }, [optionsData?.length]);
-
-  useEffect(() => {
-    setLocalOptions(options);
-  }, [options?.length]);
-
-  useEffect(() => {
-    const newOption = multiple
-      ? options.filter((option) => value.includes(option.id))
-      : options?.find((option) => option?.id === value || option.name === value);
-
-    setSelectedOption(newOption ?? "");
-  }, [value]);
-
   // Fetch option display label if not defined by current selected option
   const handleFetchLabel = async () => {
-    if (!multiple && peer && value && !selectedOption?.name) {
-      const { data } = await fetchLabel({ variables: value });
+    if (!selectedOption) return;
+
+    if (peer && !multiple && !Array.isArray(selectedOption) && !selectedOption?.name) {
+      const { data } = await fetchLabel({ variables: { ids: [selectedOption?.id] } });
 
       const label = data[peer]?.edges[0]?.node?.display_label;
 
@@ -735,10 +724,21 @@ export const Select = (props: SelectProps) => {
       } as SelectOption;
 
       setSelectedOption(newSelectedOption);
+
+      return;
     }
 
-    if (multiple && peer && value?.length) {
-      const { data } = await fetchLabel({ variables: { ids: value } });
+    if (!Array.isArray(selectedOption)) return;
+
+    // Get ids only
+    const ids = selectedOption.map((o) => o.id) ?? [];
+
+    // Get defined names only
+    const names = selectedOption.map((o) => o.name).filter(Boolean) ?? [];
+
+    // If ids and names have !== lengths, then some names are not defined
+    if (peer && multiple && ids.length && ids.length !== names.length) {
+      const { data } = await fetchLabel({ variables: { ids } });
 
       const newSelectedOptions = data[peer]?.edges.map((edge) => ({
         name: edge.node.display_label,
@@ -750,17 +750,25 @@ export const Select = (props: SelectProps) => {
   };
 
   useEffect(() => {
+    // Avoid fetching labels if ther eis no value
+    if (!value) return;
+
+    if (Array.isArray(value) && !value.length) return;
+
     handleFetchLabel();
   }, [value]);
 
-  // Needed for async options to avoid duplicates issues
-  const comparedOptions = (a: SelectOption, b: SelectOption) => a?.id === b?.id;
+  useEffect(() => {
+    if (!optionsData?.length) return;
+
+    setLocalOptions(optionsData);
+  }, [optionsData?.length]);
 
   return (
     <div className="relative" data-testid="select-container">
       <Combobox
         as="div"
-        value={selectedOption}
+        value={multiple ? selectedOption ?? [] : selectedOption ?? ""}
         onChange={handleChange}
         disabled={disabled}
         multiple={multiple}
