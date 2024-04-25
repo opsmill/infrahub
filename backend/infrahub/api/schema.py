@@ -156,17 +156,20 @@ async def get_schema_summary(
 async def get_schema_by_kind(
     schema_kind: str,
     branch: Branch = Depends(get_branch_dep),
-) -> Union[APINodeSchema, APIGenericSchema]:
+) -> Union[APIProfileSchema, APINodeSchema, APIGenericSchema]:
     log.debug("schema_kind_request", branch=branch.name)
 
     schema = registry.schema.get(name=schema_kind, branch=branch)
 
-    api_schema: dict[str, type[Union[APINodeSchema, APIGenericSchema]]] = {
+    api_schema: dict[str, type[Union[APIProfileSchema, APINodeSchema, APIGenericSchema]]] = {
+        "profile": APIProfileSchema,
         "node": APINodeSchema,
         "generic": APIGenericSchema,
     }
     key = ""
 
+    if isinstance(schema, ProfileSchema):
+        key = "profile"
     if isinstance(schema, NodeSchema):
         key = "node"
     if isinstance(schema, GenericSchema):
