@@ -25,6 +25,7 @@ core_profile_schema_definition = {
     "name": "Profile",
     "namespace": "Core",
     "include_in_menu": False,
+    "icon": "mdi:shape-plus-outline",
     "description": "Base Profile in Infrahub.",
     "label": "Profile",
     "display_labels": ["profile_name__value"],
