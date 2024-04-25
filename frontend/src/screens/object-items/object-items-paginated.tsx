@@ -309,6 +309,7 @@ export default function ObjectItems(props: any) {
                     <td className="text-right w-8">
                       <ButtonWithTooltip
                         data-cy="delete"
+                        data-testid="delete-row-button"
                         disabled={!permission.write.allow}
                         tooltipEnabled={!permission.write.allow}
                         tooltipContent={permission.write.message ?? undefined}

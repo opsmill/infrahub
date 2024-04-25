@@ -10,7 +10,6 @@ import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObject
 import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
@@ -44,7 +43,6 @@ export default function ObjectItemCreate(props: iProps) {
   } = props;
 
   const schemaList = useAtomValue(schemaState);
-  const schemaKindName = useAtomValue(schemaKindNameState);
   const genericsList = useAtomValue(genericsState);
   const profilesList = useAtomValue(profilesAtom);
   const branch = useAtomValue(currentBranchAtom);
@@ -139,13 +137,9 @@ export default function ObjectItemCreate(props: iProps) {
         },
       });
 
-      toast(
-        <Alert
-          type={ALERT_TYPES.SUCCESS}
-          message={`${schema?.kind && schemaKindName[schema?.kind]} created`}
-        />,
-        { toastId: `alert-success-${schema?.kind && schemaKindName[schema?.kind]}-created` }
-      );
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
+        toastId: `alert-success-${schema?.name}-created`,
+      });
 
       if (onCreate) {
         onCreate(result?.data?.[`${schema?.kind}Create`]);
