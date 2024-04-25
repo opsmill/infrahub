@@ -28,7 +28,9 @@ from .refresh_webhook_configuration import RefreshWebhookConfiguration
 from .request_artifact_generate import RequestArtifactGenerate
 from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
 from .request_artifactdefinition_generate import RequestArtifactDefinitionGenerate
+from .request_generator_run import RequestGeneratorRun
 from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
+from .request_generatordefinition_run import RequestGeneratorDefinitionRun
 from .request_git_createbranch import RequestGitCreateBranch
 from .request_git_sync import RequestGitSync
 from .request_graphqlquerygroup_update import RequestGraphQLQueryGroupUpdate
@@ -49,6 +51,7 @@ from .send_webhook_event import SendWebhookEvent
 from .transform_jinja_template import TransformJinjaTemplate, TransformJinjaTemplateResponse
 from .transform_python_data import TransformPythonData, TransformPythonDataResponse
 from .trigger_artifact_definition_generate import TriggerArtifactDefinitionGenerate
+from .trigger_generatordefinition_run import TriggerGeneratorDefinitionRun
 from .trigger_proposed_change_cancel import TriggerProposedChangeCancel
 from .trigger_webhook_actions import TriggerWebhookActions
 
@@ -81,7 +84,9 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "request.artifact.generate": RequestArtifactGenerate,
     "request.artifact_definition.check": RequestArtifactDefinitionCheck,
     "request.artifact_definition.generate": RequestArtifactDefinitionGenerate,
+    "request.generator.run": RequestGeneratorRun,
     "request.generator_definition.check": RequestGeneratorDefinitionCheck,
+    "request.generator_definition.run": RequestGeneratorDefinitionRun,
     "request.git.create_branch": RequestGitCreateBranch,
     "request.git.sync": RequestGitSync,
     "request.graphql_query_group.update": RequestGraphQLQueryGroupUpdate,
@@ -100,6 +105,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "transform.jinja.template": TransformJinjaTemplate,
     "transform.python.data": TransformPythonData,
     "trigger.artifact_definition.generate": TriggerArtifactDefinitionGenerate,
+    "trigger.generator_definition.run": TriggerGeneratorDefinitionRun,
     "trigger.proposed_change.cancel": TriggerProposedChangeCancel,
     "trigger.webhook.actions": TriggerWebhookActions,
 }
