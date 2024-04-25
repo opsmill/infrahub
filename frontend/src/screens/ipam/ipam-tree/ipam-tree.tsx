@@ -15,7 +15,7 @@ import { useAtomValue } from "jotai/index";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { constructPathForIpam } from "../common/utils";
 import { IpamTreeSkeleton } from "./ipam-tree-skeleton";
-import { IP_PREFIX_GENERIC, IPAM_TREE_ROOT_ID } from "../constants";
+import { IP_PREFIX_GENERIC, IPAM_ROUTE, IPAM_TREE_ROOT_ID } from "../constants";
 import {
   formatIPPrefixResponseForTreeView,
   PrefixData,
@@ -139,7 +139,9 @@ export default function IpamTree() {
           onNodeSelect={({ element, isSelected }) => {
             if (!isSelected) return;
 
-            const url = constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(element.name)}`);
+            const url = constructPathForIpam(
+              `${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(element.name)}`
+            );
             navigate(url);
           }}
         />
@@ -153,7 +155,7 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
   const generics = useAtomValue(genericsState);
 
   const schema = [...nodes, ...generics].find(({ kind }) => kind === element.metadata?.kind);
-  const url = constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(element.name)}`);
+  const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(element.name)}`);
 
   return (
     <Link to={url} tabIndex={-1} className="flex items-center gap-2 overflow-hidden">

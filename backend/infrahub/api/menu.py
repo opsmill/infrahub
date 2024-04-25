@@ -77,7 +77,7 @@ async def get_menu(
             ),
             InterfaceMenu(
                 title="IP Addresses",
-                path="/ipam/ip-addresses?ipam-tab=ip-details",
+                path="/ipam/addresses?ipam-tab=ip-details",
                 icon=_extract_node_icon(full_schema[InfrahubKind.IPADDRESS]),
             ),
         ],
