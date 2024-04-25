@@ -236,6 +236,7 @@ export const Select = (props: SelectProps) => {
   };
 
   const handleFocus = () => {
+    console.log("FOCUS");
     // Do not fetch if there is no peer
     if (!peer || hasBeenOpened) return;
 
@@ -695,7 +696,7 @@ export const Select = (props: SelectProps) => {
       return selectedOption?.name;
     }
 
-    return selectedOption;
+    return selectedOption ?? "";
   };
 
   const getInputStyle = () => {
@@ -708,10 +709,6 @@ export const Select = (props: SelectProps) => {
 
     return {};
   };
-
-  useEffect(() => {
-    setLocalOptions(optionsData);
-  }, [optionsData?.length]);
 
   // Fetch option display label if not defined by current selected option
   const handleFetchLabel = async () => {
@@ -762,11 +759,17 @@ export const Select = (props: SelectProps) => {
     handleFetchLabel();
   }, [value]);
 
+  useEffect(() => {
+    if (!optionsData?.length) return;
+
+    setLocalOptions(optionsData);
+  }, [optionsData?.length]);
+
   return (
     <div className="relative" data-testid="select-container">
       <Combobox
         as="div"
-        value={selectedOption}
+        value={selectedOption ?? ""}
         onChange={handleChange}
         disabled={disabled}
         multiple={multiple}
