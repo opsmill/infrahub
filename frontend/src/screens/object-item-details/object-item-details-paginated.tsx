@@ -7,6 +7,8 @@ import { useAtomValue } from "jotai/index";
 import { useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
+import { ButtonWithTooltip as ButtonWithTooltip2 } from "../../components/buttons/button-primitive";
+import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 import { Retry } from "../../components/buttons/retry";
 import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
 import SlideOver from "../../components/display/slide-over";
@@ -16,12 +18,14 @@ import {
   ARTIFACT_DEFINITION_OBJECT,
   DEFAULT_BRANCH_NAME,
   MENU_EXCLUDELIST,
+  PROFILE_KIND,
   TASK_OBJECT,
   TASK_TAB,
   TASK_TARGET,
 } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
+import { usePermission } from "../../hooks/usePermission";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
@@ -41,6 +45,7 @@ import {
 import { Generate } from "../artifacts/generate";
 import ErrorScreen from "../error-screen/error-screen";
 import AddObjectToGroup from "../groups/add-object-to-group";
+import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
@@ -50,10 +55,6 @@ import { TaskItems } from "../tasks/task-items";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
 import { RelationshipsDetails } from "./relationships-details-paginated";
-import Content from "../layout/content";
-import { usePermission } from "../../hooks/usePermission";
-import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
-import { ButtonWithTooltip as ButtonWithTooltip2 } from "../../components/buttons/button-primitive";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -78,6 +79,7 @@ export default function ObjectItemDetails(props: any) {
   const [genericList] = useAtom(genericsState);
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
+  const profileGeneric = genericList.find((s) => s.kind === PROFILE_KIND);
   const navigate = useNavigate();
 
   const refetchRef = useRef(null);
@@ -107,6 +109,9 @@ export default function ObjectItemDetails(props: any) {
         columns,
         relationshipsTabs,
         objectid,
+        // Do not query profiles on profiles objects
+        queryProfiles:
+          !profileGeneric?.used_by?.includes(schemaData.kind) && schemaData.kind !== PROFILE_KIND,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema

@@ -8,6 +8,9 @@ query {{kind}} {
       node {
         id
         display_label
+
+        {{#if queryProfiles}}
+
         profiles {
           edges {
             node {
@@ -16,6 +19,8 @@ query {{kind}} {
             }
           }
         }
+
+        {{/if}}
 
         {{#each columns}}
 
