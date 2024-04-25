@@ -8,6 +8,9 @@ export const schemaState = atom<iNodeSchema[]>([]);
 export type iGenericSchema = components["schemas"]["APIGenericSchema"];
 export const genericsState = atom<iGenericSchema[]>([]);
 
+export type IProfileSchema = components["schemas"]["APIProfileSchema"];
+export const profilesAtom = atom<IProfileSchema[]>([]);
+
 export type IModelSchema = iGenericSchema | iNodeSchema;
 
 export type iNamespace = {

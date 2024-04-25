@@ -14,7 +14,9 @@ import {
   iGenericSchema,
   iNamespace,
   iNodeSchema,
+  IProfileSchema,
   namespacesState,
+  profilesAtom,
   schemaState,
 } from "../state/atoms/schema.atom";
 import { schemaKindLabelState } from "../state/atoms/schemaKindLabel.atom";
@@ -39,6 +41,7 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
   const setSchemaKindLabelState = useSetAtom(schemaKindLabelState);
   const setGenerics = useSetAtom(genericsState);
   const setNamespaces = useSetAtom(namespacesState);
+  const setProfiles = useSetAtom(profilesAtom);
   const branches = useAtomValue(branchesState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
 
@@ -52,12 +55,14 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
         nodes: iNodeSchema[];
         generics: iGenericSchema[];
         namespaces: iNamespace[];
+        profiles: IProfileSchema[];
       } = await fetchUrl(CONFIG.SCHEMA_URL(branch?.name));
 
       const hash = schemaData.main;
       const schema = sortByName(schemaData.nodes || []);
       const generics = sortByName(schemaData.generics || []);
       const namespaces = sortByName(schemaData.namespaces || []);
+      const profiles = sortByName(schemaData.profiles || []);
 
       schema.forEach((s) => {
         s.attributes = sortByOrderWeight(s.attributes || []);
@@ -80,6 +85,7 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
       setSchemaKindNameState(schemaKindNameMap);
       setSchemaKindLabelState(schemaKindLabelMap);
       setNamespaces(namespaces);
+      setProfiles(profiles);
     } catch (error) {
       toast(
         <Alert type={ALERT_TYPES.ERROR} message="Something went wrong when fetching the schema" />
