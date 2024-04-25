@@ -54,6 +54,8 @@ async def run(message: messages.CheckGeneratorRun, service: InfrahubServices):
             branch=message.branch_name,
             params=message.variables,
             generator_instance=generator_instance.id,
+            convert_query_response=generator_definition.convert_query_response,
+            infrahub_node=InfrahubNode,
         )
         await generator.run(identifier=generator_definition.name)
         generator_instance.status.value = GeneratorInstanceStatus.READY.value
