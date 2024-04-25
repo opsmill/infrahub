@@ -34,7 +34,7 @@ test.describe("object dropdown creation", () => {
     // Open tags options
     await page
       .getByTestId("select-container")
-      .nth(5)
+      .nth(6)
       .getByTestId("select-open-option-button")
       .click();
 
