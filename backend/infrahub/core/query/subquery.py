@@ -121,7 +121,7 @@ async def build_subquery_order(
     where_str = " AND ".join(field_where)
     branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
     froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
-    to_return = f"last.{order_by if order_by != 'values' else 'value'} as {prefix}"
+    to_return = f"last.{order_by if order_by != 'values' and '__' not in order_by else 'value'} as {prefix}"
     with_parts: dict[str, Optional[str]] = {
         "last": None,
         "path": None,
