@@ -767,8 +767,6 @@ export const Select = (props: SelectProps) => {
 
   // If options from parent are updated
   useEffect(() => {
-    if (!options?.length) return;
-
     setLocalOptions(options);
   }, [options?.length]);
 
