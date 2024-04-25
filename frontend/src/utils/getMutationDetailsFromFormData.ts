@@ -9,7 +9,8 @@ const getMutationDetailsFromFormData = (
   schema: iNodeSchema | undefined,
   formData: any,
   mode: MutationMode,
-  existingObject?: any
+  existingObject?: any,
+  profile?: any
 ) => {
   if (!schema) return;
 
@@ -20,6 +21,9 @@ const getMutationDetailsFromFormData = (
       updatedObject[attribute.name]?.value?.id ??
       updatedObject[attribute.name]?.value ??
       attribute?.default_value;
+
+    const profileValue =
+      (profile && profile[attribute.name]?.value?.id) ?? profile[attribute.name]?.value;
 
     if (attribute.read_only) {
       // Delete the attribute if it's read-only
@@ -35,16 +39,26 @@ const getMutationDetailsFromFormData = (
         return;
       }
 
-      if (mode === "update" && JSON.stringify(updatedValue) === JSON.stringify(existingValue)) {
+      if (JSON.stringify(updatedValue) === JSON.stringify(existingValue)) {
         delete updatedObject[attribute.name];
       }
 
-      if (mode === "update" && !updatedValue && !existingValue) {
+      if (!updatedValue && !existingValue) {
+        // Remove property if it's empty
+        delete updatedObject[attribute.name];
+      }
+
+      if (updatedValue === profileValue) {
+        // Remove property if it comes from the profile
         delete updatedObject[attribute.name];
       }
     }
 
-    if (mode === "create" && (updatedValue === null || updatedValue === "")) {
+    if (
+      mode === "create" &&
+      (updatedValue === null || updatedValue === "" || updatedValue === profileValue)
+    ) {
+      // Remove property if it's empty or comes from the profile
       delete updatedObject[attribute.name];
     }
   });

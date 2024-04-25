@@ -108,8 +108,15 @@ export default function ObjectItemCreate(props: iProps) {
 
   async function onSubmit(data: any) {
     setIsLoading(true);
+
     try {
-      const newObject = getMutationDetailsFromFormData(schema, data, "create");
+      const newObject = getMutationDetailsFromFormData(
+        schema,
+        data,
+        "create",
+        null,
+        currentProfile
+      );
 
       if (!Object.keys(newObject).length) {
         return;

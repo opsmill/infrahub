@@ -121,7 +121,13 @@ export default function ObjectItemEditComponent(props: Props) {
   };
 
   async function onSubmit(data: any) {
-    const updatedObject = getMutationDetailsFromFormData(schema, data, "update", objectDetailsData);
+    const updatedObject = getMutationDetailsFromFormData(
+      schema,
+      data,
+      "update",
+      objectDetailsData,
+      currentProfile
+    );
 
     if (Object.keys(updatedObject).length || objectProfiles[0]?.id !== profile) {
       setIsLoading(true);
