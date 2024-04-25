@@ -23,7 +23,7 @@ import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
-import { IP_PREFIX_GENERIC } from "../constants";
+import { IP_PREFIX_GENERIC, IPAM_ROUTE } from "../constants";
 
 const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const { prefix } = useParams();
@@ -43,24 +43,9 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
     return <div>Select a Prefix in the Tree to the left to see details</div>;
   }
 
-  const constructLink = (data) => {
-    switch (data.__typename) {
-      case IP_PREFIX_GENERIC: {
-        return constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(data?.prefix?.value)}`);
-      }
-      default: {
-        return constructPathForIpam(`/ipam/ip_address/${encodeURIComponent(data?.prefix?.value)}`);
-      }
-    }
-  };
-
   const parent = data && data[IP_PREFIX_GENERIC]?.edges[0]?.node?.parent?.node;
 
   const children = data && data[IP_PREFIX_GENERIC]?.edges[0]?.node?.children;
-
-  const parentLink = parent?.prefix?.value
-    ? constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(parent?.prefix?.value)}`)
-    : "";
 
   const columns = [
     { name: "prefix", label: "Prefix" },
@@ -92,7 +77,9 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
       broadcast_address: child?.node?.broadcast_address?.value,
       ip_namespace: child?.node?.ip_namespace?.node?.display_label,
     },
-    link: constructLink(child?.node),
+    link: constructPathForIpam(
+      `${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(child?.node?.prefix?.value)}`
+    ),
   }));
 
   const handleUpdate = (data) => {
@@ -151,9 +138,14 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
   return (
     <div>
       <div className="flex items-center mb-2">
-        {parentLink && (
+        {parent?.prefix?.value && (
           <>
-            <Link to={parentLink}>{parent?.display_label}</Link>
+            <Link
+              to={constructPathForIpam(
+                `${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(parent.prefix.value)}`
+              )}>
+              {parent?.display_label}
+            </Link>
             <Icon icon={"mdi:chevron-right"} />
           </>
         )}

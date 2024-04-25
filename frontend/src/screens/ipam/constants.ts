@@ -9,4 +9,9 @@ export const IPAM_TABS = {
   IP_DETAILS: "ip-details",
 };
 
+export const IPAM_ROUTE = {
+  ADDRESSES: "/ipam/addresses",
+  PREFIXES: "/ipam/prefixes",
+} as const;
+
 export const IPAM_QSP = "ipam-tab";
