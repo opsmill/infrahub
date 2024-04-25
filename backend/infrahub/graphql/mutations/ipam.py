@@ -131,18 +131,33 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ) -> Tuple[Node, Self]:
-        await validate_namespace(database, data)
+        context: GraphqlContext = info.context
+        db = database or context.db
+        namespace_id = await validate_namespace(db, data)
 
-        prefix, result = await super().mutate_update(
-            root=root, info=info, data=data, branch=branch, at=at, database=database, node=node
+        address = node or await NodeManager.get_one_by_id_or_default_filter(
+            db=db,
+            schema_name=cls._meta.schema.kind,
+            id=data.get("id"),
+            branch=branch,
+            at=at,
+            include_owner=True,
+            include_source=True,
         )
+        try:
+            async with db.start_transaction() as dbt:
+                address = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=address)
+                reconciler = IpamReconciler(db=db, branch=branch)
+                ip_address = ipaddress.ip_interface(address.address.value)
+                reconciled_address = await reconciler.reconcile(
+                    ip_value=ip_address, node_uuid=address.get_id(), namespace=namespace_id
+                )
 
-        if result.ok:
-            # TODO
-            # Find if a parent relationship already exists, create it if not, update it if incorrect
-            pass
+                result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=reconciled_address)
+        except ValidationError as exc:
+            raise ValueError(str(exc)) from exc
 
-        return prefix, result
+        return address, result
 
     @classmethod
     async def mutate_upsert(
@@ -154,7 +169,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         at: str,
         node_getters: List[MutationNodeGetterInterface],
         database: Optional[InfrahubDatabase] = None,
-    ):
+    ) -> Tuple[Node, Self, bool]:
         await validate_namespace(database, data)
         prefix, result, created = await super().mutate_upsert(
             root=root, info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=database
@@ -229,17 +244,31 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ) -> Tuple[Node, Self]:
-        await validate_namespace(database, data)
-        prefix, result = await super().mutate_update(
-            root=root, info=info, data=data, branch=branch, at=at, database=database, node=node
-        )
+        context: GraphqlContext = info.context
+        db = database or context.db
+        namespace_id = await validate_namespace(db, data)
 
-        if result.ok:
-            # TODO
-            # Find if a parent relationship already exists, create it if not, update it if incorrect
-            # Find if children relationshps already exist, create them if not, update them if incorrect
-            # Find if some IP addresses relationships already exist, create them if not, update them if incorrect
-            pass
+        prefix = node or await NodeManager.get_one_by_id_or_default_filter(
+            db=db,
+            schema_name=cls._meta.schema.kind,
+            id=data.get("id"),
+            branch=branch,
+            at=at,
+            include_owner=True,
+            include_source=True,
+        )
+        try:
+            async with db.start_transaction() as dbt:
+                prefix = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=prefix)
+                reconciler = IpamReconciler(db=db, branch=branch)
+                ip_network = ipaddress.ip_network(prefix.prefix.value)
+                reconciled_prefix = await reconciler.reconcile(
+                    ip_value=ip_network, node_uuid=prefix.get_id(), namespace=namespace_id
+                )
+
+                result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=reconciled_prefix)
+        except ValidationError as exc:
+            raise ValueError(str(exc)) from exc
 
         return prefix, result
 
