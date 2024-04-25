@@ -23,7 +23,7 @@ const getMutationDetailsFromFormData = (
       attribute?.default_value;
 
     const profileValue =
-      (profile && profile[attribute.name]?.value?.id) ?? profile[attribute.name]?.value;
+      profile && (profile[attribute.name]?.value?.id ?? profile[attribute.name]?.value);
 
     if (attribute.read_only) {
       // Delete the attribute if it's read-only
