@@ -1,4 +1,4 @@
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import * as R from "ramda";
 import { createContext } from "react";
 import { toast } from "react-toastify";
@@ -34,11 +34,11 @@ export const SchemaContext = createContext<tSchemaContext>({
 export const withSchemaContext = (AppComponent: any) => (props: any) => {
   const [currentBranch, setCurrentBranch] = useAtom(currentBranchAtom);
   const [currentSchemaHash, setCurrentSchemaHash] = useAtom(currentSchemaHashAtom);
-  const [, setSchema] = useAtom(schemaState);
-  const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
-  const [, setSchemaKindLabelState] = useAtom(schemaKindLabelState);
-  const [, setGenerics] = useAtom(genericsState);
-  const [, setNamespaces] = useAtom(namespacesState);
+  const setSchema = useSetAtom(schemaState);
+  const setSchemaKindNameState = useSetAtom(schemaKindNameState);
+  const setSchemaKindLabelState = useSetAtom(schemaKindLabelState);
+  const setGenerics = useSetAtom(genericsState);
+  const setNamespaces = useSetAtom(namespacesState);
   const branches = useAtomValue(branchesState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
 
