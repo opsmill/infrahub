@@ -49,6 +49,7 @@ from infrahub.core.schema import (
     SchemaRoot,
     internal_schema,
 )
+from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.utils import parse_node_kind
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.exceptions import SchemaNotFoundError
@@ -120,7 +121,7 @@ class SchemaBranch:
     def get_all_kind_id_map(self, exclude_profiles: bool = False) -> Dict[str, str]:
         kind_id_map = {}
         if exclude_profiles:
-            names = self.node_names + self.generic_names
+            names = self.node_names + [gn for gn in self.generic_names if gn != InfrahubKind.PROFILE]
         else:
             names = self.all_names
         for name in names:
@@ -1179,6 +1180,43 @@ class SchemaBranch:
                 self.set(name=node_name, schema=schema)
 
     def add_hierarchy(self):
+        for generic_name in self.generics.keys():
+            generic = self.get_generic(name=generic_name, duplicate=False)
+
+            if not generic.hierarchical:
+                continue
+
+            generic = generic.duplicate()
+            if "parent" not in generic.relationship_names:
+                generic.relationships.append(
+                    RelationshipSchema(
+                        name="parent",
+                        identifier="parent__child",
+                        peer=generic_name,
+                        kind=RelationshipKind.HIERARCHY,
+                        cardinality=RelationshipCardinality.ONE,
+                        max_count=1,
+                        branch=BranchSupportType.AWARE,
+                        direction=RelationshipDirection.OUTBOUND,
+                        hierarchical=generic_name,
+                    )
+                )
+            if "children" not in generic.relationship_names:
+                generic.relationships.append(
+                    RelationshipSchema(
+                        name="children",
+                        identifier="parent__child",
+                        peer=generic_name,
+                        kind=RelationshipKind.HIERARCHY,
+                        cardinality=RelationshipCardinality.MANY,
+                        branch=BranchSupportType.AWARE,
+                        direction=RelationshipDirection.INBOUND,
+                        hierarchical=generic_name,
+                    )
+                )
+
+            self.set(name=generic_name, schema=generic)
+
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
 
@@ -1222,6 +1260,12 @@ class SchemaBranch:
             self.set(name=node_name, schema=node)
 
     def add_profile_schemas(self):
+        if not self.has(name=InfrahubKind.PROFILE):
+            core_profile_schema = GenericSchema(**core_profile_schema_definition)
+            self.set(name=core_profile_schema.kind, schema=core_profile_schema)
+        else:
+            core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
+        profile_schema_kinds = set()
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
             if node.namespace in RESTRICTED_NAMESPACES:
@@ -1229,6 +1273,17 @@ class SchemaBranch:
 
             profile = self.generate_profile_from_node(node=node)
             self.set(name=profile.kind, schema=profile)
+            profile_schema_kinds.add(profile.kind)
+        if not profile_schema_kinds:
+            return
+        core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
+        current_used_by = set(core_profile_schema.used_by)
+        new_used_by = profile_schema_kinds - current_used_by
+        if not new_used_by:
+            return
+        core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=True)
+        core_profile_schema.used_by = sorted(list(profile_schema_kinds))
+        self.set(name=core_profile_schema.kind, schema=core_profile_schema)
 
     def add_profile_relationships(self):
         for node_name in self.nodes.keys():
@@ -1256,8 +1311,18 @@ class SchemaBranch:
     def _get_profile_kind(self, node_kind: str) -> str:
         return f"Profile{node_kind}"
 
-    @staticmethod
-    def generate_profile_from_node(node: NodeSchema) -> ProfileSchema:
+    def generate_profile_from_node(self, node: NodeSchema) -> ProfileSchema:
+        core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
+        core_name_attr = core_profile_schema.get_attribute(name="profile_name")
+        profile_name_attr = AttributeSchema(
+            **core_name_attr.model_dump(exclude=["id", "inherited"]),
+        )
+        profile_name_attr.branch = node.branch
+        core_priority_attr = core_profile_schema.get_attribute(name="profile_priority")
+        profile_priority_attr = AttributeSchema(
+            **core_priority_attr.model_dump(exclude=["id", "inherited"]),
+        )
+        profile_priority_attr.branch = node.branch
         profile = ProfileSchema(
             name=node.kind,
             namespace="Profile",
@@ -1267,20 +1332,7 @@ class SchemaBranch:
             display_labels=["profile_name__value"],
             inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE],
             default_filter="profile_name__value",
-            attributes=[
-                AttributeSchema(
-                    name="profile_name",
-                    kind="Text",
-                    min_length=3,
-                    max_length=32,
-                    optional=False,
-                    unique=True,
-                    branch=node.branch,
-                ),
-                AttributeSchema(
-                    name="profile_priority", kind="Number", default_value=1000, optional=True, branch=node.branch
-                ),
-            ],
+            attributes=[profile_name_attr, profile_priority_attr],
             relationships=[
                 RelationshipSchema(
                     name="related_nodes",
@@ -1549,6 +1601,8 @@ class SchemaManager(NodeManager):
         branch = await registry.get_branch(branch=branch, db=db)
 
         for item_kind in schema.node_names + schema.generic_names:
+            if item_kind == InfrahubKind.PROFILE:
+                continue
             if limit and item_kind not in limit:
                 continue
             item = schema.get(name=item_kind, duplicate=False)

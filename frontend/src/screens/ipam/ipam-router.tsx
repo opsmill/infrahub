@@ -120,7 +120,7 @@ export default function IpamRouter() {
     <Card className="p-0 overflow-hidden flex flex-col h-full">
       <Tabs tabs={tabs} qsp={IPAM_QSP} rightItems={rightitems} />
 
-      <div className="m-4">{renderContent()}</div>
+      <div className="p-4 flex-grow overflow-auto">{renderContent()}</div>
 
       <SlideOver
         title={

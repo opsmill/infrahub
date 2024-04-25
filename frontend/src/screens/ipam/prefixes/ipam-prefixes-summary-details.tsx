@@ -12,6 +12,7 @@ import LoadingScreen from "../../loading-screen/loading-screen";
 import { IpDetailsCard } from "../common/ip-details-card";
 import { PrefixUsageChart } from "../common/prefix-usage-chart";
 import { IP_PREFIX_DEFAULT_SCHEMA_KIND } from "../constants";
+import { IpamPrefixSummarySkeleton } from "./ipam-prefix-summary-skeleton";
 
 export default function IpamIPPrefixesSummaryDetails() {
   const { prefix } = useParams();
@@ -63,12 +64,12 @@ const PrefixSummaryContent = ({ prefixKind }: { prefixKind: string }) => {
     notifyOnNetworkStatusChange: true,
   });
 
-  if (loading || !data || !prefixSchema) return <LoadingScreen />;
+  if (loading || !data || !prefixSchema) return <IpamPrefixSummarySkeleton />;
 
   const prefixData = data[prefixKind].edges[0].node;
 
   return (
-    <div className="flex items-start gap-2">
+    <div className="flex flex-wrap items-start gap-2">
       <IpDetailsCard schema={prefixSchema} data={prefixData} />
       <PrefixUsageChart usagePercentage={prefixData.utilization.value} />
     </div>

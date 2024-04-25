@@ -29,6 +29,7 @@ eslint
 excalidraw
 fanout
 file_path
+generator_definition
 generator_definitions
 github
 graphene
@@ -40,9 +41,11 @@ include_in_menu
 Infrahub
 Infrahub's
 infrahubctl
+IP
 IPAddress
 IPHost
 IPNetwork
+IPAM
 isort
 jinja
 Jotai
@@ -66,6 +69,7 @@ REST
 ressources
 schema_mapping
 sdk
+subnet
 template_path
 toml
 uncheck

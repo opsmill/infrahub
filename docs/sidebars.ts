@@ -42,11 +42,13 @@ const sidebars: SidebarsConfig = {
       items: [
         'guides/installation',
         'guides/create-schema',
+        'guides/generator',
         'guides/repository',
         'guides/jinja2-transform',
         'guides/python-transform',
         'guides/artifact',
         'guides/database-backup',
+        'guides/profiles',
       ],
     },
     {
@@ -56,11 +58,12 @@ const sidebars: SidebarsConfig = {
       items: [
         'topics/infrahub-yml',
         'topics/architecture',
-
         'topics/artifact',
         'topics/check',
 	      'topics/hardware-requirements',
+        'topics/ipam',
         'topics/local-demo-environment',
+        'topics/generator',
         'topics/graphql',
         'topics/object-storage',
         'topics/version-control',
@@ -71,6 +74,7 @@ const sidebars: SidebarsConfig = {
         'topics/auth',
         'topics/database-backup',
         'topics/resources-testing-framework',
+	'topics/profiles',
       ],
     },
     {

@@ -28,10 +28,11 @@ from .mutations import (
     TaskCreate,
     TaskUpdate,
 )
+from .parser import extract_selection
 from .queries import BranchQueryList, DiffSummary, DiffSummaryOld, InfrahubInfo, InfrahubStatus, Relationship, Task
 
 if TYPE_CHECKING:
-    from graphql import GraphQLResolveInfo  # pylint: disable=no-name-in-module
+    from graphql import GraphQLResolveInfo
 
     from . import GraphqlContext
 
@@ -40,7 +41,8 @@ if TYPE_CHECKING:
 
 
 async def default_paginated_list_resolver(root: dict, info: GraphQLResolveInfo, **kwargs):
-    fields = await extract_fields(info.field_nodes[0].selection_set)
+    fields = await extract_selection(info.field_nodes[0], schema=info.return_type.graphene_type._meta.schema)
+
     return await info.return_type.graphene_type.get_paginated_list(**kwargs, fields=fields, context=info.context)
 
 

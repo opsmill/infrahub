@@ -665,69 +665,44 @@ class IPPrefixReconcileQuery(Query):
         self.add_to_query(get_new_children_query)
         self.return_labels = ["ip_node", "current_parent", "current_children", "new_parent", "new_children"]
 
-    def get_ip_node_uuid(self) -> Optional[str]:
+    def _get_uuid_from_query(self, node_name: str) -> Optional[str]:
         results = list(self.get_results())
         if not results:
             return None
         result = results[0]
-        prefix_node = result.get("ip_node")
-        if not prefix_node:
+        node = result.get(node_name)
+        if not node:
             return None
-        prefix_node_uuid = prefix_node.get("uuid")
-        if prefix_node_uuid:
-            return str(prefix_node_uuid)
+        node_uuid = node.get("uuid")
+        if node_uuid:
+            return str(node_uuid)
         return None
+
+    def _get_uuids_from_query_list(self, alias_name: str) -> list[str]:
+        results = list(self.get_results())
+        if not results:
+            return []
+        result = results[0]
+        element_uuids = []
+        for element in result.get(alias_name):
+            if not element:
+                continue
+            element_uuid = element.get("uuid")
+            if element_uuid:
+                element_uuids.append(str(element_uuid))
+        return element_uuids
+
+    def get_ip_node_uuid(self) -> Optional[str]:
+        return self._get_uuid_from_query("ip_node")
 
     def get_current_parent_uuid(self) -> Optional[str]:
-        results = list(self.get_results())
-        if not results:
-            return None
-        result = results[0]
-        parent = result.get("current_parent")
-        if not parent:
-            return None
-        parent_uuid = parent.get("uuid")
-        if parent_uuid:
-            return str(parent_uuid)
-        return None
-
-    def get_current_children_uuids(self) -> list[str]:
-        results = list(self.get_results())
-        if not results:
-            return []
-        result = results[0]
-        child_uuids = []
-        for child in result.get("current_children"):
-            if not child:
-                continue
-            child_uuid = child.get("uuid")
-            if child_uuid:
-                child_uuids.append(str(child_uuid))
-        return child_uuids
+        return self._get_uuid_from_query("current_parent")
 
     def get_calculated_parent_uuid(self) -> Optional[str]:
-        results = list(self.get_results())
-        if not results:
-            return None
-        result = results[0]
-        parent = result.get("new_parent")
-        if not parent:
-            return None
-        parent_uuid = parent.get("uuid")
-        if parent_uuid:
-            return str(parent_uuid)
-        return None
+        return self._get_uuid_from_query("new_parent")
 
-    def get_calculated_children_uuids(self) -> list[str]:
-        results = list(self.get_results())
-        if not results:
-            return []
-        result = results[0]
-        child_uuids = []
-        for child in result.get("new_children"):
-            if not child:
-                continue
-            child_uuid = child.get("uuid")
-            if child_uuid:
-                child_uuids.append(str(child_uuid))
-        return child_uuids
+    def get_current_children_uuids(self) -> list[str]:
+        return self._get_uuids_from_query_list("current_children")
+
+    def get_calculated_children_uuids(self) -> Optional[str]:
+        return self._get_uuids_from_query_list("new_children")

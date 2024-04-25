@@ -20,7 +20,7 @@ ns.add_collection(sync)
 def yamllint(context: Context):
     """This will run yamllint to validate formatting of all yaml files."""
 
-    exec_cmd = "yamllint ."
+    exec_cmd = "yamllint -s ."
     context.run(exec_cmd, pty=True)
 
 

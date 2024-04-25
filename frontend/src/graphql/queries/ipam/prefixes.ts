@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 
 export const GET_PREFIXES_ONLY = gql`
-  query GET_PREFIXES($parentIds: [ID!]) {
+  query GET_PREFIXES_ONLY($parentIds: [ID!]) {
     IpamIPPrefix(parent__ids: $parentIds) {
       edges {
         node {
@@ -22,7 +22,7 @@ export const GET_PREFIXES_ONLY = gql`
 `;
 
 export const GET_PREFIXES = gql`
-  query IpamIPPrefix($namespace: String, $prefix: String, $offset: Int, $limit: Int) {
+  query GET_PREFIXES($namespace: String, $prefix: String, $offset: Int, $limit: Int) {
     IpamIPPrefix(
       ip_namespace__name__value: $namespace
       prefix__value: $prefix
@@ -95,7 +95,7 @@ export const GET_PREFIXES = gql`
 `;
 
 export const GET_PREFIX = gql`
-  query IpamIPPrefix($namespace: String, $prefix: String, $offset: Int, $limit: Int) {
+  query GET_PREFIX($namespace: String, $prefix: String, $offset: Int, $limit: Int) {
     IpamIPPrefix(
       ip_namespace__name__value: $namespace
       prefix__value: $prefix
@@ -170,6 +170,46 @@ export const GET_PREFIX_KIND = gql`
       edges {
         node {
           __typename
+        }
+      }
+    }
+  }
+`;
+
+export const GET_TOP_LEVEL_PREFIXES = gql`
+  query GET_TOP_LEVEL_PREFIXES {
+    IpamIPPrefix(is_top_level__value: true) {
+      edges {
+        node {
+          id
+          display_label
+          parent {
+            node {
+              id
+            }
+          }
+          children {
+            count
+          }
+        }
+      }
+    }
+  }
+`;
+
+export const GET_PREFIX_ANCESTORS = gql`
+  query GET_PREFIX_ANCESTORS($ip: String) {
+    IpamIPPrefix(children__prefix__value: $ip) {
+      edges {
+        node {
+          id
+          display_label
+          parent {
+            node {
+              id
+              display_label
+            }
+          }
         }
       }
     }

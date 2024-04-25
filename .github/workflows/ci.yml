@@ -82,7 +82,7 @@ jobs:
       - name: "Setup environment"
         run: "pip install yamllint==1.35.1"
       - name: "Linting: yamllint"
-        run: "yamllint ."
+        run: "yamllint -s ."
 
   javascript-lint:
     if: needs.files-changed.outputs.javascript == 'true'
@@ -660,6 +660,14 @@ jobs:
 
       - name: Install Playwright Browsers
         run: npx playwright install chromium
+
+      # Make chromium ignore netlink messages by returning HandleMessage early
+      - name: Chrome path
+        run: echo CHROME_BIN_PATH="$(npx playwright install chromium --dry-run | grep Install | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
+      - name: Chrome func offset
+        run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::HandleMessage(char const*, int, bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
+      - name: Patch chromium
+        run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
 
       - name: Run Playwright tests
         run: npm run ci:test:e2e
