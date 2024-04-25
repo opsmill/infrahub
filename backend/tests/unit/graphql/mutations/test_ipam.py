@@ -27,6 +27,27 @@ mutation CreatePrefix($prefix: String!) {
 }
 """
 
+UPDATE_IPPREFIX = """
+mutation UpdatePrefix($id: String!, $prefix: String!, $description: String!) {
+    IpamIPPrefixUpdate(
+        data: {
+            id: $id
+            prefix: {
+                value: $prefix
+            }
+            description: {
+                value: $description
+            }
+        }
+    ) {
+        ok
+        object {
+            id
+        }
+    }
+}
+"""
+
 DELETE_IPPREFIX = """
 mutation DeletePrefix($id: String!) {
     IpamIPPrefixDelete(
@@ -91,6 +112,27 @@ mutation CreateAddress($address: String!) {
         data: {
             address: {
                 value: $address
+            }
+        }
+    ) {
+        ok
+        object {
+            id
+        }
+    }
+}
+"""
+
+UPDATE_IPADDRESS = """
+mutation UpdateAddress($id: String!, $address: String!, $description: String!) {
+    IpamIPAddressUpdate(
+        data: {
+            id: $id
+            address: {
+                value: $address
+            }
+            description: {
+                value: $description
             }
         }
     ) {
@@ -323,6 +365,39 @@ async def test_ipprefix_create_reverse(
     assert not result.data["IpamIPPrefix"]["edges"][0]["node"]["is_top_level"]["value"]
 
 
+async def test_ipprefix_update(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    """Make sure a prefix can be updated."""
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    subnet = ipaddress.ip_network("2001:db8::/48")
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(subnet)},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPPrefixCreate"]["ok"]
+
+    subnet_id = result.data["IpamIPPrefixCreate"]["object"]["id"]
+    result = await graphql(
+        schema=gql_params.schema,
+        source=UPDATE_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"id": subnet_id, "prefix": str(subnet), "description": "RFC 3849"},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPPrefixUpdate"]["ok"]
+
+
 async def test_ipprefix_delete(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -471,6 +546,39 @@ async def test_ipaddress_create(
     assert len(result.data["IpamIPAddress"]["edges"]) == 1
     assert result.data["IpamIPAddress"]["edges"][0]["node"]["address"]["value"] == str(address)
     assert result.data["IpamIPAddress"]["edges"][0]["node"]["ip_prefix"]["node"]["prefix"]["value"] == str(supernet)
+
+
+async def test_ipaddress_update(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    """Make sure IP address can be updated."""
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    address = ipaddress.ip_interface("192.0.2.1/24")
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_IPADDRESS,
+        context_value=gql_params.context,
+        variable_values={"address": str(address)},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPAddressCreate"]["ok"]
+
+    address_id = result.data["IpamIPAddressCreate"]["object"]["id"]
+    result = await graphql(
+        schema=gql_params.schema,
+        source=UPDATE_IPADDRESS,
+        context_value=gql_params.context,
+        variable_values={"id": address_id, "address": str(address), "description": "RFC 5735"},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPAddressUpdate"]["ok"]
 
 
 async def test_ipaddress_change_ipprefix(
