@@ -224,7 +224,7 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,too
         query_filter.append(QueryNode(name="i", labels=["Attribute"], params={"name": f"${param_prefix}_name"}))
         query_params[f"{param_prefix}_name"] = name
 
-    if filter_name == "value":
+    if filter_name in ("value", "binary_address"):
         query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]))
 
         if filter_value is None:
@@ -232,15 +232,19 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,too
         else:
             if partial_match:
                 query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
-                query_where.append(f"toLower(toString(av.value)) CONTAINS toLower(toString(${param_prefix}_value))")
+                query_where.append(
+                    f"toLower(toString(av.{filter_name})) CONTAINS toLower(toString(${param_prefix}_{filter_name}))"
+                )
             elif support_profiles:
                 query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
-                query_where.append(f"(av.value = ${param_prefix}_value OR av.is_default)")
+                query_where.append(f"(av.{filter_name} = ${param_prefix}_{filter_name} OR av.is_default)")
             else:
                 query_filter.append(
-                    QueryNode(name="av", labels=["AttributeValue"], params={"value": f"${param_prefix}_value"})
+                    QueryNode(
+                        name="av", labels=["AttributeValue"], params={filter_name: f"${param_prefix}_{filter_name}"}
+                    )
                 )
-            query_params[f"{param_prefix}_value"] = filter_value
+            query_params[f"{param_prefix}_{filter_name}"] = filter_value
 
     elif filter_name == "values" and isinstance(filter_value, list):
         query_filter.extend(
@@ -251,6 +255,17 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,too
         else:
             query_where.append(f"av.value IN ${param_prefix}_value")
         query_params[f"{param_prefix}_value"] = filter_value
+
+    elif filter_name == "version":
+        query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]))
+
+        if filter_value is None:
+            query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+        else:
+            query_filter.append(
+                QueryNode(name="av", labels=["AttributeValue"], params={filter_name: f"${param_prefix}_{filter_name}"})
+            )
+            query_params[f"{param_prefix}_{filter_name}"] = filter_value
 
     elif filter_name in [v.value for v in FlagProperty] and filter_value is not None:
         query_filter.append(QueryRel(labels=[filter_name.upper()]))
