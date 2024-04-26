@@ -27,7 +27,6 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
         .click();
       await page.getByRole("option", { name: "ProfileBuiltinTag" }).click();
       await page.getByLabel("Profile Name *").fill("profile test tag");
-      await page.getByLabel("Name", { exact: true }).fill("testname");
       await page.getByLabel("Description").fill("A profile for E2E test");
       await page.getByRole("button", { name: "Create" }).click();
     });
@@ -38,6 +37,68 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       ).toBeVisible();
       await expect(page.getByRole("link", { name: "ProfileBuiltinTag" })).toBeVisible();
       await expect(page.getByRole("link", { name: "profile test tag" })).toBeVisible();
+    });
+  });
+
+  test("should access the profile created and view its data", async ({ page }) => {
+    await test.step("Navigate to CoreProfile page", async () => {
+      await page.goto("/objects/CoreProfile");
+      await expect(page.getByRole("heading")).toContainText("Profile");
+      await page.getByRole("link", { name: "profile test tag" }).click();
+    });
+
+    await expect(page.getByText("Profile Nameprofile test tag")).toBeVisible();
+    await expect(page.getByText("Name-")).toBeVisible();
+    await expect(page.getByText("DescriptionA profile for E2E")).toBeVisible();
+
+    await test.step("return to profiles list using breadcrumb", async () => {
+      await page.getByRole("main").getByRole("link", { name: "All Profiles" }).click();
+      expect(page.url()).toContain("/objects/CoreProfile");
+    });
+  });
+
+  test("create an object with a profile", async ({ page }) => {
+    await test.step("Navigate to object creation page", async () => {
+      await page.goto("/objects/BuiltinTag");
+      await page.getByTestId("create-object-button").click();
+    });
+
+    await test.step("Select profile and enter details", async () => {
+      await page
+        .getByTestId("side-panel-container")
+        .getByTestId("select-open-option-button")
+        .click();
+      await page.getByRole("option", { name: "profile test tag" }).click();
+
+      // Verify initial input fields for profile
+      await expect(page.getByLabel("Name *")).toBeEmpty();
+      await expect(page.getByLabel("Description")).toHaveValue("A profile for E2E test");
+
+      await page.getByLabel("Name *").fill("tag with profile");
+      await page.getByRole("button", { name: "Create" }).click();
+    });
+
+    await test.step("Verify object creation", async () => {
+      await expect(page.locator("#alert-success-Tag-created")).toContainText("Tag created");
+      await page.getByRole("link", { name: "tag with profile" }).click();
+    });
+
+    await test.step("Verify profile metadata", async () => {
+      await page.getByText("Nametag with profile").getByTestId("view-metadata-button").click();
+      await expect(page.getByTestId("metadata-tooltip").getByText("Source-")).toBeVisible();
+      await page.getByText("Nametag with profile").getByTestId("view-metadata-button").click(); // to close popover
+      await page
+        .getByText("DescriptionA profile for E2E")
+        .getByTestId("view-metadata-button")
+        .click();
+      await expect(
+        page.getByTestId("metadata-tooltip").getByText("Sourceprofile test tag")
+      ).toBeVisible();
+    });
+
+    await test.step("Verify profile link", async () => {
+      await page.getByRole("link", { name: "profile test tag" }).click();
+      expect(page.url()).toContain("/objects/CoreProfile/");
     });
   });
 
