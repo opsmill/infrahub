@@ -1467,11 +1467,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if targets:
             generator.targets = targets[0].id
 
-        if (
+        if (  # pylint: disable=too-many-boolean-expressions
             existing_generator.query.id != generator.query
             or existing_generator.file_path.value != str(generator.file_path)
             or existing_generator.class_name.value != generator.class_name
             or existing_generator.parameters.value != generator.parameters
+            or existing_generator.convert_query_response.value != generator.convert_query_response
             or existing_generator.targets.id != generator.targets
         ):
             return True
@@ -1665,6 +1666,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         if existing_generator.file_path.value != str(generator.file_path):
             existing_generator.file_path.value = str(generator.file_path)
+
+        if existing_generator.convert_query_response.value != generator.convert_query_response:
+            existing_generator.convert_query_response.value = generator.convert_query_response
 
         if existing_generator.parameters.value != generator.parameters:
             existing_generator.parameters.value = generator.parameters

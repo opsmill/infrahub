@@ -1502,6 +1502,7 @@ core_models: dict[str, Any] = {
                 {"name": "parameters", "kind": "JSON"},
                 {"name": "file_path", "kind": "Text"},
                 {"name": "class_name", "kind": "Text"},
+                {"name": "convert_query_response", "kind": "Boolean", "optional": True, "default_value": False},
             ],
             "relationships": [
                 {

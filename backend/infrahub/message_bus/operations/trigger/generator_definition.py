@@ -20,6 +20,7 @@ async def run(message: messages.TriggerGeneratorDefinitionRun, service: Infrahub
             repository_id=generator.repository.peer.id,
             parameters=generator.parameters.value,
             group_id=generator.targets.peer.id,
+            convert_query_response=generator.convert_query_response.value,
         )
         for generator in generators
     ]
