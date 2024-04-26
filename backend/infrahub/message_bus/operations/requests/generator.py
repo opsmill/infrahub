@@ -25,6 +25,7 @@ async def run(message: messages.RequestGeneratorRun, service: InfrahubServices):
         file_path=message.generator_definition.file_path,
         query=message.generator_definition.query_name,
         targets=message.generator_definition.group_id,
+        convert_query_response=message.generator_definition.convert_query_response,
     )
 
     commit_worktree = repository.get_commit_worktree(commit=message.commit)
