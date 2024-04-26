@@ -119,7 +119,7 @@ If you are using GitHub as your Git Server, you need to have a [fine-grained per
     **Make sure that you are on the correct Infrahub branch.** Unlike a CoreRepository, a Read-only Repository will only pull files into the Infrahub branch on which it was created.
 
     ```GraphQL
-      # Endpoint : http://127.0.0.1:8000/graphql/:branch
+      # Endpoint : http://127.0.0.1:8000/graphql/<branch>
       mutation {
         CoreReadOnlyRepositoryCreate(
           data: {
