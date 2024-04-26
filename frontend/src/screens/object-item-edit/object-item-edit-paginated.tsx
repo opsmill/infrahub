@@ -107,7 +107,7 @@ export default function ObjectItemEditComponent(props: Props) {
       : profilesOptions?.find((p) => p.id === profile)?.values;
 
   const displayProfile =
-    !profileGeneric?.used_by?.includes(schema.kind) && schema.kind !== PROFILE_KIND;
+    schema && !profileGeneric?.used_by?.includes(schema.kind) && schema.kind !== PROFILE_KIND;
 
   const formStructure =
     formStructureFromProps ??

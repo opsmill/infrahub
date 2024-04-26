@@ -64,7 +64,8 @@ export default function ObjectItemCreate(props: iProps) {
   const profileName = `Profile${isGeneric && kind ? kind : objectname}`;
 
   const displayProfile =
-    !profileGeneric?.used_by?.includes(schema.kind) && schema.kind !== PROFILE_KIND;
+    schema && !profileGeneric?.used_by?.includes(schema.kind) && schema.kind !== PROFILE_KIND;
+
   // Get object's attributes to get them from the profile data
   const attributes = getObjectAttributes(schema);
   // const relationships = getObjectRelationships(schema);
