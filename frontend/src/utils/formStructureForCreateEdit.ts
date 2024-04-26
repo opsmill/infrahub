@@ -59,8 +59,8 @@ const validate = (value: any, attribute: any = {}, optional?: boolean) => {
     return true;
   }
 
-  // If the value is false but itso is the default_value, then validate (checkbox example)
-  if (defaultValue !== undefined && value === defaultValue) {
+  // If the value is false but it is the default_value, then validate (checkbox example)
+  if (defaultValue !== undefined && defaultValue !== null && value === defaultValue) {
     return true;
   }
 

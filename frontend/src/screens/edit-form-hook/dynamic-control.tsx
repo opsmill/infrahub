@@ -48,7 +48,10 @@ export const DynamicControl = (props: DynamicFieldData) => {
   };
 
   useEffect(() => {
-    setLocalValue(value);
+    // Handle value change if parent updates it
+    if (!value) return;
+
+    handleChange(value);
   }, [value]);
 
   switch (type) {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import { Select } from "../../components/inputs/select";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
+import { PROFILE_KIND } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
@@ -17,7 +18,6 @@ import { getObjectAttributes } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import { Form } from "../edit-form-hook/form";
-import { PROFILE_KIND } from "../../config/constants";
 
 interface iProps {
   objectname?: string;
@@ -44,6 +44,7 @@ export default function ObjectItemCreate(props: iProps) {
 
   const schemaList = useAtomValue(schemaState);
   const genericsList = useAtomValue(genericsState);
+  const profileGeneric = genericsList.find((s) => s.kind === PROFILE_KIND);
   const profilesList = useAtomValue(profilesAtom);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
@@ -60,7 +61,13 @@ export default function ObjectItemCreate(props: iProps) {
     ? profilesList.find((profile) => profile.kind === kind)
     : schemaList.find((s) => (isGeneric ? s.kind === kind : s.kind === objectname));
 
-  const profileName = `Profile${objectname}`;
+  const isEditingProfile = kind && profileGeneric?.used_by?.includes(kind);
+
+  // Adds "Profile" before kind to get profiles, eccept for profiles themselves
+  const profileName = `Profile${isGeneric && kind ? kind : objectname}`;
+
+  const displayProfile =
+    schema && !profileGeneric?.used_by?.includes(schema.kind) && schema.kind !== PROFILE_KIND;
 
   // Get object's attributes to get them from the profile data
   const attributes = getObjectAttributes(schema);
@@ -76,7 +83,9 @@ export default function ObjectItemCreate(props: iProps) {
     ${queryString}
   `;
 
-  const { data } = useQuery(query, { skip: !(!!generic || !!schema) || isGeneric });
+  const { data } = useQuery(query, {
+    skip: !(!!generic || !!schema) || (isGeneric && !kind) || isEditingProfile,
+  });
 
   const profiles = data && data[profileName]?.edges?.map((edge) => edge.node);
 
@@ -90,13 +99,15 @@ export default function ObjectItemCreate(props: iProps) {
 
   const kindOptions = generic?.used_by?.map((kind: string) => ({ id: kind, name: kind })) ?? [];
 
+  const currentProfile = profilesOptions?.find((p) => p.id === profile)?.values;
+
   const fields =
     formStructure ??
     getFormStructureForCreateEdit({
       schema,
       schemas: schemaList,
       generics: genericsList,
-      profile: profilesOptions?.find((p) => p.id === profile)?.values,
+      profile: currentProfile,
     });
 
   const handleProfileChange = (newProfile: string) => {
@@ -109,8 +120,15 @@ export default function ObjectItemCreate(props: iProps) {
 
   async function onSubmit(data: any) {
     setIsLoading(true);
+
     try {
-      const newObject = getMutationDetailsFromFormData(schema, data, "create");
+      const newObject = getMutationDetailsFromFormData(
+        schema,
+        data,
+        "create",
+        null,
+        currentProfile
+      );
 
       if (!Object.keys(newObject).length) {
         return;
@@ -168,7 +186,7 @@ export default function ObjectItemCreate(props: iProps) {
         </div>
       )}
 
-      {!isGeneric && (
+      {(!isGeneric || (isGeneric && kind)) && displayProfile && (
         <div className="p-4 pt-3 bg-gray-200">
           <div className="flex items-center">
             <label className="block text-sm font-medium leading-6 text-gray-900">
