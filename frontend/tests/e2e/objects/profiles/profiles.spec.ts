@@ -27,7 +27,6 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
         .click();
       await page.getByRole("option", { name: "ProfileBuiltinTag" }).click();
       await page.getByLabel("Profile Name *").fill("profile test tag");
-      await page.getByLabel("Name", { exact: true }).fill("testname");
       await page.getByLabel("Description").fill("A profile for E2E test");
       await page.getByRole("button", { name: "Create" }).click();
     });
@@ -38,6 +37,23 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       ).toBeVisible();
       await expect(page.getByRole("link", { name: "ProfileBuiltinTag" })).toBeVisible();
       await expect(page.getByRole("link", { name: "profile test tag" })).toBeVisible();
+    });
+  });
+
+  test("should access profile created and view its data", async ({ page }) => {
+    await test.step("Navigate to CoreProfile page", async () => {
+      await page.goto("/objects/CoreProfile");
+      await expect(page.getByRole("heading")).toContainText("Profile");
+      await page.getByRole("link", { name: "profile test tag" }).click();
+    });
+
+    await expect(page.getByText("Profile Nameprofile test tag")).toBeVisible();
+    await expect(page.getByText("Name-")).toBeVisible();
+    await expect(page.getByText("DescriptionA profile for E2E")).toBeVisible();
+
+    await test.step("return to profiles list using breadcrumb", async () => {
+      await page.getByRole("main").getByRole("link", { name: "All Profiles" }).click();
+      expect(page.url()).toContain("/objects/CoreProfile");
     });
   });
 
