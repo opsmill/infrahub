@@ -1,4 +1,4 @@
-import { MouseEventHandler, ReactElement } from "react";
+import { MouseEventHandler, ReactElement, useEffect } from "react";
 import { FieldValues, FormProvider, SubmitHandler, useForm } from "react-hook-form";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
 import { resolve } from "../../utils/objects";
@@ -46,7 +46,7 @@ export const Form = ({
 }: FormProps) => {
   const formMethods = useForm();
 
-  const { handleSubmit, formState, reset } = formMethods;
+  const { handleSubmit, formState, reset, unregister } = formMethods;
 
   const { errors } = formState;
 
@@ -77,6 +77,17 @@ export const Form = ({
       reset();
     }
   };
+
+  // Unregister fields on unmount form (when switching kind in generic for ex)
+  const handleUnregister = () => {
+    fields.map((field) => {
+      unregister(field.name);
+    });
+  };
+
+  useEffect(() => {
+    return handleUnregister;
+  }, [fields.length]);
 
   return (
     <form className="flex-1 flex flex-col w-full overflow-auto" data-cy="form">
