@@ -97,7 +97,8 @@ class InfrahubGenerator:
             update_group=True,
             subscribers=self.subscribers,
         )
-        await self.process_nodes(data=data)
+        unpacked = data.get("data") or data
+        await self.process_nodes(data=unpacked)
         return data
 
     async def run(self, identifier: str, data: Optional[dict] = None) -> None:
@@ -115,6 +116,9 @@ class InfrahubGenerator:
     async def process_nodes(self, data: dict) -> None:
         if not self.convert_query_response:
             return
+
+        await self._init_client.schema.all(branch=self.branch_name)
+
         for kind in data:
             if kind in self._init_client.schema.cache[self.branch_name]:
                 for result in data[kind].get("edges", []):

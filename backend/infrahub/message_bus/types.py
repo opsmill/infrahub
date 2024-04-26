@@ -90,6 +90,7 @@ class ProposedChangeGeneratorDefinition(BaseModel):
     definition_id: str
     definition_name: str
     query_name: str
+    convert_query_response: bool
     query_models: list[str]
     repository_id: str
     class_name: str
