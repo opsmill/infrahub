@@ -33,7 +33,8 @@ async def test_rebased():
 
     await rebased(message=message, service=service)
 
-    assert len(recorder.messages) == 1
+    assert len(recorder.messages) == 2
     assert isinstance(recorder.messages[0], messages.RefreshRegistryRebasedBranch)
+    assert isinstance(recorder.messages[1], messages.TriggerIpamReconciliation)
     refresh_message: messages.RefreshRegistryRebasedBranch = recorder.messages[0]
     assert refresh_message.branch == "cr1234"
