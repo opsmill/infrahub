@@ -61,6 +61,9 @@ export default function ObjectItemCreate(props: iProps) {
     ? profilesList.find((profile) => profile.kind === kind)
     : schemaList.find((s) => (isGeneric ? s.kind === kind : s.kind === objectname));
 
+  const isEditingProfile = kind && profileGeneric?.used_by?.includes(kind);
+
+  // Adds "Profile" before kind to get profiles, eccept for profiles themselves
   const profileName = `Profile${isGeneric && kind ? kind : objectname}`;
 
   const displayProfile =
@@ -80,7 +83,9 @@ export default function ObjectItemCreate(props: iProps) {
     ${queryString}
   `;
 
-  const { data } = useQuery(query, { skip: !(!!generic || !!schema) || (isGeneric && !kind) });
+  const { data } = useQuery(query, {
+    skip: !(!!generic || !!schema) || (isGeneric && !kind) || isEditingProfile,
+  });
 
   const profiles = data && data[profileName]?.edges?.map((edge) => edge.node);
 
