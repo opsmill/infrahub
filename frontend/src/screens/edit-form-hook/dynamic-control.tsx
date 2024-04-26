@@ -49,6 +49,8 @@ export const DynamicControl = (props: DynamicFieldData) => {
 
   useEffect(() => {
     // Handle value change if parent updates it
+    if (!value) return;
+
     handleChange(value);
   }, [value]);
 
