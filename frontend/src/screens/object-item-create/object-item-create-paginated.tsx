@@ -44,6 +44,7 @@ export default function ObjectItemCreate(props: iProps) {
 
   const schemaList = useAtomValue(schemaState);
   const genericsList = useAtomValue(genericsState);
+  const profileGeneric = genericsList.find((s) => s.kind === PROFILE_KIND);
   const profilesList = useAtomValue(profilesAtom);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
@@ -62,6 +63,8 @@ export default function ObjectItemCreate(props: iProps) {
 
   const profileName = `Profile${isGeneric && kind ? kind : objectname}`;
 
+  const displayProfile =
+    !profileGeneric?.used_by?.includes(schema.kind) && schema.kind !== PROFILE_KIND;
   // Get object's attributes to get them from the profile data
   const attributes = getObjectAttributes(schema);
   // const relationships = getObjectRelationships(schema);
@@ -177,7 +180,7 @@ export default function ObjectItemCreate(props: iProps) {
         </div>
       )}
 
-      {(!isGeneric || (isGeneric && kind)) && (
+      {(!isGeneric || (isGeneric && kind)) && displayProfile && (
         <div className="p-4 pt-3 bg-gray-200">
           <div className="flex items-center">
             <label className="block text-sm font-medium leading-6 text-gray-900">
