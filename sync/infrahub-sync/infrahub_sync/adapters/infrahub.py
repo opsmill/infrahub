@@ -187,7 +187,7 @@ class InfrahubModel(DiffSyncModelMixin, DiffSyncModel):
         return None
 
     def update(self, attrs):
-        node = self.diffsync.client.get(id=self.local_id, kind=self.__class__.__name__)
+        node = self.adapter.client.get(id=self.local_id, kind=self.__class__.__name__)
 
         node = update_node(node=node, attrs=attrs)
         node.save(allow_upsert=True)
