@@ -30,7 +30,7 @@ import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
-import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { constructPath } from "../../utils/fetch";
@@ -77,14 +77,16 @@ export default function ObjectItemDetails(props: any) {
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [genericList] = useAtom(genericsState);
+  const profiles = useAtomValue(profilesAtom);
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
   const profileGeneric = genericList.find((s) => s.kind === PROFILE_KIND);
+  const profile = profiles.find((s) => s.kind === objectname);
   const navigate = useNavigate();
 
   const refetchRef = useRef(null);
 
-  const schemaData = generic || schema;
+  const schemaData = generic || schema || profile;
 
   if ((schemaList?.length || genericList?.length) && !schemaData) {
     // If there is no schema nor generics, go to home page
@@ -186,8 +188,10 @@ export default function ObjectItemDetails(props: any) {
       {!hideHeaders && (
         <div className="bg-custom-white">
           <div className="px-4 py-5 flex items-center">
-            <Link to={constructPath(`/objects/${objectname}`)}>
-              <h1 className="text-md font-semibold text-gray-900 mr-2">{schemaData.name}</h1>
+            <Link to={constructPath(`/objects/${profile ? PROFILE_KIND : objectname}`)}>
+              <h1 className="text-md font-semibold text-gray-900 mr-2">
+                {profile ? "All Profiles" : schemaData.name}
+              </h1>
             </Link>
 
             <ChevronRightIcon

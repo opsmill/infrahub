@@ -31,7 +31,7 @@ import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
-import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { debounce } from "../../utils/common";
@@ -70,6 +70,7 @@ export default function ObjectItems(props: any) {
   const schemaKindName = useAtomValue(schemaKindNameState);
   const schemaList = useAtomValue(schemaState);
   const genericList = useAtomValue(genericsState);
+  const profiles = useAtomValue(profilesAtom);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
@@ -80,8 +81,9 @@ export default function ObjectItems(props: any) {
 
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
+  const profile = profiles.find((s) => s.kind === objectname);
 
-  const schemaData = schema || generic;
+  const schemaData = schema || generic || profile;
 
   if ((schemaList?.length || genericList?.length) && !schemaData) {
     // If there is no schema nor generics, go to home page

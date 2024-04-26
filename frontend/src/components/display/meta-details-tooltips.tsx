@@ -1,13 +1,14 @@
-import React from "react";
-import { PropertyList } from "../table/property-list";
 import { Icon } from "@iconify-icon/react";
-import { Button } from "../buttons/button-primitive";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { formatFullDate, formatRelativeTimeFromNow } from "../../utils/date";
-import { Link } from "../utils/link";
-import { constructPath } from "../../utils/fetch";
+import React from "react";
+import { PROFILE_KIND } from "../../config/constants";
 import { AnyAttribute } from "../../generated/graphql";
+import { formatFullDate, formatRelativeTimeFromNow } from "../../utils/date";
+import { constructPath } from "../../utils/fetch";
+import { Button } from "../buttons/button-primitive";
+import { PropertyList } from "../table/property-list";
 import { Badge } from "../ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Link } from "../utils/link";
 
 interface MetaDetailsTooltipProps {
   header?: React.ReactNode;
@@ -33,7 +34,7 @@ export default function MetaDetailsTooltip({
       name: "Source",
       value: source ? (
         isFromProfile ? (
-          <Link to={constructPath(`/objects/CoreProfile/${source.id}`)}>
+          <Link to={constructPath(`/objects/${PROFILE_KIND}/${source.id}`)}>
             <Badge variant="green" className="font-normal hover:underline">
               <Icon icon="mdi:shape-plus-outline" className="mr-1" />
               {source.display_label}
