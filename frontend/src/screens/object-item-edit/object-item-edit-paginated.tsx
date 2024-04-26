@@ -63,6 +63,8 @@ export default function ObjectItemEditComponent(props: Props) {
         columns,
         objectid,
         profile: profileName,
+        queryProfiles:
+          !profileGeneric?.used_by?.includes(schema?.kind) && schema?.kind !== PROFILE_KIND,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema
@@ -88,7 +90,7 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const objectDetailsData = data[schema.kind]?.edges[0]?.node;
 
-  const profiles = data && data[profileName]?.edges?.map((edge) => edge.node);
+  const profiles = data[profileName]?.edges?.map((edge) => edge.node);
 
   const profilesOptions =
     profiles &&
@@ -102,7 +104,10 @@ export default function ObjectItemEditComponent(props: Props) {
 
   // Get profile from object or from the locally selected one
   const currentProfile =
-    objectProfiles && objectProfiles[0]?.id && objectProfiles[0]?.id === profile
+    objectProfiles &&
+    objectProfiles[0]?.id &&
+    // If the profile is not selected, or it is selected but the same as the one from the object
+    (!profile || (profile && objectProfiles[0]?.id === profile))
       ? profilesOptions?.find((p) => p.id === objectProfiles[0].id)?.values
       : profilesOptions?.find((p) => p.id === profile)?.values;
 
