@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from pydantic import (
@@ -103,93 +103,6 @@ class SchemaUpdate(BaseModel):
     def schema_updated(self) -> bool:
         """Indicates if the loading of the schema changed the existing schema"""
         return self.hash != self.previous_hash
-
-
-class JsonSchemaAttribute(BaseModel):
-    name: str
-    kind: str
-    enum: Optional[List[Any]] = None
-    regex: Optional[str] = None
-    max_length: Optional[int] = None
-    min_length: Optional[int] = None
-    unique: bool
-    optional: bool
-    default_value: Optional[Any] = None
-
-    def to_json_schema_property(self):
-        # Mapping internal kind to JSON Schema data types
-        type_mapping = {
-            "Text": "string",
-            "Integer": "integer",
-            "Float": "number",
-            "Boolean": "boolean",
-            "Date": "string",  # Date should be formatted as date-time
-        }
-        property_schema = {"type": type_mapping.get(self.kind, "string")}
-
-        if self.enum:
-            property_schema["enum"] = self.enum
-        if self.regex:
-            property_schema["pattern"] = self.regex
-        if self.max_length is not None:
-            property_schema["maxLength"] = self.max_length
-        if self.min_length is not None:
-            property_schema["minLength"] = self.min_length
-        if self.default_value is not None:
-            property_schema["default"] = self.default_value
-
-        return self.name, property_schema
-
-
-class InfraJsonSchema(BaseModel):
-    id: str
-    name: str
-    namespace: str
-    description: Optional[str] = None
-    attributes: List[JsonSchemaAttribute]
-
-    def generate_json_schema(self):
-        properties = {}
-        required = []
-
-        for attribute in self.attributes:
-            attr_name, attr_schema = attribute.to_json_schema_property()
-            properties[attr_name] = attr_schema
-            if not attribute.optional:
-                required.append(attr_name)
-
-        return {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "title": self.name,
-            "type": "object",
-            "properties": properties,
-            "required": required if required else None,
-            "description": self.description,
-        }
-
-
-class JsonSchemaProperty(BaseModel):
-    type: str
-    enum: Optional[List[Union[str, int, float]]] = None
-    default: Optional[Union[str, int, float]] = None
-    pattern: Optional[str] = None
-    max_length: Optional[int] = Field(None, alias="maxLength")
-    min_length: Optional[int] = Field(None, alias="minLength")
-
-    class Config:
-        populate_by_name = True  # Allows the mixedCase aliases for min/max len
-
-
-class JsonSchema(BaseModel):
-    schema_spec: str = Field(alias="$schema", default="http://json-schema.org/draft-07/schema#")
-    title: str
-    type: str = "object"
-    properties: Dict[str, JsonSchemaProperty]
-    required: Optional[List[str]]
-    description: Optional[str]
-
-    class Config:
-        populate_by_name = True  # This allows us to use $schema as a field name
 
 
 def evaluate_candidate_schemas(
