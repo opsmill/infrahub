@@ -32,18 +32,16 @@ export default function MetaDetailsTooltip({
     {
       name: "Source",
       value: source ? (
-        isFromProfile ? (
-          <Link to={constructPath(`/objects/CoreProfile/${source.id}`)}>
+        <Link to={constructPath(`/objects/${source.__typename}/${source.id}`)}>
+          {isFromProfile ? (
             <Badge variant="green" className="font-normal hover:underline">
               <Icon icon="mdi:shape-plus-outline" className="mr-1" />
               {source.display_label}
             </Badge>
-          </Link>
-        ) : (
-          <Link to={constructPath(`/objects/${source.__typename}/${source.id}`)}>
-            {source.display_label}
-          </Link>
-        )
+          ) : (
+            source.display_label
+          )}
+        </Link>
       ) : (
         "-"
       ),
