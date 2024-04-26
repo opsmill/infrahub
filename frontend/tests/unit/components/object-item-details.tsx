@@ -16,6 +16,7 @@ export default function ObjectItemDetails() {
     kind: schema?.kind,
     columns,
     objectid,
+    queryProfiles: true,
   });
 
   return (

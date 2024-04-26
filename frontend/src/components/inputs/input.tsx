@@ -60,7 +60,13 @@ export const Input = forwardRef((props: any, ref: any) => {
       />
 
       {propsToPass.value && !hideEmpty && (
-        <div className="absolute right-2 top-0 bottom-0 flex items-center">{removeButton}</div>
+        <div
+          className={classNames(
+            "absolute top-0 bottom-0 flex items-center",
+            type === "number" ? "right-4" : "right-1"
+          )}>
+          {removeButton}
+        </div>
       )}
 
       {error?.message && (
@@ -72,7 +78,7 @@ export const Input = forwardRef((props: any, ref: any) => {
       )}
 
       {type === "password" && (
-        <div className="absolute right-4 top-0 bottom-0 flex items-center">{displayButton}</div>
+        <div className="absolute right-6 top-0 bottom-0 flex items-center">{displayButton}</div>
       )}
     </div>
   );

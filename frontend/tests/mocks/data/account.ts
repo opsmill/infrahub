@@ -179,91 +179,99 @@ export const accountDetailsMocksQuery = `query CoreAccount {
       node {
         id
         display_label
-          name {
-              value
-              updated_at
-              is_from_profile
-              is_protected
-              is_visible
-              source {
-                id
-                display_label
-                __typename
-              }
-              owner {
-                id
-                display_label
-                __typename
-              }
+        profiles {
+          edges {
+            node {
+              display_label
+              id
+            }
           }
-          label {
-              value
-              updated_at
-              is_from_profile
-              is_protected
-              is_visible
-              source {
-                id
-                display_label
-                __typename
-              }
-              owner {
-                id
-                display_label
-                __typename
-              }
-          }
-          description {
-              value
-              updated_at
-              is_from_profile
-              is_protected
-              is_visible
-              source {
-                id
-                display_label
-                __typename
-              }
-              owner {
-                id
-                display_label
-                __typename
-              }
-          }
-          type {
-              value
-              updated_at
-              is_from_profile
-              is_protected
-              is_visible
-              source {
-                id
-                display_label
-                __typename
-              }
-              owner {
-                id
-                display_label
-                __typename
-              }
-          }
-          role {
-              value
-              updated_at
-              is_from_profile
-              is_protected
-              is_visible
-              source {
-                id
-                display_label
-                __typename
-              }
-              owner {
-                id
-                display_label
-                __typename
-              }
-          }
+        }
+        name {
+            value
+            updated_at
+            is_from_profile
+            is_protected
+            is_visible
+            source {
+              id
+              display_label
+              __typename
+            }
+            owner {
+              id
+              display_label
+              __typename
+            }
+        }
+        label {
+            value
+            updated_at
+            is_from_profile
+            is_protected
+            is_visible
+            source {
+              id
+              display_label
+              __typename
+            }
+            owner {
+              id
+              display_label
+              __typename
+            }
+        }
+        description {
+            value
+            updated_at
+            is_from_profile
+            is_protected
+            is_visible
+            source {
+              id
+              display_label
+              __typename
+            }
+            owner {
+              id
+              display_label
+              __typename
+            }
+        }
+        type {
+            value
+            updated_at
+            is_from_profile
+            is_protected
+            is_visible
+            source {
+              id
+              display_label
+              __typename
+            }
+            owner {
+              id
+              display_label
+              __typename
+            }
+        }
+        role {
+            value
+            updated_at
+            is_from_profile
+            is_protected
+            is_visible
+            source {
+              id
+              display_label
+              __typename
+            }
+            owner {
+              id
+              display_label
+              __typename
+            }
+        }
       }
     }
   }

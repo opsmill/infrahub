@@ -758,11 +758,17 @@ export const Select = (props: SelectProps) => {
     handleFetchLabel();
   }, [value]);
 
+  // If options from query are updated
   useEffect(() => {
     if (!optionsData?.length) return;
 
     setLocalOptions(optionsData);
   }, [optionsData?.length]);
+
+  // If options from parent are updated
+  useEffect(() => {
+    setLocalOptions(options);
+  }, [options?.length]);
 
   return (
     <div className="relative" data-testid="select-container">
