@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import TYPE_CHECKING, Dict, List
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -9,8 +9,10 @@ from infrahub.api.dependencies import get_branch_dep
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.schema import MainSchemaTypes, NodeSchema
 from infrahub.log import get_logger
+
+if TYPE_CHECKING:
+    from infrahub.core.schema import MainSchemaTypes
 
 log = get_logger()
 router = APIRouter(prefix="/menu")
@@ -82,23 +84,11 @@ async def get_menu(
             ),
         ],
     )
-    groups = InterfaceMenu(
-        title="Groups",
-    )
+
     for key in full_schema.keys():
         model = full_schema[key]
 
         if not model.include_in_menu:
-            continue
-
-        if isinstance(model, NodeSchema) and InfrahubKind.GENERICGROUP in model.inherit_from:
-            groups.children.append(
-                InterfaceMenu(
-                    title=model.menu_title,
-                    path=f"/objects/{model.kind}",
-                    icon=model.icon or _extract_node_icon(full_schema[InfrahubKind.GENERICGROUP]),
-                )
-            )
             continue
 
         menu_name = model.menu_placement or "base"
@@ -116,14 +106,20 @@ async def get_menu(
         objects.children.append(menu_item)
 
     objects.children.sort()
-    groups.children.sort()
-    groups.children.insert(
-        0,
-        InterfaceMenu(
-            title="All Groups",
-            path="/objects/CoreGroup",
-            icon=_extract_node_icon(full_schema[InfrahubKind.GENERICGROUP]),
-        ),
+    groups = InterfaceMenu(
+        title="Groups & Profiles",
+        children=[
+            InterfaceMenu(
+                title="All Groups",
+                path=f"/objects/{InfrahubKind.GENERICGROUP}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.GENERICGROUP]),
+            ),
+            InterfaceMenu(
+                title="All Profiles",
+                path=f"/objects/{InfrahubKind.PROFILE}",
+                icon=_extract_node_icon(full_schema[InfrahubKind.PROFILE]),
+            ),
+        ],
     )
     unified_storage = InterfaceMenu(
         title="Unified Storage",
