@@ -109,7 +109,9 @@ class IpamDiffParser:
                 elif not cnd.is_address and hasattr(node_from_db, "prefix"):
                     cnd.ip_value = node_from_db.prefix.value
             if not cnd.namespace_id:
-                cnd.namespace_id = node_from_db.ip_namespace.peer_id  # type: ignore[attr-defined]
+                rels = await node_from_db.ip_namespace.get_relationships(db=self.db)  # type: ignore[attr-defined]
+                if rels:
+                    cnd.namespace_id = rels[0].get_peer_id()
 
     def _get_ip_value(self, node_diff: NodeDiffElement) -> Optional[str]:
         if "prefix" in node_diff.attributes:
