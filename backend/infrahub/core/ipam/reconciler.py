@@ -148,7 +148,7 @@ class IpamReconciler:
                 await reconcile_nodes.node.delete(db=self.db, at=self.at)
             except KeyError:
                 return None
-        
+
         return reconcile_nodes.node
 
     async def _update_node_parent(self, node: Node, new_parent_uuid: Optional[str]) -> None:
