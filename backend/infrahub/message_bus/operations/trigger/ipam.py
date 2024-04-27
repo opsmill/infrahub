@@ -19,5 +19,8 @@ async def reconciliation(message: messages.TriggerIpamReconciliation, service: I
         else:
             ip_value = ipaddress.ip_network(ipam_node_details.ip_value)
         await ipam_reconciler.reconcile(
-            ip_value=ip_value, namespace=ipam_node_details.namespace_id, node_uuid=ipam_node_details.node_uuid
+            ip_value=ip_value,
+            namespace=ipam_node_details.namespace_id,
+            node_uuid=ipam_node_details.node_uuid,
+            is_delete=ipam_node_details.is_delete,
         )

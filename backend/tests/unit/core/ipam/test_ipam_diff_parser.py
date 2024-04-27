@@ -30,13 +30,18 @@ async def test_ipam_diff_parser_update(db: InfrahubDatabase, default_branch: Bra
     assert len(ipam_diffs) == 2
     assert (
         IpamNodeDetails(
-            node_uuid=net146_branch.id, is_address=False, namespace_id=ip_dataset_01["ns1"].id, ip_value="10.0.0.0/9"
+            node_uuid=net146_branch.id,
+            is_delete=False,
+            is_address=False,
+            namespace_id=ip_dataset_01["ns1"].id,
+            ip_value="10.0.0.0/9",
         )
         in ipam_diffs
     )
     assert (
         IpamNodeDetails(
             node_uuid=address11_branch.id,
+            is_delete=False,
             is_address=True,
             namespace_id=ip_dataset_01["ns1"].id,
             ip_value="10.10.1.2/32",
@@ -69,6 +74,7 @@ async def test_ipam_diff_parser_create(db: InfrahubDatabase, default_branch: Bra
     assert (
         IpamNodeDetails(
             node_uuid=new_prefix_branch.id,
+            is_delete=False,
             is_address=False,
             namespace_id=ip_dataset_01["ns2"].id,
             ip_value="10.10.3.0/26",
@@ -78,6 +84,7 @@ async def test_ipam_diff_parser_create(db: InfrahubDatabase, default_branch: Bra
     assert (
         IpamNodeDetails(
             node_uuid=new_address_branch.id,
+            is_delete=False,
             is_address=True,
             namespace_id=ip_dataset_01["ns2"].id,
             ip_value="10.10.4.5/32",
@@ -106,6 +113,7 @@ async def test_ipam_diff_parser_delete(db: InfrahubDatabase, default_branch: Bra
     assert (
         IpamNodeDetails(
             node_uuid=net146_branch.id,
+            is_delete=True,
             is_address=False,
             namespace_id=ip_dataset_01["ns1"].id,
             ip_value=net146_branch.prefix.value,
@@ -115,6 +123,7 @@ async def test_ipam_diff_parser_delete(db: InfrahubDatabase, default_branch: Bra
     assert (
         IpamNodeDetails(
             node_uuid=address11_branch.id,
+            is_delete=True,
             is_address=True,
             namespace_id=ip_dataset_01["ns1"].id,
             ip_value=address11_branch.address.value,

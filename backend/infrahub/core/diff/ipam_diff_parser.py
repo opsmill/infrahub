@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import DiffAction, InfrahubKind
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_VALUE_LABEL
 from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.diff.model import NodeDiffElement, RelationshipDiffElement
@@ -15,6 +15,7 @@ from infrahub.database import InfrahubDatabase
 class ChangedIpamNodeDetails:
     node_uuid: str
     is_address: bool
+    is_delete: bool
     namespace_id: Optional[str]
     ip_value: Optional[str]
 
@@ -72,7 +73,11 @@ class IpamDiffParser:
                     namespace_id = self._get_namespace_id(rel_diffs_for_node)
                 changed_node_details.append(
                     ChangedIpamNodeDetails(
-                        node_uuid=node_id, is_address=is_address, namespace_id=namespace_id, ip_value=ip_value
+                        node_uuid=node_id,
+                        is_delete=diff_element.action is DiffAction.REMOVED,
+                        is_address=is_address,
+                        namespace_id=namespace_id,
+                        ip_value=ip_value,
                     )
                 )
                 await self._add_missing_values(branch=branch, changed_node_details=changed_node_details)
@@ -80,6 +85,7 @@ class IpamDiffParser:
         return [
             IpamNodeDetails(
                 node_uuid=cnd.node_uuid,
+                is_delete=cnd.is_delete,
                 is_address=cnd.is_address,
                 namespace_id=cnd.namespace_id,
                 ip_value=cnd.ip_value,
@@ -102,7 +108,9 @@ class IpamDiffParser:
         for cnd in changed_node_details:
             if cnd.ip_value and cnd.namespace_id:
                 continue
-            node_from_db = nodes_on_branch[cnd.node_uuid]
+            node_from_db = nodes_on_branch.get(cnd.node_uuid)
+            if not node_from_db:
+                continue
             if not cnd.ip_value:
                 if cnd.is_address and hasattr(node_from_db, "address"):
                     cnd.ip_value = node_from_db.address.value
