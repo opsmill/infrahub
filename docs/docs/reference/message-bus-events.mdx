@@ -219,6 +219,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
 | **branch** | The branch that was rebased | string | None |
+| **ipam_node_details** | Details for changed IP nodes | array | None |
 <!-- vale on -->
 
 <!-- vale off -->
@@ -1060,6 +1061,26 @@ For more detailed explanations on how to use these events within Infrahub, see t
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
 | **branch** | The branch to run the Generators in | string | None |
+<!-- vale on -->
+
+<!-- vale off -->
+### Trigger Ipam
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event trigger.ipam.reconciliation
+<!-- vale on -->
+
+**Description**: Sent after a branch has been merged/rebased to reconcile changed IP Prefix and Address nodes
+
+**Priority**: 3
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **branch** | The updated branch | string | None |
+| **ipam_node_details** | Details for changed IP nodes | array | None |
 <!-- vale on -->
 
 <!-- vale off -->
@@ -1320,6 +1341,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
 | **branch** | The branch that was rebased | string | None |
+| **ipam_node_details** | Details for changed IP nodes | array | None |
 <!-- vale on -->
 
 <!-- vale off -->
@@ -2202,6 +2224,27 @@ For more detailed explanations on how to use these events within Infrahub, see t
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
 | **branch** | The branch to run the Generators in | string | None |
+<!-- vale on -->
+
+<!-- vale off -->
+### Trigger Ipam
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event trigger.ipam.reconciliation
+<!-- vale on -->
+
+**Description**: Sent after a branch has been merged/rebased to reconcile changed IP Prefix and Address nodes
+
+**Priority**: 3
+
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **branch** | The updated branch | string | None |
+| **ipam_node_details** | Details for changed IP nodes | array | None |
 <!-- vale on -->
 
 <!-- vale off -->

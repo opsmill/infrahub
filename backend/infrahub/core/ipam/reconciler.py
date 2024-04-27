@@ -92,7 +92,7 @@ class IpamReconciler:
         node_uuid: Optional[str] = None,
         is_delete: bool = False,
         at: Optional[Timestamp] = None,
-    ) -> Node:
+    ) -> Optional[Node]:
         self.at = Timestamp(at)
 
         query = await IPPrefixReconcileQuery.init(
@@ -144,7 +144,10 @@ class IpamReconciler:
             await node.save(db=self.db, at=self.at)
 
         if is_delete:
-            await reconcile_nodes.node.delete(db=self.db, at=self.at)
+            try:
+                await reconcile_nodes.node.delete(db=self.db, at=self.at)
+            except KeyError:
+                return None
 
         return reconcile_nodes.node
 

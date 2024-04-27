@@ -581,12 +581,14 @@ class IPPrefixReconcileQuery(Query):
                 av.prefixlen as prefixlen,
                 (har.status = "active" AND hvr.status = "active") AS is_active,
                 har.branch_level + hvr.branch_level AS branch_level
-            RETURN maybe_new_parent, prefixlen AS mnp_prefixlen, is_active AS mnp_is_active
             ORDER BY branch_level DESC, har.from DESC, hvr.from DESC
-            LIMIT 1
+            WITH maybe_new_parent, prefixlen, is_active
+            RETURN maybe_new_parent, head(collect(prefixlen)) AS mnp_prefixlen, head(collect(is_active)) AS mnp_is_active
         }
-        WITH ip_namespace, ip_node, current_parent, current_children, maybe_new_parent, mnp_is_active, mnp_prefixlen
-        ORDER BY ip_node.uuid, mnp_is_active DESC, mnp_prefixlen DESC
+        WITH ip_namespace, ip_node, current_parent, current_children, maybe_new_parent, mnp_prefixlen, mnp_is_active
+        WHERE mnp_is_active OR maybe_new_parent IS NULL
+        WITH ip_namespace, ip_node, current_parent, current_children, maybe_new_parent, mnp_prefixlen
+        ORDER BY ip_node.uuid, mnp_prefixlen DESC
         WITH ip_namespace, ip_node, current_parent, current_children, head(collect(maybe_new_parent)) as new_parent
         """ % {
             "branch_filter": branch_filter,

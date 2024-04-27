@@ -52,6 +52,7 @@ from .transform_jinja_template import TransformJinjaTemplate, TransformJinjaTemp
 from .transform_python_data import TransformPythonData, TransformPythonDataResponse
 from .trigger_artifact_definition_generate import TriggerArtifactDefinitionGenerate
 from .trigger_generatordefinition_run import TriggerGeneratorDefinitionRun
+from .trigger_ipam_reconciliation import TriggerIpamReconciliation
 from .trigger_proposed_change_cancel import TriggerProposedChangeCancel
 from .trigger_webhook_actions import TriggerWebhookActions
 
@@ -106,6 +107,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "transform.python.data": TransformPythonData,
     "trigger.artifact_definition.generate": TriggerArtifactDefinitionGenerate,
     "trigger.generator_definition.run": TriggerGeneratorDefinitionRun,
+    "trigger.ipam.reconciliation": TriggerIpamReconciliation,
     "trigger.proposed_change.cancel": TriggerProposedChangeCancel,
     "trigger.webhook.actions": TriggerWebhookActions,
 }
