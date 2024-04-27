@@ -51,8 +51,11 @@ async def rebased(message: messages.EventBranchRebased, service: InfrahubService
 
     events: List[InfrahubMessage] = [
         messages.RefreshRegistryRebasedBranch(branch=message.branch),
-        messages.TriggerIpamReconciliation(branch=message.branch, ipam_node_details=message.ipam_node_details),
     ]
+    if message.ipam_node_details:
+        events.append(
+            messages.TriggerIpamReconciliation(branch=message.branch, ipam_node_details=message.ipam_node_details),
+        )
 
     for event in events:
         event.assign_meta(parent=message)

@@ -8,4 +8,4 @@ class EventBranchRebased(InfrahubMessage):
     """Sent when a branch has been rebased."""
 
     branch: str = Field(..., description="The branch that was rebased")
-    ipam_node_details: list[IpamNodeDetails] = Field(..., description="Details for changed IP nodes")
+    ipam_node_details: list[IpamNodeDetails] = Field(default_factory=list, description="Details for changed IP nodes")
