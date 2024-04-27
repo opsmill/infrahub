@@ -68,6 +68,7 @@ COMMAND_MAP = {
     "transform.python.data": transform.python.data,
     "trigger.artifact_definition.generate": trigger.artifact_definition.generate,
     "trigger.generator_definition.run": trigger.generator_definition.run,
+    "trigger.ipam.reconciliation": trigger.ipam.reconciliation,
     "trigger.proposed_change.cancel": trigger.proposed_change.cancel,
     "trigger.webhook.actions": trigger.webhook.actions,
 }
