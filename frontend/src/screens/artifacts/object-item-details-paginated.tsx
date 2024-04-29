@@ -35,6 +35,7 @@ import {
 } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
 import AddObjectToGroup from "../groups/add-object-to-group";
+import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import RelationshipDetails from "../object-item-details/relationship-details-paginated";
@@ -42,7 +43,6 @@ import { RelationshipsDetails } from "../object-item-details/relationships-detai
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { Generate } from "./generate";
-import Content from "../layout/content";
 
 export default function ArtifactsDetails() {
   const { objectid } = useParams();
@@ -232,7 +232,6 @@ export default function ArtifactsDetails() {
                             owner={objectDetailsData[attribute.name].owner}
                             isFromProfile={objectDetailsData[attribute.name].is_from_profile}
                             isProtected={objectDetailsData[attribute.name].is_protected}
-                            isInherited={objectDetailsData[attribute.name].is_inherited}
                             header={
                               <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
                                 <div className="font-semibold">{attribute.label}</div>
