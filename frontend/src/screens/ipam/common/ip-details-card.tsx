@@ -6,6 +6,7 @@ import { IModelSchema } from "../../../state/atoms/schema.atom";
 import { constructPath } from "../../../utils/fetch";
 import { AttributeType, ObjectAttributeValue } from "../../../utils/getObjectItemDisplayValue";
 import { getObjectDetailsUrl } from "../../../utils/objects";
+import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "../constants";
 
 export function IpDetailsCard({
   schema,
@@ -27,11 +28,13 @@ export function IpDetailsCard({
         ),
       };
     }),
-    ...(schema.relationships ?? []).map((schemaAttribute) => {
-      const relationshipData = data[schemaAttribute.name]?.node;
+    ...(schema.relationships ?? []).map((schemaRelationship) => {
+      if (IP_SUMMARY_RELATIONSHIPS_BLACKLIST.includes(schemaRelationship.name)) return;
+
+      const relationshipData = data[schemaRelationship.name]?.node;
 
       return {
-        name: schemaAttribute.label || schemaAttribute.name,
+        name: schemaRelationship.label || schemaRelationship.name,
         value: relationshipData && (
           <Link
             to={constructPath(

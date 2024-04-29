@@ -18,3 +18,11 @@ export const IPAM_ROUTE = {
 } as const;
 
 export const IPAM_QSP = "ipam-tab";
+
+export const IP_SUMMARY_RELATIONSHIPS_BLACKLIST = [
+  "ip_addresses",
+  "member_of_groups",
+  "subscriber_of_groups",
+  "children",
+  "profiles",
+];
