@@ -173,9 +173,12 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         node_getters: List[MutationNodeGetterInterface],
         database: Optional[InfrahubDatabase] = None,
     ) -> Tuple[Node, Self, bool]:
-        await validate_namespace(database, data)
+        context: GraphqlContext = info.context
+        db = database or context.db
+
+        await validate_namespace(db, data)
         prefix, result, created = await super().mutate_upsert(
-            root=root, info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=database
+            root=root, info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=db
         )
 
         return prefix, result, created
@@ -287,9 +290,12 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         node_getters: List[MutationNodeGetterInterface],
         database: Optional[InfrahubDatabase] = None,
     ):
-        await validate_namespace(database, data)
+        context: GraphqlContext = info.context
+        db = database or context.db
+
+        await validate_namespace(db, data)
         prefix, result, created = await super().mutate_upsert(
-            root=root, info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=database
+            root=root, info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=db
         )
 
         return prefix, result, created
