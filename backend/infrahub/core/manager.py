@@ -423,7 +423,6 @@ class NodeManager:
             db=db,
             prefetch_relationships=prefetch_relationships,
             account=account,
-            kind=schema_name,
         )
         if node:
             return node
@@ -459,6 +458,8 @@ class NodeManager:
         kind: Optional[str] = None,
     ) -> Optional[Node]:
         """Return one node based on its ID."""
+        branch = await registry.get_branch(branch=branch, db=db)
+
         result = await cls.get_many(
             ids=[id],
             fields=fields,
