@@ -13,11 +13,11 @@ import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import {
-  IP_ADDRESS_GENERIC,
-  IP_PREFIX_GENERIC,
   IPAM_QSP,
   IPAM_ROUTE,
   IPAM_TABS,
+  IP_ADDRESS_GENERIC,
+  IP_PREFIX_GENERIC,
 } from "./constants";
 import IpamIPAddresses from "./ip-addresses/ipam-ip-address";
 import IpamIPPrefixes from "./prefixes/ipam-prefixes";
@@ -123,7 +123,7 @@ export default function IpamRouter() {
     <Card className="p-0 overflow-hidden flex flex-col h-full">
       <Tabs tabs={tabs} qsp={IPAM_QSP} rightItems={rightitems} />
 
-      <div className="p-4 flex-grow overflow-auto">{renderContent()}</div>
+      <div className="m-4 flex-grow overflow-auto">{renderContent()}</div>
 
       <SlideOver
         title={
