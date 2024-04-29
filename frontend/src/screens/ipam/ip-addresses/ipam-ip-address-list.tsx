@@ -22,10 +22,11 @@ import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
-import { IP_ADDRESS_GENERIC, IPAM_QSP, IPAM_ROUTE, IPAM_TABS } from "../constants";
+import { IPAM_QSP, IPAM_ROUTE, IPAM_TABS, IP_ADDRESS_GENERIC } from "../constants";
 
 const IpamIPAddressesList = forwardRef((props, ref) => {
   const { prefix } = useParams();
+  console.log("prefix: ", prefix);
   const [isLoading, setIsLoading] = useState(false);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
@@ -56,10 +57,10 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
   const columns = [
     { name: "address", label: "Address" },
     { name: "description", label: "Description" },
-    { name: "interface", label: "Interface" },
     { name: "ip_namespace", label: "Ip Namespace" },
-    { name: "ip_prefix", label: "Ip Prefix" },
-  ];
+    // Display prefix column only in main list
+    !prefix && { name: "ip_prefix", label: "Ip Prefix" },
+  ].filter(Boolean);
 
   const rows =
     data &&
@@ -69,7 +70,6 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
       values: {
         address: edge?.node?.address?.value,
         description: edge?.node?.description?.value,
-        interface: edge?.node?.interface?.node?.display_label,
         ip_namespace: edge?.node?.ip_namespace?.node?.display_label,
         ip_prefix: edge?.node?.ip_prefix?.node?.display_label,
       },
