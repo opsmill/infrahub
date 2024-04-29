@@ -1,5 +1,8 @@
+import { classNames } from "../../utils/common";
+
 type tProgressBar = {
   value: number;
+  displayValue?: boolean;
 };
 
 const getCleanedValue = (value: number) => {
@@ -11,15 +14,17 @@ const getCleanedValue = (value: number) => {
 };
 
 export default function ProgressBar(props: tProgressBar) {
-  const { value } = props;
+  const { value, displayValue } = props;
 
   const cleanedValue = getCleanedValue(value);
 
   return (
-    <div className="h-2 w-full bg-gray-300 rounded-full">
+    <div className={classNames("w-full bg-gray-300 rounded-full", displayValue ? "h-4" : "h-2")}>
       <div
         style={{ width: `${cleanedValue}%` }}
-        className={"h-full bg-custom-blue-500 rounded-full"}></div>
+        className={"h-full bg-custom-blue-500 rounded-full flex items-center justify-center"}>
+        {displayValue && <span className="text-xs text-custom-white">{cleanedValue}%</span>}
+      </div>
     </div>
   );
 }
