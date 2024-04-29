@@ -22,7 +22,7 @@ export default function IpamIPPrefixesSummaryDetails() {
     },
   });
 
-  if (loading || !data) return <IpamSummarySkeleton withChart />;
+  if (loading || !data) return <IpamSummarySkeleton withStats />;
 
   const prefixKind = data[IP_PREFIX_GENERIC].edges[0].node.__typename;
 
@@ -63,7 +63,7 @@ const PrefixSummaryContent = ({ prefixKind }: { prefixKind: string }) => {
     notifyOnNetworkStatusChange: true,
   });
 
-  if (loading || !data || !prefixSchema) return <IpamSummarySkeleton withChart />;
+  if (loading || !data || !prefixSchema) return <IpamSummarySkeleton withStats />;
 
   const prefixData = data[prefixKind].edges[0].node;
 
