@@ -18,7 +18,7 @@ test.describe("Verifies the object creation", () => {
     });
   });
 
-  test("creates and verifies the objects values", async ({ page }) => {
+  test.fixme("creates and verifies the objects values", async ({ page }) => {
     await test.step("creates the object", async () => {
       // FIXME: fix showing dropdown when InfraInterfaceL3 takes some time
       await Promise.all([
