@@ -11,8 +11,7 @@ import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObje
 import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { genericsState, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
+import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
@@ -44,7 +43,7 @@ export default function ObjectItemEditComponent(props: Props) {
   const user = useAuth();
 
   const schemaList = useAtomValue(schemaState);
-  const schemaKindName = useAtomValue(schemaKindNameState);
+  const allProfiles = useAtomValue(profilesAtom);
   const genericsList = useAtomValue(genericsState);
   const profileGeneric = genericsList.find((s) => s.kind === PROFILE_KIND);
   const branch = useAtomValue(currentBranchAtom);
@@ -52,19 +51,23 @@ export default function ObjectItemEditComponent(props: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState("");
 
-  const schema = schemaList.find((s) => s.kind === objectname);
+  const nodeSchema = schemaList.find((s) => s.kind === objectname);
+  const profileSchema = allProfiles.find((s) => s.kind === objectname);
+
+  const schema = nodeSchema || profileSchema;
   const columns = getSchemaObjectColumns(schema);
 
-  const profileName = `Profile${objectname}`;
+  const profileName = profileSchema ? objectname : `Profile${objectname}`;
+  const displayProfile =
+    schema && !profileGeneric?.used_by?.includes(schema?.kind) && schema.kind !== PROFILE_KIND;
 
   const queryString = schema
     ? getObjectDetailsPaginated({
         ...schema,
         columns,
         objectid,
-        profile: profileName,
-        queryProfiles:
-          !profileGeneric?.used_by?.includes(schema?.kind) && schema?.kind !== PROFILE_KIND,
+        profile: displayProfile && profileName,
+        queryProfiles: displayProfile,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema
@@ -110,9 +113,6 @@ export default function ObjectItemEditComponent(props: Props) {
     (!profile || (profile && objectProfiles[0]?.id === profile))
       ? profilesOptions?.find((p) => p.id === objectProfiles[0].id)?.values
       : profilesOptions?.find((p) => p.id === profile)?.values;
-
-  const displayProfile =
-    schema && !profileGeneric?.used_by?.includes(schema.kind) && schema.kind !== PROFILE_KIND;
 
   const formStructure =
     formStructureFromProps ??
@@ -161,10 +161,9 @@ export default function ObjectItemEditComponent(props: Props) {
           context: { branch: branch?.name, date },
         });
 
-        toast(
-          <Alert type={ALERT_TYPES.SUCCESS} message={`${schemaKindName[schema.kind]} updated`} />,
-          { toastId: "alert-success-updated" }
-        );
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
+          toastId: "alert-success-updated",
+        });
 
         closeDrawer();
 
