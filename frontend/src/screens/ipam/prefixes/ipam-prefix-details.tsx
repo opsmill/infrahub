@@ -23,7 +23,7 @@ import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
-import { IP_PREFIX_GENERIC, IPAM_ROUTE } from "../constants";
+import { IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
 
 const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const { prefix } = useParams();
@@ -149,7 +149,7 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
             <Icon icon={"mdi:chevron-right"} />
           </>
         )}
-        <span>{prefix}</span>
+        <span className="font-semibold">{prefix}</span>
       </div>
 
       {loading && <LoadingScreen hideText />}

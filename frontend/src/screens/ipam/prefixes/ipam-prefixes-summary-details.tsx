@@ -10,7 +10,7 @@ import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { getObjectAttributes, getObjectRelationships } from "../../../utils/getSchemaObjectColumns";
 import { IpDetailsCard } from "../common/ip-details-card";
 import { PrefixUsageChart } from "../common/prefix-usage-chart";
-import { IP_PREFIX_GENERIC, IPAM_ROUTE } from "../constants";
+import { IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
 import { IpamSummarySkeleton } from "./ipam-summary-skeleton";
 
 export default function IpamIPPrefixesSummaryDetails() {
@@ -31,7 +31,7 @@ export default function IpamIPPrefixesSummaryDetails() {
       <header className="flex items-center mb-2">
         <Link to={IPAM_ROUTE.PREFIXES}>All Prefixes</Link>
         <Icon icon={"mdi:chevron-right"} />
-        <span>{prefix} summary</span>
+        <span className="font-semibold">{prefix}</span>
       </header>
 
       <PrefixSummaryContent prefixKind={prefixKind} />
