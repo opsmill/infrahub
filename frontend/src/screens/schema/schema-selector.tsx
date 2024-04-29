@@ -1,6 +1,11 @@
 import { useAtomValue } from "jotai";
 import * as R from "ramda";
-import { genericsState, IModelSchema, schemaState } from "../../state/atoms/schema.atom";
+import {
+  genericsState,
+  IModelSchema,
+  profilesAtom,
+  schemaState,
+} from "../../state/atoms/schema.atom";
 import { classNames, isGeneric } from "../../utils/common";
 import { Badge } from "../../components/ui/badge";
 import { Icon } from "@iconify-icon/react";
@@ -16,6 +21,7 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
   const [selectedKind, setKind] = useQueryParam(QSP.KIND, ArrayParam);
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
+  const profiles = useAtomValue(profilesAtom);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -24,7 +30,7 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
     ref.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [selectedKind?.length]);
 
-  const schemas: IModelSchema[] = [...nodes, ...generics];
+  const schemas: IModelSchema[] = [...nodes, ...generics, ...profiles];
   const schemasPerNamespace = R.pipe(
     R.sortBy<IModelSchema>(R.prop("name")),
     R.groupBy(R.prop("namespace"))
