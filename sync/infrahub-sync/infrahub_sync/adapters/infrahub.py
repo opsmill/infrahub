@@ -187,7 +187,14 @@ class InfrahubModel(DiffSyncModelMixin, DiffSyncModel):
         return None
 
     def update(self, attrs):
-        node = self.adapter.client.get(id=self.local_id, kind=self.__class__.__name__)
+        node = None
+
+        if hasattr(self, "diffsync"):
+            node = self.diffsync.client.get(id=self.local_id, kind=self.__class__.__name__)
+        elif hasattr(self, "adapter"):
+            node = self.adapter.client.get(id=self.local_id, kind=self.__class__.__name__)
+        else:
+            raise ValueError("Either 'diffsync' or 'adapter' must be provided.")
 
         node = update_node(node=node, attrs=attrs)
         node.save(allow_upsert=True)
