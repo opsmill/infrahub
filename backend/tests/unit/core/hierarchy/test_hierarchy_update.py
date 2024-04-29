@@ -4,7 +4,6 @@ from infrahub.database import InfrahubDatabase
 
 CHECK_HIERARCHY_QUERY = """
 MATCH ({uuid: $node_uuid})-[rel:IS_RELATED]-(rel_node:Relationship {name: "parent__child"})
-WHERE rel.status = "active"
 RETURN rel
 """
 
@@ -26,7 +25,6 @@ async def test_update_node_with_hierarchy(db: InfrahubDatabase, hierarchical_loc
     parent_rels = await updated_node.parent.get_relationships(db=db)
     assert len(parent_rels) == 1
     assert parent_rels[0].peer_id == new_parent.id
-
     results = await db.execute_query(query=CHECK_HIERARCHY_QUERY, params={"node_uuid": updated_node.id})
     for result in results:
         assert result.get("rel").get("hierarchy") == site_schema.hierarchy

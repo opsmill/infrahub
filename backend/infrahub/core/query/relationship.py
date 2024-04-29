@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Type, Union
 
 from infrahub_sdk import UUIDT
 
-from infrahub.core.constants import RelationshipDirection
+from infrahub.core.constants import RelationshipDirection, RelationshipStatus
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.timestamp import Timestamp
@@ -177,6 +177,18 @@ class RelationshipQuery(Query):
 
         super().__init__(*args, **kwargs)
 
+    def get_relationship_properties_dict(self, status: RelationshipStatus) -> dict[str, Optional[str]]:
+        rel_prop_dict = {
+            "branch": self.branch.name,
+            "branch_level": self.branch.hierarchy_level,
+            "status": status.value,
+            "from": self.at.to_string(),
+            "to": None,
+        }
+        if self.schema.hierarchical:
+            rel_prop_dict["hierarchy"] = self.schema.hierarchical
+        return rel_prop_dict
+
 
 class RelationshipCreateQuery(RelationshipQuery):
     name = "relationship_create"
@@ -218,15 +230,7 @@ class RelationshipCreateQuery(RelationshipQuery):
 
         self.query_add_all_node_property_match()
 
-        self.params["rel_prop"] = {
-            "branch": self.branch.name,
-            "branch_level": self.branch.hierarchy_level,
-            "status": "active",
-            "from": self.at.to_string(),
-            "to": None,
-        }
-        if self.schema.hierarchical:
-            self.params["rel_prop"]["hierarchy"] = self.schema.hierarchical
+        self.params["rel_prop"] = self.get_relationship_properties_dict(status=RelationshipStatus.ACTIVE)
         arrows = self.schema.get_query_arrows()
         r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:{self.rel_type} $rel_prop ]{arrows.right.end}"
@@ -395,13 +399,7 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
             self.params[f"prop_{prop_name}_id"] = element_id_to_id(prop.prop_db_id)
             self.return_labels.append(f"prop_{prop_name}")
 
-        self.params["rel_prop"] = {
-            "branch": self.branch.name,
-            "branch_level": self.branch.hierarchy_level,
-            "status": "deleted",
-            "from": self.at.to_string(),
-            "to": None,
-        }
+        self.params["rel_prop"] = self.get_relationship_properties_dict(status=RelationshipStatus.DELETED)
 
         arrows = self.schema.get_query_arrows()
         r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
@@ -448,13 +446,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
         self.params["rel_id"] = self.rel.id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
-        self.params["rel_prop"] = {
-            "branch": self.branch.name,
-            "branch_level": self.branch.hierarchy_level,
-            "status": "deleted",
-            "from": self.at.to_string(),
-            "to": None,
-        }
+        self.params["rel_prop"] = self.get_relationship_properties_dict(status=RelationshipStatus.DELETED)
 
         arrows = self.schema.get_query_arrows()
         r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
