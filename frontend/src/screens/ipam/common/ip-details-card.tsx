@@ -7,6 +7,7 @@ import { constructPath } from "../../../utils/fetch";
 import { AttributeType, ObjectAttributeValue } from "../../../utils/getObjectItemDisplayValue";
 import { getObjectDetailsUrl } from "../../../utils/objects";
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "../constants";
+import ProgressBar from "../../../components/stats/progress-bar";
 
 export function IpDetailsCard({
   schema,
@@ -18,6 +19,15 @@ export function IpDetailsCard({
   const properties: Property[] = [
     { name: "ID", value: data.id },
     ...(schema.attributes ?? []).map((schemaAttribute) => {
+      if (schemaAttribute.name === "utilization") {
+        return {
+          name: schemaAttribute.label || schemaAttribute.name,
+          value: (
+            <ProgressBar displayValue value={parseInt(data[schemaAttribute.name].value, 10)} />
+          ),
+        };
+      }
+
       return {
         name: schemaAttribute.label || schemaAttribute.name,
         value: (
