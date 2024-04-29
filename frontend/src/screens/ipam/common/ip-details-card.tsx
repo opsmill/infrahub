@@ -15,7 +15,7 @@ export function IpDetailsCard({
   schema: IModelSchema;
   data: { id: string } & Record<string, AttributeType>;
 }) {
-  const properties: (Property | undefined)[] = [
+  const properties: Property[] = [
     { name: "ID", value: data.id },
     ...(schema.attributes ?? []).map((schemaAttribute) => {
       return {
@@ -28,24 +28,24 @@ export function IpDetailsCard({
         ),
       };
     }),
-    ...(schema.relationships ?? []).map((schemaRelationship) => {
-      if (IP_SUMMARY_RELATIONSHIPS_BLACKLIST.includes(schemaRelationship.name)) return;
+    ...(schema.relationships ?? [])
+      .filter(({ name }) => IP_SUMMARY_RELATIONSHIPS_BLACKLIST.includes(name))
+      .map((schemaRelationship) => {
+        const relationshipData = data[schemaRelationship.name]?.node;
 
-      const relationshipData = data[schemaRelationship.name]?.node;
-
-      return {
-        name: schemaRelationship.label || schemaRelationship.name,
-        value: relationshipData && (
-          <Link
-            to={constructPath(
-              getObjectDetailsUrl(relationshipData.id, relationshipData.__typename)
-            )}>
-            {relationshipData?.display_label}
-          </Link>
-        ),
-      };
-    }),
-  ].filter(Boolean);
+        return {
+          name: schemaRelationship.label || schemaRelationship.name,
+          value: relationshipData && (
+            <Link
+              to={constructPath(
+                getObjectDetailsUrl(relationshipData.id, relationshipData.__typename)
+              )}>
+              {relationshipData?.display_label}
+            </Link>
+          ),
+        };
+      }),
+  ];
 
   return (
     <CardWithBorder>
