@@ -423,6 +423,7 @@ class NodeManager:
             db=db,
             prefetch_relationships=prefetch_relationships,
             account=account,
+            kind=schema_name,
         )
         if node:
             return node
