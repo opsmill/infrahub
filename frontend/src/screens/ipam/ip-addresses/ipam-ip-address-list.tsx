@@ -26,7 +26,6 @@ import { IPAM_QSP, IPAM_ROUTE, IPAM_TABS, IP_ADDRESS_GENERIC } from "../constant
 
 const IpamIPAddressesList = forwardRef((props, ref) => {
   const { prefix } = useParams();
-  console.log("prefix: ", prefix);
   const [isLoading, setIsLoading] = useState(false);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
