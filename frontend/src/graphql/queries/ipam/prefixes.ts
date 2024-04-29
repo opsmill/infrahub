@@ -96,12 +96,7 @@ export const GET_PREFIXES = gql`
 
 export const GET_PREFIX = gql`
   query GET_PREFIX($namespace: String, $prefix: String, $offset: Int, $limit: Int) {
-    BuiltinIPPrefix(
-      ip_namespace__name__value: $namespace
-      prefix__value: $prefix
-      offset: $offset
-      limit: $limit
-    ) {
+    BuiltinIPPrefix(ip_namespace__name__value: $namespace, prefix__value: $prefix) {
       count
       edges {
         node {
@@ -113,7 +108,7 @@ export const GET_PREFIX = gql`
               }
             }
           }
-          children {
+          children(offset: $offset, limit: $limit) {
             count
             edges {
               node {
