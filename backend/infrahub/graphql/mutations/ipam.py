@@ -109,7 +109,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         context: GraphqlContext = info.context
         db = database or context.db
         ip_address = ipaddress.ip_interface(data["address"]["value"])
-        namespace_id = await validate_namespace(db, data)
+        namespace_id = await validate_namespace(db=db, data=data)
 
         async with db.start_transaction() as dbt:
             address = await cls.mutate_create_object(data=data, db=dbt, branch=branch, at=at)
@@ -146,7 +146,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
             include_source=True,
         )
         namespace = await address.ip_namespace.get_peer(db)
-        namespace_id = await validate_namespace(db, data, existing_namespace_id=namespace.id)
+        namespace_id = await validate_namespace(db=db, data=data, existing_namespace_id=namespace.id)
         try:
             async with db.start_transaction() as dbt:
                 address = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=address)
@@ -173,9 +173,12 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         node_getters: List[MutationNodeGetterInterface],
         database: Optional[InfrahubDatabase] = None,
     ) -> Tuple[Node, Self, bool]:
-        await validate_namespace(database, data)
+        context: GraphqlContext = info.context
+        db = database or context.db
+
+        await validate_namespace(db=db, data=data)
         prefix, result, created = await super().mutate_upsert(
-            root=root, info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=database
+            root=root, info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=db
         )
 
         return prefix, result, created
@@ -223,7 +226,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         context: GraphqlContext = info.context
         db = database or context.db
         ip_network = ipaddress.ip_network(data["prefix"]["value"])
-        namespace_id = await validate_namespace(db, data)
+        namespace_id = await validate_namespace(db=db, data=data)
 
         async with db.start_transaction() as dbt:
             prefix = await cls.mutate_create_object(data=data, db=dbt, branch=branch, at=at)
@@ -260,7 +263,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             include_source=True,
         )
         namespace = await prefix.ip_namespace.get_peer(db)
-        namespace_id = await validate_namespace(db, data, existing_namespace_id=namespace.id)
+        namespace_id = await validate_namespace(db=db, data=data, existing_namespace_id=namespace.id)
         try:
             async with db.start_transaction() as dbt:
                 prefix = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=prefix)
@@ -287,9 +290,12 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         node_getters: List[MutationNodeGetterInterface],
         database: Optional[InfrahubDatabase] = None,
     ):
-        await validate_namespace(database, data)
+        context: GraphqlContext = info.context
+        db = database or context.db
+
+        await validate_namespace(db=db, data=data)
         prefix, result, created = await super().mutate_upsert(
-            root=root, info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=database
+            root=root, info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=db
         )
 
         return prefix, result, created
