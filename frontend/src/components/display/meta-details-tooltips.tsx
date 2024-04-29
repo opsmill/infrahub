@@ -17,7 +17,6 @@ interface MetaDetailsTooltipProps {
   owner: AnyAttribute["owner"] & { __typename: string };
   isFromProfile?: AnyAttribute["is_from_profile"];
   isProtected: AnyAttribute["is_protected"];
-  isInherited: AnyAttribute["is_inherited"];
 }
 
 export default function MetaDetailsTooltip({
@@ -27,7 +26,6 @@ export default function MetaDetailsTooltip({
   owner,
   isFromProfile,
   isProtected,
-  isInherited,
 }: MetaDetailsTooltipProps) {
   const items = [
     {
@@ -70,10 +68,6 @@ export default function MetaDetailsTooltip({
     {
       name: "Is protected",
       value: isProtected ? "True" : "False",
-    },
-    {
-      name: "Is inherited",
-      value: isInherited ? "True" : "False",
     },
   ];
 
