@@ -45,7 +45,7 @@ export function IpDetailsCard({
         ),
       };
     }),
-  ];
+  ].filter(Boolean);
 
   return (
     <CardWithBorder>
