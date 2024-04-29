@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.13.0-dev"
+version = "0.14.0-dev"
 description = ""
 authors = ["OpsMill <info@opsmill.com>"]
 
