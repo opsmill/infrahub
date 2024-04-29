@@ -1,7 +1,7 @@
-import { CardWithBorder } from "../../../components/ui/card";
 import { Skeleton } from "../../../components/skeleton";
+import { CardWithBorder } from "../../../components/ui/card";
 
-export const IpamSummarySkeleton = ({ withChart }: { withChart?: boolean }) => {
+export const IpamSummarySkeleton = ({ withStats }: { withStats?: boolean }) => {
   return (
     <div className="flex items-start gap-2">
       <CardWithBorder className="max-w-[470px] w-full">
@@ -19,10 +19,9 @@ export const IpamSummarySkeleton = ({ withChart }: { withChart?: boolean }) => {
         <Skeleton className="h-7 m-4" />
       </CardWithBorder>
 
-      {withChart && (
-        <CardWithBorder>
-          <Skeleton className="h-[219px] w-[219px] rounded-full m-10" />
-          <Skeleton className="h-4 w-10/12 m-4" />
+      {withStats && (
+        <CardWithBorder className="flex-1">
+          <Skeleton className="h-4 m-4" />
         </CardWithBorder>
       )}
     </div>
