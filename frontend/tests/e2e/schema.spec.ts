@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test.describe("Sidebar menu", () => {
+test.describe("/schema - Schema visualizer", () => {
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
       if (response.status() === 500) {
@@ -40,7 +40,7 @@ test.describe("Sidebar menu", () => {
     });
 
     await test.step("help menu for a schema without documentation, but with list view link", async () => {
-      await page.getByText("BuiltinTag").click();
+      await page.getByText("BuiltinTag", { exact: true }).click();
       await page.getByTestId("schema-help-menu-trigger").click();
       await expect(page.getByRole("menuitem", { name: "Documentation" })).toBeDisabled();
       await expect(page.getByRole("menuitem", { name: "Open list view" })).toBeEnabled();
