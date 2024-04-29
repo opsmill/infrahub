@@ -4,6 +4,7 @@ from infrahub.database import InfrahubDatabase
 
 CHECK_HIERARCHY_QUERY = """
 MATCH ({uuid: $node_uuid})-[rel:IS_RELATED]-(rel_node:Relationship {name: "parent__child"})
+WHERE rel.status = "active"
 RETURN rel
 """
 

@@ -225,6 +225,8 @@ class RelationshipCreateQuery(RelationshipQuery):
             "from": self.at.to_string(),
             "to": None,
         }
+        if self.schema.hierarchical:
+            self.params["rel_prop"]["hierarchy"] = self.schema.hierarchical
         arrows = self.schema.get_query_arrows()
         r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:{self.rel_type} $rel_prop ]{arrows.right.end}"
