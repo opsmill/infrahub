@@ -256,7 +256,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         source={relationshipsData.properties.source}
                         owner={relationshipsData.properties.owner}
                         isProtected={relationshipsData.properties.is_protected}
-                        isInherited={relationshipsData.properties.is_inherited}
                         header={
                           <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
                             <div className="font-semibold">{relationshipSchema.label}</div>
@@ -421,7 +420,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             source={properties._relation__source}
                             owner={properties.owner}
                             isProtected={properties.is_protected}
-                            isInherited={properties.is_inherited}
                           />
                         </div>
                       )}
