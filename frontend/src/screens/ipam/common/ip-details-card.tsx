@@ -1,10 +1,10 @@
-import { IModelSchema } from "../../../state/atoms/schema.atom";
-import { AttributeType, ObjectAttributeValue } from "../../../utils/getObjectItemDisplayValue";
 import { Property, PropertyList } from "../../../components/table/property-list";
-import { CardWithBorder } from "../../../components/ui/card";
 import { Badge } from "../../../components/ui/badge";
+import { CardWithBorder } from "../../../components/ui/card";
 import { Link } from "../../../components/utils/link";
+import { IModelSchema } from "../../../state/atoms/schema.atom";
 import { constructPath } from "../../../utils/fetch";
+import { AttributeType, ObjectAttributeValue } from "../../../utils/getObjectItemDisplayValue";
 import { getObjectDetailsUrl } from "../../../utils/objects";
 
 export function IpDetailsCard({
@@ -14,7 +14,7 @@ export function IpDetailsCard({
   schema: IModelSchema;
   data: { id: string } & Record<string, AttributeType>;
 }) {
-  const properties: Property[] = [
+  const properties: (Property | undefined)[] = [
     { name: "ID", value: data.id },
     ...(schema.attributes ?? []).map((schemaAttribute) => {
       return {
