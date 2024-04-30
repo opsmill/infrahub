@@ -223,22 +223,24 @@ def _validate_update_account(account_session: AccountSession, node_id: str, fiel
 
 def validate_mutation_permissions(operation: str, account_session: AccountSession) -> None:
     validation_map: Dict[str, Callable[[AccountSession], None]] = {
-        "AccountCreate": _validate_is_admin,
-        "AccountDelete": _validate_is_admin,
+        f"{InfrahubKind.ACCOUNT}Create": _validate_is_admin,
+        f"{InfrahubKind.ACCOUNT}Delete": _validate_is_admin,
+        f"{InfrahubKind.ACCOUNT}Upsert": _validate_is_admin,
     }
     if validator := validation_map.get(operation):
-        validator(account_session=account_session)
+        validator(account_session)
 
 
 def validate_mutation_permissions_update_node(
     operation: str, node_id: str, account_session: AccountSession, fields: List[str]
 ) -> None:
     validation_map: Dict[str, Callable[[AccountSession, str, List[str]], None]] = {
-        "AccountUpdate": _validate_update_account,
+        f"{InfrahubKind.ACCOUNT}Update": _validate_update_account,
+        f"{InfrahubKind.ACCOUNT}Upsert": _validate_update_account,
     }
 
     if validator := validation_map.get(operation):
-        validator(account_session=account_session, node_id=node_id, fields=fields)
+        validator(account_session, node_id, fields)
 
 
 async def invalidate_refresh_token(db: InfrahubDatabase, token_id: str) -> None:
