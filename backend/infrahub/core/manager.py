@@ -476,8 +476,9 @@ class NodeManager:
             return None
 
         node = result[id]
+        node_schema = node.get_schema()
 
-        if kind and node.get_kind() != kind:
+        if kind and (node_schema.kind != kind and kind not in node_schema.inherit_from):
             raise NodeNotFoundError(
                 branch_name=branch.name,
                 node_type=kind,
