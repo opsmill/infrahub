@@ -138,50 +138,24 @@ class NATSMessageBus(InfrahubMessageBus):
     async def _initialize_api_server(self) -> None:
         self.events_queue = await self.jetstream.add_stream(
             name=f"{self.settings.namespace}-events",
-            subjects=["refresh.registry.*"],
+            subjects=self.event_bindings,
             retention=nats.js.api.RetentionPolicy.INTEREST,
         )
 
-        worker_bindings = [
-            "check.*.*",
-            "event.*.*",
-            "finalize.*.*",
-            "git.*.*",
-            "refresh.webhook.*",
-            "request.*.*",
-            "send.*.*",
-            "schema.*.*",
-            "transform.*.*",
-            "trigger.*.*",
-        ]
-
         await self.jetstream.add_stream(
             name=f"{self.settings.namespace}-rpcs",
-            subjects=worker_bindings,
+            subjects=self.worker_bindings,
             retention=nats.js.api.RetentionPolicy.WORK_QUEUE,
         )
 
-        await self._subscribe_events(["refresh.registry.*"], f"api-worker-{WORKER_IDENTITY}")
+        await self._subscribe_events(self.event_bindings, f"api-worker-{WORKER_IDENTITY}")
 
         await self._setup_callback(f"api-worker-{WORKER_IDENTITY}")
 
         self.message_enrichers.append(_add_request_id)
 
     async def _initialize_git_worker(self) -> None:
-        await self._subscribe_events(["refresh.registry.*"], f"git-worker-{WORKER_IDENTITY}")
-
-        worker_bindings = [
-            "check.*.*",
-            "event.*.*",
-            "finalize.*.*",
-            "git.*.*",
-            "refresh.webhook.*",
-            "request.*.*",
-            "send.*.*",
-            "schema.*.*",
-            "transform.*.*",
-            "trigger.*.*",
-        ]
+        await self._subscribe_events(self.event_bindings, f"git-worker-{WORKER_IDENTITY}")
 
         consumer_config = nats.js.api.ConsumerConfig(
             ack_policy=nats.js.api.AckPolicy.EXPLICIT,
@@ -191,7 +165,7 @@ class NATSMessageBus(InfrahubMessageBus):
             # max_ack_pending=self.settings.maximum_concurrent_messages,
             # flow_control=True,
             # idle_heartbeat=5.0,  # default value
-            filter_subjects=worker_bindings,
+            filter_subjects=self.worker_bindings,
             durable_name="git-workers",
             deliver_group="git-workers",
             deliver_subject=self.connection.new_inbox(),
@@ -203,7 +177,7 @@ class NATSMessageBus(InfrahubMessageBus):
             if exc.err_code != 10013:  # consumer name already in use
                 raise
 
-        for subject in worker_bindings:
+        for subject in self.worker_bindings:
             await self.jetstream.subscribe(
                 subject=subject,
                 queue="git-workers",

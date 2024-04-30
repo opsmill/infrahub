@@ -140,22 +140,10 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             arguments={"x-max-priority": 5, "x-consumer-timeout": self.DELIVER_TIMEOUT * 1000},
         )
 
-        worker_bindings = [
-            "check.*.*",
-            "event.*.*",
-            "finalize.*.*",
-            "git.*.*",
-            "refresh.webhook.*",
-            "request.*.*",
-            "send.*.*",
-            "schema.*.*",
-            "transform.*.*",
-            "trigger.*.*",
-        ]
         self.delayed_exchange = await self.channel.declare_exchange(
             f"{self.settings.namespace}.delayed", type="headers", durable=True
         )
-        for routing_key in worker_bindings:
+        for routing_key in self.worker_bindings:
             await queue.bind(self.exchange, routing_key=routing_key)
             await queue.bind(self.dlx, routing_key=routing_key)
 
@@ -174,7 +162,8 @@ class RabbitMQMessageBus(InfrahubMessageBus):
                 arguments={"x-match": "all", "delay": ttl.value},
             )
 
-        await self.events_queue.bind(self.exchange, routing_key="refresh.registry.*")
+        for routing_key in self.event_bindings:
+            await self.events_queue.bind(self.exchange, routing_key=routing_key)
 
         self.message_enrichers.append(_add_request_id)
 
@@ -184,7 +173,9 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.exchange = await self.channel.declare_exchange(
             f"{self.settings.namespace}.events", type="topic", durable=True
         )
-        await events_queue.bind(self.exchange, routing_key="refresh.registry.*")
+
+        for routing_key in self.event_bindings:
+            await events_queue.bind(self.exchange, routing_key=routing_key)
         self.delayed_exchange = await self.channel.get_exchange(name=f"{self.settings.namespace}.delayed")
 
         await events_queue.consume(callback=self.on_callback, no_ack=True)
