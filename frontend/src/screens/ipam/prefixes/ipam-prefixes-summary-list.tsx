@@ -72,9 +72,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
         ip_namespace: edge?.node?.ip_namespace?.node?.display_label,
         parent: edge?.node?.parent?.node?.display_label,
       },
-      link: constructPathForIpam(
-        `${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(edge?.node?.prefix?.value)}`
-      ),
+      link: constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${edge?.node?.id}`),
     }));
 
   const handleUpdate = (data) => {

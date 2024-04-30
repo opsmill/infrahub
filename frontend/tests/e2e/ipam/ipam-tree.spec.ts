@@ -26,4 +26,13 @@ test.describe("/ipam - Ipam Tree", () => {
   test("On first load, it expands IPAM tree to the selected prefix position", async ({ page }) => {
     await page.goto("/ipam/prefixes/10.1.0.16%2F31");
   });
+
+  test("go to prefix summary when clicking on any tree item", async ({ page }) => {
+    await page.goto("/ipam");
+
+    await page.getByTestId("ipam-tree").getByRole("link", { name: "10.0.0.0/8" }).click();
+    expect(page.url()).toContain("/ipam/prefixes/");
+    await expect(page.getByText("Ipam IPPrefix summary")).toBeVisible();
+    await expect(page.getByText("Prefix10.0.0.0/8")).toBeVisible();
+  });
 });
