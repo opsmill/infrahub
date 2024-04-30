@@ -139,9 +139,7 @@ export default function IpamTree() {
           onNodeSelect={({ element, isSelected }) => {
             if (!isSelected) return;
 
-            const url = constructPathForIpam(
-              `${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(element.name)}`
-            );
+            const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
             navigate(url);
           }}
           data-testid="ipam-tree"
@@ -156,7 +154,7 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
   const generics = useAtomValue(genericsState);
 
   const schema = [...nodes, ...generics].find(({ kind }) => kind === element.metadata?.kind);
-  const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(element.name)}`);
+  const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
 
   return (
     <Link

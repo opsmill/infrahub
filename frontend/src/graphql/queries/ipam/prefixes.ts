@@ -160,10 +160,12 @@ export const GET_PREFIX = gql`
 `;
 
 export const GET_PREFIX_KIND = gql`
-  query GET_PREFIX_KIND($ip: String) {
-    BuiltinIPPrefix(prefix__value: $ip) {
+  query GET_PREFIX_KIND($ids: [ID]) {
+    BuiltinIPPrefix(ids: $ids) {
       edges {
         node {
+          id
+          display_label
           __typename
         }
       }
