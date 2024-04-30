@@ -6,7 +6,7 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import SlideOver from "../../../components/display/slide-over";
 import ModalDelete from "../../../components/modals/modal-delete";
-import ProgressBar from "../../../components/stats/progress-bar";
+import ProgressBarChart from "../../../components/stats/progress-bar-chart";
 import { Table } from "../../../components/table/table";
 import { Tooltip } from "../../../components/ui/tooltip";
 import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
@@ -90,7 +90,7 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
           ? memberIcons[child?.node?.member_type?.value]
           : child?.node?.member_type?.value ?? "-",
       is_pool: child?.node?.is_pool?.value ? <Icon icon="mdi:check" /> : <Icon icon="mdi:close" />,
-      utilization: <ProgressBar value={child?.node?.utilization?.value} />,
+      utilization: <ProgressBarChart value={child?.node?.utilization?.value} />,
       netmask: child?.node?.netmask?.value,
       hostmask: child?.node?.hostmask?.value,
       network_address: child?.node?.network_address?.value,
