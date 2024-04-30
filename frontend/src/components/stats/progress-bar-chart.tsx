@@ -2,7 +2,7 @@ import { HTMLAttributes } from "react";
 import * as ProgressPrimitive from "@radix-ui/react-progress";
 import { classNames } from "../../utils/common";
 
-export const Progress = ({ className, value, ...props }: ProgressPrimitive.ProgressProps) => (
+export const ProgressBar = ({ className, value, ...props }: ProgressPrimitive.ProgressProps) => (
   <ProgressPrimitive.Root
     className={classNames(
       "relative h-2 w-full overflow-hidden rounded-full bg-custom-blue-600/20",
@@ -24,14 +24,14 @@ const getCleanedValue = (value: number) => {
   return value;
 };
 
-interface ProgressBarProps extends HTMLAttributes<HTMLDivElement> {
+interface ProgressBarChartProps extends HTMLAttributes<HTMLDivElement> {
   value: number;
 }
 
-export default function ProgressBar({ value, className, ...props }: ProgressBarProps) {
+export default function ProgressBarChart({ value, className, ...props }: ProgressBarChartProps) {
   return (
     <div className={classNames("w-full flex items-center gap-2", className)} {...props}>
-      <Progress value={getCleanedValue(getCleanedValue(value))} className="flex-grow h-2" />
+      <ProgressBar value={getCleanedValue(value)} className="flex-grow h-2" />
       <span className="text-custom-blue-700 font-medium">{value}%</span>
     </div>
   );

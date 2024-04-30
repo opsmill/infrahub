@@ -6,7 +6,7 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import SlideOver from "../../../components/display/slide-over";
 import ModalDelete from "../../../components/modals/modal-delete";
-import ProgressBar from "../../../components/stats/progress-bar";
+import ProgressBarChart from "../../../components/stats/progress-bar-chart";
 import { Table } from "../../../components/table/table";
 import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
 import { Pagination } from "../../../components/utils/pagination";
@@ -64,7 +64,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
         ) : (
           <Icon icon="mdi:close" />
         ),
-        utilization: <ProgressBar value={edge?.node?.utilization?.value} />,
+        utilization: <ProgressBarChart value={edge?.node?.utilization?.value} />,
         netmask: edge?.node?.netmask?.value,
         hostmask: edge?.node?.hostmask?.value,
         network_address: edge?.node?.network_address?.value,
