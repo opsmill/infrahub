@@ -144,6 +144,7 @@ export default function IpamTree() {
             );
             navigate(url);
           }}
+          data-testid="ipam-tree"
         />
       )}
     </nav>
@@ -158,7 +159,11 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
   const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(element.name)}`);
 
   return (
-    <Link to={url} tabIndex={-1} className="flex items-center gap-2 overflow-hidden">
+    <Link
+      to={url}
+      tabIndex={-1}
+      className="flex items-center gap-2 overflow-hidden"
+      data-testid="ipam-tree-item">
       {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}
       <span className="truncate">{element.name}</span>
     </Link>
