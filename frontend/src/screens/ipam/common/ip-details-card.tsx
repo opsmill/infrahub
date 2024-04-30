@@ -22,9 +22,7 @@ export function IpDetailsCard({
       if (schemaAttribute.name === "utilization") {
         return {
           name: schemaAttribute.label || schemaAttribute.name,
-          value: (
-            <ProgressBar displayValue value={parseInt(data[schemaAttribute.name].value, 10)} />
-          ),
+          value: <ProgressBar value={parseInt(data[schemaAttribute.name].value, 10)} />,
         };
       }
 
