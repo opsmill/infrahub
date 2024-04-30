@@ -8,6 +8,7 @@ import { DateTimeParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
 import { datetimeAtom } from "../state/atoms/time.atom";
 import { classNames } from "../utils/common";
+import { Button } from "./buttons/button-primitive";
 
 export const TimeFrameSelector = () => {
   const [date, setDate] = useAtom(datetimeAtom);
@@ -37,18 +38,18 @@ export const TimeFrameSelector = () => {
       data-testid="timeframe-selector">
       <Transition
         show={!!date}
-        enter="ease-out duration-300"
-        enterFrom="w-0"
-        enterTo="w-44"
-        leave="ease-out duration-300"
-        leaveFrom="w-44"
-        leaveTo="w-0"
-        className="flex items-center truncate">
+        enter="linear duration-300"
+        enterFrom="w-0 opacity-0"
+        enterTo="w-[174px] opacity-100"
+        leave="linear duration-300"
+        leaveFrom="w-[174px] opacity-100"
+        leaveTo="w-0 opacity-0"
+        className="flex items-center">
         <ButtonStyled onClick={reset} data-testid="reset-timeframe-selector">
           <Icon icon="mdi:close" />
         </ButtonStyled>
 
-        <div className="w-[136px] flex flex-col">
+        <div className="w-[136px] flex flex-col truncate">
           <span className="font-medium text-xs">Current view time:</span>
           {date && <span className="text-sm">{format(date, "PP | H:mm")}</span>}
         </div>
@@ -75,12 +76,11 @@ export const TimeFrameSelector = () => {
 
 const ButtonStyled = forwardRef<HTMLButtonElement, HTMLAttributes<HTMLButtonElement>>(
   ({ className, ...props }, ref) => (
-    <button
+    <Button
       ref={ref}
-      className={classNames(
-        "inline-flex p-3 rounded-full focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2",
-        className
-      )}
+      size="icon"
+      variant="ghost"
+      className={classNames("p-3 h-auto w-auto", className)}
       {...props}
     />
   )
