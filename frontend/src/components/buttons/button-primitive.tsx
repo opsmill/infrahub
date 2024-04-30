@@ -4,13 +4,13 @@ import { classNames } from "../../utils/common";
 import { Tooltip, TooltipProps } from "../ui/tooltip";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2 disabled:opacity-60",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-blue-500 focus-visible:ring-offset-2 disabled:opacity-60",
   {
     variants: {
       variant: {
         primary: "text-white bg-custom-blue-600 shadow hover:bg-custom-blue-600/90",
         outline: "border bg-custom-white shadow-sm hover:bg-gray-100",
-        ghost: "hover:bg-gray-100",
+        ghost: "hover:bg-gray-100/20",
       },
       size: {
         default: "h-9 px-4 py-2",
