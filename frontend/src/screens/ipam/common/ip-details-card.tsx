@@ -37,7 +37,7 @@ export function IpDetailsCard({
       };
     }),
     ...(schema.relationships ?? [])
-      .filter(({ name }) => IP_SUMMARY_RELATIONSHIPS_BLACKLIST.includes(name))
+      .filter(({ name }) => !IP_SUMMARY_RELATIONSHIPS_BLACKLIST.includes(name))
       .map((schemaRelationship) => {
         const relationshipData = data[schemaRelationship.name]?.node;
 
