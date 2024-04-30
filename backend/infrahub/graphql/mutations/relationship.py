@@ -20,6 +20,8 @@ from ..types import RelatedNodeInput
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
+    from infrahub.core.relationship import RelationshipManager
+
     from .. import GraphqlContext
 
 
@@ -42,21 +44,22 @@ class RelationshipMixin:
         cls,
         root: dict,
         info: GraphQLResolveInfo,
-        data,
+        data: RelationshipNodesInput,
     ):
         context: GraphqlContext = info.context
+        input_id = str(data.id)
 
         if not (
             source := await NodeManager.get_one(
                 db=context.db,
-                id=data.get("id"),
+                id=input_id,
                 branch=context.branch,
                 at=context.at,
                 include_owner=True,
                 include_source=True,
             )
         ):
-            raise NodeNotFoundError(context.branch, None, data.get("id"))
+            raise NodeNotFoundError(context.branch, None, input_id)
 
         # Check if the name of the relationship provided exist for this node and is of cardinality Many
         if data.get("name") not in source._schema.relationship_names:
@@ -69,7 +72,7 @@ class RelationshipMixin:
             raise ValidationError({"name": f"'{data.get('name')}' must be a relationship of cardinality Many"})
 
         # Query the node in the database and validate that all of them exist and are if the correct kind
-        node_ids: List[str] = [node_data.get("id") for node_data in data.get("nodes")]
+        node_ids: list[str] = [node_data.get("id") for node_data in data.get("nodes")]
         nodes = await NodeManager.get_many(
             db=context.db, ids=node_ids, fields={"display_label": None}, branch=context.branch, at=context.at
         )
@@ -84,6 +87,19 @@ class RelationshipMixin:
                 continue
             if rel_schema.peer not in node.get_labels():
                 raise ValidationError(f"{node_id!r} {node.get_kind()!r} is not a valid peer for '{rel_schema.peer}'")
+
+            peer_relationships = [rel for rel in node._schema.relationships if rel.identifier == rel_schema.identifier]
+            if (
+                rel_schema.identifier
+                and len(peer_relationships) == 1
+                and peer_relationships[0].cardinality == RelationshipCardinality.ONE
+            ):
+                peer_relationship: RelationshipManager = getattr(node, peer_relationships[0].name)
+                if peer := await peer_relationship.get_peer(db=context.db):
+                    if peer.id != input_id:
+                        raise ValidationError(
+                            f"{node_id!r} {node.get_kind()!r} is already related to another peer on '{peer_relationships[0].name}'"
+                        )
 
         # The nodes that are already present in the db
         query = await RelationshipGetPeerQuery.init(
@@ -128,7 +144,7 @@ class RelationshipAdd(RelationshipMixin, Mutation):
         cls,
         root: dict,
         info: GraphQLResolveInfo,
-        data,
+        data: RelationshipNodesInput,
     ):
         return await super().mutate(root=root, info=info, data=data)
 
@@ -145,6 +161,6 @@ class RelationshipRemove(RelationshipMixin, Mutation):
         cls,
         root: dict,
         info: GraphQLResolveInfo,
-        data,
+        data: RelationshipNodesInput,
     ):
         return await super().mutate(root=root, info=info, data=data)
