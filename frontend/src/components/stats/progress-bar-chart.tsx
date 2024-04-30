@@ -16,7 +16,7 @@ export const ProgressBar = ({ className, value, ...props }: ProgressPrimitive.Pr
   </ProgressPrimitive.Root>
 );
 
-const getCleanedValue = (value: number) => {
+const sanitizeProgressBarValue = (value: number) => {
   if (isNaN(value)) return 0;
 
   if (value > 100) return 100;
@@ -31,7 +31,7 @@ interface ProgressBarChartProps extends HTMLAttributes<HTMLDivElement> {
 export default function ProgressBarChart({ value, className, ...props }: ProgressBarChartProps) {
   return (
     <div className={classNames("w-full flex items-center gap-2", className)} {...props}>
-      <ProgressBar value={getCleanedValue(value)} className="flex-grow h-2" />
+      <ProgressBar value={sanitizeProgressBarValue(value)} className="flex-grow h-2" />
       <span className="text-custom-blue-700 font-medium">{value}%</span>
     </div>
   );
