@@ -80,7 +80,7 @@ const ButtonStyled = forwardRef<HTMLButtonElement, HTMLAttributes<HTMLButtonElem
       ref={ref}
       size="icon"
       variant="ghost"
-      className={classNames("p-3 h-auto w-auto", className)}
+      className={classNames("p-3 h-auto w-auto hover:bg-gray-100/20", className)}
       {...props}
     />
   )
