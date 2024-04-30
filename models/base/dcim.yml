@@ -244,6 +244,47 @@ nodes:
         optional: true
         cardinality: many
         kind: Component
+      - name: lag
+        peer: InfraLagInterfaceL3
+        optional: true
+        cardinality: one
+        kind: Attribute
+  - name: LagInterfaceL3
+    namespace: Infra
+    description: "Network Layer 3 Lag Interface"
+    label: "Lag Interface L3"
+    icon: "mdi:ethernet"
+    menu_placement: "InfraDevice"
+    include_in_menu: true
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "InfraInterface"
+      - "CoreArtifactTarget"
+    attributes:
+      - name: minimum_links
+        label: Mimimum links
+        kind: Number
+        default_value: 1
+        optional: false
+      - name: max_bundle
+        label: MaxBundle
+        kind: Number
+        optional: true
+    relationships:
+      - name: members
+        label: Members
+        peer: InfraInterfaceL3
+        optional: true
+        cardinality: many
+        kind: Generic
+      - name: ip_addresses
+        peer: IpamIPAddress
+        optional: true
+        cardinality: many
+        kind: Component
   - name: InterfaceL2
     namespace: Infra
     description: "Network Layer 2 Interface"
@@ -287,6 +328,7 @@ nodes:
   - name: LagInterfaceL2
     namespace: Infra
     description: "Network Layer 2 Lag Interface"
+    label: "Lag Interface L2"
     icon: "mdi:ethernet"
     menu_placement: "InfraDevice"
     include_in_menu: true
