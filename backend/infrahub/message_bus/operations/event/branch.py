@@ -37,6 +37,7 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
 
     events: List[InfrahubMessage] = [
         messages.RefreshRegistryBranches(),
+        messages.TriggerIpamReconciliation(branch=message.target_branch, ipam_node_details=message.ipam_node_details),
         messages.TriggerArtifactDefinitionGenerate(branch=message.target_branch),
         messages.TriggerGeneratorDefinitionRun(branch=message.target_branch),
     ]
