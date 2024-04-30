@@ -17,13 +17,14 @@ import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
 import { GET_PREFIX } from "../../../graphql/queries/ipam/prefixes";
 import useQuery from "../../../hooks/useQuery";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
+import { genericsState } from "../../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "../../../utils/string";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
-import { IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
+import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "../constants";
 
 const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const { prefix } = useParams();
@@ -32,6 +33,10 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const [relatedRowToDelete, setRelatedRowToDelete] = useState();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
   const [isLoading, setIsLoading] = useState(false);
+  const generics = useAtomValue(genericsState);
+
+  const prefixSchema = generics.find(({ kind }) => kind === IP_PREFIX_GENERIC);
+  const adressSchema = generics.find(({ kind }) => kind === IP_ADDRESS_GENERIC);
 
   const { loading, error, data, refetch } = useQuery(GET_PREFIX, {
     variables: { prefix: prefix },
@@ -47,12 +52,16 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
 
   const children = data && data[IP_PREFIX_GENERIC]?.edges[0]?.node?.children;
 
+  const memberIcons: Record<string, any> = {
+    address: prefixSchema?.icon ? <Icon icon={prefixSchema.icon as string} /> : "-",
+    prefix: adressSchema?.icon ? <Icon icon={adressSchema.icon as string} /> : "-",
+  };
+
   const columns = [
     { name: "prefix", label: "Prefix" },
     { name: "description", label: "Description" },
     { name: "member_type", label: "Member Type" },
     { name: "is_pool", label: "Is Pool" },
-    { name: "is_top_level", label: "Is Top Level" },
     { name: "utilization", label: "Utilization" },
     { name: "ip_namespace", label: "Ip Namespace" },
   ];
@@ -63,13 +72,10 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
     values: {
       prefix: child?.node?.prefix?.value,
       description: child?.node?.description?.value,
-      member_type: child?.node?.member_type?.value,
+      member_type: child?.node?.member_type?.value
+        ? memberIcons[child?.node?.member_type?.value]
+        : "-",
       is_pool: child?.node?.is_pool?.value ? <Icon icon="mdi:check" /> : <Icon icon="mdi:close" />,
-      is_top_level: child?.node?.is_top_level?.value ? (
-        <Icon icon="mdi:check" />
-      ) : (
-        <Icon icon="mdi:close" />
-      ),
       utilization: <ProgressBar value={child?.node?.utilization?.value} />,
       netmask: child?.node?.netmask?.value,
       hostmask: child?.node?.hostmask?.value,
