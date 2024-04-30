@@ -9,7 +9,6 @@ import useQuery from "../../../hooks/useQuery";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { getObjectAttributes, getObjectRelationships } from "../../../utils/getSchemaObjectColumns";
 import { IpDetailsCard } from "../common/ip-details-card";
-import { PrefixUsageChart } from "../common/prefix-usage-chart";
 import { IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
 import { IpamSummarySkeleton } from "./ipam-summary-skeleton";
 
@@ -70,7 +69,6 @@ const PrefixSummaryContent = ({ prefixKind }: { prefixKind: string }) => {
   return (
     <div className="flex flex-wrap items-start gap-2">
       <IpDetailsCard schema={prefixSchema} data={prefixData} />
-      <PrefixUsageChart usagePercentage={prefixData.utilization.value} />
     </div>
   );
 };
