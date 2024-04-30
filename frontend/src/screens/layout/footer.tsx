@@ -4,7 +4,7 @@ import { Tooltip } from "../../components/ui/tooltip";
 import {
   CONFIG,
   INFRAHUB_API_SERVER_URL,
-  INFRAHUB_DOC_URL,
+  INFRAHUB_DOC_LOCAL,
   INFRAHUB_GITHUB_URL,
 } from "../../config/config";
 import { components } from "../../infraops";
@@ -18,7 +18,7 @@ const ICONS = [
   },
   {
     component: <Icon icon="mdi:file-document" className="text-xl text-custom-blue-50" />,
-    link: INFRAHUB_DOC_URL,
+    link: INFRAHUB_DOC_LOCAL,
     message: "Infrahub documentation",
   },
   {
