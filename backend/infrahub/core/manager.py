@@ -458,6 +458,8 @@ class NodeManager:
         kind: Optional[str] = None,
     ) -> Optional[Node]:
         """Return one node based on its ID."""
+        branch = await registry.get_branch(branch=branch, db=db)
+
         result = await cls.get_many(
             ids=[id],
             fields=fields,
@@ -474,8 +476,9 @@ class NodeManager:
             return None
 
         node = result[id]
+        node_schema = node.get_schema()
 
-        if kind and node.get_kind() != kind:
+        if kind and (node_schema.kind != kind and kind not in node_schema.inherit_from):
             raise NodeNotFoundError(
                 branch_name=branch.name,
                 node_type=kind,

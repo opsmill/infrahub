@@ -34,9 +34,7 @@ async def validate_namespace(
         data["ip_namespace"] = {"id": registry.default_ipnamespace}
         namespace_id = existing_namespace_id or registry.default_ipnamespace
     elif "id" in data["ip_namespace"]:
-        namespace = await registry.manager.get_one_by_id_or_default_filter(
-            db=db, schema_name=InfrahubKind.IPNAMESPACE, id=data["ip_namespace"]["id"]
-        )
+        namespace = await registry.manager.get_one(db=db, kind=InfrahubKind.IPNAMESPACE, id=data["ip_namespace"]["id"])
         namespace_id = namespace.id
     else:
         raise ValidationError(
