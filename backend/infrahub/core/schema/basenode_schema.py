@@ -102,7 +102,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         get_func: Callable,
         get_map_func: Callable,
         obj_type: Union[Type[AttributeSchema], Type[RelationshipSchema], Type[FilterSchema]],
-    ):
+    ) -> HashableModelDiff:
         """The goal of this function is to reduce the amount of code duplicated between Attribute and Relationship to calculate a diff
         The logic is the same for both, except that the functions we are using to access these objects are differents
 
@@ -206,7 +206,13 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         raise ValueError(f"Unable to find the relationship with the ID: {id}")
 
-    def get_filter(self, name, raise_on_error: bool = True) -> FilterSchema:
+    @overload
+    def get_filter(self, name: str, raise_on_error: Literal[True] = True) -> FilterSchema: ...
+
+    @overload
+    def get_filter(self, name: str, raise_on_error: Literal[False] = False) -> Optional[FilterSchema]: ...
+
+    def get_filter(self, name: str, raise_on_error: bool = True) -> Optional[FilterSchema]:
         for item in self.filters:
             if item.name == name:
                 return item
@@ -222,7 +228,15 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
                 return item
         return None
 
-    def get_relationship_by_identifier(self, id: str, raise_on_error: bool = True) -> RelationshipSchema:
+    @overload
+    def get_relationship_by_identifier(self, id: str, raise_on_error: Literal[True] = True) -> RelationshipSchema: ...
+
+    @overload
+    def get_relationship_by_identifier(
+        self, id: str, raise_on_error: Literal[False] = False
+    ) -> Optional[RelationshipSchema]: ...
+
+    def get_relationship_by_identifier(self, id: str, raise_on_error: bool = True) -> Optional[RelationshipSchema]:
         for item in self.relationships:
             if item.identifier == id:
                 return item
