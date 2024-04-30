@@ -46,8 +46,8 @@ const PrefixSummaryContent = ({ prefixKind }: { prefixKind: string }) => {
 
   const prefixSchema = [...nodes, ...generics].find(({ kind }) => kind === prefixKind);
 
-  const attributes = getObjectAttributes(prefixSchema);
-  const relationships = getObjectRelationships(prefixSchema);
+  const attributes = getObjectAttributes({ schema: prefixSchema });
+  const relationships = getObjectRelationships({ schema: prefixSchema });
 
   const query = gql(
     getObjectItemsPaginated({

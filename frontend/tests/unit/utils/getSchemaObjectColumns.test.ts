@@ -13,17 +13,17 @@ import {
 
 describe("Schema object columns for list view", () => {
   it("should return correct attribute columns", () => {
-    const calculatedAttributes = getObjectAttributes(C_deviceSchema);
+    const calculatedAttributes = getObjectAttributes({ schema: C_deviceSchema });
     expect(calculatedAttributes).toStrictEqual(C_deviceAttributeColumns);
   });
 
   it("should return correct relationship columns", () => {
-    const calculatedRelationships = getObjectRelationships(C_deviceSchema);
+    const calculatedRelationships = getObjectRelationships({ schema: C_deviceSchema });
     expect(calculatedRelationships).toStrictEqual(C_deviceRelationshipColumns);
   });
 
   it("should return correct object columns", () => {
-    const calculatedObjectColumns = getSchemaObjectColumns(C_deviceSchema);
+    const calculatedObjectColumns = getSchemaObjectColumns({ schema: C_deviceSchema });
     expect(calculatedObjectColumns).toStrictEqual(C_deviceObjectColumns);
   });
 });
