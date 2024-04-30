@@ -1,0 +1,53 @@
+---
+# yamllint disable rule:truthy
+name: Publish rc docker image
+
+on:
+  push:
+    branches:
+      - candidate
+
+jobs:
+  meta_data:
+    runs-on:
+      group: huge-runners
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
+      labels: ${{ steps.meta.outputs.labels }}
+      ref: ${{ steps.ref.outputs.ref }}
+      short_ref: ${{ steps.short_ref.outputs.short_ref }}
+    steps:
+      - name: Set GIT ref
+        run: echo "ref=${{ github.sha }} " >> $GITHUB_OUTPUT
+        id: ref
+      - name: Set GIT short ref
+        run: echo "short_ref=$(echo ${{ steps.ref.outputs.ref }} | cut -c1-7)" >> $GITHUB_OUTPUT
+        id: short_ref
+      - name: Set docker image meta data
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ vars.HARBOR_HOST }}/${{ github.repository }}
+          tags: |
+            type=raw,value=rc-${{ steps.short_ref.outputs.short_ref }}
+            type=raw,value=candidate
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.version=rc-${{ steps.short_ref.outputs.short_ref }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
+          flavor: |
+            latest=false
+
+
+  publish-docker-image:
+    uses: ./.github/workflows/ci-docker-image.yml
+    needs: meta_data
+    secrets: inherit
+    with:
+      publish: true
+      version: rc-${{ needs.meta_data.outputs.short_ref }}
+      ref: ${{ needs.meta_data.outputs.ref }}
+      tags: ${{needs.meta_data.outputs.tags}}
+      labels: ${{needs.meta_data.outputs.labels}}
+      platforms: "linux/amd64,linux/arm64"
