@@ -104,6 +104,24 @@ generics:
         optional: true
         cardinality: many
         kind: Attribute
+  - name: LagInterface
+    namespace: Infra
+    description: "Generic Lag Interface"
+    include_in_menu: false
+    attributes:
+      - name: lacp
+        label: LACP
+        kind: Text
+        enum: ["Active", "Passive", "Disabled"]
+      - name: minimum_links
+        label: Mimimum links
+        kind: Number
+        default_value: 1
+        optional: false
+      - name: max_bundle
+        label: MaxBundle
+        kind: Number
+        optional: true
   - name: Endpoint
     namespace: Infra
     description: "Generic Endpoint to connect two objects together"
@@ -238,6 +256,18 @@ nodes:
       - "InfraInterface"
       - "InfraEndpoint"
       - "CoreArtifactTarget"
+    attributes:
+      - name: lacp_rate
+        label: LACP Rate
+        kind: Text
+        enum:
+          - "Fast"
+          - "Normal"
+        default_value: "Normal"
+      - name: lacp_priority
+        label: LACP Priority
+        kind: Number
+        default_value: 32768
     relationships:
       - name: ip_addresses
         peer: IpamIPAddress
@@ -262,17 +292,8 @@ nodes:
       - name__value
     inherit_from:
       - "InfraInterface"
+      - "InfraLagInterface"
       - "CoreArtifactTarget"
-    attributes:
-      - name: minimum_links
-        label: Mimimum links
-        kind: Number
-        default_value: 1
-        optional: false
-      - name: max_bundle
-        label: MaxBundle
-        kind: Number
-        optional: true
     relationships:
       - name: members
         label: Members
@@ -305,6 +326,17 @@ nodes:
         label: Layer2 Mode
         kind: Text
         enum: ["Access", "Trunk", "Trunk (ALL)"]
+      - name: lacp_rate
+        label: LACP Rate
+        kind: Text
+        enum:
+          - "Fast"
+          - "Normal"
+        default_value: "Normal"
+      - name: lacp_priority
+        label: LACP Priority
+        kind: Number
+        default_value: 32768
     relationships:
       - name: lag
         peer: InfraLagInterfaceL2
@@ -338,25 +370,13 @@ nodes:
       - name__value
     inherit_from:
       - "InfraInterface"
+      - "InfraLagInterface"
       - "CoreArtifactTarget"
     attributes:
       - name: l2_mode
         label: Layer2 Mode
         kind: Text
         enum: ["Access", "Trunk", "Trunk (ALL)"]
-      - name: lacp
-        label: LACP
-        kind: Text
-        enum: ["Active", "Passive", "Disabled"]
-      - name: minimum_links
-        label: Mimimum links
-        kind: Number
-        default_value: 1
-        optional: false
-      - name: max_bundle
-        label: MaxBundle
-        kind: Number
-        optional: true
     relationships:
       - name: members
         label: Members
