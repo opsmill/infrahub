@@ -265,6 +265,63 @@ nodes:
         kind: Text
         enum: ["Access", "Trunk", "Trunk (ALL)"]
     relationships:
+      - name: lag
+        peer: InfraLagInterfaceL2
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: untagged_vlan
+        label: Untagged VLAN
+        peer: InfraVLAN
+        optional: true
+        cardinality: one
+        kind: Component
+        identifier: interface_l2__untagged_vlan
+      - name: tagged_vlan
+        label: Tagged VLANs
+        peer: InfraVLAN
+        optional: true
+        cardinality: many
+        kind: Attribute
+        identifier: interface_l2__tagged_vlan
+  - name: LagInterfaceL2
+    namespace: Infra
+    description: "Network Layer 2 Lag Interface"
+    icon: "mdi:ethernet"
+    menu_placement: "InfraDevice"
+    include_in_menu: true
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "InfraInterface"
+      - "CoreArtifactTarget"
+    attributes:
+      - name: l2_mode
+        label: Layer2 Mode
+        kind: Text
+        enum: ["Access", "Trunk", "Trunk (ALL)"]
+      - name: lacp
+        label: LACP
+        kind: Text
+        enum: ["Active", "Passive", "Disabled"]
+      - name: minimum_links
+        label: Mimimum links
+        kind: Number
+        default_value: 1
+        optional: false
+      - name: max_bundle
+        label: MaxBundle
+        kind: Number
+        optional: true
+    relationships:
+      - name: members
+        label: Members
+        peer: InfraInterfaceL2
+        optional: true
+        cardinality: many
+        kind: Generic
       - name: untagged_vlan
         label: Untagged VLAN
         peer: InfraVLAN
