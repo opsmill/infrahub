@@ -46,7 +46,10 @@ class NATSCache(InfrahubCache):
             self.kv[ttl.value] = await self.jetstream.create_key_value(config=kv_config)
 
     def _tokenize_key_name(self, key: str) -> str:
-        return key.replace(":", ".")
+        new_key = key.replace(
+            ".", "_"
+        )  # replace existing dots in the key name to avoid conflicts with NATS' namespaces
+        return new_key.replace(":", ".")
 
     # FIXME: remove once NATS supports TTL for keys (2.11)
     def _get_kv(self, key: str) -> nats.js.kv.KeyValue:
