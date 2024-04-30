@@ -510,8 +510,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         if changed and self.is_from_profile:
             self.is_from_profile = False
-            if self.source:
-                self.source = None
+            self.clear_source()
 
         if "is_default" in data and not self.is_default:
             self.is_default = True
