@@ -11,15 +11,20 @@ import {
 import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 import { isGeneric, sortByOrderWeight } from "./common";
 
-export const getObjectAttributes = (
-  schema: iNodeSchema | iGenericSchema | undefined,
-  forListView?: boolean
-) => {
+type tgetObjectAttributes = {
+  schema: iNodeSchema | iGenericSchema | undefined;
+  forListView?: boolean;
+  forQuery?: boolean;
+};
+
+export const getObjectAttributes = ({ schema, forListView, forQuery }: tgetObjectAttributes) => {
   if (!schema) {
     return [];
   }
 
   const attributes = (schema.attributes || [])
+    // Filter read_only fields in queries
+    .filter((attribute) => (forQuery ? !attribute.read_only : true))
     .filter((attribute) =>
       forListView
         ? attributesKindForListView.includes(attribute.kind)
@@ -33,10 +38,17 @@ export const getObjectAttributes = (
   return attributes;
 };
 
-export const getObjectRelationships = (
-  schema?: iNodeSchema | iGenericSchema,
-  forListView?: boolean
-) => {
+type tgetObjectRelationships = {
+  schema?: iNodeSchema | iGenericSchema;
+  forListView?: boolean;
+  forQuery?: boolean;
+};
+
+export const getObjectRelationships = ({
+  schema,
+  forListView,
+  forQuery,
+}: tgetObjectRelationships) => {
   if (!schema) {
     return [];
   }
@@ -46,6 +58,7 @@ export const getObjectRelationships = (
   const relationships = (schema.relationships || [])
     .filter(
       (relationship) =>
+        (forQuery ? relationship.read_only : true) &&
         relationship.cardinality &&
         kinds[relationship.cardinality].includes(relationship.kind ?? "")
     )
@@ -78,18 +91,26 @@ export const getTabs = (schema: iNodeSchema | iGenericSchema) => {
   return relationships;
 };
 
+type tgetSchemaObjectColumns = {
+  schema?: iNodeSchema | iGenericSchema;
+  forListView?: boolean;
+  forQuery?: boolean;
+  limit?: number;
+};
+
 // Get attributes and relationships from a schema, optional limit to trim the array
-export const getSchemaObjectColumns = (
-  schema?: iNodeSchema | iGenericSchema,
-  forListView?: boolean,
-  limit?: number
-) => {
+export const getSchemaObjectColumns = ({
+  schema,
+  forListView,
+  forQuery,
+  limit,
+}: tgetSchemaObjectColumns) => {
   if (!schema) {
     return [];
   }
 
-  const attributes = getObjectAttributes(schema, forListView);
-  const relationships = getObjectRelationships(schema, forListView);
+  const attributes = getObjectAttributes({ schema, forListView, forQuery });
+  const relationships = getObjectRelationships({ schema: schema, forListView });
 
   const columns = sortByOrderWeight(R.concat(attributes, relationships));
 
@@ -114,7 +135,7 @@ export const getGroupColumns = (schema?: iNodeSchema | iGenericSchema) => {
 
   const defaultColumns = [{ label: "Type", name: "__typename" }];
 
-  const columns = getSchemaObjectColumns(schema);
+  const columns = getSchemaObjectColumns({ schema });
 
   return [...defaultColumns, ...columns];
 };
@@ -124,11 +145,11 @@ export const getAttributeColumnsFromNodeOrGenericSchema = (
   generic: iGenericSchema | undefined
 ) => {
   if (generic) {
-    return getSchemaObjectColumns(generic);
+    return getSchemaObjectColumns({ schema: generic });
   }
 
   if (schema) {
-    return getSchemaObjectColumns(schema);
+    return getSchemaObjectColumns({ schema });
   }
 
   return [];

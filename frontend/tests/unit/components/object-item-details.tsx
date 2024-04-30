@@ -10,7 +10,7 @@ export default function ObjectItemDetails() {
   const [schemaList] = useAtom(schemaState);
   const schema = schemaList.find((s) => s.kind === objectname);
 
-  const columns = getSchemaObjectColumns(schema);
+  const columns = getSchemaObjectColumns({ schema });
 
   const queryString = getObjectDetailsPaginated({
     kind: schema?.kind,

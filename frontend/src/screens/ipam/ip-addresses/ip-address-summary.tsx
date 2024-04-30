@@ -1,18 +1,18 @@
+import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai/index";
 import { useParams } from "react-router-dom";
 import { Link } from "../../../components/utils/link";
 import { GET_IP_ADDRESS_KIND } from "../../../graphql/queries/ipam/ip-address";
+import { getObjectItemsPaginated } from "../../../graphql/queries/objects/getObjectItems";
 import useQuery from "../../../hooks/useQuery";
-import ErrorScreen from "../../error-screen/error-screen";
-import LoadingScreen from "../../loading-screen/loading-screen";
-import { IP_ADDRESS_GENERIC, IPAM_ROUTE } from "../constants";
-import { useAtomValue } from "jotai/index";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { getObjectAttributes, getObjectRelationships } from "../../../utils/getSchemaObjectColumns";
-import { gql } from "@apollo/client";
-import { getObjectItemsPaginated } from "../../../graphql/queries/objects/getObjectItems";
+import ErrorScreen from "../../error-screen/error-screen";
+import LoadingScreen from "../../loading-screen/loading-screen";
 import { IpDetailsCard } from "../common/ip-details-card";
 import { constructPathForIpam } from "../common/utils";
+import { IPAM_ROUTE, IP_ADDRESS_GENERIC } from "../constants";
 import { IpamSummarySkeleton } from "../prefixes/ipam-summary-skeleton";
 
 export default function IpAddressSummary() {
@@ -54,8 +54,8 @@ const IpAddressSummaryContent = ({ ipAddressKind }: { ipAddressKind: string }) =
 
   const ipAddressSchema = [...nodes, ...generics].find(({ kind }) => kind === ipAddressKind);
 
-  const attributes = getObjectAttributes(ipAddressSchema);
-  const relationships = getObjectRelationships(ipAddressSchema);
+  const attributes = getObjectAttributes({ schema: ipAddressSchema });
+  const relationships = getObjectRelationships({ schema: ipAddressSchema });
 
   const query = gql(
     getObjectItemsPaginated({

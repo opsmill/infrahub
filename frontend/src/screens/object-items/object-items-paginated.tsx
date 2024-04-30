@@ -120,9 +120,9 @@ export default function ObjectItems(props: any) {
   ].join(",");
 
   // Get all the needed columns (attributes + relationships)
-  const columns = getSchemaObjectColumns(schemaData, true);
-  const attributes = getObjectAttributes(schemaData, true);
-  const relationships = getObjectRelationships(schemaData, true);
+  const columns = getSchemaObjectColumns({ schema: schemaData, forListView: true });
+  const attributes = getObjectAttributes({ schema: schemaData, forListView: true });
+  const relationships = getObjectRelationships({ schema: schemaData, forListView: true });
 
   const queryString = getObjectItemsPaginated({
     kind: objectname,
