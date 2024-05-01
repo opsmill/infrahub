@@ -330,7 +330,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             index !== relationshipsData.length - 1
                               ? "border-b border-gray-200"
                               : "",
-                            "whitespace-nowrap text-xs font-medium h-[36px]"
+                            "whitespace-nowrap text-xs font-medium h-[39px]"
                           )}>
                           <Link
                             className="whitespace-wrap px-2 py-1 text-xs flex items-center text-gray-900"
@@ -348,7 +348,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       <td
                         className={classNames(
                           index !== relationshipsData.length - 1 ? "border-b border-gray-200" : "",
-                          "whitespace-nowrap px-2 py-1 text-xs font-medium text-gray-900 flex justify-end"
+                          "whitespace-nowrap px-2 py-1 text-xs font-medium text-gray-900 flex items-center justify-end h-[39px]"
                         )}>
                         {properties && (
                           <MetaDetailsTooltip
