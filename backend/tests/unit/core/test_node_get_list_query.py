@@ -134,6 +134,28 @@ async def test_query_NodeGetListQuery_filter_relationship_ids(
     assert len(query.get_node_ids()) == 2
 
 
+async def test_query_NodeGetListQuery_filter_relationship_ids_with_update(
+    db: InfrahubDatabase,
+    person_john_main,
+    person_jane_main,
+    car_accord_main,
+    car_camry_main,
+    car_volt_main,
+    car_yaris_main,
+    branch: Branch,
+):
+    schema = registry.schema.get(name="TestCar", branch=branch)
+    await car_accord_main.owner.update(db=db, data=person_jane_main)
+    await car_accord_main.save(db=db)
+
+    query = await NodeGetListQuery.init(
+        db=db, branch=branch, schema=schema, filters={"owner__ids": [person_john_main.id]}
+    )
+    await query.execute(db=db)
+    node_ids = query.get_node_ids()
+    assert node_ids == [car_volt_main.id]
+
+
 async def test_query_NodeGetListQuery_filter_and_sort(
     db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
 ):
