@@ -150,6 +150,8 @@ INTERFACE_L2_NAMES = {
     "MX204": ["et-0/0/3"],
 }
 
+LAG_INTERFACE_L2 = {"7280R3": [{"name": "port-channel1", "lacp": "Active", "members": ["Ethernet11", "Ethernet12"]}]}
+
 INTERFACE_ROLES_MAPPING = {
     "edge": [
         "peer",
@@ -554,6 +556,31 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                 untagged_vlan={"id": store.get(kind="InfraVLAN", key=f"{site_name}_server").id},
             )
             await intf.save()
+            store.set(key=f"{device_name}-l2-{intf_name}", node=intf)
+
+        for lag_intf in LAG_INTERFACE_L2.get(device_type, []):
+            intf_role = "server"
+
+            lag = await client.create(
+                branch=branch,
+                kind="InfraLagInterfaceL2",
+                device={"id": obj.id, "is_protected": True},
+                name=lag_intf["name"],
+                speed=10000,
+                enabled=True,
+                l2_mode="Access",
+                untagged_vlan={"id": store.get(kind="InfraVLAN", key=f"{site_name}_server").id},
+                status={"value": ACTIVE_STATUS, "owner": group_ops.id},
+                role={"value": intf_role, "source": account_pop.id},
+                lacp=lag_intf["lacp"],
+            )
+
+            await lag.save()
+            await lag.members.fetch()
+
+            members = [store.get(key=f"{device_name}-l2-{member}") for member in lag_intf["members"]]
+            lag.members.extend(members)
+            await lag.save()
 
     # --------------------------------------------------
     # Connect both devices within the Site together with 2 interfaces
