@@ -843,7 +843,9 @@ class NodeGetListQuery(Query):
             filter_query.append("CALL {")
             filter_query.append(subquery)
             filter_query.append("}")
-            filter_query.append(f"WITH {with_str}")
+            filter_query.append(f"WITH {with_str}, is_active")
+            filter_query.append("WHERE is_active = TRUE")
+            filter_query.append(f"""WITH {", ".join(self._get_tracked_variables())}""")
 
         if filter_query:
             self.add_to_query(filter_query)
