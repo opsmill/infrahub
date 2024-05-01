@@ -56,9 +56,9 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
   const columns = [
     { name: "address", label: "Address" },
     { name: "description", label: "Description" },
-    { name: "ip_namespace", label: "Ip Namespace" },
+    { name: "ip_namespace", label: "IP Namespace" },
     // Display prefix column only in main list
-    !prefix && { name: "ip_prefix", label: "Ip Prefix" },
+    !prefix && { name: "ip_prefix", label: "IP Prefix" },
   ].filter(Boolean);
 
   const rows =

@@ -76,7 +76,7 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
     { name: "member_type", label: "Member Type" },
     { name: "is_pool", label: "Is Pool" },
     { name: "utilization", label: "Utilization" },
-    { name: "ip_namespace", label: "Ip Namespace" },
+    { name: "ip_namespace", label: "IP Namespace" },
   ];
 
   const rows = children?.edges?.map((child) => ({
