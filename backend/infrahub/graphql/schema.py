@@ -29,7 +29,16 @@ from .mutations import (
     TaskUpdate,
 )
 from .parser import extract_selection
-from .queries import BranchQueryList, DiffSummary, DiffSummaryOld, InfrahubInfo, InfrahubStatus, Relationship, Task
+from .queries import (
+    BranchQueryList,
+    DiffSummary,
+    DiffSummaryOld,
+    InfrahubInfo,
+    InfrahubIPPrefixGetNextAvailable,
+    InfrahubStatus,
+    Relationship,
+    Task,
+)
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -76,6 +85,8 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubStatus = InfrahubStatus
 
     InfrahubTask = Task
+
+    IPPrefixGetNextAvailable = InfrahubIPPrefixGetNextAvailable
 
 
 class InfrahubBaseMutation(ObjectType):
