@@ -58,7 +58,7 @@ export function IpDetailsCard({
   return (
     <CardWithBorder>
       <CardWithBorder.Title className="flex items-center gap-1">
-        <Badge variant="blue">{schema.namespace}</Badge> {schema.name} summary
+        <Badge variant="blue">{schema.namespace}</Badge> {schema.label} summary
       </CardWithBorder.Title>
 
       <PropertyList properties={properties} labelClassName="font-semibold" />
