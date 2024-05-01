@@ -59,11 +59,13 @@ async def build_subquery_filter(
     where_str = " AND ".join(field_where)
     branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
     froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
-    to_return = f"{node_alias} as {prefix}, is_active"
+    to_return = f"{node_alias} as {prefix}"
     with_extra = ""
+    final_with_extra = ""
     if extra_tail_properties:
         tail_node = field_filter[-1]
         with_extra += f", {tail_node.name}"
+        final_with_extra += f", latest_node_details[2] as {tail_node.name}"
         for variable_name, tail_property in extra_tail_properties.items():
             to_return += f", {tail_node.name}.{tail_property} as {variable_name}"
     match = "OPTIONAL MATCH" if optional_match else "MATCH"
@@ -77,9 +79,11 @@ async def build_subquery_filter(
         {branch_level_str} AS branch_level,
         {froms_str} AS froms,
         all(r IN relationships(path) WHERE r.status = "active") as is_active{with_extra}
-    RETURN {to_return}
     ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
-    LIMIT 1
+    WITH head(collect([is_active, n{with_extra}])) as latest_node_details
+    WHERE latest_node_details[0] = TRUE
+    WITH latest_node_details[1] as n{final_with_extra}
+    RETURN {to_return}
     """
     return query, params, prefix
 

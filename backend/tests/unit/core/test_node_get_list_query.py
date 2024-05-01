@@ -145,8 +145,9 @@ async def test_query_NodeGetListQuery_filter_relationship_ids_with_update(
     branch: Branch,
 ):
     schema = registry.schema.get(name="TestCar", branch=branch)
-    await car_accord_main.owner.update(db=db, data=person_jane_main)
-    await car_accord_main.save(db=db)
+    car_accord = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await car_accord.owner.update(db=db, data=person_jane_main)
+    await car_accord.save(db=db)
 
     query = await NodeGetListQuery.init(
         db=db, branch=branch, schema=schema, filters={"owner__ids": [person_john_main.id]}
