@@ -59,15 +59,15 @@ async def build_subquery_filter(
     where_str = " AND ".join(field_where)
     branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
     froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
-    to_return = f"{node_alias} as {prefix}"
+    to_return = f"{node_alias} AS {prefix}"
     with_extra = ""
     final_with_extra = ""
     if extra_tail_properties:
         tail_node = field_filter[-1]
         with_extra += f", {tail_node.name}"
-        final_with_extra += f", latest_node_details[2] as {tail_node.name}"
+        final_with_extra += f", latest_node_details[2] AS {tail_node.name}"
         for variable_name, tail_property in extra_tail_properties.items():
-            to_return += f", {tail_node.name}.{tail_property} as {variable_name}"
+            to_return += f", {tail_node.name}.{tail_property} AS {variable_name}"
     match = "OPTIONAL MATCH" if optional_match else "MATCH"
     query = f"""
     WITH {node_alias}
@@ -78,11 +78,11 @@ async def build_subquery_filter(
         path,
         {branch_level_str} AS branch_level,
         {froms_str} AS froms,
-        all(r IN relationships(path) WHERE r.status = "active") as is_active{with_extra}
+        all(r IN relationships(path) WHERE r.status = "active") AS is_active{with_extra}
     ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
-    WITH head(collect([is_active, n{with_extra}])) as latest_node_details
+    WITH head(collect([is_active, {node_alias}{with_extra}])) AS latest_node_details
     WHERE latest_node_details[0] = TRUE
-    WITH latest_node_details[1] as n{final_with_extra}
+    WITH latest_node_details[1] AS {node_alias}{final_with_extra}
     RETURN {to_return}
     """
     return query, params, prefix
@@ -130,12 +130,9 @@ async def build_subquery_order(
     where_str = " AND ".join(field_where)
     branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
     froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
-    to_return = f"last.{order_by if order_by != 'values' and '__' not in order_by else 'value'} as {prefix}"
+    to_return_parts = {f"last.{order_by if order_by != 'values' and '__' not in order_by else 'value'}": prefix}
     with_parts: dict[str, Optional[str]] = {
         "last": None,
-        "path": None,
-        branch_level_str: "branch_level",
-        froms_str: "froms",
     }
     if extra_tail_properties:
         tail_node = field_filter[-1]
@@ -143,16 +140,35 @@ async def build_subquery_order(
             with_parts[tail_node.name] = None
         tail_node_name = with_parts.get(tail_node.name) or tail_node.name
         for variable_name, tail_property in extra_tail_properties.items():
-            to_return += f", {tail_node_name}.{tail_property} as {variable_name}"
-    with_str = ", ".join(f"{k} AS {v}" if v is not None else f"{k}" for k, v in with_parts.items())
+            to_return_parts[f"{tail_node_name}.{tail_property}"] = variable_name
+    with_str_to_alias_parts: list[str] = []
+    with_str_alias_parts: list[str] = []
+    with_str_from_list_parts: list[str] = ["latest_node_details[0] AS is_active"]
+    index = 1
+    for k, v in with_parts.items():
+        with_str_to_alias_parts.append(f"{k} AS {v}" if v else k)
+        alias = v or k
+        with_str_alias_parts.append(alias)
+        with_str_from_list_parts.append(f"latest_node_details[{index}] AS {alias}")
+        index += 1
+    with_str_to_alias_parts.append(f"{branch_level_str} AS branch_level")
+    with_str_to_alias_parts.append(f"{froms_str} AS froms")
+    with_str_to_alias_parts.append("""all(r IN relationships(path) WHERE r.status = "active") AS is_active""")
+    with_str_to_alias = ", ".join(with_str_to_alias_parts)
+    with_str_alias = ", ".join(with_str_alias_parts)
+    with_str_from_list = ", ".join(with_str_from_list_parts)
+    to_return_str_parts = []
+    for expression, alias in to_return_parts.items():
+        to_return_str_parts.append(f"CASE WHEN is_active = TRUE THEN {expression} ELSE NULL END AS {alias}")
+    to_return_str = ", ".join(to_return_str_parts)
     query = f"""
     WITH {node_alias}
     OPTIONAL MATCH path = {filter_str}
     WHERE {where_str}
-    WITH {with_str}
-    RETURN {to_return}
+    WITH {with_str_to_alias}
     ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
-    LIMIT 1
+    WITH head(collect([is_active, {with_str_alias}])) AS latest_node_details
+    WITH {with_str_from_list}
+    RETURN {to_return_str}
     """
-
     return query, params, prefix

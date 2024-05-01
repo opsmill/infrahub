@@ -257,6 +257,62 @@ async def test_query_NodeGetListQuery_order_by_optional_relationship_nulls(
     assert set(retrieved_node_ids[2:]) == {car_camry_main.id, car_yaris_main.id}
 
 
+async def test_query_NodeGetListQuery_order_by_relationship_value_with_update(
+    db: InfrahubDatabase,
+    person_john_main,
+    person_jane_main,
+    car_accord_main,
+    car_camry_main,
+    car_volt_main,
+    car_yaris_main,
+    branch: Branch,
+):
+    schema = registry.schema.get(name="TestCar", branch=branch, duplicate=False)
+    schema.relationships.append(
+        RelationshipSchema(
+            name="other_car",
+            peer="TestCar",
+            cardinality=RelationshipCardinality.ONE,
+            identifier="testcar__other_car",
+            branch=BranchSupportType.AWARE,
+        )
+    )
+    schema.order_by = ["other_car__name__value"]
+
+    accord = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await accord.other_car.update(db=db, data=car_camry_main)
+    await accord.save(db=db)
+    # update related value to ZZZ
+    camry = await NodeManager.get_one(db=db, branch=branch, id=car_camry_main.id)
+    camry.name.value = "zzz"
+    await camry.save(db=db)
+    volt = await NodeManager.get_one(db=db, branch=branch, id=car_volt_main.id)
+    await volt.other_car.update(db=db, data=car_yaris_main)
+    await volt.save(db=db)
+    # update related value to AAA
+    yaris = await NodeManager.get_one(db=db, branch=branch, id=car_yaris_main.id)
+    yaris.name.value = "aaa"
+    await yaris.save(db=db)
+    # delete relationship, so related value is effectively null
+    volt = await NodeManager.get_one(db=db, branch=branch, id=car_volt_main.id)
+    await volt.other_car.update(db=db, data=None)
+    await volt.save(db=db)
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+    )
+    await query.execute(db=db)
+
+    retrieved_node_ids = query.get_node_ids()
+    assert len(retrieved_node_ids) == 4
+    assert retrieved_node_ids[0] == car_camry_main.id  # accord
+    assert retrieved_node_ids[1] == car_accord_main.id  # zzz
+    # null ones can be any order
+    assert set(retrieved_node_ids[2:]) == {car_yaris_main.id, car_volt_main.id}
+
+
 async def test_query_NodeGetListQuery_filter_with_profiles(
     db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):
