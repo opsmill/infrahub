@@ -649,6 +649,37 @@ core_models: dict[str, Any] = {
                 },
             ],
         },
+        {
+            "name": "ResourcePool",
+            "namespace": "Core",
+            "description": "xx",
+            "include_in_menu": True,
+            # "default_filter": "address__value",
+            # "order_by": ["address__version", "address__binary_address"],
+            # "display_labels": ["address__value"],
+            # "icon": "mdi:ip-outline",
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "Text",
+                    "order_weight": 1000,
+                },
+                {
+                    "name": "description",
+                    "kind": "Text",
+                    "optional": True,
+                    "order_weight": 2000,
+                },
+                {
+                    "name": "utilization",
+                    "kind": "Number",
+                    "read_only": True,
+                    "optional": True,
+                    "allow_override": AllowOverrideType.NONE,
+                },
+            ],
+        },
     ],
     "nodes": [
         {
@@ -1624,6 +1655,58 @@ core_models: dict[str, Any] = {
             "inherit_from": [InfrahubKind.IPNAMESPACE],
             "attributes": [
                 {"name": "default", "kind": "Boolean", "optional": True, "read_only": True, "order_weight": 9000}
+            ],
+        },
+        {
+            "name": "PrefixPool",
+            "namespace": "Core",
+            "description": "xxx",
+            "label": "Prefix Pool",
+            # "default_filter": "name__value",
+            # "order_by": ["name__value"],
+            # "display_labels": ["name__value"],
+            "include_in_menu": False,
+            # "icon": "mdi:format-list-group",
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "inherit_from": ["CoreResourcePool"],
+            "attributes": [
+                {
+                    "name": "default_prefix_size",
+                    "kind": "Number",
+                    "optional": True,
+                },
+                {
+                    "name": "default_member_type",
+                    "kind": "Text",
+                    "enum": ["prefix", "subnet"],
+                    "default_value": "prefix",
+                    "optional": True,
+                },
+                {
+                    "name": "default_prefix_type",
+                    "kind": "Text",
+                    "optional": True,
+                },
+            ],
+            "relationships": [
+                {
+                    "name": "resources",
+                    "peer": "BuiltinIPPrefix",
+                    "kind": "Attribute",
+                    "identifier": "prefixpool__resource",
+                    "cardinality": "many",
+                    "optional": False,
+                    "order_weight": 6000,
+                },
+                {
+                    "name": "ip_namespace",
+                    "peer": "BuiltinIPNamespace",
+                    "kind": "Attribute",
+                    "identifier": "prefixpool__ipnamespace",
+                    "cardinality": "one",
+                    "optional": False,
+                    "order_weight": 7000,
+                },
             ],
         },
     ],
