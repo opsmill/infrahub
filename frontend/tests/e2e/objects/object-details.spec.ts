@@ -60,7 +60,7 @@ test.describe("/objects/:objectname/:objectid", () => {
       await page.goto("/");
       await page.getByRole("link", { name: "All Device(s)" }).click();
       await page.getByRole("link", { name: "atl1-edge1" }).click();
-      await page.getByText("Interfaces14").click();
+      await page.getByText("Interfaces15").click();
       await page.getByRole("link", { name: "Backbone: Connected to jfk1-" }).click();
       await page.getByRole("button", { name: "Edit" }).click();
       await page.getByTestId("select2step-1").scrollIntoViewIfNeeded();
