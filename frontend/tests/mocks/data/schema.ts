@@ -2208,7 +2208,7 @@ export const schemaMocks = [
         name: "ip_addresses",
         peer: "InfraIPAddress",
         kind: "Component",
-        label: "Ip Addresses",
+        label: "IP Addresses",
         description: null,
         identifier: "infraipaddress__infrainterfacel3",
         inherited: false,

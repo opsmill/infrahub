@@ -45,7 +45,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
     { name: "is_pool", label: "Is Pool" },
     { name: "is_top_level", label: "Is Top Level" },
     { name: "utilization", label: "Utilization" },
-    { name: "ip_namespace", label: "Ip Namespace" },
+    { name: "ip_namespace", label: "IP Namespace" },
     { name: "parent", label: "Parent" },
   ];
 
