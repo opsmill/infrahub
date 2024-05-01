@@ -227,11 +227,12 @@ async def get_json_schema_by_kind(
         default_value = attr["default_value"] if attr["optional"] else ...
         field_info = Field(default=default_value, description=attr.get("description", ""))
         if attr.get("enum"):
-            field_info = Field(default=default_value, description=attr.get("description", ""), enum=attr["enum"])
+            extras = {"enum":attr["enum"]}
+            field_info = Field(default=default_value, description=attr.get("description", ""), **extras)
         fields[attr["name"]] = (field_type, field_info)
 
-    # Use Pydantic's create_model to dynamically create the class
-    json_schema = create_model(schema["name"], **fields).model_json_schema()
+    # Use Pydantic's create_model to dynamically create the class, ignore types because fields are Any, and mypy hates that
+    json_schema = create_model(schema["name"], **fields).model_json_schema() # type: ignore
 
     json_schema["description"] = schema["description"]
     json_schema["$schema"] = "http://json-schema.org/draft-07/schema#"
