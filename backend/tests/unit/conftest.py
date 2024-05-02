@@ -2388,7 +2388,7 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
         db=db,
         name="test-admin",
         type="User",
-        password=config.SETTINGS.security.initial_admin_password,
+        password=config.SETTINGS.initial.admin_password,
         role="admin",
     )
     await account.save(db=db)

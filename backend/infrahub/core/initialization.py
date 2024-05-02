@@ -292,8 +292,8 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     await create_account(
         db=db,
         name="admin",
-        password=config.SETTINGS.security.initial_admin_password,
-        token_value=config.SETTINGS.security.initial_admin_token,
+        password=config.SETTINGS.initial.admin_password,
+        token_value=config.SETTINGS.initial.admin_token,
     )
 
     # --------------------------------------------------
