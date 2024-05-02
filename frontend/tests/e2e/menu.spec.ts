@@ -25,8 +25,8 @@ test.describe("Sidebar menu", () => {
 
     await test.step("only items who includes 'bgp' are visible", async () => {
       await expect(page.getByRole("button", { name: "Device" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Interface L2" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Interface L3" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Interface L2", exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Interface L3", exact: true })).toBeVisible();
     });
   });
 });
