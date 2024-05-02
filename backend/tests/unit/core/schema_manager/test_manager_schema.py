@@ -292,7 +292,7 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
     profile = schema.get(name="ProfileBuiltinCriticality")
     assert profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
     assert profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
-    assert set(profile.attribute_names) == {"profile_name", "profile_priority", "name", "level", "color", "description"}
+    assert set(profile.attribute_names) == {"profile_name", "profile_priority", "description"}
     core_profile_schema = schema.get("CoreProfile")
     assert set(core_profile_schema.used_by) == {
         "ProfileBuiltinCriticality",
