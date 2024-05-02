@@ -72,11 +72,11 @@ class ProfileAttributeIndex:
             self._profile_attributes_id_map[p_id] for p_id in profile_ids if p_id in self._profile_attributes_id_map
         ]
 
-        def get_profile_priority(nafd: NodeAttributesFromDB) -> Union[int, float]:
+        def get_profile_priority(nafd: NodeAttributesFromDB) -> tuple[Union[int, float], str]:
             try:
-                return int(nafd.attrs.get("profile_priority").value)
+                return (int(nafd.attrs.get("profile_priority").value), nafd.node.get("uuid"))
             except (TypeError, AttributeError):
-                return float("inf")
+                return (float("inf"), "")
 
         profiles.sort(key=get_profile_priority)
 
