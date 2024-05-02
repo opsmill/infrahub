@@ -8,9 +8,10 @@ test.describe("/ipam/prefixes - Prefix list", () => {
     await page
       .getByTestId("ipam-main-content")
       .getByRole("link", { name: "203.0.113.0/24" }) // prefix need pagination to be visible
+      .first()
       .click();
     expect(page.url()).toContain("/ipam/prefixes/");
-    await expect(page.getByText("Ipam IPPrefix summary")).toBeVisible();
+    await expect(page.getByText("Ipam IP Prefix summary")).toBeVisible();
     await expect(page.getByText("Prefix203.0.113.0/24")).toBeVisible();
     await expect(page.getByText("Utilization93%")).toBeVisible();
     await expect(page.getByRole("progressbar")).toBeVisible();
