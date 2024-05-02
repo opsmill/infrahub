@@ -1668,7 +1668,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             # "icon": "mdi:format-list-group",
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreResourcePool"],
+            "inherit_from": ["CoreResourcePool", InfrahubKind.LINEAGESOURCE],
             "attributes": [
                 {
                     "name": "default_prefix_size",

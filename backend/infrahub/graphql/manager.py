@@ -39,7 +39,7 @@ from .resolver import (
 )
 from .schema import InfrahubBaseMutation, InfrahubBaseQuery, account_resolver, default_paginated_list_resolver
 from .subscription import InfrahubBaseSubscription
-from .types import InfrahubInterface, InfrahubObject, RelatedNodeInput
+from .types import InfrahubInterface, InfrahubObject, RelatedNodeInput, RelatedPrefixNodeInput
 from .types.attribute import BaseAttribute as BaseAttributeType
 from .types.attribute import TextAttributeType
 
@@ -523,8 +523,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         return GraphqlMutations(create=create, update=update, upsert=upsert, delete=delete)
 
-    @staticmethod
     def generate_graphql_mutation_create_input(
+        self,
         schema: Union[NodeSchema, ProfileSchema],
     ) -> Type[graphene.InputObjectType]:
         """Generate an InputObjectType Object from a Infrahub NodeSchema
@@ -553,13 +553,21 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         for rel in schema.relationships:
             if rel.internal_peer or rel.read_only:
                 continue
+
+            input_type = RelatedNodeInput
+            peer_schema = self.schema.get(name=rel.peer, duplicate=False)
+            if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_prefix()) or (
+                isinstance(peer_schema, GenericSchema) and InfrahubKind.IPPREFIX == rel.peer
+            ):
+                input_type = RelatedPrefixNodeInput
+
             required = not rel.optional
             if rel.cardinality == "one":
-                attrs[rel.name] = graphene.InputField(RelatedNodeInput, required=required, description=rel.description)
+                attrs[rel.name] = graphene.InputField(input_type, required=required, description=rel.description)
 
             elif rel.cardinality == "many":
                 attrs[rel.name] = graphene.InputField(
-                    graphene.List(RelatedNodeInput), required=required, description=rel.description
+                    graphene.List(input_type), required=required, description=rel.description
                 )
 
         return type(f"{schema.kind}CreateInput", (graphene.InputObjectType,), attrs)

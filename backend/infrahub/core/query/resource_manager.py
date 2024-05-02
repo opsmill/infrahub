@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core import registry
 from infrahub.core.constants import RelationshipStatus
@@ -15,17 +15,17 @@ class PrefixPoolGetReserved(Query):
 
     def __init__(
         self,
+        *args: Any,
         pool_id: str,
         identifier: str,
-        *args,
-        **kwargs,
-    ):
+        **kwargs: dict[str, Any],
+    ) -> None:
         self.pool_id = pool_id
         self.identifier = identifier
 
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: dict[str, Any]) -> None:
         self.params["pool_id"] = self.pool_id
         self.params["identifier"] = self.identifier
 
@@ -45,16 +45,16 @@ class PrefixPoolSetReserved(Query):
         pool_id: str,
         prefix_id: str,
         identifier: str,
-        *args,
-        **kwargs,
-    ):
+        *args: Any,
+        **kwargs: dict[str, Any],
+    ) -> None:
         self.pool_id = pool_id
         self.prefix_id = prefix_id
         self.identifier = identifier
 
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: dict[str, Any]) -> None:
         self.params["pool_id"] = self.pool_id
         self.params["prefix_id"] = self.prefix_id
         self.params["identifier"] = self.identifier

@@ -5,8 +5,10 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.node.resource_manager import CorePrefixPool
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship.model import Relationship, RelationshipValidatorList
+from infrahub.core.schema_manager import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
@@ -402,3 +404,35 @@ async def test_relationship_validate_many_less_than_min_raise(
         result.remove(rel_doe_one)
     with pytest.raises(infra_execs.ValidationError, match=expected_msg):
         del result[0]
+
+
+async def test_relationship_assign_from_pool(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_extended_schema: SchemaBranch,
+    init_nodes_registry,
+    ip_dataset_prefix_v4,
+):
+    ns1 = ip_dataset_prefix_v4["ns1"]
+    net140 = ip_dataset_prefix_v4["net140"]
+
+    prefix_pool_schema = registry.schema.get_node_schema(name="CorePrefixPool", branch=default_branch)
+    mandatory_prefix_schema = registry.schema.get_node_schema(name="TestMandatoryPrefix", branch=default_branch)
+
+    pool = await CorePrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
+    await pool.new(
+        db=db,
+        name="pool1",
+        default_prefix_size=24,
+        default_prefix_type="IpamIPPrefix",
+        resources=[net140],
+        ip_namespace=ns1,
+    )
+    await pool.save(db=db)
+
+    obj = await Node.init(schema=mandatory_prefix_schema, db=db, branch=default_branch)
+    await obj.new(db=db, name={"value": "site1"}, prefix={"from_pool": {"id": pool.id}})
+    await obj.save(db=db)
+
+    assert await obj.prefix.get_peer(db=db)

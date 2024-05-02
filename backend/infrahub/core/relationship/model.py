@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import sys
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple, Union
 
@@ -90,7 +91,9 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         self._peer: Optional[Union[Node, str]] = None
         self.peer_id: Optional[str] = None
-        self.data: Optional[Union[Dict, RelationshipPeerData, str]] = None
+        self.data: Optional[Union[dict, RelationshipPeerData, str]] = None
+
+        self.from_pool: Optional[dict[str, Any]] = None
 
         self._init_node_property_mixin(kwargs=kwargs)
         self._init_flag_property_mixin(kwargs=kwargs)
@@ -109,7 +112,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
     def get_peer_id(self) -> str:
         if not self.peer_id:
-            raise ValueError("Relationship has not been initialized")
+            raise ValueError("Relationship has not been initialized yet")
+
         return self.peer_id
 
     @property
@@ -131,7 +135,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             return registry.get_global_branch()
         return self.branch
 
-    async def _process_data(self, data: Union[Dict, RelationshipPeerData, str]) -> None:
+    async def _process_data(self, data: Union[Dict, RelationshipPeerData, str]) -> None:  # pylint: disable=too-many-branches
         self.data = data
 
         if isinstance(data, RelationshipPeerData):
@@ -157,6 +161,9 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                     setattr(self, key.replace(PREFIX_PROPERTY, ""), value)
                 elif key.startswith(PREFIX_PROPERTY) and key.replace(PREFIX_PROPERTY, "") in self._node_properties:
                     setattr(self, key.replace(PREFIX_PROPERTY, ""), value)
+                elif key == "from_pool":
+                    self.from_pool = value
+
         else:
             await self.set_peer(value=data)
 
@@ -354,6 +361,28 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         )
         await delete_query.execute(db=db)
 
+    async def resolve(self, db: InfrahubDatabase) -> None:
+        """Resolve the peer of the relationship."""
+
+        if not self.peer_id and self.from_pool and "id" in self.from_pool:
+            pool_id = str(self.from_pool.get("id"))
+            pool = await registry.manager.get_one(db=db, id=pool_id, branch=self.branch)
+
+            if not pool:
+                raise NodeNotFoundError(
+                    node_type="CoreResourcePool",
+                    identifier=pool_id,
+                    branch_name=self.branch.name,
+                    message=f"Unable to find the pool to generate a node for the relationship {self.name!r} on {self.node_id!r}",
+                )
+
+            data_from_pool = copy.deepcopy(self.from_pool)
+            del data_from_pool["id"]
+
+            peer = await pool.get_one(db=db, branch=self.branch, **data_from_pool)  # type: ignore[attr-defined]
+            await self.set_peer(value=peer)
+            self.set_source(value=pool.id)
+
     async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> Self:
         """Create or Update the Relationship in the database."""
 
@@ -412,6 +441,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         # pylint: disable=no-member
 
         branch = self.get_branch_based_on_support_type()
+
+        await self.resolve(db=db)
 
         peer = await self.get_peer(db=db)
         data = RelationshipCreateData(
@@ -819,6 +850,10 @@ class RelationshipManager:
 
         return True
 
+    async def resolve(self, db: InfrahubDatabase) -> None:
+        for rel in self._relationships:
+            await rel.resolve(db=db)
+
     async def remove(
         self,
         peer_id: Union[str, UUID],
@@ -869,6 +904,8 @@ class RelationshipManager:
 
     async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> Self:
         """Create or Update the Relationship in the database."""
+
+        await self.resolve(db=db)
 
         save_at = Timestamp(at)
         (
