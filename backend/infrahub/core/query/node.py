@@ -989,7 +989,7 @@ class NodeGetListQuery(Query):
         self._untrack_variable("profile_priority")
         profile_rollup_with_str = ", ".join(self._get_tracked_variables() + profile_value_collects)
         profile_rollup_query = f"""
-        ORDER BY n.uuid, profile_priority ASC
+        ORDER BY n.uuid, profile_priority ASC, profile_n.uuid ASC
         WITH {profile_rollup_with_str}
         """
         self.add_to_query(profile_rollup_query)

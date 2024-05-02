@@ -10,6 +10,7 @@ from infrahub.core.node.delete_validator import NodeDeleteValidator
 from infrahub.core.query.node import (
     AttributeFromDB,
     AttributeNodePropertyFromDB,
+    NodeAttributesFromDB,
     NodeGetHierarchyQuery,
     NodeGetListQuery,
     NodeListGetAttributeQuery,
@@ -55,7 +56,7 @@ def identify_node_class(node: NodeToProcess) -> Type[Node]:
 class ProfileAttributeIndex:
     def __init__(
         self,
-        profile_attributes_id_map: dict[str, dict[str, AttributeFromDB]],
+        profile_attributes_id_map: dict[str, NodeAttributesFromDB],
         profile_ids_by_node_id: dict[str, list[str]],
     ):
         self._profile_attributes_id_map = profile_attributes_id_map
@@ -70,7 +71,14 @@ class ProfileAttributeIndex:
         profiles = [
             self._profile_attributes_id_map[p_id] for p_id in profile_ids if p_id in self._profile_attributes_id_map
         ]
-        profiles.sort(key=lambda p: str(p.attrs.get("profile_priority").value))
+
+        def get_profile_priority(nafd: NodeAttributesFromDB) -> tuple[Union[int, float], str]:
+            try:
+                return (int(nafd.attrs.get("profile_priority").value), nafd.node.get("uuid"))
+            except (TypeError, AttributeError):
+                return (float("inf"), "")
+
+        profiles.sort(key=get_profile_priority)
 
         for attr_name, attr_data in updated_data.items():
             if not isinstance(attr_data, AttributeFromDB):
