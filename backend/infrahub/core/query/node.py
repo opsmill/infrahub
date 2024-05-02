@@ -1163,7 +1163,7 @@ class NodeGetHierarchyQuery(Query):
 
         self.add_to_query("WHERE " + " AND ".join(where_clause))
 
-        self.return_labels = ["DISTINCT peer AS peer"]
+        self.return_labels = ["peer"]
 
         # ----------------------------------------------------------------------------
         # FILTER Results
