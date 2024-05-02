@@ -74,9 +74,18 @@ class InfrahubComponent:
         for branch in branches:
             schema_branch = registry.schema.get_schema_branch(name=branch)
             hash_value = schema_branch.get_hash()
+
+            # Use branch name if we cannot find branch id in cache
+            branch_id: Optional[str] = None
+            if branch_obj := await registry.get_branch(branch=branch, db=self.service.database):
+                branch_id = branch_obj.id
+
+            if not branch_id:
+                branch_id = branch
+
             for component in self.component_names:
                 await self.service.cache.set(
-                    key=f"workers:schema_hash:branch:{branch}:{component}:worker:{WORKER_IDENTITY}",
+                    key=f"workers:schema_hash:branch:{branch_id}:{component}:worker:{WORKER_IDENTITY}",
                     value=hash_value,
                     expires=KVTTL.TWO_HOURS,
                 )
