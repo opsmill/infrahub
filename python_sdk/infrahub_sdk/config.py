@@ -97,7 +97,7 @@ class ConfigBase(pydantic.BaseSettings):
     @classmethod
     def validate_address(cls, value: str) -> str:
         if is_valid_url(value):
-            return value
+            return value.rstrip("/")
 
         raise ValueError("The configured address is not a valid url")
 

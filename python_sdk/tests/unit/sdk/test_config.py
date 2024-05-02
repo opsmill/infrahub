@@ -30,3 +30,16 @@ def test_password_authentication():
 def test_not_password_authentication():
     config = Config()
     assert not config.password_authentication
+
+
+def test_config_address():
+    address = "http://localhost:8000"
+
+    config = Config(address=address + "/")
+    assert config.address == address
+
+    config = Config(address=address + "//")
+    assert config.address == address
+
+    config = Config(address=address)
+    assert config.address == address
