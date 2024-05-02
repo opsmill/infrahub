@@ -40,7 +40,7 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const adressSchema = generics.find(({ kind }) => kind === IP_ADDRESS_GENERIC);
 
   const { loading, error, data, refetch } = useQuery(GET_PREFIX, {
-    variables: { prefix: prefix },
+    variables: { ids: [prefix] },
   });
 
   useImperativeHandle(ref, () => ({ refetch }));
@@ -49,9 +49,9 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
     return <div>Select a Prefix in the Tree to the left to see details</div>;
   }
 
-  const parent = data && data[IP_PREFIX_GENERIC]?.edges[0]?.node?.parent?.node;
-
-  const children = data && data[IP_PREFIX_GENERIC]?.edges[0]?.node?.children;
+  const prefixData = data && data[IP_PREFIX_GENERIC]?.edges[0]?.node;
+  const parent = prefixData?.parent?.node;
+  const children = prefixData?.children;
 
   const memberIcons: Record<string, any> = {
     address: prefixSchema?.icon ? (
@@ -97,9 +97,7 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
       broadcast_address: child?.node?.broadcast_address?.value,
       ip_namespace: child?.node?.ip_namespace?.node?.display_label,
     },
-    link: constructPathForIpam(
-      `${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(child?.node?.prefix?.value)}`
-    ),
+    link: constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${child?.node?.id}`),
   }));
 
   const handleUpdate = (data) => {
@@ -160,16 +158,13 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
       <div className="flex items-center mb-2">
         {parent?.prefix?.value && (
           <>
-            <Link
-              to={constructPathForIpam(
-                `${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(parent.prefix.value)}`
-              )}>
+            <Link to={constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${parent.id}`)}>
               {parent?.display_label}
             </Link>
             <Icon icon={"mdi:chevron-right"} />
           </>
         )}
-        <span className="font-semibold">{prefix}</span>
+        <span className="font-semibold">{prefixData?.display_label}</span>
       </div>
 
       {loading && <LoadingScreen hideText />}
