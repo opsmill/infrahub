@@ -26,9 +26,9 @@ Most of Infrahub and tools around it rely on some settings. These settings are i
 ```bash
 export INFRAHUB_PRODUCTION=false
 export INFRAHUB_SECURITY_SECRET_KEY=super-secret
-export INFRAHUB_SDK_USERNAME=admin
-export INFRAHUB_SDK_PASSWORD=infrahub
-export INFRAHUB_SDK_TIMEOUT=20
+export INFRAHUB_USERNAME=admin
+export INFRAHUB_PASSWORD=infrahub
+export INFRAHUB_TIMEOUT=20
 export INFRAHUB_METRICS_PORT=8001
 export INFRAHUB_DB_TYPE=memgraph # Accepts neo4j or memgraph
 export INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN="${ADMIN_TOKEN}" # Random string which can be generated using: openssl rand -hex 16

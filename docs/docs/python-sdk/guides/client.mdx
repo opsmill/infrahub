@@ -30,7 +30,7 @@ client = InfrahubClientSync.init(address="http://localhost:8000")
 
 ## Authentication
 
-The SDK is using a token-based authentication method to authenticate with the API and GraphQL. The token can be provided using a Config object or you can define it as the `INFRAHUB_SDK_API_TOKEN` environment variable.
+The SDK is using a token-based authentication method to authenticate with the API and GraphQL. The token can be provided using a Config object or you can define it as the `INFRAHUB_API_TOKEN` environment variable.
 
 <Tabs groupId="async-sync">
   <TabItem value="Async" default>
@@ -38,7 +38,7 @@ The SDK is using a token-based authentication method to authenticate with the AP
   ```python
   from infrahub_sdk import InfrahubClient
   client = await InfrahubClient.init(config=Config(api_token="token"))
-  client = await InfrahubClient.init() # token is read from the INFRAHUB_SDK_API_TOKEN environment variable
+  client = await InfrahubClient.init() # token is read from the INFRAHUB_API_TOKEN environment variable
   ```
 
   </TabItem>
@@ -47,7 +47,7 @@ The SDK is using a token-based authentication method to authenticate with the AP
   ```python
   from infrahub_sdk import InfrahubClientSync
   client = InfrahubClientSync.init(config=Config(api_token="token"))
-  client = InfrahubClientSync.init() # token is read from the INFRAHUB_SDK_API_TOKEN environment variable
+  client = InfrahubClientSync.init() # token is read from the INFRAHUB_API_TOKEN environment variable
   ```
 
   </TabItem>
