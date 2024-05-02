@@ -17,8 +17,53 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+class CorePrefixGlobalPool(Node):
+    async def get_resource(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        pool_identifier: str,
+        **kwargs: dict[str, Any],
+    ) -> Node:
+        prefix_pool_schema = registry.schema.get(name="CorePrefixPool", branch=branch, duplicate=False)
+        pools = await registry.manager.query(
+            db=db,
+            schema=prefix_pool_schema,
+            filters={"global_pool__id": self.id, "global_identifier__value": pool_identifier},
+        )
+
+        if not pools:
+            raise ValueError(f"Unable to identifier a valid CorePrefixPool based on {pool_identifier}")
+
+        for pool in pools:
+            try:
+                return await pool.get_resource(db=db, branch=branch, **kwargs)  # type: ignore[attr-defined]
+            except IndexError:
+                continue
+
+        raise IndexError("No more resources available in the global pool")
+
+    async def to_graphql(
+        self,
+        db: InfrahubDatabase,
+        fields: Optional[dict] = None,
+        related_node_ids: Optional[set] = None,
+        filter_sensitive: bool = False,
+    ) -> dict:
+        response = await super().to_graphql(
+            db, fields=fields, related_node_ids=related_node_ids, filter_sensitive=filter_sensitive
+        )
+
+        if fields:
+            if "utilization" in fields:
+                # utilization = await get_utilization(self, db, branch=self._branch)
+                response["utilization"] = {"value": 11}
+
+        return response
+
+
 class CorePrefixPool(Node):
-    async def get_one(
+    async def get_resource(
         self,
         db: InfrahubDatabase,
         branch: Branch,

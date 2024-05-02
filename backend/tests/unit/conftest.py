@@ -23,7 +23,7 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
-from infrahub.core.node.resource_manager import CorePrefixPool
+from infrahub.core.node.resource_manager import CorePrefixGlobalPool, CorePrefixPool
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
@@ -2197,6 +2197,7 @@ async def init_nodes_registry(db: InfrahubDatabase) -> None:
     registry.node["Node"] = Node
     registry.node["BuiltinIPPrefix"] = BuiltinIPPrefix
     registry.node["CorePrefixPool"] = CorePrefixPool
+    registry.node["CorePrefixGlobalPool"] = CorePrefixGlobalPool
 
 
 @pytest.fixture
@@ -2658,6 +2659,10 @@ async def ip_dataset_prefix_v4(
     await net140.new(db=db, prefix="10.10.0.0/16", ip_namespace=ns1, parent=net146)
     await net140.save(db=db)
 
+    net141 = await Node.init(db=db, schema=prefix_schema)
+    await net141.new(db=db, prefix="10.11.0.0/16", ip_namespace=ns1, parent=net146)
+    await net141.save(db=db)
+
     net142 = await Node.init(db=db, schema=prefix_schema)
     await net142.new(db=db, prefix="10.10.1.0/24", parent=net140, ip_namespace=ns1)
     await net142.save(db=db)
@@ -2677,6 +2682,7 @@ async def ip_dataset_prefix_v4(
     data = {
         "ns1": ns1,
         "net140": net140,
+        "net141": net141,
         "net142": net142,
         "net143": net143,
         "net144": net144,

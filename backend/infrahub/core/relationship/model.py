@@ -379,7 +379,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             data_from_pool = copy.deepcopy(self.from_pool)
             del data_from_pool["id"]
 
-            peer = await pool.get_one(db=db, branch=self.branch, **data_from_pool)  # type: ignore[attr-defined]
+            peer = await pool.get_resource(db=db, branch=self.branch, **data_from_pool)  # type: ignore[attr-defined]
             await self.set_peer(value=peer)
             self.set_source(value=pool.id)
 
