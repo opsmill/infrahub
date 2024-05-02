@@ -74,11 +74,17 @@ class NodePropertyMixin:
         return self._get_node_property_from_cache(name="owner")
 
     @owner.setter
-    def owner(self, value: Union[str, Node, UUID]) -> None:
+    def owner(self, value: Optional[Union[str, Node, UUID]]) -> None:
         self._set_node_property(name="owner", value=value)
+
+    def clear_owner(self) -> None:
+        self._set_node_property(name="owner", value=None)
 
     async def get_source(self, db: InfrahubDatabase) -> Optional[Node]:
         return await self._get_node_property(name="source", db=db)
+
+    def clear_source(self) -> None:
+        self._set_node_property(name="source", value=None)
 
     def set_source(self, value: Union[str, Node, UUID]) -> None:
         self._set_node_property(name="source", value=value)
@@ -90,7 +96,7 @@ class NodePropertyMixin:
         self._set_node_property(name="owner", value=value)
 
     def _get_node_property_from_cache(self, name: str) -> Node:
-        """Return the node attribute if it's alraedy present locally,
+        """Return the node attribute if it's already present locally,
         Otherwise raise an exception
         """
         item = getattr(self, f"_{name}", None)
@@ -111,7 +117,7 @@ class NodePropertyMixin:
 
         return getattr(self, f"_{name}", None)
 
-    def _set_node_property(self, name: str, value: Union[str, Node, UUID]) -> None:
+    def _set_node_property(self, name: str, value: Optional[Union[str, Node, UUID]]) -> None:
         """Set the value of the node_property.
         If the value is a string, we assume it's an ID and we'll save it to query it later (if needed)
         If the value is a Node, we save the node and we extract the ID
@@ -125,7 +131,7 @@ class NodePropertyMixin:
             setattr(self, f"_{name}", None)
         elif hasattr(value, "_schema"):
             setattr(self, f"_{name}", value)
-            setattr(self, f"{name}_id", value.id)
+            setattr(self, f"{name}_id", getattr(value, "id", None))
         elif value is None:
             setattr(self, f"_{name}", None)
             setattr(self, f"{name}_id", None)

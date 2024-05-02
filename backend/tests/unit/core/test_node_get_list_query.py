@@ -1,3 +1,5 @@
+from random import randint
+
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     BranchSupportType,
@@ -559,3 +561,57 @@ async def test_query_NodeGetListQuery_updated_profile_attributes_nulled_on_branc
     query = await NodeGetListQuery.init(db=db, branch=branch, schema=car_schema, filters={"color__value": "#ffffff"})
     await query.execute(db=db)
     assert set(query.get_node_ids()) == {car_camry_main.id, car_volt_main.id}
+
+
+async def test_query_NodeGetListQuery_multiple_profiles_same_priority_filter_and_order(
+    db: InfrahubDatabase,
+    car_camry_main,
+    car_accord_main,
+    branch: Branch,
+    default_branch: Branch,
+):
+    profile_schema = registry.schema.get("ProfileTestCar", branch=branch, duplicate=False)
+    profiles_group_1 = []
+    expected_profile_1 = None
+    for i in range(10):
+        car_profile = await Node.init(db=db, schema=profile_schema)
+        await car_profile.new(
+            db=db, profile_name=f"car_profile_{i}", color=f"#{randint(100000, 499999)}", profile_priority=1000
+        )
+        await car_profile.save(db=db)
+        if not expected_profile_1 or car_profile.id < expected_profile_1.id:
+            expected_profile_1 = car_profile
+            profiles_group_1.append(car_profile)
+    profiles_group_2 = []
+    expected_profile_2 = None
+    for i in range(10, 20):
+        car_profile = await Node.init(db=db, schema=profile_schema)
+        await car_profile.new(
+            db=db, profile_name=f"car_profile_{i}", color=f"#{randint(500000, 999999)}", profile_priority=1000
+        )
+        await car_profile.save(db=db)
+        if not expected_profile_2 or car_profile.id < expected_profile_2.id:
+            expected_profile_2 = car_profile
+            profiles_group_2.append(car_profile)
+    car_schema = registry.schema.get("TestCar", branch=branch, duplicate=False)
+    car_schema.order_by = ["color__value"]
+    car = await NodeManager.get_one(db=db, id=car_camry_main.id, branch=default_branch)
+    await car.profiles.update(data=profiles_group_1, db=db)
+    await car.save(db=db)
+    car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=default_branch)
+    await car.profiles.update(data=profiles_group_2, db=db)
+    await car.save(db=db)
+
+    query = await NodeGetListQuery.init(
+        db=db, branch=branch, schema=car_schema, filters={"color__value": expected_profile_1.color.value}
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [car_camry_main.id]
+    query = await NodeGetListQuery.init(
+        db=db, branch=branch, schema=car_schema, filters={"color__value": expected_profile_2.color.value}
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [car_accord_main.id]
+    query = await NodeGetListQuery.init(db=db, branch=branch, schema=car_schema)
+    await query.execute(db=db)
+    assert query.get_node_ids() == [car_camry_main.id, car_accord_main.id]
