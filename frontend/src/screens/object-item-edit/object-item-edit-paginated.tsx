@@ -179,7 +179,7 @@ export default function ObjectItemEditComponent(props: Props) {
   return (
     <div className="bg-custom-white flex-1 overflow-auto flex flex-col" data-cy="object-item-edit">
       {displayProfile && (
-        <div className="p-4 pt-3 bg-gray-200">
+        <div className="p-4 pt-3 bg-gray-100">
           <div className="flex items-center">
             <label className="block text-sm font-medium leading-6 text-gray-900">
               Select a Profile <span className="text-xs italic text-gray-500 ml-1">optional</span>

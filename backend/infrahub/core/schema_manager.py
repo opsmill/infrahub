@@ -1187,6 +1187,8 @@ class SchemaBranch:
                 continue
 
             generic = generic.duplicate()
+            read_only = generic.kind == InfrahubKind.IPPREFIX
+
             if "parent" not in generic.relationship_names:
                 generic.relationships.append(
                     RelationshipSchema(
@@ -1199,6 +1201,7 @@ class SchemaBranch:
                         branch=BranchSupportType.AWARE,
                         direction=RelationshipDirection.OUTBOUND,
                         hierarchical=generic_name,
+                        read_only=read_only,
                     )
                 )
             if "children" not in generic.relationship_names:
@@ -1212,6 +1215,7 @@ class SchemaBranch:
                         branch=BranchSupportType.AWARE,
                         direction=RelationshipDirection.INBOUND,
                         hierarchical=generic_name,
+                        read_only=read_only,
                     )
                 )
 

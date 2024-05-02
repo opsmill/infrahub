@@ -7,7 +7,7 @@ import { constructPath } from "../../../utils/fetch";
 import { AttributeType, ObjectAttributeValue } from "../../../utils/getObjectItemDisplayValue";
 import { getObjectDetailsUrl } from "../../../utils/objects";
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "../constants";
-import ProgressBar from "../../../components/stats/progress-bar";
+import ProgressBarChart from "../../../components/stats/progress-bar-chart";
 
 export function IpDetailsCard({
   schema,
@@ -22,9 +22,7 @@ export function IpDetailsCard({
       if (schemaAttribute.name === "utilization") {
         return {
           name: schemaAttribute.label || schemaAttribute.name,
-          value: (
-            <ProgressBar displayValue value={parseInt(data[schemaAttribute.name].value, 10)} />
-          ),
+          value: <ProgressBarChart value={parseInt(data[schemaAttribute.name].value, 10)} />,
         };
       }
 
@@ -39,7 +37,7 @@ export function IpDetailsCard({
       };
     }),
     ...(schema.relationships ?? [])
-      .filter(({ name }) => IP_SUMMARY_RELATIONSHIPS_BLACKLIST.includes(name))
+      .filter(({ name }) => !IP_SUMMARY_RELATIONSHIPS_BLACKLIST.includes(name))
       .map((schemaRelationship) => {
         const relationshipData = data[schemaRelationship.name]?.node;
 
@@ -60,7 +58,7 @@ export function IpDetailsCard({
   return (
     <CardWithBorder>
       <CardWithBorder.Title className="flex items-center gap-1">
-        <Badge variant="blue">{schema.namespace}</Badge> {schema.name} summary
+        <Badge variant="blue">{schema.namespace}</Badge> {schema.label} summary
       </CardWithBorder.Title>
 
       <PropertyList properties={properties} labelClassName="font-semibold" />
