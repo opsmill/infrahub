@@ -16,6 +16,7 @@ include-labels:
   - 'group/ci'
   - 'group/frontend'
   - 'type/documentation'
+include-pre-releases: true
 change-title-escapes: '\<*_&'  # You can add # and @ to disable mentions, and add ` to disable code blocks.
 tag-prefix: infrahub-v
 tag-template: infrahub-v
