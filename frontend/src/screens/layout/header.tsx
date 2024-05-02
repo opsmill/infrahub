@@ -7,7 +7,7 @@ export default function Header() {
     <header className="flex items-center justify-between shrink-0 h-16 bg-custom-white border-b gap-4 px-4 py-2">
       <SearchAnywhere className="flex-grow flex justify-center" />
 
-      <div className="w-52 flex justify-end">
+      <div className="w-[222px] flex justify-end">
         <TimeFrameSelector />
       </div>
 
