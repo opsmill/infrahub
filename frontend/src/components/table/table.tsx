@@ -84,6 +84,7 @@ export const Table = (props: tTableProps) => {
 
                   {onDelete && (
                     <Button
+                      data-testid="delete-row-button"
                       disabled={!auth?.permissions?.write}
                       buttonType={BUTTON_TYPES.INVISIBLE}
                       onClick={() => {

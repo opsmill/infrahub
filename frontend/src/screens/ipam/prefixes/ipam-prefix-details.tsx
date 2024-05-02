@@ -139,6 +139,7 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
       toast(
         <Alert
           type={ALERT_TYPES.SUCCESS}
+          data-testid="alert-prefix-deleted"
           message={`Prefix ${relatedRowToDelete?.values?.prefix} deleted`}
         />
       );
