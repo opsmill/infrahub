@@ -1350,7 +1350,7 @@ class SchemaBranch:
         )
 
         for node_attr in node.attributes:
-            if node_attr.read_only:
+            if node_attr.read_only or node_attr.optional is False:
                 continue
 
             attr = AttributeSchema(
