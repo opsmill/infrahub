@@ -21,9 +21,3 @@ address = "cache"
 
 [storage]
 driver = "local"
-
-[storage.local]
-path = "/opt/infrahub/storage"
-
-# [experimental_features]
-# pull_request = true
