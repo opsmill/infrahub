@@ -76,7 +76,8 @@ export const Table = (props: tTableProps) => {
                       variant="ghost"
                       size="icon"
                       disabled={!auth?.permissions?.write}
-                      onClick={() => onUpdate(row)}>
+                      onClick={() => onUpdate(row)}
+                      data-testid="update-row-button">
                       <Icon icon="mdi:pencil" className="text-custom-blue-500" />
                     </Button>
                   )}

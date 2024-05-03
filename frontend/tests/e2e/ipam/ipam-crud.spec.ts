@@ -51,8 +51,42 @@ test.describe("/ipam - Ipam home page", () => {
         await expect(page.getByRole("treeitem", { name: "2001:db8::600/120" })).toBeVisible();
       });
 
+      await test.step("update a prefix from list", async () => {
+        await page.getByText("Prefix Details").click();
+        await page
+          .getByRole("row", { name: "2001:db8::600/120" })
+          .getByTestId("update-row-button")
+          .click();
+        await page.getByLabel("Description").fill("desc from list");
+        await page.getByRole("button", { name: "Save" }).click();
+
+        await expect(page.getByText("IPPrefix updated")).toBeVisible();
+        await expect(page.getByRole("row", { name: "2001:db8::600/120" })).toContainText(
+          "desc from list"
+        );
+      });
+
+      await test.step("update a prefix from summary", async () => {
+        await page
+          .getByRole("row", { name: "2001:db8::600/120" })
+          .getByRole("link", { name: "2001:db8::600/120" })
+          .click();
+        await page.getByText("Summary").click();
+
+        await page.getByTestId("ip-summary-edit-button").click();
+        await page.getByLabel("Description").fill("desc from summary");
+        await page.getByRole("button", { name: "Save" }).click();
+        await expect(page.getByText("IPPrefix updated")).toBeVisible();
+        await expect(page.getByText("Descriptiondesc from summary")).toBeVisible();
+      });
+
       await test.step("delete a prefix", async () => {
         await page.getByText("Prefix Details").click();
+        await page
+          .getByTestId("ipam-main-content")
+          .getByRole("link", { name: "2001:db8::/112" })
+          .click();
+
         await page
           .getByRole("row", { name: "2001:db8::600/120" })
           .getByTestId("delete-row-button")
@@ -94,9 +128,35 @@ test.describe("/ipam - Ipam home page", () => {
         await expect(page.getByRole("row", { name: "10.0.0.1/16" })).toBeVisible();
       });
 
-      await test.step("delete ip address", async () => {
+      await test.step("update ip address from list", async () => {
         await page
           .getByRole("row", { name: "10.0.0.1/16" })
+          .getByTestId("update-row-button")
+          .click();
+        await page.getByLabel("Description").fill("test");
+        await page.getByRole("button", { name: "Save" }).click();
+        await expect(page.getByText("IPAddress updated")).toBeVisible();
+        await expect(page.getByRole("row", { name: "10.0.0.1/16" })).toContainText("test");
+      });
+
+      await test.step("update ip address from summary", async () => {
+        await page
+          .getByRole("row", { name: "10.0.0.1/16" })
+          .getByRole("link", { name: "10.0.0.1/16" })
+          .click();
+
+        await page.getByTestId("ip-summary-edit-button").click();
+        await page.getByLabel("Description").fill("from summary");
+        await page.getByRole("button", { name: "Save" }).click();
+        await expect(page.getByText("IPAddress updated")).toBeVisible();
+        await expect(page.getByText("Descriptionfrom summary")).toBeVisible();
+      });
+
+      await test.step("delete ip address", async () => {
+        await page.getByRole("link", { name: "All IP Addresses" }).click();
+
+        await page
+          .getByRole("row", { name: "10.0.0.1/16 from summary" })
           .getByTestId("delete-row-button")
           .click();
         await expect(page.getByTestId("modal-delete")).toContainText(
