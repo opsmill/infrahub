@@ -70,7 +70,7 @@ export default function ObjectItemCreate(props: iProps) {
     schema && !profileGeneric?.used_by?.includes(schema.kind) && schema.kind !== PROFILE_KIND;
 
   // Get object's attributes to get them from the profile data
-  const attributes = getObjectAttributes({ schema, forQuery: true });
+  const attributes = getObjectAttributes({ schema, forQuery: true, forProfiles: true });
 
   const queryString = getObjectItemsPaginated({
     kind: profileName,
