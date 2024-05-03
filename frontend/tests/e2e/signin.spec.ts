@@ -36,6 +36,23 @@ test.describe("/signin", () => {
         "Invalid username and password"
       );
     });
+
+    test("should redirect to the initial page after login", async ({ page }) => {
+      await page.goto(
+        "/objects/BuiltinTag?branch=atl1-delete-upstream&at=2024-05-01T13%3A40%3A00.000Z"
+      );
+
+      await page.getByRole("link", { name: "Sign in" }).click();
+      await expect(page.getByText("Sign in to your account")).toBeVisible();
+      await page.getByLabel("Username").fill(ADMIN_CREDENTIALS.username);
+      await page.getByLabel("Password").fill(ADMIN_CREDENTIALS.password);
+      await page.getByRole("button", { name: "Sign in" }).click();
+
+      await expect(page.getByTestId("current-user-avatar-button")).toBeVisible();
+      await expect(page.url()).toContain(
+        "/objects/BuiltinTag?branch=atl1-delete-upstream&at=2024-05-01T13%3A40%3A00.000Z"
+      );
+    });
   });
 
   test.describe("When logged in", () => {
