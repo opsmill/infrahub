@@ -169,6 +169,7 @@ select = [
     "N",     # pep8-naming
     "PIE",   # flake8-pie
     "PL",    # pylint
+    "PTH",   # flake8-use-pathlib
     "PYI",   # flake8-pyi
     "Q",     # flake8-quotes
     "RET",   # flake8-return
@@ -194,6 +195,7 @@ ignore = [
     "PLR0917", # Too many positional arguments
     "PLR1702", # Too many nested blocks
     "PLR6301", # Method could be a function, class method, or static method
+    "PTH118",  # `os.path.join()` should be replaced by `Path` with `/` operator
     "RET504",  # Unnecessary assignment to `ptd` before `return` statement
 ]
 
