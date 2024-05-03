@@ -5,10 +5,10 @@ test.describe("/ipam/addresses - IP Address list", () => {
     page,
   }) => {
     await page.goto("/ipam/addresses?ipam-tab=ip-details");
-    await expect(page.getByText("Showing 1 to 10 of 777 results")).toBeVisible();
+    await expect(page.getByText("Showing 1 to 10 of 569 results")).toBeVisible();
     await page.getByTestId("select-open-option-button").click();
     await page.getByRole("option", { name: "20" }).click();
-    await expect(page.getByText("Showing 1 to 20 of 777 results")).toBeVisible();
+    await expect(page.getByText("Showing 1 to 20 of 569 results")).toBeVisible();
 
     await page
       .getByTestId("ipam-main-content")
@@ -23,7 +23,7 @@ test.describe("/ipam/addresses - IP Address list", () => {
     await expect(page.getByText("Ip Prefix10.0.0.0/16")).toBeVisible();
 
     await page.getByRole("link", { name: "All IP Addresses" }).click();
-    await expect(page.getByText("Showing 1 to 10 of 777 results")).toBeVisible();
+    await expect(page.getByText("Showing 1 to 10 of 569 results")).toBeVisible();
   });
 
   test("view all ip addresses under a given prefix", async ({ page }) => {

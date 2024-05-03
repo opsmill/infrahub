@@ -61,5 +61,45 @@ test.describe("/ipam - Ipam home page", () => {
       );
       await expect(page.getByRole("row", { name: "10.3.0.0/16" })).toBeHidden();
     });
+
+    test("create, validate ui then delete an ip address", async ({ page }) => {
+      await page.goto("/ipam/addresses?ipam-tab=ip-details");
+
+      await test.step("create an ip address", async () => {
+        await page.getByTestId("create-object-button").click();
+        await page
+          .getByTestId("side-panel-container")
+          .getByTestId("select-open-option-button")
+          .click();
+        await page.getByRole("option", { name: "IpamIPAddress" }).click();
+        await page.getByLabel("Address *").fill("10.0.0.1/16");
+        await page.getByRole("button", { name: "Create" }).click();
+        await expect(page.getByText("IPAddress created")).toBeVisible();
+      });
+
+      await test.step("Verify ip address is visible under its prefix", async () => {
+        await page
+          .getByRole("treeitem", { name: "10.0.0.0/8" })
+          .getByTestId("tree-item-toggle")
+          .click();
+        await page.getByRole("link", { name: "10.0.0.0/16" }).click();
+        await expect(page.getByRole("treeitem", { name: "10.0.0.0/16" })).toBeVisible();
+        await expect(page.getByRole("row", { name: "10.0.0.1/16" })).toBeVisible();
+      });
+
+      await test.step("delete ip address", async () => {
+        await page
+          .getByRole("row", { name: "10.0.0.1/16" })
+          .getByTestId("delete-row-button")
+          .click();
+        await expect(page.getByTestId("modal-delete")).toContainText(
+          "Are you sure you want to delete the IP address: 10.0.0.1/16"
+        );
+        await page.getByTestId("modal-delete-confirm").click();
+
+        await expect(page.getByText("Address 10.0.0.1/16 deleted")).toBeVisible();
+        await expect(page.getByRole("row", { name: "10.0.0.1/16" })).toBeHidden();
+      });
+    });
   });
 });
