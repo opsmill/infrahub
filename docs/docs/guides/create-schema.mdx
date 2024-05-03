@@ -138,6 +138,7 @@ nodes:
       - name: device
         cardinality: one
         peer: NetworkDevice
+        optional: false
         kind: Parent
 ```
 
@@ -155,7 +156,13 @@ infrahubctl schema load --branch network-device-relations /tmp/schema_guide.yml
 
 We can inspect the schema in the [Web UI](http://localhost:8000/schema?branch=network-device-relations)
 
-Use this GraphQL mutations to create a NetworkInterface `Ethernet1`, a NetworkDevice `atl1-edge1`.
+First, we will create a NetworkDevice `atl1-edge1` via the NetworkDeviceCreate mutation.
+
+:::note
+
+The id's returned from the result of this mutation need to be used within the next mutation when creating the interface, they will be different then the id's we use here in the guide
+
+:::
 
 ```graphql
 mutation {
@@ -165,7 +172,14 @@ mutation {
           id
         }
   }
-  NetworkInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}}) {
+}
+```
+
+Second, obtain the **id** that was returned when creating `atl1-edge1` and update the NetworkInterfaceCreate mutation below.
+
+```graphql
+mutation {
+  NetworkInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}, device: {id: "17cbdc5e-466c-9161-3373-c515c808ec4d"}}) {
         ok
         object {
           id
@@ -174,22 +188,7 @@ mutation {
 }
 ```
 
-:::note
-
-The id's returned from the result of this mutation need to be used within the next mutation, they will be different then the id's we use here in the guide
-
-:::
-
-We can add interface `Ethernet1` as a related node for the interfaces relation on device `atl1-edge1`.
-
-```graphql
-mutation {
-  NetworkDeviceUpdate(data: {id: "17bcf363-9cf6-5f9d-38aa-c513c290aa53", interfaces: [{id: "17bcf363-d53c-323e-38aa-c5183839b28d"}]}) {
-        ok
-  }
-```
-
-In the Web UI we can now see that the device has a relation to the Ethernet1 interface.
+In the Web UI we can now see that the `atl1-edge1` device has a relation to the `Ethernet1` interface.
 
 ## 3. Abstracting nodes into generics
 
