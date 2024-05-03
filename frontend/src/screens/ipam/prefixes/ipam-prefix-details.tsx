@@ -50,6 +50,11 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
   }
 
   const prefixData = data && data[IP_PREFIX_GENERIC]?.edges[0]?.node;
+
+  if (!prefixData) {
+    return <Alert type={ALERT_TYPES.ERROR} message={`Prefix with id ${prefix} not found.`} />;
+  }
+
   const parent = prefixData?.parent?.node;
   const children = prefixData?.children;
 
