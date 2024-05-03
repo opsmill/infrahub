@@ -47,6 +47,9 @@
   description: "Maintenance task"
   color: "fef2c0"
 
+- name: "type/tech-debt"
+  description: "Item we know we need to improve way it is implemented"
+  color: "73FA20"
 # ----------------------------------
 # TYPE ALL
 # ----------------------------------
