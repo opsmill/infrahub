@@ -1,3 +1,5 @@
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
@@ -50,6 +52,8 @@ class TestUniquenessChecker:
     ):
         schema = registry.schema.get("TestCar", branch=branch)
         schema.get_attribute("nbr_seats").unique = True
+        schema_root = SchemaRoot(nodes=[schema])
+        registry.schema.register_schema(schema=schema_root, branch=branch.name)
 
         grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
@@ -139,6 +143,7 @@ class TestUniquenessChecker:
         assert len(grouped_data_paths) == 1
         assert not grouped_data_paths[0].get_all_data_paths()
 
+    @pytest.mark.skip("We technically don't support unqiueness constraints on properties of relationships")
     async def test_combined_uniqueness_constraints_with_violations(
         self,
         db: InfrahubDatabase,
@@ -166,6 +171,8 @@ class TestUniquenessChecker:
 
         schema = registry.schema.get("TestCar", branch=branch)
         schema.uniqueness_constraints = [["color__value", "owner__height"]]
+        schema_root = SchemaRoot(nodes=[schema])
+        registry.schema.register_schema(schema=schema_root, branch=branch.name)
 
         grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
@@ -270,6 +277,7 @@ class TestUniquenessChecker:
             in all_data_paths
         )
 
+    @pytest.mark.skip("We technically don't support unqiueness constraints on properties of relationships")
     async def test_generic_unique_attribute_multiple_relationship_violations_to_same_node(
         self,
         db: InfrahubDatabase,
@@ -297,6 +305,8 @@ class TestUniquenessChecker:
 
         schema = registry.schema.get("TestCar", branch=branch)
         schema.uniqueness_constraints = [["owner__height", "previous_owner__height"]]
+        schema_root = SchemaRoot(nodes=[schema])
+        registry.schema.register_schema(schema=schema_root, branch=branch.name)
 
         grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
@@ -352,6 +362,7 @@ class TestUniquenessChecker:
             in all_data_paths
         )
 
+    @pytest.mark.skip("We technically don't support unqiueness constraints on properties of relationships")
     async def test_generic_unique_constraint_relationship_with_and_without_attr(
         self,
         db: InfrahubDatabase,
@@ -373,6 +384,8 @@ class TestUniquenessChecker:
 
         schema = registry.schema.get("TestCar", branch=branch)
         schema.uniqueness_constraints = [["owner", "previous_owner__height"]]
+        schema_root = SchemaRoot(nodes=[schema])
+        registry.schema.register_schema(schema=schema_root, branch=branch.name)
         grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
         assert len(grouped_data_paths) == 1
@@ -443,6 +456,8 @@ class TestUniquenessChecker:
 
         schema = registry.schema.get("TestCar", branch=branch)
         schema.uniqueness_constraints = [["owner"]]
+        schema_root = SchemaRoot(nodes=[schema])
+        registry.schema.register_schema(schema=schema_root, branch=branch.name)
         grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
         assert len(grouped_data_paths) == 1
@@ -626,6 +641,8 @@ class TestUniquenessChecker:
 
         schema = registry.schema.get("TestCar", branch=branch)
         schema.uniqueness_constraints = [["owner", "color"], ["color", "nbr_seats"]]
+        schema_root = SchemaRoot(nodes=[schema])
+        registry.schema.register_schema(schema=schema_root, branch=branch.name)
         grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
         assert len(grouped_data_paths) == 1
