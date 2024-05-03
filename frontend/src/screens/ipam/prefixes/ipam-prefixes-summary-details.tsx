@@ -4,56 +4,63 @@ import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { Link } from "../../../components/utils/link";
 import { GET_PREFIX_KIND } from "../../../graphql/queries/ipam/prefixes";
-import { getObjectItemsPaginated } from "../../../graphql/queries/objects/getObjectItems";
 import useQuery from "../../../hooks/useQuery";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
-import { getObjectAttributes, getObjectRelationships } from "../../../utils/getSchemaObjectColumns";
+import { getSchemaObjectColumns } from "../../../utils/getSchemaObjectColumns";
 import { IpDetailsCard } from "../common/ip-details-card";
 import { IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
 import { IpamSummarySkeleton } from "./ipam-summary-skeleton";
+import { getObjectDetailsPaginated } from "../../../graphql/queries/objects/getObjectDetails";
+import { constructPathForIpam } from "../common/utils";
 
 export default function IpamIPPrefixesSummaryDetails() {
   const { prefix } = useParams();
 
   const { loading, data } = useQuery(GET_PREFIX_KIND, {
     variables: {
-      ip: prefix,
+      ids: [prefix],
     },
   });
 
   if (loading || !data) return <IpamSummarySkeleton />;
 
-  const prefixKind = data[IP_PREFIX_GENERIC].edges[0].node.__typename;
+  const {
+    id: prefixId,
+    display_label: prefixDisplayLabel,
+    __typename: prefixKind,
+  } = data[IP_PREFIX_GENERIC].edges[0].node;
 
   return (
     <section>
       <header className="flex items-center mb-2">
-        <Link to={IPAM_ROUTE.PREFIXES}>All Prefixes</Link>
+        <Link to={constructPathForIpam(IPAM_ROUTE.PREFIXES)}>All Prefixes</Link>
         <Icon icon={"mdi:chevron-right"} />
-        <span className="font-semibold">{prefix}</span>
+        <span className="font-semibold">{prefixDisplayLabel}</span>
       </header>
 
-      <PrefixSummaryContent prefixKind={prefixKind} />
+      <PrefixSummaryContent prefixId={prefixId} prefixKind={prefixKind} />
     </section>
   );
 }
 
-const PrefixSummaryContent = ({ prefixKind }: { prefixKind: string }) => {
-  const { prefix } = useParams();
+type PrefixSummaryContentProps = {
+  prefixId: string;
+  prefixKind: string;
+};
+
+const PrefixSummaryContent = ({ prefixId, prefixKind }: PrefixSummaryContentProps) => {
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
 
   const prefixSchema = [...nodes, ...generics].find(({ kind }) => kind === prefixKind);
 
-  const attributes = getObjectAttributes({ schema: prefixSchema });
-  const relationships = getObjectRelationships({ schema: prefixSchema });
+  const columns = getSchemaObjectColumns({ schema: prefixSchema });
 
   const query = gql(
-    getObjectItemsPaginated({
+    getObjectDetailsPaginated({
+      objectid: prefixId,
       kind: prefixKind,
-      attributes,
-      relationships,
-      filters: `prefix__value: "${prefix}"`,
+      columns,
     })
   );
 

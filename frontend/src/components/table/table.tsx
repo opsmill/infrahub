@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import NoDataFound from "../../screens/no-data-found/no-data-found";
 import { classNames } from "../../utils/common";
-import { BUTTON_TYPES, Button } from "../buttons/button";
+import { Button } from "../buttons/button-primitive";
 
 export type tColumn = {
   name: string;
@@ -73,22 +73,22 @@ export const Table = (props: tTableProps) => {
                 <td className="text-right">
                   {onUpdate && (
                     <Button
+                      variant="ghost"
+                      size="icon"
                       disabled={!auth?.permissions?.write}
-                      buttonType={BUTTON_TYPES.INVISIBLE}
-                      onClick={() => {
-                        onUpdate(row);
-                      }}>
-                      <Icon icon="mdi:pencil-outline" className="text-custom-blue-500" />
+                      onClick={() => onUpdate(row)}
+                      data-testid="update-row-button">
+                      <Icon icon="mdi:pencil" className="text-custom-blue-500" />
                     </Button>
                   )}
 
                   {onDelete && (
                     <Button
+                      variant="ghost"
+                      size="icon"
                       disabled={!auth?.permissions?.write}
-                      buttonType={BUTTON_TYPES.INVISIBLE}
-                      onClick={() => {
-                        onDelete(row);
-                      }}>
+                      onClick={() => onDelete(row)}
+                      data-testid="delete-row-button">
                       <Icon icon="mdi:trash" className="text-red-500" />
                     </Button>
                   )}

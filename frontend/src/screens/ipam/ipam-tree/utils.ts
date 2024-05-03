@@ -16,9 +16,20 @@ export type PrefixNode = {
   __typename: string;
 };
 
+export type AncestorNode = {
+  id: string;
+  display_label: string;
+  ancestors: { edges: Array<{ node: Omit<PrefixNode, "children"> }> };
+};
+
 export type PrefixData = {
   BuiltinIPPrefix: {
     edges: Array<{ node: PrefixNode }>;
+  };
+};
+export type AncestorsData = {
+  BuiltinIPPrefix: {
+    edges: Array<{ node: AncestorNode }>;
   };
 };
 

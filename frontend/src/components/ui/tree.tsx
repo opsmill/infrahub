@@ -44,7 +44,11 @@ const TreeItemWrapper = (props: INodeRendererProps & { children: React.ReactNode
         isHalfSelected && "bg-gray-50"
       )}>
       {isBranch ? (
-        <Icon icon={isExpanded ? "mdi:chevron-down" : "mdi:chevron-right"} className="px-1.5" />
+        <Icon
+          icon={isExpanded ? "mdi:chevron-down" : "mdi:chevron-right"}
+          className="px-1.5"
+          data-testid="tree-item-toggle"
+        />
       ) : (
         <DotIcon />
       )}

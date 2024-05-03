@@ -17,6 +17,7 @@ import { AttributeType, ObjectAttributeValue } from "../../../utils/getObjectIte
 import { getObjectDetailsUrl } from "../../../utils/objects";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "../constants";
+import { usePermission } from "../../../hooks/usePermission";
 
 type tIpDetailsCard = {
   schema: IModelSchema;
@@ -25,6 +26,7 @@ type tIpDetailsCard = {
 };
 
 export function IpDetailsCard({ schema, data, refetch }: tIpDetailsCard) {
+  const permission = usePermission();
   const branch = useAtomValue(currentBranchAtom);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
 
@@ -73,8 +75,15 @@ export function IpDetailsCard({ schema, data, refetch }: tIpDetailsCard) {
         <div>
           <Badge variant="blue">{schema.namespace}</Badge> {schema.label} summary
         </div>
-        <ButtonWithTooltip variant="outline" size="icon" onClick={() => setShowEditDrawer(true)}>
-          <Icon icon={"mdi:pencil-outline"} />
+        <ButtonWithTooltip
+          variant="outline"
+          size="icon"
+          onClick={() => setShowEditDrawer(true)}
+          disabled={!permission.write.allow}
+          tooltipEnabled={!permission.write.allow}
+          tooltipContent={permission.write.message ?? undefined}
+          data-testid="ip-summary-edit-button">
+          <Icon icon="mdi:pencil" />
         </ButtonWithTooltip>
       </CardWithBorder.Title>
 
