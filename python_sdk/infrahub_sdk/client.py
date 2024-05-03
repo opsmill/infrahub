@@ -510,7 +510,15 @@ class InfrahubClient(BaseClient):
                     self.log.error(f"Unable to connect to {self.address} .. ")
                     raise
             except httpx.HTTPStatusError as exc:
-                if exc.response.status_code in [401, 403]:
+                if exc.response.status_code == 401:
+                    response = exc.response.json()
+                    errors = response.get("errors")
+                    need_refresh = "Expired Signature" in [error.get("message") for error in errors]
+
+                    await self.login(refresh=need_refresh)
+                    retry = True
+
+                if exc.response.status_code == 403:
                     response = exc.response.json()
                     errors = response.get("errors")
                     messages = [error.get("message") for error in errors]
@@ -620,6 +628,21 @@ class InfrahubClient(BaseClient):
 
         return response
 
+    async def refresh_login(self) -> None:
+        if not self.refresh_token:
+            return
+
+        response = await self._request(
+            url=f"{self.address}/api/auth/refresh",
+            method=HTTPMethod.POST,
+            headers={"content-type": "application/json", "Authorization": f"Bearer {self.refresh_token}"},
+            timeout=self.default_timeout,
+        )
+
+        response.raise_for_status()
+        self.access_token = response.json()["access_token"]
+        self.headers["Authorization"] = f"Bearer {self.access_token}"
+
     async def login(self, refresh: bool = False) -> None:
         if not self.config.password_authentication:
             return
@@ -627,14 +650,23 @@ class InfrahubClient(BaseClient):
         if self.access_token and not refresh:
             return
 
-        url = f"{self.address}/api/auth/login"
+        if self.refresh_token and refresh:
+            try:
+                await self.refresh_login()
+                return
+            except httpx.HTTPStatusError as exc:
+                # If we got a 401 while trying to refresh a token we must restart the authentication process
+                # Other status codes indicate other errors
+                if exc.response.status_code != 401:
+                    response = exc.response.json()
+                    errors = response.get("errors")
+                    messages = [error.get("message") for error in errors]
+                    raise AuthenticationError(" | ".join(messages)) from exc
+
         response = await self._request(
-            url=url,
+            url=f"{self.address}/api/auth/login",
             method=HTTPMethod.POST,
-            payload={
-                "username": self.config.username,
-                "password": self.config.password,
-            },
+            payload={"username": self.config.username, "password": self.config.password},
             headers={"content-type": "application/json"},
             timeout=self.default_timeout,
         )
@@ -920,7 +952,15 @@ class InfrahubClientSync(BaseClient):
                     self.log.error(f"Unable to connect to {self.address} .. ")
                     raise
             except httpx.HTTPStatusError as exc:
-                if exc.response.status_code in [401, 403]:
+                if exc.response.status_code == 401:
+                    response = exc.response.json()
+                    errors = response.get("errors")
+                    need_refresh = "Expired Signature" in [error.get("message") for error in errors]
+
+                    self.login(refresh=need_refresh)
+                    retry = True
+
+                if exc.response.status_code == 403:
                     response = exc.response.json()
                     errors = response.get("errors")
                     messages = [error.get("message") for error in errors]
@@ -1359,6 +1399,21 @@ class InfrahubClientSync(BaseClient):
 
         return response
 
+    def refresh_login(self) -> None:
+        if not self.refresh_token:
+            return
+
+        response = self._request(
+            url=f"{self.address}/api/auth/refresh",
+            method=HTTPMethod.POST,
+            headers={"content-type": "application/json", "Authorization": f"Bearer {self.refresh_token}"},
+            timeout=self.default_timeout,
+        )
+
+        response.raise_for_status()
+        self.access_token = response.json()["access_token"]
+        self.headers["Authorization"] = f"Bearer {self.access_token}"
+
     def login(self, refresh: bool = False) -> None:
         if not self.config.password_authentication:
             return
@@ -1366,14 +1421,23 @@ class InfrahubClientSync(BaseClient):
         if self.access_token and not refresh:
             return
 
-        url = f"{self.address}/api/auth/login"
+        if self.refresh_token and refresh:
+            try:
+                self.refresh_login()
+                return
+            except httpx.HTTPStatusError as exc:
+                # If we got a 401 while trying to refresh a token we must restart the authentication process
+                # Other status codes indicate other errors
+                if exc.response.status_code != 401:
+                    response = exc.response.json()
+                    errors = response.get("errors")
+                    messages = [error.get("message") for error in errors]
+                    raise AuthenticationError(" | ".join(messages)) from exc
+
         response = self._request(
-            url=url,
+            url=f"{self.address}/api/auth/login",
             method=HTTPMethod.POST,
-            payload={
-                "username": self.config.username,
-                "password": self.config.password,
-            },
+            payload={"username": self.config.username, "password": self.config.password},
             headers={"content-type": "application/json"},
             timeout=self.default_timeout,
         )
