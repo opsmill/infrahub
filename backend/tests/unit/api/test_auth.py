@@ -206,7 +206,7 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
             "/api/auth/login",
             json={
                 "username": "test-admin",
-                "password": config.SETTINGS.security.initial_admin_password,
+                "password": config.SETTINGS.initial.admin_password,
             },
         )
 
