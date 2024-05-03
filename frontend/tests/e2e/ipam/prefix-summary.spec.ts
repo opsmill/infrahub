@@ -16,4 +16,12 @@ test.describe("/ipam/prefixes/:prefixId - Prefix summary", () => {
       expect(page.url()).toContain("/ipam/prefixes");
     });
   });
+
+  test("display error message when prefix id is not found", async ({ page }) => {
+    await page.goto("/ipam/prefixes/bad-id");
+
+    await expect(page.getByTestId("ipam-main-content")).toContainText(
+      "Prefix with id bad-id not found."
+    );
+  });
 });
