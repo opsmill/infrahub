@@ -125,6 +125,8 @@ class SchemaBranch:
         else:
             names = self.all_names
         for name in names:
+            if name == InfrahubKind.NODE:
+                continue
             item = self.get(name=name, duplicate=False)
             kind_id_map[name] = item.id
         return kind_id_map
