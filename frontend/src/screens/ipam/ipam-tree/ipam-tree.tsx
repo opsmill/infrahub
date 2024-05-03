@@ -17,6 +17,7 @@ import { constructPathForIpam } from "../common/utils";
 import { IpamTreeSkeleton } from "./ipam-tree-skeleton";
 import { IP_PREFIX_GENERIC, IPAM_ROUTE, IPAM_TREE_ROOT_ID } from "../constants";
 import {
+  AncestorsData,
   formatIPPrefixResponseForTreeView,
   PrefixData,
   ROOT_TREE_ITEM,
@@ -29,7 +30,7 @@ export default function IpamTree() {
   const [isLoading, setLoading] = useState(true);
   const [treeData, setTreeData] = useState([ROOT_TREE_ITEM]);
   const [fetchTopLevelIpPrefixes] = useLazyQuery<PrefixData>(GET_TOP_LEVEL_PREFIXES);
-  const [fetchPrefixAncestors] = useLazyQuery<PrefixData>(GET_PREFIX_ANCESTORS);
+  const [fetchPrefixAncestors] = useLazyQuery<AncestorsData>(GET_PREFIX_ANCESTORS);
   const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds: string[] }>(GET_PREFIXES_ONLY);
   const navigate = useNavigate();
 
@@ -52,14 +53,17 @@ export default function IpamTree() {
           return;
         }
 
-        fetchPrefixAncestors({ variables: { ip: prefix } })
+        fetchPrefixAncestors({ variables: { ids: [prefix] } })
           .then(({ data }) => {
             if (!data) return;
 
-            const ancestors = data[IP_PREFIX_GENERIC].edges.map(({ node }) => ({
-              id: node.id,
-              parentId: node.parent.node?.id ?? IPAM_TREE_ROOT_ID,
-            }));
+            const ancestors = data[IP_PREFIX_GENERIC].edges[0].node.ancestors.edges.map(
+              ({ node }) => ({
+                id: node.id,
+                name: node.display_label,
+                parentId: node.parent.node?.id ?? IPAM_TREE_ROOT_ID,
+              })
+            );
 
             const parentToChildMap: Record<string, string> = {};
 
@@ -99,7 +103,7 @@ export default function IpamTree() {
                 return updateTreeData(acc, currentAncestorId, children);
               }, tree);
 
-              const currentPrefix = newTree.find(({ name }) => name === prefix);
+              const currentPrefix = newTree.find(({ id }) => id === prefix);
               setTreeData(newTree);
               setSelected(
                 currentPrefix ? [...orderedAncestorIds, currentPrefix.id] : orderedAncestorIds

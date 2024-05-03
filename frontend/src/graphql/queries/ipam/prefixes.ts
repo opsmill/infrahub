@@ -197,16 +197,24 @@ export const GET_TOP_LEVEL_PREFIXES = gql`
 `;
 
 export const GET_PREFIX_ANCESTORS = gql`
-  query GET_PREFIX_ANCESTORS($ip: String) {
-    BuiltinIPPrefix(children__prefix__value: $ip) {
+  query GET_PREFIX_ANCESTORS($ids: [ID]) {
+    BuiltinIPPrefix(ids: $ids) {
       edges {
         node {
           id
           display_label
-          parent {
-            node {
-              id
-              display_label
+          ancestors {
+            edges {
+              node {
+                id
+                display_label
+                parent {
+                  node {
+                    id
+                    display_label
+                  }
+                }
+              }
             }
           }
         }

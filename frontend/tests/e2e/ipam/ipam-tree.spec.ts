@@ -21,10 +21,14 @@ test.describe("/ipam - Ipam Tree", () => {
       .click();
     await expect(page.getByRole("treeitem", { name: "10.1.0.12/31" })).toBeVisible();
     await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(17);
-  });
 
-  test("On first load, it expands IPAM tree to the selected prefix position", async ({ page }) => {
-    await page.goto("/ipam/prefixes/10.1.0.16%2F31");
+    await test.step("On first load, it expands IPAM tree to the selected prefix position", async () => {
+      await page.getByRole("treeitem", { name: "10.1.0.12/31" }).click();
+      await page.reload();
+      await expect(page.getByTestId("ipam-tree")).toBeVisible();
+      await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(17);
+      await expect(page.locator("[aria-selected=true]")).toContainText("10.1.0.12/31");
+    });
   });
 
   test("go to prefix summary when clicking on any tree item", async ({ page }) => {
