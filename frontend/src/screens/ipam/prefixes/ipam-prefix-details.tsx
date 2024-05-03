@@ -49,6 +49,10 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
     return <div>Select a Prefix in the Tree to the left to see details</div>;
   }
 
+  if (loading) {
+    return <LoadingScreen hideText />;
+  }
+
   const prefixData = data && data[IP_PREFIX_GENERIC]?.edges[0]?.node;
 
   if (!prefixData) {
@@ -172,8 +176,6 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
         )}
         <span className="font-semibold">{prefixData?.display_label}</span>
       </div>
-
-      {loading && <LoadingScreen hideText />}
 
       {data && (
         <Table rows={rows} columns={columns} onDelete={handleDelete} onUpdate={handleUpdate} />
