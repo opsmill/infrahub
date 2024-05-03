@@ -57,13 +57,19 @@ export default function IpamTree() {
           .then(({ data }) => {
             if (!data) return;
 
-            const ancestors = data[IP_PREFIX_GENERIC].edges[0].node.ancestors.edges.map(
-              ({ node }) => ({
-                id: node.id,
-                name: node.display_label,
-                parentId: node.parent.node?.id ?? IPAM_TREE_ROOT_ID,
-              })
-            );
+            const prefixAncestorsData = data[IP_PREFIX_GENERIC].edges[0];
+
+            if (!prefixAncestorsData) {
+              setTreeData(tree);
+              setLoading(false);
+              return;
+            }
+
+            const ancestors = prefixAncestorsData.node.ancestors.edges.map(({ node }) => ({
+              id: node.id,
+              name: node.display_label,
+              parentId: node.parent.node?.id ?? IPAM_TREE_ROOT_ID,
+            }));
 
             const parentToChildMap: Record<string, string> = {};
 

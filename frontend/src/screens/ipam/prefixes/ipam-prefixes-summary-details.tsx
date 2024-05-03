@@ -12,9 +12,10 @@ import { IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
 import { IpamSummarySkeleton } from "./ipam-summary-skeleton";
 import { getObjectDetailsPaginated } from "../../../graphql/queries/objects/getObjectDetails";
 import { constructPathForIpam } from "../common/utils";
+import { Alert, ALERT_TYPES } from "../../../components/utils/alert";
 
 export default function IpamIPPrefixesSummaryDetails() {
-  const { prefix } = useParams();
+  const { prefix } = useParams() as { prefix: string };
 
   const { loading, data } = useQuery(GET_PREFIX_KIND, {
     variables: {
@@ -24,11 +25,16 @@ export default function IpamIPPrefixesSummaryDetails() {
 
   if (loading || !data) return <IpamSummarySkeleton />;
 
+  const prefixData = data[IP_PREFIX_GENERIC].edges[0];
+
+  if (!prefixData)
+    return <Alert type={ALERT_TYPES.ERROR} message={`Prefix with id ${prefix} not found.`} />;
+
   const {
     id: prefixId,
     display_label: prefixDisplayLabel,
     __typename: prefixKind,
-  } = data[IP_PREFIX_GENERIC].edges[0].node;
+  } = prefixData.node;
 
   return (
     <section>
