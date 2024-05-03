@@ -31,14 +31,14 @@ The following settings can be defined in the Config class
 **Description**: The URL to use when connecting to Infrahub.<br />
 **Type**: `string`<br />
 **Default value**: http://localhost:8000<br />
-**Environment variable**: `INFRAHUB_SDK_ADDRESS`<br />
+**Environment variable**: `INFRAHUB_ADDRESS`<br />
 
 ## api_token
 
 **Property**: api_token<br />
 **Description**: API token for authentication against Infrahub.<br />
 **Type**: `string`<br />
-**Environment variable**: `INFRAHUB_SDK_API_TOKEN`<br />
+**Environment variable**: `INFRAHUB_API_TOKEN`<br />
 
 ## echo_graphql_queries
 
@@ -46,21 +46,21 @@ The following settings can be defined in the Config class
 **Description**: If set the GraphQL query and variables will be echoed to the screen<br />
 **Type**: `boolean`<br />
 **Default value**: False<br />
-**Environment variable**: `INFRAHUB_SDK_ECHO_GRAPHQL_QUERIES`<br />
+**Environment variable**: `INFRAHUB_ECHO_GRAPHQL_QUERIES`<br />
 
 ## username
 
 **Property**: username<br />
 **Description**: Username for accessing Infrahub<br />
 **Type**: `string`<br />
-**Environment variable**: `INFRAHUB_SDK_USERNAME`<br />
+**Environment variable**: `INFRAHUB_USERNAME`<br />
 
 ## password
 
 **Property**: password<br />
 **Description**: Password for accessing Infrahub<br />
 **Type**: `string`<br />
-**Environment variable**: `INFRAHUB_SDK_PASSWORD`<br />
+**Environment variable**: `INFRAHUB_PASSWORD`<br />
 
 ## default_branch
 
@@ -68,7 +68,7 @@ The following settings can be defined in the Config class
 **Description**: Default branch to target if not specified for each request.<br />
 **Type**: `string`<br />
 **Default value**: main<br />
-**Environment variable**: `INFRAHUB_SDK_DEFAULT_BRANCH`<br />
+**Environment variable**: `INFRAHUB_DEFAULT_BRANCH`<br />
 
 ## default_branch_from_git
 
@@ -76,14 +76,14 @@ The following settings can be defined in the Config class
 **Description**: Indicates if the default Infrahub branch to target should come from the active branch in the local Git repository.<br />
 **Type**: `boolean`<br />
 **Default value**: False<br />
-**Environment variable**: `INFRAHUB_SDK_DEFAULT_BRANCH_FROM_GIT`<br />
+**Environment variable**: `INFRAHUB_DEFAULT_BRANCH_FROM_GIT`<br />
 
 ## identifier
 
 **Property**: identifier<br />
 **Description**: Tracker identifier<br />
 **Type**: `string`<br />
-**Environment variable**: `INFRAHUB_SDK_IDENTIFIER`<br />
+**Environment variable**: `INFRAHUB_IDENTIFIER`<br />
 
 ## insert_tracker
 
@@ -91,7 +91,7 @@ The following settings can be defined in the Config class
 **Description**: Insert a tracker on queries to the server<br />
 **Type**: `boolean`<br />
 **Default value**: False<br />
-**Environment variable**: `INFRAHUB_SDK_INSERT_TRACKER`<br />
+**Environment variable**: `INFRAHUB_INSERT_TRACKER`<br />
 
 ## max_concurrent_execution
 
@@ -99,7 +99,7 @@ The following settings can be defined in the Config class
 **Description**: Max concurrent execution in batch mode<br />
 **Type**: `integer`<br />
 **Default value**: 5<br />
-**Environment variable**: `INFRAHUB_SDK_MAX_CONCURRENT_EXECUTION`<br />
+**Environment variable**: `INFRAHUB_MAX_CONCURRENT_EXECUTION`<br />
 
 ## mode
 
@@ -108,7 +108,7 @@ The following settings can be defined in the Config class
 **Type**: `string`<br />
 **Default value**: default<br />
 **Choices**: default, tracking<br />
-**Environment variable**: `INFRAHUB_SDK_MODE`<br />
+**Environment variable**: `INFRAHUB_MODE`<br />
 
 ## pagination_size
 
@@ -116,7 +116,7 @@ The following settings can be defined in the Config class
 **Description**: Page size for queries to the server<br />
 **Type**: `integer`<br />
 **Default value**: 50<br />
-**Environment variable**: `INFRAHUB_SDK_PAGINATION_SIZE`<br />
+**Environment variable**: `INFRAHUB_PAGINATION_SIZE`<br />
 
 ## retry_delay
 
@@ -124,7 +124,7 @@ The following settings can be defined in the Config class
 **Description**: Number of seconds to wait until attempting a retry.<br />
 **Type**: `integer`<br />
 **Default value**: 5<br />
-**Environment variable**: `INFRAHUB_SDK_RETRY_DELAY`<br />
+**Environment variable**: `INFRAHUB_RETRY_DELAY`<br />
 
 ## retry_on_failure
 
@@ -132,7 +132,7 @@ The following settings can be defined in the Config class
 **Description**: Retry operation in case of failure<br />
 **Type**: `boolean`<br />
 **Default value**: False<br />
-**Environment variable**: `INFRAHUB_SDK_RETRY_ON_FAILURE`<br />
+**Environment variable**: `INFRAHUB_RETRY_ON_FAILURE`<br />
 
 ## timeout
 
@@ -140,7 +140,7 @@ The following settings can be defined in the Config class
 **Description**: Default connection timeout in seconds<br />
 **Type**: `integer`<br />
 **Default value**: 10<br />
-**Environment variable**: `INFRAHUB_SDK_TIMEOUT`<br />
+**Environment variable**: `INFRAHUB_TIMEOUT`<br />
 
 ## transport
 
@@ -149,21 +149,21 @@ The following settings can be defined in the Config class
 **Type**: `string`<br />
 **Default value**: httpx<br />
 **Choices**: httpx, json<br />
-**Environment variable**: `INFRAHUB_SDK_TRANSPORT`<br />
+**Environment variable**: `INFRAHUB_TRANSPORT`<br />
 
 ## proxy
 
 **Property**: proxy<br />
 **Description**: Proxy address<br />
 **Type**: `string`<br />
-**Environment variable**: `INFRAHUB_SDK_PROXY`<br />
+**Environment variable**: `INFRAHUB_PROXY`<br />
 
 ## proxy_mounts
 
 **Property**: proxy_mounts<br />
 **Description**: Proxy mounts configuration<br />
 **Type**: `object`<br />
-**Environment variable**: `INFRAHUB_SDK_PROXY_MOUNTS`<br />
+**Environment variable**: `INFRAHUB_PROXY_MOUNTS`<br />
 
 ## update_group_context
 
@@ -171,7 +171,7 @@ The following settings can be defined in the Config class
 **Description**: Update GraphQL query groups<br />
 **Type**: `boolean`<br />
 **Default value**: False<br />
-**Environment variable**: `INFRAHUB_SDK_UPDATE_GROUP_CONTEXT`<br />
+**Environment variable**: `INFRAHUB_UPDATE_GROUP_CONTEXT`<br />
 
 ## recorder
 
