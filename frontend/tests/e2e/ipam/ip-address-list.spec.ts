@@ -31,7 +31,7 @@ test.describe("/ipam/addresses - IP Address list", () => {
 
     await test.step("select a prefix to view all ip addresses", async () => {
       await page.getByRole("treeitem", { name: "172.20.20.0/27" }).click();
-      await expect(page.getByText("Prefix:")).toBeVisible();
+      await expect(page.getByText("172.20.20.0/27IP Addresses")).toBeVisible();
       await expect(page.getByText("Showing 1 to ")).toBeVisible();
     });
 

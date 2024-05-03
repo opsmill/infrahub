@@ -22,7 +22,14 @@ import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
-import { IPAM_QSP, IPAM_ROUTE, IPAM_TABS, IP_ADDRESS_GENERIC } from "../constants";
+import {
+  IPAM_QSP,
+  IPAM_ROUTE,
+  IPAM_TABS,
+  IP_ADDRESS_GENERIC,
+  IP_PREFIX_GENERIC,
+} from "../constants";
+import { GET_PREFIX_KIND } from "../../../graphql/queries/ipam/prefixes";
 
 const IpamIPAddressesList = forwardRef((props, ref) => {
   const { prefix } = useParams();
@@ -43,6 +50,13 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
   const { loading, error, data, refetch } = useQuery(GET_IP_ADDRESSES, {
     variables: { prefixIds: prefix ? [prefix] : null },
   });
+
+  const { data: getPrefixKindData } = useQuery(GET_PREFIX_KIND, {
+    variables: { ids: [prefix] },
+    skip: !prefix,
+  });
+
+  const prefixData = getPrefixKindData?.[IP_PREFIX_GENERIC]?.edges?.[0]?.node;
 
   // Provide refetch function to parent
   useImperativeHandle(ref, () => ({ refetch }));
@@ -124,15 +138,18 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
 
   return (
     <div>
-      {prefix && (
+      {prefixData && (
         <div className="flex items-center mb-2">
-          <span className="mr-2">Prefix:</span>
           <Link
-            to={constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${prefix}`, [
+            to={constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${prefixData.id}`, [
               { name: IPAM_QSP, value: IPAM_TABS.PREFIX_DETAILS },
             ])}>
-            {prefix}
+            {prefixData.display_label}
           </Link>
+
+          <Icon icon="mdi:chevron-right" />
+
+          <span>IP Addresses</span>
         </div>
       )}
 
