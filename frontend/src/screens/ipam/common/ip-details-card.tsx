@@ -20,7 +20,7 @@ import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "../constants";
 
 type tIpDetailsCard = {
   schema: IModelSchema;
-  data: { id: string } & Record<string, AttributeType>;
+  data: { id: string; display_label: string } & Record<string, AttributeType>;
   refetch: Function;
 };
 
@@ -87,7 +87,7 @@ export function IpDetailsCard({ schema, data, refetch }: tIpDetailsCard) {
               <div className="flex-grow flex items-center flex-wrap overflow-hidden">
                 <span className="font-semibold text-gray-900 truncate">{schema.label}</span>
 
-                <Icon icon="mdi:chevron-rught" />
+                <Icon icon="mdi:chevron-right" />
 
                 <span className="flex-grow text-gray-500 overflow-hidden break-words line-clamp-3">
                   {data.display_label}
