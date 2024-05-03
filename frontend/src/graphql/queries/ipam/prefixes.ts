@@ -22,13 +22,8 @@ export const GET_PREFIXES_ONLY = gql`
 `;
 
 export const GET_PREFIXES = gql`
-  query GET_PREFIXES($namespace: String, $prefix: String, $offset: Int, $limit: Int) {
-    BuiltinIPPrefix(
-      ip_namespace__name__value: $namespace
-      prefix__value: $prefix
-      offset: $offset
-      limit: $limit
-    ) {
+  query GET_PREFIXES($namespace: String, $offset: Int, $limit: Int) {
+    BuiltinIPPrefix(ip_namespace__name__value: $namespace, offset: $offset, limit: $limit) {
       count
       edges {
         node {
@@ -95,13 +90,15 @@ export const GET_PREFIXES = gql`
 `;
 
 export const GET_PREFIX = gql`
-  query GET_PREFIX($namespace: String, $prefix: String, $offset: Int, $limit: Int) {
-    BuiltinIPPrefix(ip_namespace__name__value: $namespace, prefix__value: $prefix) {
+  query GET_PREFIX($namespace: String, $ids: [ID], $offset: Int, $limit: Int) {
+    BuiltinIPPrefix(ip_namespace__name__value: $namespace, ids: $ids) {
       count
       edges {
         node {
+          display_label
           parent {
             node {
+              id
               display_label
               prefix {
                 value
@@ -160,10 +157,12 @@ export const GET_PREFIX = gql`
 `;
 
 export const GET_PREFIX_KIND = gql`
-  query GET_PREFIX_KIND($ip: String) {
-    BuiltinIPPrefix(prefix__value: $ip) {
+  query GET_PREFIX_KIND($ids: [ID]) {
+    BuiltinIPPrefix(ids: $ids) {
       edges {
         node {
+          id
+          display_label
           __typename
         }
       }
@@ -193,16 +192,24 @@ export const GET_TOP_LEVEL_PREFIXES = gql`
 `;
 
 export const GET_PREFIX_ANCESTORS = gql`
-  query GET_PREFIX_ANCESTORS($ip: String) {
-    BuiltinIPPrefix(children__prefix__value: $ip) {
+  query GET_PREFIX_ANCESTORS($ids: [ID]) {
+    BuiltinIPPrefix(ids: $ids) {
       edges {
         node {
           id
           display_label
-          parent {
-            node {
-              id
-              display_label
+          ancestors {
+            edges {
+              node {
+                id
+                display_label
+                parent {
+                  node {
+                    id
+                    display_label
+                  }
+                }
+              }
             }
           }
         }
