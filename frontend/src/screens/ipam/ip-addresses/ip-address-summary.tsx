@@ -66,7 +66,7 @@ const IpAddressSummaryContent = ({ ipAddressKind }: { ipAddressKind: string }) =
     })
   );
 
-  const { loading, data, error } = useQuery(query, {
+  const { loading, data, error, refetch } = useQuery(query, {
     skip: !ipAddressKind,
     notifyOnNetworkStatusChange: true,
   });
@@ -81,7 +81,7 @@ const IpAddressSummaryContent = ({ ipAddressKind }: { ipAddressKind: string }) =
 
   return (
     <div className="flex items-start gap-2">
-      <IpDetailsCard schema={ipAddressSchema} data={ipAddressData} />
+      <IpDetailsCard schema={ipAddressSchema} data={ipAddressData} refetch={refetch} />
     </div>
   );
 };

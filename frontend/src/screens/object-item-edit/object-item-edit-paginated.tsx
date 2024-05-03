@@ -15,7 +15,7 @@ import { genericsState, profilesAtom, schemaState } from "../../state/atoms/sche
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
-import { getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
+import { getObjectAttributes, getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
@@ -55,16 +55,18 @@ export default function ObjectItemEditComponent(props: Props) {
   const profileSchema = allProfiles.find((s) => s.kind === objectname);
 
   const schema = nodeSchema || profileSchema;
+  const attributes = getObjectAttributes({ schema: schema, forQuery: true });
   const columns = getSchemaObjectColumns({ schema: schema, forQuery: true });
 
-  const profileName = profileSchema ? objectname : `Profile${objectname}`;
   const displayProfile =
     schema && !profileGeneric?.used_by?.includes(schema?.kind) && schema.kind !== PROFILE_KIND;
+  const profileName = profileSchema ? objectname : `Profile${objectname}`;
 
   const queryString = schema
     ? getObjectDetailsPaginated({
         ...schema,
         columns,
+        attributes, // used for profile
         objectid,
         profile: displayProfile && profileName,
         queryProfiles: displayProfile,

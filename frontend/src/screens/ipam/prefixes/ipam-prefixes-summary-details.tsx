@@ -57,7 +57,7 @@ const PrefixSummaryContent = ({ prefixKind }: { prefixKind: string }) => {
     })
   );
 
-  const { loading, data } = useQuery(query, {
+  const { loading, data, refetch } = useQuery(query, {
     skip: !prefixSchema,
     notifyOnNetworkStatusChange: true,
   });
@@ -68,7 +68,7 @@ const PrefixSummaryContent = ({ prefixKind }: { prefixKind: string }) => {
 
   return (
     <div className="flex flex-wrap items-start gap-2">
-      <IpDetailsCard schema={prefixSchema} data={prefixData} />
+      <IpDetailsCard schema={prefixSchema} data={prefixData} refetch={refetch} />
     </div>
   );
 };
