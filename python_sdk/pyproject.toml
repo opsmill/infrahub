@@ -227,6 +227,7 @@ select = [
     "N",     # pep8-naming
     "PIE",   # flake8-pie
     "PL",    # pylint
+    "PTH",   # flake8-use-pathlib
     "PYI",   # flake8-pyi
     "Q",     # flake8-quotes
     "RET",   # flake8-return
@@ -238,7 +239,6 @@ select = [
 ]
 
 ignore = [
-
 ##################################################################################################
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one. Alternatively ignored after further       #
