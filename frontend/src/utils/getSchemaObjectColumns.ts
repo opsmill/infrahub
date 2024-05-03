@@ -201,12 +201,22 @@ const getValue = (row: any, attribute: any, profile: any) => {
   return attribute.default_value;
 };
 
-export const getFieldValue = (row: any, attribute: any, profile: any) => {
-  const value = getValue(row, attribute, profile);
+type tgetFieldValue = {
+  row: any;
+  field: any;
+  profile: any;
+  isFilters?: boolean;
+};
+
+export const getFieldValue = ({ row, field, profile, isFilters }: tgetFieldValue) => {
+  // No default value for filters
+  if (isFilters) return "";
+
+  const value = getValue(row, field, profile);
 
   if (value === null || value === undefined) return null;
 
-  if (attribute.kind === "DateTime") {
+  if (field.kind === "DateTime") {
     if (isValid(value)) {
       return value;
     }
@@ -218,7 +228,7 @@ export const getFieldValue = (row: any, attribute: any, profile: any) => {
     return null;
   }
 
-  if (attribute.kind === "JSON") {
+  if (field.kind === "JSON") {
     // Ensure we use objects as values
     return typeof value === "string" ? JSON.parse(value) : value;
   }
@@ -226,7 +236,16 @@ export const getFieldValue = (row: any, attribute: any, profile: any) => {
   return value ?? null;
 };
 
-export const getRelationshipValue = (row: any, field: any) => {
+type tgetRelationshipValue = {
+  row: any;
+  field: any;
+  isFilters?: boolean;
+};
+
+export const getRelationshipValue = ({ row, field, isFilters }: tgetRelationshipValue) => {
+  // No default value for filters
+  if (isFilters) return "";
+
   if (!row || !row[field.name]) {
     return "";
   }
