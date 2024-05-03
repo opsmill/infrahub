@@ -10,7 +10,6 @@ import graphqlClient from "../../graphql/graphqlClientApollo";
 import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
 import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
 import { getGroups } from "../../graphql/queries/groups/getGroups";
-import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -36,7 +35,6 @@ export default function AddObjectToGroup(props: Props) {
   const [genericsList] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const [pagination] = usePagination();
   const [isLoading, setIsLoading] = useState(false);
 
   const schemaData = genericsList.find((s) => s.kind === GROUP_OBJECT);
@@ -45,18 +43,9 @@ export default function AddObjectToGroup(props: Props) {
   const generic = genericsList.filter((s) => s.name === objectname)[0];
   const objectSchemaData = schema || generic;
 
-  const filtersString = [
-    // Add pagination filters
-    ...[
-      { name: "offset", value: pagination?.offset },
-      { name: "limit", value: pagination?.limit },
-    ].map((row: any) => `${row.name}: ${row.value}`),
-  ].join(",");
-
   const queryString = schemaData
     ? getGroups({
         attributes: schemaData.attributes,
-        filters: filtersString,
         kind: objectSchemaData.kind,
         groupKind: GROUP_OBJECT,
         objectid,
