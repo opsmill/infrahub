@@ -937,7 +937,7 @@ class SchemaBranch:
             node = self.get(name=name, duplicate=False)
 
             if node.inherit_from or node.namespace not in RESTRICTED_NAMESPACES:
-                generics_used_by["CoreNode"].append(node.kind)
+                generics_used_by[InfrahubKind.NODE].append(node.kind)
 
             if not node.inherit_from:
                 continue
