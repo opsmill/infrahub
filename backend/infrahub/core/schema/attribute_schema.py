@@ -67,8 +67,8 @@ class AttributeSchema(GeneratedAttributeSchema):
             raise ValueError(f"{self.name} is not an Enum")
         return generate_python_enum(name=f"{self.name.title()}Enum", options=self.enum)
 
-    def convert_value_to_enum(self, value: Any) -> enum.Enum:
-        if isinstance(value, enum.Enum):
+    def convert_value_to_enum(self, value: Any) -> Optional[enum.Enum]:
+        if isinstance(value, enum.Enum) or value is None:
             return value
         enum_class = self.get_enum_class()
         return enum_class(value)
