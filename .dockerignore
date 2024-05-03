@@ -6,7 +6,9 @@ node_modules
 .ruff_cache
 **/.ruff_cache
 .mypy_cache
+**/.mypy_cache
 .pytest_cache
+**/.pytest_cache
 *.env
 .DS_Store
 .coverage
