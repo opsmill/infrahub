@@ -30,15 +30,15 @@ class CoreOrganization(InfrahubModel):
 class InfraDevice(InfrahubModel):
     _modelname = "InfraDevice"
     _identifiers = ("hostname", "location")
-    _attributes = ("platform", "version", "model", "serial_number", "fqdn", "hardware_serial_number")
-    serial_number: str
-    fqdn: Optional[str] = None
+    _attributes = ("platform", "model", "version", "serial_number", "hardware_serial_number", "fqdn")
     hostname: str
+    serial_number: str
     hardware_serial_number: str
-    platform: Optional[str] = None
+    fqdn: Optional[str] = None
     location: str
-    version: Optional[str] = None
+    platform: Optional[str] = None
     model: Optional[str] = None
+    version: Optional[str] = None
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -47,8 +47,8 @@ class InfraNOSVersion(InfrahubModel):
     _identifiers = ("manufacturer", "version")
     _attributes = ("platform", "model")
     version: str
-    platform: Optional[str] = None
     manufacturer: str
+    platform: Optional[str] = None
     model: Optional[str] = None
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
@@ -95,12 +95,12 @@ class InfraVRF(InfrahubModel):
 class InfraPartNumber(InfrahubModel):
     _modelname = "InfraPartNumber"
     _identifiers = ("device", "name")
-    _attributes = ("manufacturer", "model", "part_sn", "part_vid", "description", "part_id")
-    part_sn: Optional[str] = None
+    _attributes = ("manufacturer", "model", "description", "part_id", "part_sn", "part_vid")
     name: Optional[str] = None
-    part_vid: Optional[str] = None
     description: Optional[str] = None
     part_id: Optional[str] = None
+    part_sn: Optional[str] = None
+    part_vid: Optional[str] = None
     manufacturer: Optional[str] = None
     model: Optional[str] = None
     device: Optional[str] = None

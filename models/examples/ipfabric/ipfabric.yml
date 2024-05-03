@@ -311,8 +311,6 @@ nodes:
     display_labels:
       - name__value
       - vlan_id__value
-    uniqueness_constraints:
-      - ["location", "vlan_id__value"]
     attributes:
       - name: name
         kind: Text
