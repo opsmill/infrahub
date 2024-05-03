@@ -120,7 +120,7 @@ export default function IpamRouter() {
   );
 
   return (
-    <Card className="p-0 overflow-hidden flex flex-col h-full">
+    <Card className="p-0 overflow-hidden flex flex-col h-full" data-testid="ipam-main-content">
       <Tabs tabs={tabs} qsp={IPAM_QSP} rightItems={rightitems} />
 
       <div className="m-4 flex-grow overflow-auto">{renderContent()}</div>
