@@ -12,13 +12,13 @@ test.describe("/ipam/addresses - IP Address list", () => {
 
     await page
       .getByTestId("ipam-main-content")
-      .getByRole("link", { name: "10.0.0.20/32" }) // prefix need pagination to be visible
+      .getByRole("link", { name: "10.0.0.16/32" }) // prefix need pagination to be visible
       .click();
     expect(page.url()).toContain("/ipam/addresses/");
     expect(page.url()).toContain("ipam-tab=ip-details");
 
     await expect(page.getByText("Ipam IP Address summary")).toBeVisible();
-    await expect(page.getByText("Address10.0.0.20/32")).toBeVisible();
+    await expect(page.getByText("Address10.0.0.16/32")).toBeVisible();
     await expect(page.getByText("InterfaceLoopback0")).toBeVisible();
     await expect(page.getByText("Ip Prefix10.0.0.0/16")).toBeVisible();
 

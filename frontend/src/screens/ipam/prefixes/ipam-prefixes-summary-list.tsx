@@ -2,7 +2,6 @@ import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { forwardRef, useImperativeHandle, useState } from "react";
-import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import SlideOver from "../../../components/display/slide-over";
 import ModalDelete from "../../../components/modals/modal-delete";
@@ -25,16 +24,13 @@ import { constructPathForIpam } from "../common/utils";
 import { IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
 
 const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
-  const { prefix } = useParams();
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState();
   const [isLoading, setIsLoading] = useState(false);
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
 
-  const { loading, error, data, refetch } = useQuery(GET_PREFIXES, {
-    variables: { prefix: prefix },
-  });
+  const { loading, error, data, refetch } = useQuery(GET_PREFIXES);
 
   useImperativeHandle(ref, () => ({ refetch }));
 

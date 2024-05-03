@@ -22,13 +22,8 @@ export const GET_PREFIXES_ONLY = gql`
 `;
 
 export const GET_PREFIXES = gql`
-  query GET_PREFIXES($namespace: String, $prefix: String, $offset: Int, $limit: Int) {
-    BuiltinIPPrefix(
-      ip_namespace__name__value: $namespace
-      prefix__value: $prefix
-      offset: $offset
-      limit: $limit
-    ) {
+  query GET_PREFIXES($namespace: String, $offset: Int, $limit: Int) {
+    BuiltinIPPrefix(ip_namespace__name__value: $namespace, offset: $offset, limit: $limit) {
       count
       edges {
         node {
