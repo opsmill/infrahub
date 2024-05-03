@@ -55,7 +55,7 @@ export default function ObjectItemEditComponent(props: Props) {
   const profileSchema = allProfiles.find((s) => s.kind === objectname);
 
   const schema = nodeSchema || profileSchema;
-  const attributes = getObjectAttributes({ schema: schema, forQuery: true });
+  const attributes = getObjectAttributes({ schema: schema, forQuery: true, forProfiles: true });
   const columns = getSchemaObjectColumns({ schema: schema, forQuery: true });
 
   const displayProfile =

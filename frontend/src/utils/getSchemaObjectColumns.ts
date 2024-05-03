@@ -15,9 +15,15 @@ type tgetObjectAttributes = {
   schema: iNodeSchema | iGenericSchema | undefined;
   forListView?: boolean;
   forQuery?: boolean;
+  forProfiles?: boolean;
 };
 
-export const getObjectAttributes = ({ schema, forListView, forQuery }: tgetObjectAttributes) => {
+export const getObjectAttributes = ({
+  schema,
+  forListView,
+  forQuery,
+  forProfiles,
+}: tgetObjectAttributes) => {
   if (!schema) {
     return [];
   }
@@ -25,6 +31,7 @@ export const getObjectAttributes = ({ schema, forListView, forQuery }: tgetObjec
   const attributes = (schema.attributes || [])
     // Filter read_only fields in queries
     .filter((attribute) => (forQuery ? !attribute.read_only : true))
+    .filter((attribute) => (forProfiles ? attribute.optional : true))
     .filter((attribute) =>
       forListView
         ? attributesKindForListView.includes(attribute.kind)

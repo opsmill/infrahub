@@ -1140,10 +1140,7 @@ class SchemaBranch:
             if schema.kind in INTERNAL_SCHEMA_NODE_KINDS or schema.kind == InfrahubKind.GENERICGROUP:
                 continue
 
-            if isinstance(schema, ProfileSchema) or schema.namespace == "Profile":
-                continue
-
-            if schema.kind in (InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE):
+            if schema.kind in (InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE):
                 continue
 
             if "member_of_groups" not in schema.relationship_names:
@@ -1350,7 +1347,7 @@ class SchemaBranch:
         )
 
         for node_attr in node.attributes:
-            if node_attr.read_only:
+            if node_attr.read_only or node_attr.optional is False:
                 continue
 
             attr = AttributeSchema(
