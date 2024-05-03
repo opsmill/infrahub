@@ -4,6 +4,8 @@ from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
+from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
 from infrahub.database import InfrahubDatabase
@@ -477,6 +479,84 @@ class TestUniquenessChecker:
                 node_id=car_camry_main.id,
                 kind="TestCar",
                 field_name="owner",
+                property_name="id",
+                value=person_john_main.id,
+            )
+            in all_data_paths
+        )
+
+    async def test_relationship_violation_wo_attribute_schema_update_on_branch(
+        self,
+        db: InfrahubDatabase,
+        car_accord_main,
+        car_prius_main,
+        car_camry_main,
+        person_john_main,
+        branch: Branch,
+        default_branch: Branch,
+    ):
+        schema_on_branch = registry.schema.get_node_schema(name="TestCar", branch=branch)
+        schema_on_branch.relationships.append(
+            RelationshipSchema(
+                name="yet_another_owner",
+                peer="TestPerson",
+                optional=False,
+                cardinality="one",
+                direction="outbound",
+                identifier="yet_another_owner__testperson",
+                branch="aware",
+            )
+        )
+        schema_on_branch.uniqueness_constraints = [["yet_another_owner"]]
+        schema_root = SchemaRoot(nodes=[schema_on_branch])
+        registry.schema.register_schema(schema=schema_root, branch=branch.name)
+
+        cars_to_update = await NodeManager.get_many(
+            ids=[car_camry_main.id, car_accord_main.id, car_prius_main.id], db=db, branch=branch
+        )
+        for car_to_update in cars_to_update.values():
+            await car_to_update.yet_another_owner.update(data=person_john_main, db=db)
+            await car_to_update.save(db=db)
+
+        # get the schema from the default branch to test that the constraint gets the
+        # schema from the correct branch
+        schema = registry.schema.get("TestCar", branch=default_branch)
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
+
+        assert len(grouped_data_paths) == 1
+        all_data_paths = grouped_data_paths[0].get_all_data_paths()
+        assert len(all_data_paths) == 3
+        assert (
+            DataPath(
+                branch=branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=car_accord_main.id,
+                kind="TestCar",
+                field_name="yet_another_owner",
+                property_name="id",
+                value=person_john_main.id,
+            )
+            in all_data_paths
+        )
+        assert (
+            DataPath(
+                branch=branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=car_prius_main.id,
+                kind="TestCar",
+                field_name="yet_another_owner",
+                property_name="id",
+                value=person_john_main.id,
+            )
+            in all_data_paths
+        )
+        assert (
+            DataPath(
+                branch=branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=car_camry_main.id,
+                kind="TestCar",
+                field_name="yet_another_owner",
                 property_name="id",
                 value=person_john_main.id,
             )
