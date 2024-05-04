@@ -74,7 +74,7 @@ const IpAddressSummaryContent = ({ ipAddressKind }: { ipAddressKind: string }) =
   if (loading || !data || !ipAddressSchema) return <IpamSummarySkeleton />;
 
   if (error) {
-    return <ErrorScreen message="An error occured while retrieving prefixes" />;
+    return <ErrorScreen message="An error occurred while retrieving prefixes" />;
   }
 
   const ipAddressData = data[ipAddressKind].edges[0].node;

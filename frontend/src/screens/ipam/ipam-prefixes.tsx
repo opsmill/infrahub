@@ -45,7 +45,7 @@ export default function IpamIPPrefixes() {
   ];
 
   if (error) {
-    return <ErrorScreen message="An error occured while retrieving prefixes" />;
+    return <ErrorScreen message="An error occurred while retrieving prefixes" />;
   }
 
   return (

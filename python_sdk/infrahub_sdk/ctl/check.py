@@ -113,7 +113,7 @@ async def run_check(
         log.warning(f"{module_name}::{check}: unable to find query ({str(exc)})")
         passed = False
     except Exception as exc:  # pylint: disable=broad-exception-caught
-        log.warning(f"{module_name}::{check}: An error occured during execution ({exc})")
+        log.warning(f"{module_name}::{check}: An error occurred during execution ({exc})")
         passed = False
 
     return passed
