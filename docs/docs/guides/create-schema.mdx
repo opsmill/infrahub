@@ -41,12 +41,19 @@ The `NetworkInterface` node will have the following attributes:
 - `name` (Text): the name of the interface, which is a required attribute
 - `description` (Text): a description for the interface, which is a required
 
+:::note
+
+We define a `default_filter` on the `hostname` attribute of the `NetworkDevice`. This way we can use the `hostname` as an alternative for the `id` in the queries and mutations in this guide.
+
+:::
+
 ```yaml
 ---
 version: "1.0"
 nodes:
   - name: Device
     namespace: Network
+    default_filter: hostname__value
     attributes:
       - name: hostname
         kind: Text
@@ -115,6 +122,7 @@ version: "1.0"
 nodes:
   - name: Device
     namespace: Network
+    default_filter: hostname__value
     attributes:
       - name: hostname
         kind: Text
@@ -138,6 +146,7 @@ nodes:
       - name: device
         cardinality: one
         peer: NetworkDevice
+        optional: false
         kind: Parent
 ```
 
@@ -165,28 +174,13 @@ mutation {
           id
         }
   }
-  NetworkInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}}) {
+  NetworkInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}, device: {id: "atl1-edge1"} }) {
         ok
         object {
           id
         }
   }
 }
-```
-
-:::note
-
-The id's returned from the result of this mutation need to be used within the next mutation, they will be different then the id's we use here in the guide
-
-:::
-
-We can add interface `Ethernet1` as a related node for the interfaces relation on device `atl1-edge1`.
-
-```graphql
-mutation {
-  NetworkDeviceUpdate(data: {id: "17bcf363-9cf6-5f9d-38aa-c513c290aa53", interfaces: [{id: "17bcf363-d53c-323e-38aa-c5183839b28d"}]}) {
-        ok
-  }
 ```
 
 In the Web UI we can now see that the device has a relation to the Ethernet1 interface.
@@ -224,9 +218,11 @@ generics:
         cardinality: one
         peer: NetworkDevice
         kind: Parent
+        optional: false
 nodes:
   - name: Device
     namespace: Network
+    default_filter: hostname__value
     attributes:
       - name: hostname
         kind: Text
@@ -275,34 +271,13 @@ mutation {
           id
         }
   }
-  NetworkPhysicalInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}, speed: {value: 1000000000}}) {
+  NetworkPhysicalInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}, speed: {value: 1000000000}, device: {id: "atl1-edge1"}}) {
         ok
         object {
           id
         }
   }
-  NetworkLogicalInterfaceCreate(data: {name: {value: "Vlan1"}, description: {value: "SVI for Vlan 1"}}) {
-        ok
-        object {
-          id
-        }
-  }
-}
-```
-
-:::note
-
-The id's returned from the result of this mutation need to be used within the next mutation, they will be different then the id's we use here in the guide
-
-:::
-
-We can add `Ethernet1` and `Vlan1` interfaces as related nodes to the interfaces relation of device `atl1-edge1`:
-
-```graphql
-mutation {
-  NetworkDeviceUpdate(
-        data: {id: "17bcf93a-2840-bfd2-329a-c515a0ee3c4d", interfaces: [{id: "17bcf93a-5af4-aa38-329f-c51355ef5d16"}, {id: "17bcf93a-6f6a-b583-3298-c51216de9ea8"}]}
-  ) {
+  NetworkLogicalInterfaceCreate(data: {name: {value: "Vlan1"}, description: {value: "SVI for Vlan 1"}, device: {id: "atl1-edge1"}}) {
         ok
         object {
           id
@@ -365,9 +340,11 @@ generics:
         cardinality: one
         peer: NetworkDevice
         kind: Parent
+        optional: false
 nodes:
   - name: Device
     namespace: Network
+    default_filter: hostname__value
     attributes:
       - name: hostname
         kind: Text
