@@ -80,7 +80,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 self._schema.namespace not in ["Schema", "Internal"]
                 and InfrahubKind.GENERICGROUP not in self._schema.inherit_from
             ):
-                labels.append("CoreNode")
+                labels.append(InfrahubKind.NODE)
             return labels
 
         if isinstance(self._schema, ProfileSchema):

@@ -93,11 +93,24 @@ async def test_schema_branch_process_inheritance(schema_all_in_one):
     criticality = schema.get(name="BuiltinCriticality")
     assert criticality.get_relationship(name="status")
     assert criticality.get_relationship(name="status").inherited
-
     assert criticality.get_attribute(name="my_generic_name")
     assert criticality.get_attribute(name="my_generic_name").inherited
-
     assert criticality.get_attribute(name="mybool")
+    assert criticality.get_attribute(name="mybool").inherited
+    assert criticality.get_attribute(name="color")
+    assert criticality.get_attribute(name="color").inherited is False
+    assert criticality.get_attribute(name="description")
+    assert criticality.get_attribute(name="description").inherited is False
+
+    core_node = schema.get(name="CoreNode")
+    assert set(core_node.used_by) == {
+        "BuiltinCriticality",
+        "BuiltinTag",
+        "BuiltinStatus",
+        "BuiltinBadge",
+        "CoreStandardGroup",
+        "InfraTinySchema",
+    }
 
 
 async def test_schema_branch_process_branch_support(schema_all_in_one):
@@ -300,6 +313,7 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
         "ProfileBuiltinStatus",
         "ProfileBuiltinBadge",
         "ProfileCoreStandardGroup",
+        "ProfileInfraTinySchema",
     }
 
 

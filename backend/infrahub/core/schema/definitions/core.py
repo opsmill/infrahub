@@ -158,14 +158,14 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "members",
-                    "peer": "CoreNode",
+                    "peer": InfrahubKind.NODE,
                     "optional": True,
                     "identifier": "group_member",
                     "cardinality": "many",
                 },
                 {
                     "name": "subscribers",
-                    "peer": "CoreNode",
+                    "peer": InfrahubKind.NODE,
                     "optional": True,
                     "identifier": "group_subscriber",
                     "cardinality": "many",
@@ -1436,7 +1436,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "object",
-                    "peer": "CoreNode",
+                    "peer": InfrahubKind.NODE,
                     "kind": "Attribute",
                     "identifier": "artifact__node",
                     "cardinality": "one",
@@ -1562,7 +1562,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "object",
-                    "peer": "CoreNode",
+                    "peer": InfrahubKind.NODE,
                     "kind": "Attribute",
                     "identifier": "generator__node",
                     "cardinality": "one",

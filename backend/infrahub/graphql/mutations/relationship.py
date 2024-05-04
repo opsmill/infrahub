@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Dict
 from graphene import Boolean, InputField, InputObjectType, List, Mutation, String
 from infrahub_sdk.utils import compare_lists
 
-from infrahub.core.constants import RelationshipCardinality
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.relationship import (
     RelationshipGetPeerQuery,
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 # pylint: disable=unused-argument,too-many-branches
 
-RELATIONSHIP_PEERS_TO_IGNORE = ["CoreNode"]
+RELATIONSHIP_PEERS_TO_IGNORE = [InfrahubKind.NODE]
 
 
 class RelationshipNodesInput(InputObjectType):
