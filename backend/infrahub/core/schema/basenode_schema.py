@@ -379,7 +379,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         return schema_path
 
     def get_unique_constraint_schema_attribute_paths(
-        self, include_unique_attributes: bool = False
+        self, include_unique_attributes: bool = False, branch: Optional[Branch] = None
     ) -> List[List[SchemaAttributePath]]:
         constraint_paths_groups = []
 
@@ -395,7 +395,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         for uniqueness_path_group in self.uniqueness_constraints:
             constraint_paths_groups.append(
                 [
-                    self.parse_attribute_path(attribute_path=uniqueness_path_part)
+                    self.parse_attribute_path(attribute_path=uniqueness_path_part, branch=branch)
                     for uniqueness_path_part in uniqueness_path_group
                 ]
             )
