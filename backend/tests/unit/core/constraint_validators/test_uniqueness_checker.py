@@ -535,8 +535,7 @@ class TestUniquenessChecker:
 
         # get the schema from the default branch to test that the constraint gets the
         # schema from the correct branch
-        schema = registry.schema.get("TestCar", branch=default_branch)
-        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema_on_branch)
 
         assert len(grouped_data_paths) == 1
         all_data_paths = grouped_data_paths[0].get_all_data_paths()

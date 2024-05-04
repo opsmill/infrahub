@@ -64,9 +64,7 @@ class UniquenessChecker(ConstraintCheckerInterface):
         return self.branch
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
-        branch = await self.get_branch()
-        schema_objects = [registry.schema.get(name=request.node_schema.kind, branch=branch, duplicate=False)]
-
+        schema_objects = [request.node_schema]
         non_unique_nodes_lists = await asyncio.gather(*[self.check_one_schema(schema) for schema in schema_objects])
 
         grouped_data_paths = GroupedDataPaths()
@@ -129,7 +127,9 @@ class UniquenessChecker(ConstraintCheckerInterface):
         relationship_schema_by_identifier = {rel.identifier: rel for rel in schema.relationships}
         all_non_unique_nodes: list[NonUniqueNode] = []
         results_index = UniquenessQueryResultsIndex(query_results=query_results)
-        path_groups = schema.get_unique_constraint_schema_attribute_paths(include_unique_attributes=True)
+        path_groups = schema.get_unique_constraint_schema_attribute_paths(
+            include_unique_attributes=True, branch=await self.get_branch()
+        )
         for constraint_group in path_groups:
             non_unique_nodes_by_id: dict[str, NonUniqueNode] = {}
             constraint_group_relationship_identifiers = [
