@@ -39,7 +39,7 @@ The `NetworkDevice` node will have the following attributes:
 The `NetworkInterface` node will have the following attributes:
 
 - `name` (Text): the name of the interface, which is a required attribute
-- `description` (Text): a description for the interface, which is a required
+- `description` (Text): a description for the interface, which is a required attribute
 
 ```yaml
 ---
@@ -354,8 +354,8 @@ generics:
         label: MTU
         optional: false
         default_value: 1500
-      - name: enabeld
-        label: Enabeld
+      - name: enabled
+        label: Enabled
         kind: Boolean
         optional: false
         default_value: false
@@ -431,7 +431,7 @@ diff:
                         changed:
                                 attributes:
                                         added:
-                                                enabeld: null
+                                                enabled: null
                                                 mtu: null
                                         changed: {}
                                         removed:
@@ -442,7 +442,7 @@ diff:
                         changed:
                                 attributes:
                                         added:
-                                                enabeld: null
+                                                enabled: null
                                                 mtu: null
                                         changed: {}
                                         removed: {}
@@ -453,7 +453,7 @@ diff:
                         changed:
                                 attributes:
                                         added:
-                                                enabeld: null
+                                                enabled: null
                                                 mtu: null
                                         changed:
                                                 speed:
