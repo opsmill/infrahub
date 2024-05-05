@@ -55,7 +55,6 @@ class NATSMessageBus(InfrahubMessageBus):
 
         self.jetstream = self.connection.jetstream()
 
-        ####
         if self.service.component_type == ComponentType.API_SERVER:
             await self._initialize_api_server()
         elif self.service.component_type == ComponentType.GIT_AGENT:

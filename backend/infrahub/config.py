@@ -177,6 +177,8 @@ class BrokerSettings(BaseSettings):
     @property
     def service_port(self) -> int:
         default_ports: Dict[bool, int] = {True: 5671, False: 5672}
+        if self.driver == BrokerDriver.NATS:
+            return self.port or 4222
         return self.port or default_ports[self.tls_enabled]
 
 
@@ -195,6 +197,8 @@ class CacheSettings(BaseSettings):
     @property
     def service_port(self) -> int:
         default_ports: int = 6379
+        if self.driver == CacheDriver.NATS:
+            return self.port or 4222
         return self.port or default_ports
 
 
