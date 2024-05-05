@@ -36,7 +36,7 @@ class InfrahubJinja2Item(InfrahubItem):
             errors = identify_faulty_jinja_code(traceback=traceback)
             console = Console()
             with console.capture() as capture:
-                console.print(f"An error occured while rendering Jinja2 transform:{self.name!r}\n", soft_wrap=True)
+                console.print(f"An error occurred while rendering Jinja2 transform:{self.name!r}\n", soft_wrap=True)
                 console.print(f"{exc.message}\n", soft_wrap=True)
                 for frame, syntax in errors:
                     console.print(f"{frame.filename} on line {frame.lineno}\n", soft_wrap=True)

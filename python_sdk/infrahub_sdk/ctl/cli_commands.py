@@ -174,7 +174,7 @@ def render_jinja2_template(template_path: Path, variables: Dict[str, str], data:
         raise typer.Exit(1) from exc
 
     except jinja2.UndefinedError as exc:
-        console.print("[red]An error occured while rendering the jinja template")
+        console.print("[red]An error occurred while rendering the jinja template")
         traceback = Traceback(show_locals=False)
         errors = identify_faulty_jinja_code(traceback=traceback)
         for frame, syntax in errors:

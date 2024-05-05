@@ -165,7 +165,7 @@ export default function ObjectItemCreate(props: iProps) {
 
       setIsLoading(false);
     } catch (error: any) {
-      console.error("An error occured while creating the object: ", error);
+      console.error("An error occurred while creating the object: ", error);
 
       setIsLoading(false);
     }
