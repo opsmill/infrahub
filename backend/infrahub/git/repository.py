@@ -1594,7 +1594,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
             await self.log.error(
-                f"An error occured while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} ",
+                f"An error occurred while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} ",
                 repository=self.name,
                 branch=branch_name,
             )
@@ -1626,7 +1626,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
             await self.log.error(
-                f"An error occured while processing the PythonTransform {transform.name} from {file_path} : {exc} ",
+                f"An error occurred while processing the PythonTransform {transform.name} from {file_path} : {exc} ",
                 repository=self.name,
                 branch=branch_name,
             )
