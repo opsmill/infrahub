@@ -136,6 +136,11 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         # Process element b
         for name in sorted(present_both):
+            # If the element doesn't have an ID on either side
+            # this most likely means it was added recently from the internal schema.
+            if local_map[name] is None and other_map[name] is None:
+                elements_diff.added[name] = None
+                continue
             local_element: obj_type = get_func(self, name=name)
             other_element: obj_type = get_func(other, name=name)
             element_diff = local_element.diff(other_element)
