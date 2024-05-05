@@ -1566,8 +1566,10 @@ async def test_schema_branch_diff_attribute(
         ]
     }
 
+    schema = SchemaRoot(**FULL_SCHEMA)
+    schema.generate_uuid()
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
+    schema_branch.load_schema(schema=schema)
     new_schema = schema_branch.duplicate()
 
     node = new_schema.get(name="BuiltinCriticality")
@@ -1776,10 +1778,15 @@ async def test_schema_branch_diff_add_node_relationship(
         },
     }
 
+    schema1 = SchemaRoot(**SCHEMA1)
+    schema1.generate_uuid()
+    schema2 = SchemaRoot(**SCHEMA2)
+    schema2.generate_uuid()
+
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(**SCHEMA1))
+    schema_branch.load_schema(schema=schema1)
     new_schema = schema_branch.duplicate()
-    new_schema.load_schema(schema=SchemaRoot(**SCHEMA2))
+    new_schema.load_schema(schema=schema2)
 
     diff = schema_branch.diff(other=new_schema)
     assert diff.model_dump() == {
@@ -1847,9 +1854,10 @@ async def test_schema_branch_validate_check_missing(
             },
         ]
     }
-
+    schema = SchemaRoot(**FULL_SCHEMA)
+    schema.generate_uuid()
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
+    schema_branch.load_schema(schema=schema)
     new_schema = schema_branch.duplicate()
 
     node = new_schema.get(name="BuiltinCriticality")
@@ -1934,10 +1942,15 @@ async def test_schema_branch_validate_add_node_relationships(
         },
     }
 
+    schema1 = SchemaRoot(**SCHEMA1)
+    schema1.generate_uuid()
+    schema2 = SchemaRoot(**SCHEMA2)
+    schema2.generate_uuid()
+
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(**SCHEMA1))
+    schema_branch.load_schema(schema=schema1)
     new_schema = schema_branch.duplicate()
-    new_schema.load_schema(schema=SchemaRoot(**SCHEMA2))
+    new_schema.load_schema(schema=schema2)
 
     result = schema_branch.validate_update(other=new_schema)
     assert result.model_dump(exclude=["diff"]) == {"constraints": [], "errors": [], "migrations": []}
