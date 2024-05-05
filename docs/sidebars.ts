@@ -38,7 +38,10 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Guides',
-      link: {type: 'doc', id: 'guides/readme'},
+      link: {
+        type: 'generated-index',
+        slug: 'guides'
+      },
       items: [
         'guides/installation',
         'guides/create-schema',
@@ -54,7 +57,10 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Topics',
-      link: {type: 'doc', id: 'topics/readme'},
+      link: {
+        type: 'generated-index',
+        slug: 'topics'
+      },
       items: [
         'topics/infrahub-yml',
         'topics/architecture',
@@ -74,7 +80,7 @@ const sidebars: SidebarsConfig = {
         'topics/auth',
         'topics/database-backup',
         'topics/resources-testing-framework',
-	'topics/profiles',
+	      'topics/profiles',
       ],
     },
     {
