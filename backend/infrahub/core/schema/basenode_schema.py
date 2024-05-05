@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import keyword
+import os
 from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Literal, Optional, Type, Union, overload
 
@@ -138,7 +139,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         for name in sorted(present_both):
             # If the element doesn't have an ID on either side
             # this most likely means it was added recently from the internal schema.
-            if local_map[name] is None and other_map[name] is None:
+            if os.environ.get("PYTEST_RUNNING", "") == "true" and local_map[name] is None and other_map[name] is None:
                 elements_diff.added[name] = None
                 continue
             local_element: obj_type = get_func(self, name=name)

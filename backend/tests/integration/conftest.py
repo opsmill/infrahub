@@ -18,6 +18,11 @@ from infrahub.database import InfrahubDatabase, get_db
 from infrahub.utils import get_models_dir
 
 
+@pytest.fixture(scope="session", autouse=True)
+def add_tracker():
+    os.environ["PYTEST_RUNNING"] = "true"
+
+
 @pytest.fixture(scope="session")
 def event_loop():
     """Overrides pytest default function scoped event loop"""

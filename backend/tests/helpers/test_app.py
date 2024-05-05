@@ -61,7 +61,6 @@ class TestInfrahubApp:
     @pytest.fixture(scope="class")
     async def register_internal_schema(self, db: InfrahubDatabase, default_branch: Branch) -> SchemaBranch:
         schema = SchemaRoot(**internal_schema)
-        schema.generate_uuid()
         schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
         default_branch.update_schema_hash()
         await default_branch.save(db=db)
@@ -72,7 +71,6 @@ class TestInfrahubApp:
         self, db: InfrahubDatabase, default_branch: Branch, register_internal_schema: SchemaBranch
     ) -> SchemaBranch:
         schema = SchemaRoot(**core_models)
-        schema.generate_uuid()
         schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
         default_branch.update_schema_hash()
         await default_branch.save(db=db)
