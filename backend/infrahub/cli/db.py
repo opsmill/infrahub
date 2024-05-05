@@ -20,6 +20,7 @@ from infrahub.core.initialization import first_time_initialization, get_root_nod
 from infrahub.core.migrations.graph import get_graph_migrations
 from infrahub.core.migrations.schema.runner import schema_migrations_runner
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
+from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema_manager import SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.core.validators.checker import schema_validators_checker
@@ -195,6 +196,7 @@ async def update_core_schema(  # pylint: disable=too-many-statements
         candidate_schema = branch_schema.duplicate()
         candidate_schema.load_schema(schema=SchemaRoot(**internal_schema))
         candidate_schema.load_schema(schema=SchemaRoot(**core_models))
+        candidate_schema.load_schema(schema=SchemaRoot(**deprecated_models))
         candidate_schema.process()
 
         result = branch_schema.validate_update(other=candidate_schema)
