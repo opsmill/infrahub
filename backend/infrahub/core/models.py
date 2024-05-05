@@ -85,10 +85,16 @@ class SchemaDiff(BaseModel):
             for node_name, elements in node_info.items():
                 print(f"{str(node_name).ljust(column_size)} | {str(node_action).title()}")
                 for element_action, element_info in elements.items():
-                    for element_name, _ in element_info.items():
+                    for element_name, element_children in element_info.items():
                         print(
                             f"{indent_str}{str(element_name).ljust(column_size - indentation)} | {str(element_action).title()}"
                         )
+                        if element_children and isinstance(element_children, dict):
+                            for sub_action, sub_info in element_children.items():
+                                for sub_name, _ in sub_info.items():
+                                    print(
+                                        f"{indent_str * 2}{str(sub_name).ljust(column_size - indentation * 2)} | {str(sub_action).title()}"
+                                    )
 
 
 class SchemaUpdateValidationError(BaseModel):
