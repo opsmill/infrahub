@@ -54,6 +54,7 @@ kbps
 markdownlint
 memgraph
 menu_placement
+modularization
 namespace
 namespaces
 Nautobot
