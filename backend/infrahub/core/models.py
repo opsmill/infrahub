@@ -81,6 +81,7 @@ class SchemaDiff(BaseModel):
 
         indent_str = " " * indentation
 
+        # pylint: disable=too-many-nested-blocks
         for node_action, node_info in data.items():
             for node_name, elements in node_info.items():
                 print(f"{str(node_name).ljust(column_size)} | {str(node_action).title()}")
