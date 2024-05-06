@@ -139,7 +139,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         for name in sorted(present_both):
             # If the element doesn't have an ID on either side
             # this most likely means it was added recently from the internal schema.
-            if os.environ.get("PYTEST_RUNNING", "") == "true" and local_map[name] is None and other_map[name] is None:
+            if os.environ.get("PYTEST_RUNNING", "") != "true" and local_map[name] is None and other_map[name] is None:
                 elements_diff.added[name] = None
                 continue
             local_element: obj_type = get_func(self, name=name)
@@ -388,7 +388,6 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         self, include_unique_attributes: bool = False, branch: Optional[Branch] = None
     ) -> List[List[SchemaAttributePath]]:
         constraint_paths_groups = []
-
         if include_unique_attributes:
             for attribute_schema in self.unique_attributes:
                 constraint_paths_groups.append(
