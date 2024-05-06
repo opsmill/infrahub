@@ -30,19 +30,19 @@ title: Release 0.13
 
 #### IP Address Management
 
-Infrahub now includes a builtin support for IP Prefixes and IP Addresses, both for IPv4 and IPv6.
+Infrahub now includes builtin support for IP Prefixes and IP Addresses, both for IPv4 and IPv6.
 
-To keep things extensible, Infrahub provides a minimum schema to capture the relationships between IP Prefix, IP address and IP Namespace.
+To keep things extensible, Infrahub provides a minimal schema to capture the relationships between IP Prefix, IP address and IP Namespace.
 Infrahub will automatically maintain trees of IP prefixes and IP addresses being built based on the IP Namespace.
 Building these hierarchies/trees allows Infrahub to determine how IP prefixes and IP addresses are nested as well as computing utilization of the recorded IP spaces.
 
-The following `Generic` are provided by default and can be extended as needed to add your own attributes/relationships or constraints:
+The following `Generic` models are provided by default and can be extended as needed to add your own attributes/relationships or constraints:
 
 - `BuiltinIPNamespace`: used to model a namespace to manage IP resources, this is a generic representation of what could be, for examples, a routing table, a routing instance or a VRF
 - `BuiltinIPPrefix`: used to model a network, sometimes referred as supernet/subnet
 - `BuiltinIPAddress`: used to model a single IP address
 
-More information about IPAM is available in the [Documentation](/topics/ipam)
+More information about IPAM is available in the [Documentation](/topics/ipam).
 
 ![prefix View](../media/release_notes/infrahub_0_13_0/ipam_01.png)
 
@@ -55,14 +55,14 @@ A profile in Infrahub allow you to define a common set of attributes that should
 A node that has a profile assigned, will get the values of its attributes inherited from the assigned profile, if no value is defined for the attribute at the node, or if the default value is used.
 The attribute values of a node that were inherited from a profile can be overridden, by defining them at the node.
 
-More information about Profiles is available in the [Documentation](/topics/profiles)
+More information about Profiles is available in the [Documentation](/topics/profiles).
 
 #### Leverage Database Indexes to improve performance
 
 Infrahub is now leveraging database indexes to improve the overall performance of the database.
-Indexes will be automatically applied on startup.
+Indexes will be automatically applied during startup.
 
-A new command `infrahub db index` has been introduced to managed the indexes.
+A new command `infrahub db index` has been introduced to manage the indexes.
 <!-- vale off -->
 ```shell
 infrahub db index --help
@@ -85,21 +85,21 @@ infrahub db index --help
 
 #### Generators
 
-A Generator is a generic plugin that can be used apply your own logic to creates new nodes and relationships.
+A Generator is a generic plugin that can be used apply your own logic to create new nodes and relationships.
 Generator are expected to be idempotent and should be able to run multiple times and always produce the same result.
 
 One use case for the generators is to be able to manage technical objects derived from a higher level definition of a service.
 
-Generator are associated with some input data identified by a GraphQL query.
+Generators are associated with some input data identified by a GraphQL query.
 Similar to the Transforms & Artifacts, Generator will be automatically executed as part of the CI Pipeline if the data associated with a given generator has changed.
 
 The Generator itself is a Python class that is based on the `InfrahubGenerator` class from the SDK. Just like transforms and checks, the Generators are user defined.
 
-More information about Generators is available in the [Documentation](/topics/generator)
+More information about Generators is available in the [Documentation](/topics/generator).
 
 #### Redesigned proposed change creation form
 
-The form to create a proposed change has been redesigned to include a description field.
+The form to create a proposed change has been redesigned to expand the description field.
 
 ![Proposed Change Form](../media/release_notes/infrahub_0_13_0/proposed_change_form.png)
 
@@ -107,7 +107,7 @@ The form to create a proposed change has been redesigned to include a descriptio
 
 #### Relationship of type Parent can't be optional
 
-The constraints around the relationships of kind `Parent` have been tighten and these relationships can't be optional anymore.
+The constraints around the relationships of kind `Parent` have been tightened and these relationships can't be optional anymore.
 All existing relationships will be automatically migrated when upgrading to this release and your schema will need to be updated.
 
 #### Improvement and modularization of demo schema
@@ -135,6 +135,8 @@ This field is meant to store an URL where the documentation for this model is av
 The link will be displayed in the help popup in the frontend.
 
 The attribute `on_delete` is now available on all relationships. See section above.
+
+More information about the schema is available in the [Documentation](/reference/schema).
 
 ### API / GraphQL
 
