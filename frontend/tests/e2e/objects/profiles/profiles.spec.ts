@@ -169,7 +169,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       await page.getByText("ProfileInfraInterfaceL2").click();
     });
 
-    await test.step("check fields", async () => {
+    await test.step("verify Interface L2 optional attributes are all visible", async () => {
       await expect(page.getByText("Profile Name *")).toBeVisible();
       await expect(page.getByText("Description")).toBeVisible();
       await expect(page.getByText("MTU")).toBeVisible();
@@ -177,19 +177,8 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       await expect(page.getByText("Status")).toBeVisible();
       await expect(page.getByText("Role")).toBeVisible();
     });
-  });
 
-  test("should verify that some fields are not displayed (no mandatory nor relationships fields)", async ({
-    page,
-  }) => {
-    await test.step("access Interface L2 form", async () => {
-      await page.goto("/objects/CoreProfile");
-      await page.getByTestId("create-object-button").click();
-      await page.getByTestId("side-panel-container").getByTestId("select-input").fill("l2");
-      await page.getByText("ProfileInfraInterfaceL2").click();
-    });
-
-    await test.step("check fields", async () => {
+    await test.step("verify Interface L2 mandatory attributes and relationships are not visible", async () => {
       await expect(page.getByText("Layer2 Mode *")).not.toBeVisible();
       await expect(page.getByText("Speed *")).not.toBeVisible();
       await expect(page.getByText("Untagged VLAN")).not.toBeVisible();
