@@ -6,7 +6,12 @@ import { Badge } from "../../components/ui/badge";
 import { ModelDisplay, PropertyRow, TabPanelStyled, TabStyled } from "./styled";
 import { RelationshipDisplay } from "./relationship-display";
 import { classNames, isGeneric } from "../../utils/common";
-import { genericsState, IModelSchema, schemaState } from "../../state/atoms/schema.atom";
+import {
+  genericsState,
+  IModelSchema,
+  profilesAtom,
+  schemaState,
+} from "../../state/atoms/schema.atom";
 import { ArrayParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../config/qsp";
 import { CSSProperties } from "react";
@@ -17,10 +22,11 @@ export const SchemaViewerStack = ({ className = "" }: { className: string }) => 
   const [selectedKind, setKinds] = useQueryParam(QSP.KIND, ArrayParam);
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
+  const profiles = useAtomValue(profilesAtom);
 
   if (!selectedKind) return null;
 
-  const schemas = [...nodes, ...generics];
+  const schemas = [...nodes, ...generics, ...profiles];
 
   return (
     <div className={classNames("relative", className)}>

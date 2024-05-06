@@ -48,7 +48,7 @@ const ProposedChangesDetails = () => {
   const refetchRef = useRef(null);
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
-  const relationships = getObjectRelationships(schemaData);
+  const relationships = getObjectRelationships({ schema: schemaData });
 
   const queryString = schemaData
     ? getProposedChanges({

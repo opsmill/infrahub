@@ -1,5 +1,4 @@
 import { gql } from "@apollo/client";
-import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
@@ -10,10 +9,9 @@ import graphqlClient from "../../graphql/graphqlClientApollo";
 import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
 import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
 import { getGroups } from "../../graphql/queries/groups/getGroups";
-import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { getFormStructureForAddObjectToGroup } from "../../utils/formStructureForAddObjectToGroup";
 import { stringifyWithoutQuotes } from "../../utils/string";
@@ -32,31 +30,23 @@ export default function AddObjectToGroup(props: Props) {
 
   const { objectname, objectid } = useParams();
 
-  const [schemaList] = useAtom(schemaState);
-  const [genericsList] = useAtom(genericsState);
+  const allSchemas = useAtomValue(schemaState);
+  const allGenerics = useAtomValue(genericsState);
+  const allProfiles = useAtomValue(profilesAtom);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const [pagination] = usePagination();
   const [isLoading, setIsLoading] = useState(false);
 
-  const schemaData = genericsList.find((s) => s.kind === GROUP_OBJECT);
+  const schemaData = allGenerics.find((s) => s.kind === GROUP_OBJECT);
 
-  const schema = schemaList.find((s) => s.kind === objectname);
-  const generic = genericsList.filter((s) => s.name === objectname)[0];
-  const objectSchemaData = schema || generic;
-
-  const filtersString = [
-    // Add pagination filters
-    ...[
-      { name: "offset", value: pagination?.offset },
-      { name: "limit", value: pagination?.limit },
-    ].map((row: any) => `${row.name}: ${row.value}`),
-  ].join(",");
+  const schema = allSchemas.find((s) => s.kind === objectname);
+  const profile = allProfiles.find((s) => s.kind === objectname);
+  const generic = allGenerics.filter((s) => s.name === objectname)[0];
+  const objectSchemaData = schema || profile || generic;
 
   const queryString = schemaData
     ? getGroups({
         attributes: schemaData.attributes,
-        filters: filtersString,
         kind: objectSchemaData.kind,
         groupKind: GROUP_OBJECT,
         objectid,

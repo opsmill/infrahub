@@ -99,9 +99,9 @@ export default function ObjectItemDetails(props: any) {
     return null;
   }
 
-  const attributes = getObjectAttributes(schemaData);
-  const relationships = getObjectRelationships(schemaData);
-  const columns = getSchemaObjectColumns(schemaData);
+  const attributes = getObjectAttributes({ schema: schemaData });
+  const relationships = getObjectRelationships({ schema: schemaData });
+  const columns = getSchemaObjectColumns({ schema: schemaData });
   const relationshipsTabs = getTabs(schemaData);
 
   const queryString = schemaData
@@ -270,7 +270,6 @@ export default function ObjectItemDetails(props: any) {
                         owner={objectDetailsData[attribute.name].owner}
                         isFromProfile={objectDetailsData[attribute.name].is_from_profile}
                         isProtected={objectDetailsData[attribute.name].is_protected}
-                        isInherited={objectDetailsData[attribute.name].is_inherited}
                         header={
                           <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
                             <div className="font-semibold">{attribute.label}</div>

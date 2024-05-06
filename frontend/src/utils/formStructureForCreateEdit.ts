@@ -94,7 +94,6 @@ const getFormStructureForCreateEdit = ({
   }
 
   const fieldsToParse = sortByOrderWeight([
-    // ...(isFilters ? [] : schema.attributes ?? []),
     ...(schema.attributes ?? []),
     ...(getObjectRelationshipsForForm(schema) ?? []),
   ]);
@@ -112,7 +111,7 @@ const getFormStructureForCreateEdit = ({
           peer: field.peer,
           type: getInputTypeFromRelationship(field, isInherited),
           label: field.label ? field.label : field.name,
-          value: getRelationshipValue(row, field),
+          value: getRelationshipValue({ row, field, isFilters }),
           options: getRelationshipOptions(row, field, schemas, generics),
           config: {
             validate: (value: any) =>
@@ -133,7 +132,12 @@ const getFormStructureForCreateEdit = ({
       }
 
       // Parse an attribute
-      const fieldValue = getFieldValue(row, field, profile);
+      const fieldValue = getFieldValue({
+        row,
+        field,
+        profile,
+        isFilters,
+      });
 
       // Quick fix to prevent password in update field,
       // TODO: remove HashedPassword test after new mutations are available to better handle accounts

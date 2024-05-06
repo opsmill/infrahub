@@ -36,6 +36,7 @@ export const Alert = (props: AlertProps) => {
     details,
     onDismiss,
     type,
+    ...otherProps
   } = props;
 
   const getIcon = () => {
@@ -122,7 +123,7 @@ export const Alert = (props: AlertProps) => {
   const alertDetails = <p className={classNames("text-sm", alertClasses.text)}>{details}</p>;
 
   return (
-    <div className={classNames("rounded-m p-4", alertClasses.container)}>
+    <div className={classNames("rounded-m p-4", alertClasses.container)} {...otherProps}>
       <div className="flex items-center">
         <div className="flex-shrink-0 flex items-start">{getIcon()}</div>
         <div className="ml-3">

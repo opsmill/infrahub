@@ -158,14 +158,14 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "members",
-                    "peer": "CoreNode",
+                    "peer": InfrahubKind.NODE,
                     "optional": True,
                     "identifier": "group_member",
                     "cardinality": "many",
                 },
                 {
                     "name": "subscribers",
-                    "peer": "CoreNode",
+                    "peer": InfrahubKind.NODE,
                     "optional": True,
                     "identifier": "group_subscriber",
                     "cardinality": "many",
@@ -445,6 +445,7 @@ core_models: dict[str, Any] = {
         {
             "name": "IPNamespace",
             "namespace": "Builtin",
+            "label": "IP Namespace",
             "description": "A generic container for IP prefixes and IP addresses",
             "include_in_menu": False,
             "default_filter": "name__value",
@@ -471,6 +472,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "ip_prefixes",
+                    "label": "IP Prefixes",
                     "peer": InfrahubKind.IPPREFIX,
                     "identifier": "ip_namespace__ip_prefix",
                     "optional": True,
@@ -480,6 +482,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "ip_addresses",
+                    "label": "IP Addresses",
                     "peer": InfrahubKind.IPADDRESS,
                     "identifier": "ip_namespace__ip_address",
                     "optional": True,
@@ -491,6 +494,7 @@ core_models: dict[str, Any] = {
         },
         {
             "name": "IPPrefix",
+            "label": "IP Prefix",
             "namespace": "Builtin",
             "description": "IPv6 or IPv4 prefix also referred as network",
             "include_in_menu": False,
@@ -587,6 +591,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "ip_namespace",
+                    "label": "IP Namespace",
                     "peer": InfrahubKind.IPNAMESPACE,
                     "identifier": "ip_namespace__ip_prefix",
                     "optional": True,
@@ -595,6 +600,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "ip_addresses",
+                    "label": "IP Addresses",
                     "peer": InfrahubKind.IPADDRESS,
                     "identifier": "ip_prefix__ip_address",
                     "optional": True,
@@ -606,6 +612,7 @@ core_models: dict[str, Any] = {
         },
         {
             "name": "IPAddress",
+            "label": "IP Address",
             "namespace": "Builtin",
             "description": "IPv6 or IPv4 address",
             "include_in_menu": False,
@@ -632,6 +639,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "ip_namespace",
+                    "label": "IP Namespace",
                     "peer": InfrahubKind.IPNAMESPACE,
                     "identifier": "ip_namespace__ip_address",
                     "optional": True,
@@ -640,6 +648,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "ip_prefix",
+                    "label": "IP Prefix",
                     "peer": InfrahubKind.IPPREFIX,
                     "identifier": "ip_prefix__ip_address",
                     "optional": True,
@@ -1427,7 +1436,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "object",
-                    "peer": "CoreNode",
+                    "peer": InfrahubKind.NODE,
                     "kind": "Attribute",
                     "identifier": "artifact__node",
                     "cardinality": "one",
@@ -1553,7 +1562,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "object",
-                    "peer": "CoreNode",
+                    "peer": InfrahubKind.NODE,
                     "kind": "Attribute",
                     "identifier": "generator__node",
                     "cardinality": "one",

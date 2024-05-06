@@ -17,6 +17,7 @@ import { constructPathForIpam } from "../common/utils";
 import { IpamTreeSkeleton } from "./ipam-tree-skeleton";
 import { IP_PREFIX_GENERIC, IPAM_ROUTE, IPAM_TREE_ROOT_ID } from "../constants";
 import {
+  AncestorsData,
   formatIPPrefixResponseForTreeView,
   PrefixData,
   ROOT_TREE_ITEM,
@@ -29,7 +30,7 @@ export default function IpamTree() {
   const [isLoading, setLoading] = useState(true);
   const [treeData, setTreeData] = useState([ROOT_TREE_ITEM]);
   const [fetchTopLevelIpPrefixes] = useLazyQuery<PrefixData>(GET_TOP_LEVEL_PREFIXES);
-  const [fetchPrefixAncestors] = useLazyQuery<PrefixData>(GET_PREFIX_ANCESTORS);
+  const [fetchPrefixAncestors] = useLazyQuery<AncestorsData>(GET_PREFIX_ANCESTORS);
   const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds: string[] }>(GET_PREFIXES_ONLY);
   const navigate = useNavigate();
 
@@ -52,12 +53,21 @@ export default function IpamTree() {
           return;
         }
 
-        fetchPrefixAncestors({ variables: { ip: prefix } })
+        fetchPrefixAncestors({ variables: { ids: [prefix] } })
           .then(({ data }) => {
             if (!data) return;
 
-            const ancestors = data[IP_PREFIX_GENERIC].edges.map(({ node }) => ({
+            const prefixAncestorsData = data[IP_PREFIX_GENERIC].edges[0];
+
+            if (!prefixAncestorsData) {
+              setTreeData(tree);
+              setLoading(false);
+              return;
+            }
+
+            const ancestors = prefixAncestorsData.node.ancestors.edges.map(({ node }) => ({
               id: node.id,
+              name: node.display_label,
               parentId: node.parent.node?.id ?? IPAM_TREE_ROOT_ID,
             }));
 
@@ -99,7 +109,7 @@ export default function IpamTree() {
                 return updateTreeData(acc, currentAncestorId, children);
               }, tree);
 
-              const currentPrefix = newTree.find(({ name }) => name === prefix);
+              const currentPrefix = newTree.find(({ id }) => id === prefix);
               setTreeData(newTree);
               setSelected(
                 currentPrefix ? [...orderedAncestorIds, currentPrefix.id] : orderedAncestorIds
@@ -139,11 +149,10 @@ export default function IpamTree() {
           onNodeSelect={({ element, isSelected }) => {
             if (!isSelected) return;
 
-            const url = constructPathForIpam(
-              `${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(element.name)}`
-            );
+            const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
             navigate(url);
           }}
+          data-testid="ipam-tree"
         />
       )}
     </nav>
@@ -155,10 +164,14 @@ const IpamTreeItem = ({ element }: TreeItemProps) => {
   const generics = useAtomValue(genericsState);
 
   const schema = [...nodes, ...generics].find(({ kind }) => kind === element.metadata?.kind);
-  const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(element.name)}`);
+  const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);
 
   return (
-    <Link to={url} tabIndex={-1} className="flex items-center gap-2 overflow-hidden">
+    <Link
+      to={url}
+      tabIndex={-1}
+      className="flex items-center gap-2 overflow-hidden"
+      data-testid="ipam-tree-item">
       {schema?.icon ? <Icon icon={schema.icon as string} /> : <div className="w-4" />}
       <span className="truncate">{element.name}</span>
     </Link>

@@ -247,6 +247,8 @@ GROUPS = (
     ("arista_devices", "Arista Devices"),
     ("upstream_interfaces", "Upstream Interfaces"),
     ("backbone_interfaces", "Backbone Interfaces"),
+    ("maintenance_circuits", "Circuits in Maintenance"),
+    ("provisioning_circuits", "Circuits in Provisioning"),
 )
 
 BGP_PEER_GROUPS = (
@@ -535,6 +537,9 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                     )
                     await bgp_session.save()
 
+                    await circuit.bgp_sessions.fetch()
+                    circuit.bgp_sessions.add(bgp_session)
+                    await circuit.save()
                     log.debug(
                         f" - Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}' '{ip.address.value}' >> '{peer_ip.address.value}'"
                     )
