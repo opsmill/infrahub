@@ -46,7 +46,7 @@ test.describe("Verifies the object creation", () => {
         const reqData = response.request().postDataJSON();
         const status = response.status();
 
-        return reqData?.operationName === "InfraInterfaceL3" && status === 200;
+        return reqData?.operationName === "DropdownOptions" && status === 200;
       });
 
       await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
