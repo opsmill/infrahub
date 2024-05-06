@@ -510,15 +510,7 @@ class InfrahubClient(BaseClient):
                     self.log.error(f"Unable to connect to {self.address} .. ")
                     raise
             except httpx.HTTPStatusError as exc:
-                if exc.response.status_code == 401:
-                    response = exc.response.json()
-                    errors = response.get("errors")
-                    need_refresh = "Expired Signature" in [error.get("message") for error in errors]
-
-                    await self.login(refresh=need_refresh)
-                    retry = True
-
-                if exc.response.status_code == 403:
+                if exc.response.status_code in [401, 403]:
                     response = exc.response.json()
                     errors = response.get("errors")
                     messages = [error.get("message") for error in errors]
@@ -550,16 +542,22 @@ class InfrahubClient(BaseClient):
             ServerNotResponsiveError if the server didn't respond before the timeout expired
         """
         await self.login()
+
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
-        return await self._request(
-            url=url,
-            method=HTTPMethod.POST,
-            headers=headers,
-            timeout=timeout or self.default_timeout,
-            payload=payload,
+
+        response = await self._request(
+            url=url, method=HTTPMethod.POST, headers=headers, timeout=timeout or self.default_timeout, payload=payload
         )
+
+        if response.status_code == 401:
+            errors = response.json().get("errors")
+            if "Expired Signature" in [error.get("message") for error in errors]:
+                await self.login(refresh=True)
+                return await self._post(url=url, payload=payload, headers=headers, timeout=timeout)
+
+        return response
 
     async def _get(self, url: str, headers: Optional[dict] = None, timeout: Optional[int] = None) -> httpx.Response:
         """Execute a HTTP GET with HTTPX.
@@ -569,15 +567,22 @@ class InfrahubClient(BaseClient):
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         await self.login()
+
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
-        return await self._request(
-            url=url,
-            method=HTTPMethod.GET,
-            headers=headers,
-            timeout=timeout or self.default_timeout,
+
+        response = await self._request(
+            url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout
         )
+
+        if response.status_code == 401:
+            errors = response.json().get("errors")
+            if "Expired Signature" in [error.get("message") for error in errors]:
+                await self.login(refresh=True)
+                return await self._get(url=url, headers=headers, timeout=timeout)
+
+        return response
 
     async def _request(
         self,
@@ -906,17 +911,17 @@ class InfrahubClientSync(BaseClient):
         If retry_on_failure is True, the query will retry until the server becomes reacheable.
 
         Args:
-            query (_type_): GraphQL Query to execute, can be a query or a mutation
+            query (str): GraphQL Query to execute, can be a query or a mutation
             variables (dict, optional): Variables to pass along with the GraphQL query. Defaults to None.
             branch_name (str, optional): Name of the branch on which the query will be executed. Defaults to None.
             at (str, optional): Time when the query should be executed. Defaults to None.
             timeout (int, optional): Timeout in second for the query. Defaults to None.
             raise_for_error (bool, optional): Flag to indicate that we need to raise an exception if the response has some errors. Defaults to True.
         Raises:
-            GraphQLError: _description_
+            GraphQLError: When an error occurs during the execution of the GraphQL query or mutation.
 
         Returns:
-            _type_: _description_
+            dict: The result of the GraphQL query or mutation.
         """
 
         url = self._graphql_url(branch_name=branch_name, at=at)
@@ -952,15 +957,7 @@ class InfrahubClientSync(BaseClient):
                     self.log.error(f"Unable to connect to {self.address} .. ")
                     raise
             except httpx.HTTPStatusError as exc:
-                if exc.response.status_code == 401:
-                    response = exc.response.json()
-                    errors = response.get("errors")
-                    need_refresh = "Expired Signature" in [error.get("message") for error in errors]
-
-                    self.login(refresh=need_refresh)
-                    retry = True
-
-                if exc.response.status_code == 403:
+                if exc.response.status_code in [401, 403]:
                     response = exc.response.json()
                     errors = response.get("errors")
                     messages = [error.get("message") for error in errors]
@@ -1314,15 +1311,22 @@ class InfrahubClientSync(BaseClient):
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         self.login()
+
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
-        return self._request(
-            url=url,
-            method=HTTPMethod.GET,
-            headers=headers,
-            timeout=timeout or self.default_timeout,
+
+        response = self._request(
+            url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout
         )
+
+        if response.status_code == 401:
+            errors = response.json().get("errors")
+            if "Expired Signature" in [error.get("message") for error in errors]:
+                self.login(refresh=True)
+                return self._post(url=url, headers=headers, timeout=timeout)
+
+        return response
 
     def _post(
         self,
@@ -1338,17 +1342,22 @@ class InfrahubClientSync(BaseClient):
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         self.login()
+
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
 
-        return self._request(
-            url=url,
-            method=HTTPMethod.POST,
-            payload=payload,
-            headers=headers,
-            timeout=timeout or self.default_timeout,
+        response = self._request(
+            url=url, method=HTTPMethod.POST, payload=payload, headers=headers, timeout=timeout or self.default_timeout
         )
+
+        if response.status_code == 401:
+            errors = response.json().get("errors")
+            if "Expired Signature" in [error.get("message") for error in errors]:
+                self.login(refresh=True)
+                return self._post(url=url, payload=payload, headers=headers, timeout=timeout)
+
+        return response
 
     def _request(
         self,
