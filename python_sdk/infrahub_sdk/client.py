@@ -1324,7 +1324,7 @@ class InfrahubClientSync(BaseClient):
             errors = response.json().get("errors")
             if "Expired Signature" in [error.get("message") for error in errors]:
                 self.login(refresh=True)
-                return self._post(url=url, headers=headers, timeout=timeout)
+                return self._get(url=url, headers=headers, timeout=timeout)
 
         return response
 
