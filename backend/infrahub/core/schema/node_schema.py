@@ -84,7 +84,7 @@ class NodeSchema(GeneratedNodeSchema):
 
         labels: List[str] = [self.kind] + self.inherit_from
         if self.namespace not in ["Schema", "Internal"] and InfrahubKind.GENERICGROUP not in self.inherit_from:
-            labels.append("CoreNode")
+            labels.append(InfrahubKind.NODE)
         return labels
 
     def is_ip_prefix(self) -> bool:

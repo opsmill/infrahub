@@ -140,11 +140,11 @@ The next step is to create the actual Jinja Template file. Create a file called 
 
 ```jinja2
 {% if data.BuiltinTag.edges and data.BuiltinTag.edges is iterable %}
-{% for tag in ["BuiltinTag"]["edges"][0]["node"] %}
-{%     set tag_name = tag.name.value %}
-{%     set tag_description = tag.description.value %}
-   {{ "{{ tag_name }}" }}
-      description: {{ "{{ tag_description }}" }}
+{% for tag in data["BuiltinTag"]["edges"] %}
+{% set tag_name = tag.node.name.value %}
+{% set tag_description = tag.node.description.value %}
+{{ tag_name }}
+   description: {{ tag_description }}
 {% endfor %}
 {% endif %}
 ```

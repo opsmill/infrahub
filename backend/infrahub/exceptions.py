@@ -51,7 +51,7 @@ class GraphQLQueryError(Error):
 class RepositoryError(Error):
     def __init__(self, identifier, message=None):
         self.identifier = identifier
-        self.message = message or f"An error occured with GitRepository '{identifier}'."
+        self.message = message or f"An error occurred with GitRepository '{identifier}'."
         super().__init__(self.message)
 
 
@@ -102,7 +102,7 @@ class TransformError(Error):
         self.location = location
         self.commit = commit
         self.message = (
-            message or f"An error occured with the transform function at '{repository_name}::{commit}::{location}'."
+            message or f"An error occurred with the transform function at '{repository_name}::{commit}::{location}'."
         )
         super().__init__(self.message)
 
@@ -115,7 +115,7 @@ class CheckError(Error):
         self.class_name = class_name
         self.message = (
             message
-            or f"An error occured with the check function at '{repository_name}::{commit}::{location}::{class_name}'."
+            or f"An error occurred with the check function at '{repository_name}::{commit}::{location}::{class_name}'."
         )
         super().__init__(self.message)
 

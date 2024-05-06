@@ -40,7 +40,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
   });
 
-  test("should access the profile created and view its data", async ({ page }) => {
+  test("access the created profile, view its data, and edit it", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
       await page.goto("/objects/CoreProfile");
       await expect(page.getByRole("heading")).toContainText("Profile");
@@ -98,11 +98,34 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
     await test.step("Verify profile link", async () => {
       await page.getByRole("link", { name: "profile test tag" }).click();
-      expect(page.url()).toContain("/objects/CoreProfile/");
+      expect(page.url()).toContain("/objects/ProfileBuiltinTag/");
     });
   });
 
-  test("should delete the profile", async ({ page }) => {
+  test("edit a used profile and verify the changes reflect in an object using it", async ({
+    page,
+  }) => {
+    await test.step("Navigate to an used profile", async () => {
+      await page.goto("/objects/CoreProfile");
+      await expect(page.getByRole("heading")).toContainText("Profile");
+      await page.getByRole("link", { name: "profile test tag" }).click();
+    });
+
+    await test.step("Edit the profile", async () => {
+      await page.getByRole("button", { name: "Edit" }).click();
+      await page.getByLabel("Description").fill("A profile for E2E test edited");
+      await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText("DescriptionA profile for E2E test edited")).toBeVisible();
+    });
+
+    await test.step("Verify the changes in an object using the edited profile", async () => {
+      await page.goto("/objects/BuiltinTag");
+      await page.getByRole("link", { name: "tag with profile" }).click();
+      await expect(page.getByText("DescriptionA profile for E2E test edited")).toBeVisible();
+    });
+  });
+
+  test("delete the profile and reset object attribute value", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
       await page.goto("/objects/CoreProfile");
     });
@@ -119,7 +142,15 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
 
     await test.step("Verify profile deletion", async () => {
-      await expect(page.getByText("Object profile test tag")).toBeVisible();
+      await expect(page.getByText("Object profile test tag deleted")).toBeVisible();
+    });
+
+    await test.step("Object attribute using profile value should be reset", async () => {
+      await page.goto("/objects/BuiltinTag");
+      await page.getByRole("link", { name: "tag with profile" }).click();
+      await expect(page.getByText("Description-")).toBeVisible();
+      await page.getByText("Description-").getByTestId("view-metadata-button").click();
+      await expect(page.getByTestId("metadata-tooltip").getByText("Source-")).toBeVisible();
     });
   });
 });

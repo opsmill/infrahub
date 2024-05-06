@@ -501,6 +501,12 @@ nodes:
         optional: true
         cardinality: many
         kind: Component
+      - name: bgp_sessions
+        label: "BGP Sessions"
+        peer: InfraBGPSession
+        optional: true
+        cardinality: many
+        kind: Component
   - name: CircuitEndpoint
     namespace: Infra
     description: "A Circuit endpoint is attached to each end of a circuit"
@@ -518,7 +524,7 @@ nodes:
       - name: site
         label: "Site"
         peer: "LocationSite"
-        optional: false
+        optional: true
         cardinality: one
         kind: Attribute
         identifier: "site__circuit_endpoints"

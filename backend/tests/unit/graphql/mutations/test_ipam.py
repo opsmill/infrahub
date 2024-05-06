@@ -48,6 +48,30 @@ mutation UpdatePrefix($id: String!, $prefix: String!, $description: String!) {
 }
 """
 
+UPSERT_IPPREFIX = """
+mutation UpsertPrefix($id: String!, $prefix: String!, $description: String!) {
+    IpamIPPrefixUpsert(
+        data: {
+            id: $id
+            prefix: {
+                value: $prefix
+            }
+            description: {
+                value: $description
+            }
+        }
+    ) {
+        ok
+        object {
+            id
+            description {
+                value
+            }
+        }
+    }
+}
+"""
+
 DELETE_IPPREFIX = """
 mutation DeletePrefix($id: String!) {
     IpamIPPrefixDelete(
@@ -139,6 +163,30 @@ mutation UpdateAddress($id: String!, $address: String!, $description: String!) {
         ok
         object {
             id
+        }
+    }
+}
+"""
+
+UPSERT_IPADDRESS = """
+mutation UpsertAddress($id: String!, $address: String!, $description: String!) {
+    IpamIPAddressUpsert(
+        data: {
+            id: $id
+            address: {
+                value: $address
+            }
+            description: {
+                value: $description
+            }
+        }
+    ) {
+        ok
+        object {
+            id
+            description {
+                value
+            }
         }
     }
 }
@@ -398,6 +446,41 @@ async def test_ipprefix_update(
     assert result.data["IpamIPPrefixUpdate"]["ok"]
 
 
+async def test_ipprefix_upsert(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    """Make sure a prefix can be upserted."""
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    subnet = ipaddress.ip_network("2001:db8::/48")
+    result = await graphql(
+        schema=gql_params.schema,
+        source=UPSERT_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"id": "", "prefix": str(subnet), "description": ""},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPPrefixUpsert"]["ok"]
+    assert not result.data["IpamIPPrefixUpsert"]["object"]["description"]["value"]
+
+    subnet_id = result.data["IpamIPPrefixUpsert"]["object"]["id"]
+    result = await graphql(
+        schema=gql_params.schema,
+        source=UPSERT_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"id": subnet_id, "prefix": str(subnet), "description": "RFC 3849"},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPPrefixUpsert"]["ok"]
+    assert result.data["IpamIPPrefixUpsert"]["object"]["description"]["value"] == "RFC 3849"
+
+
 async def test_ipprefix_delete(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -555,7 +638,7 @@ async def test_ipaddress_update(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
-    """Make sure IP address can be updated."""
+    """Make sure an IP address can be updated."""
     gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     address = ipaddress.ip_interface("192.0.2.1/24")
@@ -579,6 +662,41 @@ async def test_ipaddress_update(
 
     assert not result.errors
     assert result.data["IpamIPAddressUpdate"]["ok"]
+
+
+async def test_ipaddress_upsert(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    """Make sure an IP address can be upsert."""
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    address = ipaddress.ip_interface("192.0.2.1/24")
+    result = await graphql(
+        schema=gql_params.schema,
+        source=UPSERT_IPADDRESS,
+        context_value=gql_params.context,
+        variable_values={"id": "", "address": str(address), "description": ""},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPAddressUpsert"]["ok"]
+    assert not result.data["IpamIPAddressUpsert"]["object"]["description"]["value"]
+
+    address_id = result.data["IpamIPAddressUpsert"]["object"]["id"]
+    result = await graphql(
+        schema=gql_params.schema,
+        source=UPSERT_IPADDRESS,
+        context_value=gql_params.context,
+        variable_values={"id": address_id, "address": str(address), "description": "RFC 5735"},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPAddressUpsert"]["ok"]
+    assert result.data["IpamIPAddressUpsert"]["object"]["description"]["value"] == "RFC 5735"
 
 
 async def test_ipaddress_change_ipprefix(
@@ -705,3 +823,131 @@ async def test_ipaddress_change_ipprefix(
     assert not result.errors
     assert len(result.data["IpamIPAddress"]["edges"]) == 1
     assert result.data["IpamIPAddress"]["edges"][0]["node"]["ip_prefix"]["node"]["prefix"]["value"] == str(subnet)
+
+
+GET_PREFIX_HIERARCHY = """
+query GetPrefixHierarchy($prefix: String!) {
+    IpamIPPrefix(prefix__value: $prefix) {
+        edges {
+            node {
+                id
+                prefix { value }
+                ancestors { edges { node { id } } }
+                parent { node { id } }
+                children { edges { node { id } } }
+                descendants { edges { node { id } } }
+            }
+        }
+    }
+}
+"""
+
+
+async def test_prefix_ancestors_descendants(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+
+    ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns1.new(db=db, name="ns1")
+    await ns1.save(db=db)
+    net8 = await Node.init(db=db, schema=prefix_schema)
+    await net8.new(db=db, prefix="10.0.0.0/8", ip_namespace=ns1)
+    await net8.save(db=db)
+    net10 = await Node.init(db=db, schema=prefix_schema)
+    await net10.new(db=db, prefix="10.0.0.0/10", parent=net8, ip_namespace=ns1)
+    await net10.save(db=db)
+    net12 = await Node.init(db=db, schema=prefix_schema)
+    await net12.new(db=db, prefix="10.0.0.0/12", parent=net10, ip_namespace=ns1)
+    await net12.save(db=db)
+    net14 = await Node.init(db=db, schema=prefix_schema)
+    await net14.new(db=db, prefix="10.0.0.0/14", parent=net12, ip_namespace=ns1)
+    await net14.save(db=db)
+    net16 = await Node.init(db=db, schema=prefix_schema)
+    await net16.new(db=db, prefix="10.0.0.0/16", parent=net14, ip_namespace=ns1)
+    await net16.save(db=db)
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    check_before = await graphql(
+        schema=gql_params.schema,
+        source=GET_PREFIX_HIERARCHY,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(net12.prefix.value)},
+    )
+    assert not check_before.errors
+    assert len(check_before.data["IpamIPPrefix"]["edges"]) == 1
+    prefix_details = check_before.data["IpamIPPrefix"]["edges"][0]["node"]
+    assert prefix_details["id"] == net12.id
+    assert prefix_details["prefix"]["value"] == net12.prefix.value
+    ancestors = prefix_details["ancestors"]["edges"]
+    assert len(ancestors) == 2
+    assert {"node": {"id": net8.id}} in ancestors
+    assert {"node": {"id": net10.id}} in ancestors
+    parent = prefix_details["parent"]
+    assert parent == {"node": {"id": net10.id}}
+    children = prefix_details["children"]["edges"]
+    assert len(children) == 1
+    assert {"node": {"id": net14.id}} in children
+    descendants = prefix_details["descendants"]["edges"]
+    assert len(descendants) == 2
+    assert {"node": {"id": net14.id}} in descendants
+    assert {"node": {"id": net16.id}} in descendants
+
+    delete_middle = await graphql(
+        schema=gql_params.schema,
+        source=DELETE_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"id": str(net12.id)},
+    )
+    assert not delete_middle.errors
+    assert delete_middle.data["IpamIPPrefixDelete"]["ok"] is True
+
+    check_previous_parent = await graphql(
+        schema=gql_params.schema,
+        source=GET_PREFIX_HIERARCHY,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(net10.prefix.value)},
+    )
+
+    assert not check_previous_parent.errors
+    assert len(check_previous_parent.data["IpamIPPrefix"]["edges"]) == 1
+    prefix_details = check_previous_parent.data["IpamIPPrefix"]["edges"][0]["node"]
+    assert prefix_details["id"] == net10.id
+    assert prefix_details["prefix"]["value"] == net10.prefix.value
+    ancestors = prefix_details["ancestors"]["edges"]
+    assert ancestors == [{"node": {"id": net8.id}}]
+    parent = prefix_details["parent"]
+    assert parent == {"node": {"id": net8.id}}
+    children = prefix_details["children"]["edges"]
+    assert children == [{"node": {"id": net14.id}}]
+    descendants = prefix_details["descendants"]["edges"]
+    assert len(descendants) == 2
+    assert {"node": {"id": net14.id}} in descendants
+    assert {"node": {"id": net16.id}} in descendants
+
+    check_previous_child = await graphql(
+        schema=gql_params.schema,
+        source=GET_PREFIX_HIERARCHY,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(net14.prefix.value)},
+    )
+
+    assert not check_previous_child.errors
+    assert len(check_previous_child.data["IpamIPPrefix"]["edges"]) == 1
+    prefix_details = check_previous_child.data["IpamIPPrefix"]["edges"][0]["node"]
+    assert prefix_details["id"] == net14.id
+    assert prefix_details["prefix"]["value"] == net14.prefix.value
+    ancestors = prefix_details["ancestors"]["edges"]
+    assert len(ancestors) == 2
+    assert {"node": {"id": net8.id}} in ancestors
+    assert {"node": {"id": net10.id}} in ancestors
+    parent = prefix_details["parent"]
+    assert parent == {"node": {"id": net10.id}}
+    children = prefix_details["children"]["edges"]
+    assert children == [{"node": {"id": net16.id}}]
+    descendants = prefix_details["descendants"]["edges"]
+    assert descendants == [{"node": {"id": net16.id}}]

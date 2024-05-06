@@ -70,13 +70,11 @@ export default function ObjectItemCreate(props: iProps) {
     schema && !profileGeneric?.used_by?.includes(schema.kind) && schema.kind !== PROFILE_KIND;
 
   // Get object's attributes to get them from the profile data
-  const attributes = getObjectAttributes(schema);
-  // const relationships = getObjectRelationships(schema);
+  const attributes = getObjectAttributes({ schema, forQuery: true, forProfiles: true });
 
   const queryString = getObjectItemsPaginated({
     kind: profileName,
     attributes,
-    // relationships,
   });
 
   const query = gql`
@@ -167,7 +165,7 @@ export default function ObjectItemCreate(props: iProps) {
 
       setIsLoading(false);
     } catch (error: any) {
-      console.error("An error occured while creating the object: ", error);
+      console.error("An error occurred while creating the object: ", error);
 
       setIsLoading(false);
     }
@@ -187,7 +185,7 @@ export default function ObjectItemCreate(props: iProps) {
       )}
 
       {(!isGeneric || (isGeneric && kind)) && displayProfile && (
-        <div className="p-4 pt-3 bg-gray-200">
+        <div className="p-4 pt-3 bg-gray-100">
           <div className="flex items-center">
             <label className="block text-sm font-medium leading-6 text-gray-900">
               Select a Profile <span className="text-xs italic text-gray-500 ml-1">optional</span>

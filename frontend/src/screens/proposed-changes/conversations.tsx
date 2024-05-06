@@ -258,7 +258,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
         });
       }
 
-      console.error("An error occured while creating the comment: ", error);
+      console.error("An error occurred while creating the comment: ", error);
     }
   };
 
@@ -352,7 +352,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
       toast(
         <Alert
           type={ALERT_TYPES.SUCCESS}
-          message={"An error occured while merging the proposed changes"}
+          message={"An error occurred while merging the proposed changes"}
         />
       );
     }

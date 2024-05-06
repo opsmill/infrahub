@@ -285,7 +285,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         save_at = Timestamp(at)
 
-        if not self.id:
+        if not self.id or self.is_from_profile:
             return False
 
         return await self._update(at=save_at, db=db)
@@ -507,6 +507,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             if value_to_set != self.value:
                 self.value = value_to_set
                 changed = True
+
+        if changed and self.is_from_profile:
+            self.is_from_profile = False
+            self.clear_source()
 
         if "is_default" in data and not self.is_default:
             self.is_default = True
