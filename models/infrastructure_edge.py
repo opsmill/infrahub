@@ -271,7 +271,7 @@ VLANS = (
 store = NodeStore()
 
 
-async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str, site: Dict[str, str]):
+async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str, site: Dict[str, str]) -> str:
     group_eng = store.get("Engineering Team")
     group_ops = store.get("Operation Team")
     account_pop = store.get("pop-builder")
@@ -1155,11 +1155,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # ------------------------------------------
     log.info("Creating Site and associated objects (Device, Circuit, BGP Sessions)")
     sites = site_generator(nbr_site=5)
-    batch = await client.create_batch()
     for site in sites:
-        batch.add(task=generate_site, site=site, client=client, branch=branch, log=log)
-
-    async for _, response in batch.execute():
+        response = await generate_site(client=client, log=log, branch=branch, site=site)
         log.debug(f"{response} - Creation Completed")
 
     # ------------------------------------------
