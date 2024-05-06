@@ -28,6 +28,11 @@ BUILD_NAME = os.environ.get("INFRAHUB_BUILD_NAME", "infrahub")
 TEST_IN_DOCKER = str_to_bool(os.environ.get("INFRAHUB_TEST_IN_DOCKER", "false"))
 
 
+@pytest.fixture(scope="session", autouse=True)
+def add_tracker():
+    os.environ["PYTEST_RUNNING"] = "true"
+
+
 # pylint: disable=redefined-outer-name
 class InfrahubTestClient(TestClient):
     def _request(
