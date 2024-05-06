@@ -446,6 +446,93 @@ async def test_ipprefix_update(
     assert result.data["IpamIPPrefixUpdate"]["ok"]
 
 
+async def test_ipprefix_update_within_namespace(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    """Make sure a prefix can be updated within a namespace."""
+    test_ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await test_ns.new(db=db, name="test")
+    await test_ns.save(db=db)
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    subnet = ipaddress.ip_network("2001:db8::/48")
+    result = await graphql(
+        schema=gql_params.schema,
+        source="""
+        mutation CreatePrefixInNamespace($prefix: String!, $namespace: String!) {
+            IpamIPPrefixCreate(
+                data: {
+                    prefix: {
+                        value: $prefix
+                    }
+                    ip_namespace: {
+                        id: $namespace
+                    }
+                }
+            ) {
+                ok
+                object {
+                    id
+                    ip_namespace {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(subnet), "namespace": test_ns.id},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPPrefixCreate"]["ok"]
+    assert result.data["IpamIPPrefixCreate"]["object"]["ip_namespace"]["node"]["name"]["value"] == test_ns.name.value
+
+    subnet_id = result.data["IpamIPPrefixCreate"]["object"]["id"]
+    result = await graphql(
+        schema=gql_params.schema,
+        source="""
+        mutation UpdatePrefixInNamespace($id: String!) {
+            IpamIPPrefixUpdate(
+                data: {
+                    id: $id
+                    description: {
+                        value: "Do not change namespace"
+                    }
+                }
+            ) {
+                ok
+                object {
+                    id
+                    ip_namespace {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """,
+        context_value=gql_params.context,
+        variable_values={"id": subnet_id, "namespace": test_ns.name.value},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPPrefixUpdate"]["ok"]
+    assert result.data["IpamIPPrefixUpdate"]["object"]["ip_namespace"]["node"]["name"]["value"] == test_ns.name.value
+
+
 async def test_ipprefix_upsert(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -662,6 +749,93 @@ async def test_ipaddress_update(
 
     assert not result.errors
     assert result.data["IpamIPAddressUpdate"]["ok"]
+
+
+async def test_ipaddress_update_within_namespace(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    """Make sure an IP address can be updated within a namespace."""
+    test_ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await test_ns.new(db=db, name="test")
+    await test_ns.save(db=db)
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    address = ipaddress.ip_interface("192.0.2.1/24")
+    result = await graphql(
+        schema=gql_params.schema,
+        source="""
+        mutation CreateAddressInNamespace($address: String!, $namespace: String!) {
+            IpamIPAddressCreate(
+                data: {
+                    address: {
+                        value: $address
+                    }
+                    ip_namespace: {
+                        id: $namespace
+                    }
+                }
+            ) {
+                ok
+                object {
+                    id
+                    ip_namespace {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """,
+        context_value=gql_params.context,
+        variable_values={"address": str(address), "namespace": test_ns.id},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPAddressCreate"]["ok"]
+    assert result.data["IpamIPAddressCreate"]["object"]["ip_namespace"]["node"]["name"]["value"] == test_ns.name.value
+
+    address_id = result.data["IpamIPAddressCreate"]["object"]["id"]
+    result = await graphql(
+        schema=gql_params.schema,
+        source="""
+        mutation UpdateAddressInNamespace($id: String!) {
+            IpamIPAddressUpdate(
+                data: {
+                    id: $id
+                    description: {
+                        value: "Do not change namespace"
+                    }
+                }
+            ) {
+                ok
+                object {
+                    id
+                    ip_namespace {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """,
+        context_value=gql_params.context,
+        variable_values={"id": address_id, "namespace": test_ns.name.value},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPAddressUpdate"]["ok"]
+    assert result.data["IpamIPAddressUpdate"]["object"]["ip_namespace"]["node"]["name"]["value"] == test_ns.name.value
 
 
 async def test_ipaddress_upsert(

@@ -31,8 +31,8 @@ async def validate_namespace(
     """Validate or set (if not present) the namespace to pass to the mutation and return its ID."""
     namespace_id: Optional[str] = None
     if "ip_namespace" not in data or not data["ip_namespace"]:
-        data["ip_namespace"] = {"id": registry.default_ipnamespace}
         namespace_id = existing_namespace_id or registry.default_ipnamespace
+        data["ip_namespace"] = {"id": namespace_id}
     elif "id" in data["ip_namespace"]:
         namespace = await registry.manager.get_one(db=db, kind=InfrahubKind.IPNAMESPACE, id=data["ip_namespace"]["id"])
         namespace_id = namespace.id
