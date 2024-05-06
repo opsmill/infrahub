@@ -213,6 +213,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       'Release Notes': [
+        'release-notes/release-0_13',
         'release-notes/release-0_12',
         'release-notes/release-0_11',
         'release-notes/release-0_10',
