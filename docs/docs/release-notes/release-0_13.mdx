@@ -42,7 +42,7 @@ The following `Generic` are provided by default and can be extended as needed to
 - `BuiltinIPPrefix`: used to model a network, sometimes referred as supernet/subnet
 - `BuiltinIPAddress`: used to model a single IP address
 
-More information about IPAM is available in the [Documentation](https://docs.infrahub.app/topics/ipam)
+More information about IPAM is available in the [Documentation](/topics/ipam)
 
 ![prefix View](../media/release_notes/infrahub_0_13_0/ipam_01.png)
 
@@ -55,7 +55,7 @@ A profile in Infrahub allow you to define a common set of attributes that should
 A node that has a profile assigned, will get the values of its attributes inherited from the assigned profile, if no value is defined for the attribute at the node, or if the default value is used.
 The attribute values of a node that were inherited from a profile can be overridden, by defining them at the node.
 
-More information about Profiles is available in the [Documentation](https://docs.infrahub.app/topics/profiles)
+More information about Profiles is available in the [Documentation](/topics/profiles)
 
 #### Leverage Database Indexes to improve performance
 
@@ -95,7 +95,7 @@ Similar to the Transforms & Artifacts, Generator will be automatically executed 
 
 The Generator itself is a Python class that is based on the `InfrahubGenerator` class from the SDK. Just like transforms and checks, the Generators are user defined.
 
-More information about Generators is available in the [Documentation](https://docs.infrahub.app/topics/generator)
+More information about Generators is available in the [Documentation](/topics/generator)
 
 #### Redesigned proposed change creation form
 
@@ -185,13 +185,3 @@ A new help popup is now available in the top right corner of a list view for all
 The help popup will include a link to the schema for this object and if defined in the schema, a link to the external documentation.
 
 ![help Panel](../media/release_notes/infrahub_0_13_0/help_panel.png)
-
-#### Configuration file & environment variables
-
-Some cleanup have been done on the configuration file for Infrahub and associated environment variables.
-
-- `initial_admin_password` has been renamed to `admin_token` and it's now located in the `initial` section
-- `initial_admin_token` has been renamed to `admin_password` and it's now located in the `initial` section
-
-The environment variables for the Python SDK and infrahubctl have been renamed to align with Infrahub.
-Instead of starting with `INFRAHUB_SDK_`, all environment variables are not starting only with `INFRAHUB_` (without `SDK_`)
