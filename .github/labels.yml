@@ -32,6 +32,14 @@
   description: "Issue related to the CI pipeline"
   color: "f25009"
 
+- name: "group/helm"
+  description: "Issue related to the Helm chart"
+  color: "326ce5"
+
+- name: "group/schema"
+  description: "Issue related to some schemas"
+  color: "fbceb1"
+
 # ----------------------------------
 # TYPE INFRAHUB (default)
 # ----------------------------------
