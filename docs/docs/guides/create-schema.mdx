@@ -103,6 +103,8 @@ mutation {
 }
 ```
 
+[Open mutation in GraphiQL](http://localhost:8000/graphql?branch=network-device-schema&query=mutation%20%7B%0A%20%20NetworkDeviceCreate%28data%3A%20%7Bhostname%3A%20%7Bvalue%3A%20%22atl1-edge1%22%7D%2C%20model%3A%20%7Bvalue%3A%20%22Cisco%20ASR1002-HX%22%7D%7D%29%20%7B%0A%20%20%20%20%20%20%20%20ok%0A%20%20%20%20%20%20%20%20object%20%7B%0A%20%20%20%20%20%20%20%20%20%20id%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%7D%0A%20%20NetworkInterfaceCreate%28data%3A%20%7Bname%3A%20%7Bvalue%3A%20%22Ethernet1%22%7D%2C%20description%3A%20%7Bvalue%3A%20%22WAN%20interface%22%7D%7D%29%20%7B%0A%20%20%20%20%20%20%20%20ok%0A%20%20%20%20%20%20%20%20object%20%7B%0A%20%20%20%20%20%20%20%20%20%20id%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%7D%0A%7D)
+
 We have now successfully created our first schema, loaded into a branch into Infrahub, created the first nodes and merged the changes into the main branch of Infrahub.
 
 ## 2. Adding relationships to the nodes
@@ -182,6 +184,8 @@ mutation {
   }
 }
 ```
+
+[Open mutation in GraphiQL](http://localhost:8000/graphql/?branch=network-device-relations&query=mutation%20%7B%0A%20%20NetworkDeviceCreate%28data%3A%20%7Bhostname%3A%20%7Bvalue%3A%20%22atl1-edge1%22%7D%2C%20model%3A%20%7Bvalue%3A%20%22Cisco%20ASR1002-HX%22%7D%7D%29%20%7B%0A%20%20%20%20%20%20%20%20ok%0A%20%20%20%20%20%20%20%20object%20%7B%0A%20%20%20%20%20%20%20%20%20%20id%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%7D%0A%20%20NetworkInterfaceCreate%28data%3A%20%7Bname%3A%20%7Bvalue%3A%20%22Ethernet1%22%7D%2C%20description%3A%20%7Bvalue%3A%20%22WAN%20interface%22%7D%2C%20device%3A%20%7Bid%3A%20%22atl1-edge1%22%7D%20%7D%29%20%7B%0A%20%20%20%20%20%20%20%20ok%0A%20%20%20%20%20%20%20%20object%20%7B%0A%20%20%20%20%20%20%20%20%20%20id%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%7D%0A%7D)
 
 In the Web UI we can now see that the device has a relation to the Ethernet1 interface.
 
@@ -285,6 +289,8 @@ mutation {
   }
 }
 ```
+
+[Open mutation in GraphiQL](http://localhost:8000/graphql?branch=network-device-generics&query=mutation%20%7B%0A%20%20NetworkDeviceCreate%28data%3A%20%7Bhostname%3A%20%7Bvalue%3A%20%22atl1-edge1%22%7D%2C%20model%3A%20%7Bvalue%3A%20%22Cisco%20ASR1002-HX%22%7D%7D%29%20%7B%0A%20%20%20%20%20%20%20%20ok%0A%20%20%20%20%20%20%20%20object%20%7B%0A%20%20%20%20%20%20%20%20%20%20id%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%7D%0A%20%20NetworkPhysicalInterfaceCreate%28data%3A%20%7Bname%3A%20%7Bvalue%3A%20%22Ethernet1%22%7D%2C%20description%3A%20%7Bvalue%3A%20%22WAN%20interface%22%7D%2C%20speed%3A%20%7Bvalue%3A%201000000000%7D%2C%20device%3A%20%7Bid%3A%20%22atl1-edge1%22%7D%7D%29%20%7B%0A%20%20%20%20%20%20%20%20ok%0A%20%20%20%20%20%20%20%20object%20%7B%0A%20%20%20%20%20%20%20%20%20%20id%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%7D%0A%20%20NetworkLogicalInterfaceCreate%28data%3A%20%7Bname%3A%20%7Bvalue%3A%20%22Vlan1%22%7D%2C%20description%3A%20%7Bvalue%3A%20%22SVI%20for%20Vlan%201%22%7D%2C%20device%3A%20%7Bid%3A%20%22atl1-edge1%22%7D%7D%29%20%7B%0A%20%20%20%20%20%20%20%20ok%0A%20%20%20%20%20%20%20%20object%20%7B%0A%20%20%20%20%20%20%20%20%20%20id%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%7D%0A%7D)
 
 In the detailed view of the device in the Web UI, we can now see that the device has 2 interfaces, but they are of a different kind.
 
