@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 const ETHERNET_NAME = "New ethernet name";
@@ -18,9 +18,8 @@ test.describe("Verifies the object creation", () => {
     });
   });
 
-  test.fixme("creates and verifies the objects values", async ({ page }) => {
+  test("creates and verifies the objects values", async ({ page }) => {
     await test.step("creates the object", async () => {
-      // FIXME: fix showing dropdown when InfraInterfaceL3 takes some time
       await Promise.all([
         page.waitForResponse((response) => {
           const reqData = response.request().postDataJSON();
@@ -41,6 +40,15 @@ test.describe("Verifies the object creation", () => {
       await page.getByText(DEVICE_NAME).click();
       await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: KIND }).click();
+
+      // Wait for query to load options
+      await page.waitForResponse((response) => {
+        const reqData = response.request().postDataJSON();
+        const status = response.status();
+
+        return reqData?.operationName === "InfraInterfaceL3" && status === 200;
+      });
+
       await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: ENDPOINT_NAME }).last().click();
       await page.getByRole("button", { name: "Create" }).click();
