@@ -34,7 +34,11 @@
 
 - name: "group/helm"
   description: "Issue related to the Helm chart"
-  color: "326CE5"
+  color: "326ce5"
+
+- name: "group/schema"
+  description: "Issue related to some schemas"
+  color: "fbceb1"
 
 # ----------------------------------
 # TYPE INFRAHUB (default)
