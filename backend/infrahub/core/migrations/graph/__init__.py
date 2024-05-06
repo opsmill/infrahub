@@ -6,6 +6,9 @@ from .m001_add_version_to_graph import Migration001
 from .m002_attribute_is_default import Migration002
 from .m003_relationship_parent_optional import Migration003
 from .m004_add_attr_documentation import Migration004
+from .m005_add_rel_read_only import Migration005
+from .m006_add_rel_on_delete import Migration006
+from .m007_add_rel_allow_override import Migration007
 
 if TYPE_CHECKING:
     from infrahub.core.root import Root
@@ -17,6 +20,9 @@ MIGRATIONS: List[type[Union[GraphMigration, InternalSchemaMigration]]] = [
     Migration002,
     Migration003,
     Migration004,
+    Migration005,
+    Migration006,
+    Migration007,
 ]
 
 

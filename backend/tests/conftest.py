@@ -59,6 +59,11 @@ def pytest_configure(config):
         setattr(config.option, "markexpr", markexpr)
 
 
+@pytest.fixture(scope="session", autouse=True)
+def add_tracker():
+    os.environ["PYTEST_RUNNING"] = "true"
+
+
 @pytest.fixture(scope="session")
 def event_loop():
     """Overrides pytest default function scoped event loop"""
