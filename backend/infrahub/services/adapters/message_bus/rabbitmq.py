@@ -190,7 +190,9 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         queue = await message_channel.get_queue(f"{self.settings.namespace}.rpcs")
         await queue.consume(callback=self.on_message, no_ack=False)
 
-    async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
+    async def publish(
+        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+    ) -> None:
         for enricher in self.message_enrichers:
             await enricher(message)
         message.assign_priority(priority=messages.message_priority(routing_key=routing_key))

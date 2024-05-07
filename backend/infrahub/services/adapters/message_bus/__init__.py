@@ -32,7 +32,9 @@ class InfrahubMessageBus:
     async def shutdown(self) -> None:
         """Shutdown the Message bus"""
 
-    async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
+    async def publish(
+        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+    ) -> None:
         raise NotImplementedError()
 
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:

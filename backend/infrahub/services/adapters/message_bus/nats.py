@@ -73,6 +73,7 @@ class NATSMessageBus(InfrahubMessageBus):
                 span.set_attribute("routing_key", message.subject)
 
                 if message.headers and "correlation_id" in message.headers:
+                    span.set_attribute("correlation_id", message.headers["correlation_id"])
                     future: asyncio.Future = self.futures.pop(message.headers["correlation_id"])
 
                     if future:
@@ -188,12 +189,22 @@ class NATSMessageBus(InfrahubMessageBus):
 
         await self._setup_callback(f"git-worker-{WORKER_IDENTITY}")
 
-    async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
+    async def _publish_with_delay(self, message: InfrahubMessage, routing_key: str, delay: MessageTTL) -> None:
+        await asyncio.sleep(delay.value / 1000)
+        await self.publish(message, routing_key)
+
+    async def publish(
+        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+    ) -> None:
         with trace.get_tracer(__name__).start_as_current_span("publish_message") as span:
             span.set_attribute("routing_key", routing_key)
 
             if delay:
-                # Delayed messages are directly handled in the callback using Nack
+                if is_retry:
+                    # Delayed retries are directly handled in the callback using Nack
+                    return
+                # Use asyncio task for delayed publish since NATS does not support that out of the box
+                asyncio.create_task(self._publish_with_delay(message, routing_key, delay))
                 return
 
             for enricher in self.message_enrichers:

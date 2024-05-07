@@ -369,7 +369,9 @@ class BusRPCMock(InfrahubMessageBus):
         self.response: List[InfrahubResponse] = []
         self.messages: List[InfrahubMessage] = []
 
-    async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
+    async def publish(
+        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+    ) -> None:
         self.messages.append(message)
 
     def add_mock_reply(self, response: InfrahubResponse):

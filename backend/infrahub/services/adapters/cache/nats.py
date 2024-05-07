@@ -57,7 +57,7 @@ class NATSCache(InfrahubCache):
 
     async def delete(self, key: str) -> None:
         key = self._tokenize_key_name(key)
-        await self.kv[0].delete(key)
+        await self._get_kv(key).delete(key)
 
     async def get(self, key: str) -> Optional[str]:
         key = self._tokenize_key_name(key)
@@ -102,6 +102,8 @@ class NATSCache(InfrahubCache):
             keys = await self._keys(self.kv[KVTTL.FIFTEEN.value], filter_pattern) + await self._keys(
                 self.kv[KVTTL.TWO_HOURS.value], filter_pattern
             )
+        elif filter_pattern.startswith("validator_execution_id."):
+            keys = await self._keys(self.kv[KVTTL.TWO_HOURS.value], filter_pattern)
         else:
             keys = await self._keys(self.kv[0], filter_pattern)
 

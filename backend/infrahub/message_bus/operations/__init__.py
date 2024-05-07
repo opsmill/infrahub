@@ -92,5 +92,5 @@ async def execute_message(routing_key: str, message_body: bytes, service: Infrah
             await set_check_status(message, conclusion="failure", service=service)
             return None
         message.increase_retry_count()
-        await service.send(message, delay=MessageTTL.FIVE)
+        await service.send(message, delay=MessageTTL.FIVE, is_retry=True)
         return MessageTTL.FIVE
