@@ -119,7 +119,8 @@ def status(context: Context, database: str = INFRAHUB_DATABASE):
 @task(optional=["database"])
 def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE):
     """Load the base schema for infrastructure."""
-    load_infrastructure_schema(context=context, database=database, namespace=NAMESPACE)
+    load_infrastructure_schema(context=context, database=database, namespace=NAMESPACE, add_wait=False)
+    restart_services(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
