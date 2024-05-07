@@ -141,8 +141,6 @@ export default function IpamTree() {
     setTreeData((tree) => updateTreeData(tree, element.id.toString(), treeNodes));
   };
 
-  console.log("defaultNamespace: ", defaultNamespace);
-
   return (
     <nav className="min-w-64">
       <h3 className="font-semibold text-sm mb-3">Navigation</h3>

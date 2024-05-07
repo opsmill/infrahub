@@ -56,11 +56,12 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
       prefixIds: prefix ? [prefix] : null,
       namespaces: namespace ? [namespace] : [defaultNamespace],
     },
+    skip: !defaultNamespace,
   });
 
   const { data: getPrefixKindData } = useQuery(GET_PREFIX_KIND, {
     variables: { ids: [prefix] },
-    skip: !prefix,
+    skip: !prefix || !defaultNamespace,
   });
 
   const prefixData = getPrefixKindData?.[IP_PREFIX_GENERIC]?.edges?.[0]?.node;
@@ -160,7 +161,7 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
         </div>
       )}
 
-      {loading && <LoadingScreen hideText />}
+      {(loading || !defaultNamespace) && <LoadingScreen hideText />}
 
       {data && (
         <Table rows={rows} columns={columns} onDelete={handleDelete} onUpdate={handleUpdate} />

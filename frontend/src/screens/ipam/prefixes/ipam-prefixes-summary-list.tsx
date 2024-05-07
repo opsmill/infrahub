@@ -36,6 +36,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
 
   const { loading, error, data, refetch } = useQuery(GET_PREFIXES, {
     variables: { namespaces: namespace ? [namespace] : [defaultNamespace] },
+    skip: !defaultNamespace,
   });
 
   useImperativeHandle(ref, () => ({ refetch }));
@@ -132,7 +133,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
 
   return (
     <div>
-      {loading && <LoadingScreen hideText />}
+      {(loading || !defaultNamespace) && <LoadingScreen hideText />}
 
       {data && (
         <Table rows={rows} columns={columns} onDelete={handleDelete} onUpdate={handleUpdate} />
