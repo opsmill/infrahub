@@ -4,6 +4,7 @@ import { useAtomValue } from "jotai";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import { StringParam, useQueryParam } from "use-query-params";
 import SlideOver from "../../../components/display/slide-over";
 import ModalDelete from "../../../components/modals/modal-delete";
 import { Table } from "../../../components/table/table";
@@ -14,6 +15,7 @@ import { DEFAULT_BRANCH_NAME } from "../../../config/constants";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
 import { GET_IP_ADDRESSES } from "../../../graphql/queries/ipam/ip-address";
+import { GET_PREFIX_KIND } from "../../../graphql/queries/ipam/prefixes";
 import useQuery from "../../../hooks/useQuery";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
@@ -29,10 +31,10 @@ import {
   IP_ADDRESS_GENERIC,
   IP_PREFIX_GENERIC,
 } from "../constants";
-import { GET_PREFIX_KIND } from "../../../graphql/queries/ipam/prefixes";
 
 const IpamIPAddressesList = forwardRef((props, ref) => {
   const { prefix } = useParams();
+  const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
   const [isLoading, setIsLoading] = useState(false);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
@@ -48,7 +50,7 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
   };
 
   const { loading, error, data, refetch } = useQuery(GET_IP_ADDRESSES, {
-    variables: { prefixIds: prefix ? [prefix] : null },
+    variables: { prefixIds: prefix ? [prefix] : null, namespaces: namespace ? [namespace] : [] },
   });
 
   const { data: getPrefixKindData } = useQuery(GET_PREFIX_KIND, {
@@ -142,7 +144,7 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
         <div className="flex items-center mb-2">
           <Link
             to={constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${prefixData.id}`, [
-              { name: IPAM_QSP, value: IPAM_TABS.PREFIX_DETAILS },
+              { name: IPAM_QSP.TAB, value: IPAM_TABS.PREFIX_DETAILS },
             ])}>
             {prefixData.display_label}
           </Link>
