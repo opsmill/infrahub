@@ -47,6 +47,7 @@ jobs:
       infrahub_poetry_files: ${{ steps.changes.ouputs.infrahub_poetry_files }}
       python_sdk_poetry_files: ${{ steps.changes.ouputs.python_sdk_poetry_files }}
       sync_poetry_files: ${{ steps.changes.ouputs.sync_poetry_files }}
+      github_workflows: ${{ steps.changes.outputs.github_workflows }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -133,6 +134,20 @@ jobs:
         with:
           config: .markdownlint.yaml
           globs: '**/*.{md,mdx}'
+
+  action-lint:
+    if: needs.files-changed.outputs.github_workflows == 'true'
+    needs: ["files-changed"]
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: Check workflow files
+        run: |
+          bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
+        shell: bash
 
   infrahub-poetry-check:
     if: |
