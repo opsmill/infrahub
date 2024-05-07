@@ -17,7 +17,10 @@ export const IPAM_ROUTE = {
   PREFIXES: `${IPAM_BASE_ROUTE}/prefixes`,
 } as const;
 
-export const IPAM_QSP = "ipam-tab";
+export const IPAM_QSP = {
+  TAB: "ipam-tab",
+  NAMESPACE: "namespace",
+};
 
 export const IP_SUMMARY_RELATIONSHIPS_BLACKLIST = [
   "ip_addresses",
