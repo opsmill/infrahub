@@ -119,7 +119,7 @@ class S3StorageSettings(BaseSettings):
 
 
 class StorageSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_STORAGE")
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_STORAGE_")
     driver: StorageDriver = StorageDriver.FileSystemStorage
     local: FileSystemStorageSettings = FileSystemStorageSettings()
     s3: S3StorageSettings = S3StorageSettings()
@@ -229,6 +229,7 @@ class ApiSettings(BaseSettings):
 
 
 class GitSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_GIT_")
     repositories_directory: str = "repositories"
     sync_interval: int = Field(
         default=10, ge=0, description="Time (in seconds) between git repositories synchronizations"
