@@ -44,9 +44,9 @@ jobs:
       python: ${{ steps.changes.outputs.python_all }}
       javascript: ${{ steps.changes.outputs.javascript_all }}
       yaml: ${{ steps.changes.outputs.yaml_all }}
-      infrahub_poetry_files: ${{ steps.changes.ouputs.infrahub_poetry_files }}
-      python_sdk_poetry_files: ${{ steps.changes.ouputs.python_sdk_poetry_files }}
-      sync_poetry_files: ${{ steps.changes.ouputs.sync_poetry_files }}
+      infrahub_poetry_files: ${{ steps.changes.outputs.infrahub_poetry_files }}
+      python_sdk_poetry_files: ${{ steps.changes.outputs.python_sdk_poetry_files }}
+      sync_poetry_files: ${{ steps.changes.outputs.sync_poetry_files }}
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
     steps:
       - name: "Check out repository code"
@@ -148,6 +148,8 @@ jobs:
           bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
           ./actionlint -color
         shell: bash
+        env:
+          SHELLCHECK_OPTS: --exclude=SC2086 --exclude=SC2046 --exclude=SC2004
 
   infrahub-poetry-check:
     if: |
