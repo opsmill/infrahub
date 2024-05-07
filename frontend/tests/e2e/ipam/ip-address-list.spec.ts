@@ -44,6 +44,7 @@ test.describe("/ipam/addresses - IP Address list", () => {
     await test.step("use breadcrumb to go back to parent prefix", async () => {
       await page.getByRole("link", { name: "All IP Addresses" }).click();
       await expect(page.getByText("Showing 1 to ")).toBeVisible();
+      await expect(page.locator("[aria-selected=true]")).toContainText("172.20.20.0/27");
       await expect(page.url()).toContain("/prefixes/");
     });
   });
