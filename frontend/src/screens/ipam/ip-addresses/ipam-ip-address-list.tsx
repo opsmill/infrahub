@@ -18,6 +18,7 @@ import { GET_IP_ADDRESSES } from "../../../graphql/queries/ipam/ip-address";
 import { GET_PREFIX_KIND } from "../../../graphql/queries/ipam/prefixes";
 import useQuery from "../../../hooks/useQuery";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
+import { defaultNamespaceAtom } from "../../../state/atoms/namespace.atom";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "../../../utils/string";
 import ErrorScreen from "../../error-screen/error-screen";
@@ -37,6 +38,7 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
   const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
   const [isLoading, setIsLoading] = useState(false);
   const branch = useAtomValue(currentBranchAtom);
+  const defaultNamespace = useAtomValue(defaultNamespaceAtom);
   const date = useAtomValue(datetimeAtom);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
@@ -50,7 +52,10 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
   };
 
   const { loading, error, data, refetch } = useQuery(GET_IP_ADDRESSES, {
-    variables: { prefixIds: prefix ? [prefix] : null, namespaces: namespace ? [namespace] : [] },
+    variables: {
+      prefixIds: prefix ? [prefix] : null,
+      namespaces: namespace ? [namespace] : [defaultNamespace],
+    },
   });
 
   const { data: getPrefixKindData } = useQuery(GET_PREFIX_KIND, {

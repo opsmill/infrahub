@@ -13,6 +13,7 @@ import {
   GET_PREFIX_ANCESTORS,
   GET_TOP_LEVEL_PREFIXES,
 } from "../../../graphql/queries/ipam/prefixes";
+import { defaultNamespaceAtom } from "../../../state/atoms/namespace.atom";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { constructPathForIpam } from "../common/utils";
 import { IPAM_QSP, IPAM_ROUTE, IPAM_TREE_ROOT_ID, IP_PREFIX_GENERIC } from "../constants";
@@ -28,14 +29,15 @@ import {
 export default function IpamTree() {
   const { prefix } = useParams();
   const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
+  const defaultNamespace = useAtomValue(defaultNamespaceAtom);
   const [selected, setSelected] = useState<NodeId[]>([]);
   const [isLoading, setLoading] = useState(true);
   const [treeData, setTreeData] = useState(EMPTY_IPAM_TREE);
   const [fetchTopLevelIpPrefixes] = useLazyQuery<PrefixData>(GET_TOP_LEVEL_PREFIXES, {
-    variables: { namespaces: namespace ? [namespace] : [] },
+    variables: { namespaces: namespace ? [namespace] : [defaultNamespace] },
   });
   const [fetchPrefixAncestors] = useLazyQuery<AncestorsData>(GET_PREFIX_ANCESTORS, {
-    variables: { namespaces: namespace ? [namespace] : [] },
+    variables: { namespaces: namespace ? [namespace] : [defaultNamespace] },
   });
   const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds: string[] }>(GET_PREFIXES_ONLY);
   const navigate = useNavigate();
@@ -124,7 +126,7 @@ export default function IpamTree() {
             });
           });
       });
-  }, [namespace]);
+  }, [namespace, defaultNamespace]);
 
   const onLoadData = async ({ element }: ITreeViewOnLoadDataProps) => {
     if (element.children.length > 0) return; // To avoid refetching data
@@ -139,11 +141,13 @@ export default function IpamTree() {
     setTreeData((tree) => updateTreeData(tree, element.id.toString(), treeNodes));
   };
 
+  console.log("defaultNamespace: ", defaultNamespace);
+
   return (
     <nav className="min-w-64">
-      <h3 className="font-semibold text-sm px-1 pt-1.5 pb-4">Navigation</h3>
+      <h3 className="font-semibold text-sm mb-3">Navigation</h3>
 
-      {isLoading ? (
+      {isLoading || !defaultNamespace ? (
         <IpamTreeSkeleton />
       ) : (
         <Tree
