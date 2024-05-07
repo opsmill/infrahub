@@ -2,17 +2,19 @@ import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
+import { StringParam, useQueryParam } from "use-query-params";
+import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
 import { Link } from "../../../components/utils/link";
 import { GET_PREFIX_KIND } from "../../../graphql/queries/ipam/prefixes";
+import { getObjectDetailsPaginated } from "../../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../../hooks/useQuery";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { getSchemaObjectColumns } from "../../../utils/getSchemaObjectColumns";
+import NoDataFound from "../../error-screen/no-data-found";
 import { IpDetailsCard } from "../common/ip-details-card";
-import { IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
-import { IpamSummarySkeleton } from "./ipam-summary-skeleton";
-import { getObjectDetailsPaginated } from "../../../graphql/queries/objects/getObjectDetails";
 import { constructPathForIpam } from "../common/utils";
-import { Alert, ALERT_TYPES } from "../../../components/utils/alert";
+import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
+import { IpamSummarySkeleton } from "./ipam-summary-skeleton";
 
 export default function IpamIPPrefixesSummaryDetails() {
   const { prefix } = useParams() as { prefix: string };
@@ -57,16 +59,20 @@ type PrefixSummaryContentProps = {
 const PrefixSummaryContent = ({ prefixId, prefixKind }: PrefixSummaryContentProps) => {
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
+  const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
 
   const prefixSchema = [...nodes, ...generics].find(({ kind }) => kind === prefixKind);
 
   const columns = getSchemaObjectColumns({ schema: prefixSchema });
+
+  const filters = namespace ? `ip_namespace__ids: ["${namespace}"]` : "";
 
   const query = gql(
     getObjectDetailsPaginated({
       objectid: prefixId,
       kind: prefixKind,
       columns,
+      filters,
     })
   );
 
@@ -77,7 +83,11 @@ const PrefixSummaryContent = ({ prefixId, prefixKind }: PrefixSummaryContentProp
 
   if (loading || !data || !prefixSchema) return <IpamSummarySkeleton />;
 
-  const prefixData = data[prefixKind].edges[0].node;
+  const prefixData = data[prefixKind]?.edges?.length && data[prefixKind]?.edges[0].node;
+
+  if (!prefixData) {
+    return <NoDataFound />;
+  }
 
   return (
     <div className="flex flex-wrap items-start gap-2">
