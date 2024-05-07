@@ -2,19 +2,13 @@ from __future__ import annotations
 
 import importlib
 import typing
-
 from datetime import datetime
-from typing import Any, TYPE_CHECKING, Dict, Type, List
-
-from pydantic import (
-    EmailStr,
-    HttpUrl,
-    IPvAnyAddress,
-    Json
-)
+from typing import TYPE_CHECKING, Dict, Type
+from typing import List as TypingList
 
 import graphene
 from graphene.types.generic import GenericScalar
+from pydantic import EmailStr, HttpUrl, IPvAnyAddress, Json
 
 from infrahub.core import registry
 
@@ -172,6 +166,7 @@ class Password(InfrahubDataType):
     infrahub = "String"
     pydantic = str
 
+
 class HashedPassword(InfrahubDataType):
     label: str = "Password"
     graphql = graphene.String
@@ -181,6 +176,7 @@ class HashedPassword(InfrahubDataType):
     graphql_filter = graphene.String
     infrahub = "HashedPassword"
     pydantic = str
+
 
 class URL(InfrahubDataType):
     label: str = "URL"
@@ -202,6 +198,7 @@ class File(InfrahubDataType):
     graphql_filter = graphene.String
     infrahub = "String"
     pydantic = str
+
 
 class MacAddress(InfrahubDataType):
     label: str = "MacAddress"
@@ -310,7 +307,7 @@ class List(InfrahubDataType):
     graphql_update = "ListAttributeUpdate"
     graphql_filter = GenericScalar
     infrahub = "ListAttribute"
-    pydantic = List[Any]
+    pydantic = TypingList[object]
 
 
 class JSON(InfrahubDataType):
@@ -332,7 +329,7 @@ class Any(InfrahubDataType):
     graphql_update = "AnyAttributeUpdate"
     graphql_filter = GenericScalar
     infrahub = "AnyAttribute"
-    pydantic = Any
+    pydantic = object
 
 
 ATTRIBUTE_TYPES: Dict[str, Type[InfrahubDataType]] = {

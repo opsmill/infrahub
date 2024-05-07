@@ -198,7 +198,8 @@ async def get_json_schema_by_kind(
         field_info = Field(default=default_value, description=attr.description)
         if attr.enum:
             extras = {"enum": attr.enum}
-            field_info = Field(default=default_value, description=attr.description, **extras)
+            # ignore types because mypy hates generic kwargs
+            field_info = Field(default=default_value, description=attr.description, **extras)  # type: ignore
         fields[attr.name] = (field_type, field_info)
 
     # Use Pydantic's create_model to dynamically create the class, ignore types because fields are Any, and mypy hates that
