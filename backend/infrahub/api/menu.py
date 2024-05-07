@@ -9,6 +9,7 @@ from infrahub.api.dependencies import get_branch_dep
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.schema import NodeSchema
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -85,8 +86,15 @@ async def get_menu(
         ],
     )
 
+    has_ipam = False
+
     for key in full_schema.keys():
         model = full_schema[key]
+
+        if isinstance(model, NodeSchema) and (
+            InfrahubKind.IPADDRESS in model.inherit_from or InfrahubKind.IPPREFIX in model.inherit_from
+        ):
+            has_ipam = True
 
         if not model.include_in_menu:
             continue
@@ -215,4 +223,9 @@ async def get_menu(
         ],
     )
 
-    return [objects, ipam, groups, unified_storage, change_control, deployment, admin]
+    menu_items = [objects]
+    if has_ipam:
+        menu_items.append(ipam)
+    menu_items.extend([groups, unified_storage, change_control, deployment, admin])
+
+    return menu_items
