@@ -1,17 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime
 from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from pydantic import (
     BaseModel,
-    EmailStr,
     Field,
-    HttpUrl,
-    IPvAnyAddress,
-    IPvAnyNetwork,
-    Json,
     computed_field,
     create_model,
     model_validator,
@@ -33,6 +27,7 @@ from infrahub.exceptions import MigrationError, PermissionDeniedError
 from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
+from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
@@ -194,47 +189,22 @@ async def get_json_schema_by_kind(
 ) -> dict:
     log.debug("json_schema_kind_request", branch=branch.name)
 
-    schema = registry.schema.get(name=schema_kind, branch=branch).model_dump()
-
-    # Redefined ATTRIBUTE_TYPES with Python standard types or Pydantic compatible types
-    JSON_ATTRIBUTE_TYPES = {
-        "ID": int,  # Assuming IDs are integers
-        "Dropdown": str,  # Dropdowns can be represented as strings
-        "Text": str,
-        "TextArea": str,
-        "DateTime": datetime,
-        "Email": EmailStr,
-        "Password": str,  # Passwords can be any string
-        "HashedPassword": str,  # Hashed passwords are also strings
-        "URL": HttpUrl,
-        "File": str,  # File paths or identifiers as strings
-        "MacAddress": str,  # MAC addresses can be straightforward strings
-        "Color": str,  # Colors often represented as hex strings
-        "Number": float,  # Numbers can be floats for general use
-        "Bandwidth": float,  # Bandwidth in some units, represented as a float
-        "IPHost": IPvAnyAddress,
-        "IPNetwork": IPvAnyNetwork,
-        "Boolean": bool,
-        "Checkbox": bool,  # Checkboxes represent boolean values
-        "List": List[Any],  # Lists can contain any type of items
-        "JSON": Json,  # Pydantic's Json type handles arbitrary JSON objects
-        "Any": Any,  # Any type allowed
-    }
+    schema = registry.schema.get(name=schema_kind, branch=branch)
 
     fields = {}
-    for attr in schema["attributes"]:
-        field_type = JSON_ATTRIBUTE_TYPES.get(attr["kind"], str)
-        default_value = attr["default_value"] if attr["optional"] else ...
-        field_info = Field(default=default_value, description=attr.get("description", ""))
-        if attr.get("enum"):
-            extras = {"enum": attr["enum"]}
-            field_info = Field(default=default_value, description=attr.get("description", ""), **extras)
-        fields[attr["name"]] = (field_type, field_info)
+    for attr in schema.attributes:
+        field_type = ATTRIBUTE_TYPES[attr.kind].pydantic
+        default_value = attr.default_value if attr.optional else ...
+        field_info = Field(default=default_value, description=attr.description)
+        if attr.enum:
+            extras = {"enum": attr.enum}
+            field_info = Field(default=default_value, description=attr.description, **extras)
+        fields[attr.name] = (field_type, field_info)
 
     # Use Pydantic's create_model to dynamically create the class, ignore types because fields are Any, and mypy hates that
-    json_schema = create_model(schema["name"], **fields).model_json_schema()  # type: ignore
+    json_schema = create_model(schema.name, **fields).model_json_schema()  # type: ignore
 
-    json_schema["description"] = schema["description"]
+    json_schema["description"] = schema.description
     json_schema["$schema"] = "http://json-schema.org/draft-07/schema#"
 
     return json_schema
