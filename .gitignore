@@ -19,11 +19,7 @@ development/docker-compose.dev-override.yml
 .direnv/
 .envrc
 
-# Retype App
-.retype/*
-docs/.retype
 docs/build
-retype.manifest
 
 storage/*
 .coverage.*
