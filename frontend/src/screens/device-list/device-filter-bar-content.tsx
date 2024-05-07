@@ -11,8 +11,8 @@ import { resolve } from "../../utils/objects";
 import { DynamicControl } from "../edit-form-hook/dynamic-control";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import ErrorScreen from "../error-screen/error-screen";
+import NoDataFound from "../error-screen/no-data-found";
 import LoadingScreen from "../loading-screen/loading-screen";
-import NoDataFound from "../no-data-found/no-data-found";
 
 // TODO: Functionnal programming update
 // TODO: Pagination with infitie scrolling for the select

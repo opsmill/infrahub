@@ -4,8 +4,8 @@ import { getValidatorDetails } from "../../../graphql/queries/diff/getValidatorD
 import usePagination from "../../../hooks/usePagination";
 import useQuery from "../../../hooks/useQuery";
 import ErrorScreen from "../../error-screen/error-screen";
+import NoDataFound from "../../error-screen/no-data-found";
 import LoadingScreen from "../../loading-screen/loading-screen";
-import NoDataFound from "../../no-data-found/no-data-found";
 import { Check } from "./check";
 
 type tValidatorDetails = {

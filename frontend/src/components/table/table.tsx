@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
-import NoDataFound from "../../screens/no-data-found/no-data-found";
+import NoDataFound from "../../screens/error-screen/no-data-found";
 import { classNames } from "../../utils/common";
 import { Button } from "../buttons/button-primitive";
 

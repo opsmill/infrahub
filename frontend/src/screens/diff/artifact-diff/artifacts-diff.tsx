@@ -9,8 +9,8 @@ import { CONFIG } from "../../../config/config";
 import { QSP } from "../../../config/qsp";
 import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom";
 import { fetchUrl, getUrlWithQsp } from "../../../utils/fetch";
+import NoDataFound from "../../error-screen/no-data-found";
 import LoadingScreen from "../../loading-screen/loading-screen";
-import NoDataFound from "../../no-data-found/no-data-found";
 import { ArtifactRepoDiff } from "./artifact-repo-diff";
 
 export const ArtifactsDiff = forwardRef((props, ref) => {

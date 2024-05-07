@@ -14,6 +14,7 @@ import graphqlClient from "../../graphql/graphqlClientApollo";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
+import { useAuth } from "../../hooks/useAuth";
 import UnlinkIcon from "../../images/icons/unlink.svg";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
@@ -23,9 +24,8 @@ import { classNames } from "../../utils/common";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
-import NoDataFound from "../no-data-found/no-data-found";
+import NoDataFound from "../error-screen/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
-import { useAuth } from "../../hooks/useAuth";
 
 type iRelationDetailsProps = {
   parentNode: any;

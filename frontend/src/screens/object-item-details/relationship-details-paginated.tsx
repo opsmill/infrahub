@@ -33,7 +33,7 @@ import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
-import NoDataFound from "../no-data-found/no-data-found";
+import NoDataFound from "../error-screen/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import { ObjectAttributeRow } from "./object-attribute-row";
 

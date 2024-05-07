@@ -44,10 +44,10 @@ import {
 } from "../../utils/getSchemaObjectColumns";
 import { Generate } from "../artifacts/generate";
 import ErrorScreen from "../error-screen/error-screen";
+import NoDataFound from "../error-screen/no-data-found";
 import AddObjectToGroup from "../groups/add-object-to-group";
 import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
-import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { TaskItemDetails } from "../tasks/task-item-details";
