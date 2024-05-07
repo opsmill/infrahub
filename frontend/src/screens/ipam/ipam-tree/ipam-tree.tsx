@@ -27,7 +27,7 @@ import { ipamTreeAtom } from "./ipam-tree.state";
 
 export default function IpamTree() {
   const { prefix } = useParams();
-  const [selected, setSelected] = useState<NodeId[]>([]);
+  const [expandedIds, setExpandedIds] = useState<NodeId[]>([]);
   const [isLoading, setLoading] = useState(true);
   const [treeData, setTreeData] = useAtom(ipamTreeAtom);
   const [fetchTopLevelIpPrefixes] = useLazyQuery<PrefixData>(GET_TOP_LEVEL_PREFIXES);
@@ -112,7 +112,7 @@ export default function IpamTree() {
 
               const currentPrefix = newTree.find(({ id }) => id === prefix);
               setTreeData(newTree);
-              setSelected(
+              setExpandedIds(
                 currentPrefix ? [...orderedAncestorIds, currentPrefix.id] : orderedAncestorIds
               );
               setLoading(false);
@@ -145,8 +145,8 @@ export default function IpamTree() {
           data={treeData}
           itemContent={IpamTreeItem}
           onLoadData={onLoadData}
-          defaultSelectedIds={selected}
-          defaultExpandedIds={selected}
+          selectedIds={prefix ? [prefix] : undefined}
+          defaultExpandedIds={expandedIds}
           onNodeSelect={({ element, isSelected }) => {
             if (!isSelected) return;
 
