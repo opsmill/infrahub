@@ -27,17 +27,7 @@ type AlertProps = {
 };
 
 export const Alert = (props: AlertProps) => {
-  const {
-    // Toast props
-    closeToast,
-    // toastProps,
-    // Custom props
-    message,
-    details,
-    onDismiss,
-    type,
-    ...otherProps
-  } = props;
+  const { closeToast, message, details, onDismiss, type, ...otherProps } = props;
 
   const getIcon = () => {
     switch (type) {
