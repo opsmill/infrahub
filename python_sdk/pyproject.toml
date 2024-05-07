@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-sdk"
-version = "0.10.0"
+version = "0.10.1"
 description = "Python Client to interact with Infrahub"
 authors = ["OpsMill <contact@opsmill.com>"]
 readme = "README.md"
@@ -33,6 +33,7 @@ pendulum = [
     { version = ">=3", python = ">=3.12" }
 ]
 gitpython = "^3"
+ujson = "^5"
 Jinja2 = { version = "^3", optional = true }
 numpy = [
     { version = "^1.24.2", optional = true,  python = ">=3.9,<3.12" },
@@ -42,7 +43,6 @@ pyarrow = { version = "^14", optional = true }
 rich = { version = "^13", optional = true }
 toml = { version = "^0.10", optional = true }
 typer = { version = "^0", optional = true }
-ujson = { version = "^5", optional = true }
 pytest = { version = "*", optional = true }
 pyyaml = { version = "^6", optional = true }
 
@@ -75,7 +75,6 @@ ctl = [
     "rich",
     "toml",
     "typer",
-    "ujson"
 ]
 tests = [
     "Jinja2",
@@ -92,7 +91,6 @@ all = [
     "rich",
     "toml",
     "typer",
-    "ujson"
 ]
 
 [tool.poetry.scripts]
