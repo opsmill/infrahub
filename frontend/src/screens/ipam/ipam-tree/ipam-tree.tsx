@@ -62,7 +62,7 @@ export default function IpamTree() {
           data={treeData}
           itemContent={IpamTreeItem}
           onLoadData={onLoadData}
-          selectedIds={prefix ? [prefix] : undefined}
+          selectedIds={prefix ? [prefix] : []}
           defaultExpandedIds={expandedIds}
           onNodeSelect={({ element, isSelected }) => {
             if (!isSelected) return;
