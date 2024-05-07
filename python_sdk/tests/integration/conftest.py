@@ -1,10 +1,10 @@
 import asyncio
-import json
 import os
 from typing import Any, Dict, List, Optional
 
 import httpx
 import pytest
+import ujson
 from fastapi.testclient import TestClient
 from infrahub import config
 from infrahub.components import ComponentType
@@ -28,6 +28,11 @@ BUILD_NAME = os.environ.get("INFRAHUB_BUILD_NAME", "infrahub")
 TEST_IN_DOCKER = str_to_bool(os.environ.get("INFRAHUB_TEST_IN_DOCKER", "false"))
 
 
+@pytest.fixture(scope="session", autouse=True)
+def add_tracker():
+    os.environ["PYTEST_RUNNING"] = "true"
+
+
 # pylint: disable=redefined-outer-name
 class InfrahubTestClient(TestClient):
     def _request(
@@ -40,7 +45,7 @@ class InfrahubTestClient(TestClient):
     ) -> httpx.Response:
         content = None
         if payload:
-            content = str(json.dumps(payload)).encode("UTF-8")
+            content = str(ujson.dumps(payload)).encode("UTF-8")
         with self as client:
             return client.request(
                 method=method.value,
@@ -96,7 +101,7 @@ def execute_before_any_test(worker_id, tmpdir_factory):
         config.SETTINGS.storage.local = config.FileSystemStorageSettings(path="/opt/infrahub/storage")
     else:
         storage_dir = tmpdir_factory.mktemp("storage")
-        config.SETTINGS.storage.local = config.FileSystemStorageSettings(path=str(storage_dir))
+        config.SETTINGS.storage.local.path_ = str(storage_dir)
 
     config.SETTINGS.broker.enable = False
     config.SETTINGS.cache.enable = True

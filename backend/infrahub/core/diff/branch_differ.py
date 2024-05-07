@@ -120,9 +120,7 @@ class BranchDiffer:
             raise DiffRangeValidationError("diff_to must be later than diff_from")
 
         # Results organized by Branch
-        self._results: Dict[str, dict] = defaultdict(
-            lambda: {"nodes": {}, "rels": defaultdict(lambda: {}), "files": {}}
-        )
+        self._results: Dict[str, dict] = defaultdict(lambda: {"nodes": {}, "rels": defaultdict(dict), "files": {}})
 
         self._calculated_diff_nodes_at: Optional[Timestamp] = None
         self._calculated_diff_rels_at: Optional[Timestamp] = None
@@ -302,7 +300,7 @@ class BranchDiffer:
         Path for a relationship : ("relationships", rel_name, rel_id, prop_type
 
         Returns:
-            Dict[str, set]: Returns a dictionnary by branch with a set of paths
+            Dict[str, set]: Returns a Dictionary by branch with a set of paths
         """
 
         paths: Dict[str, Set[ModifiedPath]] = {}
@@ -660,9 +658,9 @@ class BranchDiffer:
             self._results[branch_name]["nodes"][node_id].attributes[attr_name].origin_rel_id = result.get(
                 "r1"
             ).element_id
-            self._results[branch_name]["nodes"][node_id].attributes[attr_name].properties[
-                prop_type
-            ] = PropertyDiffElement(**item)
+            self._results[branch_name]["nodes"][node_id].attributes[attr_name].properties[prop_type] = (
+                PropertyDiffElement(**item)
+            )
 
         self._calculated_diff_nodes_at = Timestamp()
 

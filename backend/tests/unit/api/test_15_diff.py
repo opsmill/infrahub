@@ -1,7 +1,7 @@
 import pytest
 from deepdiff import DeepDiff
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import NULL_VALUE, InfrahubKind
 from infrahub.core.diff.payload_builder import get_display_labels, get_display_labels_per_kind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -118,7 +118,7 @@ async def r1_update_01(data_diff_attribute):
                                 "type": "HAS_VALUE",
                                 "changed_at": "2023-08-01T11:07:25.255688Z",
                                 "action": "updated",
-                                "value": {"new": "Second update in Branch", "previous": "NULL"},
+                                "value": {"new": "Second update in Branch", "previous": NULL_VALUE},
                             }
                         ],
                     },

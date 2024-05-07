@@ -43,7 +43,7 @@ async def test_artifact_definition_endpoint(
         transformation=t1,
         content_type="application/json",
         artifact_name="myartifact",
-        parameters='{"name": "name__value"}',
+        parameters={"value": {"name": "name__value"}},
     )
     await ad1.save(db=db)
 

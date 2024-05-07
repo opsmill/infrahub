@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -10,7 +10,7 @@ from infrahub.exceptions import ValidationError
 from .interface import NodeConstraintInterface
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import GenericSchema, NodeSchema
+    from infrahub.core.schema import MainSchemaTypes
 
 
 class NodeAttributeUniquenessConstraint(NodeConstraintInterface):
@@ -25,7 +25,7 @@ class NodeAttributeUniquenessConstraint(NodeConstraintInterface):
             if filters and unique_attr.name not in filters:
                 continue
 
-            comparison_schema: Union[NodeSchema, GenericSchema] = node_schema
+            comparison_schema: MainSchemaTypes = node_schema
             attr = getattr(node, unique_attr.name)
             if unique_attr.inherited:
                 for generic_parent_schema_name in node_schema.inherit_from:

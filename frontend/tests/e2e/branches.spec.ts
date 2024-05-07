@@ -3,6 +3,14 @@ import { ACCOUNT_STATE_PATH } from "../constants";
 import { createBranch } from "../utils";
 
 test.describe("Branches creation and deletion", () => {
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test.describe("when not logged in", () => {
     test("should not be able to create a branch if not logged in", async ({ page }) => {
       await page.goto("/");
@@ -45,7 +53,20 @@ test.describe("Branches creation and deletion", () => {
     test("should delete a non-selected branch and remain on the current branch", async ({
       page,
     }) => {
-      await page.goto("/");
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const status = response.status();
+
+          return response.url().includes("menu?branch=main") && status === 200;
+        }), // wait for the menu to load otherwise issues may happen when creating branch
+        page.waitForResponse((response) => {
+          const status = response.status();
+
+          return response.url().includes("/graphql/main") && status === 200;
+        }), // wait for the menu to load otherwise issues may happen when creating branch
+
+        page.goto("/"),
+      ]);
       await createBranch(page, "test456");
       await page.goto("/branches/test456?branch=test123");
 

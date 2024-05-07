@@ -1,0 +1,70 @@
+---
+title: Message Bus Events
+---
+
+# Message bus events
+
+This document provides detailed documentation for all events used in the Infrahub message bus system.
+
+:::info
+
+For more detailed explanations on how to use these events within Infrahub, see the [event handling](/topics/event-handling) topic.
+
+:::
+
+## Messages events
+<!-- markdownlint-disable MD012 -->
+{% for primary, secondaries in message_classes.items() -%}
+{% for secondary, events in secondaries.items() -%}
+<!-- vale off -->
+### {{ primary | replace("_", " ") | title  }} {{ secondary.split('.')[-1] | replace("_", " ") | title  }}
+<!-- vale on -->
+
+{% for event in events -%}
+<!-- vale off -->
+#### Event {{ event.event_name }}
+<!-- vale on -->
+{% if event.description %}
+**Description**: {{ event.description }}
+{% endif %}
+**Priority**: {{ event.priority }}
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+{% for field in event.fields -%}
+{{ "| **{}** | {} | {} | {} |".format(field.name, field.description | replace("\n", " "), field.type , field.default if field.default else "None") }}
+{% endfor -%}
+<!-- vale on -->
+{% endfor %}
+{% endfor %}
+{% endfor %}
+
+## Responses events
+
+{% for primary, secondaries in message_classes.items() -%}
+{% for secondary, events in secondaries.items() -%}
+<!-- vale off -->
+### {{ primary | replace("_", " ") | title  }} {{ secondary.split('.')[-1] | replace("_", " ") | title  }}
+<!-- vale on -->
+
+{% for event in events -%}
+<!-- vale off -->
+#### Event {{ event.event_name }}
+<!-- vale on -->
+{% if event.description %}
+**Description**: {{ event.description }}
+{% endif %}
+**Priority**: {{ event.priority }}
+
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+{% for field in event.fields -%}
+{{ "| **{}** | {} | {} | {} |".format(field.name, field.description | replace("\n", " "), field.type , field.default if field.default else "None") }}
+{% endfor -%}
+<!-- vale on -->
+{% endfor %}
+{% endfor %}
+{% endfor %}

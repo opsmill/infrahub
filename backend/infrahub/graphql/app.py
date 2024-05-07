@@ -5,7 +5,6 @@ This code has been forked from https://github.com/ciscorn/starlette-graphene3 in
 from __future__ import annotations
 
 import asyncio
-import json
 from inspect import isawaitable
 from typing import (
     TYPE_CHECKING,
@@ -22,6 +21,7 @@ from typing import (
     cast,
 )
 
+import ujson
 from graphql import (
     ExecutionContext,
     ExecutionResult,
@@ -38,6 +38,7 @@ from graphql.error.graphql_error import format_error
 from graphql.utilities import (
     get_operation_ast,
 )
+from opentelemetry import trace
 from starlette.datastructures import UploadFile
 from starlette.requests import HTTPConnection, Request
 from starlette.responses import JSONResponse, Response
@@ -45,7 +46,6 @@ from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
-from infrahub.core import get_branch
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, Error
@@ -137,7 +137,7 @@ class InfrahubGraphQLApp:
                 # Retrieve the branch name from the request and validate that it exist in the database
                 try:
                     branch_name = request.path_params.get("branch_name", registry.default_branch)
-                    branch = await get_branch(db=db, branch=branch_name)
+                    branch = await registry.get_branch(db=db, branch=branch_name)
                 except BranchNotFoundError as exc:
                     response = JSONResponse({"errors": [exc.message]}, status_code=404)
 
@@ -162,7 +162,7 @@ class InfrahubGraphQLApp:
 
             async with db.start_session() as db:
                 branch_name = websocket.path_params.get("branch_name", registry.default_branch)
-                branch = await get_branch(db=db, branch=branch_name)
+                branch = await registry.get_branch(db=db, branch=branch_name)
 
                 await self._run_websocket_server(db=db, branch=branch, websocket=websocket)
 
@@ -223,17 +223,20 @@ class InfrahubGraphQLApp:
             "query_id": "",
         }
 
-        with GRAPHQL_DURATION_METRICS.labels(**labels).time():
-            result = await graphql(
-                schema=graphql_params.schema,
-                source=query,
-                context_value=graphql_params.context,
-                root_value=self.root_value,
-                middleware=self.middleware,
-                variable_values=variable_values,
-                operation_name=operation_name,
-                execution_context_class=self.execution_context_class,
-            )
+        with trace.get_tracer(__name__).start_as_current_span("execute_graphql") as span:
+            span.set_attributes(labels)
+
+            with GRAPHQL_DURATION_METRICS.labels(**labels).time():
+                result = await graphql(
+                    schema=graphql_params.schema,
+                    source=query,
+                    context_value=graphql_params.context,
+                    root_value=self.root_value,
+                    middleware=self.middleware,
+                    variable_values=variable_values,
+                    operation_name=operation_name,
+                    execution_context_class=self.execution_context_class,
+                )
 
         response: Dict[str, Any] = {"data": result.data}
         if result.errors:
@@ -454,14 +457,14 @@ async def _get_operation_from_multipart(
         raise ValueError("Request body is not a valid multipart/form-data")
 
     try:
-        operations = json.loads(request_body.get("operations"))
+        operations = ujson.loads(request_body.get("operations"))
     except (TypeError, ValueError):
         raise ValueError("'operations' must be a valid JSON")
     if not isinstance(operations, (dict, list)):
         raise ValueError("'operations' field must be an Object or an Array")
 
     try:
-        name_path_map = json.loads(request_body.get("map"))
+        name_path_map = ujson.loads(request_body.get("map"))
     except (TypeError, ValueError):
         raise ValueError("'map' field must be a valid JSON")
     if not isinstance(name_path_map, dict):
@@ -474,8 +477,8 @@ async def _get_operation_from_multipart(
             raise ValueError(f"File fields don't contain a valid UploadFile type for '{name}' mapping")
 
         for path in paths:
-            path = tuple(path.split("."))
-            _inject_file_to_operations(operations, file, path)
+            path_components = tuple(path.split("."))
+            _inject_file_to_operations(operations, file, path_components)
 
     return operations
 

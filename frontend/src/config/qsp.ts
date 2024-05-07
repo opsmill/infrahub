@@ -6,11 +6,12 @@ export const QSP = {
   BRANCH_FILTER_TIME_TO: "time_to",
   BRANCH: "branch",
   KIND: "kind",
-  VALIDATOR_DETAILS: "validator",
   DATETIME: "at",
   FILTER: "filters",
   PAGINATION: "pagination",
   PROPOSED_CHANGES_TAB: "pr_tab",
+  QUERY: "query",
   TAB: "tab",
   TASK_ID: "task_id",
+  LIST_SEARCH: "list-search",
 };

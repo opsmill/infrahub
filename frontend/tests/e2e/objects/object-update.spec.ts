@@ -1,8 +1,16 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe.skip("Object update", () => {
+test.describe("Object update", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
 
   test("should contain initial values and update them", async ({ page }) => {
     await test.step("access the object", async () => {
@@ -40,7 +48,7 @@ test.describe.skip("Object update", () => {
         .locator("../..")
         .getByTestId("select-open-option-button")
         .click();
-      await page.getByRole("option", { name: "AS701" }).click();
+      await page.getByRole("option", { name: "AS701 701" }).click();
 
       await page
         .getByTestId("side-panel-container")
@@ -51,6 +59,13 @@ test.describe.skip("Object update", () => {
       await page.getByRole("option", { name: "blue" }).click(); // Removes blue
       await page.getByRole("option", { name: "green" }).click(); // Adds green
       await page.getByRole("option", { name: "red" }).click(); // Adds red
+
+      await page
+        .getByTestId("side-panel-container")
+        .getByText("Tags")
+        .locator("..")
+        .getByTestId("select-open-option-button")
+        .click();
 
       await page.getByRole("button", { name: "Save" }).click();
     });
@@ -63,7 +78,7 @@ test.describe.skip("Object update", () => {
       // Verify updates in view
       await expect(page.getByText("Nameatl1-core1-new-name")).toBeVisible();
       await expect(page.getByText("New description")).toBeVisible();
-      await expect(page.getByRole("link", { name: "AS701" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "AS701 701" })).toBeVisible();
       await expect(page.getByText("Active")).toBeVisible();
       await expect(page.getByText("Edge Router")).toBeVisible();
       await expect(page.getByRole("link", { name: "green" })).toBeVisible();

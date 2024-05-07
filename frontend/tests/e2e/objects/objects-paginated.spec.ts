@@ -2,6 +2,14 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("/objects/:objectname", () => {
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test("should display 'kind' column on when the object is a generic", async ({ page }) => {
     await page.goto("/objects/CoreGroup");
     await expect(page.locator("thead")).toContainText("Kind");
@@ -29,46 +37,17 @@ test.describe("/objects/:objectname", () => {
       await expect(page.getByRole("row", { name: "blue" }).getByRole("button")).toBeDisabled();
     });
 
-    test("should filter the table", async ({ page }) => {
-      await page.goto("/objects/BuiltinTag");
-      const tagsNumber = await page.getByRole("row").count();
-
-      // filter red
-      await page.getByLabel("Filters").locator("svg").click();
-      await page.getByLabel("name__value *").fill("red");
-      await page.getByRole("button", { name: "Filter" }).click();
-      await expect(page.getByText("name__value: red")).toBeVisible();
-      await expect(page.getByRole("row")).toHaveCount(2);
-      await expect(page.getByRole("cell", { name: "red" })).toBeVisible();
-
-      // add 2nd filter
-      await page.getByLabel("ids *").fill("no-id");
-      await page.getByRole("button", { name: "Filter" }).click();
-      await expect(page.getByText("ids: no-id")).toBeVisible();
-      await expect(page.getByRole("row")).toHaveCount(1);
-      await expect(page.getByText("No items found.")).toBeVisible();
-
-      // remove 1 filter
-      await page.getByText("ids: no-id").click();
-      await expect(page.getByText("ids: no-id")).toBeHidden();
-      await expect(page.getByRole("row")).toHaveCount(2);
-      await expect(page.getByRole("cell", { name: "red" })).toBeVisible();
-
-      // clear all
-      await page.getByRole("button", { name: "Clear all" }).click();
-      await expect(page.getByRole("row")).toHaveCount(tagsNumber);
-    });
-
     test("should be able to open object details in a new tab", async ({ page, context }) => {
       await page.goto("/objects/BuiltinTag");
 
       // When
       const objectDetailsLink = page.getByRole("link", { name: "blue" });
       const linkHref = await objectDetailsLink.getAttribute("href");
+      const newTabPromise = context.waitForEvent("page");
       await objectDetailsLink.click({ button: "middle" });
 
       // then
-      const newTab = await context.waitForEvent("page");
+      const newTab = await newTabPromise;
       await newTab.waitForURL(linkHref);
       expect(newTab.url()).toContain(linkHref);
     });

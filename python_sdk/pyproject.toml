@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-sdk"
-version = "0.9.0"
+version = "0.10.0"
 description = "Python Client to interact with Infrahub"
 authors = ["OpsMill <contact@opsmill.com>"]
 readme = "README.md"
@@ -14,7 +14,6 @@ packages = [
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -22,22 +21,22 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 pydantic = ">=1.7.4,!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0"
 graphql-core = ">=3.1,<3.3"
 httpx = [
-    { version = ">=0.20", python = ">=3.8,<3.11"},
+    { version = ">=0.20", python = ">=3.9,<3.11"},
     { version = ">=0.23", python = ">=3.11"}
 ]
 pendulum = [
-    { version = ">=2", python = ">=3.8,<3.12" },
+    { version = ">=2", python = ">=3.9,<3.12" },
     { version = ">=3", python = ">=3.12" }
 ]
 gitpython = "^3"
 Jinja2 = { version = "^3", optional = true }
 numpy = [
-    { version = "^1.24.2", optional = true , python = ">=3.8,<3.12" },
-    { version = "^1.26.2", optional = true , python = ">=3.12" }
+    { version = "^1.24.2", optional = true,  python = ">=3.9,<3.12" },
+    { version = "^1.26.2", optional = true,  python = ">=3.12" }
 ]
 pyarrow = { version = "^14", optional = true }
 rich = { version = "^13", optional = true }
@@ -52,19 +51,18 @@ pytest = "*"
 pytest-asyncio = "<0.23"
 pytest-clarity = "^1.0.1"
 pytest-cov = "^4.0.0"
-pytest-httpx = "*"
+pytest-httpx = ">=0.30"
 yamllint = "*"
 pylint = "*"
 mypy = "*"
 ipython = "*"
 requests = "*"
 pre-commit = "^2.20.0"
-autoflake = "*"
 types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
-ruff = "^0.1.5"
+ruff = "0.4.1"
 pytest-xdist = "^3.3.1"
 types-python-slugify = "^8.0.0.3"
 
@@ -84,6 +82,17 @@ tests = [
     "pytest",
     "pyyaml",
     "rich"
+]
+all = [
+    "Jinja2",
+    "numpy",
+    "pyarrow",
+    "pytest",
+    "pyyaml",
+    "rich",
+    "toml",
+    "typer",
+    "ujson"
 ]
 
 [tool.poetry.scripts]
@@ -137,6 +146,7 @@ disable = """,
     protected-access,
     import-self,
     wrong-import-order,
+    multiple-statements,
     """
 
 [tool.pylint.miscellaneous]
@@ -190,14 +200,16 @@ exclude = [
         "examples",
 ]
 
+
+[tool.ruff.lint]
+preview = true
+
 task-tags = [
     "FIXME",
     "TODO",
     "XXX",
 ]
 
-[tool.ruff.lint]
-preview = true
 
 select = [
     "ASYNC", # flake8-async
@@ -240,7 +252,6 @@ ignore = [
     "C414",    # Unnecessary `list` call within `sorted()`
     "N802",    # Function name should be lowercase
     "N806",    # Variable in function should be lowercase
-    "PIE808",  # [*] Unnecessary `start` argument in `range`
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments in function definition
     "PLR0917", # Too many positional arguments
@@ -266,11 +277,11 @@ known-first-party = ["infrahub_sdk", "infrahub_ctl"]
 [tool.ruff.lint.pycodestyle]
 max-line-length = 150
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 # Target max-complexity=10
 max-complexity = 17
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 
 "tests/**/*.py" = [
     "PLR2004", # Magic value used in comparison

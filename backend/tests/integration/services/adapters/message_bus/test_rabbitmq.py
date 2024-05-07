@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
@@ -10,6 +9,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
+import ujson
 from aio_pika import Message
 
 from infrahub import config
@@ -351,8 +351,8 @@ async def test_rabbitmq_publish(rabbitmq_api: RabbitMQManager) -> None:
     delayed_queue = await bus.channel.get_queue(name=f"{bus.settings.namespace}.delay.five_seconds")
     message_from_queue = await queue.get()
     delayed_message_from_queue = await delayed_queue.get()
-    parsed_message = json.loads(message_from_queue.body)
-    parsed_delayed_message = json.loads(delayed_message_from_queue.body)
+    parsed_message = ujson.loads(message_from_queue.body)
+    parsed_delayed_message = ujson.loads(delayed_message_from_queue.body)
 
     await bus.shutdown()
 
@@ -431,8 +431,8 @@ async def test_rabbitmq_rpc(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger)
     assert response.data.response == "Reply to: You can reply to this message"
 
 
-async def test_rabbitmq_subscribe(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:
-    """Validates the subscribe method."""
+async def test_rabbitmq_on_message(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:
+    """Validates the on_message method."""
 
     bus = RabbitMQMessageBus(settings=rabbitmq_api.settings)
     api_service = InfrahubServices(message_bus=bus, component_type=ComponentType.API_SERVER)
@@ -442,18 +442,15 @@ async def test_rabbitmq_subscribe(rabbitmq_api: RabbitMQManager, fake_log: FakeL
 
     await bus.initialize(service=agent_service)
 
-    subscribe_task = asyncio.create_task(bus.subscribe())
-
     await agent_service.send(message=messages.SendEchoRequest(message="Hello there"))
     await asyncio.sleep(delay=1)
     await bus.shutdown()
-    subscribe_task.cancel()
 
-    assert fake_log.info_logs == ["Waiting for RPC instructions to execute .. ", "Received message: Hello there"]
+    assert fake_log.info_logs == ["Received message: Hello there"]
     assert fake_log.error_logs == []
 
 
-async def test_rabbitmq_subscribe_invalid_routing_key(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:
+async def test_rabbitmq_on_message_invalid_routing_key(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:
     """Validates logging of invalid routing key"""
 
     bus = RabbitMQMessageBus(settings=rabbitmq_api.settings)
@@ -464,15 +461,12 @@ async def test_rabbitmq_subscribe_invalid_routing_key(rabbitmq_api: RabbitMQMana
 
     await bus.initialize(service=agent_service)
 
-    subscribe_task = asyncio.create_task(bus.subscribe())
-
     await bus.publish(routing_key="request.something.invalid", message=messages.SendEchoRequest(message="Hello there"))
     await asyncio.sleep(delay=1)
     await bus.shutdown()
-    subscribe_task.cancel()
 
-    assert fake_log.info_logs == ["Waiting for RPC instructions to execute .. "]
-    assert fake_log.error_logs == ["Unhandled routing key for message"]
+    assert fake_log.info_logs == []
+    assert fake_log.error_logs == ["Invalid message received"]
 
 
 async def on_callback(message: AbstractIncomingMessage, service: InfrahubServices) -> None:

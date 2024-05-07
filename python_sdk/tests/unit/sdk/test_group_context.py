@@ -56,11 +56,11 @@ def test_generate_group_name():
 
     context = InfrahubGroupContextBase()
     context.set_properties(identifier="MYID", params={"one": 1, "two": "two"})
-    assert context._generate_group_name() == "MYID-d0566319e45e619bacd039299850c612"
+    assert context._generate_group_name() == "MYID-11aaec5206c3dca37cbbcaaabf121550"
 
     context = InfrahubGroupContextBase()
     context.set_properties(identifier="MYID", params={"one": 1, "two": "two"})
-    assert context._generate_group_name(suffix="xxx") == "MYID-xxx-d0566319e45e619bacd039299850c612"
+    assert context._generate_group_name(suffix="xxx") == "MYID-xxx-11aaec5206c3dca37cbbcaaabf121550"
 
 
 def test_generate_group_description(std_group_schema):

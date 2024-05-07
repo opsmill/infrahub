@@ -22,6 +22,7 @@ class SchemaFile(pydantic.BaseModel):
         except yaml.YAMLError:
             self.error_message = "Invalid YAML/JSON file"
             self.valid = False
+            return
 
         if not self.content:
             self.error_message = "Empty YAML/JSON file"

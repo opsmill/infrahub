@@ -5,7 +5,6 @@ import typer
 from infrahub import config
 from infrahub.cli.db import app as db_app
 from infrahub.cli.events import app as events_app
-from infrahub.cli.generate_schema import app as generate_schema_app
 from infrahub.cli.git_agent import app as git_app
 from infrahub.cli.server import app as server_app
 from infrahub.core.initialization import initialization
@@ -19,7 +18,6 @@ app.add_typer(server_app, name="server")
 app.add_typer(git_app, name="git-agent")
 app.add_typer(db_app, name="db")
 app.add_typer(events_app, name="events", help="Interact with the events system.")
-app.add_typer(generate_schema_app, name="generate-schema")
 
 
 async def _init_shell(config_file: str) -> None:

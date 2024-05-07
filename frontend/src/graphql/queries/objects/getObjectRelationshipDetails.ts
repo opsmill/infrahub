@@ -47,6 +47,22 @@ query GetObjectRelationships_{{kind}} {
 
               {{/each}}
             }
+
+            properties {
+              updated_at
+              is_protected
+              is_visible
+              source {
+                id
+                display_label
+                __typename
+              }
+              owner {
+                id
+                display_label
+                __typename
+              }
+            }
           }
         }
       }

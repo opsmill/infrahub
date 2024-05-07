@@ -31,6 +31,7 @@ import ModalDelete from "../modals/modal-delete";
 import { Input } from "./input";
 import { MultipleInput } from "./multiple-input";
 
+import { getObjectDisplayLabel } from "../../graphql/queries/objects/getObjectDisplayLabel";
 import LoadingScreen from "../../screens/loading-screen/loading-screen";
 import { getOptionsFromRelationship } from "../../utils/getSchemaObjectColumns";
 
@@ -67,6 +68,9 @@ type SelectProps = {
   isUnique?: boolean;
   isInherited?: boolean;
 };
+
+// Needed for async options to avoid duplicates issues
+const comparedOptions = (a: SelectOption, b: SelectOption) => a?.id === b?.id;
 
 export const Select = (props: SelectProps) => {
   const {
@@ -109,8 +113,8 @@ export const Select = (props: SelectProps) => {
   const [localOptions, setLocalOptions] = useState(options);
   const [selectedOption, setSelectedOption] = useState(
     multiple
-      ? options.filter((option) => value.includes(option.id))
-      : options?.find((option) => option?.id === value || option.name === value)
+      ? localOptions.filter((option) => value?.includes(option.id))
+      : localOptions?.find((option) => option?.id === value || option.name === value)
   );
 
   // Query to fetch options only if a peer is defined
@@ -122,6 +126,14 @@ export const Select = (props: SelectProps) => {
   `;
 
   const [fetchOptions, { loading, data }] = useLazyQuery(optionsQuery);
+
+  const labelQueryString = peer ? getObjectDisplayLabel({ kind: peer }) : "query { ok }";
+
+  const labelQuery = gql`
+    ${labelQueryString}
+  `;
+
+  const [fetchLabel] = useLazyQuery(labelQuery);
 
   const optionsResult = peer && data ? data[peer].edges.map((edge: any) => edge.node) : [];
 
@@ -147,7 +159,7 @@ export const Select = (props: SelectProps) => {
         option?.name?.toString().toLowerCase().includes(query.toLowerCase())
       );
 
-  const finalOptions = [...(preventEmpty ? [] : [emptyOption]), ...filteredOptions];
+  const finalOptions = [...(preventEmpty ? [] : [emptyOption]), ...(filteredOptions || [])];
 
   const textColor =
     typeof selectedOption === "object" && !Array.isArray(selectedOption)
@@ -683,7 +695,7 @@ export const Select = (props: SelectProps) => {
       return selectedOption?.name;
     }
 
-    return selectedOption;
+    return selectedOption ?? "";
   };
 
   const getInputStyle = () => {
@@ -697,30 +709,72 @@ export const Select = (props: SelectProps) => {
     return {};
   };
 
+  // Fetch option display label if not defined by current selected option
+  const handleFetchLabel = async () => {
+    if (!selectedOption) return;
+
+    if (peer && !multiple && !Array.isArray(selectedOption) && !selectedOption?.name) {
+      const { data } = await fetchLabel({ variables: { ids: [selectedOption?.id] } });
+
+      const label = data[peer]?.edges[0]?.node?.display_label;
+
+      const newSelectedOption = {
+        ...selectedOption,
+        name: label ?? "Unkown",
+      } as SelectOption;
+
+      setSelectedOption(newSelectedOption);
+
+      return;
+    }
+
+    if (!Array.isArray(selectedOption)) return;
+
+    // Get ids only
+    const ids = selectedOption.map((o) => o.id) ?? [];
+
+    // Get defined names only
+    const names = selectedOption.map((o) => o.name).filter(Boolean) ?? [];
+
+    // If ids and names have !== lengths, then some names are not defined
+    if (peer && multiple && ids.length && ids.length !== names.length) {
+      const { data } = await fetchLabel({ variables: { ids } });
+
+      const newSelectedOptions = data[peer]?.edges.map((edge) => ({
+        name: edge.node.display_label,
+        id: edge.node.id,
+      }));
+
+      setSelectedOption(newSelectedOptions);
+    }
+  };
+
   useEffect(() => {
+    // Avoid fetching labels if ther eis no value
+    if (!value) return;
+
+    if (Array.isArray(value) && !value.length) return;
+
+    handleFetchLabel();
+  }, [value]);
+
+  // If options from query are updated
+  useEffect(() => {
+    if (!optionsData?.length) return;
+
     setLocalOptions(optionsData);
   }, [optionsData?.length]);
 
+  // If options from parent are updated
   useEffect(() => {
     setLocalOptions(options);
   }, [options?.length]);
-
-  useEffect(() => {
-    const newOption = multiple
-      ? options.filter((option) => value.includes(option.id))
-      : options?.find((option) => option?.id === value || option.name === value);
-
-    setSelectedOption(newOption ?? "");
-  }, [value]);
-
-  // Needed for async options to avoid duplicates issues
-  const comparedOptions = (a: SelectOption, b: SelectOption) => a?.id === b?.id;
 
   return (
     <div className="relative" data-testid="select-container">
       <Combobox
         as="div"
-        value={selectedOption}
+        value={multiple ? selectedOption ?? [] : selectedOption ?? ""}
         onChange={handleChange}
         disabled={disabled}
         multiple={multiple}

@@ -1,6 +1,5 @@
 from collections import defaultdict
 
-from infrahub.core import get_branch
 from infrahub.core.query.diff import (
     DiffAttributeQuery,
     DiffNodePropertiesByIDSRangeQuery,
@@ -9,6 +8,7 @@ from infrahub.core.query.diff import (
     DiffRelationshipPropertyQuery,
     DiffRelationshipQuery,
 )
+from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
@@ -22,7 +22,7 @@ def group_results_per_node(results):
 
 
 async def test_diff_node_query(db: InfrahubDatabase, default_branch, base_dataset_02):
-    branch1 = await get_branch(branch="branch1", db=db)
+    branch1 = await registry.get_branch(branch="branch1", db=db)
 
     # Query all nodes from the creation of the first nodes (m60) to now
     query = await DiffNodeQuery.init(
@@ -119,7 +119,7 @@ async def test_diff_node_query(db: InfrahubDatabase, default_branch, base_datase
 
 
 async def test_diff_attribute_query(db: InfrahubDatabase, default_branch, base_dataset_02):
-    branch1 = await get_branch(branch="branch1", db=db)
+    branch1 = await registry.get_branch(branch="branch1", db=db)
 
     # Query all attributes from the creation of the branch (m45) to now
     query = await DiffAttributeQuery.init(
@@ -213,7 +213,7 @@ async def test_diff_attribute_query(db: InfrahubDatabase, default_branch, base_d
 
 
 async def test_diff_attribute_query_rebased_branch(db: InfrahubDatabase, default_branch, base_dataset_03):
-    branch2 = await get_branch(branch="branch2", db=db)
+    branch2 = await registry.get_branch(branch="branch2", db=db)
 
     # Query all attributes from the creation of the branch (m45) to now
     query = await DiffAttributeQuery.init(
@@ -229,7 +229,7 @@ async def test_diff_attribute_query_rebased_branch(db: InfrahubDatabase, default
 
 
 async def test_diff_node_properties_ids_range_query(db: InfrahubDatabase, default_branch, base_dataset_02):
-    branch1 = await get_branch(branch="branch1", db=db)
+    branch1 = await registry.get_branch(branch="branch1", db=db)
 
     # Query all Nodes from the creation of the first nodes (m60) to now
     query = await DiffNodePropertiesByIDSRangeQuery.init(
@@ -274,7 +274,7 @@ async def test_diff_node_properties_ids_range_query(db: InfrahubDatabase, defaul
 
 
 async def test_diff_relationship_properties_ids_range_query(db: InfrahubDatabase, default_branch, base_dataset_02):
-    branch1 = await get_branch(branch="branch1", db=db)
+    branch1 = await registry.get_branch(branch="branch1", db=db)
 
     # Query all Rels from the creation of the first nodes (m60) to now
     query = await DiffRelationshipPropertiesByIDSRangeQuery.init(
@@ -318,7 +318,7 @@ async def test_diff_relationship_properties_ids_range_query(db: InfrahubDatabase
 
 
 async def test_DiffRelationshipQuery(db: InfrahubDatabase, base_dataset_02):
-    branch1 = await get_branch(branch="branch1", db=db)
+    branch1 = await registry.get_branch(branch="branch1", db=db)
 
     # Execute the query with default timestamp from the creation of the branch to now
     query = await DiffRelationshipQuery.init(db=db, branch=branch1)
@@ -375,7 +375,7 @@ async def test_DiffRelationshipQuery(db: InfrahubDatabase, base_dataset_02):
 
 
 async def test_DiffRelationshipPropertyQuery(db: InfrahubDatabase, base_dataset_02):
-    branch1 = await get_branch(branch="branch1", db=db)
+    branch1 = await registry.get_branch(branch="branch1", db=db)
 
     # Execute the query with default timestamp from the creation of the branch to now
     # 4 changes are expected
@@ -425,7 +425,7 @@ async def test_DiffRelationshipPropertyQuery(db: InfrahubDatabase, base_dataset_
 
 
 async def test_DiffRelationshipPropertyQuery_both_branches(db: InfrahubDatabase, base_dataset_04):
-    branch1 = await get_branch(branch="branch1", db=db)
+    branch1 = await registry.get_branch(branch="branch1", db=db)
 
     # Execute the query with default timestamp from the creation of the branch to now
     # 4 changes are expected

@@ -3,9 +3,10 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from graphene import Boolean, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.core.branch import Branch
 from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, ValidatorConclusion
+from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.schema.runner import schema_migrations_runner
@@ -101,7 +102,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             include_owner=True,
             include_source=True,
         )
-        state = ProposedChangeState(obj.state.value)
+        state = ProposedChangeState(obj.state.value.value)
         state.validate_editability()
 
         updated_state = None
@@ -123,7 +124,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     validator_kind = validation.get_kind()
                     if (
                         validator_kind != InfrahubKind.DATAVALIDATOR
-                        and validation.conclusion.value != ValidatorConclusion.SUCCESS.value
+                        and validation.conclusion.value.value != ValidatorConclusion.SUCCESS.value
                     ):
                         # Ignoring Data integrity checks as they are handled again later
                         raise ValidationError("Unable to merge proposed change containing failing checks")
@@ -135,7 +136,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                                     "Data conflicts found on branch and missing decisions about what branch to keep"
                                 )
                             if check.conflicts.value:
-                                keep_source_value = check.keep_branch.value == "source"
+                                keep_source_value = check.keep_branch.value.value == "source"
                                 conflict_resolution[check.conflicts.value[0]["path"]] = keep_source_value
 
                 async with lock.registry.global_graph_lock():
@@ -143,12 +144,21 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     await merger.merge(conflict_resolution=conflict_resolution)
                     await merger.update_schema()
 
-                if config.SETTINGS.broker.enable and context.background:
+                if context.background:
                     log_data = get_log_data()
                     request_id = log_data.get("request_id", "")
+                    differ = await merger.get_graph_diff()
+                    diff_parser = IpamDiffParser(
+                        db=context.db,
+                        differ=differ,
+                        source_branch_name=obj.name,
+                        target_branch_name=registry.default_branch,
+                    )
+                    ipam_node_details = await diff_parser.get_changed_ipam_node_details()
                     message = messages.EventBranchMerge(
                         source_branch=source_branch.name,
                         target_branch=registry.default_branch,
+                        ipam_node_details=ipam_node_details,
                         meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
                     )
                     context.background.add_task(services.send, message)
@@ -193,7 +203,7 @@ class ProposedChangeRequestRunCheck(Mutation):
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
             id=identifier, schema_name=InfrahubKind.PROPOSEDCHANGE, db=context.db
         )
-        state = ProposedChangeState(proposed_change.state.value)
+        state = ProposedChangeState(proposed_change.state.value.value)
         state.validate_state_check_run()
 
         destination_branch = proposed_change.destination_branch.value

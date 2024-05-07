@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.exceptions import NodeNotFoundError
-from infrahub_sdk.timestamp import Timestamp
 from infrahub_sdk.utils import dict_hash
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
     from infrahub_sdk.node import InfrahubNode, InfrahubNodeSync, RelatedNodeBase
-    from infrahub_sdk.schema import GenericSchema, NodeSchema
+    from infrahub_sdk.schema import MainSchemaTypes
 
 
 class InfrahubGroupContextBase:
@@ -29,7 +28,11 @@ class InfrahubGroupContextBase:
         self.group_type: str = "CoreStandardGroup"
 
     def set_properties(
-        self, identifier: str, params: Optional[Dict[str, str]] = None, delete_unused_nodes: bool = False
+        self,
+        identifier: str,
+        params: Optional[Dict[str, str]] = None,
+        delete_unused_nodes: bool = False,
+        group_type: Optional[str] = None,
     ) -> None:
         """Setter method to set the values of identifier and params.
 
@@ -40,6 +43,7 @@ class InfrahubGroupContextBase:
         self.identifier = identifier
         self.params = params or {}
         self.delete_unused_nodes = delete_unused_nodes
+        self.group_type = group_type or self.group_type
 
     def _get_params_as_str(self) -> str:
         """Convert the params in dict format, into a string"""
@@ -59,7 +63,7 @@ class InfrahubGroupContextBase:
 
         return group_name
 
-    def _generate_group_description(self, schema: Union[NodeSchema, GenericSchema]) -> str:
+    def _generate_group_description(self, schema: MainSchemaTypes) -> str:
         """Generate the description of the group from the params
         and ensure it's not longer than the maximum length of the description field."""
         if not self.params:
@@ -134,7 +138,7 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
 
     async def update_group(self) -> None:
         """
-        Create or update (using upsert) a CoreStandGroup to store all the Nodes and Groups used during an execution.
+        Create or update (using upsert) a CoreStandardGroup to store all the Nodes and Groups used during an execution.
         """
         children: List[str] = []
         members: List[str] = []
@@ -162,7 +166,7 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
             members=members,
             children=children,
         )
-        await group.save(at=Timestamp(), allow_upsert=True, update_group_context=False)
+        await group.save(allow_upsert=True, update_group_context=False)
 
         if not existing_group:
             return
@@ -240,7 +244,7 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
 
     def update_group(self) -> None:
         """
-        Create or update (using upsert) a CoreStandGroup to store all the Nodes and Groups used during an execution.
+        Create or update (using upsert) a CoreStandardGroup to store all the Nodes and Groups used during an execution.
         """
         children: List[str] = []
         members: List[str] = []
@@ -268,7 +272,7 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
             members=members,
             children=children,
         )
-        group.save(at=Timestamp(), allow_upsert=True, update_group_context=False)
+        group.save(allow_upsert=True, update_group_context=False)
 
         if not existing_group:
             return

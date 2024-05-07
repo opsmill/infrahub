@@ -5,7 +5,7 @@ import { DateDisplay } from "../../../components/display/date-display";
 import { DurationDisplay } from "../../../components/display/duration-display";
 import { PopOver } from "../../../components/display/popover";
 import { List } from "../../../components/table/list";
-import { Tooltip } from "../../../components/utils/tooltip";
+import { Tooltip } from "../../../components/ui/tooltip";
 import { ValidatorDetails } from "./validator-details";
 
 type tValidatorProps = {
@@ -16,38 +16,38 @@ const getValidatorState = (state?: string, conclusion?: string) => {
   switch (state) {
     case "queued": {
       return (
-        <Tooltip message={"Queued"}>
-          <Icon icon={"mdi:timer-sand-complete"} className="text-yellow-500 mr-2" />
+        <Tooltip content="Queued" enabled>
+          <Icon icon={"mdi:timer-sand-complete"} className="text-yellow-500" />
         </Tooltip>
       );
     }
     case "in_progress": {
       return (
-        <Tooltip message={"In progress"}>
-          <Icon icon={"mdi:clock-time-four-outline"} className="text-yellow-500 mr-2" />
+        <Tooltip content="In progress" enabled>
+          <Icon icon={"mdi:clock-time-four-outline"} className="text-yellow-500" />
         </Tooltip>
       );
     }
     case "completed": {
       if (conclusion === "success") {
         return (
-          <Tooltip message={"Success"}>
-            <Icon icon={"mdi:check-circle-outline"} className="text-green-500 mr-2" />
+          <Tooltip content="Success" enabled>
+            <Icon icon={"mdi:check-circle-outline"} className="text-green-500" />
           </Tooltip>
         );
       }
 
       if (conclusion === "failure") {
         return (
-          <Tooltip message={"Failure"}>
-            <Icon icon={"mdi:warning"} className="text-red-500 mr-2" />
+          <Tooltip content="Failure" enabled>
+            <Icon icon={"mdi:warning"} className="text-red-500" />
           </Tooltip>
         );
       }
 
       return (
-        <Tooltip message={"Unkown"}>
-          <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500 mr-2" />
+        <Tooltip content="Unknown" enabled>
+          <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500" />
         </Tooltip>
       );
     }
@@ -57,9 +57,7 @@ const getValidatorState = (state?: string, conclusion?: string) => {
   }
 };
 
-export const Validator = (props: tValidatorProps) => {
-  const { validator } = props;
-
+export const Validator = ({ validator }: tValidatorProps) => {
   const { id, display_label, started_at, completed_at, conclusion, state } = validator;
 
   const columns = [
@@ -101,16 +99,13 @@ export const Validator = (props: tValidatorProps) => {
   };
 
   const title = (
-    <div className="flex items-center">
+    <div className="flex items-center gap-2">
       {getValidatorState(state?.value, conclusion?.value)}
-
       <span>{display_label}</span>
-
-      <span className="mx-2 font-normal">-</span>
-
+      <span className="font-normal">-</span>
       <DurationDisplay date={started_at.value} endDate={completed_at.value} />
 
-      <div className="flex flex-1 justify-end">
+      <div className="flex flex-grow justify-end">
         <PopOver buttonComponent={MoreButton}>
           <List columns={columns} row={row} />
         </PopOver>
@@ -119,10 +114,8 @@ export const Validator = (props: tValidatorProps) => {
   );
 
   return (
-    <div className="bg-custom-white rounded-md p-2 mb-2 last:mb-0">
-      <Accordion title={title}>
-        <ValidatorDetails id={id} />
-      </Accordion>
-    </div>
+    <Accordion title={title} className="bg-custom-white rounded-md p-2">
+      <ValidatorDetails id={id} />
+    </Accordion>
   );
 };

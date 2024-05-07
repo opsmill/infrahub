@@ -1,5 +1,6 @@
-import json
 from typing import Dict, Type
+
+import ujson
 
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.message_bus import messages
@@ -19,7 +20,7 @@ async def event(message: messages.SendWebhookEvent, service: InfrahubServices) -
                 node_type="Webhook", identifier=message.webhook_id, message="The requested Webhook was not found"
             )
 
-        webhook_data = json.loads(webhook_definition)
+        webhook_data = ujson.loads(webhook_definition)
         payload = {"event_type": message.event_type, "data": message.event_data, "service": service}
         webhook_map: Dict[str, Type[Webhook]] = {
             "standard": StandardWebhook,

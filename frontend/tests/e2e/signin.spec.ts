@@ -2,6 +2,14 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH, ADMIN_CREDENTIALS } from "../constants";
 
 test.describe("/signin", () => {
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test.describe("When is not logged in", () => {
     test("should log in the user", async ({ page }) => {
       await page.goto("/");
@@ -26,6 +34,23 @@ test.describe("/signin", () => {
 
       await expect(page.locator("#alert-error-sign-in")).toContainText(
         "Invalid username and password"
+      );
+    });
+
+    test("should redirect to the initial page after login", async ({ page }) => {
+      await page.goto(
+        "/objects/BuiltinTag?branch=atl1-delete-upstream&at=2024-05-01T13%3A40%3A00.000Z"
+      );
+
+      await page.getByRole("link", { name: "Sign in" }).click();
+      await expect(page.getByText("Sign in to your account")).toBeVisible();
+      await page.getByLabel("Username").fill(ADMIN_CREDENTIALS.username);
+      await page.getByLabel("Password").fill(ADMIN_CREDENTIALS.password);
+      await page.getByRole("button", { name: "Sign in" }).click();
+
+      await expect(page.getByTestId("current-user-avatar-button")).toBeVisible();
+      await expect(page.url()).toContain(
+        "/objects/BuiltinTag?branch=atl1-delete-upstream&at=2024-05-01T13%3A40%3A00.000Z"
       );
     });
   });
@@ -77,9 +102,7 @@ test.describe("/signin", () => {
         return reqData?.operationName === "BuiltinTag" && status === 200;
       });
 
-      await page.goto("/objects/BuiltinTag");
-
-      await Promise.all([waitForResponse]);
+      await Promise.all([waitForResponse, page.goto("/objects/BuiltinTag")]);
 
       await expect(page.getByRole("cell", { name: "blue" })).toBeVisible();
     });

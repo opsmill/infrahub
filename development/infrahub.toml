@@ -25,14 +25,5 @@ driver = "local"
 [storage.local]
 path = "/opt/infrahub/storage"
 
-[trace]
-enable = false
-insecure = "True"
-exporter_type = "otlp"
-exporter_protocol = "grpc"
-exporter_endpoint = "tempo"
-exporter_port = 4317
-
-
 # [experimental_features]
 # pull_request = true

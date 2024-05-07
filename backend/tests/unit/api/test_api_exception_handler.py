@@ -1,8 +1,8 @@
-from json import loads
 from typing import Optional
 
 from pydantic.v1 import BaseModel, root_validator, validator
 from pydantic.v1.error_wrappers import ValidationError
+from ujson import loads
 
 from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.exceptions import Error

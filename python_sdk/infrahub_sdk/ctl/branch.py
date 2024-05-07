@@ -1,6 +1,5 @@
 import logging
 import sys
-from pathlib import Path
 from typing import Optional
 
 import typer
@@ -9,12 +8,13 @@ from rich.table import Table
 
 from infrahub_sdk import Error, GraphQLError
 from infrahub_sdk.async_typer import AsyncTyper
-from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.ctl.utils import (
     calculate_time_diff,
     print_graphql_errors,
 )
+
+from .parameters import CONFIG_PARAM
 
 app = AsyncTyper()
 
@@ -34,14 +34,11 @@ def callback() -> None:
 
 @app.command("list")
 async def list_branch(
-    config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
+    _: str = CONFIG_PARAM,
 ) -> None:
     """List all existing branches."""
 
     logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
-
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
 
     client = await initialize_client()
 
@@ -106,14 +103,11 @@ async def create(
         False, help="Extend the branch to Git and have Infrahub create the branch in connected repositories."
     ),
     isolated: bool = typer.Option(False, help="Set the branch to isolated mode"),
-    config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
+    _: str = CONFIG_PARAM,
 ) -> None:
     """Create a new branch."""
 
     logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
-
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
 
     console = Console()
 
@@ -136,14 +130,11 @@ async def create(
 @app.command()
 async def delete(
     branch_name: str,
-    config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
+    _: str = CONFIG_PARAM,
 ) -> None:
     """Delete a branch."""
 
     logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
-
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
 
     console = Console()
 
@@ -164,14 +155,11 @@ async def delete(
 @app.command()
 async def rebase(
     branch_name: str,
-    config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
+    _: str = CONFIG_PARAM,
 ) -> None:
     """Rebase a Branch with main."""
 
     logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
-
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
 
     console = Console()
 
@@ -192,14 +180,11 @@ async def rebase(
 @app.command()
 async def merge(
     branch_name: str,
-    config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
+    _: str = CONFIG_PARAM,
 ) -> None:
     """Merge a Branch with main."""
 
     logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
-
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
 
     console = Console()
 
@@ -220,12 +205,9 @@ async def merge(
 @app.command()
 async def validate(
     branch_name: str,
-    config_file: Path = typer.Option(DEFAULT_CONFIG_FILE, envvar=ENVVAR_CONFIG_FILE),
+    _: str = CONFIG_PARAM,
 ) -> None:
     """Validate if a branch has some conflict and is passing all the tests (NOT IMPLEMENTED YET)."""
-
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
 
     console = Console()
 

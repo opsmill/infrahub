@@ -17,13 +17,12 @@ async def trigger_branch_refresh(service: InfrahubServices) -> None:
     async with service.database.start_session() as db:
         await refresh_branches(db=db)
 
+    await service.component.refresh_schema_hash()
+
 
 async def resync_repositories(service: InfrahubServices) -> None:
-    primary_identity = await service.cache.get("primary_api_server_id")
-    if primary_identity == WORKER_IDENTITY:
-        service.log.debug(
-            f"Primary identity={primary_identity} matches my identity={WORKER_IDENTITY}. Posting sync of repo message."
-        )
+    if await service.component.is_primary_api():
+        service.log.debug(f"Primary identity matches my identity={WORKER_IDENTITY}. Posting sync of repo message.")
         message = messages.RequestGitSync()
         message.assign_expiration(config.SETTINGS.git.sync_interval)
         await service.send(message=message)

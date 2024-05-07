@@ -1,16 +1,28 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
-from infrahub.database import InfrahubDatabase
 from infrahub.server import app
 
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.exceptions import BranchNotFoundError
 from infrahub_sdk.node import InfrahubNode
+from infrahub_sdk.playback import JSONPlayback
+from infrahub_sdk.recorder import JSONRecorder
+from infrahub_sdk.schema import ProfileSchema
 
 from .conftest import InfrahubTestClient
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from infrahub.database import InfrahubDatabase
+
 
 # pylint: disable=unused-argument
 
@@ -31,9 +43,8 @@ class TestInfrahubClient:
     async def base_dataset(self, db: InfrahubDatabase, test_client: InfrahubTestClient, builtin_org_schema):
         config = Config(username="admin", password="infrahub", requester=test_client.async_request)
         client = await InfrahubClient.init(config=config)
-        success, response = await client.schema.load(schemas=[builtin_org_schema])
-        assert response is None
-        assert success
+        response = await client.schema.load(schemas=[builtin_org_schema])
+        assert not response.errors
 
         await create_branch(branch_name="branch01", db=db)
 
@@ -166,7 +177,7 @@ class TestInfrahubClient:
 
         async def create_org_with_tag(clt: InfrahubClient, nbr_tags: int):
             tags = []
-            for idx in range(0, nbr_tags):
+            for idx in range(nbr_tags):
                 obj = await clt.create(kind="BuiltinTag", name=f"tracking-{tag_names[idx]}")
                 await obj.save(allow_upsert=True)
                 tags.append(obj)
@@ -226,3 +237,40 @@ class TestInfrahubClient:
             kind="CoreStandardGroup", name__value=client.group_context._generate_group_name(), include=["members"]
         )
         assert len(group.members.peers) == 2
+
+    async def test_recorder_with_playback_rewrite_host(
+        self, client: InfrahubClient, db: InfrahubDatabase, init_db_base, base_dataset, tmp_path: Path
+    ):
+        client.config.custom_recorder = JSONRecorder(host="recorder-test", directory=str(tmp_path))
+        nodes = await client.all(kind="CoreRepository")
+
+        playback_config = JSONPlayback(directory=str(tmp_path))
+        config = Config(
+            address="http://recorder-test:8000",
+            requester=playback_config.async_request,
+        )
+        playback = InfrahubClient(config=config)
+        recorded_nodes = await playback.all(kind="CoreRepository")
+
+        assert len(nodes) == 1
+        assert nodes == recorded_nodes
+        assert recorded_nodes[0].name.value == "repository1"
+
+    async def test_profile(self, client: InfrahubClient, db: InfrahubDatabase, init_db_base, base_dataset):
+        profile_schema_kind = "ProfileBuiltinStatus"
+        profile_schema = await client.schema.get(kind=profile_schema_kind)
+        assert isinstance(profile_schema, ProfileSchema)
+
+        profile1 = await client.create(
+            kind=profile_schema_kind,
+            profile_name="profile1",
+            profile_priority=1000,
+            description="description in profile",
+        )
+        await profile1.save()
+
+        obj = await client.create(kind="BuiltinStatus", name="planned", profiles=[profile1])
+        await obj.save()
+
+        obj1 = await client.get(kind="BuiltinStatus", id=obj.id)
+        assert obj1.description.value == "description in profile"

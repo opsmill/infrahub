@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field
@@ -16,7 +16,7 @@ from infrahub.core.constants import (
 from infrahub.core.path import SchemaPath
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import GenericSchema, NodeSchema
+    from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema_manager import SchemaBranch
 
 
@@ -75,6 +75,27 @@ class SchemaDiff(BaseModel):
     def __add__(self, other: SchemaDiff) -> SchemaDiff:
         merged_dict = deep_merge_dict(self.model_dump(), other.model_dump())
         return self.__class__(**merged_dict)
+
+    def print(self, indentation: int = 4, column_size: int = 32) -> None:
+        data = self.model_dump()
+
+        indent_str = " " * indentation
+
+        # pylint: disable=too-many-nested-blocks
+        for node_action, node_info in data.items():
+            for node_name, elements in node_info.items():
+                print(f"{str(node_name).ljust(column_size)} | {str(node_action).title()}")
+                for element_action, element_info in elements.items():
+                    for element_name, element_children in element_info.items():
+                        print(
+                            f"{indent_str}{str(element_name).ljust(column_size - indentation)} | {str(element_action).title()}"
+                        )
+                        if element_children and isinstance(element_children, dict):
+                            for sub_action, sub_info in element_children.items():
+                                for sub_name, _ in sub_info.items():
+                                    print(
+                                        f"{indent_str * 2}{str(sub_name).ljust(column_size - indentation * 2)} | {str(sub_action).title()}"
+                                    )
 
 
 class SchemaUpdateValidationError(BaseModel):
@@ -155,7 +176,7 @@ class SchemaUpdateValidationResult(BaseModel):
 
     def _process_attrs_rels(
         self,
-        schema: Union[NodeSchema, GenericSchema],
+        schema: MainSchemaTypes,
         node_field_name: str,
         node_field_diff: HashableModelDiff,
     ) -> None:
@@ -184,8 +205,8 @@ class SchemaUpdateValidationResult(BaseModel):
         for field_name, sub_field_diff in node_field_diff.changed.items():
             field = schema.get_field(name=field_name)
 
-            if not sub_field_diff or not field:
-                raise ValueError("sub_field_diff and field must be defined, unexpected situation")
+            if not sub_field_diff:
+                raise ValueError("sub_field_diff must be defined, unexpected situation")
 
             for prop_name in sub_field_diff.changed:
                 field_info = field.model_fields[prop_name]
@@ -203,7 +224,7 @@ class SchemaUpdateValidationResult(BaseModel):
                     field_update=field_update,
                 )
 
-    def _process_node_attributes(self, schema: Union[NodeSchema, GenericSchema], node_field_name: str) -> None:
+    def _process_node_attributes(self, schema: MainSchemaTypes, node_field_name: str) -> None:
         field_info = schema.model_fields[node_field_name]
         field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
 

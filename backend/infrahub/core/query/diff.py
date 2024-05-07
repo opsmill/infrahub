@@ -238,6 +238,7 @@ class DiffRelationshipQuery(DiffQuery):
                     AND ((r.to >= $diff_from AND r.to <= $diff_to) OR r.to is NULL))
                 )
             )
+            AND sn <> dn
             RETURN rel as rel1, sn as sn1, dn as dn1, r1 as r11, r2 as r21
             ORDER BY r1.branch_level DESC, r1.from DESC
             LIMIT 1
@@ -278,6 +279,7 @@ class DiffRelationshipPropertyQuery(DiffQuery):
             MATCH p = ((sn:Node)-[r1]-(rel)-[r2]-(dn:Node))
             WHERE r1.branch = r2.branch AND (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL))
             AND r1.from = r2.from AND r1.status = r2.status AND all(r IN relationships(p) WHERE ( %s ))
+            AND sn <> dn
             RETURN rel as rel1, sn as sn1, dn as dn1, r1 as r11, r2 as r21
             ORDER BY r1.branch_level DESC, r1.from DESC
             LIMIT 1
@@ -379,7 +381,7 @@ class DiffNodePropertiesByIDSQuery(Query):
         self.params.update(rels_params)
 
         query = """
-        MATCH (a) WHERE a.uuid IN $ids
+        MATCH (a:Attribute) WHERE a.uuid IN $ids
         MATCH (a)-[r:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE]-(ap)
         WHERE %s
         """ % ("\n AND ".join(rels_filter),)
@@ -435,7 +437,7 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
 
         # TODO Compute the list of potential relationship dynamically in the future based on the class
         query = """
-        MATCH (rl) WHERE rl.uuid IN $ids
+        MATCH (rl:Relationship) WHERE rl.uuid IN $ids
         MATCH (rl)-[r:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]-(rp)
         WHERE %s
         """ % ("\n AND ".join(rels_filter),)

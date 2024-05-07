@@ -4,24 +4,19 @@ source:
   name: netbox
   settings:
     url: "https://demo.netbox.dev"
+    token: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 destination:
   name: infrahub
   settings:
     url: "http://localhost:8000"
 
-store:
-  type: redis
-  settings:
-    host: localhost
-    port: 6379
-
 order: [
   "BuiltinTag",
-  "BuiltinRole",
+  "RoleGeneric",
   "CoreStandardGroup",
-  "CoreOrganization",
-  "BuiltinLocation",
+  "OrganizationGeneric",
+  "LocationGeneric",
   "InfraRack",
   "TemplateDeviceType",
   "InfraProviderNetwork",
@@ -32,7 +27,8 @@ order: [
   "InfraDevice",
   "InfraVLAN",
   "InfraPrefix",
-  "InfraIPAddress"
+  "InfraIPAddress",
+  "InfraInterfaceL2L3",
 ]
 
 schema_mapping:
@@ -47,7 +43,7 @@ schema_mapping:
         mapping: description
 
   # Roles (DCIM, IPAM, Devices)
-  - name: BuiltinRole
+  - name: RoleGeneric
     mapping: dcim.device_roles
     identifiers: ["name"]
     fields:
@@ -55,7 +51,7 @@ schema_mapping:
         mapping: name
       - name: description
         mapping: description
-  - name: BuiltinRole
+  - name: RoleGeneric
     mapping: dcim.rack_roles
     identifiers: ["name"]
     fields:
@@ -63,7 +59,7 @@ schema_mapping:
         mapping: name
       - name: description
         mapping: description
-  - name: BuiltinRole
+  - name: RoleGeneric
     mapping: ipam.roles
     identifiers: ["name"]
     fields:
@@ -81,7 +77,7 @@ schema_mapping:
         mapping: name
       - name: description
         mapping: description
-  - name: CoreOrganization
+  - name: OrganizationGeneric
     mapping: tenancy.tenants
     identifiers: ["name"]
     fields:
@@ -89,8 +85,6 @@ schema_mapping:
         mapping: name
       - name: description
         mapping: description
-      - name: type
-        static: "Tenant"
       - name: group
         mapping: group
         reference: CoreStandardGroup
@@ -104,7 +98,7 @@ schema_mapping:
         mapping: name
       - name: description
         mapping: description
-  - name: BuiltinLocation
+  - name: LocationGeneric
     mapping: dcim.regions
     fields:
       - name: name
@@ -116,7 +110,7 @@ schema_mapping:
       - name: tags
         mapping: tags
         reference: BuiltinTag
-  - name: BuiltinLocation
+  - name: LocationGeneric
     mapping: dcim.sites
     fields:
       - name: name
@@ -130,11 +124,11 @@ schema_mapping:
         reference: CoreStandardGroup
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: tags
         mapping: tags
         reference: BuiltinTag
-  - name: BuiltinLocation
+  - name: LocationGeneric
     mapping: dcim.locations
     fields:
       - name: name
@@ -145,7 +139,7 @@ schema_mapping:
         static: "Location"
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: tags
         mapping: tags
         reference: BuiltinTag
@@ -159,7 +153,7 @@ schema_mapping:
         mapping: name
       - name: location
         mapping: site
-        reference: BuiltinLocation
+        reference: LocationGeneric
       - name: height
         mapping: u_height
       - name: serial_number
@@ -170,13 +164,13 @@ schema_mapping:
         mapping: facility_id
       - name: role
         mapping: role
-        reference: BuiltinRole
+        reference: RoleGeneric
       - name: tags
         mapping: tags
         reference: BuiltinTag
 
-  # Device (manufacturer, device types, devices)
-  - name: CoreOrganization
+  # Device (manufacturer, device types, devices, interfaces)
+  - name: OrganizationGeneric
     mapping: dcim.manufacturers
     identifiers: ["name"]
     fields:
@@ -184,8 +178,6 @@ schema_mapping:
         mapping: name
       - name: description
         mapping: description
-      - name: type
-        static: "Manufacturer"
   - name: TemplateDeviceType
     mapping: dcim.device-types
     identifiers: ["name", "manufacturer"]
@@ -203,7 +195,7 @@ schema_mapping:
         reference: BuiltinTag
       - name: manufacturer
         mapping: manufacturer
-        reference: CoreOrganization
+        reference: OrganizationGeneric
   # -> The netbox constraint is `dcim_device_unique_name_site_tenant`
   # Reusing device_name + site + Organization as identifiers
   - name: InfraDevice
@@ -223,23 +215,60 @@ schema_mapping:
         reference: TemplateDeviceType
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: role
-        mapping: role.name
+        mapping: role
+        reference: RoleGeneric
       # - name: status
-      #   mapping: status.value
+      #   mapping: status
+      #   reference: StatusGeneric
       - name: location
         mapping: site
-        reference: BuiltinLocation
+        reference: LocationGeneric
       - name: rack
         mapping: rack
         reference: InfraRack
       - name: tags
         mapping: tags
         reference: BuiltinTag
+  # Interfaces (interfaces, rear port, front port)
+  - name: InfraInterfaceL2L3
+    identifiers: ["name", "device"]
+    mapping: dcim.interfaces
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: interface_type
+        mapping: type.label
+      - name: l2_mode
+        mapping: mode.label
+      - name: mac_address
+        mapping: mac_address
+      # - name: ip_addresses
+      #   mapping: ip_addresses
+      #   reference: InfraIPAddress
+      - name: mgmt_only
+        mapping: mgmt_only
+      - name: untagged_vlan
+        mapping: untagged_vlan
+        reference: InfraVLAN
+      - name: tagged_vlan
+        mapping: tagged_vlans
+        reference: InfraVLAN
+      - name: device
+        mapping: device
+        reference: InfraDevice
+      - name: tags
+        mapping: tags
+        reference: BuiltinTag
+      # - name: status
+      #   mapping: status
+      #   reference: BuiltinStatus
 
   # Circuits (Provider, Provider Network, Circuits Types, Circuits)
-  - name: CoreOrganization
+  - name: OrganizationGeneric
     mapping: circuits.providers
     identifiers: ["name"]
     fields:
@@ -247,35 +276,34 @@ schema_mapping:
         mapping: name
       - name: description
         mapping: description
-      - name: type
-        static: "Provider"
   - name: InfraProviderNetwork
     mapping: circuits.provider-networks
+    identifiers: ["name"]
     fields:
       - name: name
         mapping: name
-        identifier: true
       - name: vendor_id
         mapping: service_id
       - name: provider
         mapping: provider
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: description
         mapping: description
       # - name: status
-      #   mapping: status.value
+      #   mapping: status
+      #   reference: StatusGeneric
       - name: tags
         mapping: tags
         reference: BuiltinTag
       - name: provider
         mapping: provider
-        reference: CoreOrganization
+        reference: OrganizationGeneric
   - name: TemplateCircuitType
     mapping: circuits.circuit-types
+    identifiers: ["name"]
     fields:
       - name: name
         mapping: name
-        identifier: true
       - name: description
         mapping: description
       - name: tags
@@ -283,24 +311,25 @@ schema_mapping:
         reference: BuiltinTag
   - name: InfraCircuit
     mapping: circuits.circuits
+    identifiers: ["circuit_id"]
     fields:
       - name: circuit_id
         mapping: cid
-        identifier: true
       - name: vendor_id
         mapping: cid
       - name: provider
         mapping: provider
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: description
         mapping: description
       # - name: status
-      #   mapping: status.value
+      #   mapping: status
+      #   reference: StatusGeneric
       - name: type
         mapping: type.name
       - name: provider
         mapping: provider
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: tags
         mapping: tags
         reference: BuiltinTag
@@ -316,7 +345,7 @@ schema_mapping:
         mapping: description
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
   - name: InfraVRF
     mapping: ipam.vrfs
     identifiers: ["name"]
@@ -327,7 +356,7 @@ schema_mapping:
         mapping: description
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: vrf_rd
         mapping: rd
       - name: import_rt
@@ -354,12 +383,12 @@ schema_mapping:
         mapping: vid
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: description
         mapping: description
       - name: location
         mapping: site
-        reference: BuiltinLocation
+        reference: LocationGeneric
       - name: vlan_group
         mapping: group
         reference: CoreStandardGroup
@@ -373,18 +402,19 @@ schema_mapping:
         mapping: description
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       - name: role
         mapping: role
-        reference: BuiltinRole
+        reference: RoleGeneric
       - name: vrf
         mapping: vrf
         reference: InfraVRF
       - name: location
         mapping: site
-        reference: BuiltinLocation
+        reference: LocationGeneric
       # - name: status
-      #   mapping: status.value
+      #   mapping: status
+      #   reference: StatusGeneric
       # - name: vlan
       #   mapping: vlan.name
       # - name: location
@@ -399,12 +429,13 @@ schema_mapping:
         mapping: description
       - name: organization
         mapping: tenant
-        reference: CoreOrganization
+        reference: OrganizationGeneric
       # Not the same as ipam.role
       # - name: role
       #   mapping: role.value
       # - name: status
-      #   mapping: status.value
+      #   mapping: status
+      #   reference: StatusGeneric
       - name: vrf
         mapping: vrf
         reference: InfraVRF

@@ -52,18 +52,15 @@ const getMutationMetaDetailsFromFormData = (
 
     if (relationshipSchema?.cardinality === "many") {
       const newRelationshipList = row[attributeOrRelationshipName].map((item: any) => {
-        if (
-          item?.node?.id === attributeOrRelationshipToEdit.id ||
-          item?.id === attributeOrRelationshipToEdit.id
-        ) {
+        if (item?.node?.id === attributeOrRelationshipToEdit.id) {
           return {
             ...cleanedData,
-            id: item.id,
+            id: item.node?.id,
           };
         }
 
         return {
-          id: item.id,
+          id: item.node?.id,
         };
       });
 

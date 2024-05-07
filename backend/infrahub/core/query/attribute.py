@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
+from infrahub.core.constants import AttributeDBNodeType
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
 from infrahub.core.constants.schema import FlagProperty, NodeProperty
 from infrahub.core.query import Query, QueryNode, QueryRel, QueryType
@@ -53,16 +54,23 @@ class AttributeUpdateValueQuery(AttributeQuery):
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = at.to_string()
-        self.params["value"] = self.attr.to_db()
+        content = self.attr.to_db()
+        self.params.update(self.attr.to_db())
 
-        query = (
-            """
-        MATCH (a { uuid: $attr_uuid })
-        MERGE (av:AttributeValue { value: $value })
-        CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(av)
-        """
-            % self.attr._rel_to_value_label
-        )
+        prop_list = [f"{key}: ${key}" for key in content.keys()]
+
+        labels = ["AttributeValue"]
+        node_type = self.attr.get_db_node_type()
+        if node_type == AttributeDBNodeType.IPHOST:
+            labels.append("AttributeIPHost")
+        elif node_type == AttributeDBNodeType.IPNETWORK:
+            labels.append("AttributeIPNetwork")
+
+        query = """
+        MATCH (a:Attribute { uuid: $attr_uuid })
+        MERGE (av:%(labels)s { %(props)s } )
+        CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(av)
+        """ % {"rel_label": self.attr._rel_to_value_label, "labels": ":".join(labels), "props": ", ".join(prop_list)}
 
         self.add_to_query(query)
         self.return_labels = ["a", "av", "r"]
@@ -100,7 +108,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
         self.params["flag_type"] = self.attr.get_kind()
 
         query = """
-        MATCH (a { uuid: $attr_uuid })
+        MATCH (a:Attribute { uuid: $attr_uuid })
         MERGE (flag:Boolean { value: $flag_value })
         CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(flag)
         """ % self.flag_name.upper()
@@ -141,8 +149,8 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
 
         query = (
             """
-        MATCH (a { uuid: $attr_uuid })
-        MATCH (np { uuid: $prop_id })
+        MATCH (a:Attribute { uuid: $attr_uuid })
+        MATCH (np:Node { uuid: $prop_id })
         CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(np)
         """
             % rel_name
@@ -170,7 +178,7 @@ class AttributeGetQuery(AttributeQuery):
             """
         MATCH (a:Attribute { uuid: $attr_uuid })
         MATCH p = ((a)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap))
-        WHERE all(r IN relationships(p) WHERE ( %s))
+        WHERE all(r IN relationships(p) WHERE ( %s ))
         """
             % rels_filter
         )
@@ -180,7 +188,7 @@ class AttributeGetQuery(AttributeQuery):
         self.return_labels = ["a", "ap", "r2"]
 
 
-async def default_attribute_query_filter(  # pylint: disable=unused-argument,disable=too-many-branches
+async def default_attribute_query_filter(  # pylint: disable=unused-argument,too-many-branches,too-many-statements
     name: str,
     filter_name: str,
     branch: Optional[Branch] = None,
@@ -189,6 +197,7 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,dis
     param_prefix: Optional[str] = None,
     db: Optional[InfrahubDatabase] = None,
     partial_match: bool = False,
+    support_profiles: bool = False,
 ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
     """Generate Query String Snippet to filter the right node."""
 
@@ -215,7 +224,7 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,dis
         query_filter.append(QueryNode(name="i", labels=["Attribute"], params={"name": f"${param_prefix}_name"}))
         query_params[f"{param_prefix}_name"] = name
 
-    if filter_name == "value":
+    if filter_name in ("value", "binary_address"):
         query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]))
 
         if filter_value is None:
@@ -223,19 +232,40 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,dis
         else:
             if partial_match:
                 query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
-                query_where.append(f"toString(av.value) CONTAINS toString(${param_prefix}_value)")
+                query_where.append(
+                    f"toLower(toString(av.{filter_name})) CONTAINS toLower(toString(${param_prefix}_{filter_name}))"
+                )
+            elif support_profiles:
+                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+                query_where.append(f"(av.{filter_name} = ${param_prefix}_{filter_name} OR av.is_default)")
             else:
                 query_filter.append(
-                    QueryNode(name="av", labels=["AttributeValue"], params={"value": f"${param_prefix}_value"})
+                    QueryNode(
+                        name="av", labels=["AttributeValue"], params={filter_name: f"${param_prefix}_{filter_name}"}
+                    )
                 )
-            query_params[f"{param_prefix}_value"] = filter_value
+            query_params[f"{param_prefix}_{filter_name}"] = filter_value
 
     elif filter_name == "values" and isinstance(filter_value, list):
         query_filter.extend(
             (QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]), QueryNode(name="av", labels=["AttributeValue"]))
         )
-        query_where.append(f"av.value IN ${param_prefix}_value")
+        if support_profiles:
+            query_where.append(f"(av.value IN ${param_prefix}_value OR av.is_default)")
+        else:
+            query_where.append(f"av.value IN ${param_prefix}_value")
         query_params[f"{param_prefix}_value"] = filter_value
+
+    elif filter_name == "version":
+        query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]))
+
+        if filter_value is None:
+            query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+        else:
+            query_filter.append(
+                QueryNode(name="av", labels=["AttributeValue"], params={filter_name: f"${param_prefix}_{filter_name}"})
+            )
+            query_params[f"{param_prefix}_{filter_name}"] = filter_value
 
     elif filter_name in [v.value for v in FlagProperty] and filter_value is not None:
         query_filter.append(QueryRel(labels=[filter_name.upper()]))
@@ -260,7 +290,7 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,dis
         query_filter.extend(
             [
                 QueryRel(labels=[f"HAS_{property_name.upper()}"]),
-                QueryNode(name="ap", labels=["CoreNode"], params={"uuid": f"${param_prefix}_{clean_filter_name}"}),
+                QueryNode(name="ap", labels=["Node"], params={"uuid": f"${param_prefix}_{clean_filter_name}"}),
             ]
         )
         query_params[f"{param_prefix}_{clean_filter_name}"] = filter_value

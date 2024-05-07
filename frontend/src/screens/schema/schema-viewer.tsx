@@ -6,26 +6,40 @@ import { Badge } from "../../components/ui/badge";
 import { ModelDisplay, PropertyRow, TabPanelStyled, TabStyled } from "./styled";
 import { RelationshipDisplay } from "./relationship-display";
 import { classNames, isGeneric } from "../../utils/common";
-import { genericsState, IModelSchema, schemaState } from "../../state/atoms/schema.atom";
+import {
+  genericsState,
+  IModelSchema,
+  profilesAtom,
+  schemaState,
+} from "../../state/atoms/schema.atom";
 import { ArrayParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../config/qsp";
 import { CSSProperties } from "react";
+import { Button } from "../../components/buttons/button-primitive";
+import { SchemaHelpMenu } from "./schema-help-menu";
 
 export const SchemaViewerStack = ({ className = "" }: { className: string }) => {
   const [selectedKind, setKinds] = useQueryParam(QSP.KIND, ArrayParam);
+  const nodes = useAtomValue(schemaState);
+  const generics = useAtomValue(genericsState);
+  const profiles = useAtomValue(profilesAtom);
 
   if (!selectedKind) return null;
+
+  const schemas = [...nodes, ...generics, ...profiles];
 
   return (
     <div className={classNames("relative", className)}>
       {selectedKind.map((kind, index) => {
         const position = selectedKind.length - index - 1;
+        const schema = schemas.find((s) => s.kind === kind);
+        if (!schema) return null;
 
         return kind ? (
           <SchemaViewer
             key={kind + index}
             className="absolute top-0 w-full max-h-full"
-            selectedKind={kind}
+            schema={schema}
             onClose={() => {
               const nextKinds = [...selectedKind];
               delete nextKinds[index];
@@ -45,29 +59,23 @@ export const SchemaViewerStack = ({ className = "" }: { className: string }) => 
 
 export const SchemaViewer = ({
   className = "",
-  selectedKind,
+  schema,
   onClose,
   style,
 }: {
   className: string;
-  selectedKind: string;
+  schema: IModelSchema;
   onClose: () => void;
   style?: CSSProperties;
 }) => {
-  const nodes = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
-  const schemas = [...nodes, ...generics];
-
-  const schema = schemas.find(({ kind }) => kind === selectedKind);
-  if (!schema) return null;
-
   return (
     <section
       style={style}
       className={classNames(
         "flex flex-col overflow-hidden space-y-4 p-4 shadow-lg border border-gray-200 bg-custom-white rounded-md",
         className
-      )}>
+      )}
+      data-testid="schema-viewer">
       <div className="flex justify-between items-start">
         <div className="space-x-1">
           <Badge variant="blue">{schema.namespace}</Badge>
@@ -75,7 +83,13 @@ export const SchemaViewer = ({
           <span className="text-xs">{schema.id}</span>
         </div>
 
-        <Icon icon="mdi:close" className="text-xl cursor-pointer text-gray-600" onClick={onClose} />
+        <div className="flex items-center gap-2 text-gray-600">
+          <SchemaHelpMenu schema={schema} />
+
+          <Button size="icon" variant="ghost">
+            <Icon icon="mdi:close" className="text-xl" onClick={onClose} />
+          </Button>
+        </div>
       </div>
 
       <SchemaViewerTitle schema={schema} />
@@ -191,6 +205,10 @@ const Properties = ({ schema }: { schema: IModelSchema }) => {
         <PropertyRow title="Default filter" value={schema.default_filter} />
         <PropertyRow title="Order by" value={schema.order_by} />
         <PropertyRow title="Uniqueness constraints" value={schema.uniqueness_constraints} />
+      </div>
+
+      <div>
+        <PropertyRow title="Documentation" value={schema.documentation} />
       </div>
     </div>
   );

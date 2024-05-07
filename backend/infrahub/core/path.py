@@ -144,7 +144,7 @@ class SchemaPath(InfrahubPath):
         path_type = SchemaPathType.NODE
         if field_name:
             field = schema.get_field(name=field_name)
-            path_type = SchemaPathType.ATTRIBUTE if field and field.is_attribute else SchemaPathType.RELATIONSHIP
+            path_type = SchemaPathType.ATTRIBUTE if field.is_attribute else SchemaPathType.RELATIONSHIP
 
         if field_name and property_name and not hasattr(schema.get_field(name=field_name), property_name):
             raise ValueError(f"Property {property_name} is not valid for {schema.kind}:{field_name}")

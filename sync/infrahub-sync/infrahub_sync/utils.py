@@ -2,7 +2,7 @@ import importlib
 import os
 import sys
 from pathlib import Path
-from typing import List, MutableMapping, Optional, Tuple
+from typing import List, MutableMapping, Optional, Tuple, Union
 
 import yaml
 from infrahub_sdk.schema import GenericSchema, NodeSchema
@@ -15,7 +15,7 @@ from potenda import Potenda
 
 
 def render_adapter(
-    sync_instance: SyncInstance, schema: MutableMapping[str, NodeSchema | GenericSchema]
+    sync_instance: SyncInstance, schema: MutableMapping[str, Union[NodeSchema, GenericSchema]]
 ) -> List[Tuple[str, str]]:
     files_to_render = (
         ("diffsync_models.j2", "sync_models.py"),

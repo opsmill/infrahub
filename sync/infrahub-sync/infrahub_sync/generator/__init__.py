@@ -105,15 +105,22 @@ def get_kind(item: Union[RelationshipSchema, AttributeSchema]) -> str:
     kind = "str"
     if isinstance(item, AttributeSchema):
         kind = ATTRIBUTE_KIND_MAP.get(item.kind, "str")
-        if item.optional or item.default_value is not None:
+        if item.optional:
             kind = f"Optional[{kind}]"
+            if item.default_value is not None:
+                kind += f" = {item.default_value}"
+            else:
+                kind += " = None"
 
     elif isinstance(item, RelationshipSchema) and item.cardinality == "one":
         if item.optional:
-            kind = f"Optional[{kind}]"
+            kind = f"Optional[{kind}] = None"
 
     elif isinstance(item, RelationshipSchema) and item.cardinality == "many":
-        kind = "List[str] = []"
+        kind = "List[str]"
+        if item.optional:
+            kind = f"Optional[{kind}]"
+        kind += " = []"
 
     return kind
 

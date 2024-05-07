@@ -79,7 +79,7 @@ async def test_branch_create(
     assert result.errors is None
     assert result.data
     assert result.data["BranchCreate"]["ok"] is True
-    assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # lenght of an UUID
+    assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # length of an UUID
     assert result.data["BranchCreate"]["object"]["name"] == "branch2"
     assert not result.data["BranchCreate"]["object"]["description"]
     assert result.data["BranchCreate"]["object"]["sync_with_git"] is False
@@ -142,7 +142,7 @@ async def test_branch_create(
     assert result.errors is None
     assert result.data
     assert result.data["BranchCreate"]["ok"] is True
-    assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # lenght of an UUID
+    assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # length of an UUID
     assert result.data["BranchCreate"]["object"]["name"] == "branch3"
     assert result.data["BranchCreate"]["object"]["description"] == "my description"
     assert result.data["BranchCreate"]["object"]["sync_with_git"] is True
@@ -324,7 +324,7 @@ async def test_branch_create_with_repositories(
     assert result.errors is None
     assert result.data
     assert result.data["BranchCreate"]["ok"] is True
-    assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # lenght of an UUID
+    assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # length of an UUID
 
     assert await Branch.get_by_name(db=db, name="branch2")
 

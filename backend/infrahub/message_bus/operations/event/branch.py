@@ -37,7 +37,9 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
 
     events: List[InfrahubMessage] = [
         messages.RefreshRegistryBranches(),
+        messages.TriggerIpamReconciliation(branch=message.target_branch, ipam_node_details=message.ipam_node_details),
         messages.TriggerArtifactDefinitionGenerate(branch=message.target_branch),
+        messages.TriggerGeneratorDefinitionRun(branch=message.target_branch),
     ]
 
     for event in events:
@@ -51,6 +53,10 @@ async def rebased(message: messages.EventBranchRebased, service: InfrahubService
     events: List[InfrahubMessage] = [
         messages.RefreshRegistryRebasedBranch(branch=message.branch),
     ]
+    if message.ipam_node_details:
+        events.append(
+            messages.TriggerIpamReconciliation(branch=message.branch, ipam_node_details=message.ipam_node_details),
+        )
 
     for event in events:
         event.assign_meta(parent=message)

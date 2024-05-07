@@ -26,7 +26,7 @@ class TaskLogNodeCreateQuery(StandardNodeQuery):
         # we want the relationship to be setup regardless so that it's in place for when the
         # Task gets propperly created.
         query = """
-        MATCH (t:Task {uuid: $task_id})
+        MATCH (t:Task { uuid: $task_id })
         CREATE (n:%(node_type)s $node_prop)-[:RELATES_TO]->(t)
         """ % {"node_type": node_type}
         self.add_to_query(query=query)

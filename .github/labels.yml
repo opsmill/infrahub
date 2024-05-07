@@ -48,36 +48,6 @@
   color: "fef2c0"
 
 # ----------------------------------
-# TYPE PYTHON SDK
-# ----------------------------------
-- name: "type/feature/py-sdk"
-  description: "New feature or request related to the Python SDK"
-  color: "a2eeef"
-
-- name: "type/bug/py-sdk"
-  description: "Something isn't working as expected related to the Python SDK"
-  color: "d73a4a"
-
-- name: "type/housekeeping/py-sdk"
-  description: "Maintenance task related to the Python SDK"
-  color: "fef2c0"
-
-# ----------------------------------
-# TYPE CTL
-# ----------------------------------
-- name: "type/feature/ctl"
-  description: "New feature or request related to the infrahubctl command line"
-  color: "a2eeef"
-
-- name: "type/bug/ctl"
-  description: "Something isn't working as expected related to the infrahubctl command line"
-  color: "d73a4a"
-
-- name: "type/housekeeping/ctl"
-  description: "Maintenance task related to the infrahubctl command line"
-  color: "fef2c0"
-
-# ----------------------------------
 # TYPE ALL
 # ----------------------------------
 - name: "type/question"

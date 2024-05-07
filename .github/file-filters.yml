@@ -39,6 +39,9 @@ doc_files: &doc_files
   - package.json
   - package-lock.json
 
+helm_files: &helm_files
+  - "helm/**"
+
 python_all: &python_all
   - "**/*.py"
 
@@ -63,6 +66,9 @@ documentation_all:
   - *development_files
   - *doc_files
   - *markdown_all
+
+helm_all:
+  - *helm_files
 
 sdk_all:
   - *sdk_files

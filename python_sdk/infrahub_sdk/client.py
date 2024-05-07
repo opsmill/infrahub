@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import copy
-import json
 import logging
-from logging import Logger
 from time import sleep
 from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
 
 import httpx
+import ujson
 from typing_extensions import NotRequired, Self
 from typing_extensions import TypedDict as ExtensionTypedDict
 
@@ -93,22 +92,9 @@ class BaseClient:
     def __init__(
         self,
         address: str = "",
-        retry_on_failure: bool = False,
-        retry_delay: int = 5,
-        log: Optional[Logger] = None,
-        insert_tracker: bool = False,
-        update_group_context: bool = False,
-        pagination_size: int = 50,
-        max_concurrent_execution: int = 5,
         config: Optional[Union[Config, Dict[str, Any]]] = None,
-        identifier: Optional[str] = None,
     ):
         self.client = None
-        self.retry_on_failure = retry_on_failure
-        self.retry_delay = retry_delay
-        self.log = log or logging.getLogger("infrahub_sdk")
-        self.insert_tracker = insert_tracker
-        self.pagination_size = pagination_size
         self.headers = {"content-type": "application/json"}
         self.access_token: str = ""
         self.refresh_token: str = ""
@@ -121,16 +107,22 @@ class BaseClient:
         self.default_branch = self.config.default_infrahub_branch
         self.default_timeout = self.config.timeout
         self.config.address = address or self.config.address
+        self.insert_tracker = self.config.insert_tracker
+        self.log = self.config.logger or logging.getLogger("infrahub_sdk")
         self.address = self.config.address
         self.mode = self.config.mode
+        self.pagination_size = self.config.pagination_size
+        self.retry_delay = self.config.retry_delay
+        self.retry_on_failure = self.config.retry_on_failure
 
         if self.config.api_token:
             self.headers["X-INFRAHUB-KEY"] = self.config.api_token
 
-        self.max_concurrent_execution = max_concurrent_execution
+        self.max_concurrent_execution = self.config.max_concurrent_execution
 
-        self.update_group_context = update_group_context
-        self.identifier = identifier
+        self.update_group_context = self.config.update_group_context
+        self.identifier = self.config.identifier
+        self.group_context: Union[InfrahubGroupContext, InfrahubGroupContextSync]
         self._initialize()
 
     def _initialize(self) -> None:
@@ -144,17 +136,20 @@ class BaseClient:
             print(f"URL: {url}")
             print(f"QUERY:\n{query}")
             if variables:
-                print(f"VARIABLES:\n{json.dumps(variables, indent=4)}\n")
+                print(f"VARIABLES:\n{ujson.dumps(variables, indent=4)}\n")
 
     def start_tracking(
         self,
         identifier: Optional[str] = None,
         params: Optional[Dict[str, Any]] = None,
         delete_unused_nodes: bool = False,
+        group_type: Optional[str] = None,
     ) -> Self:
         self.mode = InfrahubClientMode.TRACKING
         identifier = identifier or self.identifier or "python-sdk"
-        self.set_context_properties(identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes)
+        self.set_context_properties(
+            identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes, group_type=group_type
+        )
         return self
 
     def set_context_properties(
@@ -163,12 +158,39 @@ class BaseClient:
         params: Optional[Dict[str, str]] = None,
         delete_unused_nodes: bool = True,
         reset: bool = True,
+        group_type: Optional[str] = None,
     ) -> None:
-        raise NotImplementedError()
+        if reset:
+            if isinstance(self, InfrahubClient):
+                self.group_context = InfrahubGroupContext(self)
+            elif isinstance(self, InfrahubClientSync):
+                self.group_context = InfrahubGroupContextSync(self)
+        self.group_context.set_properties(
+            identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes, group_type=group_type
+        )
+
+    def _graphql_url(
+        self,
+        branch_name: Optional[str] = None,
+        at: Optional[Union[str, Timestamp]] = None,
+    ) -> str:
+        url = f"{self.config.address}/graphql"
+        if branch_name:
+            url += f"/{branch_name}"
+
+        url_params = {}
+        if at:
+            at = Timestamp(at)
+            url_params["at"] = at.to_string()
+            url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
+
+        return url
 
 
-class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
+class InfrahubClient(BaseClient):
     """GraphQL Client to interact with Infrahub."""
+
+    group_context: InfrahubGroupContext
 
     def _initialize(self) -> None:
         self.schema = InfrahubSchema(self)
@@ -180,19 +202,12 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         self.group_context = InfrahubGroupContext(self)
 
     @classmethod
-    async def init(cls, *args: Any, **kwargs: Any) -> InfrahubClient:
-        return cls(*args, **kwargs)
-
-    def set_context_properties(
-        self,
-        identifier: str,
-        params: Optional[Dict[str, str]] = None,
-        delete_unused_nodes: bool = True,
-        reset: bool = True,
-    ) -> None:
-        if reset:
-            self.group_context = InfrahubGroupContext(self)  # pylint: disable=attribute-defined-outside-init
-        self.group_context.set_properties(identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes)
+    async def init(
+        cls,
+        address: str = "",
+        config: Optional[Union[Config, Dict[str, Any]]] = None,
+    ) -> InfrahubClient:
+        return cls(address=address, config=config)
 
     async def create(
         self,
@@ -428,7 +443,11 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return nodes
 
-    async def execute_graphql(  # pylint: disable=too-many-branches
+    def clone(self) -> InfrahubClient:
+        """Return a cloned version of the client using the same configuration"""
+        return InfrahubClient(config=self.config)
+
+    async def execute_graphql(
         self,
         query: str,
         variables: Optional[dict] = None,
@@ -455,21 +474,11 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             _type_: _description_
         """
 
-        url = f"{self.address}/graphql"
-        if branch_name:
-            url += f"/{branch_name}"
+        url = self._graphql_url(branch_name=branch_name, at=at)
 
         payload: Dict[str, Union[str, dict]] = {"query": query}
         if variables:
             payload["variables"] = variables
-
-        url_params = {}
-        if at:
-            at = Timestamp(at)
-            url_params["at"] = at.to_string()
-
-        if url_params:
-            url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
         headers = copy.copy(self.headers or {})
         if self.insert_tracker and tracker:
@@ -582,7 +591,17 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         params: Dict[str, Any] = {}
         if payload:
             params["json"] = payload
-        async with httpx.AsyncClient() as client:
+
+        proxy_config: Dict[str, Union[str, Dict[str, httpx.HTTPTransport]]] = {}
+        if self.config.proxy:
+            proxy_config["proxy"] = self.config.proxy
+        elif self.config.proxy_mounts:
+            proxy_config["mounts"] = {
+                key: httpx.HTTPTransport(proxy=value)
+                for key, value in self.config.proxy_mounts.dict(by_alias=True).items()
+            }
+
+        async with httpx.AsyncClient(**proxy_config) as client:  # type: ignore[arg-type]
             try:
                 response = await client.request(
                     method=method.value,
@@ -663,13 +682,12 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
             url += "?" + "&".join(url_params_str)
 
-        payload = None
+        payload = {}
         if variables:
-            payload = {"variables": variables}
+            payload["variables"] = variables
 
-        resp = await self._request(
+        resp = await self._post(
             url=url,
-            method=HTTPMethod.POST,
             headers=headers,
             payload=payload,
             timeout=timeout or self.default_timeout,
@@ -791,7 +809,9 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         self.mode = InfrahubClientMode.DEFAULT
 
 
-class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
+class InfrahubClientSync(BaseClient):
+    group_context: InfrahubGroupContextSync
+
     def _initialize(self) -> None:
         self.schema = InfrahubSchemaSync(self)
         self.branch = InfrahubBranchManagerSync(self)
@@ -801,19 +821,12 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         self.group_context = InfrahubGroupContextSync(self)
 
     @classmethod
-    def init(cls, *args: Any, **kwargs: Any) -> InfrahubClientSync:
-        return cls(*args, **kwargs)
-
-    def set_context_properties(
-        self,
-        identifier: str,
-        params: Optional[Dict[str, str]] = None,
-        delete_unused_nodes: bool = True,
-        reset: bool = True,
-    ) -> None:
-        if reset:
-            self.group_context = InfrahubGroupContextSync(self)  # pylint: disable=attribute-defined-outside-init
-        self.group_context.set_properties(identifier=identifier, params=params, delete_unused_nodes=delete_unused_nodes)
+    def init(
+        cls,
+        address: str = "",
+        config: Optional[Union[Config, Dict[str, Any]]] = None,
+    ) -> InfrahubClientSync:
+        return cls(address=address, config=config)
 
     def create(
         self,
@@ -840,7 +853,11 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
     def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:
         raise NotImplementedError("This method hasn't been implemented in the sync client yet.")
 
-    def execute_graphql(  # pylint: disable=too-many-branches
+    def clone(self) -> InfrahubClientSync:
+        """Return a cloned version of the client using the same configuration"""
+        return InfrahubClientSync(config=self.config)
+
+    def execute_graphql(
         self,
         query: str,
         variables: Optional[dict] = None,
@@ -867,21 +884,11 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             _type_: _description_
         """
 
-        url = f"{self.address}/graphql"
-        if branch_name:
-            url += f"/{branch_name}"
+        url = self._graphql_url(branch_name=branch_name, at=at)
 
         payload: Dict[str, Union[str, dict]] = {"query": query}
         if variables:
             payload["variables"] = variables
-
-        url_params = {}
-        if at:
-            at = Timestamp(at)
-            url_params["at"] = at.to_string()
-
-        if url_params:
-            url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
         headers = copy.copy(self.headers or {})
         if self.insert_tracker and tracker:
@@ -1187,13 +1194,12 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
             url += "?" + "&".join(url_params_str)
 
-        payload = None
+        payload = {}
         if variables:
-            payload = {"variables": variables}
+            payload["variables"] = variables
 
-        resp = self._request(
+        resp = self._post(
             url=url,
-            method=HTTPMethod.POST,
             headers=headers,
             payload=payload,
             timeout=timeout or self.default_timeout,
@@ -1321,7 +1327,17 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         params: Dict[str, Any] = {}
         if payload:
             params["json"] = payload
-        with httpx.Client() as client:
+
+        proxy_config: Dict[str, Union[str, Dict[str, httpx.HTTPTransport]]] = {}
+        if self.config.proxy:
+            proxy_config["proxy"] = self.config.proxy
+        elif self.config.proxy_mounts:
+            proxy_config["mounts"] = {
+                key: httpx.HTTPTransport(proxy=value)
+                for key, value in self.config.proxy_mounts.dict(by_alias=True).items()
+            }
+
+        with httpx.Client(**proxy_config) as client:  # type: ignore[arg-type]
             try:
                 response = client.request(
                     method=method.value,

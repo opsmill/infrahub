@@ -12,7 +12,7 @@ import { constructPath } from "../../utils/fetch";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { format } from "date-fns";
 import { Skeleton } from "../skeleton";
-import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-modal";
+import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-anywhere";
 import { useDebounce } from "../../hooks/useDebounce";
 
 type SearchProps = {
@@ -67,7 +67,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
   const schemaData = generic || schema;
 
-  const columns = getSchemaObjectColumns(schemaData, true, 7);
+  const columns = getSchemaObjectColumns({ schema: schemaData, forListView: true, limit: 7 });
 
   const queryString = schemaData
     ? getObjectDetailsPaginated({

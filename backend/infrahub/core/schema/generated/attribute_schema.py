@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import Field
 
-from infrahub.core.constants import HashableModelState
+from infrahub.core.constants import AllowOverrideType, HashableModelState
 from infrahub.core.models import HashableModel
 from infrahub.core.schema.dropdown import DropdownChoice  # noqa: TCH001
 
@@ -41,7 +41,7 @@ class GeneratedAttributeSchema(HashableModel):
     )
     regex: Optional[str] = Field(
         default=None,
-        description="Regex uses to limit limit the characters allowed in for the attributes.",
+        description="Regex uses to limit the characters allowed in for the attributes.",
         json_schema_extra={"update": "validate_constraint"},
     )
     max_length: Optional[int] = Field(
@@ -88,7 +88,7 @@ class GeneratedAttributeSchema(HashableModel):
     )
     order_weight: Optional[int] = Field(
         default=None,
-        description="Number used to order the attribute in the frontend (table and view).",
+        description="Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.",
         json_schema_extra={"update": "allowed"},
     )
     default_value: Optional[Any] = Field(
@@ -103,4 +103,9 @@ class GeneratedAttributeSchema(HashableModel):
         default=HashableModelState.PRESENT,
         description="Expected state of the attribute after loading the schema",
         json_schema_extra={"update": "not_applicable"},
+    )
+    allow_override: AllowOverrideType = Field(
+        default=AllowOverrideType.ANY,
+        description="Type of allowed override for the attribute.",
+        json_schema_extra={"update": "allowed"},
     )

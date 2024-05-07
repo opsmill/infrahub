@@ -3,7 +3,7 @@ from typing import Any, List, Optional, Set, Tuple, Union
 from pydantic import BaseModel, Field
 
 from infrahub.core.constants import PathType
-from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
+from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
 
 
 class QueryRelationshipAttributePath(BaseModel):
@@ -38,6 +38,11 @@ class NodeUniquenessQueryRequest(BaseModel):
     kind: str
     unique_attribute_paths: Set[QueryAttributePath] = Field(default_factory=set)
     relationship_attribute_paths: Set[QueryRelationshipAttributePath] = Field(default_factory=set)
+
+    def __bool__(self) -> bool:
+        if self.unique_attribute_paths or self.relationship_attribute_paths:
+            return True
+        return False
 
 
 class NonUniqueRelatedAttribute(BaseModel):
@@ -93,7 +98,7 @@ class NonUniqueAttribute(BaseModel):
 
 
 class NonUniqueNode(BaseModel):
-    node_schema: Union[NodeSchema, GenericSchema]
+    node_schema: MainSchemaTypes
     node_id: str
     non_unique_attributes: List[NonUniqueAttribute] = Field(default_factory=list)
     non_unique_related_attributes: List[NonUniqueRelatedAttribute] = Field(default_factory=list)

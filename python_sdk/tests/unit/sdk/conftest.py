@@ -8,7 +8,7 @@ import pytest
 import ujson
 from pytest_httpx import HTTPXMock
 
-from infrahub_sdk import InfrahubClient, InfrahubClientSync
+from infrahub_sdk import Config, InfrahubClient, InfrahubClientSync
 from infrahub_sdk.schema import BranchSupportType, NodeSchema
 from infrahub_sdk.utils import get_fixtures_dir
 
@@ -24,14 +24,16 @@ class BothClients:
 
 @pytest.fixture
 async def client() -> InfrahubClient:
-    return await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination_size=3)
+    return await InfrahubClient.init(config=Config(address="http://mock", insert_tracker=True, pagination_size=3))
 
 
 @pytest.fixture
 async def clients() -> BothClients:
     both = BothClients(
-        standard=await InfrahubClient.init(address="http://mock", insert_tracker=True, pagination_size=3),
-        sync=InfrahubClientSync.init(address="http://mock", insert_tracker=True, pagination_size=3),
+        standard=await InfrahubClient.init(
+            config=Config(address="http://mock", insert_tracker=True, pagination_size=3)
+        ),
+        sync=InfrahubClientSync.init(config=Config(address="http://mock", insert_tracker=True, pagination_size=3)),
     )
     return both
 

@@ -4,9 +4,9 @@ import copy
 from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
-from infrahub.core import get_branch, registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.manager import NodeManager
+from infrahub.core.registry import registry
 from infrahub.log import get_logger
 
 from .model import (
@@ -45,7 +45,7 @@ async def get_display_labels_per_kind(
     kind: str, ids: List[str], branch_name: str, db: InfrahubDatabase
 ) -> Dict[str, str]:
     """Return the display_labels of a list of nodes of a specific kind."""
-    branch = await get_branch(branch=branch_name, db=db)
+    branch = await registry.get_branch(branch=branch_name, db=db)
     schema = registry.schema.get(name=kind, branch=branch)
     fields = schema.generate_fields_for_display_label()
     nodes = await NodeManager.get_many(ids=ids, fields=fields, db=db, branch=branch)

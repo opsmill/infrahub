@@ -7,7 +7,7 @@ from infrahub.database import InfrahubDatabase
 from tests.helpers.graphql import graphql_query
 
 
-@pytest.mark.parametrize("filter_value", ["l", "o", "w", "low"])
+@pytest.mark.parametrize("filter_value", ["l", "o", "w", "low", "L", "LOW"])
 async def test_query_filter_local_attrs_partial_match(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema, filter_value
 ):

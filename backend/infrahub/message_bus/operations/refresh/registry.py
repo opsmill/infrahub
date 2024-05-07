@@ -14,6 +14,8 @@ async def branches(message: messages.RefreshRegistryBranches, service: InfrahubS
     async with service.database.start_session() as db:
         await refresh_branches(db=db)
 
+    await service.component.refresh_schema_hash()
+
 
 async def rebased_branch(message: messages.RefreshRegistryRebasedBranch, service: InfrahubServices) -> None:
     if message.meta and message.meta.initiator_id == WORKER_IDENTITY:

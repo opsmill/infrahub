@@ -79,7 +79,10 @@ export const ProposedChange = (props: any) => {
           bg-custom-white hover:bg-gray-50
           hidden group-hover/pc:flex
         `}
-        onClick={() => setDeleteModal(true)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setDeleteModal(true);
+        }}
         data-testid="delete-proposed-change-button"
         disabled={!auth?.permissions?.write}>
         <Icon icon="mdi:delete" height="16" width="16" className="text-red-600" />

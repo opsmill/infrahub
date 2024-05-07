@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { fetchUrl } from "../../utils/fetch";
-import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-modal";
+import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-anywhere";
 import { CONFIG, INFRAHUB_API_SERVER_URL } from "../../config/config";
 import { Icon } from "@iconify-icon/react";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -68,10 +68,10 @@ const DocsResults = ({ breadcrumb, title, url }: SearchDocsResultProps) => {
   return (
     <SearchResultItem to={INFRAHUB_API_SERVER_URL + url} target="_blank">
       {breadcrumb.slice(1).map((b) => (
-        <>
+        <Fragment key={b}>
           <span>{b}</span>
           <Icon icon="mdi:chevron-right" />
-        </>
+        </Fragment>
       ))}
       <strong className="font-semibold">{title}</strong>
     </SearchResultItem>

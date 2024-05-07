@@ -140,7 +140,7 @@ export const BranchDetails = () => {
           onDelete={async () => {
             await branchAction({
               successMessage: "Branch deleted successfully!",
-              errorMessage: "An error occured while deleting the branch",
+              errorMessage: "An error occurred while deleting the branch",
               request: deleteBranch,
               options: {
                 name: branch.name,
@@ -205,7 +205,7 @@ export const BranchDetails = () => {
                   onClick={() =>
                     branchAction({
                       successMessage: "Branch merged successfully!",
-                      errorMessage: "An error occured while merging the branch",
+                      errorMessage: "An error occurred while merging the branch",
                       request: mergeBranch,
                       options: {
                         name: branch.name,
@@ -231,7 +231,7 @@ export const BranchDetails = () => {
                   onClick={() =>
                     branchAction({
                       successMessage: "Branch rebased successfully!",
-                      errorMessage: "An error occured while rebasing the branch",
+                      errorMessage: "An error occurred while rebasing the branch",
                       request: rebaseBranch,
                       options: {
                         name: branch.name,
@@ -248,7 +248,7 @@ export const BranchDetails = () => {
                   onClick={() =>
                     branchAction({
                       successMessage: "The branch is valid!",
-                      errorMessage: "An error occured while validating the branch",
+                      errorMessage: "An error occurred while validating the branch",
                       request: validateBranch,
                       options: {
                         name: branch.name,

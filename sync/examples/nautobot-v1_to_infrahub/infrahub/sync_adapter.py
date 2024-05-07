@@ -1,11 +1,7 @@
 from infrahub_sync.adapters.infrahub import InfrahubAdapter
 
 from .sync_models import (
-    BuiltinLocation,
-    BuiltinRole,
-    BuiltinStatus,
     BuiltinTag,
-    CoreOrganization,
     CoreStandardGroup,
     InfraAutonomousSystem,
     InfraCircuit,
@@ -21,6 +17,9 @@ from .sync_models import (
     InfraRouteTarget,
     InfraVLAN,
     InfraVRF,
+    LocationGeneric,
+    RoleGeneric,
+    StatusGeneric,
     TemplateCircuitType,
     TemplateDeviceType,
     TemplateLocationType,
@@ -37,22 +36,21 @@ class InfrahubSync(InfrahubAdapter):
     BuiltinTag = BuiltinTag
     InfraAutonomousSystem = InfraAutonomousSystem
     InfraCircuit = InfraCircuit
-    TemplateCircuitType = TemplateCircuitType
     InfraDevice = InfraDevice
-    TemplateDeviceType = TemplateDeviceType
     InfraFrontPort = InfraFrontPort
-    InfraInterfaceL2L3 = InfraInterfaceL2L3
     InfraIPAddress = InfraIPAddress
-    TemplateLocationType = TemplateLocationType
+    InfraInterfaceL2L3 = InfraInterfaceL2L3
     InfraPlatform = InfraPlatform
-    InfraProviderNetwork = InfraProviderNetwork
     InfraPrefix = InfraPrefix
+    InfraProviderNetwork = InfraProviderNetwork
     InfraRack = InfraRack
     InfraRearPort = InfraRearPort
     InfraRouteTarget = InfraRouteTarget
     InfraVLAN = InfraVLAN
     InfraVRF = InfraVRF
-    CoreOrganization = CoreOrganization
-    BuiltinStatus = BuiltinStatus
-    BuiltinRole = BuiltinRole
-    BuiltinLocation = BuiltinLocation
+    LocationGeneric = LocationGeneric
+    RoleGeneric = RoleGeneric
+    StatusGeneric = StatusGeneric
+    TemplateCircuitType = TemplateCircuitType
+    TemplateDeviceType = TemplateDeviceType
+    TemplateLocationType = TemplateLocationType

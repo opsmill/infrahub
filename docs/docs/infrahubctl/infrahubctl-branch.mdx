@@ -44,7 +44,7 @@ $ infrahubctl branch create [OPTIONS] BRANCH_NAME
 * `--description TEXT`: Description of the branch
 * `--sync-with-git / --no-sync-with-git`: Extend the branch to Git and have Infrahub create the branch in connected repositories.  [default: no-sync-with-git]
 * `--isolated / --no-isolated`: Set the branch to isolated mode  [default: no-isolated]
-* `--config-file PATH`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
+* `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--help`: Show this message and exit.
 
 ## `infrahubctl branch delete`
@@ -63,7 +63,7 @@ $ infrahubctl branch delete [OPTIONS] BRANCH_NAME
 
 **Options**:
 
-* `--config-file PATH`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
+* `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--help`: Show this message and exit.
 
 ## `infrahubctl branch list`
@@ -78,7 +78,7 @@ $ infrahubctl branch list [OPTIONS]
 
 **Options**:
 
-* `--config-file PATH`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
+* `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--help`: Show this message and exit.
 
 ## `infrahubctl branch merge`
@@ -97,7 +97,7 @@ $ infrahubctl branch merge [OPTIONS] BRANCH_NAME
 
 **Options**:
 
-* `--config-file PATH`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
+* `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--help`: Show this message and exit.
 
 ## `infrahubctl branch rebase`
@@ -116,7 +116,7 @@ $ infrahubctl branch rebase [OPTIONS] BRANCH_NAME
 
 **Options**:
 
-* `--config-file PATH`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
+* `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--help`: Show this message and exit.
 
 ## `infrahubctl branch validate`
@@ -135,5 +135,5 @@ $ infrahubctl branch validate [OPTIONS] BRANCH_NAME
 
 **Options**:
 
-* `--config-file PATH`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
+* `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--help`: Show this message and exit.

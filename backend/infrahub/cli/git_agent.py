@@ -1,15 +1,14 @@
+import asyncio
 import logging
 import signal
-import sys
-from asyncio import run as aiorun
 from typing import Any
 
 import typer
-from infrahub_sdk import InfrahubClient
+from infrahub_sdk import Config, InfrahubClient
 from prometheus_client import start_http_server
 from rich.logging import RichHandler
 
-from infrahub import config
+from infrahub import __version__, config
 from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, get_db
@@ -21,15 +20,17 @@ from infrahub.log import get_logger
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
+from infrahub.trace import configure_trace
 
 app = typer.Typer()
 
 log = get_logger()
 
+shutdown_event = asyncio.Event()
+
 
 def signal_handler(*args: Any, **kwargs: Any) -> None:  # pylint: disable=unused-argument
-    print("Git Agent terminated by user.")
-    sys.exit(0)
+    shutdown_event.set()
 
 
 signal.signal(signal.SIGINT, signal_handler)
@@ -63,8 +64,20 @@ async def _start(debug: bool, port: int) -> None:
 
     # initialize the Infrahub Client and query the list of branches to validate that the API is reacheable and the auth is working
     log.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
-    client = await InfrahubClient.init(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=log)
+    client = InfrahubClient(
+        config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=log)
+    )
     await client.branch.all()
+
+    # Initialize trace
+    if config.SETTINGS.trace.enable:
+        configure_trace(
+            service="infrahub-git-agent",
+            version=__version__,
+            exporter_type=config.SETTINGS.trace.exporter_type,
+            exporter_endpoint=config.SETTINGS.trace.exporter_endpoint,
+            exporter_protocol=config.SETTINGS.trace.exporter_protocol,
+        )
 
     # Initialize the lock
     initialize_lock()
@@ -83,11 +96,19 @@ async def _start(debug: bool, port: int) -> None:
     async with service.database.start_session() as db:
         await initialization(db=db)
 
+    await service.component.refresh_schema_hash()
+
     await initialize_git_agent(service=service)
 
     build_component_registry()
 
-    await service.message_bus.subscribe()
+    while not shutdown_event.is_set():
+        await asyncio.sleep(1)
+
+    log.info("Shutdown of Git agent requested")
+
+    await service.shutdown()
+    log.info("All services stopped")
 
 
 @app.command()
@@ -110,4 +131,4 @@ def start(
 
     config.load_and_exit(config_file_name=config_file)
 
-    aiorun(_start(debug=debug, port=port))
+    asyncio.run(_start(debug=debug, port=port))

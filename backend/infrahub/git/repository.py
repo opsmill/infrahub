@@ -25,8 +25,10 @@ from infrahub_sdk import (
     InfrahubRepositoryConfig,
     ValidationError,
 )
+from infrahub_sdk.exceptions import ModuleImportError
 from infrahub_sdk.schema import (
     InfrahubCheckDefinitionConfig,
+    InfrahubGeneratorDefinitionConfig,
     InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
 )
@@ -44,6 +46,7 @@ from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
     Error,
+    FileOutOfRepositoryError,
     InitializationError,
     RepositoryError,
     RepositoryFileNotFoundError,
@@ -579,7 +582,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         branches = await self.client.branch.all()
 
         # TODO Need to optimize this query, right now we are querying everything unnecessarily
-        repositories = await self.client.get_list_repositories(branches=branches, kind="CoreRepository")
+        repositories = await self.client.get_list_repositories(branches=branches, kind=InfrahubKind.REPOSITORY)
         repository = repositories[self.name]
 
         for branch_name, branch in branches.items():
@@ -658,7 +661,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 "Unable to update the value of the commit because a valid client hasn't been provided.",
                 repository=self.name,
             )
-            return
+            return False
 
         log.debug(
             f"Updating commit value to {commit} for branch {branch_name}", repository=self.name, branch=branch_name
@@ -1103,7 +1106,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 branch=branch_name,
                 commit=commit,
             )
-            return
+            return None
 
         config_file_content = config_file.read_text(encoding="utf-8")
         try:
@@ -1115,7 +1118,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 branch=branch_name,
                 commit=commit,
             )
-            return
+            return None
 
         # Convert data to a dictionary to avoid it being `None` if the yaml file is just an empty document
         data = data or {}
@@ -1131,7 +1134,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 branch=branch_name,
                 commit=commit,
             )
-            return
+            return None
 
     async def import_schema_files(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig) -> None:
         # pylint: disable=too-many-branches
@@ -1196,19 +1199,19 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if has_error:
             return
 
-        _, errors = await self.client.schema.load(schemas=[item.content for item in schemas_data], branch=branch_name)
+        response = await self.client.schema.load(schemas=[item.content for item in schemas_data], branch=branch_name)
 
-        if errors:
+        if response.errors:
             error_messages = []
 
-            if "detail" in errors:
-                for error in errors["detail"]:
+            if "detail" in response.errors:
+                for error in response.errors["detail"]:
                     loc_str = [str(item) for item in error["loc"][1:]]
                     error_messages.append(f"{'/'.join(loc_str)} | {error['msg']} ({error['type']})")
-            elif "error" in errors:
-                error_messages.append(f"{errors.get('error')}")
+            elif "error" in response.errors:
+                error_messages.append(f"{response.errors.get('error')}")
             else:
-                error_messages.append(f"{errors}")
+                error_messages.append(f"{response.errors}")
 
             await self.log.error(
                 f"Unable to load the schema : {', '.join(error_messages)}", repository=self.name, commit=commit
@@ -1372,6 +1375,109 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             )
             await check_definition_in_graph[check_name].delete()
 
+    async def import_generator_definitions(
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
+    ) -> None:
+        commit_wt = self.get_worktree(identifier=commit)
+        branch_wt = self.get_worktree(identifier=commit or branch_name)
+
+        generators = []
+        for generator in config_file.generator_definitions:
+            log.debug(self.name, import_type="generator_definition", file=generator.file_path)
+            file_info = extract_repo_file_information(
+                full_filename=os.path.join(branch_wt.directory, generator.file_path.as_posix()),
+                repo_directory=self.directory_root,
+                worktree_directory=commit_wt.directory,
+            )
+
+            try:
+                generator.load_class(import_root=self.directory_root, relative_path=file_info.relative_repo_path_dir)
+                generators.append(generator)
+            except ModuleImportError as exc:
+                await self.log.warning(
+                    self.name, import_type="generator_definition", file=generator.file_path.as_posix(), error=str(exc)
+                )
+                continue
+
+        local_generator_definitions = {generator.name: generator for generator in generators}
+        generator_definition_in_graph = {
+            generator.name.value: generator
+            for generator in await self.client.filters(
+                kind=InfrahubKind.GENERATORDEFINITION, branch=branch_name, repository__ids=[str(self.id)]
+            )
+        }
+
+        present_in_both, only_graph, only_local = compare_lists(
+            list1=list(generator_definition_in_graph.keys()), list2=list(local_generator_definitions.keys())
+        )
+
+        for generator_name in only_local:
+            await self.log.info(
+                f"New GeneratorDefinition {generator_name!r} found, creating",
+                repository=self.name,
+                branch=branch_name,
+                commit=commit,
+            )
+            await self._create_generator_definition(
+                branch_name=branch_name, generator=local_generator_definitions[generator_name]
+            )
+
+        for generator_name in present_in_both:
+            if await self._generator_requires_update(
+                generator=local_generator_definitions[generator_name],
+                existing_generator=generator_definition_in_graph[generator_name],
+                branch_name=branch_name,
+            ):
+                await self.log.info(
+                    f"New version of GeneratorDefinition {generator_name!r} found, updating",
+                    repository=self.name,
+                    branch=branch_name,
+                    commit=commit,
+                )
+
+                await self._update_generator_definition(
+                    generator=local_generator_definitions[generator_name],
+                    existing_generator=generator_definition_in_graph[generator_name],
+                )
+
+        for generator_name in only_graph:
+            await self.log.info(
+                f"GeneratorDefinition '{generator_name!r}' not found locally, deleting",
+                repository=self.name,
+                branch=branch_name,
+                commit=commit,
+            )
+            await generator_definition_in_graph[generator_name].delete()
+
+    async def _generator_requires_update(
+        self, generator: InfrahubGeneratorDefinitionConfig, existing_generator: InfrahubNode, branch_name: str
+    ) -> bool:
+        graphql_queries = await self.client.filters(
+            kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, name__value=generator.query, populate_store=True
+        )
+        if graphql_queries:
+            generator.query = graphql_queries[0].id
+        targets = await self.client.filters(
+            kind=InfrahubKind.GENERICGROUP,
+            branch=branch_name,
+            name__value=generator.targets,
+            populate_store=True,
+            fragment=True,
+        )
+        if targets:
+            generator.targets = targets[0].id
+
+        if (  # pylint: disable=too-many-boolean-expressions
+            existing_generator.query.id != generator.query
+            or existing_generator.file_path.value != str(generator.file_path)
+            or existing_generator.class_name.value != generator.class_name
+            or existing_generator.parameters.value != generator.parameters
+            or existing_generator.convert_query_response.value != generator.convert_query_response
+            or existing_generator.targets.id != generator.targets
+        ):
+            return True
+        return False
+
     async def import_python_transforms(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
@@ -1412,7 +1518,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         transform_definition_in_graph = {
             transform.name.value: transform
             for transform in await self.client.filters(
-                kind="CoreTransformPython", branch=branch_name, repository__ids=[str(self.id)]
+                kind=InfrahubKind.TRANSFORMPYTHON, branch=branch_name, repository__ids=[str(self.id)]
             )
         }
 
@@ -1488,7 +1594,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
             await self.log.error(
-                f"An error occured while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} ",
+                f"An error occurred while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} ",
                 repository=self.name,
                 branch=branch_name,
             )
@@ -1520,12 +1626,57 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
             await self.log.error(
-                f"An error occured while processing the PythonTransform {transform.name} from {file_path} : {exc} ",
+                f"An error occurred while processing the PythonTransform {transform.name} from {file_path} : {exc} ",
                 repository=self.name,
                 branch=branch_name,
             )
 
         return transforms
+
+    async def _create_generator_definition(
+        self, generator: InfrahubGeneratorDefinitionConfig, branch_name: str
+    ) -> InfrahubNode:
+        data = generator.dict(exclude_none=True, exclude={"file_path"})
+        data["file_path"] = str(generator.file_path)
+        data["repository"] = self.id
+
+        schema = await self.client.schema.get(kind=InfrahubKind.GENERATORDEFINITION, branch=branch_name)
+
+        create_payload = self.client.schema.generate_payload_create(
+            schema=schema,
+            data=data,
+            source=str(self.id),
+            is_protected=True,
+        )
+        obj = await self.client.create(kind=InfrahubKind.GENERATORDEFINITION, branch=branch_name, **create_payload)
+        await obj.save()
+
+        return obj
+
+    async def _update_generator_definition(
+        self,
+        generator: InfrahubGeneratorDefinitionConfig,
+        existing_generator: InfrahubNode,
+    ) -> None:
+        if existing_generator.query.id != generator.query:
+            existing_generator.query = {"id": generator.query, "source": str(self.id), "is_protected": True}
+
+        if existing_generator.class_name.value != generator.class_name:
+            existing_generator.class_name.value = generator.class_name
+
+        if existing_generator.file_path.value != str(generator.file_path):
+            existing_generator.file_path.value = str(generator.file_path)
+
+        if existing_generator.convert_query_response.value != generator.convert_query_response:
+            existing_generator.convert_query_response.value = generator.convert_query_response
+
+        if existing_generator.parameters.value != generator.parameters:
+            existing_generator.parameters.value = generator.parameters
+
+        if existing_generator.targets.id != generator.targets:
+            existing_generator.targets = {"id": generator.targets, "source": str(self.id), "is_protected": True}
+
+        await existing_generator.save()
 
     async def create_python_check_definition(self, branch_name: str, check: CheckDefinitionInformation) -> InfrahubNode:
         data = {
@@ -1591,7 +1742,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         return True
 
     async def create_python_transform(self, branch_name: str, transform: TransformPythonInformation) -> InfrahubNode:
-        schema = await self.client.schema.get(kind="CoreTransformPython", branch=branch_name)
+        schema = await self.client.schema.get(kind=InfrahubKind.TRANSFORMPYTHON, branch=branch_name)
         data = {
             "name": transform.name,
             "repository": transform.repository,
@@ -1606,7 +1757,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             source=self.id,
             is_protected=True,
         )
-        obj = await self.client.create(kind="CoreTransformPython", branch=branch_name, **create_payload)
+        obj = await self.client.create(kind=InfrahubKind.TRANSFORMPYTHON, branch=branch_name, **create_payload)
         await obj.save()
         return obj
 
@@ -1639,6 +1790,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     async def import_all_python_files(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig):
         await self.import_python_check_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
         await self.import_python_transforms(branch_name=branch_name, commit=commit, config_file=config_file)
+        await self.import_generator_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
 
     async def find_files(
         self,
@@ -1687,15 +1839,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
     async def get_file(self, commit: str, location: str) -> str:
         commit_worktree = self.get_commit_worktree(commit=commit)
+        path = self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=location)
 
-        self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=location)
-
-        full_filename = os.path.join(commit_worktree.directory, location)
-
-        with open(full_filename, "r", encoding="UTF-8") as obj:
-            content = obj.read()
-
-        return content
+        return path.read_text(encoding="UTF-8")
 
     async def render_jinja2_template(self, commit: str, location: str, data: dict):
         commit_worktree = self.get_commit_worktree(commit=commit)
@@ -1867,7 +2013,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             artifact_content = await self.render_jinja2_template(
                 commit=commit, location=transformation.template_path.value, data=response
             )
-        elif transformation.typename == "CoreTransformPython":
+        elif transformation.typename == InfrahubKind.TRANSFORMPYTHON:
             transformation_location = f"{transformation.file_path.value}::{transformation.class_name.value}"
             artifact_content = await self.execute_python_transform(
                 branch_name=branch_name,
@@ -1916,7 +2062,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             artifact_content = await self.render_jinja2_template(
                 commit=message.commit, location=message.transform_location, data=response
             )
-        elif message.transform_type == "CoreTransformPython":
+        elif message.transform_type == InfrahubKind.TRANSFORMPYTHON:
             artifact_content = await self.execute_python_transform(
                 branch_name=message.branch_name,
                 commit=message.commit,
@@ -1946,9 +2092,17 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         await artifact.save()
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
-    def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> None:
-        if not os.path.exists(os.path.join(worktree_directory, file_path)):
+    def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> Path:
+        """Validate that a file is found inside a repository and return a corresponding `pathlib.Path` object for it."""
+        path = Path(worktree_directory, file_path).resolve()
+
+        if not str(path).startswith(worktree_directory):
+            raise FileOutOfRepositoryError(repository_name=self.name, commit=commit, location=file_path)
+
+        if not path.exists():
             raise RepositoryFileNotFoundError(repository_name=self.name, commit=commit, location=file_path)
+
+        return path
 
 
 class InfrahubRepository(InfrahubRepositoryBase):

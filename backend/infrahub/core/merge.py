@@ -262,7 +262,8 @@ class BranchMerger:
         # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
         # From the Graph or From the repositories
         await self.merge_graph(at=at, conflict_resolution=conflict_resolution)
-        await self.merge_repositories()
+        if self.source_branch.sync_with_git:
+            await self.merge_repositories()
 
     async def merge_graph(  # pylint: disable=too-many-branches,too-many-statements
         self,

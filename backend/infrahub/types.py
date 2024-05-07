@@ -11,7 +11,7 @@ from infrahub.core import registry
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
-    from infrahub.graphql.mutations.attribute import BaseAttributeInput
+    from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
     from infrahub.graphql.types.attribute import BaseAttribute as BaseAttributeType
 
 DEFAULT_MODULE_ATTRIBUTE = "infrahub.core.attribute"
@@ -22,7 +22,8 @@ DEFAULT_MODULE_GRAPHQL_QUERY = "infrahub.graphql.types"
 class InfrahubDataType:
     label: str
     graphql_query: str
-    graphql_input: str
+    graphql_create: str
+    graphql_update: str
     graphql_filter: type
     graphql: type
     infrahub: str
@@ -43,11 +44,18 @@ class InfrahubDataType:
         return getattr(module, cls.infrahub)
 
     @classmethod
-    def get_graphql_input(cls) -> Type[BaseAttributeInput]:
-        if not isinstance(cls.graphql_input, str):
-            return cls.graphql_input
+    def get_graphql_create(cls) -> Type[BaseAttributeCreate]:
+        if not isinstance(cls.graphql_create, str):
+            return cls.graphql_create
         module = importlib.import_module(DEFAULT_MODULE_GRAPHQL_INPUT)
-        return getattr(module, cls.graphql_input)
+        return getattr(module, cls.graphql_create)
+
+    @classmethod
+    def get_graphql_update(cls) -> Type[BaseAttributeUpdate]:
+        if not isinstance(cls.graphql_update, str):
+            return cls.graphql_update
+        module = importlib.import_module(DEFAULT_MODULE_GRAPHQL_INPUT)
+        return getattr(module, cls.graphql_update)
 
     @classmethod
     def get_graphql_type(cls) -> Type[BaseAttributeType]:
@@ -83,7 +91,8 @@ class Default(InfrahubDataType):
     label: str = "Default"
     graphql = graphene.String
     graphql_query = "BaseAttribute"
-    graphql_input = "BaseAttributeInput"
+    graphql_create = "BaseAttributeCreate"
+    graphql_update = "BaseAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "BaseAttribute"
 
@@ -92,7 +101,8 @@ class ID(InfrahubDataType):
     label: str = "ID"
     graphql = graphene.ID
     graphql_query = "TextAttributeType"
-    graphql_input = "TextAttributeInput"
+    graphql_create = "TextAttributeCreate"
+    graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
 
@@ -101,7 +111,8 @@ class Text(InfrahubDataType):
     label: str = "Text"
     graphql = graphene.String
     graphql_query = "TextAttributeType"
-    graphql_input = "TextAttributeInput"
+    graphql_create = "TextAttributeCreate"
+    graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
 
@@ -110,7 +121,8 @@ class TextArea(Text):
     label: str = "TextArea"
     graphql = graphene.String
     graphql_query = "TextAttributeType"
-    graphql_input = "TextAttributeInput"
+    graphql_create = "TextAttributeCreate"
+    graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
 
@@ -119,7 +131,8 @@ class DateTime(InfrahubDataType):
     label: str = "DateTime"
     graphql = graphene.String
     graphql_query = "TextAttributeType"
-    graphql_input = "TextAttributeInput"
+    graphql_create = "TextAttributeCreate"
+    graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
 
@@ -128,7 +141,8 @@ class Email(InfrahubDataType):
     label: str = "Email"
     graphql = graphene.String
     graphql_query = "TextAttributeType"
-    graphql_input = "TextAttributeInput"
+    graphql_create = "TextAttributeCreate"
+    graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
 
@@ -137,7 +151,8 @@ class Password(InfrahubDataType):
     label: str = "Password"
     graphql = graphene.String
     graphql_query = "TextAttributeType"
-    graphql_input = "TextAttributeInput"
+    graphql_create = "TextAttributeCreate"
+    graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
 
@@ -146,7 +161,8 @@ class HashedPassword(InfrahubDataType):
     label: str = "Password"
     graphql = graphene.String
     graphql_query = "TextAttributeType"
-    graphql_input = "TextAttributeInput"
+    graphql_create = "TextAttributeCreate"
+    graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "HashedPassword"
 
@@ -155,7 +171,8 @@ class URL(InfrahubDataType):
     label: str = "URL"
     graphql = graphene.String
     graphql_query = "TextAttributeType"
-    graphql_input = "TextAttributeInput"
+    graphql_create = "TextAttributeCreate"
+    graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "URL"
 
@@ -164,7 +181,8 @@ class File(InfrahubDataType):
     label: str = "File"
     graphql = graphene.String
     graphql_query = "TextAttributeType"
-    graphql_input = "TextAttributeInput"
+    graphql_create = "TextAttributeCreate"
+    graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
 
@@ -173,7 +191,8 @@ class MacAddress(InfrahubDataType):
     label: str = "MacAddress"
     graphql = graphene.String
     graphql_query = "TextAttributeType"
-    graphql_input = "TextAttributeInput"
+    graphql_create = "TextAttributeCreate"
+    graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
 
@@ -182,7 +201,8 @@ class Color(InfrahubDataType):
     label: str = "Color"
     graphql = graphene.String
     graphql_query = "TextAttributeType"
-    graphql_input = "TextAttributeInput"
+    graphql_create = "TextAttributeCreate"
+    graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
 
@@ -191,7 +211,8 @@ class Dropdown(InfrahubDataType):
     label: str = "Dropdown"
     graphql = graphene.String
     graphql_query = "DropdownType"
-    graphql_input = "TextAttributeInput"
+    graphql_create = "TextAttributeCreate"
+    graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "Dropdown"
 
@@ -200,7 +221,8 @@ class Number(InfrahubDataType):
     label: str = "Number"
     graphql = graphene.Int
     graphql_query = "NumberAttributeType"
-    graphql_input = "NumberAttributeInput"
+    graphql_create = "NumberAttributeCreate"
+    graphql_update = "NumberAttributeUpdate"
     graphql_filter = graphene.Int
     infrahub = "Integer"
 
@@ -209,7 +231,8 @@ class Bandwidth(InfrahubDataType):
     label: str = "Bandwidth"
     graphql = graphene.Int
     graphql_query = "NumberAttributeType"
-    graphql_input = "NumberAttributeInput"
+    graphql_create = "NumberAttributeCreate"
+    graphql_update = "NumberAttributeUpdate"
     graphql_filter = graphene.Int
     infrahub = "Integer"
 
@@ -218,7 +241,8 @@ class IPHost(InfrahubDataType):
     label: str = "IPHost"
     graphql = graphene.String
     graphql_query = "IPHostType"
-    graphql_input = "TextAttributeInput"
+    graphql_create = "TextAttributeCreate"
+    graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "IPHost"
 
@@ -227,7 +251,8 @@ class IPNetwork(InfrahubDataType):
     label: str = "IPNetwork"
     graphql = graphene.String
     graphql_query = "IPNetworkType"
-    graphql_input = "TextAttributeInput"
+    graphql_create = "TextAttributeCreate"
+    graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "IPNetwork"
 
@@ -236,7 +261,8 @@ class Boolean(InfrahubDataType):
     label: str = "Boolean"
     graphql = graphene.Boolean
     graphql_query = "CheckboxAttributeType"
-    graphql_input = "CheckboxAttributeInput"
+    graphql_create = "CheckboxAttributeCreate"
+    graphql_update = "CheckboxAttributeUpdate"
     graphql_filter = graphene.Boolean
     infrahub = "Boolean"
 
@@ -245,7 +271,8 @@ class Checkbox(InfrahubDataType):
     label: str = "Checkbox"
     graphql = graphene.Boolean
     graphql_query = "CheckboxAttributeType"
-    graphql_input = "CheckboxAttributeInput"
+    graphql_create = "CheckboxAttributeCreate"
+    graphql_update = "CheckboxAttributeUpdate"
     graphql_filter = graphene.Boolean
     infrahub = "Boolean"
 
@@ -254,7 +281,8 @@ class List(InfrahubDataType):
     label: str = "List"
     graphql = GenericScalar
     graphql_query = "ListAttributeType"
-    graphql_input = "ListAttributeInput"
+    graphql_create = "ListAttributeCreate"
+    graphql_update = "ListAttributeUpdate"
     graphql_filter = GenericScalar
     infrahub = "ListAttribute"
 
@@ -263,7 +291,8 @@ class JSON(InfrahubDataType):
     label: str = "JSON"
     graphql = GenericScalar
     graphql_query = "JSONAttributeType"
-    graphql_input = "JSONAttributeInput"
+    graphql_create = "JSONAttributeCreate"
+    graphql_update = "JSONAttributeUpdate"
     graphql_filter = GenericScalar
     infrahub = "JSONAttribute"
 
@@ -272,7 +301,8 @@ class Any(InfrahubDataType):
     label: str = "Any"
     graphql = GenericScalar
     graphql_query = "AnyAttributeType"
-    graphql_input = "AnyAttributeInput"
+    graphql_create = "AnyAttributeCreate"
+    graphql_update = "AnyAttributeUpdate"
     graphql_filter = GenericScalar
     infrahub = "AnyAttribute"
 

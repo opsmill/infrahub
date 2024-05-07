@@ -28,6 +28,7 @@ const mocks: any[] = [
       query: gql`
         ${graphqlQueriesMocksQuery}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: graphqlQueriesMocksData,
@@ -39,6 +40,7 @@ const mocks: any[] = [
       query: gql`
         ${graphqlQueriesMocksQueryWithLimit}
       `,
+      variables: { offset: 0, limit: 50 },
     },
     result: {
       data: graphqlQueriesMocksData,
@@ -101,7 +103,7 @@ describe("List screen", () => {
     );
   });
 
-  it("should not display add open panel when object is generic", () => {
+  it("should display add open panel when object is generic", () => {
     cy.viewport(1920, 1080);
     const GenericItemsProvider = () => {
       return (
@@ -133,6 +135,6 @@ describe("List screen", () => {
     // Should check that the last item in pagination is page number 100
     cy.get(":nth-child(7) > .cursor-pointer").should("have.text", "100");
 
-    cy.get("[data-cy='create']").should("not.exist");
+    cy.get("[data-cy='create']").should("exist");
   });
 });

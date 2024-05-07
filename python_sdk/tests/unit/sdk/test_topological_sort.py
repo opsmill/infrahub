@@ -10,8 +10,20 @@ def test_topological_sort_empty():
 def test_topological_sort_with_cycle_raises_error():
     dependencies = {0: [1, 2], 1: [2], 2: [0]}
 
-    with pytest.raises(DependencyCycleExistsError):
+    with pytest.raises(DependencyCycleExistsError) as exc:
         topological_sort(dependencies)
+
+    assert [0, 1, 2, 0] in exc.value.cycles or [0, 2, 0] in exc.value.cycles
+
+
+def test_topological_sort_with_two_separate_cycles_raises_error():
+    dependencies = {0: [1, 2], 1: [2], 2: [0], 4: [5, 6], 5: [1, 6], 6: [4]}
+
+    with pytest.raises(DependencyCycleExistsError) as exc:
+        topological_sort(dependencies)
+
+    assert [0, 1, 2, 0] in exc.value.cycles or [0, 2, 0] in exc.value.cycles
+    assert [4, 5, 6, 4] in exc.value.cycles or [4, 6, 4] in exc.value.cycles
 
 
 def test_topological_sort():

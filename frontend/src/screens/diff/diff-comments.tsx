@@ -179,7 +179,7 @@ export const DataDiffComments = (props: tDataDiffComments) => {
         return;
       }
 
-      console.error("An error occured while creating the comment: ", error);
+      console.error("An error occurred while creating the comment: ", error);
 
       setIsLoading(false);
     }

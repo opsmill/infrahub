@@ -8,6 +8,7 @@ import ujson
 from infrahub_sdk import UUIDT
 from pydantic import BaseModel
 
+from infrahub.core.constants import NULL_VALUE
 from infrahub.core.query.standard_node import (
     StandardNodeCreateQuery,
     StandardNodeDeleteQuery,
@@ -165,7 +166,7 @@ class StandardNode(BaseModel):
 
             field_type = cls.guess_field_type(cls.model_fields[key])
 
-            if value == "NULL":
+            if value == NULL_VALUE:
                 attrs[key] = None
             elif issubclass(field_type, (int, float, bool, str, UUID)):
                 attrs[key] = value
@@ -190,7 +191,7 @@ class StandardNode(BaseModel):
             field_type = self.guess_field_type(field)
 
             if attr_value is None:
-                data[attr_name] = "NULL"
+                data[attr_name] = NULL_VALUE
             elif inspect.isclass(field_type) and issubclass(field_type, BaseModel):
                 if isinstance(attr_value, list):
                     clean_value = [item.dict() for item in attr_value]

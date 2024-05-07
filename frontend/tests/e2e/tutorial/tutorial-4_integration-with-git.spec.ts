@@ -5,6 +5,14 @@ import { saveScreenshotForDocs } from "../../utils";
 test.describe("Getting started with Infrahub - Integration with Git", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test("1. Generate the configuration of a device", async ({ page }) => {
     await page.goto("/");
 
@@ -20,6 +28,7 @@ test.describe("Getting started with Infrahub - Integration with Git", () => {
 
     await test.step("go to interface Ethernet 1 for atl1-edge1", async () => {
       await page.getByRole("link", { name: "All Device(s)" }).click();
+      await expect(page.getByText("Generic Device object")).toBeVisible();
       await page.getByRole("link", { name: "atl1-edge1" }).click();
       await page.getByText("Interfaces14").click();
       await page.getByRole("link", { name: "Connected to atl1-edge2 Ethernet1" }).click();

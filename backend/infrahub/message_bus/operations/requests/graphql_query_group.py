@@ -1,6 +1,6 @@
 from typing import List
 
-from infrahub_sdk import InfrahubClient, InfrahubNode, Timestamp
+from infrahub_sdk import InfrahubClient, InfrahubNode
 from infrahub_sdk.utils import dict_hash
 
 from infrahub.core.constants import InfrahubKind
@@ -48,7 +48,7 @@ async def update(message: messages.RequestGraphQLQueryGroupUpdate, service: Infr
         parameters=message.params,
         members=message.related_node_ids,
     )
-    await group.save(at=Timestamp(), allow_upsert=True)
+    await group.save(allow_upsert=True)
 
     if message.subscribers:
         await group_add_subscriber(

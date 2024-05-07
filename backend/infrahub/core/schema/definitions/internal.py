@@ -20,9 +20,11 @@ from infrahub.core.constants import (
     NAMESPACE_REGEX,
     NODE_KIND_REGEX,
     NODE_NAME_REGEX,
+    AllowOverrideType,
     BranchSupportType,
     HashableModelState,
     RelationshipCardinality,
+    RelationshipDeleteBehavior,
     RelationshipDirection,
     RelationshipKind,
     UpdateSupport,
@@ -101,6 +103,7 @@ class SchemaAttribute(BaseModel):
             "Text": "str",
             "List": "list",
             "Number": "int",
+            "URL": "str",
         }
         return kind_map[self.kind]
 
@@ -318,6 +321,13 @@ base_node_schema = SchemaNode(
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
+            name="documentation",
+            kind="URL",
+            description="Link to a documentation associated with this object, can be internal or external.",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
             name="state",
             kind="Text",
             internal_kind=HashableModelState,
@@ -471,7 +481,7 @@ attribute_schema = SchemaNode(
         SchemaAttribute(
             name="regex",
             kind="Text",
-            description="Regex uses to limit limit the characters allowed in for the attributes.",
+            description="Regex uses to limit the characters allowed in for the attributes.",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
@@ -543,7 +553,7 @@ attribute_schema = SchemaNode(
         SchemaAttribute(
             name="order_weight",
             kind="Number",
-            description="Number used to order the attribute in the frontend (table and view).",
+            description="Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.",
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
@@ -571,6 +581,16 @@ attribute_schema = SchemaNode(
             enum=HashableModelState.available_types(),
             optional=True,
             extra={"update": UpdateSupport.NOT_APPLICABLE},
+        ),
+        SchemaAttribute(
+            name="allow_override",
+            kind="Text",
+            internal_kind=AllowOverrideType,
+            description="Type of allowed override for the attribute.",
+            enum=AllowOverrideType.available_types(),
+            default_value=AllowOverrideType.ANY,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
         ),
     ],
     relationships=[
@@ -615,8 +635,6 @@ relationship_schema = SchemaNode(
             kind="Text",
             description="Type (kind) of objects supported on the other end of the relationship.",
             regex=str(NODE_KIND_REGEX),
-            min_length=DEFAULT_KIND_MIN_LENGTH,
-            max_length=DEFAULT_KIND_MAX_LENGTH,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
@@ -683,7 +701,7 @@ relationship_schema = SchemaNode(
         SchemaAttribute(
             name="order_weight",
             kind="Number",
-            description="Number used to order the relationship in the frontend (table and view).",
+            description="Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first.",
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
@@ -749,6 +767,34 @@ relationship_schema = SchemaNode(
             default_factory="list",
             optional=True,
             extra={"update": UpdateSupport.NOT_APPLICABLE},
+        ),
+        SchemaAttribute(
+            name="on_delete",
+            kind="Text",
+            internal_kind=RelationshipDeleteBehavior,
+            description="Default is no-action. If cascade, related node(s) are deleted when this node is deleted.",
+            enum=RelationshipDeleteBehavior.available_types(),
+            default_value=None,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="allow_override",
+            kind="Text",
+            internal_kind=AllowOverrideType,
+            description="Type of allowed override for the relationship.",
+            enum=AllowOverrideType.available_types(),
+            default_value=AllowOverrideType.ANY,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="read_only",
+            kind="Boolean",
+            description="Set the relationship as read-only, users won't be able to change its value.",
+            default_value=False,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
         ),
     ],
     relationships=[

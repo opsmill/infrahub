@@ -1,31 +1,40 @@
 import { gql } from "@apollo/client";
-import { PlusIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { BUTTON_TYPES } from "../../components/buttons/button";
-import { Retry } from "../../components/buttons/retry";
-import { RoundedButton } from "../../components/buttons/rounded-button";
+import { Button, ButtonWithTooltip } from "../../components/buttons/button-primitive";
 import SlideOver from "../../components/display/slide-over";
+import { Filters } from "../../components/filters/filters";
+import { ObjectHelpButton } from "../../components/menu/object-help-button";
 import ModalDelete from "../../components/modals/modal-delete";
+import { Badge } from "../../components/ui/badge";
+import { SearchInput } from "../../components/ui/search-input";
+import { Tooltip } from "../../components/ui/tooltip";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { Pagination } from "../../components/utils/pagination";
-import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST } from "../../config/constants";
+import {
+  DEFAULT_BRANCH_NAME,
+  MENU_EXCLUDELIST,
+  SEARCH_ANY_FILTER,
+  SEARCH_FILTERS,
+  SEARCH_PARTIAL_MATCH,
+} from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
-import useFilters from "../../hooks/useFilters";
+import useFilters, { Filter } from "../../hooks/useFilters";
 import usePagination from "../../hooks/usePagination";
+import { usePermission } from "../../hooks/usePermission";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
-import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
+import { debounce } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import {
@@ -35,15 +44,11 @@ import {
 } from "../../utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
-import DeviceFilterBar from "../device-list/device-filter-bar-paginated";
 import ErrorScreen from "../error-screen/error-screen";
+import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
-import Content from "../layout/content";
-import { Tooltip } from "../../components/ui/tooltip";
-import { usePermission } from "../../hooks/usePermission";
-import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -56,25 +61,29 @@ export default function ObjectItems(props: any) {
 
   const objectname = objectnameFromProps || objectnameFromParams;
 
-  const permission = usePermission();
+  const navigate = useNavigate();
 
-  const [schemaList] = useAtom(schemaState);
-  const [genericList] = useAtom(genericsState);
+  const permission = usePermission();
+  const [filters, setFilters] = useFilters();
+  const [pagination] = usePagination();
+
+  const schemaKindName = useAtomValue(schemaKindNameState);
+  const schemaList = useAtomValue(schemaState);
+  const genericList = useAtomValue(genericsState);
+  const profiles = useAtomValue(profilesAtom);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const [schemaKindName] = useAtom(schemaKindNameState);
-  const [filters] = useFilters();
-  const [pagination] = usePagination();
+
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
   const [rowToDelete, setRowToDelete] = useState<any>();
   const [deleteModal, setDeleteModal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const navigate = useNavigate();
 
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
+  const profile = profiles.find((s) => s.kind === objectname);
 
-  const schemaData = schema || generic;
+  const schemaData = schema || generic || profile;
 
   if ((schemaList?.length || genericList?.length) && !schemaData) {
     // If there is no schema nor generics, go to home page
@@ -91,9 +100,17 @@ export default function ObjectItems(props: any) {
   // This will not work if the type of filter value is not string.
   const filtersString = [
     // Add object filters
-    ...filters.map((row: iComboBoxFilter) =>
-      typeof row.value === "string" ? `${row.name}: "${row.value}"` : `${row.name}: ${row.value}`
-    ),
+    ...filters.map((row: iComboBoxFilter) => {
+      if (typeof row.value === "string") {
+        return `${row.name}: "${row.value}"`;
+      }
+
+      if (Array.isArray(row.value)) {
+        return `${row.name}: ${JSON.stringify(row.value)}`;
+      }
+
+      return `${row.name}: ${row.value}`;
+    }),
     // Add pagination filters
     ...[
       { name: "offset", value: pagination?.offset },
@@ -103,20 +120,16 @@ export default function ObjectItems(props: any) {
   ].join(",");
 
   // Get all the needed columns (attributes + relationships)
-  const columns = getSchemaObjectColumns(schemaData, true);
-  const attributes = getObjectAttributes(schemaData, true);
-  const relationships = getObjectRelationships(schemaData, true);
+  const columns = getSchemaObjectColumns({ schema: schemaData, forListView: true });
+  const attributes = getObjectAttributes({ schema: schemaData, forListView: true });
+  const relationships = getObjectRelationships({ schema: schemaData, forListView: true });
 
-  const queryString = schemaData
-    ? getObjectItemsPaginated({
-        kind: schemaData.kind,
-        attributes,
-        relationships,
-        filters: filtersString,
-      })
-    : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schemaData
-      "query { ok }";
+  const queryString = getObjectItemsPaginated({
+    kind: objectname,
+    attributes,
+    relationships,
+    filters: filtersString,
+  });
 
   const query = gql`
     ${queryString}
@@ -182,103 +195,145 @@ export default function ObjectItems(props: any) {
 
   const handleRefetch = () => refetch();
 
+  const handleSearch = (e) => {
+    const value = e.target.value as string;
+    if (!value) {
+      const newFilters = filters.filter((filter: Filter) => !SEARCH_FILTERS.includes(filter.name));
+
+      setFilters(newFilters);
+
+      return;
+    }
+
+    const newFilters = [
+      ...filters,
+      {
+        name: SEARCH_PARTIAL_MATCH,
+        value: true,
+      },
+      {
+        name: SEARCH_ANY_FILTER,
+        value: value,
+      },
+    ];
+
+    setFilters(newFilters);
+  };
+
+  const debouncedHandleSearch = debounce(handleSearch, 500);
+
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching list." />;
   }
 
   return (
-    <Content className="bg-custom-white">
-      <div className="flex items-center p-4 w-full">
-        {schemaData && (
-          <div className="sm:flex-auto flex items-center">
-            <h1 className="text-md font-semibold text-gray-900 mr-2">
-              {schemaData.label} ({count})
-            </h1>
-
-            <div className="text-sm">{schemaData?.description}</div>
-
-            <div className="ml-2">
-              <Retry isLoading={loading} onClick={handleRefetch} />
+    <Content>
+      {schemaData && (
+        <Content.Title
+          title={
+            <div className="flex items-center">
+              <h1 className="mr-2 truncate">{schemaData.label}</h1>
+              <Badge>{count}</Badge>
             </div>
+          }
+          isReloadLoading={loading}
+          reload={handleRefetch}
+          description={schemaData?.description}>
+          <div className="flex-grow text-right">
+            <ObjectHelpButton documentationUrl={schemaData.documentation} kind={schemaData.kind} />
           </div>
-        )}
+        </Content.Title>
+      )}
 
-        {schema && (
+      <div className="m-2 rounded-md border overflow-hidden bg-custom-white shadow-sm">
+        <div className="flex items-center p-2">
+          <SearchInput
+            loading={loading}
+            onChange={debouncedHandleSearch}
+            placeholder="Search an object"
+            className="border-none focus-visible:ring-0 h-7"
+            data-testid="object-list-search-bar"
+          />
+
+          <Filters schema={schemaData} />
+
           <Tooltip
             enabled={!permission.write.allow}
             content={permission.write.message ?? undefined}>
-            <RoundedButton
+            <Button
               data-cy="create"
               data-testid="create-object-button"
               disabled={!permission.write.allow}
-              onClick={() => setShowCreateDrawer(true)}>
-              <PlusIcon className="w-4 h-4" aria-hidden="true" />
-            </RoundedButton>
+              onClick={() => setShowCreateDrawer(true)}
+              size="sm">
+              <Icon icon="mdi:plus" className="text-sm" />
+              Add {schemaData?.label}
+            </Button>
           </Tooltip>
+        </div>
+
+        {loading && !rows && <LoadingScreen />}
+
+        {/* TODO: use new Table component for list */}
+        {rows && (
+          <div className="overflow-auto">
+            <table className="table-auto border-spacing-0 w-full">
+              <thead className="bg-gray-50 text-left border-y border-gray-300">
+                <tr>
+                  {columns?.map((attribute) => (
+                    <th
+                      key={attribute.name}
+                      scope="col"
+                      className="p-2 text-xs font-semibold text-gray-900">
+                      {attribute.label}
+                    </th>
+                  ))}
+                  <th scope="col"></th>
+                </tr>
+              </thead>
+
+              <tbody className="bg-custom-white text-left">
+                {rows?.map((row: any, index: number) => (
+                  <tr
+                    key={index}
+                    className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer h-[36px]"
+                    data-cy="object-table-row">
+                    {columns?.map((attribute) => (
+                      <td key={row.id + "-" + attribute.name} className="p-0">
+                        <Link
+                          className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
+                          to={constructPath(getObjectDetailsUrl(row.id, row.__typename))}>
+                          <div>{getObjectItemDisplayValue(row, attribute)}</div>
+                        </Link>
+                      </td>
+                    ))}
+
+                    <td className="text-right w-8">
+                      <ButtonWithTooltip
+                        data-cy="delete"
+                        data-testid="delete-row-button"
+                        disabled={!permission.write.allow}
+                        tooltipEnabled={!permission.write.allow}
+                        tooltipContent={permission.write.message ?? undefined}
+                        variant="ghost"
+                        onClick={() => {
+                          setRowToDelete(row);
+                          setDeleteModal(true);
+                        }}>
+                        <Icon icon="mdi:trash" className="text-red-500" />
+                      </ButtonWithTooltip>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {!rows?.length && <NoDataFound message="No items found." />}
+
+            <Pagination count={count} />
+          </div>
         )}
       </div>
-
-      {schemaData?.filters && <DeviceFilterBar objectname={objectname} />}
-
-      {loading && !rows && <LoadingScreen />}
-
-      {rows && (
-        <div className="overflow-auto">
-          <table className="table-auto border-spacing-0 w-full">
-            <thead className="bg-gray-50 text-left border-b border-gray-300">
-              <tr>
-                {columns?.map((attribute) => (
-                  <th
-                    key={attribute.name}
-                    scope="col"
-                    className="p-2 text-xs font-semibold text-gray-900">
-                    {attribute.label}
-                  </th>
-                ))}
-                <th scope="col"></th>
-              </tr>
-            </thead>
-
-            <tbody className="bg-custom-white text-left">
-              {rows?.map((row: any, index: number) => (
-                <tr
-                  key={index}
-                  className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer h-[36px]"
-                  data-cy="object-table-row">
-                  {columns?.map((attribute) => (
-                    <td key={row.id + "-" + attribute.name} className="p-0">
-                      <Link
-                        className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
-                        to={constructPath(getObjectDetailsUrl(row.id, row.__typename))}>
-                        <div>{getObjectItemDisplayValue(row, attribute)}</div>
-                      </Link>
-                    </td>
-                  ))}
-
-                  <td className="text-right w-8">
-                    <ButtonWithTooltip
-                      data-cy="delete"
-                      disabled={!permission.write.allow}
-                      tooltipEnabled={!permission.write.allow}
-                      tooltipContent={permission.write.message ?? undefined}
-                      buttonType={BUTTON_TYPES.INVISIBLE}
-                      onClick={() => {
-                        setRowToDelete(row);
-                        setDeleteModal(true);
-                      }}>
-                      <Icon icon="mdi:trash" className="text-red-500" />
-                    </ButtonWithTooltip>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {!rows?.length && <NoDataFound message="No items found." />}
-
-          <Pagination count={count} />
-        </div>
-      )}
 
       <SlideOver
         title={

@@ -57,6 +57,8 @@ infrahubGit:
   persistence:
     enabled: true
     size: 100Mi
+    accessMode: ReadWriteMany
+    storageClassName: nfs
   infrahubGit:
     args:
       - infrahub
@@ -81,15 +83,20 @@ infrahubGit:
 infrahubServer:
   type: ClusterIP
   ingress:
+    enabled: true
     hostname: infrahub-cluster.local
   persistence:
     enabled: true
     size: 100Mi
+    accessMode: ReadWriteMany
+    storageClassName: nfs
   infrahubServer:
     args:
       - gunicorn
       - --config
       - /source/backend/infrahub/serve/gunicorn_config.py
+      - -w
+      - "2"
       - --logger-class
       - infrahub.serve.log.GunicornLogger
       - infrahub.server:app
@@ -178,3 +185,13 @@ messageQueue:
     periodSeconds: 30
     failureThreshold: 6
     successThreshold: 1
+
+# ----------- NFS Server -----------
+nfs-server-provisioner:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 10Gi
+  storageClass:
+    create: true
+    name: nfs

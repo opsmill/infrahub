@@ -5,6 +5,14 @@ test.describe("/proposed-changes diff data", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test("should create a new proposed changes", async ({ page }) => {
     await page.goto("/proposed-changes");
 
@@ -13,18 +21,18 @@ test.describe("/proposed-changes diff data", () => {
       await expect(page.getByText("Create Proposed Change")).toBeVisible();
       await page.getByLabel("Name *").fill("pc-data-diff");
       await page
-        .locator("div:below(#Description)")
-        .first()
+        .getByText("Source Branch")
+        .locator("../..")
         .getByTestId("select-open-option-button")
         .click();
-      await page.getByRole("option", { name: "atl1-delete-transit" }).click();
+      await page.getByRole("option", { name: "atl1-delete-upstream" }).click();
       await page.getByRole("button", { name: "Create" }).click();
-      await expect(page.getByText("ProposedChange created")).toBeVisible();
+      await expect(page.getByText("Proposed change created")).toBeVisible();
     });
 
     await test.step("display created proposed change details", async () => {
       await expect(page.getByText("Namepc-data-diff")).toBeVisible();
-      await expect(page.getByText("Source branchatl1-delete-transit")).toBeVisible();
+      await expect(page.getByText("Source branchatl1-delete-upstream")).toBeVisible();
       await expect(page.getByText("Stateopen")).toBeVisible();
     });
 
@@ -34,7 +42,33 @@ test.describe("/proposed-changes diff data", () => {
     });
 
     await test.step("go to Data tab and open comment form", async () => {
-      await page.getByLabel("Tabs").getByText("Data").click();
+      var count = 0;
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          if (
+            reqData?.operationName === "getProposedChangesThreadsForCoreObjectThread" &&
+            status === 200
+          ) {
+            count++;
+          }
+
+          return count == 6; // waiting for 6 diff elements
+        }),
+        page.waitForResponse((response) => {
+          const status = response.status();
+
+          return (
+            response
+              .url()
+              .includes("/api/diff/data?branch=atl1-delete-upstream&branch_only=true") &&
+            status === 200
+          );
+        }), // wait for diff data otherwise hover won't show comment button
+        page.getByLabel("Tabs").getByText("Data").click(),
+      ]);
       await page.getByText("InfraCircuit").first().hover();
       await page.getByTestId("data-diff-add-comment").first().click();
       await expect(page.getByText("Conversation")).toBeVisible();

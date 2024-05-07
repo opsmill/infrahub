@@ -15,6 +15,10 @@ type PermissionsType = {
   write: boolean;
 };
 
+type User = {
+  id: string;
+};
+
 type AuthContextType = {
   accessToken: string | null;
   data?: any;
@@ -23,6 +27,7 @@ type AuthContextType = {
   permissions?: PermissionsType;
   signIn: (data: any, callback?: () => void) => void;
   signOut: (callback?: () => void) => void;
+  user: User | null;
 };
 
 export const saveTokensInLocalStorage = (result: any) => {
@@ -81,6 +86,7 @@ export const AuthContext = createContext<AuthContextType>({
   },
   signIn: () => {},
   signOut: () => {},
+  user: null,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -132,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     signIn,
     signOut,
+    user: data?.sub ? { id: data?.sub } : null,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

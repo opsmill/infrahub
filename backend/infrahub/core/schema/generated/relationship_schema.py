@@ -7,9 +7,11 @@ from typing import Optional
 from pydantic import Field
 
 from infrahub.core.constants import (
+    AllowOverrideType,
     BranchSupportType,
     HashableModelState,
     RelationshipCardinality,
+    RelationshipDeleteBehavior,
     RelationshipDirection,
     RelationshipKind,
 )
@@ -35,8 +37,6 @@ class GeneratedRelationshipSchema(HashableModel):
         ...,
         description="Type (kind) of objects supported on the other end of the relationship.",
         pattern="^[A-Z][a-zA-Z0-9]+$",
-        min_length=3,
-        max_length=32,
         json_schema_extra={"update": "validate_constraint"},
     )
     kind: RelationshipKind = Field(
@@ -80,7 +80,7 @@ class GeneratedRelationshipSchema(HashableModel):
     )
     order_weight: Optional[int] = Field(
         default=None,
-        description="Number used to order the relationship in the frontend (table and view).",
+        description="Number used to order the relationship in the frontend (table and view). Lowest value will be ordered first.",
         json_schema_extra={"update": "allowed"},
     )
     optional: bool = Field(
@@ -115,4 +115,19 @@ class GeneratedRelationshipSchema(HashableModel):
     )
     filters: list[FilterSchema] = Field(
         default_factory=list, description="Relationship filters", json_schema_extra={"update": "not_applicable"}
+    )
+    on_delete: Optional[RelationshipDeleteBehavior] = Field(
+        default=None,
+        description="Default is no-action. If cascade, related node(s) are deleted when this node is deleted.",
+        json_schema_extra={"update": "allowed"},
+    )
+    allow_override: AllowOverrideType = Field(
+        default=AllowOverrideType.ANY,
+        description="Type of allowed override for the relationship.",
+        json_schema_extra={"update": "allowed"},
+    )
+    read_only: bool = Field(
+        default=False,
+        description="Set the relationship as read-only, users won't be able to change its value.",
+        json_schema_extra={"update": "allowed"},
     )

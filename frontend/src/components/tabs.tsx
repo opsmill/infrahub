@@ -24,7 +24,7 @@ export const Tabs = (props: TabsProps) => {
 
   const handleClick = (tab: Tab, index: number) => {
     if (tab.onClick) {
-      tab.onClick();
+      return tab.onClick();
     }
 
     setQspTab(index === 0 ? undefined : tab.name);

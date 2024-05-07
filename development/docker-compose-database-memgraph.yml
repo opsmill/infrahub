@@ -1,5 +1,4 @@
 ---
-version: "3.4"
 services:
   database:
     image: "${DATABASE_DOCKER_IMAGE:-memgraph/memgraph-platform:latest}"
@@ -21,6 +20,8 @@ services:
       start_period: 3s
     labels:
       infrahub_role: "database"
+      com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
+      com.github.job: "${JOB_NAME:-unknown}"
 
 
 volumes:

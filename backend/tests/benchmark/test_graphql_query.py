@@ -77,7 +77,7 @@ def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, defaul
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
 
-    for _ in range(0, NBR_WARMUP):
+    for _ in range(NBR_WARMUP):
         exec_async(
             graphql,
             schema=gql_params.schema,
@@ -127,7 +127,7 @@ def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, default
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
 
-    for _ in range(0, NBR_WARMUP):
+    for _ in range(NBR_WARMUP):
         exec_async(
             graphql,
             schema=gql_params.schema,
@@ -177,7 +177,7 @@ def test_query_rel_one(exec_async, aio_benchmark, db: InfrahubDatabase, default_
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
 
-    for _ in range(0, NBR_WARMUP):
+    for _ in range(NBR_WARMUP):
         exec_async(
             graphql,
             schema=gql_params.schema,

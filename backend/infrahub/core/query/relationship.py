@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Type, Union
 
 from infrahub_sdk import UUIDT
 
-from infrahub.core.constants import RelationshipDirection
+from infrahub.core.constants import RelationshipDirection, RelationshipStatus
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.timestamp import Timestamp
@@ -107,6 +107,23 @@ class RelationshipPeersData:
     destination_id: UUID
     destination_kind: str
 
+    def reversed(self) -> RelationshipPeersData:
+        return RelationshipPeersData(
+            id=self.id,
+            identifier=self.identifier,
+            source_id=self.destination_id,
+            source_kind=self.destination_kind,
+            destination_id=self.source_id,
+            destination_kind=self.source_kind,
+        )
+
+
+@dataclass
+class FullRelationshipIdentifier:
+    identifier: str
+    source_kind: str
+    destination_kind: str
+
 
 class RelationshipQuery(Query):
     def __init__(
@@ -160,6 +177,18 @@ class RelationshipQuery(Query):
 
         super().__init__(*args, **kwargs)
 
+    def get_relationship_properties_dict(self, status: RelationshipStatus) -> dict[str, Optional[str]]:
+        rel_prop_dict = {
+            "branch": self.branch.name,
+            "branch_level": self.branch.hierarchy_level,
+            "status": status.value,
+            "from": self.at.to_string(),
+            "to": None,
+        }
+        if self.schema.hierarchical:
+            rel_prop_dict["hierarchy"] = self.schema.hierarchical
+        return rel_prop_dict
+
 
 class RelationshipCreateQuery(RelationshipQuery):
     name = "relationship_create"
@@ -194,20 +223,14 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.params["is_visible"] = self.rel.is_visible
 
         query_match = """
-        MATCH (s { uuid: $source_id })
-        MATCH (d { uuid: $destination_id })
+        MATCH (s:Node { uuid: $source_id })
+        MATCH (d:Node { uuid: $destination_id })
         """
         self.add_to_query(query_match)
 
         self.query_add_all_node_property_match()
 
-        self.params["rel_prop"] = {
-            "branch": self.branch.name,
-            "branch_level": self.branch.hierarchy_level,
-            "status": "active",
-            "from": self.at.to_string(),
-            "to": None,
-        }
+        self.params["rel_prop"] = self.get_relationship_properties_dict(status=RelationshipStatus.ACTIVE)
         arrows = self.schema.get_query_arrows()
         r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:{self.rel_type} $rel_prop ]{arrows.right.end}"
@@ -278,7 +301,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
         self.params["at"] = self.at.to_string()
 
         query = """
-        MATCH (rl { uuid: $rel_node_id })
+        MATCH (rl:Relationship { uuid: $rel_node_id })
         """
         self.add_to_query(query)
 
@@ -364,9 +387,9 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         # Match all nodes, including properties
         # -----------------------------------------------------------------------
         query = """
-        MATCH (s { uuid: $source_id })
-        MATCH (d { uuid: $destination_id })
-        MATCH (rl { uuid: $rel_node_id })
+        MATCH (s:Node { uuid: $source_id })
+        MATCH (d:Node { uuid: $destination_id })
+        MATCH (rl:Relationship { uuid: $rel_node_id })
         """
         self.add_to_query(query)
         self.return_labels = ["s", "d", "rl"]
@@ -376,13 +399,7 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
             self.params[f"prop_{prop_name}_id"] = element_id_to_id(prop.prop_db_id)
             self.return_labels.append(f"prop_{prop_name}")
 
-        self.params["rel_prop"] = {
-            "branch": self.branch.name,
-            "branch_level": self.branch.hierarchy_level,
-            "status": "deleted",
-            "from": self.at.to_string(),
-            "to": None,
-        }
+        self.params["rel_prop"] = self.get_relationship_properties_dict(status=RelationshipStatus.DELETED)
 
         arrows = self.schema.get_query_arrows()
         r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
@@ -429,20 +446,14 @@ class RelationshipDeleteQuery(RelationshipQuery):
         self.params["rel_id"] = self.rel.id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
-        self.params["rel_prop"] = {
-            "branch": self.branch.name,
-            "branch_level": self.branch.hierarchy_level,
-            "status": "deleted",
-            "from": self.at.to_string(),
-            "to": None,
-        }
+        self.params["rel_prop"] = self.get_relationship_properties_dict(status=RelationshipStatus.DELETED)
 
         arrows = self.schema.get_query_arrows()
         r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:{self.rel_type} $rel_prop ]{arrows.right.end}"
 
         query = """
-        MATCH (s { uuid: $source_id })-[]-(rl:Relationship {uuid: $rel_id})-[]-(d { uuid: $destination_id })
+        MATCH (s:Node { uuid: $source_id })-[]-(rl:Relationship {uuid: $rel_id})-[]-(d:Node { uuid: $destination_id })
         CREATE (s)%s(rl)
         CREATE (rl)%s(d)
         """ % (
@@ -723,8 +734,8 @@ class RelationshipGetQuery(RelationshipQuery):
         r2 = f"{arrows.right.start}[r2:{self.rel.rel_type}]{arrows.right.end}"
 
         query = """
-        MATCH (s { uuid: $source_id })
-        MATCH (d { uuid: $destination_id })
+        MATCH (s:Node { uuid: $source_id })
+        MATCH (d:Node { uuid: $destination_id })
         MATCH (s)%s(rl:Relationship { name: $name })%s(d)
         WHERE %s
         """ % (
@@ -744,12 +755,24 @@ class RelationshipGetByIdentifierQuery(Query):
 
     type: QueryType = QueryType.READ
 
-    def __init__(self, identifiers: List[str], excluded_namespaces: List[str], *args, **kwargs) -> None:
-        if not identifiers:
-            raise ValueError("identifiers cannot be an empty list")
+    def __init__(
+        self,
+        identifiers: Optional[List[str]] = None,
+        full_identifiers: Optional[List[FullRelationshipIdentifier]] = None,
+        excluded_namespaces: Optional[List[str]] = None,
+        *args,
+        **kwargs,
+    ) -> None:
+        if (not identifiers and not full_identifiers) or (identifiers and full_identifiers):
+            raise ValueError("one and only one of identifiers or full_identifiers is required")
 
-        self.identifiers = identifiers
-        self.excluded_namespaces = excluded_namespaces
+        if full_identifiers:
+            self.identifiers = list({i.identifier for i in full_identifiers})
+            self.full_identifiers = full_identifiers
+        else:
+            self.identifiers = identifiers
+            self.full_identifiers = []
+        self.excluded_namespaces = excluded_namespaces or []
 
         # Always exclude relationships with internal nodes
         if "Internal" not in self.excluded_namespaces:
@@ -759,6 +782,9 @@ class RelationshipGetByIdentifierQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
         self.params["identifiers"] = self.identifiers
+        self.params["full_identifiers"] = [
+            [full_id.source_kind, full_id.identifier, full_id.destination_kind] for full_id in self.full_identifiers
+        ]
         self.params["excluded_namespaces"] = self.excluded_namespaces
         self.params["branch"] = self.branch.name
         self.params["at"] = self.at.to_string()
@@ -774,7 +800,10 @@ class RelationshipGetByIdentifierQuery(Query):
         CALL {
             WITH rl
             MATCH (src:Node)-[r1:IS_RELATED]-(rl:Relationship)-[r2:IS_RELATED]-(dst:Node)
-            WHERE NOT src.namespace IN $excluded_namespaces AND NOT dst.namespace IN $excluded_namespaces AND %s
+            WHERE (size($full_identifiers) = 0 OR [src.kind, rl.name, dst.kind] in $full_identifiers)
+            AND NOT src.namespace IN $excluded_namespaces
+            AND NOT dst.namespace IN $excluded_namespaces
+            AND %s
             RETURN src, dst, r1, r2, rl as rl1
             ORDER BY r1.branch_level DESC, r2.branch_level DESC, r1.from DESC, r2.from DESC
             LIMIT 1

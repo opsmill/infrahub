@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import ipaddress
 import re
 from inspect import isclass
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Union
 
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.models import NodeKind
@@ -10,6 +11,8 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from neo4j.graph import Node as Neo4jNode
+
     from infrahub.database import InfrahubDatabase
 
 
@@ -42,10 +45,7 @@ async def add_relationship(
         "status": status.value,
     }
 
-    results = await db.execute_query(
-        query=create_rel_query,
-        params=params,
-    )
+    results = await db.execute_query(query=create_rel_query, params=params, name="add_relationship")
     if not results:
         return None
     return results[0][0]
@@ -57,7 +57,7 @@ async def delete_all_relationships_for_branch(branch_name: str, db: InfrahubData
     """
     params = {"branch_name": branch_name}
 
-    await db.execute_query(query=query, params=params)
+    await db.execute_query(query=query, params=params, name="delete_all_relationships_for_branch")
 
 
 async def update_relationships_to(
@@ -82,7 +82,7 @@ async def update_relationships_to(
 
     params = {"to": to.to_string()}
 
-    return await db.execute_query(query=query, params=params)
+    return await db.execute_query(query=query, params=params, name="update_relationships_to")
 
 
 async def get_paths_between_nodes(
@@ -130,8 +130,20 @@ async def count_relationships(db: InfrahubDatabase) -> int:
 
     params: dict = {}
 
-    result = await db.execute_query(query=query, params=params)
+    result = await db.execute_query(query=query, params=params, name="count_relationships")
     return result[0][0]
+
+
+async def get_nodes(db: InfrahubDatabase, label: str) -> List[Neo4jNode]:
+    """Return theall nodes of a given label in the database."""
+    query = """
+    MATCH (node)
+    WHERE $label IN LABELS(node)
+    RETURN node
+    """
+    params: dict = {"label": label}
+    results = await db.execute_query(query=query, params=params, name="get_nodes")
+    return [result[0] for result in results]
 
 
 async def count_nodes(db: InfrahubDatabase, label: str) -> int:
@@ -142,7 +154,7 @@ async def count_nodes(db: InfrahubDatabase, label: str) -> int:
     RETURN count(node) as count
     """
     params: dict = {"label": label}
-    result = await db.execute_query(query=query, params=params)
+    result = await db.execute_query(query=query, params=params, name="count_nodes")
     return result[0][0]
 
 
@@ -154,7 +166,7 @@ async def delete_all_nodes(db: InfrahubDatabase):
 
     params: dict = {}
 
-    return await db.execute_query(query=query, params=params)
+    return await db.execute_query(query=query, params=params, name="delete_all_nodes")
 
 
 def element_id_to_id(element_id: Union[str, int]) -> int:
@@ -167,7 +179,7 @@ def element_id_to_id(element_id: Union[str, int]) -> int:
     return int(element_id.split(":")[2])
 
 
-def extract_field_filters(field_name: str, filters: dict) -> dict:
+def extract_field_filters(field_name: str, filters: dict) -> dict[str, Any]:
     """Extract the filters for a given field (attribute or relationship) from a filters dict."""
     return {
         key.replace(f"{field_name}__", ""): value for key, value in filters.items() if key.startswith(f"{field_name}__")
@@ -181,6 +193,17 @@ def parse_node_kind(kind: str) -> NodeKind:
         return NodeKind(namespace=match.group(1), name=match.group(2))
 
     raise ValueError("The String provided is not a valid Node kind")
+
+
+def convert_ip_to_binary_str(
+    obj: Union[ipaddress.IPv6Network, ipaddress.IPv4Network, ipaddress.IPv4Interface, ipaddress.IPv6Interface],
+) -> str:
+    if isinstance(obj, (ipaddress.IPv6Network, ipaddress.IPv4Network)):
+        prefix_bin = bin(int(obj.network_address))[2:]
+        return prefix_bin.zfill(obj.max_prefixlen)
+
+    ip_bin = bin(int(obj))[2:]
+    return ip_bin.zfill(obj.max_prefixlen)
 
 
 # --------------------------------------------------------------------------------

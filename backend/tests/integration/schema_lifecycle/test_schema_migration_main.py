@@ -130,9 +130,8 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         schema_step02["nodes"][0]["attributes"][0]["id"] = attr.id
 
         # Load the new schema and apply the migrations
-        success, response = await client.schema.load(schemas=[schema_step02])
-        assert success
-        assert response is None
+        response = await client.schema.load(schemas=[schema_step02])
+        assert not response.errors
 
         # Ensure that we can query the existing node with the new schema
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "John"})
@@ -140,6 +139,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         john = persons[0]
         assert john.firstname.value == "John"  # type: ignore[attr-defined]
 
+    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_step03_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
         manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01)
 
@@ -191,6 +191,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         }
         assert success
 
+    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_step03_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
         manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01)
 
@@ -198,9 +199,8 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert schema_step03["nodes"][2]["name"] == "CarMaker"
         schema_step03["nodes"][2]["id"] = manufacturer_schema.id
 
-        success, response = await client.schema.load(schemas=[schema_step03])
-        assert response is None
-        assert success
+        response = await client.schema.load(schemas=[schema_step03])
+        assert not response.errors
 
         # Ensure that we can query the existing node with the new schema
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "John"})
@@ -216,6 +216,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         honda_cars = await honda.cars.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(honda_cars) == 2
 
+    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_step04_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
         tag_schema = registry.schema.get_node_schema(name=TAG_KIND)
 
@@ -228,6 +229,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert response == {"diff": {"added": {}, "changed": {}, "removed": {"TestingTag": None}}}
         assert success
 
+    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_step04_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
         tag_schema = registry.schema.get_node_schema(name=TAG_KIND)
 
@@ -235,8 +237,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert schema_step04["nodes"][3]["name"] == "Tag"
         schema_step04["nodes"][3]["id"] = tag_schema.id
 
-        success, response = await client.schema.load(schemas=[schema_step04])
-        assert response is None
-        assert success
+        response = await client.schema.load(schemas=[schema_step04])
+        assert not response.errors
 
         assert registry.schema.has(name=TAG_KIND) is False

@@ -32,3 +32,13 @@ QUERY_RELATIONSHIPS = """
         }
     }
 """
+
+SCHEMA_HASH_SYNC_STATUS = """
+query {
+  InfrahubStatus {
+    summary {
+      schema_hash_synced
+    }
+  }
+}
+"""

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import difflib
-import json
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 import jinja2
+import ujson
 from httpx import HTTPStatusError
 from rich.console import Console
 from rich.traceback import Traceback
@@ -36,7 +36,7 @@ class InfrahubJinja2Item(InfrahubItem):
             errors = identify_faulty_jinja_code(traceback=traceback)
             console = Console()
             with console.capture() as capture:
-                console.print(f"An error occured while rendering Jinja2 transform:{self.name!r}\n", soft_wrap=True)
+                console.print(f"An error occurred while rendering Jinja2 transform:{self.name!r}\n", soft_wrap=True)
                 console.print(f"{exc.message}\n", soft_wrap=True)
                 for frame, syntax in errors:
                     console.print(f"{frame.filename} on line {frame.lineno}\n", soft_wrap=True)
@@ -64,8 +64,8 @@ class InfrahubJinja2Item(InfrahubItem):
     def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
         if isinstance(excinfo.value, HTTPStatusError):
             try:
-                response_content = json.dumps(excinfo.value.response.json(), indent=4, sort_keys=True)
-            except json.JSONDecodeError:
+                response_content = ujson.dumps(excinfo.value.response.json(), indent=4, sort_keys=True)
+            except ujson.JSONDecodeError:
                 response_content = excinfo.value.response.text
             return "\n".join(
                 [

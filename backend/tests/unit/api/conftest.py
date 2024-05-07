@@ -329,7 +329,7 @@ async def car_person_data_artifact_diff(db: InfrahubDatabase, default_branch, ca
         transformation=t1,
         content_type="application/json",
         artifact_name="myartifact",
-        parameters='{"name": "name__value"}',
+        parameters={"value": {"name": "name__value"}},
     )
     await ad1.save(db=db)
 

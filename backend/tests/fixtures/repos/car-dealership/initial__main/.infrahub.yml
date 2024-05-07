@@ -1,9 +1,15 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/develop.json
 ---
 
 check_definitions:
   - name: "car_description_check"
     file_path: "checks/car_overview.py"
     class_name: "CarDescription"
+  - name: "owner_age_check"
+    file_path: "checks/car_owner_age.py"
+    parameters:
+      owner: "name__value"
+    targets: "people"
 
 jinja2_transforms:
   - name: person_with_cars
@@ -19,3 +25,18 @@ artifact_definitions:
     content_type: "text/plain"
     targets: "people"
     transformation: "person_with_cars"
+
+generator_definitions:
+  - name: cartags
+    file_path: "generators/cartags.py"
+    targets: people
+    query: cartags
+    parameters:
+      name: "name__value"
+  - name: cartags_convert_response
+    file_path: "generators/cartags_convert_response.py"
+    targets: people
+    query: cartags
+    convert_query_response: true
+    parameters:
+      name: "name__value"

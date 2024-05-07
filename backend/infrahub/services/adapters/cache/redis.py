@@ -23,6 +23,10 @@ class RedisCache(InfrahubCache):
             return value.decode()
         return None
 
+    async def get_values(self, keys: list[str]) -> list[Optional[str]]:
+        values = await self.connection.mget(keys=keys)
+        return [value.decode() if value is not None else value for value in values]
+
     async def list_keys(self, filter_pattern: str) -> List[str]:
         cursor = 0
         has_remaining_keys = True

@@ -178,6 +178,8 @@ async def test_query_data_no_filters(clients, location_schema, client_type):
                     "id": None,
                     "display_label": None,
                     "name": {
+                        "is_default": None,
+                        "is_from_profile": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -193,6 +195,8 @@ async def test_query_data_no_filters(clients, location_schema, client_type):
                         "value": None,
                     },
                     "description": {
+                        "is_default": None,
+                        "is_from_profile": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -208,6 +212,8 @@ async def test_query_data_no_filters(clients, location_schema, client_type):
                         "value": None,
                     },
                     "type": {
+                        "is_default": None,
+                        "is_from_profile": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -255,7 +261,6 @@ async def test_query_data_node(clients, location_schema, client_type):
         client: InfrahubClient = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
         node = InfrahubNode(client=client, schema=location_schema)
         data = await node.generate_query_data_node()
-
     else:
         client: InfrahubClientSync = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
         node = InfrahubNodeSync(client=client, schema=location_schema)
@@ -263,6 +268,8 @@ async def test_query_data_node(clients, location_schema, client_type):
 
     assert data == {
         "name": {
+            "is_default": None,
+            "is_from_profile": None,
             "is_protected": None,
             "is_visible": None,
             "owner": {"__typename": None, "display_label": None, "id": None},
@@ -270,6 +277,8 @@ async def test_query_data_node(clients, location_schema, client_type):
             "value": None,
         },
         "description": {
+            "is_default": None,
+            "is_from_profile": None,
             "is_protected": None,
             "is_visible": None,
             "owner": {"__typename": None, "display_label": None, "id": None},
@@ -277,6 +286,8 @@ async def test_query_data_node(clients, location_schema, client_type):
             "value": None,
         },
         "type": {
+            "is_default": None,
+            "is_from_profile": None,
             "is_protected": None,
             "is_visible": None,
             "owner": {"__typename": None, "display_label": None, "id": None},
@@ -314,7 +325,6 @@ async def test_query_data_with_prefetch_relationships(clients, mock_schema_query
         location_schema: GenericSchema = await client.schema.get(kind="BuiltinLocation")  # type: ignore[annotation-unchecked]
         node = InfrahubNode(client=client, schema=location_schema)
         data = await node.generate_query_data(prefetch_relationships=True)
-
     else:
         client: InfrahubClientSync = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
         location_schema: GenericSchema = client.schema.get(kind="BuiltinLocation")  # type: ignore[annotation-unchecked]
@@ -331,6 +341,8 @@ async def test_query_data_with_prefetch_relationships(clients, mock_schema_query
                     "id": None,
                     "display_label": None,
                     "name": {
+                        "is_default": None,
+                        "is_from_profile": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -346,6 +358,8 @@ async def test_query_data_with_prefetch_relationships(clients, mock_schema_query
                         "value": None,
                     },
                     "description": {
+                        "is_default": None,
+                        "is_from_profile": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -361,6 +375,8 @@ async def test_query_data_with_prefetch_relationships(clients, mock_schema_query
                         "value": None,
                     },
                     "type": {
+                        "is_default": None,
+                        "is_from_profile": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -395,6 +411,8 @@ async def test_query_data_with_prefetch_relationships(clients, mock_schema_query
                             "display_label": None,
                             "__typename": None,
                             "description": {
+                                "is_default": None,
+                                "is_from_profile": None,
                                 "is_protected": None,
                                 "is_visible": None,
                                 "owner": {
@@ -410,6 +428,8 @@ async def test_query_data_with_prefetch_relationships(clients, mock_schema_query
                                 "value": None,
                             },
                             "name": {
+                                "is_default": None,
+                                "is_from_profile": None,
                                 "is_protected": None,
                                 "is_visible": None,
                                 "owner": {
@@ -439,7 +459,6 @@ async def test_query_data_node_with_prefetch_relationships(clients, mock_schema_
         location_schema: GenericSchema = await client.schema.get(kind="BuiltinLocation")  # type: ignore[annotation-unchecked]
         node = InfrahubNode(client=client, schema=location_schema)
         data = await node.generate_query_data_node(prefetch_relationships=True)
-
     else:
         client: InfrahubClientSync = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
         location_schema: GenericSchema = client.schema.get(kind="BuiltinLocation")  # type: ignore[annotation-unchecked]
@@ -448,6 +467,8 @@ async def test_query_data_node_with_prefetch_relationships(clients, mock_schema_
 
     assert data == {
         "description": {
+            "is_default": None,
+            "is_from_profile": None,
             "is_protected": None,
             "is_visible": None,
             "owner": {"__typename": None, "display_label": None, "id": None},
@@ -455,6 +476,8 @@ async def test_query_data_node_with_prefetch_relationships(clients, mock_schema_
             "value": None,
         },
         "name": {
+            "is_default": None,
+            "is_from_profile": None,
             "is_protected": None,
             "is_visible": None,
             "owner": {"__typename": None, "display_label": None, "id": None},
@@ -465,6 +488,8 @@ async def test_query_data_node_with_prefetch_relationships(clients, mock_schema_
             "node": {
                 "__typename": None,
                 "description": {
+                    "is_default": None,
+                    "is_from_profile": None,
                     "is_protected": None,
                     "is_visible": None,
                     "owner": {"__typename": None, "display_label": None, "id": None},
@@ -474,6 +499,8 @@ async def test_query_data_node_with_prefetch_relationships(clients, mock_schema_
                 "display_label": None,
                 "id": None,
                 "name": {
+                    "is_default": None,
+                    "is_from_profile": None,
                     "is_protected": None,
                     "is_visible": None,
                     "owner": {"__typename": None, "display_label": None, "id": None},
@@ -489,6 +516,8 @@ async def test_query_data_node_with_prefetch_relationships(clients, mock_schema_
             },
         },
         "type": {
+            "is_default": None,
+            "is_from_profile": None,
             "is_protected": None,
             "is_visible": None,
             "owner": {"__typename": None, "display_label": None, "id": None},
@@ -505,7 +534,6 @@ async def test_query_data_generic(clients, mock_schema_query_02, client_type):  
         corenode_schema: GenericSchema = await client.schema.get(kind="CoreNode")  # type: ignore[annotation-unchecked]
         node = InfrahubNode(client=client, schema=corenode_schema)
         data = await node.generate_query_data(fragment=False)
-
     else:
         client: InfrahubClientSync = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
         corenode_schema: GenericSchema = client.schema.get(kind="CoreNode")  # type: ignore[annotation-unchecked]
@@ -534,7 +562,6 @@ async def test_query_data_generic_fragment(clients, mock_schema_query_02, client
         corenode_schema: GenericSchema = await client.schema.get(kind="CoreNode")  # type: ignore[annotation-unchecked]
         node = InfrahubNode(client=client, schema=corenode_schema)
         data = await node.generate_query_data(fragment=True)
-
     else:
         client: InfrahubClientSync = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
         corenode_schema: GenericSchema = client.schema.get(kind="CoreNode")  # type: ignore[annotation-unchecked]
@@ -551,6 +578,8 @@ async def test_query_data_generic_fragment(clients, mock_schema_query_02, client
                     "...on BuiltinLocation": {
                         "description": {
                             "@alias": "__alias__BuiltinLocation__description",
+                            "is_default": None,
+                            "is_from_profile": None,
                             "is_protected": None,
                             "is_visible": None,
                             "owner": {
@@ -567,6 +596,8 @@ async def test_query_data_generic_fragment(clients, mock_schema_query_02, client
                         },
                         "name": {
                             "@alias": "__alias__BuiltinLocation__name",
+                            "is_default": None,
+                            "is_from_profile": None,
                             "is_protected": None,
                             "is_visible": None,
                             "owner": {
@@ -605,6 +636,8 @@ async def test_query_data_generic_fragment(clients, mock_schema_query_02, client
                         },
                         "type": {
                             "@alias": "__alias__BuiltinLocation__type",
+                            "is_default": None,
+                            "is_from_profile": None,
                             "is_protected": None,
                             "is_visible": None,
                             "owner": {
@@ -623,6 +656,8 @@ async def test_query_data_generic_fragment(clients, mock_schema_query_02, client
                     "...on BuiltinTag": {
                         "description": {
                             "@alias": "__alias__BuiltinTag__description",
+                            "is_default": None,
+                            "is_from_profile": None,
                             "is_protected": None,
                             "is_visible": None,
                             "owner": {
@@ -639,6 +674,8 @@ async def test_query_data_generic_fragment(clients, mock_schema_query_02, client
                         },
                         "name": {
                             "@alias": "__alias__BuiltinTag__name",
+                            "is_default": None,
+                            "is_from_profile": None,
                             "is_protected": None,
                             "is_visible": None,
                             "owner": {
@@ -681,6 +718,8 @@ async def test_query_data_include(client, location_schema, client_type):
                     "id": None,
                     "display_label": None,
                     "name": {
+                        "is_default": None,
+                        "is_from_profile": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -696,6 +735,8 @@ async def test_query_data_include(client, location_schema, client_type):
                         "value": None,
                     },
                     "description": {
+                        "is_default": None,
+                        "is_from_profile": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -711,6 +752,8 @@ async def test_query_data_include(client, location_schema, client_type):
                         "value": None,
                     },
                     "type": {
+                        "is_default": None,
+                        "is_from_profile": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -795,6 +838,8 @@ async def test_query_data_exclude(client, location_schema, client_type):
                     "id": None,
                     "display_label": None,
                     "name": {
+                        "is_default": None,
+                        "is_from_profile": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -810,6 +855,8 @@ async def test_query_data_exclude(client, location_schema, client_type):
                         "value": None,
                     },
                     "type": {
+                        "is_default": None,
+                        "is_from_profile": None,
                         "is_protected": None,
                         "is_visible": None,
                         "owner": {
@@ -1144,7 +1191,6 @@ async def test_update_input_data__with_relationships_01(
 async def test_update_input_data_with_relationships_02(client, location_schema, location_data02, client_type):
     if client_type == "standard":
         location = InfrahubNode(client=client, schema=location_schema, data=location_data02)
-
     else:
         location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data02)
 
@@ -1188,7 +1234,6 @@ async def test_update_input_data_empty_relationship(
     if client_type == "standard":
         location = InfrahubNode(client=client, schema=location_schema, data=location_data01)
         tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
-
     else:
         location = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
         tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
@@ -1221,7 +1266,6 @@ async def test_node_get_relationship_from_store(
         node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
         tag_red = InfrahubNode(client=client, schema=tag_schema, data=tag_red_data)
         tag_blue = InfrahubNode(client=client, schema=tag_schema, data=tag_blue_data)
-
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
         tag_red = InfrahubNodeSync(client=client, schema=tag_schema, data=tag_red_data)
@@ -1241,7 +1285,6 @@ async def test_node_get_relationship_from_store(
 async def test_node_get_relationship_not_in_store(client, location_schema, location_data01, client_type):
     if client_type == "standard":
         node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
-
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
 

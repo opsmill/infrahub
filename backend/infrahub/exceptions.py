@@ -51,7 +51,7 @@ class GraphQLQueryError(Error):
 class RepositoryError(Error):
     def __init__(self, identifier, message=None):
         self.identifier = identifier
-        self.message = message or f"An error occured with GitRepository '{identifier}'."
+        self.message = message or f"An error occurred with GitRepository '{identifier}'."
         super().__init__(self.message)
 
 
@@ -77,11 +77,22 @@ class DataTypeNotFoundError(Error):
 class RepositoryFileNotFoundError(Error):
     HTTP_CODE: int = 404
 
-    def __init__(self, repository_name, location, commit, message=None):
+    def __init__(self, repository_name: str, location: str, commit: str, message=None):
         self.repository_name = repository_name
         self.location = location
         self.commit = commit
         self.message = message or f"Unable to find the file at '{repository_name}::{commit}::{location}'."
+        super().__init__(self.message)
+
+
+class FileOutOfRepositoryError(Error):
+    HTTP_CODE: int = 403
+
+    def __init__(self, repository_name: str, location: str, commit: str, message=None):
+        self.repository_name = repository_name
+        self.location = location
+        self.commit = commit
+        self.message = message or f"File not in repository '{repository_name}::{commit}::{location}'."
         super().__init__(self.message)
 
 
@@ -91,7 +102,7 @@ class TransformError(Error):
         self.location = location
         self.commit = commit
         self.message = (
-            message or f"An error occured with the transform function at '{repository_name}::{commit}::{location}'."
+            message or f"An error occurred with the transform function at '{repository_name}::{commit}::{location}'."
         )
         super().__init__(self.message)
 
@@ -104,7 +115,7 @@ class CheckError(Error):
         self.class_name = class_name
         self.message = (
             message
-            or f"An error occured with the check function at '{repository_name}::{commit}::{location}::{class_name}'."
+            or f"An error occurred with the check function at '{repository_name}::{commit}::{location}::{class_name}'."
         )
         super().__init__(self.message)
 
@@ -218,6 +229,13 @@ class QueryValidationError(Error):
         self.message = message
 
 
+class MigrationError(Error):
+    HTTP_CODE = 502
+
+    def __init__(self, message: str):
+        self.message = message
+
+
 class ValidationError(Error):
     HTTP_CODE = 422
 
@@ -259,9 +277,7 @@ class DiffError(Error):
         self.message = message
 
 
-class DiffRangeValidationError(DiffError):
-    ...
+class DiffRangeValidationError(DiffError): ...
 
 
-class DiffFromRequiredOnDefaultBranchError(DiffError):
-    ...
+class DiffFromRequiredOnDefaultBranchError(DiffError): ...

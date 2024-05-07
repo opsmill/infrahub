@@ -1,0 +1,14 @@
+query CarOwnerAge($owner: String!) {
+  TestingPerson(name__value: $owner) {
+    edges {
+      node {
+        age {
+          value
+        }
+        cars {
+          count
+        }
+      }
+    }
+  }
+}

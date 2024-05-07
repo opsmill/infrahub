@@ -412,3 +412,15 @@ async def test_query_echo(httpx_mock: HTTPXMock, echo_clients, client_type):  # 
 
     assert response == {"BuiltinTag": {"edges": []}}
     assert echo_clients.stdout.getvalue().splitlines() == EXPECTED_ECHO.splitlines()
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_clone(clients, client_type):
+    if client_type == "standard":
+        clone = clients.standard.clone()
+        assert clone.config == clients.standard.config
+        assert isinstance(clone, InfrahubClient)
+    else:
+        clone = clients.sync.clone()
+        assert clone.config == clients.sync.config
+        assert isinstance(clone, InfrahubClientSync)

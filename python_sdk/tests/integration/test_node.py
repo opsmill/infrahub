@@ -27,9 +27,8 @@ class TestInfrahubNode:
     async def load_builtin_schema(self, db: InfrahubDatabase, test_client: InfrahubTestClient, builtin_org_schema):
         config = Config(username="admin", password="infrahub", requester=test_client.async_request)
         client = await InfrahubClient.init(config=config)
-        success, response = await client.schema.load(schemas=[builtin_org_schema])
-        assert response is None
-        assert success
+        response = await client.schema.load(schemas=[builtin_org_schema])
+        assert not response.errors
 
     async def test_node_create(self, client: InfrahubClient, init_db_base, load_builtin_schema, location_schema):
         data = {

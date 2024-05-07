@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from typing import TYPE_CHECKING, Awaitable, Callable, List, MutableMapping, Optional, Type, TypeVar
 
 import aio_pika
+import opentelemetry.instrumentation.aio_pika.span_builder
+import ujson
 from infrahub_sdk import UUIDT
+from opentelemetry.instrumentation.aio_pika import AioPikaInstrumentor
+from opentelemetry.semconv.trace import SpanAttributes
 
 from infrahub import config
 from infrahub.components import ComponentType
@@ -24,12 +27,36 @@ if TYPE_CHECKING:
         AbstractQueue,
         AbstractRobustConnection,
     )
+    from opentelemetry.instrumentation.aio_pika.span_builder import SpanBuilder
 
     from infrahub.config import BrokerSettings
     from infrahub.services import InfrahubServices
 
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
 ResponseClass = TypeVar("ResponseClass")
+
+
+AioPikaInstrumentor().instrument()
+
+
+# TODO: remove this once https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1835 is resolved
+def patch_spanbuilder_set_channel() -> None:
+    """
+    The default SpanBuilder.set_channel does not work with aio_pika 9.1 and the refactored connection
+    attribute
+    """
+
+    def set_channel(self: SpanBuilder, channel: AbstractChannel) -> None:
+        if hasattr(channel, "_connection"):
+            url = channel._connection.url
+            self._attributes.update(
+                {
+                    SpanAttributes.NET_PEER_NAME: url.host,
+                    SpanAttributes.NET_PEER_PORT: url.port,
+                }
+            )
+
+    opentelemetry.instrumentation.aio_pika.span_builder.SpanBuilder.set_channel = set_channel  # type: ignore
 
 
 async def _add_request_id(message: InfrahubMessage) -> None:
@@ -54,6 +81,8 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.futures: MutableMapping[str, asyncio.Future] = {}
 
     async def initialize(self, service: InfrahubServices) -> None:
+        patch_spanbuilder_set_channel()
+
         self.service = service
         self.connection = await aio_pika.connect_robust(
             host=self.settings.address,
@@ -85,6 +114,14 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             await execute_message(routing_key=message.routing_key, message_body=message.body, service=self.service)
         else:
             self.service.log.error("Invalid message received", message=f"{message!r}")
+
+    async def on_message(self, message: AbstractIncomingMessage) -> None:
+        async with message.process():
+            clear_log_context()
+            if message.routing_key in messages.MESSAGE_MAP:
+                await execute_message(routing_key=message.routing_key, message_body=message.body, service=self.service)
+            else:
+                self.service.log.error("Invalid message received", message=f"{message!r}")
 
     async def _initialize_api_server(self) -> None:
         self.callback_queue = await self.channel.declare_queue(name=f"api-callback-{WORKER_IDENTITY}", exclusive=True)
@@ -142,7 +179,6 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.message_enrichers.append(_add_request_id)
 
     async def _initialize_git_worker(self) -> None:
-        await self.channel.set_qos(prefetch_count=1)
         events_queue = await self.channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
 
         self.exchange = await self.channel.declare_exchange(
@@ -156,6 +192,12 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             name=f"worker-callback-{WORKER_IDENTITY}", exclusive=True
         )
         await self.callback_queue.consume(self.on_callback, no_ack=True)
+
+        message_channel = await self.connection.channel()
+        await message_channel.set_qos(prefetch_count=self.settings.maximum_concurrent_messages)
+
+        queue = await message_channel.get_queue(f"{self.settings.namespace}.rpcs")
+        await queue.consume(callback=self.on_message, no_ack=False)
 
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
         for enricher in self.message_enrichers:
@@ -183,30 +225,8 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         await self.service.send(message=message)
 
         response: AbstractIncomingMessage = await future
-        data = json.loads(response.body)
+        data = ujson.loads(response.body)
         return response_class(**data)
-
-    async def subscribe(self) -> None:
-        queue = await self.channel.get_queue(f"{self.settings.namespace}.rpcs")
-        self.service.log.info("Waiting for RPC instructions to execute .. ")
-        async with queue.iterator() as qiterator:
-            async for message in qiterator:
-                try:
-                    async with message.process(requeue=False):
-                        clear_log_context()
-                        if message.routing_key in messages.MESSAGE_MAP:
-                            await execute_message(
-                                routing_key=message.routing_key, message_body=message.body, service=self.service
-                            )
-                        else:
-                            self.service.log.error(
-                                "Unhandled routing key for message",
-                                routing_key=message.routing_key,
-                                message=message.body,
-                            )
-
-                except Exception:  # pylint: disable=broad-except
-                    self.service.log.exception("Processing error for message %r" % message)
 
     @staticmethod
     def format_message(message: InfrahubMessage) -> aio_pika.Message:

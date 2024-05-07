@@ -1,24 +1,28 @@
 import asyncio
-import json
-from asyncio import run as aiorun
 
 import typer
+import ujson
 from aio_pika.abc import AbstractIncomingMessage
+from infrahub_sdk.async_typer import AsyncTyper
 from rich import print as rprint
 
 from infrahub import config
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 
-app = typer.Typer()
+app = AsyncTyper()
 
 
 async def print_event(event: AbstractIncomingMessage) -> None:
-    message = {"routing_key": event.routing_key, "message": json.loads(event.body)}
+    message = {"routing_key": event.routing_key, "message": ujson.loads(event.body)}
     rprint(message)
 
 
-async def _listen(topic: str, config_file: str) -> None:
+@app.command()
+async def listen(
+    topic: str = "#", config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")
+) -> None:
+    """Listen to event in the Events bus and print them."""
     config.load_and_exit(config_file)
     broker = RabbitMQMessageBus()
     service = InfrahubServices()
@@ -32,9 +36,3 @@ async def _listen(topic: str, config_file: str) -> None:
     await queue.bind(exchange, routing_key=topic)
     print(f" Waiting for events matching the topic `{topic}`. To exit press CTRL+C")
     await asyncio.Future()
-
-
-@app.command()
-def listen(topic: str = "#", config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")) -> None:
-    """Listen to event in the Events bus and print them."""
-    aiorun(_listen(topic=topic, config_file=config_file))

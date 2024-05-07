@@ -14,6 +14,8 @@ __all__ = ["InfrahubKind", "FlagProperty", "NodeProperty", "UpdateSupport", "Upd
 
 GLOBAL_BRANCH_NAME = "-global-"
 
+DEFAULT_IP_NAMESPACE = "default"
+
 RESERVED_BRANCH_NAMES = [GLOBAL_BRANCH_NAME]
 
 RESERVED_ATTR_REL_NAMES = [
@@ -30,6 +32,8 @@ RESERVED_ATTR_REL_NAMES = [
 ]
 
 RESERVED_ATTR_GEN_NAMES = ["type"]
+
+NULL_VALUE = "NULL"
 
 
 class PermissionLevel(enum.Flag):
@@ -70,6 +74,11 @@ class BranchConflictKeep(InfrahubStringEnum):
     SOURCE = "source"
 
 
+class AllowOverrideType(InfrahubStringEnum):
+    NONE = "none"
+    ANY = "any"
+
+
 class ContentType(InfrahubStringEnum):
     APPLICATION_JSON = "application/json"
     TEXT_PLAIN = "text/plain"
@@ -78,6 +87,7 @@ class ContentType(InfrahubStringEnum):
 class CheckType(InfrahubStringEnum):
     ARTIFACT = "artifact"
     DATA = "data"
+    GENERATOR = "generator"
     REPOSITORY = "repository"
     SCHEMA = "schema"
     TEST = "test"
@@ -90,6 +100,13 @@ class DiffAction(InfrahubStringEnum):
     REMOVED = "removed"
     UPDATED = "updated"
     UNCHANGED = "unchanged"
+
+
+class GeneratorInstanceStatus(InfrahubStringEnum):
+    ERROR = "Error"
+    PENDING = "Pending"
+    PROCESSING = "Processing"
+    READY = "Ready"
 
 
 class MutationAction(InfrahubStringEnum):
@@ -183,6 +200,7 @@ class RelationshipKind(InfrahubStringEnum):
     PARENT = "Parent"
     GROUP = "Group"
     HIERARCHY = "Hierarchy"
+    PROFILE = "Profile"
 
 
 class RelationshipStatus(InfrahubStringEnum):
@@ -208,6 +226,11 @@ class RelationshipDirection(InfrahubStringEnum):
 class RelationshipHierarchyDirection(InfrahubStringEnum):
     ANCESTORS = "ancestors"
     DESCENDANTS = "descendants"
+
+
+class RelationshipDeleteBehavior(InfrahubStringEnum):
+    NO_ACTION = "no-action"
+    CASCADE = "cascade"
 
 
 class Severity(InfrahubStringEnum):
@@ -236,6 +259,12 @@ class ValidatorState(InfrahubStringEnum):
     COMPLETED = "completed"
 
 
+class AttributeDBNodeType(InfrahubStringEnum):
+    DEFAULT = "default"
+    IPHOST = "iphost"
+    IPNETWORK = "ipnetwork"
+
+
 RESTRICTED_NAMESPACES: List[str] = [
     "Account",
     "Branch",
@@ -247,6 +276,7 @@ RESTRICTED_NAMESPACES: List[str] = [
     "Internal",
     "Lineage",
     "Schema",
+    "Profile",
 ]
 
 NODE_NAME_REGEX = r"^[A-Z][a-zA-Z0-9]+$"

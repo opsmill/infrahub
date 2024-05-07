@@ -56,7 +56,7 @@ class InfrahubClientUser(User):
             for i in range(self.custom_options["rels"])
         ]
         common.stagers.load_schema(
-            self.client, self.custom_options["schema"], extra_attributes=attributes, relationships=relationships
+            self.client, self.custom_options["schema"], attributes=attributes, relationships=relationships
         )
         time.sleep(5)
         print("--- staging nodes, attributes and relations")
@@ -87,3 +87,10 @@ class InfrahubClientUser(User):
                 update_this_node.save()
 
                 delete_this_node.delete()
+
+            if "diff" in self.custom_options["stager"]:
+                self.client.branch.diff_data("DiffTestBranch")
+
+        # End with a branch merge
+        if "diff" in self.custom_options["stager"]:
+            self.client.branch.merge("DiffTestBranch")

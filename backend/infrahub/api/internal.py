@@ -1,7 +1,7 @@
-import json
 import re
 from typing import List, Optional
 
+import ujson
 from fastapi import APIRouter
 from lunr.index import Index
 from pydantic import BaseModel
@@ -82,7 +82,7 @@ class SearchDocs:
 
         try:
             with open(config.SETTINGS.main.docs_index_path, "r", encoding="utf-8") as f:
-                search_index = json.loads(f.read())
+                search_index = ujson.loads(f.read())
                 self._title_documents = search_index[0]["documents"]
                 heading_json = search_index[1]
                 self._heading_documents = heading_json["documents"]

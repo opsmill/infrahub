@@ -23,4 +23,4 @@ async def test_get_menu(
 
     menu = [InterfaceMenu(**menu_item) for menu_item in response.json()]
     assert menu[0].title == "Objects"
-    menu[0].children[0].title == "Car"
+    assert menu[0].children[0].title == "Car"

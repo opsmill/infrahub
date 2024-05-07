@@ -1,5 +1,4 @@
 ---
-version: "3.4"
 services:
   message-queue:
     image: "${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:latest}"

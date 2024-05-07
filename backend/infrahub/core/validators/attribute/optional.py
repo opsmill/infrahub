@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from infrahub.core.constants import PathType
+from infrahub.core.constants import NULL_VALUE, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 
 from ..interface import ConstraintCheckerInterface
@@ -24,6 +24,7 @@ class AttributeOptionalUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
         self.params["node_kind"] = self.node_schema.kind
         self.params["attr_name"] = self.attribute_schema.name
+        self.params["null_value"] = NULL_VALUE
 
         query = """
         MATCH p = (n:Node)
@@ -42,7 +43,7 @@ class AttributeOptionalUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         WITH full_path, node, attribute_value, value_relationship
         WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
-        AND (attribute_value IS NULL OR attribute_value = "NULL")
+        AND (attribute_value IS NULL OR attribute_value = $null_value)
         """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import keyword
+import os
 from dataclasses import asdict, dataclass
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Literal, Optional, Type, Union, overload
 
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import field_validator
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
+    from infrahub.core.constants import RelationshipKind
     from infrahub.core.schema import GenericSchema, NodeSchema
 
 # pylint: disable=redefined-builtin
@@ -135,6 +137,11 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         # Process element b
         for name in sorted(present_both):
+            # If the element doesn't have an ID on either side
+            # this most likely means it was added recently from the internal schema.
+            if os.environ.get("PYTEST_RUNNING", "") != "true" and local_map[name] is None and other_map[name] is None:
+                elements_diff.added[name] = None
+                continue
             local_element: obj_type = get_func(self, name=name)
             other_element: obj_type = get_func(other, name=name)
             element_diff = local_element.diff(other_element)
@@ -150,6 +157,16 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         return elements_diff
 
+    @overload
+    def get_field(
+        self, name: str, raise_on_error: Literal[True] = True
+    ) -> Union[AttributeSchema, RelationshipSchema]: ...
+
+    @overload
+    def get_field(
+        self, name: str, raise_on_error: Literal[False] = False
+    ) -> Optional[Union[AttributeSchema, RelationshipSchema]]: ...
+
     def get_field(self, name: str, raise_on_error: bool = True) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
         if field := self.get_attribute_or_none(name=name):
             return field
@@ -157,10 +174,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         if field := self.get_relationship_or_none(name=name):
             return field
 
-        if not raise_on_error:
-            return None
+        if raise_on_error:
+            raise ValueError(f"Unable to find the field {name}")
 
-        raise ValueError(f"Unable to find the field {name}")
+        return None
 
     def get_attribute(self, name: str) -> AttributeSchema:
         for item in self.attributes:
@@ -229,6 +246,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
                 rels.append(item)
 
         return rels
+
+    def get_relationships_of_kind(self, relationship_kinds: Iterable[RelationshipKind]) -> list[RelationshipSchema]:
+        return [r for r in self.relationships if r.kind in relationship_kinds]
 
     def get_attributes_name_id_map(self) -> Dict[str, str]:
         name_id_map = {}
@@ -324,7 +344,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         branch: Optional[Union[Branch, str]] = None,
         schema_map_override: Optional[Dict[str, Union[NodeSchema, GenericSchema]]] = None,
     ) -> SchemaAttributePath:
-        allowed_leaf_properties = ["value"]
+        allowed_leaf_properties = ["value", "version", "binary_address"]
         schema_path = SchemaAttributePath()
         relationship_piece: Optional[str] = None
         attribute_piece: Optional[str] = None
@@ -365,10 +385,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         return schema_path
 
     def get_unique_constraint_schema_attribute_paths(
-        self, include_unique_attributes: bool = False
+        self, include_unique_attributes: bool = False, branch: Optional[Branch] = None
     ) -> List[List[SchemaAttributePath]]:
         constraint_paths_groups = []
-
         if include_unique_attributes:
             for attribute_schema in self.unique_attributes:
                 constraint_paths_groups.append(
@@ -381,7 +400,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         for uniqueness_path_group in self.uniqueness_constraints:
             constraint_paths_groups.append(
                 [
-                    self.parse_attribute_path(attribute_path=uniqueness_path_part)
+                    self.parse_attribute_path(attribute_path=uniqueness_path_part, branch=branch)
                     for uniqueness_path_part in uniqueness_path_group
                 ]
             )
@@ -407,5 +426,4 @@ class SchemaAttributePathValue(SchemaAttributePath):
         return cls(**asdict(schema_attribute_path), value=value)
 
 
-class AttributePathParsingError(Exception):
-    ...
+class AttributePathParsingError(Exception): ...

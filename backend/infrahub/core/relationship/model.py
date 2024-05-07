@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema
+    from infrahub.core.schema import MainSchemaTypes, RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
 # pylint: disable=redefined-builtin
@@ -252,7 +252,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self._peer = peer
         self.peer_id = self._peer.id
 
-    def get_peer_schema(self) -> Union[NodeSchema, GenericSchema]:
+    def get_peer_schema(self) -> MainSchemaTypes:
         return registry.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
 
     def compare_properties_with_data(self, data: RelationshipPeerData) -> List[str]:
@@ -573,13 +573,7 @@ class RelationshipValidatorList:
 
 
 class RelationshipManager:
-    def __init__(  # pylint: disable=unused-argument
-        self,
-        schema: RelationshipSchema,
-        branch: Branch,
-        at: Timestamp,
-        node: Node,
-    ) -> None:
+    def __init__(self, schema: RelationshipSchema, branch: Branch, at: Timestamp, node: Node) -> None:
         self.schema: RelationshipSchema = schema
         self.name: str = schema.name
         self.node: Node = node
@@ -643,6 +637,12 @@ class RelationshipManager:
             raise LookupError("you can't iterate over the relationships before the cache has been populated.")
 
         return iter(self._relationships)
+
+    def __len__(self) -> int:
+        if not self.has_fetched_relationships:
+            raise LookupError("you can't count relationships before the cache has been populated.")
+
+        return len(self._relationships)
 
     async def get_peer(self, db: InfrahubDatabase) -> Optional[Node]:
         if self.schema.cardinality == "many":
@@ -738,7 +738,7 @@ class RelationshipManager:
 
         return self._relationships.as_list()
 
-    async def update(
+    async def update(  # pylint: disable=too-many-branches
         self, data: Union[List[Union[str, Node]], Dict[str, Any], str, Node, None], db: InfrahubDatabase
     ) -> bool:
         """Replace and Update the list of relationships with this one."""
@@ -762,10 +762,11 @@ class RelationshipManager:
                     self._relationships.append(previous_relationships[str(item_id)])
                     continue
 
-            if isinstance(item, type(None)) and previous_relationships:
-                for rel in previous_relationships.values():
-                    await rel.delete(db=db)
-                changed = True
+            if isinstance(item, type(None)):
+                if previous_relationships:
+                    for rel in previous_relationships.values():
+                        await rel.delete(db=db)
+                    changed = True
                 continue
 
             if isinstance(item, str) and item in previous_relationships:
@@ -794,6 +795,29 @@ class RelationshipManager:
             changed = True
 
         return changed
+
+    async def add(self, data: Union[Dict[str, Any], Node], db: InfrahubDatabase) -> bool:
+        """Add a new relationship to the list of existing ones, avoid duplication."""
+        if not isinstance(data, (self.rel_class, dict)) and not hasattr(data, "_schema"):
+            raise ValidationError({self.name: f"Invalid data provided to form a relationship {data}"})
+
+        previous_relationships = {rel.peer_id for rel in await self.get_relationships(db=db) if rel.peer_id}
+
+        item_id = getattr(data, "id", None)
+        if not item_id and isinstance(data, dict):
+            item_id = data.get("id", None)
+
+        if item_id in previous_relationships:
+            return False
+
+        # If the item ID is not present in the previous set of relationships, create a new one
+        self._relationships.append(
+            await self.rel_class(schema=self.schema, branch=self.branch, at=self.at, node=self.node).new(
+                db=db, data=data
+            )
+        )
+
+        return True
 
     async def remove(
         self,

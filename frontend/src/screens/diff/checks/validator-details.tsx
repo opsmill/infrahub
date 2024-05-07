@@ -12,9 +12,7 @@ type tValidatorDetails = {
   id: string;
 };
 
-export const ValidatorDetails = (props: tValidatorDetails) => {
-  const { id } = props;
-
+export const ValidatorDetails = ({ id }: tValidatorDetails) => {
   const [pagination] = usePagination();
 
   const filtersString = [
@@ -49,8 +47,8 @@ export const ValidatorDetails = (props: tValidatorDetails) => {
   return (
     <div className="flex-1 flex flex-col">
       <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 p-2">
-        {validator?.checks?.edges?.map((check: any, index: number) => (
-          <Check key={index} id={check?.node?.id} />
+        {validator?.checks?.edges?.map((check: any) => (
+          <Check key={check?.node?.id} id={check?.node?.id} />
         ))}
 
         {!validator?.checks?.edges?.length && <NoDataFound message="No checks found." />}

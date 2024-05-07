@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import difflib
-import json
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 
 import pytest
+import ujson
 from git.exc import InvalidGitRepositoryError
 
 from ..exceptions import InvalidResourceConfigError
@@ -56,8 +56,8 @@ class InfrahubItem(pytest.Item):
 
         expected = self.test.spec.get_output_data()
         differences = difflib.unified_diff(
-            json.dumps(expected, indent=4, sort_keys=True).splitlines(),
-            json.dumps(computed, indent=4, sort_keys=True).splitlines(),
+            ujson.dumps(expected, indent=4, sort_keys=True).splitlines(),
+            ujson.dumps(computed, indent=4, sort_keys=True).splitlines(),
             fromfile="expected",
             tofile="rendered",
             lineterm="",

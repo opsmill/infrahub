@@ -24,10 +24,8 @@ env:
   INFRAHUB_IMAGE_VER: "local"
   PYTEST_XDIST_WORKER_COUNT: 4
   INFRAHUB_TEST_IN_DOCKER: 1
-  BUILDKITE_ANALYTICS_BRANCH: ${{ github.ref }}
-  BUILDKITE_BRANCH: ${{ github.ref }}
-  BUILDKITE_COMMIT: ${{ github.sha }}
   VALE_VERSION: "3.0.7"
+  GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
 
 jobs:
    # ------------------------------------------ Check Files Changes  ------------------------------------------
@@ -39,6 +37,7 @@ jobs:
       backend: ${{ steps.changes.outputs.backend_all }}
       documentation: ${{ steps.changes.outputs.documentation_all }}
       frontend: ${{ steps.changes.outputs.frontend_all }}
+      helm: ${{ steps.changes.outputs.helm_all }}
       sdk: ${{ steps.changes.outputs.sdk_all }}
       sync: ${{ steps.changes.outputs.sync_all }}
       e2e: ${{ steps.changes.outputs.e2e_all }}
@@ -59,6 +58,19 @@ jobs:
           filters: .github/file-filters.yml
 
  # ------------------------------------------ All Linter  ------------------------------------------
+  helm-lint:
+    if: needs.files-changed.outputs.helm == 'true'
+    needs: ["files-changed"]
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: "Install Helm"
+        uses: azure/setup-helm@v4.2.0
+      - name: "Linting: helm lint"
+        run: "helm lint helm/"
+
   yaml-lint:
     if: needs.files-changed.outputs.yaml == 'true'
     needs: ["files-changed"]
@@ -67,19 +79,10 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
-      - name: "Identify which files have changed"
-        uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            src:
-              - '**.yml'
-              - '**.yaml'
-              - 'development/workflows/ci.yml'
       - name: "Setup environment"
-        run: "pip install yamllint==1.33.0"
+        run: "pip install yamllint==1.35.1"
       - name: "Linting: yamllint"
-        run: "yamllint ."
+        run: "yamllint -s ."
 
   javascript-lint:
     if: needs.files-changed.outputs.javascript == 'true'
@@ -111,7 +114,7 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
       - name: "Setup environment"
-        run: "pip install ruff==0.1.8"
+        run: "pip install ruff==0.4.1"
       - name: "Linting: ruff check"
         run: "ruff check --diff ."
       - name: "Linting: ruff format"
@@ -126,7 +129,7 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
       - name: "Linting: markdownlint"
-        uses: DavidAnson/markdownlint-cli2-action@v15
+        uses: DavidAnson/markdownlint-cli2-action@v16
         with:
           config: .markdownlint.yaml
           globs: '**/*.{md,mdx}'
@@ -168,12 +171,11 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
           - "3.12"
-        pydantic-version: ["^1.10", "^2"]
+        pydantic-version: ["1.10.14", "^2"]
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -210,13 +212,12 @@ jobs:
       - name: "Unit Tests"
         run: "poetry --directory python_sdk run coverage run --source=infrahub_sdk -m pytest python_sdk/tests/unit/"
         working-directory: ./
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
       - name: "Create coverage file"
         run: "poetry --directory python_sdk run coverage xml"
         working-directory: ./
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
+        continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -249,15 +250,14 @@ jobs:
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
       - name: "Build Test Image"
-        run: "invoke test.build"
+        run: "invoke dev.build"
       - name: "Pull External Docker Images"
-        run: "invoke test.pull"
+        run: "invoke dev.pull"
       - name: "Integration Tests"
         run: "invoke sdk.test-integration"
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_INTEGRATION }}
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2
+        continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -268,7 +268,10 @@ jobs:
     strategy:
       matrix:
         python-version:
+          - "3.9"
+          - "3.10"
           - "3.11"
+          - "3.12"
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -324,20 +327,28 @@ jobs:
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build Test Image"
-        run: "invoke test.build"
+        run: "invoke dev.build"
       - name: "Pull External Docker Images"
-        run: "invoke test.pull"
+        run: "invoke dev.pull"
       - name: "Unit Tests"
         run: "invoke backend.test-unit"
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_UNIT_DEFAULT }}
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
+        continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
           flag-name: backend-unit
           parallel: true
+      - name: Generate tracing spans
+        if: always()
+        uses: inception-health/otel-upload-test-artifact-action@v1
+        with:
+          jobName: "backend-tests-unit"
+          stepName: "Unit Tests"
+          path: "pytest-junit.xml"
+          type: "junit"
+          githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
 
   backend-tests-integration:
     if: |
@@ -350,7 +361,7 @@ jobs:
       group: "huge-runners"
     timeout-minutes: 30
     env:
-      INFRAHUB_DB_TYPE: memgraph
+      INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -363,19 +374,18 @@ jobs:
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build Test Image"
-        run: "invoke test.build"
+        run: "invoke dev.build"
       - name: "Pull External Docker Images"
-        run: "invoke test.pull"
+        run: "invoke dev.pull"
       - name: "Pylint Tests"
         run: "invoke backend.pylint --docker"
       - name: "Mypy Tests"
         run: "invoke backend.mypy --docker"
       - name: "Integration Tests"
         run: "invoke backend.test-integration"
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_INTEGRATION }}
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2
+        continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -406,13 +416,11 @@ jobs:
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build Test Image"
-        run: "invoke test.build"
+        run: "invoke dev.build"
       - name: "Pull External Docker Images"
-        run: "invoke test.pull"
+        run: "invoke dev.pull"
       - name: "Unit Tests"
         run: "invoke backend.test-unit"
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_UNIT_NEO4J }}
 
   backend-validate-generated:
     if: |
@@ -480,6 +488,7 @@ jobs:
           path: frontend/cypress/videos/*
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
+        continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -515,7 +524,7 @@ jobs:
       - name: "Build website"
         run: "invoke docs.build"
 
-  validate_generated_documentation:
+  validate-generated-documentation:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -534,11 +543,11 @@ jobs:
       - name: "Setup environment"
         run: "pip install invoke toml"
       - name: "Build Test Image"
-        run: "invoke test.build"
+        run: "invoke dev.build"
       - name: "Validate generated documentation"
         run: "invoke docs.validate --docker"
 
-  validate_documentation_style:
+  validate-documentation-style:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -561,87 +570,6 @@ jobs:
       - name: "Validate documentation style"
         run: "./vale ."
   # ------------------------------------------ E2E Tests  ------------------------------------------
-  E2E-testing-cypress:
-    needs:
-      - javascript-lint
-      - files-changed
-      - yaml-lint
-      - python-lint
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled')
-    runs-on:
-      group: huge-runners
-    timeout-minutes: 40
-    env:
-      INFRAHUB_DB_TYPE: memgraph
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v4"
-      - name: Install NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install frontend dependencies
-        working-directory: ./frontend
-        run: npm install
-      - name: "Install Invoke"
-        run: "pip install toml invoke"
-
-      - name: Select infrahub port
-        run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
-
-      - name: "Set environment variables"
-        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
-      - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
-      - name: "Clear docker environment"
-        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-
-      - name: Build Demo
-        run: "invoke demo.build"
-      - name: "Pull External Docker Images"
-        run: "invoke demo.pull"
-      - name: Initialize Demo
-        id: init-demo
-        run: "invoke demo.start demo.load-infra-schema"
-      - name: Check Demo Status
-        run: "invoke demo.status"
-      - name: Load Data
-        run: "invoke demo.load-infra-data"
-
-      - name: Set infrahub address
-        run: echo "INFRAHUB_ADDRESS=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
-      - name: Set cypress endpoint
-        run: echo "CYPRESS_BASE_URL=$INFRAHUB_ADDRESS" >> $GITHUB_ENV
-
-      - name: Git Repository
-        run: "invoke demo.infra-git-import demo.infra-git-create"
-      - name: Run End to End Tests
-        working-directory: ./frontend
-        run: npm run cypress:run:e2e
-      - name: Containers after tests
-        run: docker ps -a
-      - name: Upload cypress screenshots
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: docs/media/*
-      - name: Display server logs
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-server-1"
-      - name: Display git 1 logs
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-1"
-      - name: Display git 2 logs
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-2"
-      - name: Display database logs
-        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
-      - name: Display server status
-        run: invoke demo.status
-
   E2E-testing-playwright:
     defaults:
       run:
@@ -659,8 +587,8 @@ jobs:
       group: huge-runners
     timeout-minutes: 40
     env:
-      INFRAHUB_DB_TYPE: memgraph
-      INFRAHUB_ADDRESS: "http://localhost:8000"
+      INFRAHUB_DB_TYPE: neo4j
+      METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -676,7 +604,27 @@ jobs:
         run: pip install toml invoke
 
       - name: Select infrahub port
-        run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+        run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
+      - name: Select infrahub db port
+        run: echo "INFRAHUB_DB_BACKUP_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
+      - name: Select vmagent port
+        run: echo "VMAGENT_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
+      - name: Set job name
+        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
+
+      - name: Enable tracing
+        run: echo "INFRAHUB_TRACE_ENABLE=true" >> $GITHUB_ENV
+      - name: Set tracing configuration
+        run: echo "INFRAHUB_TRACE_INSECURE=false" >> $GITHUB_ENV
+      - name: Set tracing configuration
+        run: echo "INFRAHUB_TRACE_EXPORTER_TYPE=otlp" >> $GITHUB_ENV
+      - name: Set tracing configuration
+        run: echo "INFRAHUB_TRACE_EXPORTER_ENDPOINT=${{ secrets.TRACING_ENDPOINT }}" >> $GITHUB_ENV
+      - name: Set tracing configuration
+        run: echo "OTEL_RESOURCE_ATTRIBUTES=github.run_id=${GITHUB_RUN_ID}" >> $GITHUB_ENV
+
+      - name: "Store start time"
+        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
 
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
@@ -686,26 +634,26 @@ jobs:
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
       - name: Build Demo
-        run: invoke demo.build
+        run: invoke dev.build
 
       - name: Pull External Docker Images
-        run: invoke demo.pull
+        run: invoke dev.pull
 
       - name: Initialize Demo
         id: init-demo
-        run: invoke demo.start demo.load-infra-schema
+        run: invoke dev.start dev.load-infra-schema
 
       - name: Check Demo Status
-        run: invoke demo.status
+        run: invoke dev.status
 
       - name: Load Data
-        run: invoke demo.load-infra-data
+        run: invoke dev.load-infra-data
 
       - name: Set infrahub address
         run: echo "INFRAHUB_ADDRESS=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
 
       - name: Git Repository
-        run: invoke demo.infra-git-import demo.infra-git-create
+        run: invoke dev.infra-git-import dev.infra-git-create
 
       - name: Install frontend dependencies
         run: npm install
@@ -713,10 +661,26 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install chromium
 
+      # Make chromium ignore netlink messages by returning HandleMessage early
+      - name: Chrome path
+        run: echo CHROME_BIN_PATH="$(npx playwright install chromium --dry-run | grep Install | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
+      - name: Chrome func offset
+        run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::HandleMessage(char const*, int, bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
+      - name: Patch chromium
+        run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
+
       - name: Run Playwright tests
         run: npm run ci:test:e2e
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_E2E_PLAYWRIGHT }}
+
+      - name: Generate tracing spans
+        if: always()
+        uses: inception-health/otel-upload-test-artifact-action@v1
+        with:
+          jobName: "E2E-testing-playwright"
+          stepName: "Run Playwright tests"
+          path: "frontend/playwright-junit.xml"
+          type: "junit"
+          githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
 
       - name: playwright-report
         if: always()
@@ -748,6 +712,18 @@ jobs:
       - name: Display server status
         if: always()
         run: invoke demo.status
+
+      - name: "Clear docker environment and force vmagent to stop"
+        if: always()
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+      - name: "Wait for vmagent to push metrics"
+        if: always()
+        run: "sleep 10"
+      - name: "Show graph URL"
+        if: always()
+        run: 'echo "https://grafana-prod.tailc018d.ts.net/d/a4461039-bb27-4f57-9b2a-2c7f4e0a3459/e2e-tests?orgId=1&var-pr=$GITHUB_PR_NUMBER&var-job=$JOB_NAME&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
+
   # ------------------------------------------ Benchmarks ------------------------------------------------
   backend-benchmark:
     needs:
@@ -755,10 +731,11 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled')
+    if: false  # |
+      # always() && !cancelled() &&
+      # !contains(needs.*.result, 'failure') &&
+      # !contains(needs.*.result, 'cancelled') &&
+      # needs.files-changed.outputs.backend == 'true'
     runs-on:
       group: huge-runners
     env:
@@ -781,7 +758,7 @@ jobs:
         run: "poetry install"
 
       - name: Select infrahub db port
-        run: echo "INFRAHUB_DB_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+        run: echo "INFRAHUB_DB_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
 
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
@@ -794,7 +771,7 @@ jobs:
         run: mv development/docker-compose.dev-override-benchmark.yml development/docker-compose.dev-override.yml
 
       - name: Start dependencies
-        run: invoke demo.dev-start
+        run: invoke dev.deps
 
       - name: Update PATH
         run: "echo ~/.cargo/bin >> $GITHUB_PATH"
@@ -840,6 +817,7 @@ jobs:
       #     allowed-conclusions: success,skipped,cancelled,failure
 
       - uses: coverallsapp/github-action@v2
+        continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:

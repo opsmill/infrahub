@@ -20,6 +20,7 @@ const theme = EditorView.baseTheme({
   },
   "& .cm-content": {
     padding: "8px",
+    minHeight: "150px",
   },
   "& .cm-line": {
     padding: 0,

@@ -20,7 +20,7 @@ async def test_query_uniqueness_no_violations(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            **{"kind": "TestCar", "unique_attribute_paths": [{"attribute_name": "name", "property_name": "value"}]}
+            kind="TestCar", unique_attribute_paths=[{"attribute_name": "name", "property_name": "value"}]
         ),
     )
     query_result = await query.execute(db=db)
@@ -35,13 +35,11 @@ async def test_query_uniqueness_one_violation(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            **{
-                "kind": "TestCar",
-                "unique_attribute_paths": [
-                    {"attribute_name": "name", "property_name": "value"},
-                    {"attribute_name": "nbr_seats", "property_name": "value"},
-                ],
-            }
+            kind="TestCar",
+            unique_attribute_paths=[
+                {"attribute_name": "name", "property_name": "value"},
+                {"attribute_name": "nbr_seats", "property_name": "value"},
+            ],
         ),
     )
     query_result = await query.execute(db=db)
@@ -68,13 +66,11 @@ async def test_query_uniqueness_deleted_node_ignored(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            **{
-                "kind": "TestCar",
-                "unique_attribute_paths": [
-                    {"attribute_name": "name", "property_name": "value"},
-                    {"attribute_name": "nbr_seats", "property_name": "value"},
-                ],
-            }
+            kind="TestCar",
+            unique_attribute_paths=[
+                {"attribute_name": "name", "property_name": "value"},
+                {"attribute_name": "nbr_seats", "property_name": "value"},
+            ],
         ),
     )
     query_result = await query.execute(db=db)
@@ -96,13 +92,11 @@ async def test_query_uniqueness_get_latest_update(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            **{
-                "kind": "TestCar",
-                "unique_attribute_paths": [
-                    {"attribute_name": "name", "property_name": "value"},
-                    {"attribute_name": "nbr_seats", "property_name": "value"},
-                ],
-            }
+            kind="TestCar",
+            unique_attribute_paths=[
+                {"attribute_name": "name", "property_name": "value"},
+                {"attribute_name": "nbr_seats", "property_name": "value"},
+            ],
         ),
     )
     query_result = await query.execute(db=db)
@@ -129,7 +123,7 @@ async def test_query_uniqueness_cross_branch_conflict(
         db=db,
         branch=branch_2,
         query_request=NodeUniquenessQueryRequest(
-            **{"kind": "TestCar", "unique_attribute_paths": [{"attribute_name": "name", "property_name": "value"}]}
+            kind="TestCar", unique_attribute_paths=[{"attribute_name": "name", "property_name": "value"}]
         ),
     )
     query_result = await query.execute(db=db)
@@ -210,14 +204,12 @@ async def test_query_uniqueness_multiple_attribute_violations(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            **{
-                "kind": "TestCar",
-                "unique_attribute_paths": [
-                    {"attribute_name": "name", "property_name": "value"},
-                    {"attribute_name": "color", "property_name": "value"},
-                    {"attribute_name": "nbr_seats", "property_name": "value"},
-                ],
-            }
+            kind="TestCar",
+            unique_attribute_paths=[
+                {"attribute_name": "name", "property_name": "value"},
+                {"attribute_name": "color", "property_name": "value"},
+                {"attribute_name": "nbr_seats", "property_name": "value"},
+            ],
         ),
     )
     query_result = await query.execute(db=db)
@@ -248,11 +240,9 @@ async def test_query_relationship_uniqueness_no_violations(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            **{
-                "kind": "TestCar",
-                "unique_attribute_paths": [{"attribute_name": "name", "property_name": "value"}],
-                "relationship_attribute_paths": [{"identifier": "testcar__testperson", "attribute_name": "height"}],
-            }
+            kind="TestCar",
+            unique_attribute_paths=[{"attribute_name": "name", "property_name": "value"}],
+            relationship_attribute_paths=[{"identifier": "testcar__testperson", "attribute_name": "height"}],
         ),
     )
     query_result = await query.execute(db=db)
@@ -280,11 +270,9 @@ async def test_query_relationship_uniqueness_one_violation(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            **{
-                "kind": "TestCar",
-                "unique_attribute_paths": [{"attribute_name": "name", "property_name": "value"}],
-                "relationship_attribute_paths": [{"identifier": "testcar__testperson", "attribute_name": "height"}],
-            }
+            kind="TestCar",
+            unique_attribute_paths=[{"attribute_name": "name", "property_name": "value"}],
+            relationship_attribute_paths=[{"identifier": "testcar__testperson", "attribute_name": "height"}],
         ),
     )
     query_result = await query.execute(db=db)
@@ -367,14 +355,12 @@ async def test_query_relationship_and_attribute_uniqueness_violations(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            **{
-                "kind": "TestCar",
-                "unique_attribute_paths": [
-                    {"attribute_name": "name", "property_name": "value"},
-                    {"attribute_name": "nbr_seats", "property_name": "value"},
-                ],
-                "relationship_attribute_paths": [{"identifier": "testcar__testperson", "attribute_name": "height"}],
-            }
+            kind="TestCar",
+            unique_attribute_paths=[
+                {"attribute_name": "name", "property_name": "value"},
+                {"attribute_name": "nbr_seats", "property_name": "value"},
+            ],
+            relationship_attribute_paths=[{"identifier": "testcar__testperson", "attribute_name": "height"}],
         ),
     )
     query_result = await query.execute(db=db)
@@ -428,10 +414,7 @@ async def test_query_relationship_violation_no_attribute(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            **{
-                "kind": "TestCar",
-                "relationship_attribute_paths": [{"identifier": "testcar__testperson", "attribute_name": None}],
-            }
+            kind="TestCar", relationship_attribute_paths=[{"identifier": "testcar__testperson", "attribute_name": None}]
         ),
     )
     query_result = await query.execute(db=db)
@@ -484,13 +467,11 @@ async def test_query_response_min_count_0_attribute_paths(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            **{
-                "kind": "TestCar",
-                "unique_attribute_paths": [
-                    {"attribute_name": "name", "property_name": "value"},
-                    {"attribute_name": "nbr_seats", "property_name": "value"},
-                ],
-            }
+            kind="TestCar",
+            unique_attribute_paths=[
+                {"attribute_name": "name", "property_name": "value"},
+                {"attribute_name": "nbr_seats", "property_name": "value"},
+            ],
         ),
         min_count_required=0,
     )
@@ -544,13 +525,11 @@ async def test_query_response_min_count_0_relationship_paths(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            **{
-                "kind": "TestCar",
-                "relationship_attribute_paths": [
-                    {"identifier": "testcar__testperson", "attribute_name": "height"},
-                    {"identifier": "testcar__testperson", "attribute_name": "name"},
-                ],
-            }
+            kind="TestCar",
+            relationship_attribute_paths=[
+                {"identifier": "testcar__testperson", "attribute_name": "height"},
+                {"identifier": "testcar__testperson", "attribute_name": "name"},
+            ],
         ),
         min_count_required=0,
     )
@@ -596,13 +575,11 @@ async def test_query_response_min_count_0_attribute_paths_with_value(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            **{
-                "kind": "TestCar",
-                "unique_attribute_paths": [
-                    {"attribute_name": "name", "property_name": "value", "value": "accord"},
-                    {"attribute_name": "nbr_seats", "property_name": "value"},
-                ],
-            }
+            kind="TestCar",
+            unique_attribute_paths=[
+                {"attribute_name": "name", "property_name": "value", "value": "accord"},
+                {"attribute_name": "nbr_seats", "property_name": "value"},
+            ],
         ),
         min_count_required=0,
     )
@@ -648,13 +625,11 @@ async def test_query_response_min_count_0_relationship_paths_with_value(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            **{
-                "kind": "TestCar",
-                "relationship_attribute_paths": [
-                    {"identifier": "testcar__testperson", "attribute_name": "height"},
-                    {"identifier": "testcar__testperson", "attribute_name": "name", "value": "Jane"},
-                ],
-            }
+            kind="TestCar",
+            relationship_attribute_paths=[
+                {"identifier": "testcar__testperson", "attribute_name": "height"},
+                {"identifier": "testcar__testperson", "attribute_name": "name", "value": "Jane"},
+            ],
         ),
         min_count_required=0,
     )

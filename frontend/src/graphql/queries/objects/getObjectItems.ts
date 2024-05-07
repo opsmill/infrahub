@@ -28,6 +28,7 @@ query {{kind}} {
               edges {
             {{/if}}
               node {
+                id
                 display_label
               }
             {{#if this.paginated}}

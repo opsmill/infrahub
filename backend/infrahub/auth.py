@@ -10,11 +10,11 @@ import jwt
 from pydantic.v1 import BaseModel
 
 from infrahub import config, models
-from infrahub.core import get_branch
 from infrahub.core.account import validate_token
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.registry import registry
 from infrahub.exceptions import AuthorizationError, NodeNotFoundError
 
 if TYPE_CHECKING:
@@ -44,7 +44,7 @@ class AccountSession(BaseModel):
 async def authenticate_with_password(
     db: InfrahubDatabase, credentials: models.PasswordCredential, branch: Optional[str] = None
 ) -> models.UserToken:
-    selected_branch = await get_branch(db=db, branch=branch)
+    selected_branch = await registry.get_branch(db=db, branch=branch)
     response = await NodeManager.query(
         schema=InfrahubKind.ACCOUNT,
         db=db,
@@ -68,7 +68,7 @@ async def authenticate_with_password(
 
     refresh_expires = now + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
     session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
-    access_token = generate_access_token(account_id=account.id, role=account.role.value, session_id=session_id)
+    access_token = generate_access_token(account_id=account.id, role=account.role.value.value, session_id=session_id)
     refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
 
     return models.UserToken(access_token=access_token, refresh_token=refresh_token)
@@ -88,7 +88,7 @@ async def create_db_refresh_token(db: InfrahubDatabase, account_id: str, expirat
 async def create_fresh_access_token(
     db: InfrahubDatabase, refresh_data: models.RefreshTokenData
 ) -> models.AccessTokenResponse:
-    selected_branch = await get_branch(db=db)
+    selected_branch = await registry.get_branch(db=db)
 
     refresh_token = await NodeManager.get_one(
         id=str(refresh_data.session_id),
@@ -110,7 +110,7 @@ async def create_fresh_access_token(
         )
 
     access_token = generate_access_token(
-        account_id=account.id, role=account.role.value, session_id=refresh_data.session_id
+        account_id=account.id, role=account.role.value.value, session_id=refresh_data.session_id
     )
 
     return models.AccessTokenResponse(access_token=access_token)

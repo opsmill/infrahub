@@ -33,9 +33,9 @@ A branch provide a safe environment to prepare and validate a change before inte
 Branches are meant to be short lived, from a few seconds to a few weeks, and are hierarchical by nature which means that a branch can only be merged into the branch it was created from.
 
 > Currently only a single level of hierarchy is supported, meaning that all branches must be created from the default branch and be merged into the default branch.
-
+<!-- vale off -->
 ### Sync and Isolated mode
-
+<!-- vale on -->
 Unlike Git, by default, a branch in Infrahub will automatically stay in sync with the default branch, unless the branch is currently in isolated mode.
 A branch in isolated mode will have a similar behavior as branches in Git and a rebase will be required to integrate the latest changes from the default branch.
 
@@ -136,7 +136,7 @@ After the merge operation, all changes will be accessible in main at the time of
 
 :::info
 
-It's recommended to use a Proposed Change to merge a branch to guarantee that all changes are valid and compliants.
+Using a Proposed Change to merge a branch is recommended to guarantee that all changes are valid and compliant.
 
 :::
 

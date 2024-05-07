@@ -55,4 +55,5 @@ DiffSummaryOld = Field(
     time_to=String(required=False),
     branch_only=Boolean(required=False, default_value=False),
     resolver=DiffSummaryEntryOld.resolve,
+    deprecation_reason="DiffSummaryOld will be removed in the next release, please use DiffSummary instead.",
 )

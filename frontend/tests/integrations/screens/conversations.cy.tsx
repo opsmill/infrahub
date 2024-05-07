@@ -27,6 +27,7 @@ const mocks: any[] = [
       query: gql`
         ${conversationMocksQuery}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: conversationMocksData,

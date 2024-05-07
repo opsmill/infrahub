@@ -7,6 +7,7 @@ import { schemaState } from "../../../src/state/atoms/schema.atom";
 
 import { gql } from "@apollo/client";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
+import { AuthProvider } from "../../../src/hooks/useAuth";
 import ObjectItems from "../../../src/screens/object-items/object-items-paginated";
 import { encodeJwt } from "../../../src/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
@@ -14,7 +15,7 @@ import {
   profileDetailsMocksData,
   profileDetailsMocksQuery,
   profileId,
-} from "../../mocks/data/profile";
+} from "../../mocks/data/account-profile";
 import {
   taskMocksData as taskMocksData1,
   taskMocksQuery as taskMocksQuery1,
@@ -41,7 +42,6 @@ import {
   taskMocksSchema as taskMocksSchema4,
 } from "../../mocks/data/task_4";
 import { TestProvider } from "../../mocks/jotai/atom";
-import { AuthProvider } from "../../../src/hooks/useAuth";
 
 // URL for the current view
 const mockedUrl = "/objects/TestTask";
@@ -56,6 +56,7 @@ const mocks: any[] = [
       query: gql`
         ${profileDetailsMocksQuery}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: profileDetailsMocksData,
@@ -66,6 +67,7 @@ const mocks: any[] = [
       query: gql`
         ${taskMocksQuery1}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: taskMocksData1,
@@ -76,6 +78,7 @@ const mocks: any[] = [
       query: gql`
         ${taskMocksQuery2}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: taskMocksData2,
@@ -86,6 +89,7 @@ const mocks: any[] = [
       query: gql`
         ${taskMocksQuery3}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: taskMocksData3,
@@ -96,6 +100,7 @@ const mocks: any[] = [
       query: gql`
         ${taskMocksQuery4}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: taskMocksData4,

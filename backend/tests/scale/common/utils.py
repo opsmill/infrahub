@@ -98,7 +98,7 @@ RETURN 'relations' as label , count
 
 
 def prepare_node_attributes(client: InfrahubClientSync) -> dict:
-    extra_attributes = dict()
+    extra_attributes = {}
     for i in range(config.attrs_amount):
         extra_attributes[f"attr{i}"] = random_ascii_string()
 

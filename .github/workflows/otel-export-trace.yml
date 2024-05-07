@@ -1,0 +1,25 @@
+---
+# yamllint disable rule:truthy rule:truthy rule:line-length
+name: OpenTelemetry Export Trace
+
+on:
+  workflow_run:
+    workflows:
+      - "CI"
+    types:
+      - completed
+
+jobs:
+  otel-export-trace:
+    name: OpenTelemetry Export Trace
+    runs-on:
+      group: huge-runners
+    steps:
+      - name: Export Workflow Trace
+        uses: inception-health/otel-export-trace-action@v1
+        with:
+          otlpEndpoint: ${{ secrets.TRACING_ENDPOINT }}
+          otlpHeaders: ""
+          otelServiceName: CI
+          githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
+          runId: ${{ github.event.workflow_run.id }}

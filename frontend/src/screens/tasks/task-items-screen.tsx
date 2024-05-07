@@ -7,8 +7,9 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { TaskItems } from "./task-items";
 import Content from "../layout/content";
+import { Badge } from "../../components/ui/badge";
 
-export const TaskItemsScreen = () => {
+const TaskItemsScreen = () => {
   useTitle("Task Overview");
 
   const queryString = getTasksItemsCount({
@@ -35,13 +36,17 @@ export const TaskItemsScreen = () => {
 
   return (
     <Content className="bg-custom-white">
-      <div className="flex items-center p-4 w-full">
-        <div className="sm:flex-auto flex items-center">
-          <h1 className="text-md font-semibold text-gray-900 mr-2">Task Overview ({count})</h1>
-        </div>
-      </div>
+      <Content.Title
+        title={
+          <>
+            Task Overview <Badge>{count}</Badge>
+          </>
+        }
+      />
 
       <TaskItems />
     </Content>
   );
 };
+
+export default TaskItemsScreen;

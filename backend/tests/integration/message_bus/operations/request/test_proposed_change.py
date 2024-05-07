@@ -149,6 +149,7 @@ async def test_run_pipeline_validate_requested_jobs(
     assert sorted(bus_pre_data_changes.seen_routing_keys) == [
         "request.proposed_change.refresh_artifacts",
         "request.proposed_change.repository_checks",
+        "request.proposed_change.run_generators",
         "request.proposed_change.run_tests",
     ]
 
@@ -156,6 +157,7 @@ async def test_run_pipeline_validate_requested_jobs(
         "request.proposed_change.data_integrity",
         "request.proposed_change.refresh_artifacts",
         "request.proposed_change.repository_checks",
+        "request.proposed_change.run_generators",
         "request.proposed_change.run_tests",
         "request.proposed_change.schema_integrity",
     ]
@@ -184,4 +186,4 @@ async def test_cancel(
     proposed_change = await NodeManager.get_one_by_id_or_default_filter(
         db=db, id=prepare_proposed_change, schema_name=InfrahubKind.PROPOSEDCHANGE
     )
-    assert proposed_change.state.value == ProposedChangeState.CANCELED.value  # type: ignore[attr-defined]
+    assert proposed_change.state.value.value == ProposedChangeState.CANCELED.value  # type: ignore[attr-defined]

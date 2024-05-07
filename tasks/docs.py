@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+from typing import Any, Dict, List
 
 from invoke import Context, task
 
@@ -53,6 +54,12 @@ def generate_infrahubctl(context: Context):
 
 
 @task
+def generate_infrahubsync_sync(context: Context):
+    """Generate documentation for the infrahub-sync cli."""
+    _generate_infrahubsync_documentation(context=context)
+
+
+@task
 def generate_repository(context: Context):
     """Generate documentation for the repository configuration file."""
     _generate_infrahub_repository_configuration_documentation(context=context)
@@ -62,6 +69,12 @@ def generate_repository(context: Context):
 def generate_python_sdk(context: Context):
     """Generate documentation for the Python SDK."""
     _generate_infrahub_sdk_configuration_documentation(context=context)
+
+
+@task
+def generate_bus_events(context: Context):
+    """Generate documentation for the Bus events."""
+    _generate_infrahub_events_documentation(context=context)
 
 
 @task
@@ -162,10 +175,12 @@ def _generate_infrahub_cli_documentation(context: Context):
 def _generate(context: Context):
     """Generate documentation output from code."""
     _generate_infrahub_cli_documentation(context=context)
+    # _generate_infrahubsync_documentation(context=context)
     _generate_infrahubctl_documentation(context=context)
     _generate_infrahub_schema_documentation()
     _generate_infrahub_repository_configuration_documentation()
     _generate_infrahub_sdk_configuration_documentation()
+    _generate_infrahub_events_documentation()
 
 
 def _generate_infrahubctl_documentation(context: Context):
@@ -184,6 +199,16 @@ def _generate_infrahubctl_documentation(context: Context):
         exec_cmd += f' --name "infrahubctl {cmd.name}" --output docs/docs/infrahubctl/infrahubctl-{cmd.name}.mdx'
         with context.cd(ESCAPED_REPO_PATH):
             context.run(exec_cmd)
+
+
+def _generate_infrahubsync_documentation(context: Context):
+    """Generate the documentation for infrahub-sync using typer-cli."""
+
+    print(" - Generate infrahub-sync CLI documentation")
+    exec_cmd = 'poetry run typer infrahub_sync.cli utils docs --name "infrahub-sync"'
+    exec_cmd += " --output docs/docs/sync/reference/cli.mdx"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
 
 
 def _generate_infrahub_schema_documentation() -> None:
@@ -228,17 +253,24 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
     schema = ConfigBase.schema()
 
     definitions = schema["definitions"]
-    properties = [
-        {
-            "name": name,
-            "description": property.get("description", ""),
-            "type": property.get("type", "enum"),
-            "choices": definitions[property["allOf"][0]["$ref"].split("/")[-1]]["enum"] if "allOf" in property else [],
-            "default": property.get("default", ""),
-            "env_vars": list(property.get("env_names", set())),
-        }
-        for name, property in schema["properties"].items()
-    ]
+
+    properties = []
+    for name, prop in schema["properties"].items():
+        choices: List[Dict[str, Any]] = []
+        kind = ""
+        if "allOf" in prop:
+            choices = definitions[prop["allOf"][0]["$ref"].split("/")[-1]].get("enum", [])
+            kind = definitions[prop["allOf"][0]["$ref"].split("/")[-1]].get("type", "")
+        properties.append(
+            {
+                "name": name,
+                "description": prop.get("description", ""),
+                "type": prop.get("type", kind),
+                "choices": choices,
+                "default": prop.get("default", ""),
+                "env_vars": list(prop.get("env_names", set())),
+            }
+        )
 
     template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/sdk_config.j2"
     output_file = f"{DOCUMENTATION_DIRECTORY}/docs/python-sdk/reference/config.mdx"
@@ -307,3 +339,74 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
 
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(rendered_file)
+
+
+def _generate_infrahub_events_documentation() -> None:
+    """
+    Generate documentation for all classes in the event system into a single file
+    using a Jinja2 template. Accessible via `invoke generate_infrahub_events_documentation`.
+    """
+    from collections import defaultdict
+    from typing import Dict, List, Optional, Type, Union
+
+    from infrahub.message_bus import InfrahubMessage, InfrahubResponse
+
+    def group_classes_by_category(
+        classes: Dict[str, Type[Union[InfrahubMessage, InfrahubResponse]]],
+        priority_map: Optional[Dict[str, int]] = None,
+    ) -> Dict[str, Dict[str, List[Dict[str, any]]]]:
+        """
+        Group classes into a nested dictionary by primary and secondary categories, including priority.
+        """
+        grouped = defaultdict(lambda: defaultdict(list))
+        for event_name, cls in classes.items():
+            parts = event_name.split(".")
+            primary, secondary = parts[0], ".".join(parts[:2])
+            priority = priority_map.get(event_name, 3) if priority_map else -1
+            description = cls.__doc__.strip() if cls.__doc__ else None
+
+            event_info = {
+                "event_name": event_name,
+                "description": description,
+                "priority": priority,
+                "fields": [
+                    {
+                        "name": prop,
+                        "type": details.get("type", "N/A"),
+                        "description": details.get("description", "N/A"),
+                        "default": details.get("default", "None"),
+                    }
+                    for prop, details in cls.model_json_schema().get("properties", {}).items()
+                ],
+            }
+            grouped[primary][secondary].append(event_info)
+        return grouped
+
+    template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/message-bus-events.j2"
+    output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/message-bus-events.mdx"
+    output_label = "docs/docs/reference/message-bus-events.mdx"
+
+    print(" - Generate Infrahub Bus Events documentation")
+
+    if not os.path.exists(template_file):
+        print(f"Unable to find the template file at {template_file}")
+        sys.exit(-1)
+
+    import jinja2
+
+    from infrahub.message_bus.messages import MESSAGE_MAP, PRIORITY_MAP, RESPONSE_MAP
+
+    template_text = Path(template_file).read_text(encoding="utf-8")
+    environment = jinja2.Environment()
+    template = environment.from_string(template_text)
+
+    message_classes = group_classes_by_category(classes=MESSAGE_MAP, priority_map=PRIORITY_MAP)
+    response_classes = group_classes_by_category(classes=RESPONSE_MAP, priority_map=PRIORITY_MAP)
+
+    rendered_doc = template.render(message_classes=message_classes, response_classes=response_classes)
+
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(rendered_doc)
+
+    print(f"Docs saved to: {output_label}")

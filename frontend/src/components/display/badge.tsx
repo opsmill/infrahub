@@ -78,9 +78,16 @@ type tBadgeProps = {
   disabled?: boolean;
 };
 
-export const Badge = (props: tBadgeProps) => {
-  const { type, className, children, onDelete, value, onClick, disabled } = props;
-
+export const Badge = ({
+  type,
+  className,
+  children,
+  onDelete,
+  value,
+  onClick,
+  disabled,
+  ...props
+}: tBadgeProps) => {
   const customClassName = getClassName(type, onClick || onDelete, disabled);
 
   const handleClick = (event: any) => {
@@ -110,11 +117,12 @@ export const Badge = (props: tBadgeProps) => {
         className,
         onDelete && !disabled ? "cursor-pointer" : ""
       )}
-      onClick={handleClick}>
+      onClick={handleClick}
+      {...props}>
       {children}
 
       {onDelete && (
-        <div className="ml-2 flex flex-col justify-center">
+        <div className="ml-2 flex flex-col justify-center" data-testid="badge-delete">
           <XMarkIcon className="h-4 w-4 text-gray-500" aria-hidden="true" />
         </div>
       )}

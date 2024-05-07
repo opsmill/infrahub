@@ -20,7 +20,21 @@ def test_schema_load_empty(httpx_mock: HTTPXMock):
 def test_schema_load_one_valid(httpx_mock: HTTPXMock):
     fixture_file = get_fixtures_dir() / "models" / "valid_model_01.json"
 
-    httpx_mock.add_response(method="POST", url="http://mock/api/schema/load?branch=main", status_code=202)
+    httpx_mock.add_response(
+        method="POST",
+        url="http://mock/api/schema/load?branch=main",
+        status_code=200,
+        json={
+            "hash": "497c17fbe915062c8c5a698be62130e4",
+            "previous_hash": "d3f7f4e7161f0ae6538a01d5a42dc661",
+            "diff": {
+                "added": {"InfraDevice": {"added": {}, "changed": {}, "removed": {}}},
+                "changed": {},
+                "removed": {},
+            },
+            "schema_updated": True,
+        },
+    )
     result = runner.invoke(app=app, args=["load", str(fixture_file)])
 
     assert result.exit_code == 0

@@ -59,7 +59,7 @@ def sync_cmd(
     directory: str = typer.Option(None, help="Base directory to search for sync configurations"),
     branch: str = typer.Option(default=None, help="Branch to use for the sync."),
     diff: bool = typer.Option(
-        default=True, help="Print the differences between the source and the destinatio before syncing"
+        default=True, help="Print the differences between the source and the destination before syncing"
     ),
     show_progress: bool = typer.Option(default=True, help="Show a progress bar during syncing"),
 ):
@@ -88,7 +88,7 @@ def sync_cmd(
         console.print("No diffence found. Nothing to sync")
 
 
-@app.command()
+@app.command(name="generate")
 def generate(
     name: str = typer.Option(default=None, help="Name of the sync to use"),
     config_file: str = typer.Option(default=None, help="File path to the sync configuration YAML file"),

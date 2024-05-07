@@ -1,5 +1,6 @@
 .coverage
 coverage.xml
+*junit*
 *.pyc
 *.env
 script.py
@@ -18,11 +19,7 @@ development/docker-compose.dev-override.yml
 .direnv/
 .envrc
 
-# Retype App
-.retype/*
-docs/.retype
 docs/build
-retype.manifest
 
 storage/*
 .coverage.*
@@ -31,3 +28,7 @@ python_sdk/dist/*
 
 # Test reports
 **/*.csv
+
+# Generated files
+generated/
+query_performance_results/

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type
 
 from neo4j import (
@@ -14,6 +15,7 @@ from neo4j import (
     Record,
 )
 from neo4j.exceptions import ClientError, Neo4jError, ServiceUnavailable, TransientError
+from opentelemetry import trace
 from typing_extensions import Self
 
 from infrahub import config
@@ -22,10 +24,14 @@ from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
 from .constants import DatabaseType
+from .memgraph import DatabaseManagerMemgraph
 from .metrics import QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
+from .neo4j import DatabaseManagerNeo4j
 
 if TYPE_CHECKING:
     from types import TracebackType
+
+    from .manager import DatabaseManager
 
 validated_database = {}
 
@@ -51,6 +57,7 @@ class InfrahubDatabase:
         driver: AsyncDriver,
         mode: InfrahubDatabaseMode = InfrahubDatabaseMode.DRIVER,
         db_type: Optional[DatabaseType] = None,
+        db_manager: Optional[DatabaseManager] = None,
         session: Optional[AsyncSession] = None,
         session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
         transaction: Optional[AsyncTransaction] = None,
@@ -65,6 +72,14 @@ class InfrahubDatabase:
             self.db_type = db_type
         else:
             self.db_type = config.SETTINGS.database.db_type
+
+        if db_manager:
+            self.manager = db_manager
+            self.manager.db = self
+        elif self.db_type == DatabaseType.NEO4J:
+            self.manager = DatabaseManagerNeo4j(db=self)
+        elif self.db_type == DatabaseType.MEMGRAPH:
+            self.manager = DatabaseManagerMemgraph(db=self)
 
     @property
     def is_session(self):
@@ -85,13 +100,18 @@ class InfrahubDatabase:
             session_mode = InfrahubDatabaseSessionMode.READ
 
         return self.__class__(
-            mode=InfrahubDatabaseMode.SESSION, db_type=self.db_type, driver=self._driver, session_mode=session_mode
+            mode=InfrahubDatabaseMode.SESSION,
+            db_type=self.db_type,
+            db_manager=self.manager,
+            driver=self._driver,
+            session_mode=session_mode,
         )
 
     def start_transaction(self) -> InfrahubDatabase:
         return self.__class__(
             mode=InfrahubDatabaseMode.TRANSACTION,
             db_type=self.db_type,
+            db_manager=self.manager,
             driver=self._driver,
             session=self._session,
             session_mode=self._session_mode,
@@ -167,17 +187,23 @@ class InfrahubDatabase:
     async def execute_query(
         self, query: str, params: Optional[Dict[str, Any]] = None, name: Optional[str] = "undefined"
     ) -> List[Record]:
-        with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
-            response = await self.run_query(query=query, params=params)
-            return [item async for item in response]
+        with trace.get_tracer(__name__).start_as_current_span("execute_db_query") as span:
+            span.set_attribute("query", query)
+
+            with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
+                response = await self.run_query(query=query, params=params)
+                return [item async for item in response]
 
     async def execute_query_with_metadata(
         self, query: str, params: Optional[Dict[str, Any]] = None, name: Optional[str] = "undefined"
     ) -> Tuple[List[Record], Dict[str, Any]]:
-        with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
-            response = await self.run_query(query=query, params=params)
-            results = [item async for item in response]
-            return results, response._metadata or {}
+        with trace.get_tracer(__name__).start_as_current_span("execute_db_query_with_metadata") as span:
+            span.set_attribute("query", query)
+
+            with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
+                response = await self.run_query(query=query, params=params)
+                results = [item async for item in response]
+                return results, response._metadata or {}
 
     async def run_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> AsyncResult:
         if self.is_transaction:
@@ -268,9 +294,14 @@ def retry_db_transaction(name: str):
                 try:
                     return await func(*args, **kwargs)
                 except TransientError as exc:
-                    log.info(f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}")
+                    retry_time: float = random.randrange(100, 500) / 1000
+                    log.info(
+                        f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}",
+                        retry_time=retry_time,
+                    )
                     log.debug("database transaction failed", message=exc.message)
                     TRANSACTION_RETRIES.labels(name).inc()
+                    await asyncio.sleep(retry_time)
                     if attempt == config.SETTINGS.database.retry_limit:
                         raise
 

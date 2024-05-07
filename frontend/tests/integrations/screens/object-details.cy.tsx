@@ -30,6 +30,7 @@ const mocks: any[] = [
       query: gql`
         ${deviceDetailsMocksQuery}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: deviceDetailsMocksData,
@@ -75,7 +76,7 @@ describe("List screen", () => {
         cy.get("[data-cy='metadata-button']").click();
       });
 
-    cy.get(":nth-child(5) > .underline").should("have.text", deviceDetailsMocksOwnerName);
+    cy.get("[data-cy='metadata-tooltip']").should("contain.text", deviceDetailsMocksOwnerName);
 
     cy.contains("Tags")
       .parent()

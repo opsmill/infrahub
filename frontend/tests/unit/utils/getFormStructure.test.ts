@@ -16,12 +16,12 @@ import { genericsMocks } from "../../mocks/data/generics";
 
 describe("Form structure and object update", () => {
   it("should return a correct form structure", () => {
-    const calculatedAttributes = getFormStructureForCreateEdit(
-      accountTokenDetailsMocksSchema[0],
-      accountTokenDetailsMocksSchema,
-      genericsMocks,
-      accountTokenDetailsMocksDataWithDate.InternalAccountToken.edges[0].node
-    );
+    const calculatedAttributes = getFormStructureForCreateEdit({
+      schema: accountTokenDetailsMocksSchema[0],
+      schemas: accountTokenDetailsMocksSchema,
+      generics: genericsMocks,
+      row: accountTokenDetailsMocksDataWithDate.InternalAccountToken.edges[0].node,
+    });
 
     // For each attribute, check from the mock data
     calculatedAttributes.map((attribute, index) => {

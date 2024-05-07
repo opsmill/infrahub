@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import importlib
-import json
 import os
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+import ujson
 from git.repo import Repo
 
 from infrahub_sdk import InfrahubClient
@@ -94,7 +94,7 @@ class InfrahubCheck:
         self.logs.append(log_message)
 
         if self.output == "stdout":
-            print(json.dumps(log_message))
+            print(ujson.dumps(log_message))
 
     def log_error(self, message: str, object_id: Optional[str] = None, object_type: Optional[str] = None) -> None:
         self._write_log_entry(message=message, level="ERROR", object_id=object_id, object_type=object_type)

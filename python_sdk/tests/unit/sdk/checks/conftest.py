@@ -1,12 +1,12 @@
 import pytest
 from pytest_httpx import HTTPXMock
 
-from infrahub_sdk import InfrahubClient
+from infrahub_sdk import Config, InfrahubClient
 
 
 @pytest.fixture
 async def client() -> InfrahubClient:
-    return await InfrahubClient.init(address="http://mock", insert_tracker=True)
+    return await InfrahubClient.init(config=Config(address="http://mock", insert_tracker=True))
 
 
 @pytest.fixture

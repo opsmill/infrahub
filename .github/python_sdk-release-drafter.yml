@@ -3,15 +3,12 @@ categories:
   - title: '🚀 Features'
     labels:
       - 'type/feature'
-      - 'type/feature/py-sdk'
   - title: '🐛 Bug Fixes'
     labels:
       - 'type/bug'
-      - 'type/bug/py-sdk'
   - title: '🧰 Maintenance'
     labels:
       - 'type/housekeeping'
-      - 'type/housekeeping/py-sdk'
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 exclude-labels:
   - 'ci/skip-changelog'

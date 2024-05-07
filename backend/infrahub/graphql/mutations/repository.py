@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Optional
 
 from graphene import InputObjectType, Mutation
 
-from infrahub.core.constants import infrahubkind
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
 from infrahub.log import get_logger
@@ -54,7 +54,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         authenticated_user = None
         if context.account_session and context.account_session.authenticated:
             authenticated_user = context.account_session.account_id
-        if obj.get_kind() == "CoreReadOnlyRepository":
+        if obj.get_kind() == InfrahubKind.READONLYREPOSITORY:
             message = messages.GitRepositoryAddReadOnly(
                 repository_id=obj.id,
                 repository_name=obj.name.value,
@@ -101,7 +101,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 include_owner=True,
                 include_source=True,
             )
-        if node.get_kind() != infrahubkind.READONLYREPOSITORY:
+        if node.get_kind() != InfrahubKind.READONLYREPOSITORY:
             return await super().mutate_update(root, info, data, branch, at, database=context.db, node=node)
 
         current_commit = node.commit.value

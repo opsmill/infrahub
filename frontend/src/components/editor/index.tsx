@@ -47,7 +47,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
     <div
       className={classNames(
         `
-        bg-white rounded-lg border border-gray-200
+        bg-white rounded-lg border border-gray-300 shadow-sm
         focus-within:outline focus-within:outline-custom-blue-600 focus-within:border-custom-blue-600
         `,
         className

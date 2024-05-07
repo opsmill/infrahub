@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import enum
-import json
 from typing import Protocol, runtime_checkable
 
 import httpx
+import ujson
 
 try:
     from pydantic import v1 as pydantic  # type: ignore[attr-defined]
@@ -52,7 +52,7 @@ class JSONRecorder(pydantic.BaseSettings):
         }
 
         with open(f"{self.directory}/{filename}.json", "w", encoding="UTF-8") as fobj:
-            json.dump(data, fobj, indent=4, sort_keys=True)
+            ujson.dump(data, fobj, indent=4, sort_keys=True)
 
     def _set_url_host(self, response: httpx.Response) -> None:
         if not self.host:

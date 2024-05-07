@@ -54,6 +54,12 @@ class SchemaNotFoundError(Error):
         super().__init__(self.message)
 
 
+class ModuleImportError(Error):
+    def __init__(self, message: Optional[str] = None):
+        self.message = message or "Unable to import the module"
+        super().__init__(self.message)
+
+
 class NodeNotFoundError(Error):
     def __init__(
         self,
@@ -121,4 +127,8 @@ class FeatureNotSupportedError(Error):
 
 
 class UninitializedError(Error):
+    """Raised when an object requires an initialization step before use"""
+
+
+class InvalidResponseError(Error):
     """Raised when an object requires an initialization step before use"""

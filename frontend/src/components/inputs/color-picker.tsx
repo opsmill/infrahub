@@ -3,7 +3,7 @@ import { ColorResult, Colorful, HsvaColor } from "@uiw/react-color/src/index";
 import { useState } from "react";
 import { getTextColor } from "../../utils/common";
 import { POPOVER_SIZE, PopOver } from "../display/popover";
-import { Input } from "./input";
+import { Input } from "../ui/input";
 
 export const ColorPicker = (props: any) => {
   const { value, onChange } = props;
@@ -39,7 +39,12 @@ export const ColorPicker = (props: any) => {
 
   return (
     <div className="flex items-center relative">
-      <Input value={hex} style={getInputStyle()} onChange={handleInputChange} className="flex-1" />
+      <Input
+        value={hex}
+        style={getInputStyle()}
+        onChange={(e) => handleInputChange(e.target.value)}
+        className="flex-1"
+      />
       <div className="flex">
         <PopOver
           buttonComponent={PopOverButton}

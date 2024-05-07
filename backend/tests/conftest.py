@@ -1,6 +1,5 @@
 import asyncio
 import importlib
-import json
 import os
 import sys
 from pathlib import Path
@@ -18,13 +17,16 @@ from infrahub.core.constants import BranchSupportType, InfrahubKind
 from infrahub.core.initialization import (
     create_default_branch,
     create_global_branch,
+    create_ipam_namespace,
     create_root_node,
 )
+from infrahub.core.node import Node
 from infrahub.core.schema import (
     SchemaRoot,
     core_models,
     internal_schema,
 )
+from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
@@ -55,6 +57,11 @@ def pytest_configure(config):
 
     if not config.option.neo4j:
         setattr(config.option, "markexpr", markexpr)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def add_tracker():
+    os.environ["PYTEST_RUNNING"] = "true"
 
 
 @pytest.fixture(scope="session")
@@ -92,6 +99,15 @@ async def default_branch(reset_registry, local_storage_dir, empty_database, db: 
     await create_global_branch(db=db)
     registry.schema = SchemaManager()
     return branch
+
+
+@pytest.fixture
+async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Optional[Node]:
+    if not registry._default_ipnamespace:
+        ip_namespace = await create_ipam_namespace(db=db)
+        registry.default_ipnamespace = ip_namespace.id
+        return ip_namespace
+    return None
 
 
 @pytest.fixture
@@ -158,20 +174,13 @@ async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
             {
                 "name": "Owner",
                 "namespace": "Lineage",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
             },
             {
                 "name": "Source",
                 "description": "Any Entities that stores or produces data.",
                 "namespace": "Lineage",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
             },
+            core_profile_schema_definition,
         ]
     }
 
@@ -228,9 +237,9 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "nbr_seats", "kind": "Number"},
-                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
-                    {"name": "is_electric", "kind": "Boolean"},
+                    {"name": "nbr_seats", "kind": "Number", "optional": True},
+                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7, "optional": True},
+                    {"name": "is_electric", "kind": "Boolean", "optional": True},
                     {
                         "name": "transmission",
                         "kind": "Text",
@@ -323,13 +332,14 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
 def tmp_path_module_scope() -> Generator[str, None, None]:
     """Fixture similar to tmp_path but with scope=module"""
     with TemporaryDirectory() as tmpdir:
+        directory = tmpdir
         if sys.platform == "darwin" and tmpdir.startswith("/var/"):
             # On Mac /var is symlinked to /private/var. TemporaryDirectory uses the /var prefix
             # however when using 'git worktree list --porcelain' the path is returned with
             # /prefix/var and InfrahubRepository fails to initialize the repository as the
             # relative path of the repository isn't handled correctly
-            tmpdir = f"/private{tmpdir}"
-        yield tmpdir
+            directory = f"/private{tmpdir}"
+        yield directory
 
 
 @pytest.fixture(scope="module")
@@ -366,7 +376,7 @@ class BusRPCMock(InfrahubMessageBus):
     async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
         self.messages.append(message)
         response = self.response.pop()
-        data = json.loads(response.body)
+        data = ujson.loads(response.body)
         return response_class(**data)
 
 

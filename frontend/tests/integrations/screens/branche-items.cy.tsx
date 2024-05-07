@@ -2,8 +2,7 @@
 
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
-import React from "react";
-import { BranchesItems } from "../../../src/screens/branches/branches-items";
+import BranchesItems from "../../../src/screens/branches/branches-items";
 import { branchesState } from "../../../src/state/atoms/branches.atom";
 import { branchesMocks, branchesQuery } from "../../mocks/data/branches";
 import { TestProvider } from "../../mocks/jotai/atom";
@@ -15,6 +14,7 @@ const mocks: any[] = [
       query: gql`
         ${branchesQuery}
       `,
+      variables: { offset: 0, limit: 10 },
     },
     result: {
       data: branchesMocks,
@@ -39,6 +39,6 @@ describe("Branches screen", () => {
       </MockedProvider>
     );
 
-    cy.contains(`Branches (${branchesMocks.length})`).should("exist");
+    cy.contains(`Branches${branchesMocks.length}`).should("exist");
   });
 });

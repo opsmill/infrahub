@@ -15,7 +15,7 @@ from .generated.relationship_schema import GeneratedRelationshipSchema
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.query import QueryElement
-    from infrahub.core.schema import GenericSchema, NodeSchema
+    from infrahub.core.schema import MainSchemaTypes
     from infrahub.database import InfrahubDatabase
 
 
@@ -34,7 +34,7 @@ class RelationshipSchema(GeneratedRelationshipSchema):
     def get_class(self) -> type[Relationship]:
         return Relationship
 
-    def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None) -> Union[NodeSchema, GenericSchema]:
+    def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None) -> MainSchemaTypes:
         return registry.schema.get(name=self.peer, branch=branch, duplicate=False)
 
     @property
@@ -66,6 +66,7 @@ class RelationshipSchema(GeneratedRelationshipSchema):
         include_match: bool = True,
         param_prefix: Optional[str] = None,
         partial_match: bool = False,
+        support_profiles: bool = False,  # pylint: disable=unused-argument
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
         """Generate Query String Snippet to filter the right node."""
 

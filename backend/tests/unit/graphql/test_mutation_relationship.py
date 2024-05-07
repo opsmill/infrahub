@@ -622,3 +622,34 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
     group2 = await NodeManager.get_one(db=db, id=g2.id, branch=default_branch)
     members = await group2.members.get(db=db)
     assert len(members) == 1
+
+
+async def test_relationship_add_busy(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
+    c1 = car_person_generics_data["c1"]
+    p2 = car_person_generics_data["p2"]
+
+    query = """
+    mutation {
+        RelationshipAdd(data: {
+            id: "%s",
+            name: "cars",
+            nodes: [{id: "%s"}],
+        }) {
+            ok
+        }
+    }
+    """ % (
+        p2.id,
+        c1.id,
+    )
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors
+    assert "'TestElectricCar' is already related to another peer on 'owner'" in str(result.errors[0])

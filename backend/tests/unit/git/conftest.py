@@ -8,7 +8,7 @@ from typing import Dict
 import pytest
 import ujson
 from git import Repo
-from infrahub_sdk import UUIDT, InfrahubClient, InfrahubNode
+from infrahub_sdk import UUIDT, Config, InfrahubClient, InfrahubNode
 from infrahub_sdk import SchemaRoot as ClientSchemaRoot
 from infrahub_sdk.branch import BranchData
 from pytest_httpx import HTTPXMock
@@ -22,7 +22,7 @@ from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
 
 @pytest.fixture
 async def client() -> InfrahubClient:
-    return await InfrahubClient.init(address="http://mock", insert_tracker=True)
+    return await InfrahubClient.init(config=Config(address="http://mock", insert_tracker=True))
 
 
 @pytest.fixture
@@ -79,7 +79,7 @@ def git_upstream_repo_01(git_sources_dir) -> Dict[str, str]:
     file.extractall(git_sources_dir)
     file.close()
 
-    return dict(name=name, path=str(os.path.join(git_sources_dir, name)))
+    return {"name": name, "path": str(os.path.join(git_sources_dir, name))}
 
 
 @pytest.fixture
@@ -123,7 +123,7 @@ def git_upstream_repo_10(helper, git_sources_dir) -> Dict[str, str]:
     file.extractall(git_sources_dir)
     file.close()
 
-    return dict(name=name, path=str(os.path.join(git_sources_dir, name)))
+    return {"name": name, "path": str(os.path.join(git_sources_dir, name))}
 
 
 @pytest.fixture

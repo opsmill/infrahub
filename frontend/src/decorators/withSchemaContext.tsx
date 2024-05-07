@@ -1,4 +1,4 @@
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import * as R from "ramda";
 import { createContext } from "react";
 import { toast } from "react-toastify";
@@ -14,7 +14,9 @@ import {
   iGenericSchema,
   iNamespace,
   iNodeSchema,
+  IProfileSchema,
   namespacesState,
+  profilesAtom,
   schemaState,
 } from "../state/atoms/schema.atom";
 import { schemaKindLabelState } from "../state/atoms/schemaKindLabel.atom";
@@ -34,11 +36,12 @@ export const SchemaContext = createContext<tSchemaContext>({
 export const withSchemaContext = (AppComponent: any) => (props: any) => {
   const [currentBranch, setCurrentBranch] = useAtom(currentBranchAtom);
   const [currentSchemaHash, setCurrentSchemaHash] = useAtom(currentSchemaHashAtom);
-  const [, setSchema] = useAtom(schemaState);
-  const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
-  const [, setSchemaKindLabelState] = useAtom(schemaKindLabelState);
-  const [, setGenerics] = useAtom(genericsState);
-  const [, setNamespaces] = useAtom(namespacesState);
+  const setSchema = useSetAtom(schemaState);
+  const setSchemaKindNameState = useSetAtom(schemaKindNameState);
+  const setSchemaKindLabelState = useSetAtom(schemaKindLabelState);
+  const setGenerics = useSetAtom(genericsState);
+  const setNamespaces = useSetAtom(namespacesState);
+  const setProfiles = useSetAtom(profilesAtom);
   const branches = useAtomValue(branchesState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
 
@@ -52,12 +55,14 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
         nodes: iNodeSchema[];
         generics: iGenericSchema[];
         namespaces: iNamespace[];
+        profiles: IProfileSchema[];
       } = await fetchUrl(CONFIG.SCHEMA_URL(branch?.name));
 
       const hash = schemaData.main;
       const schema = sortByName(schemaData.nodes || []);
       const generics = sortByName(schemaData.generics || []);
       const namespaces = sortByName(schemaData.namespaces || []);
+      const profiles = sortByName(schemaData.profiles || []);
 
       schema.forEach((s) => {
         s.attributes = sortByOrderWeight(s.attributes || []);
@@ -80,6 +85,7 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
       setSchemaKindNameState(schemaKindNameMap);
       setSchemaKindLabelState(schemaKindLabelMap);
       setNamespaces(namespaces);
+      setProfiles(profiles);
     } catch (error) {
       toast(
         <Alert type={ALERT_TYPES.ERROR} message="Something went wrong when fetching the schema" />

@@ -21,8 +21,9 @@ NAMESPACE = "BACKEND"
 # ----------------------------------------------------------------------------
 # Formatting tasks
 # ----------------------------------------------------------------------------
-@task
-def format_ruff(context: Context):
+
+
+def _format_ruff(context: Context):
     """Run ruff to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with ruff")
@@ -32,22 +33,11 @@ def format_ruff(context: Context):
         context.run(exec_cmd)
 
 
-@task
-def format_autoflake(context: Context):
-    """Run autoflack to format all Python files."""
-
-    print(f" - [{NAMESPACE}] Format code with autoflake")
-    exec_cmd = f"autoflake --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables {MAIN_DIRECTORY}"
-    with context.cd(ESCAPED_REPO_PATH):
-        context.run(exec_cmd)
-
-
 @task(name="format")
 def format_all(context: Context):
     """This will run all formatter."""
 
-    format_autoflake(context)
-    format_ruff(context)
+    _format_ruff(context)
 
     print(f" - [{NAMESPACE}] All formatters have been executed!")
 
@@ -165,7 +155,7 @@ def test_scale_env_destroy(context: Context, database: str = INFRAHUB_DATABASE):
         return execute_command(context=context, command=command)
 
 
-@task(optional=["schema", "stager", "amount", "test", "attrs", "rels"])
+@task(optional=["schema", "stager", "amount", "test", "attrs", "rels", "changes"])
 def test_scale(
     context: Context,
     schema: Path = f"{ESCAPED_REPO_PATH}/backend/tests/scale/schema.yml",
@@ -174,6 +164,7 @@ def test_scale(
     test: str = None,
     attrs: int = None,
     rels: int = None,
+    changes: int = None,
 ):
     args = []
     if stager:
@@ -193,6 +184,9 @@ def test_scale(
 
     if rels:
         args.extend(["--rels", rels])
+
+    if changes:
+        args.extend(["--changes", changes])
 
     with context.cd(ESCAPED_REPO_PATH):
         base_cmd = ["python", "backend/tests/scale/main.py"]

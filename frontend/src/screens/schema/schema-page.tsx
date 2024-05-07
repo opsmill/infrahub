@@ -1,7 +1,6 @@
 import { useAtomValue } from "jotai";
 import { useTitle } from "../../hooks/useTitle";
-import { genericsState, schemaState } from "../../state/atoms/schema.atom";
-import { SchemaPageHeader } from "./schema-page-header";
+import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
 import { SchemaSelector } from "./schema-selector";
 import { SchemaViewerStack } from "./schema-viewer";
 import { Badge } from "../../components/ui/badge";
@@ -11,14 +10,16 @@ export default function SchemaPage() {
   useTitle("Schema");
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
+  const profiles = useAtomValue(profilesAtom);
 
   return (
     <Content>
-      <SchemaPageHeader
+      <Content.Title
         title={
-          <>
-            Schema Visualizer <Badge>{nodes.length + generics.length}</Badge>
-          </>
+          <div className="flex items-center">
+            <h1 className="mr-2 truncate">Schema Visualizer</h1>
+            <Badge>{nodes.length + generics.length + profiles.length}</Badge>
+          </div>
         }
       />
 

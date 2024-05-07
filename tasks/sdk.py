@@ -21,8 +21,9 @@ MAIN_DIRECTORY_PATH = os.path.join(ESCAPED_REPO_PATH, MAIN_DIRECTORY)
 # ----------------------------------------------------------------------------
 # Formatting tasks
 # ----------------------------------------------------------------------------
-@task
-def format_ruff(context: Context):
+
+
+def _format_ruff(context: Context):
     """Run ruff to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with ruff")
@@ -32,22 +33,11 @@ def format_ruff(context: Context):
         context.run(exec_cmd)
 
 
-@task
-def format_autoflake(context: Context):
-    """Run autoflack to format all Python files."""
-
-    print(f" - [{NAMESPACE}] Format code with autoflake")
-    exec_cmd = "autoflake --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables ."
-    with context.cd(MAIN_DIRECTORY_PATH):
-        context.run(exec_cmd)
-
-
 @task(name="format")
 def format_all(context: Context):
     """This will run all formatter."""
 
-    format_autoflake(context)
-    format_ruff(context)
+    _format_ruff(context)
 
     print(f" - [{NAMESPACE}] All formatters have been executed!")
 

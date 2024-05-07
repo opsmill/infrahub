@@ -98,7 +98,7 @@ export const Thread = (props: tThread) => {
       setIsLoading(false);
       setDisplayAddComment(false);
     } catch (error: any) {
-      console.error("An error occured while creating the comment: ", error);
+      console.error("An error occurred while creating the comment: ", error);
 
       setIsLoading(false);
     }

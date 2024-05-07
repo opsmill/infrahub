@@ -80,7 +80,7 @@ class InfrahubYamlFile(pytest.File):
                 resource_name=group.resource_name,
                 resource_config=resource_config,
                 test=test,
-            )
+            )  # type: ignore[assignment]
 
             # If item does not pass validation, mark it to be skipped
             try:

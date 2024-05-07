@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional
 
 from infrahub.message_bus.messages.schema_migration_path import SchemaMigrationPath, SchemaMigrationPathResponse
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.models import SchemaUpdateMigrationInfo
-    from infrahub.core.schema import GenericSchema, NodeSchema
+    from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema_manager import SchemaBranch
     from infrahub.services import InfrahubServices
 
@@ -31,8 +31,8 @@ async def schema_migrations_runner(
             f"Preparing migration for {migration.migration_name!r} ({migration.routing_key})", branch=branch.name
         )
 
-        new_node_schema: Optional[Union[NodeSchema, GenericSchema]] = None
-        previous_node_schema: Optional[Union[NodeSchema, GenericSchema]] = None
+        new_node_schema: Optional[MainSchemaTypes] = None
+        previous_node_schema: Optional[MainSchemaTypes] = None
 
         if new_schema.has(name=migration.path.schema_kind):
             new_node_schema = new_schema.get(name=migration.path.schema_kind)

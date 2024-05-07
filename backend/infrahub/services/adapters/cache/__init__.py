@@ -12,6 +12,10 @@ class InfrahubCache:
         """Retrieve a value from the cache."""
         raise NotImplementedError()
 
+    async def get_values(self, keys: list[str]) -> list[Optional[str]]:
+        """Return a list the values for requested keys."""
+        raise NotImplementedError()
+
     async def list_keys(self, filter_pattern: str) -> List[str]:
         """Return a list of active keys that match the provided filter."""
         raise NotImplementedError()

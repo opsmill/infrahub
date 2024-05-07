@@ -1,6 +1,14 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("when searching an object", () => {
+  test.beforeEach(async function ({ page }) {
+    page.on("response", async (response) => {
+      if (response.status() === 500) {
+        await expect(response.url()).toBe("This URL responded with a 500 status");
+      }
+    });
+  });
+
   test("should open search anywhere modal", async ({ page }) => {
     await page.goto("/");
 
@@ -32,7 +40,7 @@ test.describe("when searching an object", () => {
     await test.step("find a matching result", async () => {
       await page.getByTestId("search-anywhere").getByPlaceholder("Search anywhere").fill("devi");
       await expect(page.getByTestId("search-anywhere")).toContainText("Go to");
-      await page.getByRole("option", { name: "All Device(s) View" }).click();
+      await page.getByRole("option", { name: "All Device(s)" }).click();
       expect(page.url()).toContain("/objects/InfraDevice");
     });
   });

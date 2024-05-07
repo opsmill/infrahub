@@ -21,8 +21,8 @@ from infrahub.services import InfrahubServices
 
 @pytest.fixture
 def service_all(db: InfrahubDatabase, helper):
-    config = Config(address="http://mock")
-    client = InfrahubClient(config=config, insert_tracker=True)
+    config = Config(address="http://mock", insert_tracker=True)
+    client = InfrahubClient(config=config)
     bus_simulator = helper.get_message_bus_simulator()
     service = InfrahubServices(message_bus=bus_simulator, client=client, database=db)
     bus_simulator.service = service
@@ -126,7 +126,7 @@ async def test_get_proposed_change_schema_integrity_constraints(
     constraints = await proposed_change._get_proposed_change_schema_integrity_constraints(
         message=schema_integrity_01, schema=schema
     )
-    assert len(constraints) == 15
+    assert len(constraints) == 17
     dumped_constraints = [c.model_dump() for c in constraints]
     assert {
         "constraint_name": "relationship.optional.update",
@@ -291,7 +291,7 @@ async def test_schema_integrity(
     checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
     assert len(checks) == 1
     check = checks[0]
-    assert check.conclusion.value == "failure"
+    assert check.conclusion.value.value == "failure"
     assert check.conflicts.value == [
         {
             "branch": "placeholder",

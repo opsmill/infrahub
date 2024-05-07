@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.initialization import create_branch
@@ -62,14 +63,14 @@ class TestProposedChangePipeline(TestInfrahubApp):
         await client_repository.save()
 
     @pytest.fixture(scope="class")
-    async def happy_dataset(self, db: InfrahubDatabase, initial_dataset: None) -> None:
-        branch1 = await create_branch(db=db, branch_name="conflict_free")
-        richard = await Node.init(schema=TestKind.PERSON, db=db, branch=branch1)
+    async def happy_dataset(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> None:
+        branch1 = await client.branch.create(branch_name="conflict_free")
+        richard = await Node.init(schema=TestKind.PERSON, db=db, branch=branch1.name)
         await richard.new(db=db, name="Richard", height=180, description="The less famous Richard Doe")
         await richard.save(db=db)
 
         john = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id="John", schema_name=TestKind.PERSON, branch=branch1
+            db=db, id="John", schema_name=TestKind.PERSON, branch=branch1.name
         )
         john.age.value = 26  # type: ignore[attr-defined]
         await john.save(db=db)
@@ -85,6 +86,7 @@ class TestProposedChangePipeline(TestInfrahubApp):
             db=db, id="John", schema_name=TestKind.PERSON, branch=branch1
         )
         john_branch.description.value = "Oh boy"  # type: ignore[attr-defined]
+        john_branch.age.value = 30  # type: ignore[attr-defined]
         await john_branch.save(db=db)
 
     async def test_happy_pipeline(self, db: InfrahubDatabase, happy_dataset: None, client: InfrahubClient) -> None:
@@ -100,15 +102,29 @@ class TestProposedChangePipeline(TestInfrahubApp):
         peers = await proposed_change.validations.get_peers(db=db)  # type: ignore[attr-defined]
         assert peers
         data_integrity = [validator for validator in peers.values() if validator.label.value == "Data Integrity"][0]
-        assert data_integrity.conclusion.value == ValidatorConclusion.SUCCESS.value
+        assert data_integrity.conclusion.value.value == ValidatorConclusion.SUCCESS.value
         ownership_artifacts = [
             validator for validator in peers.values() if validator.label.value == "Artifact Validator: Ownership report"
         ][0]
-        assert ownership_artifacts.conclusion.value == ValidatorConclusion.SUCCESS.value
+        assert ownership_artifacts.conclusion.value.value == ValidatorConclusion.SUCCESS.value
         description_check = [
             validator for validator in peers.values() if validator.label.value == "Check: car_description_check"
         ][0]
-        assert description_check.conclusion.value == ValidatorConclusion.SUCCESS.value
+        assert description_check.conclusion.value.value == ValidatorConclusion.SUCCESS.value
+        age_check = [validator for validator in peers.values() if validator.label.value == "Check: owner_age_check"][0]
+        assert age_check.conclusion.value.value == ValidatorConclusion.SUCCESS.value
+        repository_merge_conflict = [
+            validator for validator in peers.values() if validator.label.value == "Repository Validator: car-dealership"
+        ][0]
+        assert repository_merge_conflict.conclusion.value.value == ValidatorConclusion.SUCCESS.value
+
+        tags = await client.all(kind="BuiltinTag", branch="conflict_free")
+        # The Generator defined in the repository is expected to have created this tag during the pipeline
+        assert "john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
+        assert "InfrahubNode-john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
+
+        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
+        await proposed_change_create.save()
 
     async def test_conflict_pipeline(
         self, db: InfrahubDatabase, conflict_dataset: None, client: InfrahubClient
@@ -125,4 +141,24 @@ class TestProposedChangePipeline(TestInfrahubApp):
         peers = await proposed_change.validations.get_peers(db=db)  # type: ignore[attr-defined]
         assert peers
         data_integrity = [validator for validator in peers.values() if validator.label.value == "Data Integrity"][0]
-        assert data_integrity.conclusion.value == ValidatorConclusion.FAILURE.value
+        assert data_integrity.conclusion.value.value == ValidatorConclusion.FAILURE.value
+
+        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
+
+        data_checks = await client.filters(kind=InfrahubKind.DATACHECK, validator__ids=data_integrity.id)
+        assert len(data_checks) == 1
+        data_check = data_checks[0]
+
+        with pytest.raises(
+            GraphQLError, match="Data conflicts found on branch and missing decisions about what branch to keep"
+        ):
+            await proposed_change_create.save()
+
+        data_check.keep_branch.value = "source"  # type: ignore[attr-defined]
+        await data_check.save()
+        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
+        await proposed_change_create.save()
+        john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="John", schema_name=TestKind.PERSON)
+        # The value of the description should match that of the source branch that was selected
+        # as the branch to keep in the data conflict
+        assert john.description.value == "Oh boy"  # type: ignore[attr-defined]

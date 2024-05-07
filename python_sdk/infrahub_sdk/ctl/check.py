@@ -47,7 +47,6 @@ def run(
     path: str,
     debug: bool,
     format_json: bool,
-    config_file: str,
     list_available: bool,
     variables: Dict[str, str],
     name: Optional[str] = None,
@@ -59,8 +58,6 @@ def run(
     FORMAT = "%(message)s"
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
 
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
     console = Console()
 
     repository_config = get_repository_config(Path(config.INFRAHUB_REPO_CONFIG_FILE))
@@ -116,7 +113,7 @@ async def run_check(
         log.warning(f"{module_name}::{check}: unable to find query ({str(exc)})")
         passed = False
     except Exception as exc:  # pylint: disable=broad-exception-caught
-        log.warning(f"{module_name}::{check}: An error occured during execution ({exc})")
+        log.warning(f"{module_name}::{check}: An error occurred during execution ({exc})")
         passed = False
 
     return passed

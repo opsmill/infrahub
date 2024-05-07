@@ -17,9 +17,9 @@ The chart includes the following files and directories:
   - `database.yaml`: Database (Neo4j) deployment, service, and PVC.
   - `infrahub-git.yaml`: Infrahub Git service deployment and service.
   - `infrahub-server-db-init-job.yaml`: Initialization jobs for Infrahub Server.
+  - `infrahub-server-demo-data-job.yaml`: Job that loads demo dataset to Infrahub.
   - `infrahub-server-ingress.yaml`: Ingress configuration for Infrahub Server.
   - `infrahub-server.yaml`: Infrahub Server deployment and service.
-  - `job-viewer-role.yaml`: Defines roles and permissions.
   - `message-queue.yaml`: Message Queue (RabbitMQ) deployment and service.
 - `values.yaml`: Defines configuration values for the chart.
 
@@ -32,6 +32,8 @@ The ConfigMap is structured as follows:
 - The `internal_address` is dynamically set based on the release name, namespace, and cluster domain.
 - Database, broker, cache, and other service addresses are set dynamically, referring to the relevant services within the Kubernetes cluster.
 - Ports for services like the database and cache are pulled from the `values.yaml` file, ensuring flexibility and ease of configuration changes.
+
+Using environment variables is also possible and recommended to set or override existing configuration values.
 
 ## Prerequisites
 

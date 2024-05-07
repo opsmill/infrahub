@@ -40,4 +40,3 @@ data:
     exporter_type = "otlp"
     exporter_protocol = "grpc"
     exporter_endpoint = "tempo" # Assuming this is external or not managed by Helm
-    exporter_port = 4317

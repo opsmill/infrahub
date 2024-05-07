@@ -1,0 +1,60 @@
+---
+title: Understanding tracking in the Python SDK
+---
+
+# Understanding tracking in the Python SDK
+
+## Introduction
+
+Tracking mode in the Python SDK is an advanced functionality designed to optimize and streamline data operations.
+
+## The essence of tracking
+
+### What is tracking?
+
+Tracking mode in the Python SDK is aggregates operations, such as creations, updates, and deletions, performed during a session into a `CoreStandardGroup` object.
+This aggregation facilitates efficient management and auditing of data mutations.
+
+### Why it matters?
+
+In complex workflows where multiple operations occur sequentially, tracking ensures that these actions are consolidated, leading to easier auditing.
+This is particularly crucial in scenarios where operations must be repeatable without side effects — a core principle of idempotency.
+
+## Under the hood
+
+At the heart of the tracking feature lies the `CoreStandardGroup` object. This object acts as a container, grouping related operations to provide a unified view of the changes made during a session. This grouping is not just for organizational purposes; it plays a vital role in enabling idempotent operations.
+
+### Automatic vs. manual tracking
+
+The SDK offers two modes of operation for tracking: automatic and manual:
+
+- Automatic tracking is facilitated through the use of a context manager, simplifying session management and ensuring that all operations within the context are tracked.
+- Manual tracking, on the other hand, provides granular control, allowing developers to start and end sessions explicitly and manage group memberships as needed.
+
+## Achieving idempotency
+
+### Idempotency explained
+
+Idempotency is a property of certain operations that ensures the operation can be performed multiple times without changing the result beyond the initial application. This concept is critical in ensuring that scripts and operations are safe to retry, leading to more robust and reliable systems.
+
+### Tracking in idempotency
+
+The tracking feature of the Python SDK shines in scenarios requiring idempotency. By grouping operations within a `CoreStandardGroup`, the SDK allows for operations to be rolled back or repeated without adverse effects, ensuring that the state of the system remains consistent.
+
+## Practical applications
+
+### Use cases
+
+- **Auditing:** Tracking provides a clear audit trail of operations performed during a session.
+- **Error Handling:** In case of errors, tracking enables precise identification and rollback of changes.
+
+### Implementing an idempotent script
+
+An idempotent script using the Python SDK might involve the following steps:
+
+1. **Start a Tracking Session:** Begin with a unique identifier and any relevant parameters.
+2. **Perform Operations:** Execute create, update, or delete operations as required.
+3. **End the Session:** Conclude the tracking session, optionally updating the group context to reflect the changes made.
+4. **Handle Errors:** In case of errors, use the tracking information to rollback or correct the state.
+
+For more detailed guidance on implementing tracking in your scripts, refer to the [tracking guide](/python-sdk/guides/tracking).

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Sequence
 
-from infrahub.core.constants import RelationshipStatus
+from infrahub.core.constants import NULL_VALUE, RelationshipStatus
 
 from ..shared import AttributeMigrationQuery, AttributeSchemaMigration
 
@@ -25,7 +25,7 @@ class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery):
         if self.migration.new_attribute_schema.default_value:
             self.params["attr_value"] = self.migration.new_attribute_schema.default_value
         else:
-            self.params["attr_value"] = "NULL"
+            self.params["attr_value"] = NULL_VALUE
 
         self.params["rel_props"] = {
             "branch": self.branch.name,
@@ -50,7 +50,7 @@ class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery):
         }
         WITH n1 as n, r1 as rb
         WHERE rb.status = "active"
-        MERGE (av:AttributeValue { value: $attr_value })
+        MERGE (av:AttributeValue { value: $attr_value, is_default: true })
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
         MERGE (is_visible_value:Boolean { value: $is_visible_default })
         WITH n, av, is_protected_value, is_visible_value

@@ -25,16 +25,15 @@ DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
 MEMGRAPH_DOCKER_IMAGE = os.getenv(
     "MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-platform:2.14.0-memgraph2.14.0-lab2.11.1-mage1.14"
 )
-NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.16.0-enterprise")
-MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv("MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.12.12-management")
+NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.18.1-enterprise")
+MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv("MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.13.1-management")
 CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4")
 
 here = os.path.abspath(os.path.dirname(__file__))
 TOP_DIRECTORY_NAME = os.path.basename(os.path.abspath(os.path.join(here, "..")))
 BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", re.sub(r"[^a-zA-Z0-9_/.]", "", TOP_DIRECTORY_NAME))
 PYTHON_VER = os.getenv("PYTHON_VER", "3.12")
-IMAGE_NAME = os.getenv("IMAGE_NAME", "registry.opsmill.io/opsmill/infrahub")
-IMAGE_VER = os.getenv("IMAGE_VER", "stable")
+
 PWD = os.getcwd()
 
 NBR_WORKERS = os.getenv("PYTEST_XDIST_WORKER_COUNT", 1)
@@ -75,7 +74,8 @@ TEST_SCALE_COMPOSE_FILES_MEMGRAPH = [
 TEST_SCALE_OVERRIDE_FILE_NAME = "development/docker-compose-test-scale-override.yml"
 
 IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", "registry.opsmill.io/opsmill/infrahub")
-IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER", "stable")
+REQUESTED_IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER")
+IMAGE_VER = REQUESTED_IMAGE_VER or "stable"
 
 OVERRIDE_FILE_NAME = "development/docker-compose.override.yml"
 DEFAULT_FILE_NAME = "development/docker-compose.default.yml"
@@ -101,16 +101,8 @@ DEV_COMPOSE_FILES_NEO4J = [
 ]
 DEV_OVERRIDE_FILE_NAME = "development/docker-compose.dev-override.yml"
 
-ENV_VARS_DICT = {
-    "IMAGE_NAME": IMAGE_NAME,
-    "IMAGE_VER": IMAGE_VER,
-    "PYTHON_VER": PYTHON_VER,
-    "INFRAHUB_BUILD_NAME": BUILD_NAME,
-    "NBR_WORKERS": NBR_WORKERS,
-    "CACHE_DOCKER_IMAGE": CACHE_DOCKER_IMAGE,
-    "MESSAGE_QUEUE_DOCKER_IMAGE": MESSAGE_QUEUE_DOCKER_IMAGE,
-    "INFRAHUB_DB_TYPE": INFRAHUB_DATABASE,
-}
+TEST_METRICS_OVERRIDE_FILE_NAME = "development/docker-compose-test-metrics.yml"
+
 
 PLATFORMS_PTY_ENABLE = ["Linux", "Darwin"]
 PLATFORMS_SUDO_DETECT = ["Linux"]
@@ -133,10 +125,6 @@ GITHUB_ENVS_TO_PASS = [
     "GITHUB_SHA",
     "GITHUB_RUN_ID",
     "GITHUB_RUN_NUMBER",
-    "BUILDKITE_BRANCH",
-    "BUILDKITE_COMMIT",
-    "BUILDKITE_ANALYTICS_TOKEN",
-    "BUILDKITE_ANALYTICS_BRANCH",
 ]
 
 
@@ -179,9 +167,23 @@ def execute_command(context: Context, command: str, print_cmd: bool = False) -> 
     return context.run(command, pty=params["pty"])
 
 
-def get_env_vars(context: Context) -> str:
+def get_env_vars(context: Context, namespace: str = "default") -> str:
+    ENV_VARS_DICT = {
+        "IMAGE_NAME": IMAGE_NAME,
+        "IMAGE_VER": IMAGE_VER,
+        "PYTHON_VER": PYTHON_VER,
+        "INFRAHUB_BUILD_NAME": BUILD_NAME,
+        "NBR_WORKERS": NBR_WORKERS,
+        "CACHE_DOCKER_IMAGE": CACHE_DOCKER_IMAGE,
+        "MESSAGE_QUEUE_DOCKER_IMAGE": MESSAGE_QUEUE_DOCKER_IMAGE,
+        "INFRAHUB_DB_TYPE": INFRAHUB_DATABASE,
+    }
+
+    if namespace == "DEV" and not REQUESTED_IMAGE_VER:
+        ENV_VARS_DICT["IMAGE_VER"] = "local"
+
     if DATABASE_DOCKER_IMAGE:
-        ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = ENV_VARS_DICT
+        ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = DATABASE_DOCKER_IMAGE
     elif INFRAHUB_DATABASE == DatabaseType.NEO4J.value:
         ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = NEO4J_DOCKER_IMAGE
     elif INFRAHUB_DATABASE == DatabaseType.MEMGRAPH.value:
@@ -189,7 +191,7 @@ def get_env_vars(context: Context) -> str:
     return " ".join([f"{key}={value}" for key, value in ENV_VARS_DICT.items()])
 
 
-def build_compose_files_cmd(database: str) -> str:
+def build_compose_files_cmd(database: str, namespace: str = "") -> str:
     if database not in SUPPORTED_DATABASES:
         sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
@@ -204,8 +206,11 @@ def build_compose_files_cmd(database: str) -> str:
     else:
         COMPOSE_FILES.append(DEFAULT_FILE_NAME)
 
-    if "local" in IMAGE_VER:
+    if "local" in IMAGE_VER or (namespace == "DEV" and not REQUESTED_IMAGE_VER):
         COMPOSE_FILES.append(LOCAL_FILE_NAME)
+
+    if os.getenv("CI") is not None:
+        COMPOSE_FILES.append(TEST_METRICS_OVERRIDE_FILE_NAME)
 
     return f"-f {' -f '.join(COMPOSE_FILES)}"
 
@@ -261,6 +266,9 @@ def build_test_scale_compose_files_cmd(
     if os.path.exists(TEST_SCALE_OVERRIDE_FILE_NAME):
         print("!! Found a test scale override file for docker-compose !!")
         TEST_SCALE_COMPOSE_FILES.append(TEST_SCALE_OVERRIDE_FILE_NAME)
+
+    if os.getenv("CI") is not None:
+        TEST_SCALE_COMPOSE_FILES.append(TEST_METRICS_OVERRIDE_FILE_NAME)
 
     return f"-f {' -f '.join(TEST_SCALE_COMPOSE_FILES)}"
 

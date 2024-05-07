@@ -3,17 +3,32 @@ from __future__ import annotations
 from collections import defaultdict
 from enum import Enum
 from pathlib import Path  # noqa: TCH003
-from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Tuple, TypedDict, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    MutableMapping,
+    Optional,
+    Tuple,
+    Type,
+    TypedDict,
+    TypeVar,
+    Union,
+)
 from urllib.parse import urlencode
 
 import httpx
+from typing_extensions import TypeAlias
 
 try:
     from pydantic import v1 as pydantic  # type: ignore[attr-defined]
 except ImportError:
     import pydantic  # type: ignore[no-redef]
 
-from infrahub_sdk.exceptions import SchemaNotFoundError, ValidationError
+from infrahub_sdk._importer import import_module
+from infrahub_sdk.exceptions import InvalidResponseError, ModuleImportError, SchemaNotFoundError, ValidationError
+from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.utils import duplicates
 
@@ -55,6 +70,9 @@ class InfrahubRepositoryArtifactDefinitionConfig(InfrahubRepositoryConfigElement
     targets: str = pydantic.Field(..., description="The group to target when creating artifacts")
     transformation: str = pydantic.Field(..., description="The transformation to use.")
 
+    class Config:
+        extra = "forbid"
+
 
 class InfrahubJinja2TransformConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the transform")
@@ -72,6 +90,9 @@ class InfrahubJinja2TransformConfig(InfrahubRepositoryConfigElement):
         data["template_path"] = self.template_path_value
         return data
 
+    class Config:
+        extra = "forbid"
+
 
 class InfrahubCheckDefinitionConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the Check Definition")
@@ -84,11 +105,50 @@ class InfrahubCheckDefinitionConfig(InfrahubRepositoryConfigElement):
     )
     class_name: str = pydantic.Field(default="Check", description="The name of the check class to run.")
 
+    class Config:
+        extra = "forbid"
+
+
+class InfrahubGeneratorDefinitionConfig(InfrahubRepositoryConfigElement):
+    name: str = pydantic.Field(..., description="The name of the Generator Definition")
+    file_path: Path = pydantic.Field(..., description="The file within the repository with the generator code.")
+    query: str = pydantic.Field(..., description="The GraphQL query to use as input.")
+    parameters: Dict[str, Any] = pydantic.Field(
+        default_factory=dict, description="The input parameters required to run this check"
+    )
+    targets: str = pydantic.Field(..., description="The group to target when running this generator")
+    class_name: str = pydantic.Field(default="Generator", description="The name of the generator class to run.")
+    convert_query_response: bool = pydantic.Field(
+        default=False,
+        description="Decide if the generator should convert the result of the GraphQL query to SDK InfrahubNode objects.",
+    )
+
+    class Config:
+        extra = "forbid"
+
+    def load_class(
+        self, import_root: Optional[str] = None, relative_path: Optional[str] = None
+    ) -> Type[InfrahubGenerator]:
+        module = import_module(module_path=self.file_path, import_root=import_root, relative_path=relative_path)
+
+        if self.class_name not in dir(module):
+            raise ModuleImportError(message=f"The specified class {self.class_name} was not found within the module")
+
+        generator_class = getattr(module, self.class_name)
+
+        if not issubclass(generator_class, InfrahubGenerator):
+            raise ModuleImportError(message=f"The specified class {self.class_name} is not an Infrahub Generator")
+
+        return generator_class
+
 
 class InfrahubPythonTransformConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the Transform")
     file_path: Path = pydantic.Field(..., description="The file within the repository with the transform code.")
     class_name: str = pydantic.Field(default="Transform", description="The name of the transform class to run.")
+
+    class Config:
+        extra = "forbid"
 
 
 RESOURCE_MAP: Dict[Any, str] = {
@@ -96,6 +156,7 @@ RESOURCE_MAP: Dict[Any, str] = {
     InfrahubCheckDefinitionConfig: "check_definitions",
     InfrahubRepositoryArtifactDefinitionConfig: "artifact_definitions",
     InfrahubPythonTransformConfig: "python_transforms",
+    InfrahubGeneratorDefinitionConfig: "generator_definitions",
 }
 
 
@@ -113,8 +174,13 @@ class InfrahubRepositoryConfig(pydantic.BaseModel):
     python_transforms: List[InfrahubPythonTransformConfig] = pydantic.Field(
         default_factory=list, description="Python data transformations"
     )
+    generator_definitions: List[InfrahubGeneratorDefinitionConfig] = pydantic.Field(
+        default_factory=list, description="Generator definitions"
+    )
 
-    @pydantic.validator("jinja2_transforms", "check_definitions", "artifact_definitions", "python_transforms")
+    @pydantic.validator(
+        "jinja2_transforms", "check_definitions", "artifact_definitions", "python_transforms", "generator_definitions"
+    )
     @classmethod
     def unique_items(cls, v: Any, **kwargs: Dict[str, Any]) -> Any:  # pylint: disable=unused-argument
         names = [item.name for item in v]
@@ -154,11 +220,20 @@ class InfrahubRepositoryConfig(pydantic.BaseModel):
     def get_artifact_definition(self, name: str) -> InfrahubRepositoryArtifactDefinitionConfig:
         return self._get_resource(resource_id=name, resource_type=InfrahubRepositoryArtifactDefinitionConfig)
 
+    def has_generator_definition(self, name: str) -> bool:
+        return self._has_resource(resource_id=name, resource_type=InfrahubGeneratorDefinitionConfig)
+
+    def get_generator_definition(self, name: str) -> InfrahubGeneratorDefinitionConfig:
+        return self._get_resource(resource_id=name, resource_type=InfrahubGeneratorDefinitionConfig)
+
     def has_python_transform(self, name: str) -> bool:
         return self._has_resource(resource_id=name, resource_type=InfrahubPythonTransformConfig)
 
     def get_python_transform(self, name: str) -> InfrahubPythonTransformConfig:
         return self._get_resource(resource_id=name, resource_type=InfrahubPythonTransformConfig)
+
+    class Config:
+        extra = "forbid"
 
 
 # ---------------------------------------------------------------------------------
@@ -188,6 +263,7 @@ class RelationshipKind(str, Enum):
     PARENT = "Parent"
     GROUP = "Group"
     HIERARCHY = "Hierarchy"
+    PROFILE = "Profile"
 
 
 class DropdownMutation(str, Enum):
@@ -347,6 +423,10 @@ class NodeSchema(BaseNodeSchema):
     default_filter: Optional[str] = None
 
 
+class ProfileSchema(BaseNodeSchema):
+    inherit_from: List[str] = pydantic.Field(default_factory=list)
+
+
 class NodeExtensionSchema(pydantic.BaseModel):
     name: Optional[str] = None
     kind: str
@@ -363,14 +443,18 @@ class SchemaRoot(pydantic.BaseModel):
     version: str
     generics: List[GenericSchema] = pydantic.Field(default_factory=list)
     nodes: List[NodeSchema] = pydantic.Field(default_factory=list)
+    profiles: List[ProfileSchema] = pydantic.Field(default_factory=list)
     # node_extensions: List[NodeExtensionSchema] = pydantic.Field(default_factory=list)
+
+
+MainSchemaTypes: TypeAlias = Union[NodeSchema, GenericSchema, ProfileSchema]
 
 
 class InfrahubSchemaBase:
     def validate(self, data: dict[str, Any]) -> None:
         SchemaRoot(**data)
 
-    def validate_data_against_schema(self, schema: Union[NodeSchema, GenericSchema], data: dict) -> None:
+    def validate_data_against_schema(self, schema: MainSchemaTypes, data: dict) -> None:
         for key in data.keys():
             if key not in schema.relationship_names + schema.attribute_names:
                 identifier = f"{schema.kind}"
@@ -381,7 +465,7 @@ class InfrahubSchemaBase:
 
     def generate_payload_create(
         self,
-        schema: Union[NodeSchema, GenericSchema],
+        schema: MainSchemaTypes,
         data: dict,
         source: Optional[str] = None,
         owner: Optional[str] = None,
@@ -418,19 +502,20 @@ class InfrahubSchemaBase:
         return obj_data
 
     @staticmethod
-    def _validate_response(response: httpx.Response) -> Tuple[bool, Optional[dict]]:
-        if response.status_code == httpx.codes.ACCEPTED:
-            return True, None
+    def _validate_load_schema_response(response: httpx.Response) -> SchemaLoadResponse:
+        if response.status_code == httpx.codes.OK:
+            status = response.json()
+            return SchemaLoadResponse(hash=status["hash"], previous_hash=status["previous_hash"])
 
         if response.status_code == httpx.codes.BAD_REQUEST:
-            return False, response.json()
+            return SchemaLoadResponse(errors=response.json())
 
         if response.status_code == httpx.codes.UNPROCESSABLE_ENTITY:
-            return False, response.json()
+            return SchemaLoadResponse(errors=response.json())
 
         response.raise_for_status()
 
-        return False, None
+        raise InvalidResponseError(message=f"Invalid response received from server HTTP {response.status_code}")
 
 
 class InfrahubSchema(InfrahubSchemaBase):
@@ -438,9 +523,7 @@ class InfrahubSchema(InfrahubSchemaBase):
         self.client = client
         self.cache: dict = defaultdict(lambda: dict)
 
-    async def get(
-        self, kind: str, branch: Optional[str] = None, refresh: bool = False
-    ) -> Union[NodeSchema, GenericSchema]:
+    async def get(self, kind: str, branch: Optional[str] = None, refresh: bool = False) -> MainSchemaTypes:
         branch = branch or self.client.default_branch
 
         if refresh:
@@ -461,7 +544,7 @@ class InfrahubSchema(InfrahubSchemaBase):
 
     async def all(
         self, branch: Optional[str] = None, refresh: bool = False, namespaces: Optional[List[str]] = None
-    ) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
+    ) -> MutableMapping[str, MainSchemaTypes]:
         """Retrieve the entire schema for a given branch.
 
         if present in cache, the schema will be served from the cache, unless refresh is set to True
@@ -472,7 +555,7 @@ class InfrahubSchema(InfrahubSchemaBase):
             refresh (bool, optional): Force a refresh of the schema. Defaults to False.
 
         Returns:
-            Dict[str, NodeSchema]: Dictionnary of all schema organized by kind
+            Dict[str, MainSchemaTypes]: Dictionary of all schema organized by kind
         """
         branch = branch or self.client.default_branch
         if refresh or branch not in self.cache:
@@ -480,14 +563,14 @@ class InfrahubSchema(InfrahubSchemaBase):
 
         return self.cache[branch]
 
-    async def load(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
+    async def load(self, schemas: List[dict], branch: Optional[str] = None) -> SchemaLoadResponse:
         branch = branch or self.client.default_branch
         url = f"{self.client.address}/api/schema/load?branch={branch}"
         response = await self.client._post(
             url=url, timeout=max(120, self.client.default_timeout), payload={"schemas": schemas}
         )
 
-        return self._validate_response(response=response)
+        return self._validate_load_schema_response(response=response)
 
     async def check(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
@@ -621,16 +704,14 @@ class InfrahubSchema(InfrahubSchemaBase):
             dropdown_optional_args=dropdown_optional_args,
         )
 
-    async def fetch(
-        self, branch: str, namespaces: Optional[List[str]] = None
-    ) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
+    async def fetch(self, branch: str, namespaces: Optional[List[str]] = None) -> MutableMapping[str, MainSchemaTypes]:
         """Fetch the schema from the server for a given branch.
 
         Args:
             branch (str): Name of the branch to fetch the schema for.
 
         Returns:
-            Dict[str, NodeSchema]: Dictionnary of all schema organized by kind
+            Dict[str, MainSchemaTypes]: Dictionary of all schema organized by kind
         """
         url_parts = [("branch", branch)]
         if namespaces:
@@ -643,7 +724,7 @@ class InfrahubSchema(InfrahubSchemaBase):
 
         data: MutableMapping[str, Any] = response.json()
 
-        nodes: MutableMapping[str, Union[NodeSchema, GenericSchema]] = {}
+        nodes: MutableMapping[str, MainSchemaTypes] = {}
         for node_schema in data.get("nodes", []):
             node = NodeSchema(**node_schema)
             nodes[node.kind] = node
@@ -651,6 +732,10 @@ class InfrahubSchema(InfrahubSchemaBase):
         for generic_schema in data.get("generics", []):
             generic = GenericSchema(**generic_schema)
             nodes[generic.kind] = generic
+
+        for profile_schema in data.get("profiles", []):
+            profile = ProfileSchema(**profile_schema)
+            nodes[profile.kind] = profile
 
         return nodes
 
@@ -662,7 +747,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
     def all(
         self, branch: Optional[str] = None, refresh: bool = False, namespaces: Optional[List[str]] = None
-    ) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
+    ) -> MutableMapping[str, MainSchemaTypes]:
         """Retrieve the entire schema for a given branch.
 
         if present in cache, the schema will be served from the cache, unless refresh is set to True
@@ -673,7 +758,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
             refresh (bool, optional): Force a refresh of the schema. Defaults to False.
 
         Returns:
-            Dict[str, NodeSchema]: Dictionnary of all schema organized by kind
+            Dict[str, MainSchemaTypes]: Dictionary of all schema organized by kind
         """
         branch = branch or self.client.default_branch
         if refresh or branch not in self.cache:
@@ -681,7 +766,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
         return self.cache[branch]
 
-    def get(self, kind: str, branch: Optional[str] = None, refresh: bool = False) -> Union[NodeSchema, GenericSchema]:
+    def get(self, kind: str, branch: Optional[str] = None, refresh: bool = False) -> MainSchemaTypes:
         branch = branch or self.client.default_branch
 
         if refresh:
@@ -812,16 +897,14 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
             dropdown_optional_args=dropdown_optional_args,
         )
 
-    def fetch(
-        self, branch: str, namespaces: Optional[List[str]] = None
-    ) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
+    def fetch(self, branch: str, namespaces: Optional[List[str]] = None) -> MutableMapping[str, MainSchemaTypes]:
         """Fetch the schema from the server for a given branch.
 
         Args:
             branch (str): Name of the branch to fetch the schema for.
 
         Returns:
-            Dict[str, NodeSchema]: Dictionnary of all schema organized by kind
+            Dict[str, MainSchemaTypes]: Dictionary of all schema organized by kind
         """
         url_parts = [("branch", branch)]
         if namespaces:
@@ -834,7 +917,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
         data: MutableMapping[str, Any] = response.json()
 
-        nodes: MutableMapping[str, Union[NodeSchema, GenericSchema]] = {}
+        nodes: MutableMapping[str, MainSchemaTypes] = {}
         for node_schema in data.get("nodes", []):
             node = NodeSchema(**node_schema)
             nodes[node.kind] = node
@@ -843,16 +926,20 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
             generic = GenericSchema(**generic_schema)
             nodes[generic.kind] = generic
 
+        for profile_schema in data.get("profiles", []):
+            profile = ProfileSchema(**profile_schema)
+            nodes[profile.kind] = profile
+
         return nodes
 
-    def load(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
+    def load(self, schemas: List[dict], branch: Optional[str] = None) -> SchemaLoadResponse:
         branch = branch or self.client.default_branch
         url = f"{self.client.address}/api/schema/load?branch={branch}"
         response = self.client._post(
             url=url, timeout=max(120, self.client.default_timeout), payload={"schemas": schemas}
         )
 
-        return self._validate_response(response=response)
+        return self._validate_load_schema_response(response=response)
 
     def check(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
@@ -869,3 +956,15 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
         response.raise_for_status()
         return False, None
+
+
+class SchemaLoadResponse(pydantic.BaseModel):
+    hash: str = pydantic.Field(default="", description="The new hash for the entire schema")
+    previous_hash: str = pydantic.Field(default="", description="The previous hash for the entire schema")
+    errors: dict = pydantic.Field(default_factory=dict, description="Errors reported by the server")
+
+    @property
+    def schema_updated(self) -> bool:
+        if self.hash and self.previous_hash and self.hash != self.previous_hash:
+            return True
+        return False

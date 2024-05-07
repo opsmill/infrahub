@@ -5,7 +5,7 @@ import { Fragment, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../config/constants";
-import { getProfileDetails } from "../graphql/queries/profile/getProfileDetails";
+import { getProfileDetails } from "../graphql/queries/accounts/getProfileDetails";
 import { useLazyQuery } from "../hooks/useQuery";
 import { userNavigation } from "../screens/layout/navigation-list";
 import { schemaState } from "../state/atoms/schema.atom";
