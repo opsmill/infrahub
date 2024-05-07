@@ -1,3 +1,3 @@
-from . import echo, webhook
+from . import echo, telemetry, webhook
 
-__all__ = ["echo", "webhook"]
+__all__ = ["echo", "telemetry", "webhook"]

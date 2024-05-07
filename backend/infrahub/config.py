@@ -71,6 +71,11 @@ class MainSettings(BaseSettings):
     allow_anonymous_access: bool = Field(
         default=True, description="Indicates if the system allows anonymous read access"
     )
+    telemetry_optout: bool = Field(default=False, description="Disable anonymous usage reporting")
+    telemetry_endpoint: str = "https://telemetry.opsmill.cloud/infrahub"
+    telemetry_interval: int = Field(
+        default=3600 * 24, ge=60, description="Time (in seconds) between telemetry usage push"
+    )
 
 
 class FileSystemStorageSettings(BaseSettings):
