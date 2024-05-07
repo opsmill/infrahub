@@ -31,17 +31,21 @@ export default function IpamTree() {
   const [selected, setSelected] = useState<NodeId[]>([]);
   const [isLoading, setLoading] = useState(true);
   const [treeData, setTreeData] = useState(EMPTY_IPAM_TREE);
-  const [fetchTopLevelIpPrefixes] = useLazyQuery<PrefixData>(GET_TOP_LEVEL_PREFIXES);
-  const [fetchPrefixAncestors] = useLazyQuery<AncestorsData>(GET_PREFIX_ANCESTORS);
+  const [fetchTopLevelIpPrefixes] = useLazyQuery<PrefixData>(GET_TOP_LEVEL_PREFIXES, {
+    variables: { namespaces: namespace ? [namespace] : [] },
+  });
+  const [fetchPrefixAncestors] = useLazyQuery<AncestorsData>(GET_PREFIX_ANCESTORS, {
+    variables: { namespaces: namespace ? [namespace] : [] },
+  });
   const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds: string[] }>(GET_PREFIXES_ONLY);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchTopLevelIpPrefixes()
-      .then(({ data }) => {
-        if (!data) return;
+      .then(({ data: prefixes }) => {
+        if (!prefixes) return;
 
-        const topLevelTreeItems = formatIPPrefixResponseForTreeView(data);
+        const topLevelTreeItems = formatIPPrefixResponseForTreeView(prefixes);
 
         // assign all prefixes and IP addresses without parent to the root node
         return updateTreeData(EMPTY_IPAM_TREE, IPAM_TREE_ROOT_ID, topLevelTreeItems);
@@ -56,10 +60,10 @@ export default function IpamTree() {
         }
 
         fetchPrefixAncestors({ variables: { ids: [prefix] } })
-          .then(({ data }) => {
-            if (!data) return;
+          .then(({ data: ancestors }) => {
+            if (!ancestors) return;
 
-            const prefixAncestorsData = data[IP_PREFIX_GENERIC].edges[0];
+            const prefixAncestorsData = ancestors[IP_PREFIX_GENERIC].edges[0];
 
             if (!prefixAncestorsData) {
               setTreeData(tree);
@@ -67,7 +71,7 @@ export default function IpamTree() {
               return;
             }
 
-            const ancestors = prefixAncestorsData.node.ancestors.edges.map(({ node }) => ({
+            const ancestorNodes = prefixAncestorsData.node.ancestors.edges.map(({ node }) => ({
               id: node.id,
               name: node.display_label,
               parentId: node.parent.node?.id ?? IPAM_TREE_ROOT_ID,
@@ -75,7 +79,7 @@ export default function IpamTree() {
 
             const parentToChildMap: Record<string, string> = {};
 
-            ancestors.forEach(({ id, parentId }) => {
+            ancestorNodes.forEach(({ id, parentId }) => {
               parentToChildMap[parentId] = id;
             });
 
