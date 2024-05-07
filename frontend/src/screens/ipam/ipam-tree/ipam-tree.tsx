@@ -7,25 +7,27 @@ import { Tree, TreeItemProps } from "../../../components/ui/tree";
 import { useLazyQuery } from "../../../hooks/useQuery";
 
 import { useAtomValue } from "jotai/index";
+import { StringParam, useQueryParam } from "use-query-params";
 import {
-  GET_PREFIX_ANCESTORS,
   GET_PREFIXES_ONLY,
+  GET_PREFIX_ANCESTORS,
   GET_TOP_LEVEL_PREFIXES,
 } from "../../../graphql/queries/ipam/prefixes";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { constructPathForIpam } from "../common/utils";
-import { IP_PREFIX_GENERIC, IPAM_ROUTE, IPAM_TREE_ROOT_ID } from "../constants";
+import { IPAM_QSP, IPAM_ROUTE, IPAM_TREE_ROOT_ID, IP_PREFIX_GENERIC } from "../constants";
 import { IpamTreeSkeleton } from "./ipam-tree-skeleton";
 import {
   AncestorsData,
   EMPTY_IPAM_TREE,
-  formatIPPrefixResponseForTreeView,
   PrefixData,
+  formatIPPrefixResponseForTreeView,
   updateTreeData,
 } from "./utils";
 
 export default function IpamTree() {
   const { prefix } = useParams();
+  const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
   const [selected, setSelected] = useState<NodeId[]>([]);
   const [isLoading, setLoading] = useState(true);
   const [treeData, setTreeData] = useState(EMPTY_IPAM_TREE);
@@ -118,7 +120,7 @@ export default function IpamTree() {
             });
           });
       });
-  }, []);
+  }, [namespace]);
 
   const onLoadData = async ({ element }: ITreeViewOnLoadDataProps) => {
     if (element.children.length > 0) return; // To avoid refetching data
