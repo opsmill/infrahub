@@ -18,9 +18,9 @@ import { IpamTreeSkeleton } from "./ipam-tree-skeleton";
 import { IP_PREFIX_GENERIC, IPAM_ROUTE, IPAM_TREE_ROOT_ID } from "../constants";
 import {
   AncestorsData,
+  EMPTY_IPAM_TREE,
   formatIPPrefixResponseForTreeView,
   PrefixData,
-  ROOT_TREE_ITEM,
   updateTreeData,
 } from "./utils";
 
@@ -28,7 +28,7 @@ export default function IpamTree() {
   const { prefix } = useParams();
   const [selected, setSelected] = useState<NodeId[]>([]);
   const [isLoading, setLoading] = useState(true);
-  const [treeData, setTreeData] = useState([ROOT_TREE_ITEM]);
+  const [treeData, setTreeData] = useState(EMPTY_IPAM_TREE);
   const [fetchTopLevelIpPrefixes] = useLazyQuery<PrefixData>(GET_TOP_LEVEL_PREFIXES);
   const [fetchPrefixAncestors] = useLazyQuery<AncestorsData>(GET_PREFIX_ANCESTORS);
   const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds: string[] }>(GET_PREFIXES_ONLY);
@@ -42,7 +42,7 @@ export default function IpamTree() {
         const topLevelTreeItems = formatIPPrefixResponseForTreeView(data);
 
         // assign all prefixes and IP addresses without parent to the root node
-        return updateTreeData(treeData, IPAM_TREE_ROOT_ID, topLevelTreeItems);
+        return updateTreeData(EMPTY_IPAM_TREE, IPAM_TREE_ROOT_ID, topLevelTreeItems);
       })
       .then((tree) => {
         if (!tree) return;
