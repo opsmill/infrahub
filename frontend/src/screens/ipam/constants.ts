@@ -1,5 +1,6 @@
 export const IP_ADDRESS_GENERIC = "BuiltinIPAddress";
 export const IP_PREFIX_GENERIC = "BuiltinIPPrefix";
+export const NAMESPACE_GENERIC = "BuiltinIPNamespace";
 
 export const IPAM_TREE_ROOT_ID = "root" as const;
 
