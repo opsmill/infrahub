@@ -41,6 +41,8 @@ export const ROOT_TREE_ITEM: TreeItemProps["element"] = {
   isBranch: true,
 };
 
+export const EMPTY_IPAM_TREE: TreeProps["data"] = [ROOT_TREE_ITEM];
+
 export const formatIPPrefixResponseForTreeView = (data: PrefixData): TreeItemProps["element"][] => {
   const prefixes = data[IP_PREFIX_GENERIC].edges.map(({ node }) => ({
     id: node.id,
