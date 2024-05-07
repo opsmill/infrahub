@@ -14,6 +14,11 @@ export const GET_NAMESPACES = gql`
               id
             }
           }
+          ... on IpamNamespace {
+            default {
+              value
+            }
+          }
         }
       }
     }
