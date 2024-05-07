@@ -11,7 +11,6 @@ import { Table } from "../../../components/table/table";
 import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
 import { Pagination } from "../../../components/utils/pagination";
 import { DEFAULT_BRANCH_NAME } from "../../../config/constants";
-import { QSP } from "../../../config/qsp";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
 import { GET_PREFIXES } from "../../../graphql/queries/ipam/prefixes";
@@ -23,12 +22,12 @@ import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
-import { IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
+import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
 
 const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const [namespace] = useQueryParam(QSP.NAMESPACE, StringParam);
+  const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState();
   const [isLoading, setIsLoading] = useState(false);
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
