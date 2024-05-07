@@ -1814,7 +1814,7 @@ files = [
 name = "ujson"
 version = "5.9.0"
 description = "Ultra fast JSON encoder and decoder for Python"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "ujson-5.9.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:ab71bf27b002eaf7d047c54a68e60230fbd5cd9da60de7ca0aa87d0bccead8fa"},
@@ -1966,11 +1966,11 @@ docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.link
 testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy", "pytest-ruff (>=0.2.1)"]
 
 [extras]
-all = ["Jinja2", "numpy", "numpy", "pyarrow", "pytest", "pyyaml", "rich", "toml", "typer", "ujson"]
-ctl = ["Jinja2", "numpy", "numpy", "pyarrow", "pyyaml", "rich", "toml", "typer", "ujson"]
+all = ["Jinja2", "numpy", "numpy", "pyarrow", "pytest", "pyyaml", "rich", "toml", "typer"]
+ctl = ["Jinja2", "numpy", "numpy", "pyarrow", "pyyaml", "rich", "toml", "typer"]
 tests = ["Jinja2", "pytest", "pyyaml", "rich"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "b41580b954508ef4f036dd95ed9dd4806a19856548fd4d405e5582736b4b3d65"
+content-hash = "f2090f56f2c0edfa874b32eda308feb51e8a897feca3f2d11e59cc522e83bf02"
