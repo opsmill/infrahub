@@ -23,7 +23,7 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
-from infrahub.core.node.resource_manager import CorePrefixGlobalPool, CorePrefixPool
+from infrahub.core.node.resource_manager import CorePrefixPool
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
@@ -2197,7 +2197,6 @@ async def init_nodes_registry(db: InfrahubDatabase) -> None:
     registry.node["Node"] = Node
     registry.node["BuiltinIPPrefix"] = BuiltinIPPrefix
     registry.node["CorePrefixPool"] = CorePrefixPool
-    registry.node["CorePrefixGlobalPool"] = CorePrefixGlobalPool
 
 
 @pytest.fixture
