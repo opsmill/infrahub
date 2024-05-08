@@ -5,6 +5,8 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.ipam.reconciler import IpamReconciler
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.ipam import (
     IPPrefixContainerFetch,
@@ -221,3 +223,31 @@ async def test_ipprefix_utilization(
     await query.execute(db)
     assert query.get_percentage() == 50.0
     assert await get_utilization(db=db, branch=default_branch, ip_prefix=prefix) == 50.0
+
+
+async def test_query_by_parent_ids(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    reconciler = IpamReconciler(db=db, branch=default_branch)
+    ns1 = ip_dataset_01["ns1"]
+    net146 = ip_dataset_01["net146"]
+    nodes = await NodeManager.query(
+        db=db, branch=default_branch, schema="IpamIPPrefix", filters={"parent__ids": [net146.id]}
+    )
+    assert len(nodes) == 1
+    assert nodes[0].id == ip_dataset_01["net140"].id
+
+    net150 = await Node.init(db=db, schema=prefix_schema)
+    await net150.new(db=db, prefix="10.10.0.0/15", ip_namespace=ns1, parent=net146)
+    await net150.save(db=db)
+    await reconciler.reconcile(ip_value=ipaddress.ip_network(net150.prefix.value), namespace=ns1)
+
+    nodes = await NodeManager.query(
+        db=db, branch=default_branch, schema="IpamIPPrefix", filters={"parent__ids": [net146.id]}
+    )
+    assert len(nodes) == 1
+    assert nodes[0].id == net150.id
+    nodes = await NodeManager.query(
+        db=db, branch=default_branch, schema="IpamIPPrefix", filters={"parent__ids": [net150.id]}
+    )
+    assert len(nodes) == 1
+    assert nodes[0].id == ip_dataset_01["net140"].id

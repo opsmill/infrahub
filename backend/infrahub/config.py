@@ -215,6 +215,8 @@ class InitialSettings(BaseSettings):
         default="main",
         description="Defines the name of the default branch within Infrahub, can only be set once during initialization of the system.",
     )
+    admin_token: Optional[str] = Field(default=None, description="An optional initial token for the admin account.")
+    admin_password: str = Field(default="infrahub", description="The initial password for the admin user")
 
 
 class MiscellaneousSettings(BaseSettings):
@@ -259,10 +261,6 @@ class SecuritySettings(BaseSettings):
     )
     secret_key: str = Field(
         default_factory=generate_uuid, description="The secret key used to validate authentication tokens"
-    )
-    initial_admin_password: str = Field(default="infrahub", description="The initial password for the admin user")
-    initial_admin_token: Optional[str] = Field(
-        default=None, description="An optional initial token for the admin account."
     )
 
 

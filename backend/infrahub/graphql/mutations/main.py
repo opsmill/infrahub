@@ -118,6 +118,31 @@ class InfrahubMutationMixin:
         return mutation
 
     @classmethod
+    async def _get_profile_ids(cls, db: InfrahubDatabase, obj: Node) -> set[str]:
+        if not hasattr(obj, "profiles"):
+            return set()
+        profile_rels = await obj.profiles.get_relationships(db=db)
+        return {pr.peer_id for pr in profile_rels}
+
+    @classmethod
+    async def _refresh_for_profile_update(
+        cls, db: InfrahubDatabase, branch: Branch, obj: Node, previous_profile_ids: Optional[set[str]] = None
+    ) -> Node:
+        if not hasattr(obj, "profiles"):
+            return obj
+        current_profile_ids = await cls._get_profile_ids(db=db, obj=obj)
+        if previous_profile_ids is None or previous_profile_ids != current_profile_ids:
+            return await NodeManager.get_one_by_id_or_default_filter(
+                db=db,
+                schema_name=cls._meta.schema.kind,
+                id=obj.get_id(),
+                branch=branch,
+                include_owner=True,
+                include_source=True,
+            )
+        return obj
+
+    @classmethod
     async def mutate_create(
         cls,
         root: dict,
@@ -162,6 +187,10 @@ class InfrahubMutationMixin:
 
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
+
+        if await cls._get_profile_ids(db=db, obj=obj):
+            obj = await cls._refresh_for_profile_update(db=db, branch=branch, obj=obj)
+
         return obj
 
     @classmethod
@@ -222,6 +251,7 @@ class InfrahubMutationMixin:
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
+        before_mutate_profile_ids = await cls._get_profile_ids(db=db, obj=obj)
         await obj.from_graphql(db=db, data=data)
         fields_to_validate = list(data)
         await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
@@ -234,6 +264,9 @@ class InfrahubMutationMixin:
         )
 
         await obj.save(db=db)
+        obj = await cls._refresh_for_profile_update(
+            db=db, branch=branch, obj=obj, previous_profile_ids=before_mutate_profile_ids
+        )
         return obj
 
     @classmethod

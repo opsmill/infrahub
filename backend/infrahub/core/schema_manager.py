@@ -125,6 +125,8 @@ class SchemaBranch:
         else:
             names = self.all_names
         for name in names:
+            if name == InfrahubKind.NODE:
+                continue
             item = self.get(name=name, duplicate=False)
             kind_id_map[name] = item.id
         return kind_id_map
@@ -935,12 +937,14 @@ class SchemaBranch:
         # For all node_schema, add the attributes & relationships from the generic / interface
         for name in self.nodes.keys():
             node = self.get(name=name, duplicate=False)
+
+            if node.inherit_from or node.namespace not in RESTRICTED_NAMESPACES:
+                generics_used_by[InfrahubKind.NODE].append(node.kind)
+
             if not node.inherit_from:
                 continue
 
             node = node.duplicate()
-
-            generics_used_by["CoreNode"].append(node.kind)
 
             if InfrahubKind.IPPREFIX in node.inherit_from and InfrahubKind.IPADDRESS in node.inherit_from:
                 raise ValueError(
@@ -1140,10 +1144,7 @@ class SchemaBranch:
             if schema.kind in INTERNAL_SCHEMA_NODE_KINDS or schema.kind == InfrahubKind.GENERICGROUP:
                 continue
 
-            if isinstance(schema, ProfileSchema) or schema.namespace == "Profile":
-                continue
-
-            if schema.kind in (InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE):
+            if schema.kind in (InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE):
                 continue
 
             if "member_of_groups" not in schema.relationship_names:
@@ -1187,6 +1188,8 @@ class SchemaBranch:
                 continue
 
             generic = generic.duplicate()
+            read_only = generic.kind == InfrahubKind.IPPREFIX
+
             if "parent" not in generic.relationship_names:
                 generic.relationships.append(
                     RelationshipSchema(
@@ -1199,6 +1202,7 @@ class SchemaBranch:
                         branch=BranchSupportType.AWARE,
                         direction=RelationshipDirection.OUTBOUND,
                         hierarchical=generic_name,
+                        read_only=read_only,
                     )
                 )
             if "children" not in generic.relationship_names:
@@ -1212,6 +1216,7 @@ class SchemaBranch:
                         branch=BranchSupportType.AWARE,
                         direction=RelationshipDirection.INBOUND,
                         hierarchical=generic_name,
+                        read_only=read_only,
                     )
                 )
 
@@ -1346,7 +1351,7 @@ class SchemaBranch:
         )
 
         for node_attr in node.attributes:
-            if node_attr.read_only:
+            if node_attr.read_only or node_attr.optional is False:
                 continue
 
             attr = AttributeSchema(

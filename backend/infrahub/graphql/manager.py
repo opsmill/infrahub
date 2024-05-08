@@ -418,7 +418,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         if not isinstance(schema, ProfileSchema):
             if not schema.inherit_from or InfrahubKind.GENERICGROUP not in schema.inherit_from:
-                node_interface = self.get_type(name="CoreNode")
+                node_interface = self.get_type(name=InfrahubKind.NODE)
                 interfaces.add(node_interface)
 
         meta_attrs = {

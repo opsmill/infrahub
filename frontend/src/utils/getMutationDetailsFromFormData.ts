@@ -33,7 +33,12 @@ const getMutationDetailsFromFormData = (
     if (mode === "update" && existingObject) {
       const existingValue = existingObject[attribute.name]?.value;
 
-      if (existingValue && !updatedValue && attribute.kind === SCHEMA_ATTRIBUTE_KIND.DROPDOWN) {
+      if (
+        existingValue &&
+        !updatedValue &&
+        // Send null for dropdown or enum attributes
+        (attribute.kind === SCHEMA_ATTRIBUTE_KIND.DROPDOWN || attribute.enum?.length)
+      ) {
         // Set as null for dropdown attributes
         updatedObject[attribute.name] = { value: null };
         return;

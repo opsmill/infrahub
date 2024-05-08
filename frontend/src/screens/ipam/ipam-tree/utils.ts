@@ -16,9 +16,20 @@ export type PrefixNode = {
   __typename: string;
 };
 
+export type AncestorNode = {
+  id: string;
+  display_label: string;
+  ancestors: { edges: Array<{ node: Omit<PrefixNode, "children"> }> };
+};
+
 export type PrefixData = {
   BuiltinIPPrefix: {
     edges: Array<{ node: PrefixNode }>;
+  };
+};
+export type AncestorsData = {
+  BuiltinIPPrefix: {
+    edges: Array<{ node: AncestorNode }>;
   };
 };
 
@@ -29,6 +40,8 @@ export const ROOT_TREE_ITEM: TreeItemProps["element"] = {
   children: [],
   isBranch: true,
 };
+
+export const EMPTY_IPAM_TREE: TreeProps["data"] = [ROOT_TREE_ITEM];
 
 export const formatIPPrefixResponseForTreeView = (data: PrefixData): TreeItemProps["element"][] => {
   const prefixes = data[IP_PREFIX_GENERIC].edges.map(({ node }) => ({

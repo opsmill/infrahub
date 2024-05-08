@@ -72,5 +72,5 @@ class JSONRecorder(pydantic.BaseSettings):
         response.request.url = httpx.URL(url=modified)
 
     class Config:
-        env_prefix = "INFRAHUB_SDK_JSON_RECORDER_"
+        env_prefix = "INFRAHUB_JSON_RECORDER_"
         case_sensitive = False

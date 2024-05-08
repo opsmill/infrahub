@@ -67,7 +67,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
   const schemaData = generic || schema;
 
-  const columns = getSchemaObjectColumns(schemaData, true, 7);
+  const columns = getSchemaObjectColumns({ schema: schemaData, forListView: true, limit: 7 });
 
   const queryString = schemaData
     ? getObjectDetailsPaginated({

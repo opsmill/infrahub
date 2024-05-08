@@ -170,8 +170,11 @@ async def test_schema_load_endpoint_valid_simple(
     authentication_base,
     helper,
 ):
-    # Must execute in a with block to execute the startup/shutdown events
+    # Load the schema in the database
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
 
+    # Must execute in a with block to execute the startup/shutdown event
     with client:
         creation = client.post(
             "/api/schema/load", headers=admin_headers, json={"schemas": [helper.schema_file("infra_simple_01.json")]}
@@ -222,6 +225,10 @@ async def test_schema_load_endpoint_idempotent_simple(
     authentication_base,
     helper,
 ):
+    # Load the schema in the database
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         creation = client.post(
@@ -265,6 +272,10 @@ async def test_schema_load_endpoint_valid_with_generics(
     authentication_base,
     helper,
 ):
+    # Load the schema in the database
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response1 = client.post(
@@ -290,6 +301,10 @@ async def test_schema_load_endpoint_idempotent_with_generics(
     authentication_base,
     helper,
 ):
+    # Load the schema in the database
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response1 = client.post(
@@ -332,6 +347,10 @@ async def test_schema_load_endpoint_valid_with_extensions(
     authentication_base,
     helper,
 ):
+    # Load the schema in the database
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+
     org_schema = registry.schema.get(name="CoreOrganization", branch=default_branch.name)
     initial_nbr_relationships = len(org_schema.relationships)
 
@@ -480,6 +499,10 @@ async def test_schema_load_endpoint_constraints_not_valid(
     # person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     # await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
     # await person.save(db=db)
+
+    # Load the schema in the database
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
 
     rpc_bus.response.append(
         SchemaValidatorPathResponse(

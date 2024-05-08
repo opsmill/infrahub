@@ -139,6 +139,15 @@ class TestInfrahubClient:
         assert isinstance(node2, InfrahubNode)
         assert node2.name.value == "jfk2"  # type: ignore[attr-defined]
 
+    async def test_filters_partial_match(self, client: InfrahubClient, init_db_base, base_dataset):
+        nodes = await client.filters(kind="BuiltinLocation", name__value="jfk")
+        assert not nodes
+
+        nodes = await client.filters(kind="BuiltinLocation", partial_match=True, name__value="jfk")
+        assert len(nodes) == 2
+        assert isinstance(nodes[0], InfrahubNode)
+        assert sorted([node.name.value for node in nodes]) == ["jfk1", "jfk2"]  # type: ignore[attr-defined]
+
     async def test_get_generic(self, client: InfrahubClient, db: InfrahubDatabase, init_db_base):
         nodes = await client.all(kind="CoreNode")
         assert len(nodes)

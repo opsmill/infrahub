@@ -5,43 +5,48 @@
     "context": ".."
   },
   "customizations": {
-      "settings": {
-        "python.pythonPath": "/workspace/infrahub/.venv/bin/python",
-        "terminal.integrated.shell.linux": "/bin/bash",
-        "python.venvPath": "/workspace/infrahub/.venv",
-        "python.linting.enabled": true
-      },
-      "vscode": {
+    "settings": {
+      "python.pythonPath": "/workspace/infrahub/.venv/bin/python",
+      "terminal.integrated.shell.linux": "/bin/bash",
+      "python.venvPath": "/workspace/infrahub/.venv",
+      "python.linting.enabled": true
+    },
+    "vscode": {
       "extensions": [
-          "pomdtr.excalidraw-editor",
-          "wholroyd.jinja",
-          "ms-python.vscode-pylance",
-          "shardulm94.trailing-spaces",
-          "nickmillerdev.pytest-fixtures",
-          "yzhang.markdown-all-in-one",
-          "GraphQL.vscode-graphql-syntax",
-          "MS-vsliveshare.vsliveshare"
+        "pomdtr.excalidraw-editor",
+        "wholroyd.jinja",
+        "ms-python.vscode-pylance",
+        "shardulm94.trailing-spaces",
+        "nickmillerdev.pytest-fixtures",
+        "yzhang.markdown-all-in-one",
+        "GraphQL.vscode-graphql-syntax",
+        "MS-vsliveshare.vsliveshare"
       ]
-      }
+    }
   },
   "remoteUser": "vscode",
   "remoteEnv": {
-      "INFRAHUB_SDK_API_TOKEN": "06438eb2-8019-4776-878c-0941b1f1d1ec",
-      "INFRAHUB_DB_TYPE": "memgraph",
-      "INFRAHUB_IMAGE_VER": "local"
+    "INFRAHUB_SDK_API_TOKEN": "06438eb2-8019-4776-878c-0941b1f1d1ec",
+    "INFRAHUB_DB_TYPE": "neo4j",
+    "INFRAHUB_IMAGE_VER": "local"
   },
-  "forwardPorts": [8000],
-  "runArgs": ["--volume=/var/lib/docker", "--privileged"],
+  "forwardPorts": [
+    8000
+  ],
+  "runArgs": [
+    "--volume=/var/lib/docker",
+    "--privileged"
+  ],
   "onCreateCommand": "./.devcontainer/onCreateCommand.sh",
   "postCreateCommand": "./.devcontainer/postCreateCommand.sh",
   "postStartCommand": "./.devcontainer/postStartCommand.sh",
   "postAttachCommand": "./.devcontainer/postAttachCommand.sh",
   "features": {
-      "docker-in-docker": "latest",
-      "github-cli": "latest"
+    "docker-in-docker": "latest",
+    "github-cli": "latest"
   },
   "hostRequirements": {
-      "cpus": 8,
-      "memory": "16gb"
+    "cpus": 8,
+    "memory": "16gb"
   }
 }

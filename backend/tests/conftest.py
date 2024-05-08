@@ -59,6 +59,11 @@ def pytest_configure(config):
         setattr(config.option, "markexpr", markexpr)
 
 
+@pytest.fixture(scope="session", autouse=True)
+def add_tracker():
+    os.environ["PYTEST_RUNNING"] = "true"
+
+
 @pytest.fixture(scope="session")
 def event_loop():
     """Overrides pytest default function scoped event loop"""
@@ -232,9 +237,9 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "nbr_seats", "kind": "Number"},
-                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
-                    {"name": "is_electric", "kind": "Boolean"},
+                    {"name": "nbr_seats", "kind": "Number", "optional": True},
+                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7, "optional": True},
+                    {"name": "is_electric", "kind": "Boolean", "optional": True},
                     {
                         "name": "transmission",
                         "kind": "Text",

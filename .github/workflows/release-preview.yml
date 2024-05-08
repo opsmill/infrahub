@@ -1,0 +1,57 @@
+---
+# yamllint disable rule:truthy
+name: New Preview Release
+
+on:
+  push:
+    tags:
+      - 'infrahub-v*rc*'
+
+jobs:
+  meta_data:
+    runs-on: ubuntu-22.04
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
+      labels: ${{ steps.meta.outputs.labels }}
+    steps:
+      - name: Set docker image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ vars.HARBOR_HOST }}/${{ github.repository }}
+          tags: |
+            type=match,pattern=infrahub-v(\d+\.\d+\.\d+rc\d+),group=1
+            type=match,pattern=infrahub-v(\d+\.\d+rc\d+),group=1
+            type=raw,value=rc
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+
+  # Commented until we agree to link Infrahub version and chart version
+  # extract-version:
+  #   runs-on: ubuntu-22.04
+  #   outputs:
+  #     version: ${{ steps.extract_version.outputs.version }}
+  #   steps:
+  #     - name: Extract version from tag
+  #       id: extract_version
+  #       run: echo "version=${GITHUB_REF_NAME/infrahub-v/}" >> $GITHUB_OUTPUT
+
+  publish-docker-image:
+    uses: ./.github/workflows/ci-docker-image.yml
+    secrets: inherit
+    needs: meta_data
+    with:
+      publish: true
+      version: ${{ github.ref_name }}
+      ref: ${{ github.sha }}
+      tags: ${{ needs.meta_data.outputs.tags }}
+      labels: ${{ needs.meta_data.outputs.labels }}
+
+  publish-helm-chart:
+    uses: ./.github/workflows/publish-helm-chart.yml
+    secrets: inherit
+    needs: extract-version
+    with:
+      publish: true
+      # version: ${{ needs.extract-version.outputs.version }}

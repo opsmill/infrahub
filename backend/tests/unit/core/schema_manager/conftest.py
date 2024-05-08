@@ -76,6 +76,13 @@ def schema_all_in_one():
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                 ],
             },
+            {
+                "name": "TinySchema",
+                "namespace": "Infra",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                ],
+            },
         ],
         "generics": [
             {

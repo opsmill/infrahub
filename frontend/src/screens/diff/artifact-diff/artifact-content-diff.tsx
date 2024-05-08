@@ -273,12 +273,12 @@ export const ArtifactContentDiff = (props: any) => {
         return;
       }
 
-      console.error("An error occured while creating the comment: ", error);
+      console.error("An error occurred while creating the comment: ", error);
 
       toast(
         <Alert
           type={ALERT_TYPES.ERROR}
-          message={"An error occured while creating the comment"}
+          message={"An error occurred while creating the comment"}
           details={error.message}
         />
       );

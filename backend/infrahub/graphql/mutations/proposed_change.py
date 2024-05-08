@@ -6,6 +6,7 @@ from graphql import GraphQLResolveInfo
 from infrahub import lock
 from infrahub.core.branch import Branch
 from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, ValidatorConclusion
+from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.schema.runner import schema_migrations_runner
@@ -146,9 +147,18 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                 if context.background:
                     log_data = get_log_data()
                     request_id = log_data.get("request_id", "")
+                    differ = await merger.get_graph_diff()
+                    diff_parser = IpamDiffParser(
+                        db=context.db,
+                        differ=differ,
+                        source_branch_name=obj.name,
+                        target_branch_name=registry.default_branch,
+                    )
+                    ipam_node_details = await diff_parser.get_changed_ipam_node_details()
                     message = messages.EventBranchMerge(
                         source_branch=source_branch.name,
                         target_branch=registry.default_branch,
+                        ipam_node_details=ipam_node_details,
                         meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
                     )
                     context.background.add_task(services.send, message)

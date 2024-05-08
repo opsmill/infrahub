@@ -13,14 +13,15 @@ import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import {
-  IP_ADDRESS_GENERIC,
-  IP_PREFIX_GENERIC,
   IPAM_QSP,
   IPAM_ROUTE,
   IPAM_TABS,
+  IP_ADDRESS_GENERIC,
+  IP_PREFIX_GENERIC,
 } from "./constants";
 import IpamIPAddresses from "./ip-addresses/ipam-ip-address";
 import IpamIPPrefixes from "./prefixes/ipam-prefixes";
+import { constructPath } from "../../utils/fetch";
 
 const tabToKind = {
   [IPAM_TABS.IP_DETAILS]: IP_ADDRESS_GENERIC,
@@ -50,11 +51,11 @@ export default function IpamRouter() {
       name: IPAM_TABS.SUMMARY,
       onClick: () => {
         if (prefix) {
-          navigate(`${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(prefix)}`);
+          navigate(constructPath(`${IPAM_ROUTE.PREFIXES}/${prefix}`));
           return;
         }
 
-        navigate(IPAM_ROUTE.PREFIXES);
+        navigate(constructPath(IPAM_ROUTE.PREFIXES));
         return;
       },
     },
@@ -62,16 +63,11 @@ export default function IpamRouter() {
       label: "Prefix Details",
       name: IPAM_TABS.PREFIX_DETAILS,
       onClick: () => {
-        if (prefix) {
-          navigate(
-            `${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(prefix)}?${IPAM_QSP}=${
-              IPAM_TABS.PREFIX_DETAILS
-            }`
-          );
-          return;
-        }
-
-        navigate(`${IPAM_ROUTE.PREFIXES}?${IPAM_QSP}=${IPAM_TABS.PREFIX_DETAILS}`);
+        navigate(
+          constructPath(prefix ? `${IPAM_ROUTE.PREFIXES}/${prefix}` : IPAM_ROUTE.PREFIXES, [
+            { name: IPAM_QSP, value: IPAM_TABS.PREFIX_DETAILS },
+          ])
+        );
         return;
       },
     },
@@ -81,14 +77,16 @@ export default function IpamRouter() {
       onClick: () => {
         if (prefix) {
           navigate(
-            `${IPAM_ROUTE.PREFIXES}/${encodeURIComponent(prefix)}?${IPAM_QSP}=${
-              IPAM_TABS.IP_DETAILS
-            }`
+            constructPath(`${IPAM_ROUTE.PREFIXES}/${prefix}`, [
+              { name: IPAM_QSP, value: IPAM_TABS.IP_DETAILS },
+            ])
           );
           return;
         }
 
-        navigate(`${IPAM_ROUTE.ADDRESSES}?${IPAM_QSP}=${IPAM_TABS.IP_DETAILS}`);
+        navigate(
+          constructPath(IPAM_ROUTE.ADDRESSES, [{ name: IPAM_QSP, value: IPAM_TABS.IP_DETAILS }])
+        );
         return;
       },
     },
@@ -120,10 +118,10 @@ export default function IpamRouter() {
   );
 
   return (
-    <Card className="p-0 overflow-hidden flex flex-col h-full">
+    <Card className="p-0 overflow-hidden flex flex-col h-full" data-testid="ipam-main-content">
       <Tabs tabs={tabs} qsp={IPAM_QSP} rightItems={rightitems} />
 
-      <div className="p-4 flex-grow overflow-auto">{renderContent()}</div>
+      <div className="m-4 flex-grow overflow-auto">{renderContent()}</div>
 
       <SlideOver
         title={

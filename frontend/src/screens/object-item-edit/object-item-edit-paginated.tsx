@@ -11,12 +11,11 @@ import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObje
 import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { genericsState, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
+import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
-import { getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
+import { getObjectAttributes, getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
@@ -44,7 +43,7 @@ export default function ObjectItemEditComponent(props: Props) {
   const user = useAuth();
 
   const schemaList = useAtomValue(schemaState);
-  const schemaKindName = useAtomValue(schemaKindNameState);
+  const allProfiles = useAtomValue(profilesAtom);
   const genericsList = useAtomValue(genericsState);
   const profileGeneric = genericsList.find((s) => s.kind === PROFILE_KIND);
   const branch = useAtomValue(currentBranchAtom);
@@ -52,19 +51,25 @@ export default function ObjectItemEditComponent(props: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState("");
 
-  const schema = schemaList.find((s) => s.kind === objectname);
-  const columns = getSchemaObjectColumns(schema);
+  const nodeSchema = schemaList.find((s) => s.kind === objectname);
+  const profileSchema = allProfiles.find((s) => s.kind === objectname);
 
-  const profileName = `Profile${objectname}`;
+  const schema = nodeSchema || profileSchema;
+  const attributes = getObjectAttributes({ schema: schema, forQuery: true, forProfiles: true });
+  const columns = getSchemaObjectColumns({ schema: schema, forQuery: true });
+
+  const displayProfile =
+    schema && !profileGeneric?.used_by?.includes(schema?.kind) && schema.kind !== PROFILE_KIND;
+  const profileName = profileSchema ? objectname : `Profile${objectname}`;
 
   const queryString = schema
     ? getObjectDetailsPaginated({
         ...schema,
         columns,
+        attributes, // used for profile
         objectid,
-        profile: profileName,
-        queryProfiles:
-          !profileGeneric?.used_by?.includes(schema?.kind) && schema?.kind !== PROFILE_KIND,
+        profile: displayProfile && profileName,
+        queryProfiles: displayProfile,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema
@@ -110,9 +115,6 @@ export default function ObjectItemEditComponent(props: Props) {
     (!profile || (profile && objectProfiles[0]?.id === profile))
       ? profilesOptions?.find((p) => p.id === objectProfiles[0].id)?.values
       : profilesOptions?.find((p) => p.id === profile)?.values;
-
-  const displayProfile =
-    schema && !profileGeneric?.used_by?.includes(schema.kind) && schema.kind !== PROFILE_KIND;
 
   const formStructure =
     formStructureFromProps ??
@@ -161,10 +163,9 @@ export default function ObjectItemEditComponent(props: Props) {
           context: { branch: branch?.name, date },
         });
 
-        toast(
-          <Alert type={ALERT_TYPES.SUCCESS} message={`${schemaKindName[schema.kind]} updated`} />,
-          { toastId: "alert-success-updated" }
-        );
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
+          toastId: "alert-success-updated",
+        });
 
         closeDrawer();
 
@@ -180,10 +181,10 @@ export default function ObjectItemEditComponent(props: Props) {
   return (
     <div className="bg-custom-white flex-1 overflow-auto flex flex-col" data-cy="object-item-edit">
       {displayProfile && (
-        <div className="p-4 pt-3 bg-gray-200">
+        <div className="p-4 pt-3 bg-gray-100">
           <div className="flex items-center">
             <label className="block text-sm font-medium leading-6 text-gray-900">
-              Select a Profile <span className="text-xs italic text-gray-500 ml-1">optionnal</span>
+              Select a Profile <span className="text-xs italic text-gray-500 ml-1">optional</span>
             </label>
           </div>
           <Select

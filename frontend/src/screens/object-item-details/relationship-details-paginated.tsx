@@ -35,7 +35,6 @@ import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
-import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { ObjectAttributeRow } from "./object-attribute-row";
 
 type iRelationDetailsProps = {
@@ -71,14 +70,15 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showRelationMetaEditModal, setShowRelationMetaEditModal] = useState(false);
-  const [rowForMetaEdit, setRowForMetaEdit] = useState<any>();
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
 
   const parentSchema = schemaList.find((s) => s.kind === objectname);
   const generic = generics.find((g) => g.kind === relationshipSchemaData?.kind);
-  const columns = getSchemaObjectColumns(relationshipSchemaData, mode === "TABLE");
+  const columns = getSchemaObjectColumns({
+    schema: relationshipSchemaData,
+    forListView: mode === "TABLE",
+  });
 
   let options: SelectOption[] = [];
 
@@ -256,7 +256,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         source={relationshipsData.properties.source}
                         owner={relationshipsData.properties.owner}
                         isProtected={relationshipsData.properties.is_protected}
-                        isInherited={relationshipsData.properties.is_inherited}
                         header={
                           <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
                             <div className="font-semibold">{relationshipSchema.label}</div>
@@ -319,7 +318,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                 </thead>
 
                 <tbody className="bg-custom-white">
-                  {relationshipsData?.map(({ node }: any, index: number) => (
+                  {relationshipsData?.map(({ node, properties }: any, index: number) => (
                     <tr
                       key={index}
                       className="hover:bg-gray-50 cursor-pointer"
@@ -331,7 +330,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             index !== relationshipsData.length - 1
                               ? "border-b border-gray-200"
                               : "",
-                            "whitespace-nowrap text-xs font-medium h-[36px]"
+                            "whitespace-nowrap text-xs font-medium h-[39px]"
                           )}>
                           <Link
                             className="whitespace-wrap px-2 py-1 text-xs flex items-center text-gray-900"
@@ -349,21 +348,21 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       <td
                         className={classNames(
                           index !== relationshipsData.length - 1 ? "border-b border-gray-200" : "",
-                          "whitespace-nowrap px-2 py-1 text-xs font-medium text-gray-900 flex justify-end"
+                          "whitespace-nowrap px-2 py-1 text-xs font-medium text-gray-900 flex items-center justify-end h-[39px]"
                         )}>
-                        <ButtonWithTooltip
-                          disabled={!permission.write.allow}
-                          tooltipEnabled={!permission.write.allow}
-                          tooltipContent={permission.write.message ?? undefined}
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setRowForMetaEdit(node);
-                            setShowRelationMetaEditModal(true);
-                          }}
-                          data-cy="metadata-edit-button">
-                          <Icon icon="mdi:tune" className="text-gray-500" />
-                        </ButtonWithTooltip>
+                        {properties && (
+                          <MetaDetailsTooltip
+                            updatedAt={properties.updated_at}
+                            source={properties.source}
+                            owner={properties.owner}
+                            isProtected={properties.is_protected}
+                            header={
+                              <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
+                                <div className="font-semibold">{relationshipSchema.label}</div>
+                              </div>
+                            }
+                          />
+                        )}
 
                         <ButtonWithTooltip
                           disabled={!permission.write.allow}
@@ -421,7 +420,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             source={properties._relation__source}
                             owner={properties.owner}
                             isProtected={properties.is_protected}
-                            isInherited={properties.is_inherited}
                           />
                         </div>
                       )}
@@ -483,44 +481,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           onSubmit={handleSubmit}
           fields={formFields}
           isLoading={isLoading}
-        />
-      </SlideOver>
-
-      <SlideOver
-        title={
-          <>
-            {rowForMetaEdit && (
-              <div className="space-y-2">
-                <div className="flex items-center w-full">
-                  <span className="text-lg font-semibold mr-3">
-                    {props.parentNode?.display_label} - {rowForMetaEdit.display_label}
-                  </span>
-                  <div className="flex-1"></div>
-                  <div className="flex items-center">
-                    <Icon icon={"mdi:layers-triple"} />
-                    <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-                  </div>
-                </div>
-                <div className="text-gray-500">Association metadata</div>
-              </div>
-            )}
-          </>
-        }
-        open={showRelationMetaEditModal}
-        setOpen={setShowRelationMetaEditModal}>
-        <ObjectItemMetaEdit
-          closeDrawer={() => {
-            setShowRelationMetaEditModal(false);
-          }}
-          onUpdateComplete={() => setShowRelationMetaEditModal(false)}
-          attributeOrRelationshipToEdit={relationshipsData?.properties}
-          schema={parentSchema}
-          attributeOrRelationshipName={relationshipSchema.name}
-          type="relationship"
-          row={{
-            ...props.parentNode,
-            [relationshipSchema.name]: relationshipsData,
-          }}
         />
       </SlideOver>
 

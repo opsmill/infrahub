@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from typing import Any, List, Optional, TypeAlias, Union
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -65,6 +66,16 @@ class SchemaRoot(BaseModel):
                 errors.append(f"Restricted namespace '{model.namespace}' used on '{model.name}'")
 
         return errors
+
+    def generate_uuid(self) -> None:
+        """Generate UUID for all nodes, attributes & relationships
+        Mainly useful during unit tests."""
+        for node in self.nodes + self.generics:
+            if not node.id:
+                node.id = str(uuid.uuid4())
+            for item in node.relationships + node.attributes:
+                if not item.id:
+                    item.id = str(uuid.uuid4())
 
 
 internal_schema = internal.to_dict()

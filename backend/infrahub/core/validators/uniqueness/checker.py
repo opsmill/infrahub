@@ -6,7 +6,11 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.query import QueryResult
-from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
+from infrahub.core.schema import (
+    AttributeSchema,
+    MainSchemaTypes,
+    RelationshipSchema,
+)
 from infrahub.core.validators.uniqueness.index import UniquenessQueryResultsIndex
 from infrahub.database import InfrahubDatabase
 
@@ -24,7 +28,7 @@ from .query import NodeUniqueAttributeConstraintQuery
 
 
 def get_attribute_path_from_string(
-    path: str, schema: Union[NodeSchema, GenericSchema]
+    path: str, schema: MainSchemaTypes
 ) -> tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]:
     if "__" in path:
         name, property_name = path.split("__")
@@ -61,7 +65,6 @@ class UniquenessChecker(ConstraintCheckerInterface):
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         schema_objects = [request.node_schema]
-
         non_unique_nodes_lists = await asyncio.gather(*[self.check_one_schema(schema) for schema in schema_objects])
 
         grouped_data_paths = GroupedDataPaths()
@@ -69,7 +72,7 @@ class UniquenessChecker(ConstraintCheckerInterface):
             self.generate_data_paths(non_unique_node, grouped_data_paths)
         return [grouped_data_paths]
 
-    async def build_query_request(self, schema: Union[NodeSchema, GenericSchema]) -> NodeUniquenessQueryRequest:
+    async def build_query_request(self, schema: MainSchemaTypes) -> NodeUniquenessQueryRequest:
         unique_attr_paths = {
             QueryAttributePath(attribute_name=attr_schema.name, property_name="value")
             for attr_schema in schema.unique_attributes
@@ -105,7 +108,7 @@ class UniquenessChecker(ConstraintCheckerInterface):
 
     async def check_one_schema(
         self,
-        schema: Union[NodeSchema, GenericSchema],
+        schema: MainSchemaTypes,
     ) -> list[NonUniqueNode]:
         query_request = await self.build_query_request(schema)
 
@@ -120,13 +123,13 @@ class UniquenessChecker(ConstraintCheckerInterface):
 
         return await self._parse_results(schema=schema, query_results=query_results.results)
 
-    async def _parse_results(
-        self, schema: Union[NodeSchema, GenericSchema], query_results: list[QueryResult]
-    ) -> list[NonUniqueNode]:
+    async def _parse_results(self, schema: MainSchemaTypes, query_results: list[QueryResult]) -> list[NonUniqueNode]:
         relationship_schema_by_identifier = {rel.identifier: rel for rel in schema.relationships}
         all_non_unique_nodes: list[NonUniqueNode] = []
         results_index = UniquenessQueryResultsIndex(query_results=query_results)
-        path_groups = schema.get_unique_constraint_schema_attribute_paths(include_unique_attributes=True)
+        path_groups = schema.get_unique_constraint_schema_attribute_paths(
+            include_unique_attributes=True, branch=await self.get_branch()
+        )
         for constraint_group in path_groups:
             non_unique_nodes_by_id: dict[str, NonUniqueNode] = {}
             constraint_group_relationship_identifiers = [
