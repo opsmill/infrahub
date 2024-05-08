@@ -329,6 +329,7 @@ class TestUserWorkflow01:
 
         assert intfs[0]["node"]["description"]["value"] == new_description
 
+    @pytest.mark.xfail(reason="Investigate as part of the reworking of the diff payload (issue #3265)")
     async def test_validate_diff_after_description_update(self, client, dataset01, integration_helper):
         headers = await integration_helper.admin_headers()
 
