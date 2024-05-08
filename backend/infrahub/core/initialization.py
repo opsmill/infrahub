@@ -7,7 +7,7 @@ from infrahub.core.constants import DEFAULT_IP_NAMESPACE, GLOBAL_BRANCH_NAME, In
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
-from infrahub.core.node.resource_manager import CorePrefixGlobalPool, CorePrefixPool
+from infrahub.core.node.resource_manager import CorePrefixPool
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema_manager import SchemaManager
@@ -74,9 +74,8 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     # Load internal models into the registry
     # ---------------------------------------------------
     registry.node["Node"] = Node
-    registry.node["BuiltinIPPrefix"] = BuiltinIPPrefix
-    registry.node["CorePrefixPool"] = CorePrefixPool
-    registry.node["CorePrefixGlobalPool"] = CorePrefixGlobalPool
+    registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
+    registry.node[InfrahubKind.PREFIXPOOL] = CorePrefixPool
 
 
 async def initialization(db: InfrahubDatabase) -> None:

@@ -2195,8 +2195,8 @@ async def init_db(empty_database, db: InfrahubDatabase) -> None:
 @pytest.fixture
 async def init_nodes_registry(db: InfrahubDatabase) -> None:
     registry.node["Node"] = Node
-    registry.node["BuiltinIPPrefix"] = BuiltinIPPrefix
-    registry.node["CorePrefixPool"] = CorePrefixPool
+    registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
+    registry.node[InfrahubKind.PREFIXPOOL] = CorePrefixPool
 
 
 @pytest.fixture
