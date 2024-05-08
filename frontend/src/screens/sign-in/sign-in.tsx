@@ -10,7 +10,7 @@ export default function SignIn() {
   let location = useLocation();
   const { isLoading, signIn } = useAuth();
 
-  const from = location.state?.from?.pathname || "/";
+  const from = (location.state?.from?.pathname || "/") + (location.state?.from?.search ?? "");
 
   const fields: DynamicFieldData[] = [
     {

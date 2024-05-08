@@ -16,6 +16,24 @@ class RelatedNodeInput(InputObjectType):
     _relation__source = String(required=False)
 
 
+class PrefixPoolInput(InputObjectType):
+    id = String(required=True)
+    size = Int(required=False)
+    identifier = String(required=False)
+    member_type = String(required=False)
+    prefix_type = String(required=False)
+    data = GenericScalar(required=False)
+
+
+class RelatedPrefixNodeInput(InputObjectType):
+    id = String(required=False)
+    from_pool = Field(PrefixPoolInput, required=False)
+    _relation__is_visible = Boolean(required=False)
+    _relation__is_protected = Boolean(required=False)
+    _relation__owner = String(required=False)
+    _relation__source = String(required=False)
+
+
 class AttributeInterface(InfrahubInterface):
     is_default = Field(Boolean)
     is_inherited = Field(Boolean)

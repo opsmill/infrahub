@@ -362,6 +362,7 @@ class InfrahubClient(BaseClient):
         exclude: Optional[List[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
+        partial_match: bool = False,
         **kwargs: Any,
     ) -> List[InfrahubNode]:
         """Retrieve nodes of a given kind based on provided filters.
@@ -377,6 +378,7 @@ class InfrahubClient(BaseClient):
             exclude (List[str], optional): List of attributes or relationships to exclude from the query.
             fragment (bool, optional): Flag to use GraphQL fragments for generic schemas.
             prefetch_relationships (bool, optional): Flag to indicate whether to prefetch related node data.
+            partial_match (bool, optional): Allow partial match of filter criteria for the query.
             **kwargs (Any): Additional filter criteria for the query.
 
         Returns:
@@ -411,6 +413,7 @@ class InfrahubClient(BaseClient):
                 exclude=exclude,
                 fragment=fragment,
                 prefetch_relationships=prefetch_relationships,
+                partial_match=partial_match,
             )
             query = Query(query=query_data)
             response = await self.execute_graphql(
@@ -682,13 +685,12 @@ class InfrahubClient(BaseClient):
 
             url += "?" + "&".join(url_params_str)
 
-        payload = None
+        payload = {}
         if variables:
-            payload = {"variables": variables}
+            payload["variables"] = variables
 
-        resp = await self._request(
+        resp = await self._post(
             url=url,
-            method=HTTPMethod.POST,
             headers=headers,
             payload=payload,
             timeout=timeout or self.default_timeout,
@@ -1020,6 +1022,7 @@ class InfrahubClientSync(BaseClient):
         exclude: Optional[List[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
+        partial_match: bool = False,
         **kwargs: Any,
     ) -> List[InfrahubNodeSync]:
         """Retrieve nodes of a given kind based on provided filters.
@@ -1035,6 +1038,7 @@ class InfrahubClientSync(BaseClient):
             exclude (List[str], optional): List of attributes or relationships to exclude from the query.
             fragment (bool, optional): Flag to use GraphQL fragments for generic schemas.
             prefetch_relationships (bool, optional): Flag to indicate whether to prefetch related node data.
+            partial_match (bool, optional): Allow partial match of filter criteria for the query.
             **kwargs (Any): Additional filter criteria for the query.
 
         Returns:
@@ -1069,6 +1073,7 @@ class InfrahubClientSync(BaseClient):
                 exclude=exclude,
                 fragment=fragment,
                 prefetch_relationships=prefetch_relationships,
+                partial_match=partial_match,
             )
             query = Query(query=query_data)
             response = self.execute_graphql(
@@ -1195,13 +1200,12 @@ class InfrahubClientSync(BaseClient):
 
             url += "?" + "&".join(url_params_str)
 
-        payload = None
+        payload = {}
         if variables:
-            payload = {"variables": variables}
+            payload["variables"] = variables
 
-        resp = self._request(
+        resp = self._post(
             url=url,
-            method=HTTPMethod.POST,
             headers=headers,
             payload=payload,
             timeout=timeout or self.default_timeout,

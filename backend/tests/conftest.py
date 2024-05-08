@@ -26,6 +26,7 @@ from infrahub.core.schema import (
     core_models,
     internal_schema,
 )
+from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
@@ -56,6 +57,11 @@ def pytest_configure(config):
 
     if not config.option.neo4j:
         setattr(config.option, "markexpr", markexpr)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def add_tracker():
+    os.environ["PYTEST_RUNNING"] = "true"
 
 
 @pytest.fixture(scope="session")
@@ -174,11 +180,7 @@ async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
                 "description": "Any Entities that stores or produces data.",
                 "namespace": "Lineage",
             },
-            {
-                "name": "Profile",
-                "description": "Base Profile in Infrahub.",
-                "namespace": "Core",
-            },
+            core_profile_schema_definition,
         ]
     }
 
@@ -235,9 +237,9 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "nbr_seats", "kind": "Number"},
-                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
-                    {"name": "is_electric", "kind": "Boolean"},
+                    {"name": "nbr_seats", "kind": "Number", "optional": True},
+                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7, "optional": True},
+                    {"name": "is_electric", "kind": "Boolean", "optional": True},
                     {
                         "name": "transmission",
                         "kind": "Text",

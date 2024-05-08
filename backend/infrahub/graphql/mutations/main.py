@@ -118,7 +118,31 @@ class InfrahubMutationMixin:
         return mutation
 
     @classmethod
-    @retry_db_transaction(name="object_create")
+    async def _get_profile_ids(cls, db: InfrahubDatabase, obj: Node) -> set[str]:
+        if not hasattr(obj, "profiles"):
+            return set()
+        profile_rels = await obj.profiles.get_relationships(db=db)
+        return {pr.peer_id for pr in profile_rels}
+
+    @classmethod
+    async def _refresh_for_profile_update(
+        cls, db: InfrahubDatabase, branch: Branch, obj: Node, previous_profile_ids: Optional[set[str]] = None
+    ) -> Node:
+        if not hasattr(obj, "profiles"):
+            return obj
+        current_profile_ids = await cls._get_profile_ids(db=db, obj=obj)
+        if previous_profile_ids is None or previous_profile_ids != current_profile_ids:
+            return await NodeManager.get_one_by_id_or_default_filter(
+                db=db,
+                schema_name=cls._meta.schema.kind,
+                id=obj.get_id(),
+                branch=branch,
+                include_owner=True,
+                include_source=True,
+            )
+        return obj
+
+    @classmethod
     async def mutate_create(
         cls,
         root: dict,
@@ -130,9 +154,21 @@ class InfrahubMutationMixin:
     ) -> Tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
+        obj = await cls.mutate_create_object(data=data, db=db, branch=branch, at=at)
+        result = await cls.mutate_create_to_graphql(info=info, db=db, obj=obj)
+        return obj, result
+
+    @classmethod
+    @retry_db_transaction(name="object_create")
+    async def mutate_create_object(
+        cls,
+        data: InputObjectType,
+        db: InfrahubDatabase,
+        branch: Branch,
+        at: str,
+    ) -> Node:
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
-
         node_class = Node
         if cls._meta.schema.kind in registry.node:
             node_class = registry.node[cls._meta.schema.kind]
@@ -146,18 +182,24 @@ class InfrahubMutationMixin:
             if db.is_transaction:
                 await obj.save(db=db)
             else:
-                async with db.start_transaction() as db:
-                    await obj.save(db=db)
+                async with db.start_transaction() as dbt:
+                    await obj.save(db=dbt)
 
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
 
+        if await cls._get_profile_ids(db=db, obj=obj):
+            obj = await cls._refresh_for_profile_update(db=db, branch=branch, obj=obj)
+
+        return obj
+
+    @classmethod
+    async def mutate_create_to_graphql(cls, info: GraphQLResolveInfo, db: InfrahubDatabase, obj: Node) -> Self:
         fields = await extract_fields(info.field_nodes[0].selection_set)
         result = {"ok": True}
         if "object" in fields:
-            result["object"] = await obj.to_graphql(db=context.db, fields=fields.get("object", {}))
-
-        return obj, cls(**result)
+            result["object"] = await obj.to_graphql(db=db, fields=fields.get("object", {}))
+        return cls(**result)
 
     @classmethod
     @retry_db_transaction(name="object_update")
@@ -173,8 +215,6 @@ class InfrahubMutationMixin:
     ):
         context: GraphqlContext = info.context
         db = database or context.db
-        component_registry = get_component_registry()
-        node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
         obj = node or await NodeManager.get_one_by_id_or_default_filter(
             db=db,
@@ -185,37 +225,63 @@ class InfrahubMutationMixin:
             include_owner=True,
             include_source=True,
         )
-
-        fields_object = await extract_fields(info.field_nodes[0].selection_set)
-        fields_object = fields_object.get("object", {})
-        result = {"ok": True}
         try:
-            await obj.from_graphql(db=db, data=data)
-            fields_to_validate = list(data)
-            await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
-            node_id = data.get("id", obj.id)
-            fields = list(data.keys())
-            if "id" in fields:
-                fields.remove("id")
-            validate_mutation_permissions_update_node(
-                operation=cls.__name__, node_id=node_id, account_session=context.account_session, fields=fields
-            )
-
             if db.is_transaction:
-                await obj.save(db=db)
-                if fields_object:
-                    result["object"] = await obj.to_graphql(db=db, fields=fields_object)
-
+                obj = await cls.mutate_update_object(db=db, info=info, data=data, branch=branch, obj=obj)
+                result = await cls.mutate_update_to_graphql(db=db, info=info, obj=obj)
             else:
                 async with db.start_transaction() as dbt:
-                    await obj.save(db=dbt)
-                    if fields_object:
-                        result["object"] = await obj.to_graphql(db=dbt, fields=fields_object)
-
+                    obj = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=obj)
+                    result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=obj)
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
 
-        return obj, cls(**result)
+        return obj, result
+
+    @classmethod
+    async def mutate_update_object(
+        cls,
+        db: InfrahubDatabase,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+        obj: Node,
+    ) -> Node:
+        context: GraphqlContext = info.context
+        component_registry = get_component_registry()
+        node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
+
+        before_mutate_profile_ids = await cls._get_profile_ids(db=db, obj=obj)
+        await obj.from_graphql(db=db, data=data)
+        fields_to_validate = list(data)
+        await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
+        node_id = data.get("id", obj.id)
+        fields = list(data.keys())
+        if "id" in fields:
+            fields.remove("id")
+        validate_mutation_permissions_update_node(
+            operation=cls.__name__, node_id=node_id, account_session=context.account_session, fields=fields
+        )
+
+        await obj.save(db=db)
+        obj = await cls._refresh_for_profile_update(
+            db=db, branch=branch, obj=obj, previous_profile_ids=before_mutate_profile_ids
+        )
+        return obj
+
+    @classmethod
+    async def mutate_update_to_graphql(
+        cls,
+        db: InfrahubDatabase,
+        info: GraphQLResolveInfo,
+        obj: Node,
+    ) -> Self:
+        fields_object = await extract_fields(info.field_nodes[0].selection_set)
+        fields_object = fields_object.get("object", {})
+        result = {"ok": True}
+        if fields_object:
+            result["object"] = await obj.to_graphql(db=db, fields=fields_object)
+        return cls(**result)
 
     @classmethod
     @retry_db_transaction(name="object_upsert")

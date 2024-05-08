@@ -936,6 +936,7 @@ class InfrahubNodeBase:
         limit: Optional[int] = None,
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
+        partial_match: bool = False,
     ) -> Dict[str, Union[Any, Dict]]:
         data: Dict[str, Any] = {
             "count": None,
@@ -954,6 +955,9 @@ class InfrahubNodeBase:
             in_both, _, _ = compare_lists(include, exclude)
             if in_both:
                 raise ValueError(f"{in_both} are part of both include and exclude")
+
+        if partial_match:
+            data["@filters"]["partial_match"] = True
 
         return data
 
@@ -1151,13 +1155,10 @@ class InfrahubNode(InfrahubNodeBase):
         exclude: Optional[List[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
+        partial_match: bool = False,
     ) -> Dict[str, Union[Any, Dict]]:
         data = self.generate_query_data_init(
-            filters=filters,
-            offset=offset,
-            limit=limit,
-            include=include,
-            exclude=exclude,
+            filters=filters, offset=offset, limit=limit, include=include, exclude=exclude, partial_match=partial_match
         )
         data["edges"]["node"].update(
             await self.generate_query_data_node(
@@ -1340,10 +1341,10 @@ class InfrahubNode(InfrahubNodeBase):
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
             if rel and isinstance(rel, RelatedNode):
-                related_node = await InfrahubNode.from_graphql(
-                    client=self._client, branch=branch, data=node_data["node"].get(rel_name)
-                )
-                related_nodes.append(related_node)
+                relation = node_data["node"].get(rel_name)
+                if relation.get("node", None):
+                    related_node = await InfrahubNode.from_graphql(client=self._client, branch=branch, data=relation)
+                    related_nodes.append(related_node)
             elif rel and isinstance(rel, RelationshipManager):
                 peers = node_data["node"].get(rel_name)
                 if peers:
@@ -1485,13 +1486,10 @@ class InfrahubNodeSync(InfrahubNodeBase):
         exclude: Optional[List[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
+        partial_match: bool = False,
     ) -> Dict[str, Union[Any, Dict]]:
         data = self.generate_query_data_init(
-            filters=filters,
-            offset=offset,
-            limit=limit,
-            include=include,
-            exclude=exclude,
+            filters=filters, offset=offset, limit=limit, include=include, exclude=exclude, partial_match=partial_match
         )
         data["edges"]["node"].update(
             self.generate_query_data_node(
@@ -1680,10 +1678,10 @@ class InfrahubNodeSync(InfrahubNodeBase):
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
             if rel and isinstance(rel, RelatedNodeSync):
-                related_node = InfrahubNodeSync.from_graphql(
-                    client=self._client, branch=branch, data=node_data["node"].get(rel_name)
-                )
-                related_nodes.append(related_node)
+                relation = node_data["node"].get(rel_name)
+                if relation.get("node", None):
+                    related_node = InfrahubNodeSync.from_graphql(client=self._client, branch=branch, data=relation)
+                    related_nodes.append(related_node)
             elif rel and isinstance(rel, RelationshipManagerSync):
                 peers = node_data["node"].get(rel_name)
                 if peers:

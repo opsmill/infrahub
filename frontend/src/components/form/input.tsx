@@ -35,7 +35,7 @@ export const OpsInput = (props: OpsInputProps) => {
         id={label}
         type={props.type}
         onChange={onChange}
-        defaultValue={value ?? ""}
+        value={value}
         className={classNames(className ?? "")}
         error={error}
         disabled={isProtected || disabled}

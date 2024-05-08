@@ -60,5 +60,5 @@ class JSONPlayback(pydantic.BaseSettings):
         return response
 
     class Config:
-        env_prefix = "INFRAHUB_SDK_PLAYBACK_"
+        env_prefix = "INFRAHUB_PLAYBACK_"
         case_sensitive = False

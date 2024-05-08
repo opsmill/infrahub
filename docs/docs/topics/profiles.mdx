@@ -1,0 +1,60 @@
+---
+title: Profiles
+---
+
+# Profiles
+
+A profile in Infrahub allow you to define a common set of attributes that should be applied to nodes.
+
+A node that has a profile assigned, will get the values of its attributes inherited from the assigned profile, if no value is defined for the attribute at the node, or if the default value is used.
+
+The attribute values of a node that were inherited from a profile can be overridden, by defining them at the node.
+
+## Use cases
+
+Here's a couple of scenarios and use cases where profiles can be used:
+
+### Interface profiles
+
+A common scenario is that you want to create multiple interface configurations that you want to use for multiple interfaces. An example of this could be a user facing switch port. All of these ports would need to be in access mode and have a particular VLAN assigned to them.
+
+In that case we could create an interface profile with the name "user-interface" that defines the mode of the interface and the untagged VLAN to be used. This profile can then be applied to all the interfaces in Infrahub that will be used to connect users too. This assures that all these interfaces will have the same value for the mode and untagged VLAN.
+
+### BGP Session profiles
+
+Internal BGP sessions within a network typically contain multiple common configuration options. Profiles can be used to gather these common attributes. The profile can be applied to all the internal BGP sessions to assure they use the same configuration settings.
+
+## Current limitations
+
+- Profiles can only be statically assigned to nodes. In a future release you will be able to dynamically assign profiles to nodes.
+- Profiles can only define attributes, it is currently not yet possible to define relationships
+- Profiles can only define attributes that are not part of a unique constraint in the Node schema
+- Required attributes of a Node must have a default value defined in the schema, if you want to define these attributes using profiles
+
+## Dynamic generation
+
+For every node that is defined in the schema, a profile schema will be dynamically generated every time a schema is loaded into Infrahub. Profile schemas cannot be created manually.
+
+This means that an instance of a profile is always specific for a kind of Node and cannot be used for another kind of Node.
+
+The kind of the generated profile of a node will be `Profile<NameSpace><Name>`. For example, the profile kind for a node kind `InfraInterface` will be `ProfileInfraInterface`.
+
+Infrahub will also generate the GraphQL query and mutations to be able to perform CRUD operations on the profile. For the same example of `InfraInterface` the following GraphQL query and mutations would be generated:
+
+| Type     | Name                        |
+|----------|-----------------------------|
+| query    | ProfileInfraInterface       |
+| mutation | ProfileInfraInterfaceCreate |
+| mutation | ProfileInfraInterfaceUpdate |
+| mutation | ProfileInfraInterfaceUpsert |
+| mutation | ProfileInfraInterfaceDelete |
+
+## Profile priority
+
+Profiles have a priority assigned to them through the `profile_priority`. The priority determines the order of inheritance for attributes and relationships when a node has multiple profiles assigned to it.
+
+In a scenario where we have 2 profiles assigned to a node, the value of the attribute of a node will be inherited from the profile with the lowest priority value, if that profile defines a value for the attribute. If the profile does not define a value for that attribute, the next profile with the lowest priority value will be checked.
+
+## Data lineage
+
+When a node inherits a value of an attribute from a profile, then the source property of that attribute will be set to the UUID of the profile that it is inherited from. This allows us to identify where the value of an attribute of a node originated.

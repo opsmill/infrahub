@@ -1,10 +1,12 @@
 import { gql } from "@apollo/client";
 
 export const GET_IP_ADDRESS_KIND = gql`
-  query GET_IP_ADDRESS_KIND($ip: String) {
-    BuiltinIPAddress(address__value: $ip) {
+  query GET_IP_ADDRESS_KIND($ids: [ID]) {
+    BuiltinIPAddress(ids: $ids) {
       edges {
         node {
+          id
+          display_label
           __typename
         }
       }
@@ -13,9 +15,9 @@ export const GET_IP_ADDRESS_KIND = gql`
 `;
 
 export const GET_IP_ADDRESSES = gql`
-  query IpamIPAddress($prefix: String, $ipaddress: String, $offset: Int, $limit: Int) {
-    IpamIPAddress(
-      ip_prefix__prefix__value: $prefix
+  query GET_IP_ADDRESSES($prefixIds: [ID], $ipaddress: String, $offset: Int, $limit: Int) {
+    BuiltinIPAddress(
+      ip_prefix__ids: $prefixIds
       address__value: $ipaddress
       offset: $offset
       limit: $limit
@@ -40,11 +42,6 @@ export const GET_IP_ADDRESSES = gql`
           }
           address {
             value
-          }
-          interface {
-            node {
-              display_label
-            }
           }
         }
       }

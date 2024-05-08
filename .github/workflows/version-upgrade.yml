@@ -1,0 +1,148 @@
+---
+# yamllint disable rule:truthy rule:truthy rule:line-length
+name: "Infrahub Version Upgrade testing"
+on:
+  # schedule:
+  #   - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      commit:
+        type: string
+        description: commit sha or branch name
+        default: ''
+        required: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  INFRAHUB_DB_USERNAME: neo4j
+  INFRAHUB_DB_PASSWORD: admin
+  INFRAHUB_DB_ADDRESS: localhost
+  INFRAHUB_DB_PORT: 7687
+  INFRAHUB_DB_PROTOCOL: bolt
+  INFRAHUB_BROKER_ADDRESS: message-queue
+  INFRAHUB_LOG_LEVEL: CRITICAL
+  INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
+  INFRAHUB_IMAGE_VER: "local"
+
+jobs:
+  migration-tests:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - name: From 0.12
+            source_version: 0.12.1
+    name: ${{ matrix.name }}
+    runs-on:
+      group: huge-runners
+    timeout-minutes: 120
+    env:
+      INFRAHUB_DB_TYPE: neo4j
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+        with:
+          ref: ${{ inputs.commit == '' && 'develop' || inputs.commit }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+      - name: "Setup python environment"
+        run: |
+          pipx install poetry
+          poetry config virtualenvs.prefer-active-python true
+          pip install invoke toml
+      - name: "Install Package"
+        run: "poetry install"
+
+      - name: Install NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=${{ matrix.source_version }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+      - name: Select infrahub port
+        run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
+      - name: Set INFRAHUB_URL
+        run: echo "INFRAHUB_URL=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
+      - name: "Store start time"
+        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
+
+    # Initialize the demo environment with the Source Version
+      - name: Pull External Docker Images
+        run: invoke demo.pull
+      - name: Initialize Demo
+        id: init-demo
+        run: invoke demo.start demo.load-infra-schema
+      - name: Check Demo Status
+        run: invoke demo.status
+      - name: Load Data
+        run: invoke demo.load-infra-data
+      - name: Git Repository
+        run: invoke demo.infra-git-import demo.infra-git-create
+      - name: Stop Demo
+        run: invoke demo.stop
+
+    # Build the local version and run the migrations
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+
+      - name: Build Demo
+        run: invoke dev.build
+
+      - name: Run database migration
+        run: invoke dev.migrate
+
+      - name: Start Demo
+        run: invoke dev.start
+
+    # Execute the E2E tests with playwright
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Install Playwright Browsers
+        run: npx playwright install chromium
+
+      - name: Run Playwright tests
+        run: npm run ci:test:e2e
+
+
+      - name: Containers after tests
+        if: always()
+        run: docker ps -a
+
+      - name: Display server logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-server-1"
+
+      - name: Display git 1 logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-1"
+
+      - name: Display git 2 logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-2"
+
+      - name: Display database logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
+
+      - name: Display server status
+        if: always()
+        run: invoke demo.status
+
+      - name: "Clear docker environment and force vmagent to stop"
+        if: always()
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local

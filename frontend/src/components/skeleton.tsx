@@ -5,7 +5,7 @@ export const Skeleton = ({ className = "", ...props }: HTMLAttributes<HTMLDivEle
   return (
     <div
       className={classNames(
-        "animate-pulse duration-150 rounded-md bg-custom-blue-700/25",
+        "animate-[pulse_1s_ease-in-out_infinite] rounded-md bg-custom-blue-700/20",
         className
       )}
       {...props}

@@ -30,7 +30,7 @@ test.describe("Getting started with Infrahub - Integration with Git", () => {
       await page.getByRole("link", { name: "All Device(s)" }).click();
       await expect(page.getByText("Generic Device object")).toBeVisible();
       await page.getByRole("link", { name: "atl1-edge1" }).click();
-      await page.getByText("Interfaces14").click();
+      await page.getByText("Interfaces15").click();
       await page.getByRole("link", { name: "Connected to atl1-edge2 Ethernet1" }).click();
     });
 

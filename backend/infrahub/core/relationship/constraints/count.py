@@ -27,6 +27,11 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
 
     async def check(self, relm: RelationshipManager) -> None:
         branch = await registry.get_branch(db=self.db) if not self.branch else self.branch
+
+        # NOTE adding resolve here because we need to retrieve the real ID
+        # but if the validation fails we'll end up with some allocated resources that are not being used
+        await relm.resolve(db=self.db)
+
         (
             _,
             peer_ids_present_local_only,

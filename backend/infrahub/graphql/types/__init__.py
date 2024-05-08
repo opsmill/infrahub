@@ -17,6 +17,7 @@ from .attribute import (
     ListAttributeType,
     NumberAttributeType,
     RelatedNodeInput,
+    RelatedPrefixNodeInput,
     StrAttributeType,
     TextAttributeType,
 )
@@ -30,7 +31,6 @@ from .task import TaskNodes
 from .task_log import TaskLog, TaskLogEdge, TaskLogNodes
 
 __all__ = [
-    "RelatedNodeInput",
     "AttributeInterface",
     "BaseAttribute",
     "DropdownFields",
@@ -51,6 +51,8 @@ __all__ = [
     "GetListMixin",
     "InfrahubObject",
     "InfrahubObjectType",
+    "RelatedNodeInput",
+    "RelatedPrefixNodeInput",
     "RelationshipNode",
     "TaskLog",
     "TaskLogEdge",

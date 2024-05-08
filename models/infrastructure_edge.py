@@ -150,6 +150,8 @@ INTERFACE_L2_NAMES = {
     "MX204": ["et-0/0/3"],
 }
 
+LAG_INTERFACE_L2 = {"7280R3": [{"name": "port-channel1", "lacp": "Active", "members": ["Ethernet11", "Ethernet12"]}]}
+
 INTERFACE_ROLES_MAPPING = {
     "edge": [
         "peer",
@@ -245,6 +247,8 @@ GROUPS = (
     ("arista_devices", "Arista Devices"),
     ("upstream_interfaces", "Upstream Interfaces"),
     ("backbone_interfaces", "Backbone Interfaces"),
+    ("maintenance_circuits", "Circuits in Maintenance"),
+    ("provisioning_circuits", "Circuits in Provisioning"),
 )
 
 BGP_PEER_GROUPS = (
@@ -269,7 +273,7 @@ VLANS = (
 store = NodeStore()
 
 
-async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str, site: Dict[str, str]):
+async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str, site: Dict[str, str]) -> str:
     group_eng = store.get("Engineering Team")
     group_ops = store.get("Operation Team")
     account_pop = store.get("pop-builder")
@@ -533,6 +537,9 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                     )
                     await bgp_session.save()
 
+                    await circuit.bgp_sessions.fetch()
+                    circuit.bgp_sessions.add(bgp_session)
+                    await circuit.save()
                     log.debug(
                         f" - Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}' '{ip.address.value}' >> '{peer_ip.address.value}'"
                     )
@@ -554,6 +561,31 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                 untagged_vlan={"id": store.get(kind="InfraVLAN", key=f"{site_name}_server").id},
             )
             await intf.save()
+            store.set(key=f"{device_name}-l2-{intf_name}", node=intf)
+
+        for lag_intf in LAG_INTERFACE_L2.get(device_type, []):
+            intf_role = "server"
+
+            lag = await client.create(
+                branch=branch,
+                kind="InfraLagInterfaceL2",
+                device={"id": obj.id, "is_protected": True},
+                name=lag_intf["name"],
+                speed=10000,
+                enabled=True,
+                l2_mode="Access",
+                untagged_vlan={"id": store.get(kind="InfraVLAN", key=f"{site_name}_server").id},
+                status={"value": ACTIVE_STATUS, "owner": group_ops.id},
+                role={"value": intf_role, "source": account_pop.id},
+                lacp=lag_intf["lacp"],
+            )
+
+            await lag.save()
+            await lag.members.fetch()
+
+            members = [store.get(key=f"{device_name}-l2-{member}") for member in lag_intf["members"]]
+            lag.members.extend(members)
+            await lag.save()
 
     # --------------------------------------------------
     # Connect both devices within the Site together with 2 interfaces
@@ -1150,11 +1182,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # ------------------------------------------
     log.info("Creating Site and associated objects (Device, Circuit, BGP Sessions)")
     sites = site_generator(nbr_site=5)
-    batch = await client.create_batch()
     for site in sites:
-        batch.add(task=generate_site, site=site, client=client, branch=branch, log=log)
-
-    async for _, response in batch.execute():
+        response = await generate_site(client=client, log=log, branch=branch, site=site)
         log.debug(f"{response} - Creation Completed")
 
     # ------------------------------------------

@@ -8,6 +8,8 @@ export const REFRESH_TOKEN_KEY = "refresh_token";
 
 export const NODE_OBJECT = "CoreNode";
 
+export const PROFILE_KIND = "CoreProfile";
+
 export const TASK_TARGET = "CoreTaskTarget";
 
 export const DATA_CHECK_OBJECT = "CoreDataCheck";
@@ -51,12 +53,6 @@ export const SCHEMA_ENUM_REMOVE = "SchemaEnumRemove";
 export const GROUP_OBJECT = "CoreGroup";
 
 export const TASK_OBJECT = "InfrahubTask";
-
-export const IPAM_PREFIX_GENERIC = "BuiltinIPPrefix";
-export const IPAM_PREFIX_OBJECT = "IpamIPPrefix";
-
-export const IPAM_IP_ADDRESS_GENERIC = "BuiltinIPAddress";
-export const IPAM_IP_ADDRESS_OBJECT = "IpamIPAddress";
 
 export const WRITE_ROLES = ["admin", "read-write"];
 

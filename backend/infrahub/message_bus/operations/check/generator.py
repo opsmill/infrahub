@@ -12,6 +12,8 @@ from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 from infrahub.tasks.check import set_check_status
 
+# pylint: disable=duplicate-code
+
 
 async def run(message: messages.CheckGeneratorRun, service: InfrahubServices):
     repository = await get_initialized_repo(
@@ -29,6 +31,7 @@ async def run(message: messages.CheckGeneratorRun, service: InfrahubServices):
         file_path=message.generator_definition.file_path,
         query=message.generator_definition.query_name,
         targets=message.generator_definition.group_id,
+        convert_query_response=message.generator_definition.convert_query_response,
     )
 
     commit_worktree = repository.get_commit_worktree(commit=message.commit)
@@ -52,6 +55,8 @@ async def run(message: messages.CheckGeneratorRun, service: InfrahubServices):
             branch=message.branch_name,
             params=message.variables,
             generator_instance=generator_instance.id,
+            convert_query_response=generator_definition.convert_query_response,
+            infrahub_node=InfrahubNode,
         )
         await generator.run(identifier=generator_definition.name)
         generator_instance.status.value = GeneratorInstanceStatus.READY.value

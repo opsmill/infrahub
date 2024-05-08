@@ -41,7 +41,7 @@ class GeneratedAttributeSchema(HashableModel):
     )
     regex: Optional[str] = Field(
         default=None,
-        description="Regex uses to limit limit the characters allowed in for the attributes.",
+        description="Regex uses to limit the characters allowed in for the attributes.",
         json_schema_extra={"update": "validate_constraint"},
     )
     max_length: Optional[int] = Field(

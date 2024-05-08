@@ -51,7 +51,7 @@ export const RelationshipsDetails = forwardRef((props: RelationshipsDetailsProps
   const generic = generics.find((s) => s.kind === relationshipSchemaData?.peer);
   const schemaData = schema || generic;
 
-  const columns = getSchemaObjectColumns(schemaData, true);
+  const columns = getSchemaObjectColumns({ schema: schemaData, forListView: true });
 
   const filtersString = [
     { name: "offset", value: pagination?.offset },

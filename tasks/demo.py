@@ -8,11 +8,13 @@ from invoke.tasks import task
 from .container_ops import (
     build_images,
     destroy_environment,
+    migrate_database,
     pull_images,
     restart_services,
     show_service_status,
     start_services,
     stop_services,
+    update_core_schema,
 )
 from .infra_ops import load_infrastructure_data, load_infrastructure_schema
 from .shared import (
@@ -77,10 +79,17 @@ def stop(context: Context, database: str = INFRAHUB_DATABASE):
     stop_services(context=context, database=database, namespace=NAMESPACE)
 
 
-@task
+@task(optional=["database"])
 def destroy(context: Context, database: str = INFRAHUB_DATABASE):
     """Destroy all containers and volumes."""
     destroy_environment(context=context, database=database, namespace=NAMESPACE)
+
+
+@task(optional=["database"])
+def migrate(context: Context, database: str = INFRAHUB_DATABASE):
+    """Apply the latest database migrations."""
+    migrate_database(context=context, database=database, namespace=NAMESPACE)
+    update_core_schema(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
@@ -109,12 +118,8 @@ def status(context: Context, database: str = INFRAHUB_DATABASE):
 
 @task(optional=["database"])
 def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE):
-    """Load the base schema for infrastructure.
-    FIXME: This command needs to be updated to remove the restart before releasing 0.13.0
-    """
-    load_infrastructure_schema(
-        context=context, database=database, namespace=NAMESPACE, add_wait=False, target="models/infrastructure_base.yml"
-    )
+    """Load the base schema for infrastructure."""
+    load_infrastructure_schema(context=context, database=database, namespace=NAMESPACE, add_wait=False)
     restart_services(context=context, database=database, namespace=NAMESPACE)
 
 

@@ -1,21 +1,22 @@
 import { gql } from "@apollo/client";
+import { PlusIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
+import { Link } from "react-router-dom";
+import { RoundedButton } from "../../components/buttons/rounded-button";
+import { Badge } from "../../components/ui/badge";
+import { Tooltip } from "../../components/ui/tooltip";
 import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
+import { usePermission } from "../../hooks/usePermission";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { schemaState } from "../../state/atoms/schema.atom";
+import { constructPath } from "../../utils/fetch";
 import { getObjectRelationships } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
 import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { ProposedChange } from "./proposed-changes-item";
-import { usePermission } from "../../hooks/usePermission";
-import { Link } from "react-router-dom";
-import { RoundedButton } from "../../components/buttons/rounded-button";
-import { PlusIcon } from "@heroicons/react/24/outline";
-import { Tooltip } from "../../components/ui/tooltip";
-import { Badge } from "../../components/ui/badge";
 
 const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);
@@ -24,7 +25,7 @@ const ProposedChanges = () => {
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
   const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
-  const relationships = getObjectRelationships(schemaData, true);
+  const relationships = getObjectRelationships({ schema: schemaData, forListView: true });
 
   const queryString = schemaData
     ? getProposedChanges({
@@ -72,7 +73,7 @@ const ProposedChanges = () => {
         isReloadLoading={loading}>
         <div className="flex-grow text-right">
           {permission.write.allow ? (
-            <Link to={"/proposed-changes/new"}>
+            <Link to={constructPath("/proposed-changes/new")}>
               <RoundedButton
                 disabled={!permission.write.allow}
                 data-testid="add-proposed-changes-button">

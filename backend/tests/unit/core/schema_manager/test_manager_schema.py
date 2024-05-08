@@ -93,11 +93,24 @@ async def test_schema_branch_process_inheritance(schema_all_in_one):
     criticality = schema.get(name="BuiltinCriticality")
     assert criticality.get_relationship(name="status")
     assert criticality.get_relationship(name="status").inherited
-
     assert criticality.get_attribute(name="my_generic_name")
     assert criticality.get_attribute(name="my_generic_name").inherited
-
     assert criticality.get_attribute(name="mybool")
+    assert criticality.get_attribute(name="mybool").inherited
+    assert criticality.get_attribute(name="color")
+    assert criticality.get_attribute(name="color").inherited is False
+    assert criticality.get_attribute(name="description")
+    assert criticality.get_attribute(name="description").inherited is False
+
+    core_node = schema.get(name="CoreNode")
+    assert set(core_node.used_by) == {
+        "BuiltinCriticality",
+        "BuiltinTag",
+        "BuiltinStatus",
+        "BuiltinBadge",
+        "CoreStandardGroup",
+        "InfraTinySchema",
+    }
 
 
 async def test_schema_branch_process_branch_support(schema_all_in_one):
@@ -279,6 +292,29 @@ async def test_schema_branch_generate_weight(schema_all_in_one):
     assert in_first == []
     assert sorted(in_both) == sorted(second_weights)
     assert len(in_second) == 1 and in_second[0].startswith(new_attr2_partial_id)
+
+
+async def test_schema_branch_add_profile_schema(schema_all_in_one):
+    core_profile_schema = _get_schema_by_kind(core_models, kind="CoreProfile")
+    schema_all_in_one["generics"].append(core_profile_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    schema.add_profile_schemas()
+
+    profile = schema.get(name="ProfileBuiltinCriticality")
+    assert profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
+    assert profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
+    assert set(profile.attribute_names) == {"profile_name", "profile_priority", "description"}
+    core_profile_schema = schema.get("CoreProfile")
+    assert set(core_profile_schema.used_by) == {
+        "ProfileBuiltinCriticality",
+        "ProfileBuiltinTag",
+        "ProfileBuiltinStatus",
+        "ProfileBuiltinBadge",
+        "ProfileCoreStandardGroup",
+        "ProfileInfraTinySchema",
+    }
 
 
 async def test_schema_branch_generate_identifiers(schema_all_in_one):
@@ -1530,8 +1566,10 @@ async def test_schema_branch_diff_attribute(
         ]
     }
 
+    schema = SchemaRoot(**FULL_SCHEMA)
+    schema.generate_uuid()
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
+    schema_branch.load_schema(schema=schema)
     new_schema = schema_branch.duplicate()
 
     node = new_schema.get(name="BuiltinCriticality")
@@ -1740,10 +1778,15 @@ async def test_schema_branch_diff_add_node_relationship(
         },
     }
 
+    schema1 = SchemaRoot(**SCHEMA1)
+    schema1.generate_uuid()
+    schema2 = SchemaRoot(**SCHEMA2)
+    schema2.generate_uuid()
+
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(**SCHEMA1))
+    schema_branch.load_schema(schema=schema1)
     new_schema = schema_branch.duplicate()
-    new_schema.load_schema(schema=SchemaRoot(**SCHEMA2))
+    new_schema.load_schema(schema=schema2)
 
     diff = schema_branch.diff(other=new_schema)
     assert diff.model_dump() == {
@@ -1811,9 +1854,10 @@ async def test_schema_branch_validate_check_missing(
             },
         ]
     }
-
+    schema = SchemaRoot(**FULL_SCHEMA)
+    schema.generate_uuid()
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
+    schema_branch.load_schema(schema=schema)
     new_schema = schema_branch.duplicate()
 
     node = new_schema.get(name="BuiltinCriticality")
@@ -1898,10 +1942,15 @@ async def test_schema_branch_validate_add_node_relationships(
         },
     }
 
+    schema1 = SchemaRoot(**SCHEMA1)
+    schema1.generate_uuid()
+    schema2 = SchemaRoot(**SCHEMA2)
+    schema2.generate_uuid()
+
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(**SCHEMA1))
+    schema_branch.load_schema(schema=schema1)
     new_schema = schema_branch.duplicate()
-    new_schema.load_schema(schema=SchemaRoot(**SCHEMA2))
+    new_schema.load_schema(schema=schema2)
 
     result = schema_branch.validate_update(other=new_schema)
     assert result.model_dump(exclude=["diff"]) == {"constraints": [], "errors": [], "migrations": []}
@@ -2169,7 +2218,7 @@ async def test_load_schema_from_db(
     schema2 = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
 
     assert len(schema2.nodes) == 6
-    assert len(schema2.generics) == 1
+    assert set(schema2.generics.keys()) == {"CoreProfile", "TestGenericInterface"}
     assert set(schema2.profiles.keys()) == {"ProfileBuiltinTag", "ProfileTestCriticality"}
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
@@ -2243,7 +2292,7 @@ async def test_load_schema(
     schema2 = await registry.schema.load_schema(db=db, branch=default_branch.name)
 
     assert len(schema2.nodes) == 6
-    assert len(schema2.generics) == 1
+    assert set(schema2.generics.keys()) == {"CoreProfile", "TestGenericInterface"}
     assert set(schema2.profiles.keys()) == {"ProfileBuiltinTag", "ProfileTestCriticality"}
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()

@@ -31,7 +31,7 @@ const getIsDisabled = ({ owner, user, isProtected, isReadOnly }: any) => {
 const validate = (value: any, attribute: any = {}, optional?: boolean) => {
   const { default_value: defaultValue } = attribute;
 
-  // If optionnal, no validator is needed (we try to validate if the value is defined or not)
+  // If optional, no validator is needed (we try to validate if the value is defined or not)
   if (optional) {
     return true;
   }
@@ -59,8 +59,8 @@ const validate = (value: any, attribute: any = {}, optional?: boolean) => {
     return true;
   }
 
-  // If the value is false but itso is the default_value, then validate (checkbox example)
-  if (defaultValue !== undefined && value === defaultValue) {
+  // If the value is false but it is the default_value, then validate (checkbox example)
+  if (defaultValue !== undefined && defaultValue !== null && value === defaultValue) {
     return true;
   }
 
@@ -76,6 +76,7 @@ type FormParameters = {
   user?: any;
   isUpdate?: boolean;
   isFilters?: boolean;
+  profile?: iNodeSchema | undefined;
 };
 
 const getFormStructureForCreateEdit = ({
@@ -86,13 +87,13 @@ const getFormStructureForCreateEdit = ({
   user,
   isUpdate,
   isFilters,
+  profile,
 }: FormParameters): DynamicFieldData[] => {
   if (!schema) {
     return [];
   }
 
   const fieldsToParse = sortByOrderWeight([
-    // ...(isFilters ? [] : schema.attributes ?? []),
     ...(schema.attributes ?? []),
     ...(getObjectRelationshipsForForm(schema) ?? []),
   ]);
@@ -110,7 +111,7 @@ const getFormStructureForCreateEdit = ({
           peer: field.peer,
           type: getInputTypeFromRelationship(field, isInherited),
           label: field.label ? field.label : field.name,
-          value: getRelationshipValue(row, field),
+          value: getRelationshipValue({ row, field, isFilters }),
           options: getRelationshipOptions(row, field, schemas, generics),
           config: {
             validate: (value: any) =>
@@ -131,7 +132,12 @@ const getFormStructureForCreateEdit = ({
       }
 
       // Parse an attribute
-      const fieldValue = getFieldValue(row, field);
+      const fieldValue = getFieldValue({
+        row,
+        field,
+        profile,
+        isFilters,
+      });
 
       // Quick fix to prevent password in update field,
       // TODO: remove HashedPassword test after new mutations are available to better handle accounts

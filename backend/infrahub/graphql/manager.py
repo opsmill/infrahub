@@ -13,6 +13,7 @@ from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttrib
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 
+from .directives import DIRECTIVES
 from .enums import generate_graphql_enum, get_enum_attribute_type_name
 from .metrics import SCHEMA_GENERATE_GRAPHQL_METRICS
 from .mutations import (
@@ -38,7 +39,7 @@ from .resolver import (
 )
 from .schema import InfrahubBaseMutation, InfrahubBaseQuery, account_resolver, default_paginated_list_resolver
 from .subscription import InfrahubBaseSubscription
-from .types import InfrahubInterface, InfrahubObject, RelatedNodeInput
+from .types import InfrahubInterface, InfrahubObject, RelatedNodeInput, RelatedPrefixNodeInput
 from .types.attribute import BaseAttribute as BaseAttributeType
 from .types.attribute import TextAttributeType
 
@@ -108,7 +109,12 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             subscription = self.get_gql_subscription() if include_subscription else None
 
             graphene_schema = graphene.Schema(
-                query=query, mutation=mutation, subscription=subscription, types=types, auto_camelcase=False
+                query=query,
+                mutation=mutation,
+                subscription=subscription,
+                types=types,
+                auto_camelcase=False,
+                directives=DIRECTIVES,
             )
 
             return graphene_schema.graphql_schema
@@ -240,7 +246,6 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         for node_name, node_schema in full_schema.items():
             if not isinstance(node_schema, GenericSchema):
                 continue
-
             node_interface = self.get_type(name=node_name)
 
             nested_edged_interface = self.generate_nested_interface_object(
@@ -278,6 +283,13 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             node_type = self.get_type(name=node_name)
 
             for rel in node_schema.relationships:
+                # Exclude hierarchical relationships, we will add them later
+                if (
+                    (isinstance(node_schema, NodeSchema) and node_schema.hierarchy)
+                    or (isinstance(node_schema, GenericSchema) and node_schema.hierarchical)
+                ) and rel.name in ("parent", "children", "ancestors", "descendants"):
+                    continue
+
                 peer_schema = self.schema.get(name=rel.peer, duplicate=False)
                 if peer_schema.namespace == "Internal":
                     continue
@@ -299,12 +311,26 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                         peer_type, required=False, resolver=many_relationship_resolver, **peer_filters
                     )
 
-            if isinstance(node_schema, NodeSchema) and node_schema.hierarchy:
-                schema = self.schema.get(name=node_schema.hierarchy, duplicate=False)
+            if (isinstance(node_schema, NodeSchema) and node_schema.hierarchy) or (
+                isinstance(node_schema, GenericSchema) and node_schema.hierarchical
+            ):
+                if isinstance(node_schema, NodeSchema):
+                    schema = self.schema.get(name=node_schema.hierarchy, duplicate=False)  # type: ignore[arg-type]
+                    hierarchy_name = node_schema.hierarchy
+                else:
+                    schema = node_schema
+                    hierarchy_name = node_schema.kind
 
                 peer_filters = self.generate_filters(schema=schema, top_level=False)
-                peer_type = self.get_type(name=f"NestedPaginated{node_schema.hierarchy}")
+                peer_type = self.get_type(name=f"NestedPaginated{hierarchy_name}")
+                peer_type_edge = self.get_type(name=f"NestedEdged{hierarchy_name}")
 
+                node_type._meta.fields["parent"] = graphene.Field(
+                    peer_type_edge, required=False, resolver=single_relationship_resolver
+                )
+                node_type._meta.fields["children"] = graphene.Field(
+                    peer_type, required=False, resolver=many_relationship_resolver, **peer_filters
+                )
                 node_type._meta.fields["ancestors"] = graphene.Field(
                     peer_type, required=False, resolver=ancestors_resolver, **peer_filters
                 )
@@ -392,7 +418,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         if not isinstance(schema, ProfileSchema):
             if not schema.inherit_from or InfrahubKind.GENERICGROUP not in schema.inherit_from:
-                node_interface = self.get_type(name="CoreNode")
+                node_interface = self.get_type(name=InfrahubKind.NODE)
                 interfaces.add(node_interface)
 
         meta_attrs = {
@@ -497,8 +523,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         return GraphqlMutations(create=create, update=update, upsert=upsert, delete=delete)
 
-    @staticmethod
     def generate_graphql_mutation_create_input(
+        self,
         schema: Union[NodeSchema, ProfileSchema],
     ) -> Type[graphene.InputObjectType]:
         """Generate an InputObjectType Object from a Infrahub NodeSchema
@@ -527,13 +553,21 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         for rel in schema.relationships:
             if rel.internal_peer or rel.read_only:
                 continue
+
+            input_type = RelatedNodeInput
+            peer_schema = self.schema.get(name=rel.peer, duplicate=False)
+            if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_prefix()) or (
+                isinstance(peer_schema, GenericSchema) and InfrahubKind.IPPREFIX == rel.peer
+            ):
+                input_type = RelatedPrefixNodeInput
+
             required = not rel.optional
             if rel.cardinality == "one":
-                attrs[rel.name] = graphene.InputField(RelatedNodeInput, required=required, description=rel.description)
+                attrs[rel.name] = graphene.InputField(input_type, required=required, description=rel.description)
 
             elif rel.cardinality == "many":
                 attrs[rel.name] = graphene.InputField(
-                    graphene.List(RelatedNodeInput), required=required, description=rel.description
+                    graphene.List(input_type), required=required, description=rel.description
                 )
 
         return type(f"{schema.kind}CreateInput", (graphene.InputObjectType,), attrs)

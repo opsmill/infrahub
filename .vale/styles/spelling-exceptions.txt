@@ -10,6 +10,7 @@ codespaces
 config
 Config
 content_type
+convert_query_response
 CoreRepository
 cypher
 Dagster
@@ -29,6 +30,7 @@ eslint
 excalidraw
 fanout
 file_path
+generator_definition
 generator_definitions
 github
 graphene
@@ -40,9 +42,11 @@ include_in_menu
 Infrahub
 Infrahub's
 infrahubctl
+IP
 IPAddress
 IPHost
 IPNetwork
+IPAM
 isort
 jinja
 Jotai
@@ -50,6 +54,7 @@ kbps
 markdownlint
 memgraph
 menu_placement
+modularization
 namespace
 namespaces
 Nautobot
@@ -66,6 +71,7 @@ REST
 ressources
 schema_mapping
 sdk
+subnet
 template_path
 toml
 uncheck

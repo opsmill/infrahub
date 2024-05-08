@@ -33,3 +33,10 @@ generator_definitions:
     query: cartags
     parameters:
       name: "name__value"
+  - name: cartags_convert_response
+    file_path: "generators/cartags_convert_response.py"
+    targets: people
+    query: cartags
+    convert_query_response: true
+    parameters:
+      name: "name__value"

@@ -21,6 +21,34 @@ from infrahub.core.constants import (
 
 # pylint: disable=too-many-lines
 
+core_profile_schema_definition = {
+    "name": "Profile",
+    "namespace": "Core",
+    "include_in_menu": False,
+    "icon": "mdi:shape-plus-outline",
+    "description": "Base Profile in Infrahub.",
+    "label": "Profile",
+    "display_labels": ["profile_name__value"],
+    "default_filter": "profile_name__value",
+    "attributes": [
+        {
+            "name": "profile_name",
+            "kind": "Text",
+            "min_length": 3,
+            "max_length": 32,
+            "optional": False,
+            "unique": True,
+        },
+        {
+            "name": "profile_priority",
+            "kind": "Number",
+            "default_value": 1000,
+            "optional": True,
+        },
+    ],
+}
+
+
 core_models: dict[str, Any] = {
     "generics": [
         {
@@ -31,13 +59,6 @@ core_models: dict[str, Any] = {
             "label": "Node",
         },
         {
-            "name": "Profile",
-            "namespace": "Core",
-            "include_in_menu": False,
-            "description": "Base Profile in Infrahub.",
-            "label": "Profile",
-        },
-        {
             "name": "Owner",
             "namespace": "Lineage",
             "description": "Any Entities that is responsible for some data.",
@@ -45,6 +66,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "documentation": "/topics/metadata",
         },
+        core_profile_schema_definition,
         {
             "name": "Source",
             "namespace": "Lineage",
@@ -136,14 +158,14 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "members",
-                    "peer": "CoreNode",
+                    "peer": InfrahubKind.NODE,
                     "optional": True,
                     "identifier": "group_member",
                     "cardinality": "many",
                 },
                 {
                     "name": "subscribers",
-                    "peer": "CoreNode",
+                    "peer": InfrahubKind.NODE,
                     "optional": True,
                     "identifier": "group_subscriber",
                     "cardinality": "many",
@@ -423,6 +445,7 @@ core_models: dict[str, Any] = {
         {
             "name": "IPNamespace",
             "namespace": "Builtin",
+            "label": "IP Namespace",
             "description": "A generic container for IP prefixes and IP addresses",
             "include_in_menu": False,
             "default_filter": "name__value",
@@ -449,6 +472,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "ip_prefixes",
+                    "label": "IP Prefixes",
                     "peer": InfrahubKind.IPPREFIX,
                     "identifier": "ip_namespace__ip_prefix",
                     "optional": True,
@@ -458,6 +482,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "ip_addresses",
+                    "label": "IP Addresses",
                     "peer": InfrahubKind.IPADDRESS,
                     "identifier": "ip_namespace__ip_address",
                     "optional": True,
@@ -469,11 +494,12 @@ core_models: dict[str, Any] = {
         },
         {
             "name": "IPPrefix",
+            "label": "IP Prefix",
             "namespace": "Builtin",
             "description": "IPv6 or IPv4 prefix also referred as network",
             "include_in_menu": False,
             "default_filter": "prefix__value",
-            "order_by": ["prefix__value"],
+            "order_by": ["prefix__version", "prefix__binary_address"],
             "display_labels": ["prefix__value"],
             "icon": "mdi:ip-network",
             "branch": BranchSupportType.AWARE.value,
@@ -565,6 +591,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "ip_namespace",
+                    "label": "IP Namespace",
                     "peer": InfrahubKind.IPNAMESPACE,
                     "identifier": "ip_namespace__ip_prefix",
                     "optional": True,
@@ -573,6 +600,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "ip_addresses",
+                    "label": "IP Addresses",
                     "peer": InfrahubKind.IPADDRESS,
                     "identifier": "ip_prefix__ip_address",
                     "optional": True,
@@ -584,11 +612,12 @@ core_models: dict[str, Any] = {
         },
         {
             "name": "IPAddress",
+            "label": "IP Address",
             "namespace": "Builtin",
             "description": "IPv6 or IPv4 address",
             "include_in_menu": False,
             "default_filter": "address__value",
-            "order_by": ["address__value"],
+            "order_by": ["address__version", "address__binary_address"],
             "display_labels": ["address__value"],
             "icon": "mdi:ip-outline",
             "branch": BranchSupportType.AWARE.value,
@@ -610,6 +639,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "ip_namespace",
+                    "label": "IP Namespace",
                     "peer": InfrahubKind.IPNAMESPACE,
                     "identifier": "ip_namespace__ip_address",
                     "optional": True,
@@ -618,6 +648,7 @@ core_models: dict[str, Any] = {
                 },
                 {
                     "name": "ip_prefix",
+                    "label": "IP Prefix",
                     "peer": InfrahubKind.IPPREFIX,
                     "identifier": "ip_prefix__ip_address",
                     "optional": True,
@@ -627,13 +658,44 @@ core_models: dict[str, Any] = {
                 },
             ],
         },
+        {
+            "name": "ResourcePool",
+            "namespace": "Core",
+            "description": "xx",
+            "include_in_menu": True,
+            # "default_filter": "address__value",
+            # "order_by": ["address__version", "address__binary_address"],
+            # "display_labels": ["address__value"],
+            # "icon": "mdi:ip-outline",
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "Text",
+                    "order_weight": 1000,
+                },
+                {
+                    "name": "description",
+                    "kind": "Text",
+                    "optional": True,
+                    "order_weight": 2000,
+                },
+                {
+                    "name": "utilization",
+                    "kind": "Number",
+                    "read_only": True,
+                    "optional": True,
+                    "allow_override": AllowOverrideType.NONE,
+                },
+            ],
+        },
     ],
     "nodes": [
         {
             "name": "StandardGroup",
             "namespace": "Core",
             "description": "Group of nodes of any kind.",
-            "include_in_menu": True,
+            "include_in_menu": False,
             "icon": "mdi:account-group",
             "label": "Standard Group",
             "default_filter": "name__value",
@@ -646,7 +708,7 @@ core_models: dict[str, Any] = {
             "name": "GeneratorGroup",
             "namespace": "Core",
             "description": "Group of nodes that are created by a generator.",
-            "include_in_menu": True,
+            "include_in_menu": False,
             "icon": "mdi:state-machine",
             "label": "Generator Group",
             "default_filter": "name__value",
@@ -659,7 +721,7 @@ core_models: dict[str, Any] = {
             "name": "GraphQLQueryGroup",
             "namespace": "Core",
             "description": "Group of nodes associated with a given GraphQLQuery.",
-            "include_in_menu": True,
+            "include_in_menu": False,
             "icon": "mdi:account-group",
             "label": "GraphQL Query Group",
             "default_filter": "name__value",
@@ -1405,7 +1467,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "object",
-                    "peer": "CoreNode",
+                    "peer": InfrahubKind.NODE,
                     "kind": "Attribute",
                     "identifier": "artifact__node",
                     "cardinality": "one",
@@ -1480,6 +1542,7 @@ core_models: dict[str, Any] = {
                 {"name": "parameters", "kind": "JSON"},
                 {"name": "file_path", "kind": "Text"},
                 {"name": "class_name", "kind": "Text"},
+                {"name": "convert_query_response", "kind": "Boolean", "optional": True, "default_value": False},
             ],
             "relationships": [
                 {
@@ -1530,7 +1593,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "object",
-                    "peer": "CoreNode",
+                    "peer": InfrahubKind.NODE,
                     "kind": "Attribute",
                     "identifier": "generator__node",
                     "cardinality": "one",
@@ -1601,6 +1664,63 @@ core_models: dict[str, Any] = {
             "inherit_from": [InfrahubKind.IPNAMESPACE],
             "attributes": [
                 {"name": "default", "kind": "Boolean", "optional": True, "read_only": True, "order_weight": 9000}
+            ],
+        },
+        {
+            "name": "PrefixPool",
+            "namespace": "Core",
+            "description": "xxx",
+            "label": "Prefix Pool",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "include_in_menu": False,
+            # "icon": "mdi:format-list-group",
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "inherit_from": ["CoreResourcePool", InfrahubKind.LINEAGESOURCE],
+            "attributes": [
+                {
+                    "name": "default_prefix_size",
+                    "kind": "Number",
+                    "optional": True,
+                },
+                {
+                    "name": "default_member_type",
+                    "kind": "Text",
+                    "enum": ["prefix", "subnet"],
+                    "default_value": "prefix",
+                    "optional": True,
+                },
+                {
+                    "name": "default_prefix_type",
+                    "kind": "Text",
+                    "optional": True,
+                },
+                {
+                    "name": "global_identifier",
+                    "kind": "Text",
+                    "optional": True,
+                },
+            ],
+            "relationships": [
+                {
+                    "name": "resources",
+                    "peer": "BuiltinIPPrefix",
+                    "kind": "Attribute",
+                    "identifier": "prefixpool__resource",
+                    "cardinality": "many",
+                    "optional": False,
+                    "order_weight": 6000,
+                },
+                {
+                    "name": "ip_namespace",
+                    "peer": "BuiltinIPNamespace",
+                    "kind": "Attribute",
+                    "identifier": "prefixpool__ipnamespace",
+                    "cardinality": "one",
+                    "optional": False,
+                    "order_weight": 7000,
+                },
             ],
         },
     ],

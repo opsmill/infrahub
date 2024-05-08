@@ -1,6 +1,6 @@
 import { gql } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
-import { LockClosedIcon, PencilSquareIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
+import { LockClosedIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
@@ -35,6 +35,7 @@ import {
 } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
 import AddObjectToGroup from "../groups/add-object-to-group";
+import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import RelationshipDetails from "../object-item-details/relationship-details-paginated";
@@ -42,7 +43,6 @@ import { RelationshipsDetails } from "../object-item-details/relationships-detai
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { Generate } from "./generate";
-import Content from "../layout/content";
 
 export default function ArtifactsDetails() {
   const { objectid } = useParams();
@@ -73,9 +73,9 @@ export default function ArtifactsDetails() {
   if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind)) {
     navigate("/");
   }
-  const attributes = getObjectAttributes(schemaData);
-  const relationships = getObjectRelationships(schemaData);
-  const columns = getSchemaObjectColumns(schemaData);
+  const attributes = getObjectAttributes({ schema: schemaData });
+  const relationships = getObjectRelationships({ schema: schemaData });
+  const columns = getSchemaObjectColumns({ schema: schemaData });
   const relationshipsTabs = getTabs(schemaData);
 
   const queryString = schemaData
@@ -227,49 +227,15 @@ export default function ArtifactsDetails() {
                       {objectDetailsData[attribute.name] && (
                         <div className="px-2">
                           <MetaDetailsTooltip
-                            items={[
-                              {
-                                label: "Updated at",
-                                value: objectDetailsData[attribute.name].updated_at,
-                                type: "date",
-                              },
-                              {
-                                label: "Update time",
-                                value: `${new Date(
-                                  objectDetailsData[attribute.name].updated_at
-                                ).toLocaleDateString()} ${new Date(
-                                  objectDetailsData[attribute.name].updated_at
-                                ).toLocaleTimeString()}`,
-                                type: "text",
-                              },
-                              {
-                                label: "Source",
-                                value: objectDetailsData[attribute.name].source,
-                                type: "link",
-                              },
-                              {
-                                label: "Owner",
-                                value: objectDetailsData[attribute.name].owner,
-                                type: "link",
-                              },
-                              {
-                                label: "Is protected",
-                                value: objectDetailsData[attribute.name].is_protected
-                                  ? "True"
-                                  : "False",
-                                type: "text",
-                              },
-                              {
-                                label: "Is inherited",
-                                value: objectDetailsData[attribute.name].is_inherited
-                                  ? "True"
-                                  : "False",
-                                type: "text",
-                              },
-                            ]}
+                            updatedAt={objectDetailsData[attribute.name].updated_at}
+                            source={objectDetailsData[attribute.name].source}
+                            owner={objectDetailsData[attribute.name].owner}
+                            isFromProfile={objectDetailsData[attribute.name].is_from_profile}
+                            isProtected={objectDetailsData[attribute.name].is_protected}
                             header={
-                              <div className="flex justify-between items-center w-full p-4">
+                              <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
                                 <div className="font-semibold">{attribute.label}</div>
+
                                 <Button
                                   buttonType={BUTTON_TYPES.INVISIBLE}
                                   disabled={!auth?.permissions?.write}
@@ -282,7 +248,7 @@ export default function ArtifactsDetails() {
                                     setShowMetaEditModal(true);
                                   }}
                                   data-cy="metadata-edit-button">
-                                  <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
+                                  <Icon icon="mdi:pencil" className="text-custom-blue-500" />
                                 </Button>
                               </div>
                             }

@@ -2,15 +2,14 @@ import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { forwardRef, useImperativeHandle, useState } from "react";
-import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import SlideOver from "../../../components/display/slide-over";
 import ModalDelete from "../../../components/modals/modal-delete";
-import ProgressBar from "../../../components/stats/progress-bar";
+import ProgressBarChart from "../../../components/stats/progress-bar-chart";
 import { Table } from "../../../components/table/table";
 import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
 import { Pagination } from "../../../components/utils/pagination";
-import { DEFAULT_BRANCH_NAME, IPAM_PREFIX_OBJECT } from "../../../config/constants";
+import { DEFAULT_BRANCH_NAME } from "../../../config/constants";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
 import { GET_PREFIXES } from "../../../graphql/queries/ipam/prefixes";
@@ -22,29 +21,16 @@ import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
+import { IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
 
 const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
-  const { prefix } = useParams();
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState();
   const [isLoading, setIsLoading] = useState(false);
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
 
-  const constructLink = (data) => {
-    switch (data.__typename) {
-      case IPAM_PREFIX_OBJECT: {
-        return constructPathForIpam(`/ipam/prefixes/${encodeURIComponent(data?.prefix?.value)}`);
-      }
-      default: {
-        return constructPathForIpam(`/ipam/ip_address/${encodeURIComponent(data?.prefix?.value)}`);
-      }
-    }
-  };
-
-  const { loading, error, data, refetch } = useQuery(GET_PREFIXES, {
-    variables: { prefix: prefix },
-  });
+  const { loading, error, data, refetch } = useQuery(GET_PREFIXES);
 
   useImperativeHandle(ref, () => ({ refetch }));
 
@@ -55,13 +41,13 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
     { name: "is_pool", label: "Is Pool" },
     { name: "is_top_level", label: "Is Top Level" },
     { name: "utilization", label: "Utilization" },
-    { name: "ip_namespace", label: "Ip Namespace" },
+    { name: "ip_namespace", label: "IP Namespace" },
     { name: "parent", label: "Parent" },
   ];
 
   const rows =
     data &&
-    data[IPAM_PREFIX_OBJECT]?.edges.map((edge) => ({
+    data[IP_PREFIX_GENERIC]?.edges.map((edge) => ({
       id: edge?.node?.id,
       __typename: edge?.node?.__typename,
       values: {
@@ -74,7 +60,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
         ) : (
           <Icon icon="mdi:close" />
         ),
-        utilization: <ProgressBar value={edge?.node?.utilization?.value} />,
+        utilization: <ProgressBarChart value={edge?.node?.utilization?.value} />,
         netmask: edge?.node?.netmask?.value,
         hostmask: edge?.node?.hostmask?.value,
         network_address: edge?.node?.network_address?.value,
@@ -82,7 +68,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
         ip_namespace: edge?.node?.ip_namespace?.node?.display_label,
         parent: edge?.node?.parent?.node?.display_label,
       },
-      link: constructLink(edge?.node),
+      link: constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${edge?.node?.id}`),
     }));
 
   const handleUpdate = (data) => {
@@ -135,7 +121,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
   };
 
   if (error) {
-    return <ErrorScreen message="An error occured while retrieving prefixes" />;
+    return <ErrorScreen message="An error occurred while retrieving prefixes" />;
   }
 
   return (
@@ -210,7 +196,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
         </SlideOver>
       )}
 
-      <Pagination count={data && data[IPAM_PREFIX_OBJECT]?.count} />
+      <Pagination count={data && data[IP_PREFIX_GENERIC]?.count} />
     </div>
   );
 });

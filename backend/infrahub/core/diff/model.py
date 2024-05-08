@@ -131,7 +131,7 @@ class FileDiffElement(BaseDiffElement):
 
 
 class DiffSummaryElement(BaseModel):
-    branch: str = Field(..., description="The branch where the change occured")
+    branch: str = Field(..., description="The branch where the change occurred")
     node: str = Field(..., description="The unique ID of the node")
     kind: str = Field(..., description="The kind of the node as defined by its namespace and name")
     actions: List[DiffAction] = Field(..., description="A list of all actions on this node.")
@@ -146,7 +146,7 @@ class DiffSummaryElement(BaseModel):
 
 
 class EnrichedDiffSummaryElement(BaseModel):
-    branch: str = Field(..., description="The branch where the change occured")
+    branch: str = Field(..., description="The branch where the change occurred")
     node: str = Field(..., description="The unique ID of the node")
     kind: str = Field(..., description="The kind of the node as defined by its namespace and name")
     action: DiffAction

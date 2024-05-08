@@ -7,23 +7,25 @@ import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip"
 import SlideOver from "../../components/display/slide-over";
 import { Tabs } from "../../components/tabs";
 import { Card } from "../../components/ui/card";
-import {
-  DEFAULT_BRANCH_NAME,
-  IPAM_IP_ADDRESS_GENERIC,
-  IPAM_PREFIX_GENERIC,
-  IPAM_PREFIX_OBJECT,
-} from "../../config/constants";
+import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { usePermission } from "../../hooks/usePermission";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
-import { IPAM_QSP, IPAM_TABS } from "./constants";
+import {
+  IPAM_QSP,
+  IPAM_ROUTE,
+  IPAM_TABS,
+  IP_ADDRESS_GENERIC,
+  IP_PREFIX_GENERIC,
+} from "./constants";
 import IpamIPAddresses from "./ip-addresses/ipam-ip-address";
 import IpamIPPrefixes from "./prefixes/ipam-prefixes";
+import { constructPath } from "../../utils/fetch";
 
 const tabToKind = {
-  [IPAM_TABS.IP_DETAILS]: IPAM_IP_ADDRESS_GENERIC,
-  [IPAM_TABS.PREFIX_DETAILS]: IPAM_PREFIX_GENERIC,
+  [IPAM_TABS.IP_DETAILS]: IP_ADDRESS_GENERIC,
+  [IPAM_TABS.PREFIX_DETAILS]: IP_PREFIX_GENERIC,
 };
 
 export default function IpamRouter() {
@@ -36,7 +38,7 @@ export default function IpamRouter() {
   const genericList = useAtomValue(genericsState);
   const refetchRef = useRef(null);
 
-  const objectname = qspTab ? tabToKind[qspTab] : IPAM_PREFIX_OBJECT;
+  const objectname = qspTab ? tabToKind[qspTab] : IP_PREFIX_GENERIC;
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
   const schemaData = schema || generic;
@@ -49,11 +51,11 @@ export default function IpamRouter() {
       name: IPAM_TABS.SUMMARY,
       onClick: () => {
         if (prefix) {
-          navigate(`/ipam/prefixes/${encodeURIComponent(prefix)}`);
+          navigate(constructPath(`${IPAM_ROUTE.PREFIXES}/${prefix}`));
           return;
         }
 
-        navigate("/ipam/prefixes");
+        navigate(constructPath(IPAM_ROUTE.PREFIXES));
         return;
       },
     },
@@ -61,14 +63,11 @@ export default function IpamRouter() {
       label: "Prefix Details",
       name: IPAM_TABS.PREFIX_DETAILS,
       onClick: () => {
-        if (prefix) {
-          navigate(
-            `/ipam/prefixes/${encodeURIComponent(prefix)}?${IPAM_QSP}=${IPAM_TABS.PREFIX_DETAILS}`
-          );
-          return;
-        }
-
-        navigate(`/ipam/prefixes?${IPAM_QSP}=${IPAM_TABS.PREFIX_DETAILS}`);
+        navigate(
+          constructPath(prefix ? `${IPAM_ROUTE.PREFIXES}/${prefix}` : IPAM_ROUTE.PREFIXES, [
+            { name: IPAM_QSP, value: IPAM_TABS.PREFIX_DETAILS },
+          ])
+        );
         return;
       },
     },
@@ -78,12 +77,16 @@ export default function IpamRouter() {
       onClick: () => {
         if (prefix) {
           navigate(
-            `/ipam/prefixes/${encodeURIComponent(prefix)}?${IPAM_QSP}=${IPAM_TABS.IP_DETAILS}`
+            constructPath(`${IPAM_ROUTE.PREFIXES}/${prefix}`, [
+              { name: IPAM_QSP, value: IPAM_TABS.IP_DETAILS },
+            ])
           );
           return;
         }
 
-        navigate(`/ipam/ip-addresses?${IPAM_QSP}=${IPAM_TABS.IP_DETAILS}`);
+        navigate(
+          constructPath(IPAM_ROUTE.ADDRESSES, [{ name: IPAM_QSP, value: IPAM_TABS.IP_DETAILS }])
+        );
         return;
       },
     },
@@ -94,9 +97,7 @@ export default function IpamRouter() {
       case IPAM_TABS.IP_DETAILS: {
         return <IpamIPAddresses ref={refetchRef} />;
       }
-      case IPAM_TABS.PREFIX_DETAILS: {
-        return <IpamIPPrefixes ref={refetchRef} />;
-      }
+      case IPAM_TABS.PREFIX_DETAILS:
       default: {
         return <IpamIPPrefixes ref={refetchRef} />;
       }
@@ -117,10 +118,10 @@ export default function IpamRouter() {
   );
 
   return (
-    <Card className="p-0 overflow-hidden flex flex-col h-full">
+    <Card className="p-0 overflow-hidden flex flex-col h-full" data-testid="ipam-main-content">
       <Tabs tabs={tabs} qsp={IPAM_QSP} rightItems={rightitems} />
 
-      <div className="m-4">{renderContent()}</div>
+      <div className="m-4 flex-grow overflow-auto">{renderContent()}</div>
 
       <SlideOver
         title={

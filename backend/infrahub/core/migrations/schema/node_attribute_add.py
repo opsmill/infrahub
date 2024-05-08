@@ -50,7 +50,7 @@ class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery):
         }
         WITH n1 as n, r1 as rb
         WHERE rb.status = "active"
-        MERGE (av:AttributeValue { value: $attr_value })
+        MERGE (av:AttributeValue { value: $attr_value, is_default: true })
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
         MERGE (is_visible_value:Boolean { value: $is_visible_default })
         WITH n, av, is_protected_value, is_visible_value

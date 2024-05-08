@@ -14,10 +14,10 @@ from infrahub_sdk.utils import get_branch, is_valid_url
 
 class ProxyMountsConfig(pydantic.BaseSettings):
     http: str = pydantic.Field(
-        default=None, description="Proxy for HTTP requests", alias="http://", env="INFRAHUB_SDK_PROXY_MOUNTS_HTTP"
+        default=None, description="Proxy for HTTP requests", alias="http://", env="INFRAHUB_PROXY_MOUNTS_HTTP"
     )
     https: str = pydantic.Field(
-        default=None, description="Proxy for HTTPS requests", alias="https://", env="INFRAHUB_SDK_PROXY_MOUNTS_HTTPS"
+        default=None, description="Proxy for HTTPS requests", alias="https://", env="INFRAHUB_PROXY_MOUNTS_HTTPS"
     )
 
     class Config:
@@ -61,7 +61,7 @@ class ConfigBase(pydantic.BaseSettings):
     update_group_context: bool = pydantic.Field(default=False, description="Update GraphQL query groups")
 
     class Config:
-        env_prefix = "INFRAHUB_SDK_"
+        env_prefix = "INFRAHUB_"
         case_sensitive = False
         validate_assignment = True
 
@@ -97,7 +97,7 @@ class ConfigBase(pydantic.BaseSettings):
     @classmethod
     def validate_address(cls, value: str) -> str:
         if is_valid_url(value):
-            return value
+            return value.rstrip("/")
 
         raise ValueError("The configured address is not a valid url")
 
