@@ -2,7 +2,7 @@ import re
 from typing import List, Optional
 
 import ujson
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from lunr.index import Index
 from pydantic import BaseModel
 
@@ -37,8 +37,8 @@ async def get_config() -> ConfigAPI:
 
 
 @router.get("/info")
-async def get_info() -> InfoAPI:
-    return InfoAPI(deployment_id=str(registry.id), version=__version__)
+async def get_info(request: Request) -> InfoAPI:
+    return InfoAPI(deployment_id=str(registry.id), version=request.app.version)
 
 
 class SearchDocs:
