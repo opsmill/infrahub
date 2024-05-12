@@ -136,6 +136,9 @@ class DatabaseSettings(BaseSettings):
     address: str = "localhost"
     port: int = 7687
     database: Optional[str] = Field(default=None, pattern=VALID_DATABASE_NAME_REGEX, description="Name of the database")
+    tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
+    tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
+    tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
     query_size_limit: int = Field(
         default=5000,
         ge=1,
@@ -160,6 +163,8 @@ class BrokerSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
     enable: bool = True
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
+    tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
+    tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
     username: str = "infrahub"
     password: str = "infrahub"
     address: str = "localhost"
@@ -193,6 +198,9 @@ class CacheSettings(BaseSettings):
     driver: CacheDriver = CacheDriver.Redis
     username: str = "infrahub"
     password: str = "infrahub"
+    tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
+    tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
+    tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
 
     @property
     def service_port(self) -> int:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ssl
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 import nats
@@ -28,10 +29,20 @@ class NATSCache(InfrahubCache):
         }
 
     async def initialize(self, service: InfrahubServices) -> None:
+        tls_context = None
+        if config.SETTINGS.cache.tls_enabled:
+            tls_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
+            if config.SETTINGS.cache.tls_ca_file:
+                tls_context.load_verify_locations(cafile=config.SETTINGS.cache.tls_ca_file)
+            if config.SETTINGS.cache.tls_insecure:
+                tls_context.check_hostname = False
+                tls_context.verify_mode = ssl.CERT_NONE
+
         self.connection = await nats.connect(
             f"nats://{config.SETTINGS.cache.address}:{config.SETTINGS.cache.service_port}",
             user=config.SETTINGS.cache.username,
             password=config.SETTINGS.cache.password,
+            tls=tls_context,
         )
 
         self.jetstream = self.connection.jetstream()
