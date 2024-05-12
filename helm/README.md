@@ -12,7 +12,6 @@ The chart includes the following files and directories:
 - `templates/`: Contains the template files for Kubernetes resources.
   - `_helpers.tpl`: Template helpers/definitions.
   - `cache.yaml`: Defines the cache (Redis) deployment, service, and PVC.
-  - `infrahub-configmap.yaml`: ConfigMap for Infrahub configuration.
   - `message-queue-configmap.yaml`: ConfigMap for RabbitMQ configuration.
   - `database.yaml`: Database (Neo4j) deployment, service, and PVC.
   - `infrahub-git.yaml`: Infrahub Git service deployment and service.
@@ -23,11 +22,9 @@ The chart includes the following files and directories:
   - `message-queue.yaml`: Message Queue (RabbitMQ) deployment and service.
 - `values.yaml`: Defines configuration values for the chart.
 
-## ConfigMap for Infrahub Configuration
+## Infrahub Configuration
 
-The `configmap.yaml` file defines a ConfigMap that includes the `infrahub.toml` configuration file. This approach avoids the need to load the configuration from a host path, making the deployment more portable and cloud-friendly.
-
-The ConfigMap is structured as follows:
+The Infrahub configuration is structured as follows:
 
 - The `internal_address` is dynamically set based on the release name, namespace, and cluster domain.
 - Database, broker, cache, and other service addresses are set dynamically, referring to the relevant services within the Kubernetes cluster.

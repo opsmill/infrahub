@@ -23,13 +23,27 @@ spec:
       {{- end }}
       containers:
         - args: {{- toYaml .Values.infrahubGit.infrahubGit.args | nindent 12 }}
-          {{- with .Values.infrahubGit.infrahubGit.env }}
           env:
-            {{- range $key, $value := . }}
+            - name: INFRAHUB_INTERNAL_ADDRESS
+              value: "http://{{ include "infrahub-helm.fullname" . }}-infrahub-server.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}:8000"
+            - name: INFRAHUB_DATABASE_ADDRESS
+              value: "{{ include "infrahub-helm.fullname" . }}-database.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
+            - name: INFRAHUB_DATABASE_PORT
+              value: "{{ (index .Values.database.ports 2).port }}"
+            - name: INFRAHUB_BROKER_ADDRESS
+              value: "{{ include "infrahub-helm.fullname" . }}-message-queue.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
+            - name: INFRAHUB_BROKER_USERNAME
+              value: {{ .Values.messageQueue.auth.username | quote }}
+            - name: INFRAHUB_BROKER_PASSWORD
+              value: {{ .Values.messageQueue.auth.password | quote }}
+            - name: INFRAHUB_CACHE_ADDRESS
+              value: "{{ include "infrahub-helm.fullname" . }}-cache.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
+            - name: INFRAHUB_CACHE_PORT
+              value: "{{ (index .Values.cache.ports 0).port }}"
+            {{- range $key, $value := .Values.infrahubGit.infrahubGit.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
-          {{- end }}
           image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
           imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.infrahubGit.infrahubGit.imagePullPolicy }}
           name: infrahub-git
@@ -38,8 +52,6 @@ spec:
           volumeMounts:
             - name: git-data
               mountPath: /opt/infrahub/git
-            - name: config-volume
-              mountPath: /config
       restartPolicy: Always
       volumes:
         {{- if and .Values.infrahubGit.persistence.enabled }}
@@ -50,9 +62,6 @@ spec:
         - name: git-data
           emptyDir: {}
         {{- end }}
-        - name: config-volume
-          configMap:
-            name: {{ include "infrahub-helm.fullname" . }}-infrahub-config
 
 {{- if and .Values.infrahubGit.persistence.enabled (not .Values.infrahubGit.persistence.existingClaim) }}
 ---
