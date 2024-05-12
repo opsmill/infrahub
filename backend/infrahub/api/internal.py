@@ -6,7 +6,7 @@ from fastapi import APIRouter, Request
 from lunr.index import Index
 from pydantic import BaseModel
 
-from infrahub import __version__, config
+from infrahub import config
 from infrahub.config import AnalyticsSettings, ExperimentalFeaturesSettings, LoggingSettings, MainSettings
 from infrahub.core import registry
 from infrahub.exceptions import NodeNotFoundError
