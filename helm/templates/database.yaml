@@ -28,6 +28,11 @@ spec:
               value: {{ quote .Values.database.database.env.neo4JDbmsSecurityProceduresUnrestricted }}
             - name: KUBERNETES_CLUSTER_DOMAIN
               value: {{ quote .Values.global.kubernetesClusterDomain }}
+          {{- with .Values.database.database.envFromExistingSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ . }}
+          {{- end }}
           image: {{ .Values.database.database.image.repository }}:{{ .Values.database.database.image.tag }}
           imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.database.database.imagePullPolicy }}
           livenessProbe:

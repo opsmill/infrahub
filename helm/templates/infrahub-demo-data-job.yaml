@@ -40,6 +40,11 @@ spec:
               value: {{ $value | quote }}
             {{- end }}
           {{- end }}
+          {{- with .Values.infrahubServer.infrahubServer.envFromExistingSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ . }}
+          {{- end }}
           image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
           imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.infrahubDemoData.imagePullPolicy }}
           name: infrahub-demo-data-job

@@ -36,6 +36,11 @@ spec:
               value: "{{ include "infrahub-helm.fullname" . }}-cache.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
             - name: INFRAHUB_CACHE_PORT
               value: "{{ (index .Values.cache.ports 0).port }}"
+          {{- with .Values.infrahubServer.infrahubServer.envFromExistingSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ . }}
+          {{- end }}
           image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
           name: infrahub-server-db-init-job
           resources: {}

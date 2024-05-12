@@ -32,6 +32,9 @@ The Infrahub configuration is structured as follows:
 
 Using environment variables is also possible and recommended to set or override existing configuration values.
 
+It is possible to use Kubernetes secrets to configure credentials required by Infrahub such as the database credentials.
+The `envFromExistingSecret` parameter is available to pass environment variables from Kubernetes secrets.
+
 ## Prerequisites
 
 - Kubernetes 1.12+

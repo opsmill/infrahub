@@ -26,9 +26,9 @@ spec:
           env:
             - name: INFRAHUB_INTERNAL_ADDRESS
               value: "http://{{ include "infrahub-helm.fullname" . }}-infrahub-server.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}:8000"
-            - name: INFRAHUB_DATABASE_ADDRESS
+            - name: INFRAHUB_DB_ADDRESS
               value: "{{ include "infrahub-helm.fullname" . }}-database.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
-            - name: INFRAHUB_DATABASE_PORT
+            - name: INFRAHUB_DB_PORT
               value: "{{ (index .Values.database.ports 2).port }}"
             - name: INFRAHUB_BROKER_ADDRESS
               value: "{{ include "infrahub-helm.fullname" . }}-message-queue.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
@@ -44,6 +44,11 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+          {{- with .Values.infrahubGit.infrahubGit.envFromExistingSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ . }}
+          {{- end }}
           image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
           imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.infrahubGit.infrahubGit.imagePullPolicy }}
           name: infrahub-git
