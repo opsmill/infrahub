@@ -192,8 +192,8 @@ export const GET_TOP_LEVEL_PREFIXES = gql`
 `;
 
 export const GET_PREFIX_ANCESTORS = gql`
-  query GET_PREFIX_ANCESTORS($namespaces: [ID]) {
-    BuiltinIPPrefix(ip_namespace__ids: $namespaces) {
+  query GET_PREFIX_ANCESTORS($ids: [ID], $namespaces: [ID]) {
+    BuiltinIPPrefix(ids: $ids, ip_namespace__ids: $namespaces) {
       edges {
         node {
           id
