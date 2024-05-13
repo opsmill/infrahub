@@ -23,7 +23,7 @@ export const ipamTreeAtom = atom<TreeProps["data"]>(EMPTY_IPAM_TREE);
 
 export const reloadIpamTreeAtom = atom(
   null,
-  async (get, set, currentPrefixId?: string, namespace?: string) => {
+  async (get, set, currentPrefixId?: string, namespace?: string | null) => {
     const defaultNamespace = get(defaultNamespaceAtom);
     const currentIpamTree = get(ipamTreeAtom);
     const currentBranch = get(currentBranchAtom);
