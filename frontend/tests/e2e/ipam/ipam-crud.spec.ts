@@ -141,7 +141,10 @@ test.describe("/ipam - Ipam home page", () => {
       await test.step("delete top level prefix", async () => {
         await page.getByText("Summary").click();
         await page.getByRole("link", { name: "All Prefixes" }).click();
-        await page.getByTestId("select-open-option-button").click();
+        await page
+          .getByTestId("ipam-main-content")
+          .getByTestId("select-open-option-button")
+          .click();
         await page.getByRole("option", { name: "20" }).click();
 
         await page
