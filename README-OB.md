@@ -5,15 +5,15 @@
 
 # Infrahub [![CI](https://github.com/opsmill/infrahub/actions/workflows/ci.yml/badge.svg?branch=stable)](https://github.com/opsmill/infrahub/actions/workflows/ci.yml)
 
-Infrahub from [OpsMill](https://opsmill.com) is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run. Infrahub offers a central hub to manage the data, templates and playbooks that power the network by combining the version control and branch management capabilities of Git with the flexible data model and UI of a graph database.
+Infrahub from [OpsMill](https://opsmill.com) is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run. Infrahub offers a central hub to manage the data, templates and playbooks that power the infrastructure by combining the version control and branch management capabilities of Git with the flexible data model and UI of a graph database.
 
 ## Quick Start
+
+Leveraging [GitHub Codespaces](https://docs.github.com/en/codespaces/overview), it's possible to start a fresh instance of Infrahub in the Cloud in minutes.
 
 |  No Data | Demo Data |
 |---|---|
 | [![Launch in GitHub Codespaces (No data)](https://img.shields.io/badge/Launch%20Infrahub-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable) | [![Launch in GitHub Codespaces (Demo data)](https://img.shields.io/badge/Infrahub%20with%20Data-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable) |
-
-Leveraging [Codespaces](https://docs.github.com/en/codespaces/overview) from Github, it's possible to start a fresh instance of Infrahub in the Cloud in minutes. This is the recommended method to try Infrahub as it simplifies the process of setting up Infrahub to just a few steps.
 
 ## Documentation
 
@@ -25,7 +25,7 @@ If you'd like to learn more about Infrahub or deploy a local instance, please re
 
 ## Community
 
-[![Join our Discord server](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/jXMRp9hXSX) <-- Join our Discord Server
+[![Join our Discord server](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/jXMRp9hXSX) ← Join our Discord community
 
 We develop Infrahub for customers and for the community. We are open to pull requests. Please first discuss your intentions via [Issues](https://github.com/opsmill/infrahub/issues).
 
