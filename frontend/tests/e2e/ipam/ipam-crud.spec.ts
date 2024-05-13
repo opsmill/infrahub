@@ -48,15 +48,14 @@ test.describe("/ipam - Ipam home page", () => {
           .getByRole("treeitem", { name: "2001:db8::/112" })
           .getByTestId("tree-item-toggle")
           .click();
-        await expect(
-          page.getByRole("treeitem", { name: "2001:db8::600/120" }).nth(1)
-        ).toBeVisible();
+        await expect(page.getByRole("treeitem", { name: ":db8::600/120" }).nth(1)).toBeVisible();
       });
 
       await test.step("update a prefix from list", async () => {
         await page.getByText("Prefix Details").click();
         await page
           .getByRole("row", { name: "2001:db8::600/120" })
+          .nth(1)
           .getByTestId("update-row-button")
           .click();
         await page.getByLabel("Description").fill("desc from list");
