@@ -28,79 +28,137 @@ test.describe("/ipam - Ipam home page", () => {
   test.describe("CRUD", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-    test("create, validate ui then delete a prefix", async ({ page }) => {
+    test("create, validate ui then delete a prefix with a parents and children", async ({
+      page,
+    }) => {
       await page.goto("/ipam");
+      await expect(page.getByRole("treeitem", { name: "10.0.0.0/8" })).toBeVisible();
 
-      await test.step("create a prefix", async () => {
+      await test.step("validate initial tree", async () => {
+        await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(4);
+      });
+
+      await test.step("create a prefix at top level", async () => {
         await page.getByTestId("create-object-button").click();
         await page
           .getByTestId("side-panel-container")
           .getByTestId("select-open-option-button")
           .click();
         await page.getByRole("option", { name: "IpamIPPrefix" }).click();
-        await page.getByLabel("Prefix *").fill("2001:db8::600/120");
+        await page.getByLabel("Prefix *").fill("11.0.0.0/8");
         await page.getByRole("button", { name: "Create" }).click();
         await expect(page.getByText("IPPrefix created")).toBeVisible();
       });
 
-      await test.step("new prefix is correctly positioned in tree", async () => {
+      await test.step("validate new top level tree", async () => {
+        await expect(page.getByRole("treeitem", { name: "11.0.0.0/8" })).toBeVisible();
+        await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(5);
+      });
+
+      await test.step("create a children prefix", async () => {
+        await page.getByTestId("create-object-button").click();
         await page
-          .getByRole("treeitem", { name: "2001:db8::/112" })
+          .getByTestId("side-panel-container")
+          .getByTestId("select-open-option-button")
+          .click();
+        await page.getByRole("option", { name: "IpamIPPrefix" }).click();
+        await page.getByLabel("Prefix *").fill("11.0.0.0/16");
+        await page.getByRole("button", { name: "Create" }).click();
+        await expect(page.getByText("IPPrefix created")).toBeVisible();
+      });
+
+      await test.step("validate new top level tree", async () => {
+        await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(5);
+        await page
+          .getByRole("treeitem", { name: "11.0.0.0/8" })
           .getByTestId("tree-item-toggle")
           .click();
-        await expect(page.getByRole("treeitem", { name: ":db8::600/120" }).nth(1)).toBeVisible();
+        await expect(page.getByRole("treeitem", { name: "11.0.0.0/16" })).toBeVisible();
+        await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(6);
       });
 
-      await test.step("update a prefix from list", async () => {
+      await test.step("create a prefix between a parent and its children", async () => {
+        await page.getByTestId("create-object-button").click();
+        await page
+          .getByTestId("side-panel-container")
+          .getByTestId("select-open-option-button")
+          .click();
+        await page.getByRole("option", { name: "IpamIPPrefix" }).click();
+        await page.getByLabel("Prefix *").fill("11.0.0.0/10");
+        await page.getByRole("button", { name: "Create" }).click();
+        await expect(page.getByText("IPPrefix created")).toBeVisible();
+      });
+
+      await test.step("validate tree position", async () => {
+        await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(6);
+        await page
+          .getByRole("treeitem", { name: "11.0.0.0/10" })
+          .getByTestId("tree-item-toggle")
+          .click();
+        await expect(page.getByRole("treeitem", { name: "11.0.0.0/16" })).toBeVisible();
+        await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(7);
+      });
+
+      await test.step("delete a prefix between 2 other prefixes", async () => {
+        await page.getByTestId("ipam-tree").getByRole("link", { name: "11.0.0.0/8" }).click();
         await page.getByText("Prefix Details").click();
-        await page
-          .getByRole("row", { name: "2001:db8::600/120" })
-          .nth(1)
-          .getByTestId("update-row-button")
-          .click();
-        await page.getByLabel("Description").fill("desc from list");
-        await page.getByRole("button", { name: "Save" }).click();
-
-        await expect(page.getByText("IPPrefix updated")).toBeVisible();
-        await expect(page.getByRole("row", { name: "2001:db8::600/120" })).toContainText(
-          "desc from list"
-        );
-      });
-
-      await test.step("update a prefix from summary", async () => {
-        await page
-          .getByRole("row", { name: "2001:db8::600/120" })
-          .getByRole("link", { name: "2001:db8::600/120" })
-          .click();
-        await page.getByText("Summary").click();
-
-        await page.getByTestId("ip-summary-edit-button").click();
-        await page.getByLabel("Description").fill("desc from summary");
-        await page.getByRole("button", { name: "Save" }).click();
-        await expect(page.getByText("IPPrefix updated")).toBeVisible();
-        await expect(page.getByText("Descriptiondesc from summary")).toBeVisible();
-      });
-
-      await test.step("delete a prefix", async () => {
-        await page.getByText("Prefix Details").click();
-        await page
-          .getByTestId("ipam-main-content")
-          .getByRole("link", { name: "2001:db8::/112" })
-          .click();
 
         await page
-          .getByRole("row", { name: "2001:db8::600/120" })
+          .getByRole("row", { name: "11.0.0.0/10" })
           .getByTestId("delete-row-button")
           .click();
         await expect(page.getByTestId("modal-delete")).toContainText(
-          "Are you sure you want to delete the Prefix: 2001:db8::600/120"
+          "Are you sure you want to delete the Prefix: 11.0.0.0/10"
         );
         await page.getByTestId("modal-delete-confirm").click();
 
-        await expect(page.getByTestId("alert-prefix-deleted")).toContainText(
-          "Prefix 2001:db8::600/120 deleted"
+        await expect(page.getByText("Prefix 11.0.0.0/10 deleted")).toBeVisible();
+      });
+
+      await test.step("validate deleted prefix is removed from tree", async () => {
+        await expect(page.getByRole("treeitem", { name: "11.0.0.0/10" })).toBeHidden();
+        await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(6);
+      });
+
+      await test.step("delete a children prefix", async () => {
+        await page
+          .getByRole("row", { name: "11.0.0.0/16" })
+          .getByTestId("delete-row-button")
+          .click();
+        await expect(page.getByTestId("modal-delete")).toContainText(
+          "Are you sure you want to delete the Prefix: 11.0.0.0/16"
         );
-        await expect(page.getByRole("row", { name: "2001:db8::600/120" })).toBeHidden();
+        await page.getByTestId("modal-delete-confirm").click();
+
+        await expect(page.getByText("Prefix 11.0.0.0/16 deleted")).toBeVisible();
+      });
+
+      await test.step("validate deleted prefix is removed from tree", async () => {
+        await expect(page.getByRole("treeitem", { name: "11.0.0.0/16" })).toBeHidden();
+        await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(5);
+      });
+
+      await test.step("delete top level prefix", async () => {
+        await page.getByText("Summary").click();
+        await page.getByRole("link", { name: "All Prefixes" }).click();
+        await page.getByTestId("select-open-option-button").click();
+        await page.getByRole("option", { name: "20" }).click();
+
+        await page
+          .getByRole("row", { name: "11.0.0.0/8" })
+          .getByTestId("delete-row-button")
+          .click();
+        await expect(page.getByTestId("modal-delete")).toContainText(
+          "Are you sure you want to delete the Prefix: 11.0.0.0/8"
+        );
+        await page.getByTestId("modal-delete-confirm").click();
+
+        await expect(page.getByText("Prefix 11.0.0.0/8 deleted")).toBeVisible();
+      });
+
+      await test.step("validate deleted prefix is removed from tree", async () => {
+        await expect(page.getByRole("treeitem", { name: "11.0.0.0/8" })).toBeHidden();
+        await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(4);
       });
     });
 

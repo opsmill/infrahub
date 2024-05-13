@@ -1,6 +1,6 @@
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -26,6 +26,7 @@ import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "../constants";
+import { reloadIpamTreeAtom } from "../ipam-tree/ipam-tree.state";
 
 const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const { prefix } = useParams();
@@ -35,6 +36,7 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
   const [isLoading, setIsLoading] = useState(false);
   const generics = useAtomValue(genericsState);
+  const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
 
   const prefixSchema = generics.find(({ kind }) => kind === IP_PREFIX_GENERIC);
   const addressSchema = generics.find(({ kind }) => kind === IP_ADDRESS_GENERIC);
@@ -142,6 +144,7 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
       });
 
       refetch();
+      reloadIpamTree(prefix);
 
       setRelatedRowToDelete(undefined);
 

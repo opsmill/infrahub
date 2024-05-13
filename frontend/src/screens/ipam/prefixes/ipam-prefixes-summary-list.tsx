@@ -1,7 +1,8 @@
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { forwardRef, useImperativeHandle, useState } from "react";
+import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import SlideOver from "../../../components/display/slide-over";
@@ -24,8 +25,10 @@ import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
 import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
+import { reloadIpamTreeAtom } from "../ipam-tree/ipam-tree.state";
 
 const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
+  const { prefix } = useParams();
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
@@ -33,6 +36,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
   const [relatedRowToDelete, setRelatedRowToDelete] = useState();
   const [isLoading, setIsLoading] = useState(false);
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
+  const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
 
   const { loading, error, data, refetch } = useQuery(GET_PREFIXES, {
     variables: { namespaces: namespace ? [namespace] : [defaultNamespace] },
@@ -111,15 +115,16 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
       });
 
       refetch();
+      reloadIpamTree(prefix);
 
       setRelatedRowToDelete(undefined);
 
-      toast(
+      toast(() => (
         <Alert
           type={ALERT_TYPES.SUCCESS}
           message={`Prefix ${relatedRowToDelete?.values?.prefix} deleted`}
         />
-      );
+      ));
     } catch (error) {
       console.error("Error while deleting address: ", error);
     }

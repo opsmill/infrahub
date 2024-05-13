@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -21,6 +21,7 @@ import {
   IP_PREFIX_GENERIC,
 } from "./constants";
 import IpamIPAddresses from "./ip-addresses/ipam-ip-address";
+import { reloadIpamTreeAtom } from "./ipam-tree/ipam-tree.state";
 import IpamIPPrefixes from "./prefixes/ipam-prefixes";
 
 const tabToKind = {
@@ -36,6 +37,7 @@ export default function IpamRouter() {
   const branch = useAtomValue(currentBranchAtom);
   const schemaList = useAtomValue(schemaState);
   const genericList = useAtomValue(genericsState);
+  const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
   const refetchRef = useRef(null);
 
   const objectname = qspTab ? tabToKind[qspTab] : IP_PREFIX_GENERIC;
@@ -159,7 +161,10 @@ export default function IpamRouter() {
         open={showCreateDrawer}
         setOpen={setShowCreateDrawer}>
         <ObjectItemCreate
-          onCreate={() => setShowCreateDrawer(false)}
+          onCreate={() => {
+            reloadIpamTree(prefix);
+            setShowCreateDrawer(false);
+          }}
           onCancel={() => setShowCreateDrawer(false)}
           objectname={objectname!}
           refetch={refetchRef?.current?.refetch}
