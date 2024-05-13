@@ -6,7 +6,6 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Tree, TreeItemProps } from "../../../components/ui/tree";
 import { useLazyQuery } from "../../../hooks/useQuery";
 
-import { useAtomValue } from "jotai/index";
 import {
   GET_PREFIX_ANCESTORS,
   GET_PREFIXES_ONLY,
@@ -23,12 +22,14 @@ import {
   PrefixData,
   updateTreeData,
 } from "./utils";
+import { useAtom, useAtomValue } from "jotai";
+import { ipamTreeAtom } from "./ipam-tree.state";
 
 export default function IpamTree() {
   const { prefix } = useParams();
   const [selected, setSelected] = useState<NodeId[]>([]);
   const [isLoading, setLoading] = useState(true);
-  const [treeData, setTreeData] = useState(EMPTY_IPAM_TREE);
+  const [treeData, setTreeData] = useAtom(ipamTreeAtom);
   const [fetchTopLevelIpPrefixes] = useLazyQuery<PrefixData>(GET_TOP_LEVEL_PREFIXES);
   const [fetchPrefixAncestors] = useLazyQuery<AncestorsData>(GET_PREFIX_ANCESTORS);
   const [fetchPrefixes] = useLazyQuery<PrefixData, { parentIds: string[] }>(GET_PREFIXES_ONLY);
