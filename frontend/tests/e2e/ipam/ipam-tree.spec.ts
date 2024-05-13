@@ -6,6 +6,7 @@ test.describe("/ipam - Ipam Tree", () => {
 
     await expect(page.getByRole("heading", { name: "Navigation" })).toBeVisible();
     await expect(page.getByTestId("ipam-tree")).toBeVisible();
+    await expect(page.getByTestId("ipam-tree-item").first()).toBeVisible();
     await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(4);
 
     await page
