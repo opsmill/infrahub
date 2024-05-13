@@ -32,7 +32,9 @@ from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.middleware import InfrahubCORSMiddleware
 from infrahub.services import InfrahubServices, services
+from infrahub.services.adapters.cache.nats import NATSCache
 from infrahub.services.adapters.cache.redis import RedisCache
+from infrahub.services.adapters.message_bus.nats import NATSMessageBus
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.trace import add_span_exception, configure_trace, get_traceid
 from infrahub.worker import WORKER_IDENTITY
@@ -55,18 +57,22 @@ async def app_initialization(application: FastAPI) -> None:
     database = application.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
     database.manager.index.init(nodes=node_indexes, rels=rel_indexes)
 
-    initialize_lock()
-
     build_component_registry()
-    async with application.state.db.start_session() as db:
-        await initialization(db=db)
 
-    message_bus = config.OVERRIDE.message_bus or RabbitMQMessageBus()
-    cache = config.OVERRIDE.cache or RedisCache()
+    message_bus = config.OVERRIDE.message_bus or (
+        NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
+    )
+    cache = config.OVERRIDE.cache or (
+        NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
+    )
     service = InfrahubServices(
         cache=cache, database=database, message_bus=message_bus, component_type=ComponentType.API_SERVER
     )
     await service.initialize()
+    initialize_lock(service=service)
+    # We must initialize DB after initialize lock and initialize lock depends on cache initialization
+    async with application.state.db.start_session() as db:
+        await initialization(db=db)
     services.prepare(service=service)
     application.state.service = service
 

@@ -10,6 +10,7 @@ from infrahub.exceptions import CheckError
 from infrahub.git.repository import InfrahubRepository
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
+from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
 
 log = get_logger()
@@ -120,7 +121,9 @@ async def check_definition(message: messages.CheckRepositoryCheckDefinition, ser
         checks_in_execution = ",".join(check_execution_ids)
         log.info("Checks in execution", checks=checks_in_execution)
         await service.cache.set(
-            key=f"validator_execution_id:{validator_execution_id}:checks", value=checks_in_execution, expires=7200
+            key=f"validator_execution_id:{validator_execution_id}:checks",
+            value=checks_in_execution,
+            expires=KVTTL.TWO_HOURS,
         )
         events.append(
             messages.FinalizeValidatorExecution(
@@ -213,7 +216,7 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
     await service.cache.set(
         key=f"validator_execution_id:{message.validator_execution_id}:check_execution_id:{message.check_execution_id}",
         value=validator_conclusion,
-        expires=7200,
+        expires=KVTTL.TWO_HOURS,
     )
 
 
@@ -280,5 +283,5 @@ async def user_check(message: messages.CheckRepositoryUserCheck, service: Infrah
     await service.cache.set(
         key=f"validator_execution_id:{message.validator_execution_id}:check_execution_id:{message.check_execution_id}",
         value=conclusion,
-        expires=7200,
+        expires=KVTTL.TWO_HOURS,
     )

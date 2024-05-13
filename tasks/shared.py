@@ -21,13 +21,17 @@ INVOKE_PTY = os.getenv("INVOKE_PTY", None)
 INFRAHUB_DATABASE = os.getenv("INFRAHUB_DB_TYPE", DatabaseType.NEO4J.value)
 INFRAHUB_ADDRESS = os.getenv("INFRAHUB_ADDRESS", "http://localhost:8000")
 
+INFRAHUB_USE_NATS = bool(os.getenv("INFRAHUB_USE_NATS", False))
+
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
 MEMGRAPH_DOCKER_IMAGE = os.getenv(
     "MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-platform:2.14.0-memgraph2.14.0-lab2.11.1-mage1.14"
 )
 NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.19.0-enterprise")
-MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv("MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.13.1-management")
-CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4")
+MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
+    "MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.13.1-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine"
+)
+CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine")
 
 here = os.path.abspath(os.path.dirname(__file__))
 TOP_DIRECTORY_NAME = os.path.basename(os.path.abspath(os.path.join(here, "..")))
@@ -42,16 +46,18 @@ GITHUB_ACTION = os.getenv("GITHUB_ACTION", False)
 AVAILABLE_SERVICES = ["infrahub-git", "infrahub-server", "database", "message-queue"]
 SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
 
+COMPOSE_FILES_DEPS = {False: "development/docker-compose-deps.yml", True: "development/docker-compose-deps-nats.yml"}
+
 TEST_COMPOSE_FILE = "development/docker-compose-test.yml"
 TEST_COMPOSE_FILES_MEMGRAPH = [
-    "development/docker-compose-deps.yml",
+    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     "development/docker-compose-test-database-memgraph.yml",
     "development/docker-compose-test-cache.yml",
     "development/docker-compose-test-message-queue.yml",
     TEST_COMPOSE_FILE,
 ]
 TEST_COMPOSE_FILES_NEO4J = [
-    "development/docker-compose-deps.yml",
+    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     "development/docker-compose-test-database-neo4j.yml",
     "development/docker-compose-test-cache.yml",
     "development/docker-compose-test-message-queue.yml",
@@ -60,13 +66,13 @@ TEST_COMPOSE_FILES_NEO4J = [
 
 TEST_SCALE_COMPOSE_FILE = "development/docker-compose-test-scale.yml"
 TEST_SCALE_COMPOSE_FILES_NEO4J = [
-    "development/docker-compose-deps.yml",
+    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     "development/docker-compose-database-neo4j.yml",
     "development/docker-compose-test-cache.yml",
     TEST_SCALE_COMPOSE_FILE,
 ]
 TEST_SCALE_COMPOSE_FILES_MEMGRAPH = [
-    "development/docker-compose-deps.yml",
+    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     "development/docker-compose-database-memgraph.yml",
     "development/docker-compose-test-cache.yml",
     TEST_SCALE_COMPOSE_FILE,
@@ -81,22 +87,22 @@ OVERRIDE_FILE_NAME = "development/docker-compose.override.yml"
 DEFAULT_FILE_NAME = "development/docker-compose.default.yml"
 LOCAL_FILE_NAME = "development/docker-compose.local-build.yml"
 COMPOSE_FILES_MEMGRAPH = [
-    "development/docker-compose-deps.yml",
+    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     "development/docker-compose-database-memgraph.yml",
     "development/docker-compose.yml",
 ]
 COMPOSE_FILES_NEO4J = [
-    "development/docker-compose-deps.yml",
+    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     "development/docker-compose-database-neo4j.yml",
     "development/docker-compose.yml",
 ]
 
 DEV_COMPOSE_FILES_MEMGRAPH = [
-    "development/docker-compose-deps.yml",
+    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     "development/docker-compose-database-memgraph.yml",
 ]
 DEV_COMPOSE_FILES_NEO4J = [
-    "development/docker-compose-deps.yml",
+    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     "development/docker-compose-database-neo4j.yml",
 ]
 DEV_OVERRIDE_FILE_NAME = "development/docker-compose.dev-override.yml"

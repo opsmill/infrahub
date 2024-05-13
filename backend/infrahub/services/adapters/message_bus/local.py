@@ -28,7 +28,9 @@ class BusSimulator(InfrahubMessageBus):
         self.replies: Dict[str, List[InfrahubMessage]] = defaultdict(list)
         build_component_registry()
 
-    async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
+    async def publish(
+        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+    ) -> None:
         self.messages.append(message)
         if routing_key not in self.messages_per_routing_key:
             self.messages_per_routing_key[routing_key] = []
