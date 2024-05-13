@@ -64,7 +64,7 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const queryString = schema
     ? getObjectDetailsPaginated({
-        ...schema,
+        kind: schema.kind,
         columns,
         attributes, // used for profile
         objectid,
