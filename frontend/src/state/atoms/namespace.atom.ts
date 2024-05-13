@@ -1,3 +1,3 @@
 import { atom } from "jotai";
 
-export const defaultNamespaceAtom = atom<String>("");
+export const defaultNamespaceAtom = atom<string>("");
