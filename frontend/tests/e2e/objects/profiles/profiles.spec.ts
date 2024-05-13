@@ -50,7 +50,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
 
     await expect(page.getByText("Profile Nameprofile test tag")).toBeVisible();
-    await expect(page.getByText("Name-")).toBeVisible();
+    await expect(page.getByText("Profile Priority1000")).toBeVisible();
     await expect(page.getByText("DescriptionA profile for E2E")).toBeVisible();
 
     await test.step("return to profiles list using breadcrumb", async () => {
