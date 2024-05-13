@@ -33,6 +33,8 @@ export default function IpamTree() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!namespace && !defaultNamespace) return;
+
     reloadIpamTree(prefix, namespace).then((newTree) => {
       if (prefix) {
         const ancestorIds = getTreeItemAncestors(newTree, prefix).map(({ id }) => id);
@@ -40,7 +42,7 @@ export default function IpamTree() {
       }
       setLoading(false);
     });
-  }, []);
+  }, [defaultNamespace]);
 
   const onLoadData = async ({ element }: ITreeViewOnLoadDataProps) => {
     if (element.children.length > 0) return; // To avoid refetching data
