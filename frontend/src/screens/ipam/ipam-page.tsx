@@ -10,7 +10,7 @@ export default function IpamPage() {
     <>
       <Content.Title>
         <div className="flex items-center">
-          <h3 className="font-semibold text-sm mr-3">IP Adress Manager</h3>
+          <h3 className="font-semibold text-sm mr-3">IP Address Manager</h3>
 
           <NamespaceSelector />
         </div>

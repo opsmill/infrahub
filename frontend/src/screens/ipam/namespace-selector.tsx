@@ -33,7 +33,7 @@ export default function NamespaceSelector() {
     if (prefix || ip_address) {
       // Redirects to main lists on namespace switch
       if (ipamTab === IPAM_TABS.IP_DETAILS) {
-        // Redirects to main IP Adresses view
+        // Redirects to main IP Addresses view
         navigate(
           constructPath(
             `${IPAM_ROUTE.ADDRESSES}/`,

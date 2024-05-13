@@ -37,7 +37,7 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const generics = useAtomValue(genericsState);
 
   const prefixSchema = generics.find(({ kind }) => kind === IP_PREFIX_GENERIC);
-  const adressSchema = generics.find(({ kind }) => kind === IP_ADDRESS_GENERIC);
+  const addressSchema = generics.find(({ kind }) => kind === IP_ADDRESS_GENERIC);
 
   const { loading, error, data, refetch } = useQuery(GET_PREFIX, {
     variables: { ids: [prefix] },
@@ -70,9 +70,9 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
     ) : (
       ""
     ),
-    prefix: adressSchema?.icon ? (
+    prefix: addressSchema?.icon ? (
       <Tooltip content="IP Adress" enabled>
-        <Icon icon={adressSchema.icon as string} />
+        <Icon icon={addressSchema.icon as string} />
       </Tooltip>
     ) : (
       ""
