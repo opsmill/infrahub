@@ -1,6 +1,6 @@
 
 <!-- markdownlint-disable -->
-![](./docs/media/Infrahub-horizontal.svg)
+![](docs/static/img/infrahub-hori.svg)
 <!-- markdownlint-restore -->
 
 # Infrahub [![CI](https://github.com/opsmill/infrahub/actions/workflows/ci.yml/badge.svg?branch=stable)](https://github.com/opsmill/infrahub/actions/workflows/ci.yml)
