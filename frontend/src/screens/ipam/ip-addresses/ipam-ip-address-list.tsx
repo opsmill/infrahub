@@ -18,7 +18,7 @@ import { GET_IP_ADDRESSES } from "../../../graphql/queries/ipam/ip-address";
 import { GET_PREFIX_KIND } from "../../../graphql/queries/ipam/prefixes";
 import useQuery from "../../../hooks/useQuery";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
-import { defaultNamespaceAtom } from "../../../state/atoms/namespace.atom";
+import { defaultIpNamespaceAtom } from "../../../state/atoms/namespace.atom";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "../../../utils/string";
 import ErrorScreen from "../../errors/error-screen";
@@ -38,7 +38,7 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
   const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
   const [isLoading, setIsLoading] = useState(false);
   const branch = useAtomValue(currentBranchAtom);
-  const defaultNamespace = useAtomValue(defaultNamespaceAtom);
+  const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
   const date = useAtomValue(datetimeAtom);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
@@ -54,14 +54,14 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
   const { loading, error, data, refetch } = useQuery(GET_IP_ADDRESSES, {
     variables: {
       prefixIds: prefix ? [prefix] : null,
-      namespaces: namespace ? [namespace] : [defaultNamespace],
+      namespaces: namespace ? [namespace] : [defaultIpNamespace],
     },
-    skip: !defaultNamespace,
+    skip: !defaultIpNamespace,
   });
 
   const { data: getPrefixKindData } = useQuery(GET_PREFIX_KIND, {
     variables: { ids: [prefix] },
-    skip: !prefix || !defaultNamespace,
+    skip: !prefix || !defaultIpNamespace,
   });
 
   const prefixData = getPrefixKindData?.[IP_PREFIX_GENERIC]?.edges?.[0]?.node;
@@ -161,7 +161,7 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
         </div>
       )}
 
-      {(loading || !defaultNamespace) && <LoadingScreen hideText />}
+      {(loading || !defaultIpNamespace) && <LoadingScreen hideText />}
 
       {data && (
         <Table rows={rows} columns={columns} onDelete={handleDelete} onUpdate={handleUpdate} />

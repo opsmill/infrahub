@@ -8,7 +8,7 @@ import {
   GET_TOP_LEVEL_PREFIXES,
 } from "../../../graphql/queries/ipam/prefixes";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
-import { defaultNamespaceAtom } from "../../../state/atoms/namespace.atom";
+import { defaultIpNamespaceAtom } from "../../../state/atoms/namespace.atom";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
 import { IP_PREFIX_GENERIC, IPAM_TREE_ROOT_ID } from "../constants";
 import {
@@ -24,14 +24,14 @@ export const ipamTreeAtom = atom<TreeProps["data"]>(EMPTY_IPAM_TREE);
 export const reloadIpamTreeAtom = atom(
   null,
   async (get, set, currentPrefixId?: string, namespace?: string | null) => {
-    const defaultNamespace = get(defaultNamespaceAtom);
+    const defaultIpNamespace = get(defaultIpNamespaceAtom);
     const currentIpamTree = get(ipamTreeAtom);
     const currentBranch = get(currentBranchAtom);
     const timeMachineDate = get(datetimeAtom);
 
     const { data: getTopLevelPrefixData } = await graphqlClient.query<PrefixData>({
       query: GET_TOP_LEVEL_PREFIXES,
-      variables: { namespaces: namespace ? [namespace] : [defaultNamespace] },
+      variables: { namespaces: namespace ? [namespace] : [defaultIpNamespace] },
       context: {
         branch: currentBranch?.name,
         date: timeMachineDate,
@@ -60,7 +60,7 @@ export const reloadIpamTreeAtom = atom(
       },
       variables: {
         ids: [currentPrefixId],
-        namespaces: namespace ? [namespace] : [defaultNamespace],
+        namespaces: namespace ? [namespace] : [defaultIpNamespace],
       },
     });
 

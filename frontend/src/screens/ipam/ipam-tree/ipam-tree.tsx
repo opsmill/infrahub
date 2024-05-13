@@ -8,7 +8,7 @@ import { useLazyQuery } from "../../../hooks/useQuery";
 
 import { StringParam, useQueryParam } from "use-query-params";
 import { GET_PREFIXES_ONLY } from "../../../graphql/queries/ipam/prefixes";
-import { defaultNamespaceAtom } from "../../../state/atoms/namespace.atom";
+import { defaultIpNamespaceAtom } from "../../../state/atoms/namespace.atom";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { constructPathForIpam } from "../common/utils";
 import { IPAM_QSP, IPAM_ROUTE } from "../constants";
@@ -24,7 +24,7 @@ import {
 export default function IpamTree() {
   const { prefix } = useParams();
   const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
-  const defaultNamespace = useAtomValue(defaultNamespaceAtom);
+  const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
   const [expandedIds, setExpandedIds] = useState<NodeId[]>([]);
   const [isLoading, setLoading] = useState(true);
   const [treeData, setTreeData] = useAtom(ipamTreeAtom);
@@ -33,7 +33,7 @@ export default function IpamTree() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!namespace && !defaultNamespace) return;
+    if (!namespace && !defaultIpNamespace) return;
 
     reloadIpamTree(prefix, namespace).then((newTree) => {
       if (prefix) {
@@ -42,7 +42,7 @@ export default function IpamTree() {
       }
       setLoading(false);
     });
-  }, [defaultNamespace]);
+  }, [defaultIpNamespace]);
 
   const onLoadData = async ({ element }: ITreeViewOnLoadDataProps) => {
     if (element.children.length > 0) return; // To avoid refetching data
@@ -61,7 +61,7 @@ export default function IpamTree() {
     <nav className="min-w-64">
       <h3 className="font-semibold text-sm mb-3">Navigation</h3>
 
-      {isLoading || !defaultNamespace ? (
+      {isLoading || !defaultIpNamespace ? (
         <IpamTreeSkeleton />
       ) : (
         <Tree

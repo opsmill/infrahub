@@ -17,7 +17,7 @@ import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
 import { GET_PREFIXES } from "../../../graphql/queries/ipam/prefixes";
 import useQuery from "../../../hooks/useQuery";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
-import { defaultNamespaceAtom } from "../../../state/atoms/namespace.atom";
+import { defaultIpNamespaceAtom } from "../../../state/atoms/namespace.atom";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "../../../utils/string";
 import ErrorScreen from "../../errors/error-screen";
@@ -32,15 +32,15 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
-  const defaultNamespace = useAtomValue(defaultNamespaceAtom);
+  const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState();
   const [isLoading, setIsLoading] = useState(false);
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
 
   const { loading, error, data, refetch } = useQuery(GET_PREFIXES, {
-    variables: { namespaces: namespace ? [namespace] : [defaultNamespace] },
-    skip: !defaultNamespace,
+    variables: { namespaces: namespace ? [namespace] : [defaultIpNamespace] },
+    skip: !defaultIpNamespace,
   });
 
   useImperativeHandle(ref, () => ({ refetch }));
@@ -138,7 +138,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
 
   return (
     <div>
-      {(loading || !defaultNamespace) && <LoadingScreen hideText />}
+      {(loading || !defaultIpNamespace) && <LoadingScreen hideText />}
 
       {data && (
         <Table rows={rows} columns={columns} onDelete={handleDelete} onUpdate={handleUpdate} />

@@ -6,7 +6,7 @@ import { Select } from "../../components/inputs/select";
 import { Skeleton } from "../../components/skeleton";
 import { GET_NAMESPACES } from "../../graphql/queries/ipam/namespaces";
 import useQuery from "../../hooks/useQuery";
-import { defaultNamespaceAtom } from "../../state/atoms/namespace.atom";
+import { defaultIpNamespaceAtom } from "../../state/atoms/namespace.atom";
 import { constructPath } from "../../utils/fetch";
 import { IPAM_QSP, IPAM_ROUTE, IPAM_TABS, NAMESPACE_GENERIC } from "./constants";
 
@@ -15,7 +15,7 @@ export default function NamespaceSelector() {
   const { prefix, ip_address } = useParams();
   const [namespace, setNamespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
   const [ipamTab] = useQueryParam(IPAM_QSP.TAB, StringParam);
-  const [defaultNamespaceState, setDefaultNamespaceState] = useAtom(defaultNamespaceAtom);
+  const [defaultIpNamespace, setDefaultIpNamespace] = useAtom(defaultIpNamespaceAtom);
   const [value, setValue] = useState(namespace ?? "");
 
   const { loading, data } = useQuery(GET_NAMESPACES);
@@ -23,7 +23,7 @@ export default function NamespaceSelector() {
   const handleNamespaceChange = (newValue: string) => {
     setValue(newValue);
 
-    if (!newValue || newValue === defaultNamespaceState) {
+    if (!newValue || newValue === defaultIpNamespace) {
       // Removes QSP for default namespace
       setNamespace(undefined);
     } else {
@@ -50,15 +50,15 @@ export default function NamespaceSelector() {
 
   const namespaces = (data && data[NAMESPACE_GENERIC]?.edges.map((edge) => edge.node)) ?? [];
 
-  const defaultNamespace = namespaces.find((result) => result.default?.value);
+  const defaultNamespace = namespaces.find((result) => result.default?.value === true);
 
   if (!value && defaultNamespace?.id) {
     // Store default namespace
     setValue(defaultNamespace.id);
   }
 
-  if (defaultNamespace?.id && !defaultNamespaceState) {
-    setDefaultNamespaceState(defaultNamespace.id);
+  if (defaultNamespace?.id && !defaultIpNamespace) {
+    setDefaultIpNamespace(defaultNamespace.id);
   }
 
   const options = namespaces.map((option) => ({
