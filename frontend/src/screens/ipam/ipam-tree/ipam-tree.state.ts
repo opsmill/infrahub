@@ -99,7 +99,7 @@ export const reloadIpamTreeAtom = atom(null, async (get, set, currentPrefixId?: 
       date: timeMachineDate,
     },
     variables: {
-      parentIds: orderedAncestorIds,
+      parentIds: [...orderedAncestorIds, currentPrefixId],
     },
   });
 
@@ -110,7 +110,7 @@ export const reloadIpamTreeAtom = atom(null, async (get, set, currentPrefixId?: 
     newtreeItems
   );
 
-  const newTree = orderedAncestorIds.reduce((acc, currentAncestorId) => {
+  const newTree = [...orderedAncestorIds, currentPrefixId].reduce((acc, currentAncestorId) => {
     const children = groupedByParent[currentAncestorId];
     if (!children) return acc;
     return updateTreeData(acc, currentAncestorId, children);
