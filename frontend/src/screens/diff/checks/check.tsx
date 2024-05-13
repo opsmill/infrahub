@@ -12,7 +12,7 @@ import { GET_CHECKS } from "../../../graphql/queries/diff/getCheckDetails";
 import useQuery from "../../../hooks/useQuery";
 import { schemaKindLabelState } from "../../../state/atoms/schemaKindLabel.atom";
 import { classNames } from "../../../utils/common";
-import ErrorScreen from "../../error-screen/error-screen";
+import ErrorScreen from "../../errors/error-screen";
 import { Conflict } from "./conflict";
 
 type tCheckProps = {

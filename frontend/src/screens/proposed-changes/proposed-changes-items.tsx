@@ -13,7 +13,7 @@ import { useTitle } from "../../hooks/useTitle";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
 import { getObjectRelationships } from "../../utils/getSchemaObjectColumns";
-import ErrorScreen from "../error-screen/error-screen";
+import ErrorScreen from "../errors/error-screen";
 import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { ProposedChange } from "./proposed-changes-item";

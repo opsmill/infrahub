@@ -10,7 +10,7 @@ import { getObjectDetailsPaginated } from "../../../graphql/queries/objects/getO
 import useQuery from "../../../hooks/useQuery";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { getSchemaObjectColumns } from "../../../utils/getSchemaObjectColumns";
-import NoDataFound from "../../error-screen/no-data-found";
+import NoDataFound from "../../errors/no-data-found";
 import { IpDetailsCard } from "../common/ip-details-card";
 import { constructPathForIpam } from "../common/utils";
 import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";

@@ -33,8 +33,8 @@ import {
   getSchemaObjectColumns,
   getTabs,
 } from "../../utils/getSchemaObjectColumns";
-import ErrorScreen from "../error-screen/error-screen";
-import NoDataFound from "../error-screen/no-data-found";
+import ErrorScreen from "../errors/error-screen";
+import NoDataFound from "../errors/no-data-found";
 import AddObjectToGroup from "../groups/add-object-to-group";
 import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";

@@ -24,7 +24,7 @@ import { classNames } from "../../utils/common";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
-import NoDataFound from "../error-screen/no-data-found";
+import NoDataFound from "../errors/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 
 type iRelationDetailsProps = {

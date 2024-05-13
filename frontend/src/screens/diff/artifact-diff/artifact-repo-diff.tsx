@@ -6,7 +6,7 @@ import { Badge } from "../../../components/display/badge";
 import { getArtifactDetails } from "../../../graphql/queries/getArtifacts";
 import useQuery from "../../../hooks/useQuery";
 import { schemaState } from "../../../state/atoms/schema.atom";
-import ErrorScreen from "../../error-screen/error-screen";
+import ErrorScreen from "../../errors/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import { ArtifactContentDiff } from "./artifact-content-diff";
 

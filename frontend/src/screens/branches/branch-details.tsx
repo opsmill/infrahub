@@ -28,7 +28,7 @@ import { schemaState } from "../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { objectToString } from "../../utils/common";
 import { constructPath, getCurrentQsp } from "../../utils/fetch";
-import ErrorScreen from "../error-screen/error-screen";
+import ErrorScreen from "../errors/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "../proposed-changes/conversations";

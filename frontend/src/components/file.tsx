@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import NoDataFound from "../screens/error-screen/no-data-found";
+import NoDataFound from "../screens/errors/no-data-found";
 import LoadingScreen from "../screens/loading-screen/loading-screen";
 import { fetchStream } from "../utils/fetch";
 import { CodeEditor } from "./editor/code-editor";

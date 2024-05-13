@@ -16,8 +16,8 @@ import { datetimeAtom } from "../../state/atoms/time.atom";
 import { getFormStructureForAddObjectToGroup } from "../../utils/formStructureForAddObjectToGroup";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
-import ErrorScreen from "../error-screen/error-screen";
-import NoDataFound from "../error-screen/no-data-found";
+import ErrorScreen from "../errors/error-screen";
+import NoDataFound from "../errors/no-data-found";
 import LoadingScreen from "../loading-screen/loading-screen";
 
 interface Props {

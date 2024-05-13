@@ -27,8 +27,8 @@ import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue
 import { getGroupColumns } from "../../utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
-import ErrorScreen from "../error-screen/error-screen";
-import NoDataFound from "../error-screen/no-data-found";
+import ErrorScreen from "../errors/error-screen";
+import NoDataFound from "../errors/no-data-found";
 import LoadingScreen from "../loading-screen/loading-screen";
 
 export default function GroupItems() {

@@ -3,8 +3,8 @@ import { Pagination } from "../../../components/utils/pagination";
 import { getValidatorDetails } from "../../../graphql/queries/diff/getValidatorDetails";
 import usePagination from "../../../hooks/usePagination";
 import useQuery from "../../../hooks/useQuery";
-import ErrorScreen from "../../error-screen/error-screen";
-import NoDataFound from "../../error-screen/no-data-found";
+import ErrorScreen from "../../errors/error-screen";
+import NoDataFound from "../../errors/no-data-found";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import { Check } from "./check";
 
