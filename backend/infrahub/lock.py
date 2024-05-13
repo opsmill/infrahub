@@ -4,7 +4,7 @@ import time
 import uuid
 from asyncio import Lock as LocalLock
 from asyncio import sleep
-from typing import TYPE_CHECKING, Dict, List, Optional, Type
+from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
 
 import redis.asyncio as redis
 from prometheus_client import Histogram
@@ -14,6 +14,8 @@ from infrahub import config
 
 if TYPE_CHECKING:
     from types import TracebackType
+
+    from infrahub.services import InfrahubServices
 
 registry: InfrahubLockRegistry = None
 
@@ -67,6 +69,40 @@ class InfrahubMultiLock:
             await self.registry.get(name=lock).release()
 
 
+class NATSLock:
+    """Context manager to lock using NATS"""
+
+    def __init__(self, service: InfrahubServices, name: str):
+        self.name = name
+        self.token = None
+        self.service = service
+
+    async def __aenter__(self):
+        await self.acquire()
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ):
+        await self.release()
+
+    async def acquire(self) -> None:
+        token = uuid.uuid1().hex
+        while True:
+            if await self.do_acquire(token):
+                self.token = token
+                return True
+            await sleep(0.1)  # default Redis GlobalLock value
+
+    async def do_acquire(self, token: str) -> bool:
+        return await self.service.cache.set(key=self.name, value=token, not_exists=True)
+
+    async def release(self) -> None:
+        await self.service.cache.delete(key=self.name)
+
+
 class InfrahubLock:
     """InfrahubLock object to provide a unified interface for both Local and Distributed locks.
 
@@ -74,7 +110,11 @@ class InfrahubLock:
     """
 
     def __init__(
-        self, name: str, connection: Optional[redis.Redis] = None, local: Optional[bool] = None, in_multi: bool = False
+        self,
+        name: str,
+        connection: Optional[Union[redis.Redis, InfrahubServices]] = None,
+        local: Optional[bool] = None,
+        in_multi: bool = False,
     ):
         self.use_local: bool = local
         self.local: LocalLock = None
@@ -90,8 +130,10 @@ class InfrahubLock:
 
         if self.use_local:
             self.local = LocalLock()
-        else:
+        elif config.SETTINGS.cache.driver == config.CacheDriver.Redis:
             self.remote = GlobalLock(redis=self.connection, name=self.name)
+        else:
+            self.remote = NATSLock(service=self.connection, name=self.name)
 
     async def __aenter__(self):
         await self.acquire()
@@ -128,13 +170,18 @@ class InfrahubLock:
 
 
 class InfrahubLockRegistry:
-    def __init__(self, token: Optional[str] = None, local_only: bool = False):
+    def __init__(
+        self, token: Optional[str] = None, local_only: bool = False, service: Optional[InfrahubServices] = None
+    ):
         if config.SETTINGS.cache.enable and not local_only:
-            self.connection = redis.Redis(
-                host=config.SETTINGS.cache.address,
-                port=config.SETTINGS.cache.service_port,
-                db=config.SETTINGS.cache.database,
-            )
+            if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
+                self.connection = redis.Redis(
+                    host=config.SETTINGS.cache.address,
+                    port=config.SETTINGS.cache.service_port,
+                    db=config.SETTINGS.cache.database,
+                )
+            else:
+                self.connection = service
         else:
             self.connection = None
 
@@ -191,6 +238,6 @@ class InfrahubLockRegistry:
             await sleep(0.1)
 
 
-def initialize_lock(local_only: bool = False):
+def initialize_lock(local_only: bool = False, service: Optional[InfrahubServices] = None):
     global registry  # pylint: disable=global-statement
-    registry = InfrahubLockRegistry(local_only=local_only)
+    registry = InfrahubLockRegistry(local_only=local_only, service=service)
