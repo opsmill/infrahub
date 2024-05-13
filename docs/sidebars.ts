@@ -17,6 +17,15 @@ const sidebars: SidebarsConfig = {
       'Tutorials': [
         {
           type: 'category',
+          label: 'Infrahub Design',
+          link: {type: 'doc', id: 'tutorials/infrahub-design/readme'},
+          items: [
+            'tutorials/infrahub-design/schema',
+            'tutorials/infrahub-design/data',
+          ],
+        },
+        {
+          type: 'category',
           label: 'Getting started',
           link: {type: 'doc', id: 'tutorials/getting-started/readme'},
           items: [
