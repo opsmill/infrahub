@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import logging
+from functools import wraps
 from time import sleep
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
 
@@ -84,6 +85,34 @@ class ProcessRelationsNode(TypedDict):
 class ProcessRelationsNodeSync(TypedDict):
     nodes: List[InfrahubNodeSync]
     related_nodes: List[InfrahubNodeSync]
+
+
+def handle_relogin(func: Callable[..., Coroutine[Any, Any, httpx.Response]]):  # type: ignore[no-untyped-def]
+    @wraps(func)
+    async def wrapper(client: InfrahubClient, *args: Any, **kwargs: Any) -> httpx.Response:
+        response = await func(client, *args, **kwargs)
+        if response.status_code == 401:
+            errors = response.json().get("errors", [])
+            if "Expired Signature" in [error.get("message") for error in errors]:
+                await client.login(refresh=True)
+                return await func(client, *args, **kwargs)
+        return response
+
+    return wrapper
+
+
+def handle_relogin_sync(func: Callable[..., httpx.Response]):  # type: ignore[no-untyped-def]
+    @wraps(func)
+    def wrapper(client: InfrahubClientSync, *args: Any, **kwargs: Any) -> httpx.Response:
+        response = func(client, *args, **kwargs)
+        if response.status_code == 401:
+            errors = response.json().get("errors", [])
+            if "Expired Signature" in [error.get("message") for error in errors]:
+                client.login(refresh=True)
+                return func(client, *args, **kwargs)
+        return response
+
+    return wrapper
 
 
 class BaseClient:
@@ -528,20 +557,7 @@ class InfrahubClient(BaseClient):
 
         # TODO add a special method to execute mutation that will check if the method returned OK
 
-    async def _handle_relogin(
-        self,
-        response: httpx.Response,
-        callback: Callable[..., Coroutine[Any, Any, httpx.Response]],
-        **callback_args: Any,
-    ) -> httpx.Response:
-        if response.status_code == 401:
-            errors = response.json().get("errors")
-            if "Expired Signature" in [error.get("message") for error in errors]:
-                await self.login(refresh=True)
-                return await callback(**callback_args)
-
-        return response
-
+    @handle_relogin
     async def _post(
         self,
         url: str,
@@ -561,15 +577,11 @@ class InfrahubClient(BaseClient):
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
 
-        response = await self._request(
+        return await self._request(
             url=url, method=HTTPMethod.POST, headers=headers, timeout=timeout or self.default_timeout, payload=payload
         )
-        response = await self._handle_relogin(
-            response=response, callback=self._post, url=url, payload=payload, headers=headers, timeout=timeout
-        )
 
-        return response
-
+    @handle_relogin
     async def _get(self, url: str, headers: Optional[dict] = None, timeout: Optional[int] = None) -> httpx.Response:
         """Execute a HTTP GET with HTTPX.
 
@@ -583,14 +595,9 @@ class InfrahubClient(BaseClient):
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
 
-        response = await self._request(
+        return await self._request(
             url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout
         )
-        response = await self._handle_relogin(
-            response=response, callback=self._get, url=url, headers=headers, timeout=timeout
-        )
-
-        return response
 
     async def _request(
         self,
@@ -1311,17 +1318,7 @@ class InfrahubClientSync(BaseClient):
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )
 
-    def _handle_relogin(
-        self, response: httpx.Response, callback: Callable[..., httpx.Response], **callback_args: Any
-    ) -> httpx.Response:
-        if response.status_code == 401:
-            errors = response.json().get("errors")
-            if "Expired Signature" in [error.get("message") for error in errors]:
-                self.login(refresh=True)
-                return callback(**callback_args)
-
-        return response
-
+    @handle_relogin_sync
     def _get(self, url: str, headers: Optional[dict] = None, timeout: Optional[int] = None) -> httpx.Response:
         """Execute a HTTP GET with HTTPX.
 
@@ -1335,15 +1332,9 @@ class InfrahubClientSync(BaseClient):
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
 
-        response = self._request(
-            url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout
-        )
-        response = self._handle_relogin(
-            response=response, callback=self._get, url=url, headers=headers, timeout=timeout
-        )
+        return self._request(url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout)
 
-        return response
-
+    @handle_relogin_sync
     def _post(
         self,
         url: str,
@@ -1363,14 +1354,9 @@ class InfrahubClientSync(BaseClient):
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
 
-        response = self._request(
+        return self._request(
             url=url, method=HTTPMethod.POST, payload=payload, headers=headers, timeout=timeout or self.default_timeout
         )
-        response = self._handle_relogin(
-            response=response, callback=self._post, url=url, payload=payload, headers=headers, timeout=timeout
-        )
-
-        return response
 
     def _request(
         self,
