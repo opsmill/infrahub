@@ -7,7 +7,7 @@ from ipaddress import IPv4Network, IPv6Network
 from typing import Dict, List
 
 from infrahub_sdk import UUIDT, InfrahubClient, InfrahubNode, NodeStore
-from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk.exceptions import GraphQLError, NodeNotFoundError
 from infrahub_sdk.graphql import Mutation
 
 # flake8: noqa
@@ -47,6 +47,8 @@ DEVICES = (
     ("edge2", "active", "ASR1002-HX", "profile1", "edge", ["red", "blue", "green"], "Cisco IOS"),
     ("core1", "drained", "MX204", "profile1", "core", ["blue"], "Juniper JunOS"),
     ("core2", "provisioning", "MX204", "profile1", "core", ["red"], "Juniper JunOS"),
+    ("leaf1", "active", "7010TX-48", "profile1", "leaf", ["red", "green"], "Arista EOS"),
+    ("leaf2", "active", "7010TX-48", "profile1", "leaf", ["red", "green"], "Arista EOS"),
 )
 
 
@@ -113,6 +115,7 @@ BACKBONE_CIRCUIT_IDS = [
 
 INTERFACE_MGMT_NAME = {
     "7280R3": "Management0",
+    "7010TX-48": "Management0",
     "ASR1002-HX": "Management0",
     "MX204": "MGMT",
 }
@@ -142,17 +145,74 @@ INTERFACE_L3_NAMES = {
         "Ethernet9",
         "Ethernet10",
     ],
+    "7010TX-48": [],
     "MX204": ["et-0/0/0", "et-0/0/1", "et-0/0/2"],
 }
 INTERFACE_L2_NAMES = {
     "7280R3": ["Ethernet11", "Ethernet12"],
     "ASR1002-HX": ["Ethernet11", "Ethernet12"],
     "MX204": ["et-0/0/3"],
+    "7010TX-48": [
+        "Ethernet1",
+        "Ethernet2",
+        "Ethernet3",
+        "Ethernet4",
+        "Ethernet5",
+        "Ethernet6",
+        "Ethernet7",
+        "Ethernet8",
+        "Ethernet9",
+        "Ethernet10",
+        "Ethernet11",
+        "Ethernet12",
+        "Ethernet13",
+        "Ethernet14",
+        "Ethernet15",
+        "Ethernet16",
+        "Ethernet17",
+        "Ethernet18",
+        "Ethernet19",
+        "Ethernet20",
+        "Ethernet21",
+        "Ethernet22",
+        "Ethernet23",
+        "Ethernet24",
+        "Ethernet25",
+        "Ethernet26",
+        "Ethernet27",
+        "Ethernet28",
+        "Ethernet29",
+        "Ethernet30",
+        "Ethernet31",
+        "Ethernet32",
+        "Ethernet33",
+        "Ethernet34",
+        "Ethernet35",
+        "Ethernet36",
+        "Ethernet37",
+        "Ethernet38",
+        "Ethernet39",
+        "Ethernet40",
+        "Ethernet41",
+        "Ethernet42",
+        "Ethernet43",
+        "Ethernet44",
+        "Ethernet45",
+        "Ethernet46",
+        "Ethernet47",
+        "Ethernet48"
+    ]
 }
 
-LAG_INTERFACE_L2 = {"7280R3": [{"name": "port-channel1", "lacp": "Active", "members": ["Ethernet11", "Ethernet12"]}]}
+LAG_INTERFACE_L2 = {
+    "7280R3": [{"name": "port-channel1", "lacp": "Active", "members": ["Ethernet11", "Ethernet12"]}],
+    "7010TX-48": [
+        {"name": "port-channel1", "lacp": "Active", "members": ["Ethernet1", "Ethernet2"]},
+        {"name": "port-channel2", "lacp": "Active", "members": ["Ethernet5", "Ethernet6"]},
+    ],
+}
 
-INTERFACE_ROLES_MAPPING = {
+INTERFACE_L3_ROLES_MAPPING = {
     "edge": [
         "peer",
         "peer",
@@ -173,6 +233,20 @@ INTERFACE_ROLES_MAPPING = {
         "backbone",
         "spare",
     ],
+    "leaf": [],
+}
+
+INTERFACE_L2_ROLES_MAPPING = {
+    "leaf": [
+        "peer",
+        "peer",
+    ],
+}
+
+INTERFACE_L2_MODE_MAPPING = {
+    "peer": {
+        "mode": "Trunk (ALL)",
+    }
 }
 
 TAGS = ["blue", "green", "red"]
@@ -421,7 +495,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
         # L3 Interfaces
         for intf_idx, intf_name in enumerate(INTERFACE_L3_NAMES[device_type]):
-            intf_role = INTERFACE_ROLES_MAPPING[device[4]][intf_idx]
+            intf_role = INTERFACE_L3_ROLES_MAPPING[device[4]][intf_idx]
 
             intf = await client.create(
                 branch=branch,
@@ -546,7 +620,17 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
         # L2 Interfaces
         for intf_idx, intf_name in enumerate(INTERFACE_L2_NAMES[device_type]):
-            intf_role = "server"
+
+            try:
+                intf_role = INTERFACE_L2_ROLES_MAPPING.get(device[4], [])[intf_idx]
+            except IndexError:
+                intf_role = "server"
+
+            l2_mode = INTERFACE_L2_MODE_MAPPING.get(intf_role, "Access")
+
+            untagged_vlan = None
+            if l2_mode == "Access":
+                untagged_vlan = store.get(kind="InfraVLAN", key=f"{site_name}_server")
 
             intf = await client.create(
                 branch=branch,
@@ -557,8 +641,8 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                 enabled=True,
                 status={"value": ACTIVE_STATUS, "owner": group_ops.id},
                 role={"value": intf_role, "source": account_pop.id},
-                l2_mode="Access",
-                untagged_vlan={"id": store.get(kind="InfraVLAN", key=f"{site_name}_server").id},
+                l2_mode=l2_mode,
+                untagged_vlan=untagged_vlan,
             )
             await intf.save()
             store.set(key=f"{device_name}-l2-{intf_name}", node=intf)
