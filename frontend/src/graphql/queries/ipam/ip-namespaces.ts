@@ -1,6 +1,6 @@
 import { gql } from "@apollo/client";
 
-export const GET_NAMESPACES = gql`
+export const GET_IP_NAMESPACES = gql`
   query BuiltinIPNamespace {
     BuiltinIPNamespace {
       edges {
