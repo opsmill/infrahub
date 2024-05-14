@@ -42,7 +42,7 @@ export default function IpamTree() {
       }
       setLoading(false);
     });
-  }, [defaultIpNamespace]);
+  }, [namespace, defaultIpNamespace]);
 
   const onLoadData = async ({ element }: ITreeViewOnLoadDataProps) => {
     if (element.children.length > 0) return; // To avoid refetching data
@@ -61,7 +61,7 @@ export default function IpamTree() {
     <nav className="min-w-64">
       <h3 className="font-semibold text-sm mb-3">Navigation</h3>
 
-      {isLoading || !defaultIpNamespace ? (
+      {isLoading ? (
         <IpamTreeSkeleton />
       ) : (
         <Tree
