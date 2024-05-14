@@ -11,7 +11,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useEffect } from "react";
 import { constructPathForIpam } from "./common/utils";
 
-export default function NamespaceSelector() {
+export default function IpNamespaceSelector() {
   const { loading, data } = useQuery(GET_IP_NAMESPACES);
 
   if (loading) {

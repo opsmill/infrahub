@@ -3,13 +3,13 @@ import { Outlet } from "react-router-dom";
 import { Card } from "../../components/ui/card";
 import Content from "../layout/content";
 import IpamTree from "./ipam-tree/ipam-tree";
-import NamespaceSelector from "./namespace-selector";
+import IpNamespaceSelector from "./ip-namespace-selector";
 
 export default function IpamPage() {
   return (
     <>
       <Content.Title title="IP Address Manager">
-        <NamespaceSelector />
+        <IpNamespaceSelector />
       </Content.Title>
 
       <Content className="flex p-2 gap-2">
