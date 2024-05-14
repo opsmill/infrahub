@@ -17,7 +17,7 @@ query GetObjectRelationships_{{kind}}($offset: Int, $limit: Int) {
               display_label
               __typename
 
-              ... on {{relationshipKind}} {
+              {{#if relationshipKind}} ... on {{relationshipKind}} { {{/if}}
 
                 {{#each columns}}
 
@@ -52,7 +52,7 @@ query GetObjectRelationships_{{kind}}($offset: Int, $limit: Int) {
 
                 {{/each}}
 
-              }
+              {{#if relationshipKind}} } {{/if}}
 
             }
 
