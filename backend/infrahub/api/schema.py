@@ -90,7 +90,6 @@ class SchemasLoadAPI(SchemaRoot):
 
 
 class JSONSchema(BaseModel):
-    schema: Optional[str] = Field(None, alias='$schema', description="Schema version identifier")
     title: Optional[str] = Field(None, description="Title of the schema")
     description: Optional[str] = Field(None, description="Description of the schema")
     type: str = Field(..., description="Type of the schema element (e.g., 'object', 'array', 'string')")
@@ -99,8 +98,9 @@ class JSONSchema(BaseModel):
         None, description="Items of the array if type is 'array'"
     )
     required: Optional[List[str]] = Field(None, description="List of required properties if type is 'object'")
-    additionalProperties: Optional[Union[bool, Dict[str, Any]]] = Field(
-        None, description="Specifies whether additional properties are allowed"
+    schema_spec: Optional[str] = Field(None, alias="$schema", description="Schema version identifier")
+    additional_properties: Optional[Union[bool, Dict[str, Any]]] = Field(
+        None, description="Specifies whether additional properties are allowed", alias="additionalProperties"
     )
 
 
