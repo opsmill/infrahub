@@ -244,9 +244,7 @@ INTERFACE_L2_ROLES_MAPPING = {
 }
 
 INTERFACE_L2_MODE_MAPPING = {
-    "peer": {
-        "mode": "Trunk (ALL)",
-    }
+    "peer": "Trunk (ALL)"
 }
 
 TAGS = ["blue", "green", "red"]
