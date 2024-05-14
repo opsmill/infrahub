@@ -25,8 +25,10 @@ import ErrorScreen from "../../errors/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
-import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "../constants";
+import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC, IPAM_QSP } from "../constants";
 import { reloadIpamTreeAtom } from "../ipam-tree/ipam-tree.state";
+import { StringParam, useQueryParam } from "use-query-params";
+import { defaultIpNamespaceAtom } from "../../../state/atoms/namespace.atom";
 
 const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const { prefix } = useParams();
@@ -36,6 +38,8 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
   const [isLoading, setIsLoading] = useState(false);
   const generics = useAtomValue(genericsState);
+  const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
+  const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
 
   const prefixSchema = generics.find(({ kind }) => kind === IP_PREFIX_GENERIC);
@@ -144,7 +148,11 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
       });
 
       refetch();
-      reloadIpamTree(prefix);
+
+      const currentIpNamespace = namespace ?? defaultIpNamespace;
+      if (currentIpNamespace) {
+        reloadIpamTree(currentIpNamespace, prefix);
+      }
 
       setRelatedRowToDelete(undefined);
 

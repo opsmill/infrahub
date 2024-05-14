@@ -115,7 +115,11 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
       });
 
       refetch();
-      reloadIpamTree(prefix);
+
+      const currentIpNamespace = namespace ?? defaultIpNamespace;
+      if (currentIpNamespace) {
+        reloadIpamTree(currentIpNamespace, prefix);
+      }
 
       setRelatedRowToDelete(undefined);
 

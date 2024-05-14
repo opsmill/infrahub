@@ -23,6 +23,7 @@ import {
 import IpamIPAddresses from "./ip-addresses/ipam-ip-address";
 import { reloadIpamTreeAtom } from "./ipam-tree/ipam-tree.state";
 import IpamIPPrefixes from "./prefixes/ipam-prefixes";
+import { defaultIpNamespaceAtom } from "../../state/atoms/namespace.atom";
 
 const tabToKind = {
   [IPAM_TABS.IP_DETAILS]: IP_ADDRESS_GENERIC,
@@ -37,6 +38,8 @@ export default function IpamRouter() {
   const branch = useAtomValue(currentBranchAtom);
   const schemaList = useAtomValue(schemaState);
   const genericList = useAtomValue(genericsState);
+  const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
+  const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
   const refetchRef = useRef(null);
 
@@ -162,8 +165,12 @@ export default function IpamRouter() {
         setOpen={setShowCreateDrawer}>
         <ObjectItemCreate
           onCreate={() => {
-            reloadIpamTree(prefix);
             setShowCreateDrawer(false);
+
+            const currentIpNamespace = namespace ?? defaultIpNamespace;
+            if (currentIpNamespace) {
+              reloadIpamTree(currentIpNamespace, prefix);
+            }
           }}
           onCancel={() => setShowCreateDrawer(false)}
           objectname={objectname!}

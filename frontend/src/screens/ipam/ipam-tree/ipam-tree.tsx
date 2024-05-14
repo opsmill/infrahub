@@ -33,9 +33,10 @@ export default function IpamTree() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!namespace && !defaultIpNamespace) return;
+    const currentIpNamespace = namespace ?? defaultIpNamespace;
+    if (!currentIpNamespace) return;
 
-    reloadIpamTree(prefix, namespace).then((newTree) => {
+    reloadIpamTree(currentIpNamespace, prefix).then((newTree) => {
       if (prefix) {
         const ancestorIds = getTreeItemAncestors(newTree, prefix).map(({ id }) => id);
         setExpandedIds(ancestorIds);
