@@ -278,8 +278,10 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
 
 
 @pytest.fixture
-async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered) -> None:
-    registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
+async def car_person_schema(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered
+) -> SchemaBranch:
+    return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
 
 
 @pytest.fixture

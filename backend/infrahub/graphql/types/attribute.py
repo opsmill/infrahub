@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from graphene import Boolean, DateTime, Field, InputObjectType, Int, ObjectType, String
+from graphene import Boolean, DateTime, Field, InputObjectType, Int, List, ObjectType, String
 from graphene.types.generic import GenericScalar
 
 from infrahub.core import registry
@@ -9,7 +9,8 @@ from .interface import InfrahubInterface
 
 
 class RelatedNodeInput(InputObjectType):
-    id = String(required=True)
+    id = String(required=False)
+    guid = Field(List(of_type=String), required=False)
     _relation__is_visible = Boolean(required=False)
     _relation__is_protected = Boolean(required=False)
     _relation__owner = String(required=False)

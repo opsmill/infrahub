@@ -22,6 +22,7 @@ from infrahub.core.constants import (
     RelationshipDeleteBehavior,
     RelationshipDirection,
     RelationshipKind,
+    SchemaElementPathType,
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations import MIGRATION_MAP
@@ -470,6 +471,7 @@ class SchemaBranch:
         self.validate_order_by()
         self.validate_default_filters()
         self.validate_parent_component()
+        self.validate_global_identifiers()
 
     def process_post_validation(self) -> None:
         self.add_groups()
@@ -480,6 +482,7 @@ class SchemaBranch:
         self.process_labels()
         self.process_dropdowns()
         self.process_relationships()
+        self.process_global_identifiers()
 
     def generate_identifiers(self) -> None:
         """Generate the identifier for all relationships if it's not already present."""
@@ -550,6 +553,52 @@ class SchemaBranch:
                             f" {rels[0].direction.value} <> {peer_direction.value}"
                         ) from None
 
+    def validate_schema_path(
+        self,
+        node_schema: BaseNodeSchema,
+        path: str,
+        allowed_path_types: SchemaElementPathType,
+        element_name: Optional[str] = None,
+    ) -> SchemaAttributePath:
+        error_header = f"{node_schema.kind}"
+        error_header += f".{element_name}" if element_name else ""
+
+        try:
+            schema_attribute_path = node_schema.parse_schema_path(path=path, schema=self)
+        except AttributePathParsingError as exc:
+            raise ValueError(f"{error_header}: {exc}") from exc
+
+        if not (SchemaElementPathType.ATTR & allowed_path_types) and schema_attribute_path.is_type_attribute:
+            raise ValueError(f"{error_header}: this property only supports relationships not attributes")
+
+        if not (SchemaElementPathType.ALL_RELS & allowed_path_types) and schema_attribute_path.is_type_relationship:
+            raise ValueError(f"{error_header}: this property only supports attributes, not relationships")
+
+        if schema_attribute_path.is_type_relationship:
+            if (
+                schema_attribute_path.relationship_schema.cardinality == RelationshipCardinality.ONE
+                and not SchemaElementPathType.REL_ONE & allowed_path_types
+            ):
+                raise ValueError(
+                    f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
+                    " relationship must be of cardinality one"
+                )
+            if (
+                schema_attribute_path.relationship_schema.cardinality == RelationshipCardinality.MANY
+                and not SchemaElementPathType.REL_MANY & allowed_path_types
+            ):
+                raise ValueError(
+                    f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
+                    " relationship must be of cardinality many"
+                )
+
+            if schema_attribute_path.has_property and not SchemaElementPathType.RELS_ATTR & allowed_path_types:
+                raise ValueError(f"{error_header}: cannot use attributes of related node, only the relationship")
+            if not schema_attribute_path.has_property and not SchemaElementPathType.RELS_NO_ATTR & allowed_path_types:
+                raise ValueError(f"{error_header}: Must use attributes of related node")
+
+        return schema_attribute_path
+
     def _validate_attribute_path(
         self,
         node_schema: BaseNodeSchema,
@@ -609,15 +658,16 @@ class SchemaBranch:
                     )
 
     def validate_display_labels(self) -> None:
-        full_schema_objects = self.to_dict_schema_object()
-        schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if node_schema.display_labels:
-                for display_label_path in node_schema.display_labels:
-                    self._validate_attribute_path(
-                        node_schema, display_label_path, schema_map, schema_attribute_name="display_labels"
+                for path in node_schema.display_labels:
+                    self.validate_schema_path(
+                        node_schema=node_schema,
+                        path=path,
+                        allowed_path_types=SchemaElementPathType.ATTR,
+                        element_name="display_labels",
                     )
             elif isinstance(node_schema, NodeSchema):
                 generic_display_labels = []
@@ -659,8 +709,32 @@ class SchemaBranch:
                 continue
 
             self._validate_attribute_path(
-                node_schema, node_schema.default_filter, schema_map, schema_attribute_name="default_filter"
+                node_schema=node_schema,
+                path=node_schema.default_filter,
+                schema_map_override=schema_map,
+                schema_attribute_name="default_filter",
             )
+
+    def validate_global_identifiers(self):
+        for name in self.generic_names + self.node_names:
+            node_schema = self.get(name=name, duplicate=False)
+
+            if not node_schema.global_identifiers:
+                continue
+
+            allowed_types = SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_ATTR
+
+            for item in node_schema.global_identifiers:
+                self.validate_schema_path(
+                    node_schema=node_schema,
+                    path=item,
+                    allowed_path_types=allowed_types,
+                    element_name="global_identifiers",
+                )
+
+            # TODO add checks to ensure that
+            # - The relationship is mandatory for this node
+            # - The attribute is unique for the related node
 
     def validate_parent_component(self) -> None:
         # {parent_kind: {component_kind_1, component_kind_2, ...}}
@@ -890,6 +964,18 @@ class SchemaBranch:
 
             if schema_to_update:
                 self.set(name=schema_to_update.kind, schema=schema_to_update)
+
+    def process_global_identifiers(self) -> None:
+        for name in self.generic_names + self.node_names:
+            node = self.get(name=name, duplicate=False)
+
+            if node.global_identifiers:
+                continue
+
+            for attr in node.unique_attributes:
+                node = self.get(name=name, duplicate=True)
+                node.global_identifiers = [f"{attr.name}__value"]
+                break
 
     def process_hierarchy(self) -> None:
         for name in self.nodes.keys():

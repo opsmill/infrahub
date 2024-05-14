@@ -274,6 +274,14 @@ base_node_schema = SchemaNode(
             extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
+            name="global_identifiers",
+            kind="List",
+            internal_kind=str,
+            description="Global identifiers meant to be human redeable.",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
             name="display_labels",
             kind="List",
             internal_kind=str,
