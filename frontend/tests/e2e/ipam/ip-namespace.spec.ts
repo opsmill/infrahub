@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe("/ipam - IP Namespace list", () => {
+test.describe("/ipam - IP Namespace", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
@@ -33,6 +33,30 @@ test.describe("/ipam - IP Namespace list", () => {
     );
     expect(page.url()).toContain("namespace=");
     await expect(page.getByTestId("ipam-main-content")).toContainText("Showing 0 of 0 results");
+  });
+
+  test("redirects to IP Prefixes view when switching namespace if user is viewing an ip prefix", async ({
+    page,
+  }) => {
+    await page.goto("/ipam/prefixes");
+    await page.getByRole("link", { name: "10.0.0.0/16" }).click();
+
+    await page.getByTestId("namespace-select").getByTestId("select-open-option-button").click();
+    await page.getByRole("option", { name: "test-namespace" }).click();
+
+    expect(page.url()).toContain("/ipam/prefixes?namespace=");
+  });
+
+  test("redirects to IP Addresses view when switching namespace if user is viewing an ip address", async ({
+    page,
+  }) => {
+    await page.goto("/ipam/addresses?ipam-tab=ip-details");
+    await page.getByRole("link", { name: "10.0.0.1/32" }).click();
+
+    await page.getByTestId("namespace-select").getByTestId("select-open-option-button").click();
+    await page.getByRole("option", { name: "test-namespace" }).click();
+
+    expect(page.url()).toContain("/ipam/addresses?ipam-tab=ip-details&namespace=");
   });
 
   test("create, validate ui and delete a prefix on other namespace", async ({ page }) => {
