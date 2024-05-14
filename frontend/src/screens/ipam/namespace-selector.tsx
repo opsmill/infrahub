@@ -74,6 +74,7 @@ const IpNamespaceSelectorContent = ({
           name: option.display_label,
           description: option.description?.value,
         }))}
+        data-testid="namespace-select"
         preventEmpty
       />
     </div>
