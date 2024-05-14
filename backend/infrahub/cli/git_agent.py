@@ -1,17 +1,17 @@
 import asyncio
 import logging
 import signal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import typer
 from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.async_typer import AsyncTyper
 from prometheus_client import start_http_server
 from rich.logging import RichHandler
 
 from infrahub import __version__, config
 from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
-from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import initialize_repositories_directory
 from infrahub.git.actions import sync_remote_repositories
@@ -24,8 +24,10 @@ from infrahub.services.adapters.message_bus.nats import NATSMessageBus
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.trace import configure_trace
 
-app = typer.Typer()
+if TYPE_CHECKING:
+    from infrahub.cli.context import CliContext
 
+app = AsyncTyper()
 log = get_logger()
 
 shutdown_event = asyncio.Event()
@@ -53,8 +55,28 @@ async def initialize_git_agent(service: InfrahubServices) -> None:
     await sync_remote_repositories(service=service)
 
 
-async def _start(debug: bool, port: int) -> None:
+@app.command()
+async def start(
+    ctx: typer.Context,
+    debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
+    config_file: str = typer.Option(
+        "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
+    ),
+    port: int = typer.Argument(8000, envvar="INFRAHUB_METRICS_PORT", help="Port used to expose a metrics endpoint"),
+) -> None:
     """Start Infrahub Git Agent."""
+    logging.getLogger("httpx").setLevel(logging.ERROR)
+    logging.getLogger("httpcore").setLevel(logging.ERROR)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("aio_pika").setLevel(logging.ERROR)
+    logging.getLogger("aiormq").setLevel(logging.ERROR)
+    logging.getLogger("git").setLevel(logging.ERROR)
+
+    log.debug(f"Config file : {config_file}")
+
+    context: CliContext = ctx.obj
+
+    config.load_and_exit(config_file_name=config_file)
 
     log_level = "DEBUG" if debug else "INFO"
 
@@ -81,8 +103,7 @@ async def _start(debug: bool, port: int) -> None:
             exporter_protocol=config.SETTINGS.trace.exporter_protocol,
         )
 
-    driver = await get_db()
-    database = InfrahubDatabase(driver=driver)
+    database = await context.get_db(retry=1)
 
     message_bus = config.OVERRIDE.message_bus or (
         NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
@@ -121,26 +142,3 @@ async def _start(debug: bool, port: int) -> None:
 
     await service.shutdown()
     log.info("All services stopped")
-
-
-@app.command()
-def start(
-    debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
-    config_file: str = typer.Option(
-        "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
-    ),
-    port: int = typer.Argument(8000, envvar="INFRAHUB_METRICS_PORT", help="Port used to expose a metrics endpoint"),
-) -> None:
-    """Start Infrahub Git Agent."""
-    logging.getLogger("httpx").setLevel(logging.ERROR)
-    logging.getLogger("httpcore").setLevel(logging.ERROR)
-    logging.getLogger("neo4j").setLevel(logging.ERROR)
-    logging.getLogger("aio_pika").setLevel(logging.ERROR)
-    logging.getLogger("aiormq").setLevel(logging.ERROR)
-    logging.getLogger("git").setLevel(logging.ERROR)
-
-    log.debug(f"Config file : {config_file}")
-
-    config.load_and_exit(config_file_name=config_file)
-
-    asyncio.run(_start(debug=debug, port=port))

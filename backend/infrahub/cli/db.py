@@ -1,7 +1,7 @@
 import importlib
 import logging
 from enum import Enum
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import typer
 from infrahub_sdk.async_typer import AsyncTyper
@@ -24,10 +24,13 @@ from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema_manager import SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.core.validators.checker import schema_validators_checker
-from infrahub.database import DatabaseType, InfrahubDatabase, get_db
+from infrahub.database import DatabaseType
 from infrahub.log import get_logger
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus.local import BusSimulator
+
+if TYPE_CHECKING:
+    from infrahub.cli.context import CliContext
 
 app = AsyncTyper()
 
@@ -55,6 +58,7 @@ def callback() -> None:
 
 @app.command()
 async def init(
+    ctx: typer.Context,
     config_file: str = typer.Option(
         "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
     ),
@@ -72,7 +76,8 @@ async def init(
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     config.load_and_exit(config_file_name=config_file)
 
-    dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
+    context: CliContext = ctx.obj
+    dbdriver = await context.get_db(retry=1)
     async with dbdriver.start_transaction() as db:
         log.info("Delete All Nodes")
         await delete_all_nodes(db=db)
@@ -83,6 +88,7 @@ async def init(
 
 @app.command()
 async def load_test_data(
+    ctx: typer.Context,
     config_file: str = typer.Option(
         "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
     ),
@@ -93,7 +99,8 @@ async def load_test_data(
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     config.load_and_exit(config_file_name=config_file)
 
-    dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
+    context: CliContext = ctx.obj
+    dbdriver = await context.get_db(retry=1)
     async with dbdriver.start_session() as db:
         await initialization(db=db)
 
@@ -111,6 +118,7 @@ async def load_test_data(
 
 @app.command()
 async def migrate(
+    ctx: typer.Context,
     check: bool = typer.Option(False, help="Check the state of the database without applying the migrations."),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
@@ -119,7 +127,8 @@ async def migrate(
 
     config.load_and_exit(config_file_name=config_file)
 
-    dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
+    context: CliContext = ctx.obj
+    dbdriver = await context.get_db(retry=1)
     async with dbdriver.start_session() as db:
         rprint("Checking current state of the Database")
 
@@ -161,6 +170,7 @@ async def migrate(
 
 @app.command()
 async def update_core_schema(  # pylint: disable=too-many-statements
+    ctx: typer.Context,
     debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
@@ -169,7 +179,8 @@ async def update_core_schema(  # pylint: disable=too-many-statements
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     config.load_and_exit(config_file_name=config_file)
 
-    dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
+    context: CliContext = ctx.obj
+    dbdriver = await context.get_db(retry=1)
 
     error_badge = "[bold red]ERROR[/bold red]"
 
@@ -270,13 +281,15 @@ async def update_core_schema(  # pylint: disable=too-many-statements
 
 @app.command()
 async def constraint(
+    ctx: typer.Context,
     action: ConstraintAction = typer.Argument(ConstraintAction.SHOW),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
     """Manage Database Constraints"""
     config.load_and_exit(config_file_name=config_file)
 
-    dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
+    context: CliContext = ctx.obj
+    dbdriver = await context.get_db(retry=1)
 
     manager: Optional[ConstraintManagerBase] = None
     if dbdriver.db_type == DatabaseType.NEO4J:
@@ -312,13 +325,15 @@ async def constraint(
 
 @app.command()
 async def index(
+    ctx: typer.Context,
     action: IndexAction = typer.Argument(IndexAction.SHOW),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
     """Manage Database Indexes"""
     config.load_and_exit(config_file_name=config_file)
 
-    dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
+    context: CliContext = ctx.obj
+    dbdriver = await context.get_db(retry=1)
     dbdriver.manager.index.init(nodes=node_indexes, rels=rel_indexes)
 
     if action == IndexAction.ADD:
