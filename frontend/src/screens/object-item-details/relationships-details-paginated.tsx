@@ -53,6 +53,7 @@ export const RelationshipsDetails = forwardRef((props: RelationshipsDetailsProps
   const queryString = schemaData
     ? getObjectRelationshipsDetailsPaginated({
         kind: objectname,
+        relationshipKind: relationshipSchemaData?.peer,
         objectid: parentNode.id,
         relationship: relationshipTab,
         columns,

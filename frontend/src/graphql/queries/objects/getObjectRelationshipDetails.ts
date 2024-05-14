@@ -17,38 +17,43 @@ query GetObjectRelationships_{{kind}}($offset: Int, $limit: Int) {
               display_label
               __typename
 
-              {{#each columns}}
+              ... on {{relationshipKind}} {
 
-              {{#if this.isAttribute}}
+                {{#each columns}}
 
-              {{this.name}} {
-                value
-                {{#if (eq this.kind "Dropdown")}}
-                color
-                description
-                label
+                {{#if this.isAttribute}}
+
+                {{this.name}} {
+                  value
+                  {{#if (eq this.kind "Dropdown")}}
+                  color
+                  description
+                  label
+                  {{/if}}
+                }
+
                 {{/if}}
+
+                {{#if this.isRelationship}}
+
+                {{this.name}} {
+                  {{#if this.paginated}}
+                    edges {
+                  {{/if}}
+                    node {
+                      display_label
+                    }
+                  {{#if this.paginated}}
+                    }
+                  {{/if}}
+                }
+
+                {{/if}}
+
+                {{/each}}
+
               }
 
-              {{/if}}
-
-              {{#if this.isRelationship}}
-
-              {{this.name}} {
-                {{#if this.paginated}}
-                  edges {
-                {{/if}}
-                  node {
-                    display_label
-                  }
-                {{#if this.paginated}}
-                  }
-                {{/if}}
-              }
-
-              {{/if}}
-
-              {{/each}}
             }
 
             properties {
