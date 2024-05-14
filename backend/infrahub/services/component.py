@@ -8,6 +8,7 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError
 from infrahub.message_bus import messages
+from infrahub.message_bus.types import KVTTL
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
@@ -73,27 +74,38 @@ class InfrahubComponent:
         for branch in branches:
             schema_branch = registry.schema.get_schema_branch(name=branch)
             hash_value = schema_branch.get_hash()
+
+            # Use branch name if we cannot find branch id in cache
+            branch_id: Optional[str] = None
+            if branch_obj := await registry.get_branch(branch=branch, db=self.service.database):
+                branch_id = branch_obj.id
+
+            if not branch_id:
+                branch_id = branch
+
             for component in self.component_names:
                 await self.service.cache.set(
-                    key=f"workers:schema_hash:branch:{branch}:{component}:worker:{WORKER_IDENTITY}",
+                    key=f"workers:schema_hash:branch:{branch_id}:{component}:worker:{WORKER_IDENTITY}",
                     value=hash_value,
-                    expires=7200,
+                    expires=KVTTL.TWO_HOURS,
                 )
 
     async def refresh_heartbeat(self) -> None:
         for component in self.component_names:
             await self.service.cache.set(
-                key=f"workers:active:{component}:worker:{WORKER_IDENTITY}", value=Timestamp().to_string(), expires=15
+                key=f"workers:active:{component}:worker:{WORKER_IDENTITY}",
+                value=Timestamp().to_string(),
+                expires=KVTTL.FIFTEEN,
             )
         if self.service.component_type == ComponentType.API_SERVER:
             await self._set_primary_api_server()
         await self.service.cache.set(
-            key=f"workers:worker:{WORKER_IDENTITY}", value=Timestamp().to_string(), expires=7200
+            key=f"workers:worker:{WORKER_IDENTITY}", value=Timestamp().to_string(), expires=KVTTL.TWO_HOURS
         )
 
     async def _set_primary_api_server(self) -> None:
         result = await self.service.cache.set(
-            key=PRIMARY_API_SERVER, value=WORKER_IDENTITY, expires=15, not_exists=True
+            key=PRIMARY_API_SERVER, value=WORKER_IDENTITY, expires=KVTTL.FIFTEEN, not_exists=True
         )
         if result:
             await self.service.send(message=messages.EventWorkerNewPrimaryAPI(worker_id=WORKER_IDENTITY))
@@ -102,7 +114,7 @@ class InfrahubComponent:
             primary_id = await self.service.cache.get(key=PRIMARY_API_SERVER)
             if primary_id == WORKER_IDENTITY:
                 self.service.log.debug("Primary node set but same as ours, refreshing lifetime")
-                await self.service.cache.set(key=PRIMARY_API_SERVER, value=WORKER_IDENTITY, expires=15)
+                await self.service.cache.set(key=PRIMARY_API_SERVER, value=WORKER_IDENTITY, expires=KVTTL.FIFTEEN)
 
 
 class WorkerInfo:

@@ -1,7 +1,11 @@
 import logging
+from typing import TYPE_CHECKING
 
 import typer
 import uvicorn
+
+if TYPE_CHECKING:
+    from infrahub.cli.context import CliContext
 
 app = typer.Typer()
 
@@ -39,6 +43,7 @@ log_config = {
 
 @app.command()
 def start(
+    ctx: typer.Context,
     listen: str = typer.Option("127.0.0.1", help="Address used to listen for new request."),
     port: int = typer.Option(8000, help="Port used to listen for new request."),
     debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
@@ -50,9 +55,11 @@ def start(
 
     logging.getLogger("neo4j").setLevel(logging.ERROR)
 
+    context: CliContext = ctx.obj
+
     if debug:
         uvicorn.run(
-            "infrahub.server:app",
+            context.application,
             host=listen,
             port=port,
             log_level="info",
@@ -62,7 +69,7 @@ def start(
         )
     else:
         uvicorn.run(
-            "infrahub.server:app",
+            context.application,
             host=listen,
             port=port,
             log_level="info",

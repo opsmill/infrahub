@@ -73,3 +73,16 @@ export const updateTreeData = (
   });
   return [...data, ...children];
 };
+
+export const getTreeItemAncestors = (
+  tree: TreeProps["data"],
+  treeItemId: TreeProps["data"][0]["id"]
+): TreeProps["data"] => {
+  const currentTreeItem = tree.find(({ id }) => id === treeItemId);
+  if (!currentTreeItem || currentTreeItem.parent === null) return [];
+
+  const parent = tree.find(({ id }) => id === currentTreeItem.parent);
+  if (!parent) return [];
+
+  return [parent, ...getTreeItemAncestors(tree, parent.id)];
+};

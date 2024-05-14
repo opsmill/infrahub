@@ -190,7 +190,7 @@ class InfrahubDatabase:
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query") as span:
             span.set_attribute("query", query)
 
-            with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
+            with QUERY_EXECUTION_METRICS.labels(self._session_mode.value, name).time():
                 response = await self.run_query(query=query, params=params)
                 return [item async for item in response]
 
@@ -200,7 +200,7 @@ class InfrahubDatabase:
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query_with_metadata") as span:
             span.set_attribute("query", query)
 
-            with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
+            with QUERY_EXECUTION_METRICS.labels(self._session_mode.value, name).time():
                 response = await self.run_query(query=query, params=params)
                 results = [item async for item in response]
                 return results, response._metadata or {}

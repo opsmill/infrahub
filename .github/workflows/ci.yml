@@ -26,6 +26,7 @@ env:
   INFRAHUB_TEST_IN_DOCKER: 1
   VALE_VERSION: "3.0.7"
   GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
+  METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
 
 jobs:
    # ------------------------------------------ Check Files Changes  ------------------------------------------
@@ -114,7 +115,7 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
       - name: "Setup environment"
-        run: "pip install ruff==0.4.1"
+        run: "pip install ruff==0.4.3"
       - name: "Linting: ruff check"
         run: "ruff check --diff ."
       - name: "Linting: ruff format"
@@ -402,8 +403,24 @@ jobs:
     runs-on:
       group: huge-runners
     timeout-minutes: 45
-    env:
-      INFRAHUB_DB_TYPE: neo4j
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend-tests-neo4j
+            env:
+              INFRAHUB_DB_TYPE: neo4j
+          - name: backend-tests-nats
+            env:
+              INFRAHUB_DB_TYPE: memgraph
+              INFRAHUB_USE_NATS: 1
+              INFRAHUB_BROKER_DRIVER: nats
+              INFRAHUB_BROKER_PORT: 4222
+              INFRAHUB_CACHE_DRIVER: nats
+              INFRAHUB_CACHE_ADDRESS: message-queue
+              INFRAHUB_CACHE_PORT: 4222
+    name: ${{ matrix.name }}
+    env: ${{ matrix.env }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -586,9 +603,24 @@ jobs:
     runs-on:
       group: huge-runners
     timeout-minutes: 40
-    env:
-      INFRAHUB_DB_TYPE: neo4j
-      METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: E2E-testing-playwright
+            env:
+              INFRAHUB_DB_TYPE: neo4j
+          - name: E2E-testing-playwright-nats
+            env:
+              INFRAHUB_DB_TYPE: neo4j
+              INFRAHUB_USE_NATS: 1
+              INFRAHUB_BROKER_DRIVER: nats
+              INFRAHUB_BROKER_PORT: 4222
+              INFRAHUB_CACHE_DRIVER: nats
+              INFRAHUB_CACHE_ADDRESS: message-queue
+              INFRAHUB_CACHE_PORT: 4222
+    name: ${{ matrix.name }}
+    env: ${{ matrix.env }}
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -686,7 +718,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: ${{ matrix.name }}
           path: frontend/playwright-report/
 
       - name: Containers after tests

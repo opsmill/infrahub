@@ -3,8 +3,9 @@ from __future__ import annotations
 import asyncio
 import copy
 import logging
+from functools import wraps
 from time import sleep
-from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
 
 import httpx
 import ujson
@@ -84,6 +85,34 @@ class ProcessRelationsNode(TypedDict):
 class ProcessRelationsNodeSync(TypedDict):
     nodes: List[InfrahubNodeSync]
     related_nodes: List[InfrahubNodeSync]
+
+
+def handle_relogin(func: Callable[..., Coroutine[Any, Any, httpx.Response]]):  # type: ignore[no-untyped-def]
+    @wraps(func)
+    async def wrapper(client: InfrahubClient, *args: Any, **kwargs: Any) -> httpx.Response:
+        response = await func(client, *args, **kwargs)
+        if response.status_code == 401:
+            errors = response.json().get("errors", [])
+            if "Expired Signature" in [error.get("message") for error in errors]:
+                await client.login(refresh=True)
+                return await func(client, *args, **kwargs)
+        return response
+
+    return wrapper
+
+
+def handle_relogin_sync(func: Callable[..., httpx.Response]):  # type: ignore[no-untyped-def]
+    @wraps(func)
+    def wrapper(client: InfrahubClientSync, *args: Any, **kwargs: Any) -> httpx.Response:
+        response = func(client, *args, **kwargs)
+        if response.status_code == 401:
+            errors = response.json().get("errors", [])
+            if "Expired Signature" in [error.get("message") for error in errors]:
+                client.login(refresh=True)
+                return func(client, *args, **kwargs)
+        return response
+
+    return wrapper
 
 
 class BaseClient:
@@ -528,6 +557,7 @@ class InfrahubClient(BaseClient):
 
         # TODO add a special method to execute mutation that will check if the method returned OK
 
+    @handle_relogin
     async def _post(
         self,
         url: str,
@@ -542,17 +572,16 @@ class InfrahubClient(BaseClient):
             ServerNotResponsiveError if the server didn't respond before the timeout expired
         """
         await self.login()
+
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
+
         return await self._request(
-            url=url,
-            method=HTTPMethod.POST,
-            headers=headers,
-            timeout=timeout or self.default_timeout,
-            payload=payload,
+            url=url, method=HTTPMethod.POST, headers=headers, timeout=timeout or self.default_timeout, payload=payload
         )
 
+    @handle_relogin
     async def _get(self, url: str, headers: Optional[dict] = None, timeout: Optional[int] = None) -> httpx.Response:
         """Execute a HTTP GET with HTTPX.
 
@@ -561,14 +590,13 @@ class InfrahubClient(BaseClient):
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         await self.login()
+
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
+
         return await self._request(
-            url=url,
-            method=HTTPMethod.GET,
-            headers=headers,
-            timeout=timeout or self.default_timeout,
+            url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout
         )
 
     async def _request(
@@ -620,6 +648,21 @@ class InfrahubClient(BaseClient):
 
         return response
 
+    async def refresh_login(self) -> None:
+        if not self.refresh_token:
+            return
+
+        response = await self._request(
+            url=f"{self.address}/api/auth/refresh",
+            method=HTTPMethod.POST,
+            headers={"content-type": "application/json", "Authorization": f"Bearer {self.refresh_token}"},
+            timeout=self.default_timeout,
+        )
+
+        response.raise_for_status()
+        self.access_token = response.json()["access_token"]
+        self.headers["Authorization"] = f"Bearer {self.access_token}"
+
     async def login(self, refresh: bool = False) -> None:
         if not self.config.password_authentication:
             return
@@ -627,14 +670,23 @@ class InfrahubClient(BaseClient):
         if self.access_token and not refresh:
             return
 
-        url = f"{self.address}/api/auth/login"
+        if self.refresh_token and refresh:
+            try:
+                await self.refresh_login()
+                return
+            except httpx.HTTPStatusError as exc:
+                # If we got a 401 while trying to refresh a token we must restart the authentication process
+                # Other status codes indicate other errors
+                if exc.response.status_code != 401:
+                    response = exc.response.json()
+                    errors = response.get("errors")
+                    messages = [error.get("message") for error in errors]
+                    raise AuthenticationError(" | ".join(messages)) from exc
+
         response = await self._request(
-            url=url,
+            url=f"{self.address}/api/auth/login",
             method=HTTPMethod.POST,
-            payload={
-                "username": self.config.username,
-                "password": self.config.password,
-            },
+            payload={"username": self.config.username, "password": self.config.password},
             headers={"content-type": "application/json"},
             timeout=self.default_timeout,
         )
@@ -874,17 +926,17 @@ class InfrahubClientSync(BaseClient):
         If retry_on_failure is True, the query will retry until the server becomes reacheable.
 
         Args:
-            query (_type_): GraphQL Query to execute, can be a query or a mutation
+            query (str): GraphQL Query to execute, can be a query or a mutation
             variables (dict, optional): Variables to pass along with the GraphQL query. Defaults to None.
             branch_name (str, optional): Name of the branch on which the query will be executed. Defaults to None.
             at (str, optional): Time when the query should be executed. Defaults to None.
             timeout (int, optional): Timeout in second for the query. Defaults to None.
             raise_for_error (bool, optional): Flag to indicate that we need to raise an exception if the response has some errors. Defaults to True.
         Raises:
-            GraphQLError: _description_
+            GraphQLError: When an error occurs during the execution of the GraphQL query or mutation.
 
         Returns:
-            _type_: _description_
+            dict: The result of the GraphQL query or mutation.
         """
 
         url = self._graphql_url(branch_name=branch_name, at=at)
@@ -1266,6 +1318,7 @@ class InfrahubClientSync(BaseClient):
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )
 
+    @handle_relogin_sync
     def _get(self, url: str, headers: Optional[dict] = None, timeout: Optional[int] = None) -> httpx.Response:
         """Execute a HTTP GET with HTTPX.
 
@@ -1274,16 +1327,14 @@ class InfrahubClientSync(BaseClient):
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         self.login()
+
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
-        return self._request(
-            url=url,
-            method=HTTPMethod.GET,
-            headers=headers,
-            timeout=timeout or self.default_timeout,
-        )
 
+        return self._request(url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout)
+
+    @handle_relogin_sync
     def _post(
         self,
         url: str,
@@ -1298,16 +1349,13 @@ class InfrahubClientSync(BaseClient):
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         self.login()
+
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
 
         return self._request(
-            url=url,
-            method=HTTPMethod.POST,
-            payload=payload,
-            headers=headers,
-            timeout=timeout or self.default_timeout,
+            url=url, method=HTTPMethod.POST, payload=payload, headers=headers, timeout=timeout or self.default_timeout
         )
 
     def _request(
@@ -1359,6 +1407,21 @@ class InfrahubClientSync(BaseClient):
 
         return response
 
+    def refresh_login(self) -> None:
+        if not self.refresh_token:
+            return
+
+        response = self._request(
+            url=f"{self.address}/api/auth/refresh",
+            method=HTTPMethod.POST,
+            headers={"content-type": "application/json", "Authorization": f"Bearer {self.refresh_token}"},
+            timeout=self.default_timeout,
+        )
+
+        response.raise_for_status()
+        self.access_token = response.json()["access_token"]
+        self.headers["Authorization"] = f"Bearer {self.access_token}"
+
     def login(self, refresh: bool = False) -> None:
         if not self.config.password_authentication:
             return
@@ -1366,14 +1429,23 @@ class InfrahubClientSync(BaseClient):
         if self.access_token and not refresh:
             return
 
-        url = f"{self.address}/api/auth/login"
+        if self.refresh_token and refresh:
+            try:
+                self.refresh_login()
+                return
+            except httpx.HTTPStatusError as exc:
+                # If we got a 401 while trying to refresh a token we must restart the authentication process
+                # Other status codes indicate other errors
+                if exc.response.status_code != 401:
+                    response = exc.response.json()
+                    errors = response.get("errors")
+                    messages = [error.get("message") for error in errors]
+                    raise AuthenticationError(" | ".join(messages)) from exc
+
         response = self._request(
-            url=url,
+            url=f"{self.address}/api/auth/login",
             method=HTTPMethod.POST,
-            payload={
-                "username": self.config.username,
-                "password": self.config.password,
-            },
+            payload={"username": self.config.username, "password": self.config.password},
             headers={"content-type": "application/json"},
             timeout=self.default_timeout,
         )

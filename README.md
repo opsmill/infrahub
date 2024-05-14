@@ -1,6 +1,6 @@
 
 <!-- markdownlint-disable -->
-![](./docs/media/Infrahub-horizontal.svg)
+![Infrahub Logo](docs/static/img/infrahub-hori.svg)
 <!-- markdownlint-restore -->
 
 # Welcome to Infrahub
@@ -15,7 +15,7 @@ At its heart, Infrahub is built on 3 fundamental pillars:
 
 ## Quick Start
 
-Leveraging [Codespaces](https://docs.github.com/en/codespaces/overview) from Github, it's possible to start a fresh instance of Infrahub in the Cloud in minutes. This is the recommended method to try Infrahub as it reduces the effort to setup Infrahub to a couple of clicks. Use the table below to select the right environment for you, based on the branch and the initial data you would like pre-loaded in your instance.
+Leveraging [GitHub Codespaces](https://docs.github.com/en/codespaces/overview), it's possible to start a fresh instance of Infrahub in the Cloud in minutes. This is the recommended method to try Infrahub as it reduces the effort to setup Infrahub to a couple of clicks. Use the table below to select the right environment for you, based on the branch and the initial data you would like pre-loaded in your instance.
 
 - The `stable` branch is for the latest release; this is the recommended version for most users.
 - The `develop` branch is where the preparation of the next major release is done.

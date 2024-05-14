@@ -11,7 +11,6 @@ import { QSP } from "../../config/qsp";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
 import { getObjectRelationshipsDetailsPaginated } from "../../graphql/queries/objects/getObjectRelationshipDetails";
-import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
@@ -34,12 +33,10 @@ export const RelationshipsDetails = forwardRef((props: RelationshipsDetailsProps
 
   const { objectname, objectid } = useParams();
   const [relationshipTab] = useQueryParam(QSP.TAB, StringParam);
-  const [pagination] = usePagination();
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-
   const parentSchema = schemaList.find((s) => s.kind === objectname);
   const parentGeneric = generics.find((s) => s.kind === objectname);
   const relationshipSchema = parentSchema?.relationships?.find((r) => r?.name === relationshipTab);
@@ -53,20 +50,13 @@ export const RelationshipsDetails = forwardRef((props: RelationshipsDetailsProps
 
   const columns = getSchemaObjectColumns({ schema: schemaData, forListView: true });
 
-  const filtersString = [
-    { name: "offset", value: pagination?.offset },
-    { name: "limit", value: pagination?.limit },
-  ]
-    .map((row: any) => `${row.name}: ${row.value}`)
-    .join(",");
-
   const queryString = schemaData
     ? getObjectRelationshipsDetailsPaginated({
         kind: objectname,
+        relationshipKind: !!columns?.length && relationshipSchemaData?.peer,
         objectid: parentNode.id,
         relationship: relationshipTab,
         columns,
-        filters: filtersString,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schemaData

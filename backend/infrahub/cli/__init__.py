@@ -3,6 +3,7 @@ from asyncio import run as aiorun
 import typer
 
 from infrahub import config
+from infrahub.cli.context import CliContext
 from infrahub.cli.db import app as db_app
 from infrahub.cli.events import app as events_app
 from infrahub.cli.git_agent import app as git_app
@@ -12,7 +13,14 @@ from infrahub.database import InfrahubDatabase, get_db
 
 # pylint: disable=import-outside-toplevel
 
-app = typer.Typer(pretty_exceptions_enable=False)
+app = typer.Typer(name="Infrahub CLI", pretty_exceptions_enable=False)
+
+
+@app.callback()
+def common(ctx: typer.Context) -> None:
+    """Infrahub CLI"""
+    ctx.obj = CliContext(database_class=InfrahubDatabase)
+
 
 app.add_typer(server_app, name="server")
 app.add_typer(git_app, name="git-agent")
