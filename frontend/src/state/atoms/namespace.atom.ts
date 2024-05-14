@@ -1,3 +1,3 @@
 import { atom } from "jotai";
 
-export const defaultIpNamespaceAtom = atom<string>("");
+export const defaultIpNamespaceAtom = atom<string | null>(null);
