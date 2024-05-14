@@ -71,6 +71,39 @@ async def ip_dataset_01(
     return data
 
 
+@pytest.fixture
+async def ip_dataset_02(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+
+    # -----------------------
+    # Namespace NS1
+    # -----------------------
+
+    ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns.new(db=db, name="ns2")
+    await ns.save(db=db)
+
+    net1 = await Node.init(db=db, schema=prefix_schema)
+    await net1.new(db=db, prefix="10.200.30.0/27", ip_namespace=ns, is_pool=False, member_type="address")
+    await net1.save(db=db)
+
+    net1_ip1 = await Node.init(db=db, schema=address_schema)
+    await net1_ip1.new(db=db, address="10.200.30.1/27", ip_namespace=ns, ip_prefix=net1)
+    await net1_ip1.save(db=db)
+
+    data = {
+        "ns": ns,
+        "net1": net1,
+    }
+    return data
+
+
 @pytest.mark.parametrize(
     "prefix,size,response",
     [
@@ -110,4 +143,46 @@ async def test_ipprefix_nextavailable(
     )
 
     assert not result.errors
+    assert result.data
     assert result.data["IPPrefixGetNextAvailable"]["prefix"] == response
+
+
+@pytest.mark.parametrize(
+    "prefix,prefix_length,response",
+    [
+        ("net1", 30, "10.200.30.2/30"),
+        ("net1", None, "10.200.30.2/27"),
+    ],
+)
+async def test_ipaddress_nextavailable(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_schema: SchemaBranch,
+    ip_dataset_02,
+    prefix,
+    prefix_length,
+    response,
+):
+    obj = ip_dataset_02[prefix]
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    query = """
+    query($prefix: String!, $prefix_length: Int) {
+        IPAddressGetNextAvailable(prefix_id: $prefix, prefix_length: $prefix_length) {
+            address
+        }
+    }
+    """
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        variable_values={"prefix": obj.id, "prefix_length": prefix_length},
+    )
+
+    assert not result.errors
+    assert result.data
+    assert result.data["IPAddressGetNextAvailable"]["address"] == response

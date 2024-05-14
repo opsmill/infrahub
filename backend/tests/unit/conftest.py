@@ -23,7 +23,7 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
-from infrahub.core.node.resource_manager import CorePrefixPool
+from infrahub.core.node.resource_manager import CoreIPAddressPool, CorePrefixPool
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
@@ -2197,6 +2197,7 @@ async def init_nodes_registry(db: InfrahubDatabase) -> None:
     registry.node["Node"] = Node
     registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
     registry.node[InfrahubKind.PREFIXPOOL] = CorePrefixPool
+    registry.node[InfrahubKind.IPADDRESSPOOL] = CoreIPAddressPool
 
 
 @pytest.fixture
@@ -2406,6 +2407,24 @@ async def register_ipam_extended_schema(default_branch: Branch, register_ipam_sc
                     {
                         "name": "prefix",
                         "peer": "IpamIPPrefix",
+                        "kind": "Attribute",
+                        "optional": False,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+            {
+                "name": "MandatoryAddress",
+                "namespace": "Test",
+                "description": "A model with a mandatory relationship to a IpamIPAddress",
+                "attributes": [
+                    {"name": "name", "kind": "Text"},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "address",
+                        "peer": "IpamIPAddress",
                         "kind": "Attribute",
                         "optional": False,
                         "cardinality": "one",
@@ -2645,6 +2664,7 @@ async def ip_dataset_prefix_v4(
     register_ipam_schema: SchemaBranch,
 ):
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
     ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await ns1.new(db=db, name="ns1")
@@ -2678,6 +2698,22 @@ async def ip_dataset_prefix_v4(
     await net145.new(db=db, prefix="10.10.3.0/27", parent=net140, ip_namespace=ns1)
     await net145.save(db=db)
 
+    ip1_net145 = await Node.init(db=db, schema=address_schema)
+    await ip1_net145.new(db=db, address="10.10.3.1/27", ip_prefix=net145, ip_namespace=ns1)
+    await ip1_net145.save(db=db)
+
+    net147 = await Node.init(db=db, schema=prefix_schema)
+    await net147.new(db=db, prefix="10.200.0.0/30", parent=net146, ip_namespace=ns1)
+    await net147.save(db=db)
+
+    ip1_net147 = await Node.init(db=db, schema=address_schema)
+    await ip1_net147.new(db=db, address="10.200.0.1/30", ip_prefix=net147, ip_namespace=ns1)
+    await ip1_net147.save(db=db)
+
+    ip2_net147 = await Node.init(db=db, schema=address_schema)
+    await ip2_net147.new(db=db, address="10.200.0.2/30", ip_prefix=net147, ip_namespace=ns1)
+    await ip2_net147.save(db=db)
+
     data = {
         "ns1": ns1,
         "net140": net140,
@@ -2687,5 +2723,6 @@ async def ip_dataset_prefix_v4(
         "net144": net144,
         "net145": net145,
         "net146": net146,
+        "net147": net147,
     }
     return data
