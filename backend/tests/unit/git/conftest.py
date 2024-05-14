@@ -643,11 +643,11 @@ async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
 @pytest.fixture
 async def mock_check_create(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
-        InfrahubKind.CHECKDEFINITION: {
-            "ok": True,
-            "object": {
-                "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-            },
+        "data": {
+            f"{InfrahubKind.CHECKDEFINITION}Create": {
+                "ok": True,
+                "object": {"id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"},
+            }
         }
     }
 
