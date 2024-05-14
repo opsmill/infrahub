@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from pydantic import (
@@ -27,7 +27,7 @@ from infrahub.exceptions import MigrationError, PermissionDeniedError
 from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
-from infrahub.types import ATTRIBUTE_TYPES
+from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
@@ -87,6 +87,21 @@ class SchemaLoadAPI(SchemaRoot):
 
 class SchemasLoadAPI(SchemaRoot):
     schemas: List[SchemaLoadAPI]
+
+
+class JSONSchema(BaseModel):
+    schema: Optional[str] = Field(None, alias='$schema', description="Schema version identifier")
+    title: Optional[str] = Field(None, description="Title of the schema")
+    description: Optional[str] = Field(None, description="Description of the schema")
+    type: str = Field(..., description="Type of the schema element (e.g., 'object', 'array', 'string')")
+    properties: Optional[Dict[str, Any]] = Field(None, description="Properties of the object if type is 'object'")
+    items: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = Field(
+        None, description="Items of the array if type is 'array'"
+    )
+    required: Optional[List[str]] = Field(None, description="List of required properties if type is 'object'")
+    additionalProperties: Optional[Union[bool, Dict[str, Any]]] = Field(
+        None, description="Specifies whether additional properties are allowed"
+    )
 
 
 class SchemaUpdate(BaseModel):
@@ -189,24 +204,26 @@ async def get_schema_by_kind(
 async def get_json_schema_by_kind(
     schema_kind: str,
     branch: Branch = Depends(get_branch_dep),
-) -> dict:
+) -> JSONSchema:
     log.debug("json_schema_kind_request", branch=branch.name)
+
+    fields: dict[str, Any] = {}
 
     schema = registry.schema.get(name=schema_kind, branch=branch)
 
-    fields = {}
     for attr in schema.attributes:
-        field_type = ATTRIBUTE_TYPES[attr.kind].pydantic
+        field_type = ATTRIBUTE_PYTHON_TYPES[attr.kind]
+
         default_value = attr.default_value if attr.optional else ...
         field_info = Field(default=default_value, description=attr.description)
         if attr.enum:
-            extras = {"enum": attr.enum}
+            extras: dict[str, Any] = {"enum": attr.enum}
             # ignore types because mypy hates generic kwargs
-            field_info = Field(default=default_value, description=attr.description, **extras)  # type: ignore
+            field_info = Field(default=default_value, description=attr.description, **extras)
         fields[attr.name] = (field_type, field_info)
 
     # Use Pydantic's create_model to dynamically create the class, ignore types because fields are Any, and mypy hates that
-    json_schema = create_model(schema.name, **fields).model_json_schema()  # type: ignore
+    json_schema = create_model(schema.name, **fields).model_json_schema()
 
     json_schema["description"] = schema.description
     json_schema["$schema"] = "http://json-schema.org/draft-07/schema#"

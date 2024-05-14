@@ -109,7 +109,6 @@ class ID(InfrahubDataType):
     graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
-    pydantic = int
 
 
 class Text(InfrahubDataType):
@@ -120,7 +119,6 @@ class Text(InfrahubDataType):
     graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
-    pydantic = str
 
 
 class TextArea(Text):
@@ -131,7 +129,6 @@ class TextArea(Text):
     graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
-    pydantic = str
 
 
 class DateTime(InfrahubDataType):
@@ -142,7 +139,6 @@ class DateTime(InfrahubDataType):
     graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
-    pydantic = datetime
 
 
 class Email(InfrahubDataType):
@@ -153,7 +149,6 @@ class Email(InfrahubDataType):
     graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
-    pydantic = EmailStr
 
 
 class Password(InfrahubDataType):
@@ -175,7 +170,6 @@ class HashedPassword(InfrahubDataType):
     graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "HashedPassword"
-    pydantic = str
 
 
 class URL(InfrahubDataType):
@@ -186,7 +180,6 @@ class URL(InfrahubDataType):
     graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "URL"
-    pydantic = HttpUrl
 
 
 class File(InfrahubDataType):
@@ -197,7 +190,6 @@ class File(InfrahubDataType):
     graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
-    pydantic = str
 
 
 class MacAddress(InfrahubDataType):
@@ -208,7 +200,6 @@ class MacAddress(InfrahubDataType):
     graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
-    pydantic = str
 
 
 class Color(InfrahubDataType):
@@ -219,7 +210,6 @@ class Color(InfrahubDataType):
     graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
-    pydantic = str
 
 
 class Dropdown(InfrahubDataType):
@@ -230,7 +220,6 @@ class Dropdown(InfrahubDataType):
     graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "Dropdown"
-    pydantic = str
 
 
 class Number(InfrahubDataType):
@@ -241,7 +230,6 @@ class Number(InfrahubDataType):
     graphql_update = "NumberAttributeUpdate"
     graphql_filter = graphene.Int
     infrahub = "Integer"
-    pydantic = int
 
 
 class Bandwidth(InfrahubDataType):
@@ -252,7 +240,6 @@ class Bandwidth(InfrahubDataType):
     graphql_update = "NumberAttributeUpdate"
     graphql_filter = graphene.Int
     infrahub = "Integer"
-    pydantic = int
 
 
 class IPHost(InfrahubDataType):
@@ -263,7 +250,6 @@ class IPHost(InfrahubDataType):
     graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "IPHost"
-    pydantic = IPvAnyAddress
 
 
 class IPNetwork(InfrahubDataType):
@@ -274,7 +260,6 @@ class IPNetwork(InfrahubDataType):
     graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "IPNetwork"
-    pydantic = str
 
 
 class Boolean(InfrahubDataType):
@@ -285,7 +270,6 @@ class Boolean(InfrahubDataType):
     graphql_update = "CheckboxAttributeUpdate"
     graphql_filter = graphene.Boolean
     infrahub = "Boolean"
-    pydantic = bool
 
 
 class Checkbox(InfrahubDataType):
@@ -296,7 +280,6 @@ class Checkbox(InfrahubDataType):
     graphql_update = "CheckboxAttributeUpdate"
     graphql_filter = graphene.Boolean
     infrahub = "Boolean"
-    pydantic = bool
 
 
 class List(InfrahubDataType):
@@ -307,7 +290,6 @@ class List(InfrahubDataType):
     graphql_update = "ListAttributeUpdate"
     graphql_filter = GenericScalar
     infrahub = "ListAttribute"
-    pydantic = TypingList[object]
 
 
 class JSON(InfrahubDataType):
@@ -318,7 +300,6 @@ class JSON(InfrahubDataType):
     graphql_update = "JSONAttributeUpdate"
     graphql_filter = GenericScalar
     infrahub = "JSONAttribute"
-    pydantic = Json
 
 
 class Any(InfrahubDataType):
@@ -329,7 +310,6 @@ class Any(InfrahubDataType):
     graphql_update = "AnyAttributeUpdate"
     graphql_filter = GenericScalar
     infrahub = "AnyAttribute"
-    pydantic = object
 
 
 ATTRIBUTE_TYPES: Dict[str, Type[InfrahubDataType]] = {
@@ -354,6 +334,30 @@ ATTRIBUTE_TYPES: Dict[str, Type[InfrahubDataType]] = {
     "List": List,
     "JSON": JSON,
     "Any": Any,
+}
+
+ATTRIBUTE_PYTHON_TYPES: Dict[str, Type] = {
+    "ID": int,  # Assuming IDs are integers
+    "Dropdown": str,  # Dropdowns can be represented as strings
+    "Text": str,
+    "TextArea": str,
+    "DateTime": datetime,
+    "Email": EmailStr,
+    "Password": str,  # Passwords can be any string
+    "HashedPassword": str,  # Hashed passwords are also strings
+    "URL": HttpUrl,
+    "File": str,  # File paths or identifiers as strings
+    "MacAddress": str,  # MAC addresses can be straightforward strings
+    "Color": str,  # Colors often represented as hex strings
+    "Number": float,  # Numbers can be floats for general use
+    "Bandwidth": float,  # Bandwidth in some units, represented as a float
+    "IPHost": IPvAnyAddress,
+    "IPNetwork": str,
+    "Boolean": bool,
+    "Checkbox": bool,  # Checkboxes represent boolean values
+    "List": TypingList[Any],  # Lists can contain any type of items
+    "JSON": Json,  # Pydantic's Json type handles arbitrary JSON objects
+    "Any": Any,  # Any type allowed
 }
 
 ATTRIBUTE_KIND_LABELS = list(ATTRIBUTE_TYPES.keys())
