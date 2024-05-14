@@ -243,6 +243,13 @@ INTERFACE_L2_ROLES_MAPPING = {
     ],
 }
 
+LAG_INTERFACE_L2_ROLES_MAPPING = {
+    "leaf": {
+        "port-channel1": "peer",
+        "port-channel2": "server"
+    }
+}
+
 INTERFACE_L2_MODE_MAPPING = {
     "peer": "Trunk (ALL)"
 }
@@ -646,7 +653,17 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             store.set(key=f"{device_name}-l2-{intf_name}", node=intf)
 
         for lag_intf in LAG_INTERFACE_L2.get(device_type, []):
-            intf_role = "server"
+
+            try:
+                intf_role = LAG_INTERFACE_L2_ROLES_MAPPING[device[4]][lag_intf["name"]]
+            except KeyError:
+                intf_role = "server"
+
+            l2_mode = INTERFACE_L2_MODE_MAPPING.get(intf_role, "Access")
+
+            untagged_vlan = None
+            if l2_mode == "Access":
+                untagged_vlan = store.get(kind="InfraVLAN", key=f"{site_name}_server")
 
             lag = await client.create(
                 branch=branch,
@@ -655,8 +672,8 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                 name=lag_intf["name"],
                 speed=10000,
                 enabled=True,
-                l2_mode="Access",
-                untagged_vlan={"id": store.get(kind="InfraVLAN", key=f"{site_name}_server").id},
+                l2_mode=l2_mode,
+                untagged_vlan=untagged_vlan,
                 status={"value": ACTIVE_STATUS, "owner": group_ops.id},
                 role={"value": intf_role, "source": account_pop.id},
                 lacp=lag_intf["lacp"],
