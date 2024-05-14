@@ -276,7 +276,7 @@ RESTRICTED_NAMESPACES: list[str] = [
     "Account",
     "Branch",
     # "Builtin",
-    # "Core",
+    "Core",
     "Deprecated",
     "Diff",
     "Infrahub",
