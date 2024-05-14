@@ -1,12 +1,15 @@
 import Handlebars from "handlebars";
 
 export const getObjectRelationshipsDetailsPaginated = Handlebars.compile(`
-query GetObjectRelationships_{{kind}} {
+query GetObjectRelationships_{{kind}}($offset: Int, $limit: Int) {
   {{kind}} (ids: ["{{objectid}}"]) {
     count
     edges {
       node {
-        {{relationship}}{{#if filters}}({{{filters}}}){{/if}} {
+        {{relationship}}(
+          offset: $offset
+          limit: $limit
+        ) {
           count
           edges {
             node {
