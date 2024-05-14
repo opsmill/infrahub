@@ -28,7 +28,7 @@ import { constructPathForIpam } from "../common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC, IPAM_QSP } from "../constants";
 import { reloadIpamTreeAtom } from "../ipam-tree/ipam-tree.state";
 import { StringParam, useQueryParam } from "use-query-params";
-import { defaultIpNamespaceAtom } from "../../../state/atoms/namespace.atom";
+import { defaultIpNamespaceAtom } from "../common/namespace.state";
 
 const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const { prefix } = useParams();

@@ -23,7 +23,7 @@ import {
 import IpamIPAddresses from "./ip-addresses/ipam-ip-address";
 import { reloadIpamTreeAtom } from "./ipam-tree/ipam-tree.state";
 import IpamIPPrefixes from "./prefixes/ipam-prefixes";
-import { defaultIpNamespaceAtom } from "../../state/atoms/namespace.atom";
+import { defaultIpNamespaceAtom } from "./common/namespace.state";
 
 const tabToKind = {
   [IPAM_TABS.IP_DETAILS]: IP_ADDRESS_GENERIC,

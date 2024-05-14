@@ -18,7 +18,7 @@ import { GET_IP_ADDRESSES } from "../../../graphql/queries/ipam/ip-address";
 import { GET_PREFIX_KIND } from "../../../graphql/queries/ipam/prefixes";
 import useQuery from "../../../hooks/useQuery";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
-import { defaultIpNamespaceAtom } from "../../../state/atoms/namespace.atom";
+import { defaultIpNamespaceAtom } from "../common/namespace.state";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "../../../utils/string";
 import ErrorScreen from "../../errors/error-screen";

@@ -6,7 +6,7 @@ import { Select } from "../../components/inputs/select";
 import { Skeleton } from "../../components/skeleton";
 import { GET_NAMESPACES } from "../../graphql/queries/ipam/namespaces";
 import useQuery from "../../hooks/useQuery";
-import { defaultIpNamespaceAtom } from "../../state/atoms/namespace.atom";
+import { defaultIpNamespaceAtom } from "./common/namespace.state";
 import { constructPath } from "../../utils/fetch";
 import { IPAM_QSP, IPAM_ROUTE, IPAM_TABS, NAMESPACE_GENERIC } from "./constants";
 

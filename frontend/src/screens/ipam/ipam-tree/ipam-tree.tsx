@@ -8,7 +8,7 @@ import { useLazyQuery } from "../../../hooks/useQuery";
 
 import { StringParam, useQueryParam } from "use-query-params";
 import { GET_PREFIXES_ONLY } from "../../../graphql/queries/ipam/prefixes";
-import { defaultIpNamespaceAtom } from "../../../state/atoms/namespace.atom";
+import { defaultIpNamespaceAtom } from "../common/namespace.state";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { constructPathForIpam } from "../common/utils";
 import { IPAM_QSP, IPAM_ROUTE } from "../constants";
