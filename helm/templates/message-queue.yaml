@@ -26,6 +26,11 @@ spec:
               value: {{ .Values.messageQueue.auth.password | quote }}
             - name: KUBERNETES_CLUSTER_DOMAIN
               value: {{ quote .Values.globalkubernetesClusterDomain }}
+          {{- with .Values.messageQueue.messageQueue.envFromExistingSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ . }}
+          {{- end }}
           image: {{ .Values.messageQueue.messageQueue.image.repository }}:{{ .Values.messageQueue.messageQueue.image.tag }}
           imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.messageQueue.messageQueue.imagePullPolicy }}
           {{- if .Values.messageQueue.livenessProbe.enabled }}
