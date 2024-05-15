@@ -14,7 +14,7 @@ test.describe("Verify multi select behaviour", () => {
 
   test("select, remove and create tags using multi-select", async ({ page }) => {
     await test.step("Navigate to Ethernet11", async () => {
-      await page.goto("/objects/InfraInterfaceL2");
+      await page.goto("/objects/InfraInterfaceL2?pagination={\"limit\":10, \"offset\": 20}");
       await page.getByRole("cell", { name: "Ethernet11" }).first().click();
     });
 
