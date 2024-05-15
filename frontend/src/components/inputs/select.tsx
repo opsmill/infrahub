@@ -1,7 +1,6 @@
 import { gql } from "@apollo/client";
 import { Combobox } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/20/solid";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { useContext, useEffect, useState } from "react";
@@ -34,6 +33,9 @@ import { MultipleInput } from "./multiple-input";
 import { getObjectDisplayLabel } from "../../graphql/queries/objects/getObjectDisplayLabel";
 import LoadingScreen from "../../screens/loading-screen/loading-screen";
 import { getOptionsFromRelationship } from "../../utils/getSchemaObjectColumns";
+import { POOLS_DICTIONNARY, POOLS_PEER } from "../../screens/ipam/constants";
+import { comparedOptions } from "../../utils/array";
+import { Tooltip } from "../ui/tooltip";
 
 export type SelectOption = {
   id: string | number;
@@ -68,9 +70,6 @@ type SelectProps = {
   isUnique?: boolean;
   isInherited?: boolean;
 };
-
-// Needed for async options to avoid duplicates issues
-const comparedOptions = (a: SelectOption, b: SelectOption) => a?.id === b?.id;
 
 export const Select = (props: SelectProps) => {
   const {
@@ -108,6 +107,7 @@ export const Select = (props: SelectProps) => {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   // TODO: after refactor, find a way to verify the options to trigger or not the request
+  const [hasPoolsBeenOpened, setHasPoolsBeenOpened] = useState(false);
   const [hasBeenOpened, setHasBeenOpened] = useState(false);
   const [optionToDelete, setOptionToDelete] = useState<null | number | string>(null);
   const [localOptions, setLocalOptions] = useState(options);
@@ -117,15 +117,33 @@ export const Select = (props: SelectProps) => {
       : localOptions?.find((option) => option?.id === value || option.name === value)
   );
 
+  const namespaceData = namespaces.find((n) => n.name === schema?.namespace);
+
+  const schemaData = schemaList.find((s) => s.kind === peer);
+
+  // Check if any kind from inheritance is one of the available for pools
+  const canRequestPools = !!schemaData?.inherit_from
+    ?.map((from) => POOLS_PEER.includes(from))
+    ?.filter(Boolean)?.length;
+  const poolPeer = canRequestPools && POOLS_DICTIONNARY[peer];
+
   // Query to fetch options only if a peer is defined
   // TODO: Find another solution for queries while loading schema
   const optionsQueryString = peer ? getDropdownOptions({ kind: peer }) : "query { ok }";
+  const poolsQueryString = poolPeer ? getDropdownOptions({ kind: poolPeer }) : "query { ok }";
 
   const optionsQuery = gql`
     ${optionsQueryString}
   `;
 
-  const [fetchOptions, { loading, data }] = useLazyQuery(optionsQuery);
+  const poolsQuery = gql`
+    ${poolsQueryString}
+  `;
+
+  const [fetchOptions, { loading: optionsLoading, data: optionsData }] = useLazyQuery(optionsQuery);
+  const [fetchPoolsOptions, { loading: poolsLoading, data: poolsData }] = useLazyQuery(poolsQuery);
+  const loading = optionsLoading || poolsLoading;
+  const data = hasBeenOpened ? optionsData : poolsData;
 
   const labelQueryString = peer ? getObjectDisplayLabel({ kind: peer }) : "query { ok }";
 
@@ -135,13 +153,10 @@ export const Select = (props: SelectProps) => {
 
   const [fetchLabel] = useLazyQuery(labelQuery);
 
-  const optionsResult = peer && data ? data[peer].edges.map((edge: any) => edge.node) : [];
+  const optionsResult =
+    peer && data ? data[hasBeenOpened ? peer : poolPeer]?.edges.map((edge: any) => edge.node) : [];
 
-  const optionsData = getOptionsFromRelationship(optionsResult, schemaList);
-
-  const schemaData = schemaList.find((s) => s.kind === peer);
-
-  const namespaceData = namespaces.find((n) => n.name === schema?.namespace);
+  const optionsList = getOptionsFromRelationship(optionsResult, schemaList);
 
   const addOption: SelectOption = {
     name: "Add option",
@@ -239,8 +254,18 @@ export const Select = (props: SelectProps) => {
     // Do not fetch if there is no peer
     if (!peer || hasBeenOpened) return;
 
+    setHasPoolsBeenOpened(false);
     setHasBeenOpened(true);
     fetchOptions();
+  };
+
+  const handleFocusPools = () => {
+    // Do not fetch if there is no peer
+    if (!canRequestPools || hasPoolsBeenOpened) return;
+
+    setHasPoolsBeenOpened(true);
+    setHasBeenOpened(false);
+    fetchPoolsOptions();
   };
 
   const getOptionStyle = (option: any) => {
@@ -760,10 +785,10 @@ export const Select = (props: SelectProps) => {
 
   // If options from query are updated
   useEffect(() => {
-    if (!optionsData?.length) return;
+    if (!optionsList?.length) return;
 
-    setLocalOptions(optionsData);
-  }, [optionsData?.length]);
+    setLocalOptions(optionsList);
+  }, [optionsList?.length]);
 
   // If options from parent are updated
   useEffect(() => {
@@ -781,28 +806,43 @@ export const Select = (props: SelectProps) => {
         by={comparedOptions}
         {...otherProps}>
         <div className="relative">
-          <Combobox.Input
-            as={multiple ? MultipleInput : Input}
-            value={getInputValue()}
-            onChange={handleInputChange}
-            onFocus={handleFocus}
-            disabled={disabled}
-            error={error}
-            className={"pr-8"}
-            style={getInputStyle()}
-            hideEmpty
-            data-testid="select-input"
-          />
-          <Combobox.Button
-            className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed"
-            data-testid="select-open-option-button"
-            onClick={handleFocus}>
-            {loading && <LoadingScreen hideText size={24} />}
+          <div className="flex">
+            <Combobox.Input
+              as={multiple ? MultipleInput : Input}
+              value={getInputValue()}
+              onChange={handleInputChange}
+              onFocus={handleFocus}
+              disabled={disabled}
+              error={error}
+              className={"pr-8"}
+              style={getInputStyle()}
+              hideEmpty
+              data-testid="select-input"
+            />
+            <Combobox.Button
+              className={classNames(
+                "absolute inset-y-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed",
+                canRequestPools ? "right-10" : "right-0"
+              )}
+              data-testid="select-open-option-button"
+              onClick={handleFocus}>
+              {loading && <LoadingScreen hideText size={24} />}
 
-            {!loading && (
-              <ChevronDownIcon className={"w-4 h-4"} aria-hidden="true" style={getInputStyle()} />
+              {!loading && (
+                <Icon icon={"mdi:chevron-down"} className="text-gray-500" style={getInputStyle()} />
+              )}
+            </Combobox.Button>
+            {canRequestPools && (
+              <Tooltip content="Open pools options" enabled>
+                <Combobox.Button
+                  className="inset-y-0 right-0 flex items-center rounded-md px-2 ml-2 focus:outline-none disabled:cursor-not-allowed ring-1 ring-inset ring-gray-300"
+                  data-testid="select-open-pool-option-button"
+                  onClick={handleFocusPools}>
+                  <Icon icon={"mdi:list-box"} className="text-gray-500" />
+                </Combobox.Button>
+              </Tooltip>
             )}
-          </Combobox.Button>
+          </div>
 
           {!loading && finalOptions && finalOptions.length > 0 && (
             <Combobox.Options
