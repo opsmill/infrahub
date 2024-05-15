@@ -378,7 +378,7 @@ class IPPrefixUtilization(Query):
         }}
         MATCH path = (
             (pfx)-[r_rel1]-(rl)-[r_rel2]-(child)
-            -[r_attr:HAS_ATTRIBUTE WHERE ({rel_filter("r_attr")})]->(:Attribute WHERE name IN ["prefix", "address"])
+            -[r_attr:HAS_ATTRIBUTE WHERE ({rel_filter("r_attr")})]->(attr:Attribute WHERE attr.name IN ["prefix", "address"])
             -[r_attr_val:HAS_VALUE WHERE ({rel_filter("r_attr_val")})]->(av:AttributeIPNetwork|AttributeIPHost)
         )
         WITH
@@ -411,7 +411,7 @@ class IPPrefixUtilization(Query):
         for result in self.get_results():
             if branch and result.get("branch") != branch:
                 continue
-            if label_to_count in result.get_node("child").get("labels"):
+            if label_to_count in result.get_node("child").labels:
                 count += 1
         return count
 
@@ -421,7 +421,7 @@ class IPPrefixUtilization(Query):
     def get_num_addresses_in_use(self, branch: Optional[str] = None) -> int:
         return self._count_children(label_to_count=InfrahubKind.IPADDRESS, branch=branch)
 
-    def get_prefix_use_percentage(self, branch: Optional[str] = None) -> int:
+    def get_prefix_use_percentage(self, branch: Optional[str] = None) -> float:
         prefix_space = self.ip_prefix.prefix.num_addresses
         max_prefixlen = self.ip_prefix.prefix.obj.max_prefixlen
         used_space = 0
@@ -429,13 +429,13 @@ class IPPrefixUtilization(Query):
             if branch and result.get("branch") != branch:
                 continue
             child_node = result.get_node("child")
-            if InfrahubKind.IPPREFIX not in child_node.get("labels"):
+            if InfrahubKind.IPPREFIX not in child_node.labels:
                 continue
             used_space += 2 ** (max_prefixlen - int(result.get_node("av").get("prefixlen")))
 
         return (used_space / prefix_space) * 100
 
-    def get_address_use_percentage(self, branch: Optional[str] = None) -> int:
+    def get_address_use_percentage(self, branch: Optional[str] = None) -> float:
         prefix_space = self.ip_prefix.prefix.num_addresses
 
         # Non-RFC3021 subnet
