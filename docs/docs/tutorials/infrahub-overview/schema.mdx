@@ -1,10 +1,10 @@
 ---
-title: Schema Design
+title: Schema design
 ---
 
-# Schema Design
+# Schema design
 
-![Infrahub architecture](./../../media/design-schema.png)
+![Infrahub schema](./../../media/design-schema.png)
 
 A core feature of Infrahub is the ability to define a relational model to describe the infrastructure, design and business logic in a way that's specific to each organization's needs, while allowing for the model to be changed via version control over time.
 
@@ -20,7 +20,7 @@ Example schemas can be found:
 - In other OpsMill-provided [demo repositories](https://github.com/opsmill?q=demo&type=all&language=&sort=)
 - Via the Infrahub community
 
-The schema definitional YAML file can be stored in any file storage, however storage in a git repository would be best practice. The schema can be loaded in to Infrahub via [`infrahubctl load`](../../infrahubctl/infrahubctl-load) command or via REST API. Swagger documentation for the REST API can be viewed by clicking the `{...}` Swagger Documentation icon in the bottom-left of the Frontend UI of Infrahub.
+The schema definitional YAML file can be stored in any file storage, however storage in a Git repository would be best practice. The schema can be loaded in to Infrahub via [`infrahubctl load`](../../infrahubctl/infrahubctl-load) command or via REST API. Swagger documentation for the REST API can be viewed by clicking the `{...}` Swagger Documentation icon in the bottom-left of the Frontend UI of Infrahub.
 
 Once the schema is loaded, it's stored and version controlled in the graph database, and distributed to all containers acting as Infrahub API Servers.
 
