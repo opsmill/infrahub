@@ -1,8 +1,8 @@
 import { Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
-import { format, setHours, setMinutes } from "date-fns";
+import { format, isPast } from "date-fns";
 import { useAtom } from "jotai/index";
-import { HTMLAttributes, forwardRef, useEffect } from "react";
+import { forwardRef, HTMLAttributes, useEffect } from "react";
 import DateTimePicker from "react-datepicker";
 import { DateTimeParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
@@ -67,8 +67,7 @@ export const TimeFrameSelector = () => {
         timeIntervals={10}
         calendarStartDay={1}
         maxDate={new Date()}
-        minTime={setHours(setMinutes(new Date(), 0), 0)}
-        maxTime={new Date()}
+        filterTime={(date) => isPast(date)}
       />
     </div>
   );
