@@ -172,7 +172,7 @@ export default function ObjectItemCreate(props: iProps) {
   }
 
   return (
-    <div className="bg-custom-white flex-1 overflow-auto">
+    <div className="bg-custom-white flex flex-col flex-1 overflow-auto">
       {isGeneric && (
         <div className="p-4 pt-3 bg-gray-200">
           <div className="flex items-center">
@@ -196,16 +196,14 @@ export default function ObjectItemCreate(props: iProps) {
       )}
 
       {schema && fields && (
-        <div className="flex-1">
-          <Form
-            onSubmit={onSubmit}
-            onCancel={onCancel}
-            fields={fields}
-            isLoading={isLoading}
-            submitLabel={submitLabel ?? "Create"}
-            preventObjectsCreation={preventObjectsCreation}
-          />
-        </div>
+        <Form
+          onSubmit={onSubmit}
+          onCancel={onCancel}
+          fields={fields}
+          isLoading={isLoading}
+          submitLabel={submitLabel ?? "Create"}
+          preventObjectsCreation={preventObjectsCreation}
+        />
       )}
     </div>
   );
