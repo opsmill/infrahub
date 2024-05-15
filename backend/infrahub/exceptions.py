@@ -183,6 +183,7 @@ class PermissionDeniedError(Error):
 
 
 class ProcessingError(Error):
+    HTTP_CODE: int = 400
     message: str = "Unable to process the request"
 
     def __init__(self, message: Optional[str] = None):

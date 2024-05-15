@@ -229,7 +229,7 @@ async def test_get_one_by_guid(
     await dog2.new(db=db, name="Bella", breed="French Bulldog", owner=person1)
     await dog2.save(db=db)
 
-    node1 = await NodeManager.get_one_by_guid(db=db, guid=["Jack", "Rocky"], schema_name=dog_schema.kind)
+    node1 = await NodeManager.get_one_by_guid(db=db, guid=["Jack", "Rocky"], kind=dog_schema.kind)
     assert isinstance(node1, Node)
     assert node1.id == dog1.id
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import reduce
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Type, Union, overload
 
 from infrahub_sdk.utils import deep_merge_dict
 
@@ -359,6 +359,7 @@ class NodeManager:
             db=db, ids=peers_ids, fields=fields, at=at, branch=branch, include_owner=True, include_source=True
         )
 
+    @overload
     @classmethod
     async def get_one_by_default_filter(
         cls,
@@ -372,7 +373,41 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
-    ) -> Node:
+        raise_on_error: Literal[False] = False,
+    ) -> Optional[Node]: ...
+
+    @overload
+    @classmethod
+    async def get_one_by_default_filter(
+        cls,
+        db: InfrahubDatabase,
+        id: str,
+        kind: str,
+        fields: Optional[dict] = None,
+        at: Union[Timestamp, str] = None,
+        branch: Union[Branch, str] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        prefetch_relationships: bool = False,
+        account=None,
+        raise_on_error: Literal[True] = True,
+    ) -> Node: ...
+
+    @classmethod
+    async def get_one_by_default_filter(
+        cls,
+        db: InfrahubDatabase,
+        id: str,
+        kind: str,
+        fields: Optional[dict] = None,
+        at: Union[Timestamp, str] = None,
+        branch: Union[Branch, str] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        prefetch_relationships: bool = False,
+        account=None,
+        raise_on_error: bool = False,
+    ) -> Optional[Node]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -402,7 +437,16 @@ class NodeManager:
                 message=f"Unable to find node {id!r}, {len(items)} nodes returned, expected 1",
             )
 
-        return items[0] if items else None
+        if items:
+            return items[0]
+        if not raise_on_error:
+            return None
+
+        raise NodeNotFoundError(
+            branch_name=branch.name,
+            node_type=kind,
+            identifier=id,
+        )
 
     @classmethod
     async def get_one_by_guid(

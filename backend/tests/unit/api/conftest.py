@@ -548,11 +548,11 @@ async def data_diff_relationship_one(db: InfrahubDatabase, default_branch, car_p
     time_minus1 = pendulum.now(tz="UTC")
 
     c1_main = await NodeManager.get_one_by_id_or_default_filter(
-        db=db, id="volt", schema_name="TestElectricCar", branch=default_branch
+        db=db, id="volt", kind="TestElectricCar", branch=default_branch
     )
 
     p2_main = await NodeManager.get_one_by_id_or_default_filter(
-        db=db, id="Jane", schema_name="TestPerson", branch=default_branch
+        db=db, id="Jane", kind="TestPerson", branch=default_branch
     )
 
     await c1_main.previous_owner.update(data=p2_main, db=db)
