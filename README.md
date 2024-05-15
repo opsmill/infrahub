@@ -1,42 +1,70 @@
-
 <!-- markdownlint-disable -->
-![](./docs/media/Infrahub-horizontal.svg)
+![Infrahub Logo](docs/static/img/infrahub-hori.svg)
 <!-- markdownlint-restore -->
 
-# Welcome to Infrahub
+# Infrahub [![CI](https://github.com/opsmill/infrahub/actions/workflows/ci.yml/badge.svg?branch=stable)](https://github.com/opsmill/infrahub/actions/workflows/ci.yml)
 
-Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run.
-
-At its heart, Infrahub is built on 3 fundamental pillars:
-
-- **Powerful Schema**: that's easily extensible
-- **Unified Version Control**: for data and files
-- **Data Synchronization**: with traceability and ownership
+Infrahub from [OpsMill](https://opsmill.com) is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run. Infrahub offers a central hub to manage the data, templates and playbooks that power your infrastructure by combining the version control and branch management capabilities of Git with the flexible data model and UI of a graph database.
 
 ## Quick Start
 
-Leveraging [Codespaces](https://docs.github.com/en/codespaces/overview) from Github, it's possible to start a fresh instance of Infrahub in the Cloud in minutes. This is the recommended method to try Infrahub as it reduces the effort to setup Infrahub to a couple of clicks. Use the table below to select the right environment for you, based on the branch and the initial data you would like pre-loaded in your instance.
+Leveraging [GitHub Codespaces](https://docs.github.com/en/codespaces/overview), it's possible to start a new instance of Infrahub in the Cloud in minutes:
 
-- The `stable` branch is for the latest release; this is the recommended version for most users.
-- The `develop` branch is where the preparation of the next major release is done.
-- The `Default` version does not include a schema or data pre-loaded.
-- The `Demo` version includes a pre-loaded schema and a sample network dataset.
+|  No Data | Demo Data |
+|---|---|
+| [![Launch in GitHub Codespaces (No Data)](https://img.shields.io/badge/Launch%20Infrahub-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable) | [![Launch in GitHub Codespaces (Demo Data)](https://img.shields.io/badge/Infrahub%20with%20Data-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable) |
 
-> [!NOTE]
-> The documentation includes how to get setup and start using Infrahub. The documentation is currently protected by password : `cXsivxXAgL7Hae`
-
-|  | Branch `stable` | Branch `develop` |
-|---|---|---|
-| Run Default version of Infrahub in Codespaces | [![Start in Codespaces (stable), without data](https://img.shields.io/badge/Start%20stable%20version-0B6581?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable ) | [![Start in Codespaces (develop), without data](https://img.shields.io/badge/Start%20develop%20version-0B6581?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=develop ) |
-| Run Demo version of Infrahub in Codespaces | [![Start in Codespaces (stable), with demo data](https://img.shields.io/badge/Start%20stable%20version%20demo%20data-0D3F54?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdemo-container%2Fdevcontainer.json&ref=stable ) | [![Start in Codespaces (develop), with demo data](https://img.shields.io/badge/Start%20develop%20version%20demo%20data-0D3F54?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdemo-container%2Fdevcontainer.json&ref=develop) |
-| Documentation | [![Documentation](https://img.shields.io/badge/Documentation%20for%20stable-0B97BB?style=for-the-badge)](https://docs.infrahub.app/) | [![Documentation](https://img.shields.io/badge/Documentation%20for%20develop-0B97BB?style=for-the-badge)](https://develop.infrahub.pages.dev/) |
-
-> [!TIP]
-> The cost for running an Infrahub instance in Codespaces is covered by OpsMill. You can find your codespaces even after they are closed in your dashboard https://github.com/codespaces where you can reconnect to a previous codespace.
+To deploy a local instance of Infrahub please refer to our guide: [Installing Infrahub](https://docs.infrahub.app/guides/installation)
 
 ## Documentation
 
-If you'd like to learn more about Infrahub or deploy via alternate means, please check out the documentation:
+If you'd like to learn more about Infrahub, please refer to the following resources:
 
+- [Infrahub Overview](https://docs.infrahub.app/tutorials/infrahub-overview/)
+- [Getting Started](https://docs.infrahub.app/tutorials/getting-started/)
 - [Infrahub Documentation](https://docs.infrahub.app/)
-- [Deploy the demo environment on your laptop](https://docs.infrahub.app/tutorials/getting-started/#prepare-the-demo-environment)
+
+## Project status
+
+Infrahub is currently in in open beta, which means that not all features we are targeting for the first major release have been implemented yet and the project is still evolving at a very rapid pace. For upcoming development plans, see our [public roadmap](https://opsmill.atlassian.net/jira/discovery/share/views/7e5d4ab1-63d7-405e-b453-ad50cd9d5b71)
+
+## Support and Community
+
+If you need help, support for the open-source Infrahub project is provided on [![Join our Discord server](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/jXMRp9hXSX) or via [filing an issue on GitHub](https://github.com/opsmill/infrahub/issues)
+
+## Contributing
+
+[View our CONTRIBUTING](./CONTRIBUTING.md) policy to find the latest information.
+
+## Telemetry Data Collection
+
+By default, Infrahub collects the following non-user-identifying telemetry data:
+
+- Up/Down status of services
+- Number of Nodes
+- Number of Objects Created
+- Count of Branches Created
+- Count of Branches not yet merged
+- Number of Resource Pools
+- Obfuscated Schema Summary
+- Infrahub Version
+- Number of GIT repos
+- Number of workers
+- Number of generators
+- Number of artifact definitions
+- Number of times artifacts are being generated
+- Number of transformation
+- Number of groups
+- Number of profiles
+- Number of webhooks
+- Number of times webhooks are fired
+
+To disable telemetry on Infrahub deployment, set the following environmental variable:
+
+```bash
+export INFRAHUB_TELEMETRY_OPTOUT=true
+```
+
+## Security
+
+[View our SECURITY](./SECURITY.md) policy to find the latest information.

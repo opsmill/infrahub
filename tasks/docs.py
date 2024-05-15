@@ -76,6 +76,16 @@ def generate_bus_events(context: Context):
     """Generate documentation for the Bus events."""
     _generate_infrahub_events_documentation(context=context)
 
+@task
+def install(context: Context):
+    """Install documentation dependencies."""
+    exec_cmd = "npm install"
+
+    with context.cd(DOCUMENTATION_DIRECTORY):
+        output = context.run(exec_cmd)
+
+    if output.exited != 0:
+        sys.exit(-1)
 
 @task
 def validate(context: Context, docker: bool = False):

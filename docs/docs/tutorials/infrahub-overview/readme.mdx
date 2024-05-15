@@ -5,31 +5,20 @@ import ReferenceLink from "../../../src/components/Card";
 
 # Infrahub Overview
 
-:::note
+![Infrahub architecture](../../media/design.png)
 
-This tutorial doesn't require any prior knowledge, but knowledge of containers, Git, GraphQL, and Python will make things easier to understand.
+Infrahub acts as a central hub to manage all of the information and code that powers your infrastructure. At its heart, Infrahub is built on 3 fundamental pillars:
 
-:::
+- **A Flexible Schema**: A model of the infrastructure and the relation between the objects in the model, that's easily extensible.
+- **Version Control**: Natively integrated into the graph database which opens up some new capabilities like branching, diffing, and merging data directly in the database.
+- **Unified Storage**: By combining a graph database and git, Infrahub stores data and code needed to manage the infrastructure.
 
-This tutorial will explore the design and components of Infrahub and how Infrahub interacts with other systems to manage the infrastructure.
+This tutorial will explore the design and components of Infrahub and how the platform interacts with other systems to manage the infrastructure. To do this we'll walk through workflows and explain key concepts. This tutorial will teach you:
 
-![Infrahub architecture](../../media/design.svg)
-
-Infrahub acts as a central hub to manage all of the information that powers your infrastructure. At its heart, Infrahub is built on 3 fundamental pillars:
-
-- **Powerful Schema**: that's easily extensible
-- **Unified Version Control**: for data and files
-- **Data Synchronization**: with traceability and ownership
-
-
-
-Topics:
-
-- Schema
+- [Ways to interface with Infrahub](./interfaces)
+- [Schema purpose and concepts](./schema)
 - Data Input and Sync
-
-- API 
-- Data Export (transformations)
-- CI and Checks
-- Design-Driven (generators)
-- Deploy (ansible, nornir)
+- Data Transformation
+- Version Control, CI and Checks
+- generators & Design-Driven automation
+- External integrations  with automation frameworks (ansible, nornir)
