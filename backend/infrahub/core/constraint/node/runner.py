@@ -24,8 +24,11 @@ class NodeConstraintRunner:
         self.relationship_manager_constraints = relationship_manager_constraints
 
     async def check(self, node: Node, field_filters: Optional[List[str]] = None) -> None:
+        await node.resolve_relationships(db=self.db)
+
         for node_constraint in self.node_constraints:
             await node_constraint.check(node, filters=field_filters)
+
         for relationship_name in node.get_schema().relationship_names:
             if field_filters and relationship_name not in field_filters:
                 continue

@@ -225,7 +225,6 @@ class InfrahubMutationMixin:
             await obj.new(db=db, **data)
             fields_to_validate = list(data)
             await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
-
             if db.is_transaction:
                 await obj.save(db=db)
             else:

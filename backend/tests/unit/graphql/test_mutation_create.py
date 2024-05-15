@@ -983,3 +983,38 @@ async def test_create_with_uniqueness_constraint_violation(db: InfrahubDatabase,
     )
     assert len(result.errors) == 1
     assert "Violates uniqueness constraint 'owner-color'" in result.errors[0].message
+
+
+async def test_relationship_with_guid(db: InfrahubDatabase, default_branch, animal_person_schema):
+    person_schema = animal_person_schema.get(name="TestPerson")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+
+    query = """
+    mutation {
+        TestDogCreate(data: {
+            name: { value: "Rocky" },
+            breed: { value: "Labrador" },
+            color: { value: "black" },
+            owner: { guid: ["Jack"] },
+        }) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+    assert result.data["TestDogCreate"]["ok"] is True
+    assert result.data["TestDogCreate"]["object"]["id"]

@@ -307,6 +307,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return self
 
+    async def resolve_relationships(self, db: InfrahubDatabase) -> None:
+        for name in self._relationships:
+            relm: RelationshipManager = getattr(self, name)
+            await relm.resolve(db=db)
+
     async def load(
         self,
         db: InfrahubDatabase,
