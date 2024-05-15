@@ -19,9 +19,9 @@ import { getObjectAttributes, getSchemaObjectColumns } from "../../utils/getSche
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
-import ErrorScreen from "../error-screen/error-screen";
+import ErrorScreen from "../errors/error-screen";
+import NoDataFound from "../errors/no-data-found";
 import LoadingScreen from "../loading-screen/loading-screen";
-import NoDataFound from "../no-data-found/no-data-found";
 
 interface Props {
   objectname: string;
@@ -64,7 +64,7 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const queryString = schema
     ? getObjectDetailsPaginated({
-        ...schema,
+        kind: schema.kind,
         columns,
         attributes, // used for profile
         objectid,

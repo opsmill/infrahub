@@ -1,10 +1,10 @@
 import { forwardRef, useImperativeHandle } from "react";
 import { useParams } from "react-router-dom";
+import { GET_VALIDATORS } from "../../../graphql/queries/diff/getValidators";
 import useQuery from "../../../hooks/useQuery";
-import ErrorScreen from "../../error-screen/error-screen";
+import ErrorScreen from "../../errors/error-screen";
 import { ChecksSummary } from "./checks-summary";
 import { Validator } from "./validator";
-import { GET_VALIDATORS } from "../../../graphql/queries/diff/getValidators";
 
 export const Checks = forwardRef((props, ref) => {
   const { proposedchange } = useParams();

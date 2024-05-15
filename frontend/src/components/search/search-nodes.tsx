@@ -1,19 +1,19 @@
-import useQuery, { useLazyQuery } from "../../hooks/useQuery";
-import { SEARCH } from "../../graphql/queries/objects/search";
-import { ReactElement, useEffect } from "react";
-import { Icon } from "@iconify-icon/react";
-import { NODE_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "../../config/constants";
-import { useAtomValue } from "jotai/index";
-import { genericsState, schemaState } from "../../state/atoms/schema.atom";
-import { getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
-import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import { gql } from "@apollo/client";
-import { constructPath } from "../../utils/fetch";
-import { getObjectDetailsUrl } from "../../utils/objects";
+import { Icon } from "@iconify-icon/react";
 import { format } from "date-fns";
+import { useAtomValue } from "jotai/index";
+import { ReactElement, useEffect } from "react";
+import { NODE_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "../../config/constants";
+import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
+import { SEARCH } from "../../graphql/queries/objects/search";
+import { useDebounce } from "../../hooks/useDebounce";
+import useQuery, { useLazyQuery } from "../../hooks/useQuery";
+import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { constructPath } from "../../utils/fetch";
+import { getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
+import { getObjectDetailsUrl } from "../../utils/objects";
 import { Skeleton } from "../skeleton";
 import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-anywhere";
-import { useDebounce } from "../../hooks/useDebounce";
 
 type SearchProps = {
   query: string;
@@ -71,7 +71,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
   const queryString = schemaData
     ? getObjectDetailsPaginated({
-        ...schemaData,
+        kind: schemaData.kind,
         columns,
         objectid: node.id,
       })

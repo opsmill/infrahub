@@ -6,7 +6,7 @@ test.describe("/ipam/addresses - IP Address list", () => {
   }) => {
     await page.goto("/ipam/addresses?ipam-tab=ip-details");
     await expect(page.getByText("Showing 1 to ")).toBeVisible();
-    await page.getByTestId("select-open-option-button").click();
+    await page.getByTestId("ipam-main-content").getByTestId("select-open-option-button").click();
     await page.getByRole("option", { name: "20" }).click();
     await expect(page.getByText("Showing 1 to 20 of ")).toBeVisible();
 
