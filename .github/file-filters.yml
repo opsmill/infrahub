@@ -3,6 +3,9 @@ ci_config: &ci_config
   - ".github/workflows/ci.yml"
   - ".github/file-filters.yml"
 
+github_workflows: &github_workflows
+  - ".github/workflows/*.yml"
+
 development_files: &development_files
   - "development/**"
   - "tasks/**"
