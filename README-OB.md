@@ -36,6 +36,37 @@ Please see our [Development Docs](https://docs.infrahub.app/development/) for a 
 
 If you need help, support for the open-source Infrahub project is provided on [![Join our Discord server](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/jXMRp9hXSX) or via [filing an issue on GitHub](https://github.com/opsmill/infrahub/issues)
 
+## Telemetry Data Collection 
+
+By default Infrahub collects non-user idenifying telemetry. Telemetry data collected is:
+
+Up/Down status of services
+Number of Nodes
+Number of Objects Created
+Count of Branches Created
+Count of Branches not yet merged
+Number of Resource Pools
+Obfuscated Schema Summary
+Infrahub Version
+Number of GIT repos
+Number of workers
+Number of generators
+Number of artifact definitions
+Number of times artifacts are being generated
+Number of transformation
+Number of groups
+Number of profiles
+Number of webhooks
+Number of times webhooks fired
+
+
+
+To disable telemetry on install you can run:
+```shell
+export INFRAHUB_TELEMETRY_OPTOUT=true
+```
+Telemety 
+
 ## Security
 
 COMING SOON
