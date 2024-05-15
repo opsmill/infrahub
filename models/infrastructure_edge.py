@@ -254,6 +254,23 @@ INTERFACE_L2_MODE_MAPPING = {
     "peer": "Trunk (ALL)"
 }
 
+MLAG_DOMAINS = {
+    "leaf": {
+        "domain_id": 1,
+        "peer_interfaces": ["port-channel1", "port-channel1"]
+    }
+}
+
+MLAG_INTERFACE_L2 = {
+    "leaf": [
+       {
+           "mlag_id": 2,
+           "mlag_domain": 1,
+           "members": ["port-channel2", "port-channel2"],
+       }
+    ]
+}
+
 TAGS = ["blue", "green", "red"]
 
 ORGANIZATIONS = (
@@ -682,9 +699,62 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             await lag.save()
             await lag.members.fetch()
 
+            store.set(key=f"{device_name}-lagl2-{lag_intf['name']}", node=lag)
+
             members = [store.get(key=f"{device_name}-l2-{member}") for member in lag_intf["members"]]
             lag.members.extend(members)
             await lag.save()
+
+    # --------------------------------------------------
+    # Set up MLAG domains
+    # --------------------------------------------------
+    for role, domain in MLAG_DOMAINS.items():
+        devices = [
+            store.get(kind="InfraDevice", key=f"{site_name}-{role}1"),
+            store.get(kind="InfraDevice", key=f"{site_name}-{role}2")
+        ]
+        name = f"{site_name}-{role}-12"
+
+        peer_interfaces = [
+            store.get(kind="InfraLagInterfaceL2", key=f"{device.name.value}-lagl2-{domain['peer_interfaces'][idx]}")
+            for idx, device in enumerate(devices)
+        ]
+
+        mlag_domain = await client.create(
+            kind="InfraMlagDomain",
+            name=name,
+            domain_id=domain["domain_id"],
+            devices=devices,
+            peer_interfaces=peer_interfaces,
+        )
+
+        await mlag_domain.save()
+        store.set(key=f"mlag-domain-{name}", node=mlag_domain)
+
+    # --------------------------------------------------
+    # Set up MLAG Interfaces
+    # --------------------------------------------------
+    for role, mlags in MLAG_INTERFACE_L2.items():
+        devices = [
+            store.get(kind="InfraDevice", key=f"{site_name}-{role}1"),
+            store.get(kind="InfraDevice", key=f"{site_name}-{role}2")
+        ]
+
+        for mlag in mlags:
+            members = [
+                store.get(kind="InfraLagInterfaceL2", key=f"{device.name.value}-lagl2-{mlag['members'][idx]}")
+                for idx, device in enumerate(devices)
+            ]
+            mlag_domain = store.get(kind="InfraMlagDomain", key=f"mlag-domain-{site_name}-{role}-12")
+
+            mlag_interface = await client.create(
+                kind="InfraMlagInterfaceL2",
+                mlag_domain=mlag_domain,
+                mlag_id=mlag["mlag_id"],
+                members=members
+            )
+
+            await mlag_interface.save()
 
     # --------------------------------------------------
     # Connect both devices within the Site together with 2 interfaces
