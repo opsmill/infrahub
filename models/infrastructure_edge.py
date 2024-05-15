@@ -773,6 +773,22 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         log.info(f" - Connected '{site_name}-edge1::{intf1.name.value}' <> '{site_name}-edge2::{intf2.name.value}'")
 
     # --------------------------------------------------
+    # Connect both leaf devices within a Site together with the 2 peer interfaces
+    # --------------------------------------------------
+    for idx in range(0,2):
+        intf1 = store.get(kind="InfraInterfaceL2", key=f"{site_name}-leaf1-l2-Ethernet{idx+1}")
+        intf2 = store.get(kind="InfraInterfaceL2", key=f"{site_name}-leaf2-l2-Ethernet{idx+1}")
+
+        intf1.description.value = f"Connected to {site_name}-leaf2 {intf2.name.value}"
+        intf1.connected_endpoint = intf2
+        await intf1.save()
+
+        intf2.description.value = f"Connected to {site_name}-leaf1 {intf1.name.value}"
+        await intf2.save()
+
+        log.info(f" - Connected '{site_name}-leaf1::{intf1.name.value}' <> '{site_name}-leaf2::{intf2.name.value}'")
+
+    # --------------------------------------------------
     # Update all the group we may have touch during the site creation
     # --------------------------------------------------
     await group_upstream_interfaces.save()
