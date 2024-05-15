@@ -562,7 +562,7 @@ nodes:
         kind: Parent
   - name: MlagDomain
     namespace: Infra
-    description: "An MLAG Domain represents the group of devices that share interfaces in a multi chassis link aggregation group"
+    description: "Represents the group of devices that share interfaces in a multi chassis link aggregation group"
     label: "MLAG Domain"
     icon: "eos-icons:cluster-management"
     menu_placement: "InfraDevice"
