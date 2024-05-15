@@ -1696,11 +1696,6 @@ core_models: dict[str, Any] = {
                     "kind": "Text",
                     "optional": True,
                 },
-                {
-                    "name": "global_identifier",
-                    "kind": "Text",
-                    "optional": True,
-                },
             ],
             "relationships": [
                 {
@@ -1735,12 +1730,6 @@ core_models: dict[str, Any] = {
             "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["CoreResourcePool", InfrahubKind.LINEAGESOURCE],
             "attributes": [
-                {
-                    "name": "global_identifier",
-                    "kind": "Text",
-                    "optional": True,
-                    "order_weight": 3000,
-                },
                 {
                     "name": "default_address_type",
                     "kind": "Text",

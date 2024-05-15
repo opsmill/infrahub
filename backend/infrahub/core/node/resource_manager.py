@@ -11,7 +11,7 @@ from infrahub.core.query.resource_manager import (
     PrefixPoolGetReserved,
     PrefixPoolSetReserved,
 )
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import PoolExhaustedError, ValidationError
 from infrahub.pools.address import get_available
 from infrahub.pools.prefix import PrefixPool
 
@@ -107,7 +107,7 @@ class CoreIPAddressPool(Node):
                 next_address = available.iter_cidrs()[0]
                 return ipaddress.ip_interface(f"{next_address.ip}/{prefix_length}")
 
-        raise IndexError("No more resources available")
+        raise PoolExhaustedError("There are no more addresses available in this pool.")
 
     async def to_graphql(
         self,

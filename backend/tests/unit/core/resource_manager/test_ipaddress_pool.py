@@ -7,6 +7,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager import CoreIPAddressPool
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import PoolExhaustedError
 
 
 async def test_get_next(
@@ -59,5 +60,5 @@ async def test_get_next_full(
 
     assert pool
 
-    with pytest.raises(IndexError, match="No more resources available"):
+    with pytest.raises(PoolExhaustedError, match="There are no more addresses available in this pool"):
         await pool.get_next(db=db, size=30)
