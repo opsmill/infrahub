@@ -51,7 +51,7 @@ async def execute_query(
     subscribers: List[str],
 ) -> Dict[str, Any]:
     gql_query = await registry.manager.get_one_by_id_or_default_filter(
-        db=db, id=query_id, schema_name=InfrahubKind.GRAPHQLQUERY, branch=branch_params.branch, at=branch_params.at
+        db=db, id=query_id, kind=InfrahubKind.GRAPHQLQUERY, branch=branch_params.branch, at=branch_params.at
     )
 
     gql_params = prepare_graphql_params(db=db, branch=branch_params.branch, at=branch_params.at)

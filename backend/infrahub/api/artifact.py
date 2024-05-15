@@ -62,7 +62,7 @@ async def generate_artifact(
     artifact_definition = await registry.manager.get_one_by_id_or_default_filter(
         db=db,
         id=artifact_definition_id,
-        schema_name=InfrahubKind.ARTIFACTDEFINITION,
+        kind=InfrahubKind.ARTIFACTDEFINITION,
         branch=branch_params.branch,
     )
 

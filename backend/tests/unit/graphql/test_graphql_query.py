@@ -623,7 +623,7 @@ async def test_query_diffsummary_old(db: InfrahubDatabase, default_branch: Branc
     branch2 = await create_branch(branch_name="branch2", db=db)
     await c1_main.delete(db=db)
     p1_branch2 = await NodeManager.get_one_by_id_or_default_filter(
-        id=p1_main.id, db=db, schema_name="TestPerson", branch=branch2
+        id=p1_main.id, db=db, kind="TestPerson", branch=branch2
     )
     p1_branch2.name.value = "Jonathan"
     await p1_branch2.save(db=db)
@@ -631,9 +631,7 @@ async def test_query_diffsummary_old(db: InfrahubDatabase, default_branch: Branc
     await p2_main.save(db=db)
     c2_main.name.value = "bolting"
     await c2_main.save(db=db)
-    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(
-        id=c3_main.id, db=db, schema_name="TestCar", branch=branch2
-    )
+    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(id=c3_main.id, db=db, kind="TestCar", branch=branch2)
     await c3_branch2.owner.update(data=p1_branch2.id, db=db)
     await c3_branch2.save(db=db)
 
@@ -691,7 +689,7 @@ async def test_query_diffsummaryold(db: InfrahubDatabase, default_branch: Branch
     branch2 = await create_branch(branch_name="branch2", db=db)
     await c1_main.delete(db=db)
     p1_branch2 = await NodeManager.get_one_by_id_or_default_filter(
-        id=p1_main.id, db=db, schema_name="TestPerson", branch=branch2
+        id=p1_main.id, db=db, kind="TestPerson", branch=branch2
     )
     p1_branch2.name.value = "Jonathan"
     await p1_branch2.save(db=db)
@@ -699,9 +697,7 @@ async def test_query_diffsummaryold(db: InfrahubDatabase, default_branch: Branch
     await p2_main.save(db=db)
     c2_main.name.value = "bolting"
     await c2_main.save(db=db)
-    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(
-        id=c3_main.id, db=db, schema_name="TestCar", branch=branch2
-    )
+    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(id=c3_main.id, db=db, kind="TestCar", branch=branch2)
     await c3_branch2.owner.update(data=p1_branch2.id, db=db)
     await c3_branch2.save(db=db)
 
@@ -759,7 +755,7 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
     branch2 = await create_branch(branch_name="branch2", db=db)
     await c1_main.delete(db=db)
     p1_branch2 = await NodeManager.get_one_by_id_or_default_filter(
-        id=p1_main.id, db=db, schema_name="TestPerson", branch=branch2
+        id=p1_main.id, db=db, kind="TestPerson", branch=branch2
     )
     p1_branch2.name.value = "Jonathan"
     await p1_branch2.save(db=db)
@@ -767,9 +763,7 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
     await p2_main.save(db=db)
     c2_main.name.value = "bolting"
     await c2_main.save(db=db)
-    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(
-        id=c3_main.id, db=db, schema_name="TestCar", branch=branch2
-    )
+    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(id=c3_main.id, db=db, kind="TestCar", branch=branch2)
     await c3_branch2.owner.update(data=p1_branch2.id, db=db)
     await c3_branch2.save(db=db)
 

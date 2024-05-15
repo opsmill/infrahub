@@ -209,7 +209,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         node = await registry.manager.get_one_by_id_or_default_filter(
             db=db,
             id=self.node_id,
-            schema_name=self.schema.kind,
+            kind=self.schema.kind,
             branch=self.branch,
             at=self.at,
             include_owner=True,
@@ -246,7 +246,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             peer = await registry.manager.get_one_by_id_or_default_filter(
                 db=db,
                 id=self.get_peer_id(),
-                schema_name=self.schema.peer,
+                kind=self.schema.peer,
                 branch=self.branch,
                 at=self.at,
                 include_owner=True,

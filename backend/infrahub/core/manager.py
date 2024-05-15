@@ -364,7 +364,7 @@ class NodeManager:
         cls,
         db: InfrahubDatabase,
         id: str,
-        schema_name: str,
+        kind: str,
         fields: Optional[dict] = None,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
@@ -376,9 +376,9 @@ class NodeManager:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        node_schema = registry.schema.get(name=schema_name, branch=branch)
+        node_schema = registry.schema.get(name=kind, branch=branch)
         if not node_schema.default_filter:
-            raise NodeNotFoundError(branch_name=branch.name, node_type=schema_name, identifier=id)
+            raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=id)
 
         items = await NodeManager.query(
             db=db,
@@ -397,9 +397,58 @@ class NodeManager:
         if len(items) > 1:
             raise NodeNotFoundError(
                 branch_name=branch.name,
-                node_type=schema_name,
+                node_type=kind,
                 identifier=id,
                 message=f"Unable to find node {id!r}, {len(items)} nodes returned, expected 1",
+            )
+
+        return items[0] if items else None
+
+    @classmethod
+    async def get_one_by_guid(
+        cls,
+        db: InfrahubDatabase,
+        guid: list[str],
+        kind: str,
+        fields: Optional[dict] = None,
+        at: Union[Timestamp, str] = None,
+        branch: Union[Branch, str] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        prefetch_relationships: bool = False,
+        account=None,
+    ) -> Node:
+        branch = await registry.get_branch(branch=branch, db=db)
+        at = Timestamp(at)
+
+        guid_str = " :: ".join(guid)
+        node_schema = registry.schema.get(name=kind, branch=branch)
+
+        if not node_schema.global_identifiers or len(node_schema.global_identifiers) != len(guid):
+            raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=guid_str)
+
+        filters = {node_schema.global_identifiers[idx]: item for idx, item in enumerate(guid)}
+
+        items = await NodeManager.query(
+            db=db,
+            schema=node_schema,
+            fields=fields,
+            limit=2,
+            filters=filters,
+            branch=branch,
+            at=at,
+            include_owner=include_owner,
+            include_source=include_source,
+            prefetch_relationships=prefetch_relationships,
+            account=account,
+        )
+
+        if len(items) > 1:
+            raise NodeNotFoundError(
+                branch_name=branch.name,
+                node_type=kind,
+                identifier=guid_str,
+                message=f"Unable to find node {guid_str!r}, {len(items)} nodes returned, expected 1",
             )
 
         return items[0] if items else None
@@ -409,7 +458,7 @@ class NodeManager:
         cls,
         db: InfrahubDatabase,
         id: str,
-        schema_name: str,
+        kind: str,
         fields: Optional[dict] = None,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
@@ -438,7 +487,7 @@ class NodeManager:
         node = await cls.get_one_by_default_filter(
             db=db,
             id=id,
-            schema_name=schema_name,
+            kind=kind,
             fields=fields,
             at=at,
             branch=branch,
@@ -448,7 +497,7 @@ class NodeManager:
             account=account,
         )
         if not node:
-            raise NodeNotFoundError(branch_name=branch.name, node_type=schema_name, identifier=id)
+            raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=id)
         return node
 
     @classmethod
