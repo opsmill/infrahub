@@ -207,8 +207,8 @@ INTERFACE_L2_NAMES = {
 LAG_INTERFACE_L2 = {
     "7280R3": [{"name": "port-channel1", "lacp": "Active", "members": ["Ethernet11", "Ethernet12"]}],
     "7010TX-48": [
-        {"name": "port-channel1", "lacp": "Active", "members": ["Ethernet1", "Ethernet2"]},
-        {"name": "port-channel2", "lacp": "Active", "members": ["Ethernet5", "Ethernet6"]},
+        {"name": "port-channel1", "description": "MLAG peer link", "lacp": "Active", "members": ["Ethernet1", "Ethernet2"]},
+        {"name": "port-channel2", "description": "MLAG to Server", "lacp": "Active", "members": ["Ethernet5", "Ethernet6"]},
     ],
 }
 
@@ -678,6 +678,8 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
             l2_mode = INTERFACE_L2_MODE_MAPPING.get(intf_role, "Access")
 
+            description = lag_intf.get("description", "")
+
             untagged_vlan = None
             if l2_mode == "Access":
                 untagged_vlan = store.get(kind="InfraVLAN", key=f"{site_name}_server")
@@ -687,6 +689,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                 kind="InfraLagInterfaceL2",
                 device={"id": obj.id, "is_protected": True},
                 name=lag_intf["name"],
+                description=description,
                 speed=10000,
                 enabled=True,
                 l2_mode=l2_mode,
