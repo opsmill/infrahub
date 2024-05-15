@@ -879,25 +879,15 @@ async def test_query_data_exclude(client, location_schema, client_type):
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_create_input_data(client, location_schema, client_type):
-    data = {
-        "name": {"value": "JFK1"},
-        "description": {"value": "JFK Airport"},
-        "type": {"value": "SITE"},
-    }
+    data = {"name": {"value": "JFK1"}, "description": {"value": "JFK Airport"}, "type": {"value": "SITE"}}
 
     if client_type == "standard":
         node = InfrahubNode(client=client, schema=location_schema, data=data)
-        node_id = node.id
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=data)
-        node_id = node.id
+
     assert node._generate_input_data()["data"] == {
-        "data": {
-            "id": f"{node_id}",
-            "name": {"value": "JFK1"},
-            "description": {"value": "JFK Airport"},
-            "type": {"value": "SITE"},
-        }
+        "data": {"name": {"value": "JFK1"}, "description": {"value": "JFK Airport"}, "type": {"value": "SITE"}}
     }
 
 
@@ -911,12 +901,11 @@ async def test_create_input_data__with_relationships_02(client, location_schema,
         "primary_tag": "pppppppp",
         "tags": [{"id": "aaaaaa"}, {"id": "bbbb"}],
     }
+
     if client_type == "standard":
         node = InfrahubNode(client=client, schema=location_schema, data=data)
-        node_id = node.id
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=data)
-        node_id = node.id
 
     input_data = node._generate_input_data()
     assert len(input_data["variables"].keys()) == 1
@@ -925,7 +914,6 @@ async def test_create_input_data__with_relationships_02(client, location_schema,
 
     expected = {
         "data": {
-            "id": f"{node_id}",
             "name": {"value": "JFK1"},
             "description": {"value": f"${key}"},
             "type": {"value": "SITE"},
@@ -946,15 +934,14 @@ async def test_create_input_data__with_relationships_01(client, location_schema,
         "primary_tag": "pppppppp",
         "tags": [{"id": "aaaaaa"}, {"id": "bbbb"}],
     }
+
     if client_type == "standard":
         node = InfrahubNode(client=client, schema=location_schema, data=data)
-        node_id = node.id
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=data)
-        node_id = node.id
+
     assert node._generate_input_data()["data"] == {
         "data": {
-            "id": f"{node_id}",
             "name": {"value": "JFK1"},
             "description": {"value": "JFK Airport"},
             "type": {"value": "SITE"},
@@ -967,27 +954,20 @@ async def test_create_input_data__with_relationships_01(client, location_schema,
 @pytest.mark.parametrize("client_type", client_types)
 async def test_create_input_data_with_relationships_02(clients, rfile_schema, client_type):
     data = {
-        "name": {
-            "value": "rfile01",
-            "is_protected": True,
-            "source": "ffffffff",
-            "owner": "ffffffff",
-        },
+        "name": {"value": "rfile01", "is_protected": True, "source": "ffffffff", "owner": "ffffffff"},
         "template_path": {"value": "mytemplate.j2"},
         "query": {"id": "qqqqqqqq", "source": "ffffffff", "owner": "ffffffff"},
         "repository": {"id": "rrrrrrrr", "source": "ffffffff", "owner": "ffffffff"},
         "tags": [{"id": "t1t1t1t1"}, "t2t2t2t2"],
     }
+
     if client_type == "standard":
         node = InfrahubNode(client=clients.standard, schema=rfile_schema, data=data)
-        node_id = node.id
     else:
         node = InfrahubNodeSync(client=clients.sync, schema=rfile_schema, data=data)
-        node_id = node.id
 
     assert node._generate_input_data()["data"] == {
         "data": {
-            "id": f"{node_id}",
             "name": {
                 "is_protected": True,
                 "owner": "ffffffff",
@@ -1013,18 +993,13 @@ async def test_create_input_data_with_relationships_02(clients, rfile_schema, cl
 @pytest.mark.parametrize("client_type", client_types)
 async def test_create_input_data_with_relationships_03(clients, rfile_schema, client_type):
     data = {
-        "id": "aaaaaaaaaaaaaa",
         "name": {"value": "rfile01", "is_protected": True, "source": "ffffffff"},
         "template_path": {"value": "mytemplate.j2"},
-        "query": {
-            "id": "qqqqqqqq",
-            "source": "ffffffff",
-            "owner": "ffffffff",
-            "is_protected": True,
-        },
+        "query": {"id": "qqqqqqqq", "source": "ffffffff", "owner": "ffffffff", "is_protected": True},
         "repository": {"id": "rrrrrrrr", "source": "ffffffff", "owner": "ffffffff"},
         "tags": [{"id": "t1t1t1t1"}, "t2t2t2t2"],
     }
+
     if client_type == "standard":
         node = InfrahubNode(client=clients.standard, schema=rfile_schema, data=data)
     else:
@@ -1032,12 +1007,7 @@ async def test_create_input_data_with_relationships_03(clients, rfile_schema, cl
 
     assert node._generate_input_data()["data"] == {
         "data": {
-            "id": "aaaaaaaaaaaaaa",
-            "name": {
-                "is_protected": True,
-                "source": "ffffffff",
-                "value": "rfile01",
-            },
+            "name": {"is_protected": True, "source": "ffffffff", "value": "rfile01"},
             "query": {
                 "_relation__is_protected": True,
                 "_relation__owner": "ffffffff",
@@ -1046,11 +1016,7 @@ async def test_create_input_data_with_relationships_03(clients, rfile_schema, cl
             },
             "tags": [{"id": "t1t1t1t1"}, {"id": "t2t2t2t2"}],
             "template_path": {"value": "mytemplate.j2"},
-            "repository": {
-                "_relation__owner": "ffffffff",
-                "_relation__source": "ffffffff",
-                "id": "rrrrrrrr",
-            },
+            "repository": {"_relation__owner": "ffffffff", "_relation__source": "ffffffff", "id": "rrrrrrrr"},
         }
     }
 
@@ -1058,18 +1024,13 @@ async def test_create_input_data_with_relationships_03(clients, rfile_schema, cl
 @pytest.mark.parametrize("client_type", client_types)
 async def test_create_input_data_with_relationships_03_for_update(clients, rfile_schema, client_type):
     data = {
-        "id": "aaaaaaaaaaaaaa",
         "name": {"value": "rfile01", "is_protected": True, "source": "ffffffff"},
         "template_path": {"value": "mytemplate.j2"},
-        "query": {
-            "id": "qqqqqqqq",
-            "source": "ffffffff",
-            "owner": "ffffffff",
-            "is_protected": True,
-        },
+        "query": {"id": "qqqqqqqq", "source": "ffffffff", "owner": "ffffffff", "is_protected": True},
         "repository": {"id": "rrrrrrrr", "source": "ffffffff", "owner": "ffffffff"},
         "tags": [{"id": "t1t1t1t1"}, "t2t2t2t2"],
     }
+
     if client_type == "standard":
         node = InfrahubNode(client=clients.standard, schema=rfile_schema, data=data)
     else:
@@ -1078,7 +1039,6 @@ async def test_create_input_data_with_relationships_03_for_update(clients, rfile
     node.template_path.value = "my-changed-template.j2"
     assert node._generate_input_data(exclude_unmodified=True)["data"] == {
         "data": {
-            "id": "aaaaaaaaaaaaaa",
             "query": {
                 "id": "qqqqqqqq",
                 "_relation__is_protected": True,
@@ -1087,66 +1047,36 @@ async def test_create_input_data_with_relationships_03_for_update(clients, rfile
             },
             "tags": [{"id": "t1t1t1t1"}, {"id": "t2t2t2t2"}],
             "template_path": {"value": "my-changed-template.j2"},
-            "repository": {
-                "id": "rrrrrrrr",
-                "_relation__owner": "ffffffff",
-                "_relation__source": "ffffffff",
-            },
+            "repository": {"id": "rrrrrrrr", "_relation__owner": "ffffffff", "_relation__source": "ffffffff"},
         }
     }
 
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_create_input_data_with_IPHost_attribute(client, ipaddress_schema, client_type):
-    data = {
-        "id": "aaaaaaaaaaaaaa",
-        "address": {
-            "value": ipaddress.ip_interface("1.1.1.1/24"),
-            "is_protected": True,
-        },
-    }
+    data = {"address": {"value": ipaddress.ip_interface("1.1.1.1/24"), "is_protected": True}}
+
     if client_type == "standard":
         ip_address = InfrahubNode(client=client, schema=ipaddress_schema, data=data)
-        node_id = ip_address.id
     else:
         ip_address = InfrahubNodeSync(client=client, schema=ipaddress_schema, data=data)
-        node_id = ip_address.id
 
     assert ip_address._generate_input_data()["data"] == {
-        "data": {
-            "id": f"{node_id}",
-            "address": {
-                "value": "1.1.1.1/24",
-                "is_protected": True,
-            },
-        }
+        "data": {"address": {"value": "1.1.1.1/24", "is_protected": True}}
     }
 
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_create_input_data_with_IPNetwork_attribute(client, ipnetwork_schema, client_type):
-    data = {
-        "id": "aaaaaaaaaaaaaa",
-        "network": {
-            "value": ipaddress.ip_network("1.1.1.0/24"),
-            "is_protected": True,
-        },
-    }
+    data = {"network": {"value": ipaddress.ip_network("1.1.1.0/24"), "is_protected": True}}
+
     if client_type == "standard":
         ip_network = InfrahubNode(client=client, schema=ipnetwork_schema, data=data)
-        node_id = ip_network.id
     else:
         ip_network = InfrahubNodeSync(client=client, schema=ipnetwork_schema, data=data)
-        node_id = ip_network.id
 
     assert ip_network._generate_input_data()["data"] == {
-        "data": {
-            "id": f"{node_id}",
-            "network": {
-                "value": "1.1.1.0/24",
-                "is_protected": True,
-            },
-        }
+        "data": {"network": {"value": "1.1.1.0/24", "is_protected": True}}
     }
 
 
