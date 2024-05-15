@@ -785,8 +785,6 @@ export const Select = (props: SelectProps) => {
 
   // If options from query are updated
   useEffect(() => {
-    if (!optionsList?.length) return;
-
     setLocalOptions(optionsList);
   }, [optionsList?.length]);
 
