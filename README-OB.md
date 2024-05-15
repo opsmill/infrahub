@@ -64,7 +64,7 @@ To disable telemetry on install you can run:
 ```shell
 export INFRAHUB_TELEMETRY_OPTOUT=true
 ```
-Telemety 
+
 
 ## Security
 
