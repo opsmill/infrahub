@@ -11,8 +11,8 @@ from infrahub.core.node import Node
 from infrahub.core.query.ipam import (
     IPPrefixContainerFetch,
     IPPrefixSubnetFetch,
+    IPPrefixUtilization,
     IPPrefixUtilizationAddress,
-    IPPrefixUtilizationPrefix,
     get_container,
     get_ip_addresses,
     get_ip_prefix_for_ip_address,
@@ -209,12 +209,12 @@ async def test_ipprefix_utilization(
         await address.save(db=db)
         addresses.append(address)
 
-    query = await IPPrefixUtilizationPrefix.init(db, branch=default_branch, ip_prefix=container)
+    query = await IPPrefixUtilization.init(db, branch=default_branch, ip_prefix=container)
     await query.execute(db)
     assert query.get_percentage() == 100 / 8
     assert await get_utilization(db=db, branch=default_branch, ip_prefix=container) == 100 / 8
 
-    query = await IPPrefixUtilizationPrefix.init(db, branch=default_branch, ip_prefix=prefix2)
+    query = await IPPrefixUtilization.init(db, branch=default_branch, ip_prefix=prefix2)
     await query.execute(db)
     assert query.get_percentage() == 0
     assert await get_utilization(db=db, branch=default_branch, ip_prefix=prefix2) == 0
