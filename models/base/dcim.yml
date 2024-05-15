@@ -128,6 +128,7 @@ generics:
         cardinality: one
         optional: true
         kind: Attribute
+        identifier: mlag_member_lag_interface
   - name: Endpoint
     namespace: Infra
     description: "Generic Endpoint to connect two objects together"
@@ -609,6 +610,7 @@ nodes:
         kind: Attribute
         optional: false
         cardinality: many
+        identifier: mlag_member_lag_interface
   - name: MlagInterfaceL3
     namespace: Infra
     description: "L3 MLAG Interface"
@@ -627,3 +629,4 @@ nodes:
         kind: Attribute
         optional: false
         cardinality: many
+        identifier: mlag_member_lag_interface
