@@ -1669,7 +1669,7 @@ core_models: dict[str, Any] = {
         {
             "name": "PrefixPool",
             "namespace": "Core",
-            "description": "xxx",
+            "description": "A pool of IP prefix resources",
             "label": "Prefix Pool",
             "default_filter": "name__value",
             "order_by": ["name__value"],
@@ -1696,11 +1696,6 @@ core_models: dict[str, Any] = {
                     "kind": "Text",
                     "optional": True,
                 },
-                {
-                    "name": "global_identifier",
-                    "kind": "Text",
-                    "optional": True,
-                },
             ],
             "relationships": [
                 {
@@ -1720,6 +1715,51 @@ core_models: dict[str, Any] = {
                     "cardinality": "one",
                     "optional": False,
                     "order_weight": 7000,
+                },
+            ],
+        },
+        {
+            "name": "IPAddressPool",
+            "namespace": "Core",
+            "description": "A pool of IP address resources",
+            "label": "IP Address Pool",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "include_in_menu": False,
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "inherit_from": ["CoreResourcePool", InfrahubKind.LINEAGESOURCE],
+            "attributes": [
+                {
+                    "name": "default_address_type",
+                    "kind": "Text",
+                    "optional": False,
+                    "description": "The object type to create when reserving a resource in the pool",
+                },
+                {
+                    "name": "default_prefix_size",
+                    "kind": "Number",
+                    "optional": True,
+                },
+            ],
+            "relationships": [
+                {
+                    "name": "resources",
+                    "peer": "BuiltinIPPrefix",
+                    "kind": "Attribute",
+                    "identifier": "ipaddresspool__resource",
+                    "cardinality": "many",
+                    "optional": False,
+                    "order_weight": 4000,
+                },
+                {
+                    "name": "ip_namespace",
+                    "peer": "BuiltinIPNamespace",
+                    "kind": "Attribute",
+                    "identifier": "ipaddresspool__ipnamespace",
+                    "cardinality": "one",
+                    "optional": False,
+                    "order_weight": 5000,
                 },
             ],
         },

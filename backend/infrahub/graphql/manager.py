@@ -39,7 +39,13 @@ from .resolver import (
 )
 from .schema import InfrahubBaseMutation, InfrahubBaseQuery, account_resolver, default_paginated_list_resolver
 from .subscription import InfrahubBaseSubscription
-from .types import InfrahubInterface, InfrahubObject, RelatedNodeInput, RelatedPrefixNodeInput
+from .types import (
+    InfrahubInterface,
+    InfrahubObject,
+    RelatedIPAddressNodeInput,
+    RelatedNodeInput,
+    RelatedPrefixNodeInput,
+)
 from .types.attribute import BaseAttribute as BaseAttributeType
 from .types.attribute import TextAttributeType
 
@@ -560,6 +566,10 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 isinstance(peer_schema, GenericSchema) and InfrahubKind.IPPREFIX == rel.peer
             ):
                 input_type = RelatedPrefixNodeInput
+            elif (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_address()) or (
+                isinstance(peer_schema, GenericSchema) and InfrahubKind.IPADDRESS == rel.peer
+            ):
+                input_type = RelatedIPAddressNodeInput
 
             required = not rel.optional
             if rel.cardinality == "one":

@@ -190,6 +190,15 @@ class ProcessingError(Error):
         super().__init__(self.message)
 
 
+class PoolExhaustedError(Error):
+    HTTP_CODE: int = 409
+    message: str = "No more resources available in the pool"
+
+    def __init__(self, message: Optional[str] = None):
+        self.message = message or self.message
+        super().__init__(self.message)
+
+
 class SchemaNotFoundError(Error):
     HTTP_CODE: int = 422
 
