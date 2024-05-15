@@ -90,6 +90,11 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             password=self.settings.password,
             port=self.settings.service_port,
             virtualhost=self.settings.virtualhost,
+            ssl=self.settings.tls_enabled,
+            ssl_options={
+                "no_verify_ssl": int(self.settings.tls_insecure),
+                "cafile": self.settings.tls_ca_file if self.settings.tls_ca_file else "",
+            },
         )
 
         self.channel = await self.connection.channel()

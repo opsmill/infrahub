@@ -14,6 +14,10 @@ class RedisCache(InfrahubCache):
             host=config.SETTINGS.cache.address,
             port=config.SETTINGS.cache.service_port,
             db=config.SETTINGS.cache.database,
+            ssl=config.SETTINGS.cache.tls_enabled,
+            ssl_cert_reqs="optional" if not config.SETTINGS.cache.tls_insecure else "none",
+            ssl_check_hostname=not config.SETTINGS.cache.tls_insecure,
+            ssl_ca_certs=config.SETTINGS.cache.tls_ca_file,
         )
 
     async def initialize(self, service: InfrahubServices) -> None:

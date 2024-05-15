@@ -65,3 +65,32 @@ Infrahub also supports NATS JetStream for the cache.
 ### Git server (GitHub/GitLab)
 
 Any Git server. The most popular being: GitHub, GitLab, or Bitbucket.
+
+## TLS-secured connections
+
+Infrahub supports TLS connections toward the dependencies above.
+The following configuration variables are available to configure TLS:
+
+```bash
+INFRAHUB_BROKER_TLS_CA_FILE
+INFRAHUB_BROKER_TLS_ENABLED
+INFRAHUB_BROKER_TLS_INSECURE
+INFRAHUB_CACHE_TLS_CA_FILE
+INFRAHUB_CACHE_TLS_ENABLED
+INFRAHUB_CACHE_TLS_INSECURE
+INFRAHUB_DB_TLS_CA_FILE
+INFRAHUB_DB_TLS_ENABLED
+INFRAHUB_DB_TLS_INSECURE
+```
+
+### Graph database
+
+You can configure TLS for Neo4j using the following Docker environment variables:
+
+```bash
+NEO4J_dbms_ssl_policy_bolt_enabled=true
+NEO4J_dbms_ssl_policy_bolt_base__directory=/opt/ssl
+NEO4J_dbms_ssl_policy_bolt_private__key=cert.key
+NEO4J_dbms_ssl_policy_bolt_public__certificate=cert.pem
+NEO4J_dbms_connector_bolt_tls__level=REQUIRED
+```

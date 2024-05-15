@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import ssl
 from typing import TYPE_CHECKING, Awaitable, Callable, List, MutableMapping, Optional, Type, TypeVar
 
 import nats
@@ -47,10 +48,21 @@ class NATSMessageBus(InfrahubMessageBus):
 
     async def initialize(self, service: InfrahubServices) -> None:
         self.service = service
+
+        tls_context = None
+        if self.settings.tls_enabled:
+            tls_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
+            if self.settings.tls_ca_file:
+                tls_context.load_verify_locations(cafile=self.settings.tls_ca_file)
+            if self.settings.tls_insecure:
+                tls_context.check_hostname = False
+                tls_context.verify_mode = ssl.CERT_NONE
+
         self.connection = await nats.connect(
             f"nats://{self.settings.address}:{self.settings.service_port}",
             user=self.settings.username,
             password=self.settings.password,
+            tls=tls_context,
         )
 
         self.jetstream = self.connection.jetstream()

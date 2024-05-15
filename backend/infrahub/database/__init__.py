@@ -13,6 +13,9 @@ from neo4j import (
     AsyncSession,
     AsyncTransaction,
     Record,
+    TrustAll,
+    TrustCustomCAs,
+    TrustSystemCAs,
 )
 from neo4j.exceptions import ClientError, Neo4jError, ServiceUnavailable, TransientError
 from opentelemetry import trace
@@ -277,7 +280,19 @@ async def validate_database(
 
 async def get_db(retry: int = 0) -> AsyncDriver:
     URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}:{config.SETTINGS.database.port}"
-    driver = AsyncGraphDatabase.driver(URI, auth=(config.SETTINGS.database.username, config.SETTINGS.database.password))
+
+    trusted_certificates = TrustSystemCAs()
+    if config.SETTINGS.database.tls_insecure:
+        trusted_certificates = TrustAll()
+    elif config.SETTINGS.database.tls_ca_file:
+        trusted_certificates = TrustCustomCAs(config.SETTINGS.database.tls_ca_file)
+
+    driver = AsyncGraphDatabase.driver(
+        URI,
+        auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
+        encrypted=config.SETTINGS.database.tls_enabled,
+        trusted_certificates=trusted_certificates,
+    )
 
     if config.SETTINGS.database.database_name not in validated_database:
         await validate_database(
