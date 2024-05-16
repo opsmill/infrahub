@@ -29,7 +29,7 @@ The following settings can be defined in the Config class
 ## {{ property.name }}
 
 **Property**: {{ property.name }}<br />
-**Description**: {{ property.description }}<br />
+**Description**: {% if '\n' in property.description %} {% endif %}{{ property.description }}<br />
 **Type**: `{{ property.type }}`<br />
 {% if "default" in property and property.default is not none and property.default != ""%}
 **Default value**: {{ property.default }}<br />

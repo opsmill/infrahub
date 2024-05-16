@@ -632,7 +632,10 @@ class InfrahubClient(BaseClient):
                 for key, value in self.config.proxy_mounts.dict(by_alias=True).items()
             }
 
-        async with httpx.AsyncClient(**proxy_config) as client:  # type: ignore[arg-type]
+        async with httpx.AsyncClient(
+            **proxy_config,  # type: ignore[arg-type]
+            verify=self.config.tls_ca_file if self.config.tls_ca_file else not self.config.tls_insecure,
+        ) as client:
             try:
                 response = await client.request(
                     method=method.value,
@@ -1391,7 +1394,10 @@ class InfrahubClientSync(BaseClient):
                 for key, value in self.config.proxy_mounts.dict(by_alias=True).items()
             }
 
-        with httpx.Client(**proxy_config) as client:  # type: ignore[arg-type]
+        with httpx.Client(
+            **proxy_config,  # type: ignore[arg-type]
+            verify=self.config.tls_ca_file if self.config.tls_ca_file else not self.config.tls_insecure,
+        ) as client:
             try:
                 response = client.request(
                     method=method.value,
