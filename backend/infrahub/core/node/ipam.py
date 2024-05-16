@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
-from infrahub.core.query.ipam import get_utilization
+from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 
 from . import Node
 
@@ -28,7 +28,8 @@ class BuiltinIPPrefix(Node):
                     response[read_only_attr] = {"value": getattr(self.prefix, read_only_attr)}  # type: ignore[attr-defined]
 
             if "utilization" in fields:
-                utilization = await get_utilization(self, db, branch=self._branch)
+                getter = PrefixUtilizationGetter(db=db, ip_prefixes=[self])
+                utilization = await getter.get_use_percentage(ip_prefix=self, branch_name=self._branch.name)
                 response["utilization"] = {"value": int(utilization)}
 
         return response

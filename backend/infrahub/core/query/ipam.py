@@ -347,19 +347,19 @@ async def get_ip_prefix_for_ip_address(
 class IPPrefixUtilization(Query):
     name: str = "ipprefix_utilization_prefix"
 
-    def __init__(self, ip_prefix: Node, *args, **kwargs):
-        self.ip_prefix = ip_prefix
+    def __init__(self, ip_prefixes: list[str], *args, **kwargs):
+        self.ip_prefixes = ip_prefixes
         super().__init__(*args, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
-        self.params["id"] = self.ip_prefix.id
+        self.params["ids"] = [p.get_id() for p in self.ip_prefixes]
         self.params["time_at"] = self.at.to_string()
 
         def rel_filter(rel_name: str) -> str:
             return f"{rel_name}.from <= $time_at AND ({rel_name}.to IS NULL OR {rel_name}.to >= $time_at)"
 
         query = f"""
-        MATCH (pfx:Node {{uuid: $id}})
+        MATCH (pfx:{InfrahubKind.IPPREFIX} WHERE pfx.uuid IN $ids)
         CALL {{
             WITH pfx
             MATCH (
@@ -405,62 +405,6 @@ class IPPrefixUtilization(Query):
         """
         self.return_labels = ["pfx", "child", "av", "branch_level", "branch"]
         self.add_to_query(query)
-
-    def _count_children(self, label_to_count: str, branch: Optional[str] = None) -> int:
-        count = 0
-        for result in self.get_results():
-            if branch and result.get("branch") != branch:
-                continue
-            if label_to_count in result.get_node("child").labels:
-                count += 1
-        return count
-
-    def get_num_prefixes_in_use(self, branch: Optional[str] = None) -> int:
-        return self._count_children(label_to_count=InfrahubKind.IPPREFIX, branch=branch)
-
-    def get_num_addresses_in_use(self, branch: Optional[str] = None) -> int:
-        return self._count_children(label_to_count=InfrahubKind.IPADDRESS, branch=branch)
-
-    def get_prefix_use_percentage(self, branch: Optional[str] = None) -> float:
-        prefix_space = self.ip_prefix.prefix.num_addresses
-        max_prefixlen = self.ip_prefix.prefix.obj.max_prefixlen
-        used_space = 0
-        for result in self.get_results():
-            if branch and result.get("branch") != branch:
-                continue
-            child_node = result.get_node("child")
-            if InfrahubKind.IPPREFIX not in child_node.labels:
-                continue
-            used_space += 2 ** (max_prefixlen - int(result.get_node("av").get("prefixlen")))
-
-        return (used_space / prefix_space) * 100
-
-    def get_address_use_percentage(self, branch: Optional[str] = None) -> float:
-        prefix_space = self.ip_prefix.prefix.num_addresses
-
-        # Non-RFC3021 subnet
-        if (
-            self.ip_prefix.prefix.version == 4
-            and self.ip_prefix.prefix.prefixlen < 31
-            and not self.ip_prefix.is_pool.value
-        ):
-            prefix_space -= 2
-
-        return (self.get_num_addresses_in_use(branch=branch) / prefix_space) * 100
-
-
-async def get_utilization(
-    ip_prefix: Node,
-    db: InfrahubDatabase,
-    branch: Optional[Branch] = None,
-    at: Optional[Union[Timestamp, str]] = None,
-) -> float:
-    query = await IPPrefixUtilization.init(db, branch=branch, at=at, ip_prefix=ip_prefix)
-    await query.execute(db=db)
-
-    if ip_prefix.member_type.value == "address":
-        return query.get_address_use_percentage(branch=branch)
-    return query.get_prefix_use_percentage(branch=branch)
 
 
 class IPPrefixReconcileQuery(Query):
