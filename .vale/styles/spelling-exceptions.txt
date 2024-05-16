@@ -12,6 +12,7 @@ Config
 content_type
 convert_query_response
 CoreRepository
+coroutine
 cypher
 Dagster
 datastore
