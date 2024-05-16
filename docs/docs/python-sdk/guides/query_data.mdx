@@ -173,37 +173,37 @@ The downside of using this method, is that it will not construct Python objects 
 
   ```python
   query = """query {
-	BuiltinTag(name__values: ["RED", "BLUE"]) {
-	  edges {
-		node {
-		  name {
-			value
-		 }
-		}
-	  }
-	}
+    BuiltinTag(name__values: ["RED", "BLUE"]) {
+      edges {
+        node {
+          name {
+            value
+          }
+        }
+      }
+    }
   }"""
   data = await client.execute_graphql(query=query)
   for tag in data["BuiltinTag"]["edges"]:
-	  print(tag["node"]["name"]["value"])
+      print(tag["node"]["name"]["value"])
   ```
 
   </TabItem>
   <TabItem value="Sync" default>
 
   ```python
-query = """query {
-  BuiltinTag(name__values: ["RED", "BLUE"]) {
-    edges {
-      node {
-        name {
-          value
+  query = """query {
+    BuiltinTag(name__values: ["RED", "BLUE"]) {
+      edges {
+        node {
+          name {
+            value
+          }
         }
       }
     }
-  }
-}"""
-data = client.execute_graphql(query=query)
+  }"""
+  data = client.execute_graphql(query=query)
   for tag in data["BuiltinTag"]["edges"]:
       print(tag["node"]["name"]["value"])
   ```
