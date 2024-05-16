@@ -274,11 +274,7 @@ class RelatedNodeBase:
         for prop_name in PROPERTIES_FLAG:
             properties[prop_name] = None
         for prop_name in PROPERTIES_OBJECT:
-            properties[prop_name] = {
-                "id": None,
-                "display_label": None,
-                "__typename": None,
-            }
+            properties[prop_name] = {"id": None, "display_label": None, "__typename": None}
 
         if properties:
             data["properties"] = properties
@@ -314,13 +310,13 @@ class RelatedNode(RelatedNodeBase):
         if not self.id or not self.typename:
             raise Error("Unable to fetch the peer, id and/or typename are not defined")
 
-        self._peer = await self._client.get(ids=[self.id], kind=self.typename, populate_store=True, branch=self._branch)
+        self._peer = await self._client.get(kind=self.typename, id=self.id, populate_store=True, branch=self._branch)
 
     @property
-    def peer(self) -> InfrahubNode:
-        return self.get()
+    async def peer(self) -> InfrahubNode:
+        return await self.get()
 
-    def get(self) -> InfrahubNode:
+    async def get(self) -> InfrahubNode:
         if self._peer:
             return self._peer  # type: ignore[return-value]
 
@@ -328,13 +324,13 @@ class RelatedNode(RelatedNodeBase):
             raise ValueError("Node id must be defined to query it.")
 
         if self.id and self.typename:
-            return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
+            try:
+                return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
+            except NodeNotFoundError:
+                await self.fetch()
+                return self._peer  # type: ignore[return-value]
 
-        raise NodeNotFoundError(
-            branch_name=self._branch,
-            node_type=self.schema.peer,
-            identifier={"key": [self.id]},
-        )
+        raise NodeNotFoundError(branch_name=self._branch, node_type=self.schema.peer, identifier={"key": [self.id]})
 
 
 class RelatedNodeSync(RelatedNodeBase):
@@ -363,7 +359,7 @@ class RelatedNodeSync(RelatedNodeBase):
         if not self.id or not self.typename:
             raise Error("Unable to fetch the peer, id and/or typename are not defined")
 
-        self._peer = self._client.get(ids=[self.id], kind=self.typename, populate_store=True, branch=self._branch)
+        self._peer = self._client.get(kind=self.typename, id=self.id, populate_store=True, branch=self._branch)
 
     @property
     def peer(self) -> InfrahubNodeSync:
@@ -377,13 +373,13 @@ class RelatedNodeSync(RelatedNodeBase):
             raise ValueError("Node id must be defined to query it.")
 
         if self.id and self.typename:
-            return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
+            try:
+                return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
+            except NodeNotFoundError:
+                self.fetch()
+                return self._peer  # type: ignore[return-value]
 
-        raise NodeNotFoundError(
-            branch_name=self._branch,
-            node_type=self.schema.peer,
-            identifier={"key": [self.id]},
-        )
+        raise NodeNotFoundError(branch_name=self._branch, node_type=self.schema.peer, identifier={"key": [self.id]})
 
 
 class RelationshipManagerBase:
@@ -441,11 +437,7 @@ class RelationshipManagerBase:
         for prop_name in PROPERTIES_FLAG:
             properties[prop_name] = None
         for prop_name in PROPERTIES_OBJECT:
-            properties[prop_name] = {
-                "id": None,
-                "display_label": None,
-                "__typename": None,
-            }
+            properties[prop_name] = {"id": None, "display_label": None, "__typename": None}
 
         if properties:
             data["edges"]["properties"] = properties
@@ -490,27 +482,13 @@ class RelationshipManager(RelationshipManagerBase):
         if isinstance(data, list):
             for item in data:
                 self.peers.append(
-                    RelatedNode(
-                        name=name,
-                        client=self.client,
-                        branch=self.branch,
-                        schema=schema,
-                        data=item,
-                    )
+                    RelatedNode(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
                 )
-
         elif isinstance(data, dict) and "edges" in data:
             for item in data["edges"]:
                 self.peers.append(
-                    RelatedNode(
-                        name=name,
-                        client=self.client,
-                        branch=self.branch,
-                        schema=schema,
-                        data=item,
-                    )
+                    RelatedNode(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
                 )
-
         else:
             raise ValueError(f"Unexpected format for {name} found a {type(data)}, {data}")
 
