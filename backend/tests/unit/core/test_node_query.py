@@ -120,7 +120,7 @@ async def test_query_NodeListGetInfoQuery_with_profiles(
     query = await NodeListGetInfoQuery.init(db=db, branch=branch, ids=ids)
     await query.execute(db=db)
 
-    async for node_to_process in query.get_nodes(duplicate=False):
+    async for node_to_process in query.get_nodes(db=db):
         if node_to_process.node_uuid != person_john_main.id:
             assert node_to_process.profile_uuids == []
         else:
@@ -149,7 +149,7 @@ async def test_query_NodeListGetInfoQuery_with_profiles_some_deleted(
     query = await NodeListGetInfoQuery.init(db=db, branch=branch, ids=ids)
     await query.execute(db=db)
 
-    queried_nodes = [node async for node in query.get_nodes(duplicate=False)]
+    queried_nodes = [node async for node in query.get_nodes(db=db)]
     assert {qn.node_uuid for qn in queried_nodes} == {
         person_john_main.id,
         person_jim_main.id,
@@ -190,7 +190,7 @@ async def test_query_NodeListGetInfoQuery_renamed(
     ids = [person_john_main.id, person_jim_main.id, person_albert_main.id]
     query = await NodeListGetInfoQuery.init(db=db, branch=branch, ids=ids)
     await query.execute(db=db)
-    results = [node.labels async for node in query.get_nodes()]
+    results = [node.labels async for node in query.get_nodes(db=db)]
     for result in results:
         assert sorted(result) == ["CoreNode", "Node", "Test2NewPerson"]
 

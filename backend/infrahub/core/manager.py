@@ -623,9 +623,7 @@ class NodeManager:
         # Query all nodes
         query = await NodeListGetInfoQuery.init(db=db, ids=ids, branch=branch, account=account, at=at)
         await query.execute(db=db)
-        nodes_info_by_id: Dict[str, NodeToProcess] = {
-            node.node_uuid: node async for node in query.get_nodes(duplicate=False)
-        }
+        nodes_info_by_id: Dict[str, NodeToProcess] = {node.node_uuid: node async for node in query.get_nodes(db=db)}
         profile_ids_by_node_id = query.get_profile_ids_by_node_id()
         all_profile_ids = reduce(
             lambda all_ids, these_ids: all_ids | set(these_ids), profile_ids_by_node_id.values(), set()

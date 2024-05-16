@@ -631,11 +631,13 @@ class NodeListGetInfoQuery(Query):
 
         self.return_labels = ["collect(profile.uuid) as profile_uuids", "n", "rb"]
 
-    async def get_nodes(self, duplicate: bool = True) -> AsyncIterator[NodeToProcess]:
+    async def get_nodes(self, db: InfrahubDatabase) -> AsyncIterator[NodeToProcess]:
         """Return all the node objects as NodeToProcess."""
 
         for result in self.get_results_group_by(("n", "uuid")):
-            schema = find_node_schema(node=result.get_node("n"), branch=self.branch, duplicate=duplicate)
+            schema = find_node_schema(db=db, node=result.get_node("n"), branch=self.branch, duplicate=False)
+            if schema:
+                schema = schema.duplicate()
             yield NodeToProcess(
                 schema=schema,
                 node_id=result.get_node("n").element_id,
