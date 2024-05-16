@@ -11,6 +11,7 @@ We can query data in 3 ways using the SDK:
 - querying a single node of a given kind, based on some filters, using the `get` method
 - querying multiple nodes of a given kind, based on some filters, using the `filters` method
 - querying all the nodes of a given kind, using the `all` method
+- querying with a GraphQL query, using the `execute_graphql` method
 
 ## Query filters
 
@@ -154,6 +155,57 @@ You can query Infrahub for all nodes of a particular kind, by using the `all` me
 
   ```python
   tags = client.all(kind="BuiltinTag")
+  ```
+
+  </TabItem>
+</Tabs>
+
+## Querying with a GraphQL query
+
+In some scenarios it might be more convenient to query Infrahub using a GraphQL query, rather than using the builtin mechanisms in the SDK.
+
+An example might be finding all the devices connected to a given circuit. This would require us to execute multiple queries using the nodes provided by the SDK. However with a GraphQL query this can be achieved using only a single query.
+
+The downside of using this method, is that it will not construct Python objects for the resulting data. Instead the SDK will return a Python dictionary containing the deserialized JSON data returned by the GraphQL API.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  query = """query {
+	BuiltinTag(name__values: ["RED", "BLUE"]) {
+	  edges {
+		node {
+		  name {
+			value
+		 }
+		}
+	  }
+	}
+  }"""
+  data = await client.execute_graphql(query=query)
+  for tag in data["BuiltinTag"]["edges"]:
+	  print(tag["node"]["name"]["value"])
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+query = """query {
+  BuiltinTag(name__values: ["RED", "BLUE"]) {
+    edges {
+      node {
+        name {
+          value
+        }
+      }
+    }
+  }
+}"""
+data = client.execute_graphql(query=query)
+  for tag in data["BuiltinTag"]["edges"]:
+      print(tag["node"]["name"]["value"])
   ```
 
   </TabItem>
