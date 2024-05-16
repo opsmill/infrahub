@@ -4,7 +4,9 @@ import ipaddress
 from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub.core import registry
-from infrahub.core.query.ipam import get_ip_addresses, get_subnets
+from infrahub.core.ipam.size import get_prefix_space
+from infrahub.core.ipam.utilization import PrefixUtilizationGetter
+from infrahub.core.query.ipam import IPPrefixUtilization, get_ip_addresses, get_subnets
 from infrahub.core.query.resource_manager import (
     IPAddressPoolGetReserved,
     IPAddressPoolSetReserved,
@@ -15,7 +17,7 @@ from infrahub.exceptions import PoolExhaustedError, ValidationError
 from infrahub.pools.address import get_available
 from infrahub.pools.prefix import PrefixPool
 
-# from infrahub.core.query.ipam import get_utilization
+# from infrahub.core.query.ipam import get_utilization_percentage
 from . import Node
 
 if TYPE_CHECKING:
@@ -124,7 +126,7 @@ class CoreIPAddressPool(Node):
             if "utilization" in fields:
                 # TODO need to build a query to measure the utilization across branches for all resources at once
 
-                # utilization = await get_utilization(self, db, branch=self._branch)
+                # utilization = await get_utilization_percentage(self, db, branch=self._branch)
                 response["utilization"] = {"value": 99}
 
         return response
@@ -225,11 +227,32 @@ class CorePrefixPool(Node):
             db, fields=fields, related_node_ids=related_node_ids, filter_sensitive=filter_sensitive
         )
 
-        if fields:
-            if "utilization" in fields:
-                # TODO need to build a query to measure the utilization across branches for all resources at once
+        special_fields = {"total_member_count", "all_used_member_count", "branch_used_member_count", "utilization"}
+        if fields and special_fields & set(fields):
+            ip_prefixes = await self.resources.get_peers(db=db)  # type: ignore[attr-defined]
+            getter = PrefixUtilizationGetter(db=db, ip_prefixes=ip_prefixes)
 
-                # utilization = await get_utilization(self, db, branch=self._branch)
+            # TODO: how to handle mixed address and prefix member_type prefixes?
+
+            if "total_member_count" in fields:
+                total_member_count = 0
+                for ip_prefix in ip_prefixes:
+                    total_member_count += get_prefix_space(ip_prefix=ip_prefix)
+                response["total_member_count"] = {"value": total_member_count}
+            if "all_used_member_count" in fields:
+                all_used_member_count = 0
+                for ip_prefix in ip_prefixes:
+                    prefix_used_members = await getter.get_children(ip_prefix=ip_prefix)
+                    all_used_member_count += len(prefix_used_members)
+                response["all_used_member_count"] = {"value": all_used_member_count}
+            if "branch_used_member_count" in fields:
+                branch_used_member_count = 0
+                for ip_prefix in ip_prefixes:
+                    prefix_branch_used_members = await getter.get_children(ip_prefix=ip_prefix, branch_name=self._branch.name)
+                    branch_used_member_count += len(prefix_branch_used_members)
+                response["branch_used_member_count"] = {"value": branch_used_member_count}
+            if "utilization" in fields:
+                # TODO: aggregate utilization for all IP prefixes 
                 response["utilization"] = {"value": 99}
 
         return response
