@@ -291,7 +291,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
             {
                 "name": "Animal",
                 "namespace": "Test",
-                "global_identifiers": ["owner__name__value", "name__value"],
+                "human_friendly_id": ["owner__name__value", "name__value"],
                 "uniqueness_constraints": [
                     ["owner", "name__value"],
                 ],
@@ -334,7 +334,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                 "name": "Person",
                 "namespace": "Test",
                 "display_labels": ["name__value"],
-                "global_identifiers": ["name__value"],
+                "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},

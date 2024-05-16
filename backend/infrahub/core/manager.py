@@ -468,10 +468,10 @@ class NodeManager:
         hfid_str = " :: ".join(hfid)
         node_schema = registry.schema.get(name=kind, branch=branch)
 
-        if not node_schema.global_identifiers or len(node_schema.global_identifiers) != len(hfid):
+        if not node_schema.human_friendly_id or len(node_schema.human_friendly_id) != len(hfid):
             raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=hfid_str)
 
-        filters = {node_schema.global_identifiers[idx]: item for idx, item in enumerate(hfid)}
+        filters = {node_schema.human_friendly_id[idx]: item for idx, item in enumerate(hfid)}
 
         items = await NodeManager.query(
             db=db,

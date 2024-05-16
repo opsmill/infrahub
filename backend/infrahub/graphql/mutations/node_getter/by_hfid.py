@@ -24,7 +24,7 @@ class MutationNodeGetterByhfid(MutationNodeGetterInterface):
         at: str,
     ) -> Optional[Node]:
         node = None
-        if not node_schema.global_identifiers or "hfid" not in data:
+        if not node_schema.human_friendly_id or "hfid" not in data:
             return node
 
         return await self.node_manager.get_one_by_hfid(

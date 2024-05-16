@@ -274,7 +274,7 @@ base_node_schema = SchemaNode(
             extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
-            name="global_identifiers",
+            name="human_friendly_id",
             kind="List",
             internal_kind=str,
             description="Global identifiers meant to be human redeable.",

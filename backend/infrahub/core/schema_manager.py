@@ -471,7 +471,7 @@ class SchemaBranch:
         self.validate_order_by()
         self.validate_default_filters()
         self.validate_parent_component()
-        self.validate_global_identifiers()
+        self.validate_human_friendly_id()
 
     def process_post_validation(self) -> None:
         self.add_groups()
@@ -482,7 +482,7 @@ class SchemaBranch:
         self.process_labels()
         self.process_dropdowns()
         self.process_relationships()
-        self.process_global_identifiers()
+        self.process_human_friendly_id()
 
     def generate_identifiers(self) -> None:
         """Generate the identifier for all relationships if it's not already present."""
@@ -715,21 +715,21 @@ class SchemaBranch:
                 schema_attribute_name="default_filter",
             )
 
-    def validate_global_identifiers(self):
+    def validate_human_friendly_id(self):
         for name in self.generic_names + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
 
-            if not node_schema.global_identifiers:
+            if not node_schema.human_friendly_id:
                 continue
 
             allowed_types = SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_ATTR
 
-            for item in node_schema.global_identifiers:
+            for item in node_schema.human_friendly_id:
                 self.validate_schema_path(
                     node_schema=node_schema,
                     path=item,
                     allowed_path_types=allowed_types,
-                    element_name="global_identifiers",
+                    element_name="human_friendly_id",
                 )
 
             # TODO add checks to ensure that
@@ -965,16 +965,16 @@ class SchemaBranch:
             if schema_to_update:
                 self.set(name=schema_to_update.kind, schema=schema_to_update)
 
-    def process_global_identifiers(self) -> None:
+    def process_human_friendly_id(self) -> None:
         for name in self.generic_names + self.node_names:
             node = self.get(name=name, duplicate=False)
 
-            if node.global_identifiers:
+            if node.human_friendly_id:
                 continue
 
             for attr in node.unique_attributes:
                 node = self.get(name=name, duplicate=True)
-                node.global_identifiers = [f"{attr.name}__value"]
+                node.human_friendly_id = [f"{attr.name}__value"]
                 break
 
     def process_hierarchy(self) -> None:
