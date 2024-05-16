@@ -3,10 +3,8 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
 import { Link } from "../../../components/utils/link";
 import { GET_PREFIX_KIND } from "../../../graphql/queries/ipam/prefixes";
-import { getObjectDetailsPaginated } from "../../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../../hooks/useQuery";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { getSchemaObjectColumns } from "../../../utils/getSchemaObjectColumns";
@@ -15,6 +13,8 @@ import { IpDetailsCard } from "../common/ip-details-card";
 import { constructPathForIpam } from "../common/utils";
 import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
 import { IpamSummarySkeleton } from "./ipam-summary-skeleton";
+import { getObjectDetailsPaginated } from "../../../graphql/queries/objects/getObjectDetails";
+import { Alert, ALERT_TYPES } from "../../../components/utils/alert";
 
 export default function IpamIPPrefixesSummaryDetails() {
   const { prefix } = useParams() as { prefix: string };
