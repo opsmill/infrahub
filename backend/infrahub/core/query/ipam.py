@@ -359,7 +359,7 @@ class IPPrefixUtilization(Query):
             return f"{rel_name}.from <= $time_at AND ({rel_name}.to IS NULL OR {rel_name}.to >= $time_at)"
 
         query = f"""
-        MATCH (pfx:{InfrahubKind.IPPREFIX} WHERE pfx.uuid IN $ids)
+        MATCH (pfx:Node WHERE pfx.uuid IN $ids)
         CALL {{
             WITH pfx
             MATCH (

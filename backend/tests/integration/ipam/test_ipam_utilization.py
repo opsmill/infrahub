@@ -113,9 +113,9 @@ class TestIpamUtilization(TestInfrahubApp):
         prefix2 = initial_dataset["prefix2"]
         getter = PrefixUtilizationGetter(db=db, ip_prefixes=[container, prefix, prefix2])
 
-        assert await getter.get_use_percentage(ip_prefix=container) == 100 / 8
-        assert await getter.get_use_percentage(ip_prefix=prefix2) == 0
-        assert await getter.get_use_percentage(ip_prefix=prefix) == 50.0
+        assert await getter.get_use_percentage(ip_prefixes=[container]) == 100 / 8
+        assert await getter.get_use_percentage(ip_prefixes=[prefix2]) == 0
+        assert await getter.get_use_percentage(ip_prefixes=[prefix]) == 50.0
 
     async def test_step02_branch_utilization(
         self, db: InfrahubDatabase, default_branch: Branch, branch2: Branch, initial_dataset, step_02_dataset
@@ -126,18 +126,18 @@ class TestIpamUtilization(TestInfrahubApp):
         prefix2_branch = step_02_dataset["prefix2_branch"]
         getter = PrefixUtilizationGetter(db=db, ip_prefixes=[container, prefix, prefix_branch, prefix2_branch])
 
-        assert await getter.get_use_percentage(ip_prefix=container) == 25.0
-        assert await getter.get_use_percentage(ip_prefix=container, branch_name=branch2.name) == 12.5
-        assert await getter.get_use_percentage(ip_prefix=container, branch_name=default_branch.name) == 12.5
-        assert await getter.get_use_percentage(ip_prefix=prefix2_branch) == 0
-        assert await getter.get_use_percentage(ip_prefix=prefix2_branch, branch_name=branch2.name) == 0
-        assert await getter.get_use_percentage(ip_prefix=prefix2_branch, branch_name=default_branch.name) == 0
-        assert await getter.get_use_percentage(ip_prefix=prefix_branch) == 100.0
-        assert await getter.get_use_percentage(ip_prefix=prefix_branch, branch_name=branch2.name) == 100.0
-        assert await getter.get_use_percentage(ip_prefix=prefix_branch, branch_name=default_branch.name) == 0
-        assert await getter.get_use_percentage(ip_prefix=prefix) == 100.0
-        assert await getter.get_use_percentage(ip_prefix=prefix, branch_name=branch2.name) == 50.0
-        assert await getter.get_use_percentage(ip_prefix=prefix, branch_name=default_branch.name) == 50.0
+        assert await getter.get_use_percentage(ip_prefixes=[container]) == 25.0
+        assert await getter.get_use_percentage(ip_prefixes=[container], branch_names=[branch2.name]) == 12.5
+        assert await getter.get_use_percentage(ip_prefixes=[container], branch_names=[default_branch.name]) == 12.5
+        assert await getter.get_use_percentage(ip_prefixes=[prefix2_branch]) == 0
+        assert await getter.get_use_percentage(ip_prefixes=[prefix2_branch], branch_names=[branch2.name]) == 0
+        assert await getter.get_use_percentage(ip_prefixes=[prefix2_branch], branch_names=[default_branch.name]) == 0
+        assert await getter.get_use_percentage(ip_prefixes=[prefix_branch]) == 100.0
+        assert await getter.get_use_percentage(ip_prefixes=[prefix_branch], branch_names=[branch2.name]) == 100.0
+        assert await getter.get_use_percentage(ip_prefixes=[prefix_branch], branch_names=[default_branch.name]) == 0
+        assert await getter.get_use_percentage(ip_prefixes=[prefix]) == 100.0
+        assert await getter.get_use_percentage(ip_prefixes=[prefix], branch_names=[branch2.name]) == 50.0
+        assert await getter.get_use_percentage(ip_prefixes=[prefix], branch_names=[default_branch.name]) == 50.0
 
     async def test_step03_utilization_with_deletes(
         self,
@@ -153,17 +153,16 @@ class TestIpamUtilization(TestInfrahubApp):
         prefix_branch = step_02_dataset["prefix_branch"]
         getter = PrefixUtilizationGetter(db=db, ip_prefixes=[container, prefix, prefix_branch])
 
-        assert await getter.get_use_percentage(ip_prefix=container) == 12.5
-        assert await getter.get_use_percentage(ip_prefix=container, branch_name=branch2.name) == 100 / 16
-        assert await getter.get_use_percentage(ip_prefix=container, branch_name=default_branch.name) == 100 / 16
-        assert await getter.get_use_percentage(ip_prefix=prefix_branch) == (13 / 14) * 100
-        assert await getter.get_use_percentage(ip_prefix=prefix_branch, branch_name=branch2.name) == (13 / 14) * 100
-        assert await getter.get_use_percentage(ip_prefix=prefix_branch, branch_name=default_branch.name) == 0
+        assert await getter.get_use_percentage(ip_prefixes=[container]) == 12.5
+        assert await getter.get_use_percentage(ip_prefixes=[container], branch_names=[branch2.name]) == 100 / 16
+        assert await getter.get_use_percentage(ip_prefixes=[container], branch_names=[default_branch.name]) == 100 / 16
+        assert await getter.get_use_percentage(ip_prefixes=[prefix_branch]) == (13 / 14) * 100
         assert (
-            await getter.get_use_percentage(
-                ip_prefix=prefix,
-            )
-            == (12 / 14) * 100
+            await getter.get_use_percentage(ip_prefixes=[prefix_branch], branch_names=[branch2.name]) == (13 / 14) * 100
         )
-        assert await getter.get_use_percentage(ip_prefix=prefix, branch_name=branch2.name) == (6 / 14) * 100
-        assert await getter.get_use_percentage(ip_prefix=prefix, branch_name=default_branch.name) == (6 / 14) * 100
+        assert await getter.get_use_percentage(ip_prefixes=[prefix_branch], branch_names=[default_branch.name]) == 0
+        assert await getter.get_use_percentage(ip_prefixes=[prefix]) == (12 / 14) * 100
+        assert await getter.get_use_percentage(ip_prefixes=[prefix], branch_names=[branch2.name]) == (6 / 14) * 100
+        assert (
+            await getter.get_use_percentage(ip_prefixes=[prefix], branch_names=[default_branch.name]) == (6 / 14) * 100
+        )
