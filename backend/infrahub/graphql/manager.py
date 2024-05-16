@@ -440,6 +440,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             "hfid": graphene.Field(
                 graphene.List(of_type=graphene.String), required=False, description="Human friendly identifier"
             ),
+            "_updated_at": graphene.DateTime(required=False),
             "display_label": graphene.String(required=False),
             "Meta": type("Meta", (object,), meta_attrs),
         }
