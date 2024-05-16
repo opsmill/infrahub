@@ -60,6 +60,7 @@ namespace
 namespaces
 Nautobot
 Netbox
+Nornir
 npm
 o'brian
 openconfig

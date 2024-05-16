@@ -12,9 +12,11 @@ scope:
 match: $sentence
 exceptions:
   - Alpha
+  - Ansible
   - API
   - Attributes
   - Beta
+  - BGP
   - CI
   - Codespaces
   - CoreArtifactTarget

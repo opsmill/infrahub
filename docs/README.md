@@ -1,4 +1,4 @@
-# Infrahub documentation Website
+# Infrahub documentation website
 
 This folder contains the source code and documentation powering https://docs.infrahub.app.
 
