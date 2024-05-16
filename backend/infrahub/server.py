@@ -93,10 +93,6 @@ app = FastAPI(
     title="Infrahub",
     version=__version__,
     lifespan=lifespan,
-    contact={
-        "name": "OpsMill",
-        "email": "info@opsmill.com",
-    },
     openapi_url="/api/openapi.json",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
