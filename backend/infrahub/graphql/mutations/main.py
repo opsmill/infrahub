@@ -30,7 +30,7 @@ from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
-from .node_getter.by_guid import MutationNodeGetterByGuid
+from .node_getter.by_hfid import MutationNodeGetterByhfid
 from .node_getter.by_id import MutationNodeGetterById
 
 if TYPE_CHECKING:
@@ -62,10 +62,10 @@ class InfrahubMutationMixin:
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         id: Optional[str] = None,  # pylint: disable=redefined-builtin
-        guid: Optional[list[str]] = None,
+        hfid: Optional[list[str]] = None,
     ) -> Node:
-        if not id and not guid:
-            raise ProcessingError(message="either id or guid must be provided.")
+        if not id and not hfid:
+            raise ProcessingError(message="either id or hfid must be provided.")
 
         if id and is_valid_uuid(id):
             return await NodeManager.get_one(
@@ -78,11 +78,11 @@ class InfrahubMutationMixin:
                 include_source=True,
             )
 
-        if guid:
-            return await NodeManager.get_one_by_guid(
+        if hfid:
+            return await NodeManager.get_one_by_hfid(
                 db=db,
                 kind=cls._meta.schema.kind,
-                guid=guid,
+                hfid=hfid,
                 branch=branch,
                 at=at,
                 include_owner=True,
@@ -123,7 +123,7 @@ class InfrahubMutationMixin:
             node_manager = NodeManager()
             node_getters = [
                 MutationNodeGetterById(db=context.db, node_manager=node_manager),
-                MutationNodeGetterByGuid(db=context.db, node_manager=node_manager),
+                MutationNodeGetterByhfid(db=context.db, node_manager=node_manager),
                 MutationNodeGetterByDefaultFilter(db=context.db, node_manager=node_manager),
             ]
             obj, mutation, created = await cls.mutate_upsert(
@@ -262,7 +262,7 @@ class InfrahubMutationMixin:
         context: GraphqlContext = info.context
         db = database or context.db
 
-        obj = node or await cls.find_object(db=db, id=data.get("id"), guid=data.get("guid"), branch=branch, at=at)
+        obj = node or await cls.find_object(db=db, id=data.get("id"), hfid=data.get("hfid"), branch=branch, at=at)
 
         try:
             if db.is_transaction:
@@ -298,8 +298,8 @@ class InfrahubMutationMixin:
         fields = list(data.keys())
         if "id" in fields:
             fields.remove("id")
-        if "guid" in fields:
-            fields.remove("guid")
+        if "hfid" in fields:
+            fields.remove("hfid")
         validate_mutation_permissions_update_node(
             operation=cls.__name__, node_id=node_id, account_session=context.account_session, fields=fields
         )
@@ -350,10 +350,10 @@ class InfrahubMutationMixin:
                 root=root, info=info, data=data, branch=branch, at=at, database=database, node=node
             )
             return updated_obj, mutation, False
-        # We need to convert the InputObjectType into a dict in order to remove guid that isn't a valid input when creating the object
+        # We need to convert the InputObjectType into a dict in order to remove hfid that isn't a valid input when creating the object
         data_dict = dict(data)
-        if "guid" in data:
-            del data_dict["guid"]
+        if "hfid" in data:
+            del data_dict["hfid"]
         created_obj, mutation = await cls.mutate_create(root=root, info=info, data=data_dict, branch=branch, at=at)
         return created_obj, mutation, True
 
@@ -369,7 +369,7 @@ class InfrahubMutationMixin:
     ):
         context: GraphqlContext = info.context
 
-        obj = await cls.find_object(db=context.db, id=data.get("id"), guid=data.get("guid"), branch=branch, at=at)
+        obj = await cls.find_object(db=context.db, id=data.get("id"), hfid=data.get("hfid"), branch=branch, at=at)
 
         try:
             async with context.db.start_transaction() as db:

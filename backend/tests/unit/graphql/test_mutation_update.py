@@ -1145,7 +1145,7 @@ async def test_update_with_uniqueness_constraint_violation(db: InfrahubDatabase,
     assert "Violates uniqueness constraint 'owner-color'" in result.errors[0].message
 
 
-async def test_with_guid(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_with_hfid(db: InfrahubDatabase, default_branch, animal_person_schema):
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -1160,7 +1160,7 @@ async def test_with_guid(db: InfrahubDatabase, default_branch, animal_person_sch
     query = """
     mutation {
         TestDogUpdate(data: {
-            guid: ["Jack", "Rocky"],
+            hfid: ["Jack", "Rocky"],
             color: { value: "black" },
         }) {
             ok

@@ -449,10 +449,10 @@ class NodeManager:
         )
 
     @classmethod
-    async def get_one_by_guid(
+    async def get_one_by_hfid(
         cls,
         db: InfrahubDatabase,
-        guid: list[str],
+        hfid: list[str],
         kind: str,
         fields: Optional[dict] = None,
         at: Union[Timestamp, str] = None,
@@ -465,13 +465,13 @@ class NodeManager:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        guid_str = " :: ".join(guid)
+        hfid_str = " :: ".join(hfid)
         node_schema = registry.schema.get(name=kind, branch=branch)
 
-        if not node_schema.global_identifiers or len(node_schema.global_identifiers) != len(guid):
-            raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=guid_str)
+        if not node_schema.global_identifiers or len(node_schema.global_identifiers) != len(hfid):
+            raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=hfid_str)
 
-        filters = {node_schema.global_identifiers[idx]: item for idx, item in enumerate(guid)}
+        filters = {node_schema.global_identifiers[idx]: item for idx, item in enumerate(hfid)}
 
         items = await NodeManager.query(
             db=db,
@@ -491,8 +491,8 @@ class NodeManager:
             raise NodeNotFoundError(
                 branch_name=branch.name,
                 node_type=kind,
-                identifier=guid_str,
-                message=f"Unable to find node {guid_str!r}, {len(items)} nodes returned, expected 1",
+                identifier=hfid_str,
+                message=f"Unable to find node {hfid_str!r}, {len(items)} nodes returned, expected 1",
             )
 
         return items[0] if items else None

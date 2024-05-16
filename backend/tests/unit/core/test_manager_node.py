@@ -205,7 +205,7 @@ async def test_get_one_by_id_or_default_filter(
     assert node2.id == criticality_low.id
 
 
-async def test_get_one_by_guid(
+async def test_get_one_by_hfid(
     db: InfrahubDatabase,
     default_branch: Branch,
     animal_person_schema: SchemaBranch,
@@ -229,7 +229,7 @@ async def test_get_one_by_guid(
     await dog2.new(db=db, name="Bella", breed="French Bulldog", owner=person1)
     await dog2.save(db=db)
 
-    node1 = await NodeManager.get_one_by_guid(db=db, guid=["Jack", "Rocky"], kind=dog_schema.kind)
+    node1 = await NodeManager.get_one_by_hfid(db=db, hfid=["Jack", "Rocky"], kind=dog_schema.kind)
     assert isinstance(node1, Node)
     assert node1.id == dog1.id
 

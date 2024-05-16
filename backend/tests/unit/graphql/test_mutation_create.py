@@ -985,7 +985,7 @@ async def test_create_with_uniqueness_constraint_violation(db: InfrahubDatabase,
     assert "Violates uniqueness constraint 'owner-color'" in result.errors[0].message
 
 
-async def test_relationship_with_guid(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_relationship_with_hfid(db: InfrahubDatabase, default_branch, animal_person_schema):
     person_schema = animal_person_schema.get(name="TestPerson")
 
     person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
@@ -998,7 +998,7 @@ async def test_relationship_with_guid(db: InfrahubDatabase, default_branch, anim
             name: { value: "Rocky" },
             breed: { value: "Labrador" },
             color: { value: "black" },
-            owner: { guid: ["Jack"] },
+            owner: { hfid: ["Jack"] },
         }) {
             ok
             object {

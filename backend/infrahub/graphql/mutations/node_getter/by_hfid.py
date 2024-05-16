@@ -11,7 +11,7 @@ from infrahub.database import InfrahubDatabase
 from .interface import MutationNodeGetterInterface
 
 
-class MutationNodeGetterByGuid(MutationNodeGetterInterface):
+class MutationNodeGetterByhfid(MutationNodeGetterInterface):
     def __init__(self, db: InfrahubDatabase, node_manager: NodeManager):
         self.db = db
         self.node_manager = node_manager
@@ -24,12 +24,12 @@ class MutationNodeGetterByGuid(MutationNodeGetterInterface):
         at: str,
     ) -> Optional[Node]:
         node = None
-        if not node_schema.global_identifiers or "guid" not in data:
+        if not node_schema.global_identifiers or "hfid" not in data:
             return node
 
-        return await self.node_manager.get_one_by_guid(
+        return await self.node_manager.get_one_by_hfid(
             db=self.db,
-            guid=data["guid"],
+            hfid=data["hfid"],
             kind=node_schema.kind,
             branch=branch,
             at=at,

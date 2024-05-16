@@ -36,7 +36,7 @@ RESERVED_ATTR_REL_NAMES = [
     "rel",
     "rels",
     "save",
-    "guid",
+    "hfid",
 ]
 
 RESERVED_ATTR_GEN_NAMES = ["type"]

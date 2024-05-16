@@ -10,7 +10,7 @@ from .interface import InfrahubInterface
 
 class RelatedNodeInput(InputObjectType):
     id = String(required=False)
-    guid = Field(List(of_type=String), required=False)
+    hfid = Field(List(of_type=String), required=False)
     _relation__is_visible = Boolean(required=False)
     _relation__is_protected = Boolean(required=False)
     _relation__owner = String(required=False)
@@ -44,7 +44,7 @@ class RelatedIPAddressNodeInput(InputObjectType):
 
 class RelatedPrefixNodeInput(InputObjectType):
     id = String(required=False)
-    guid = Field(List(of_type=String), required=False)
+    hfid = Field(List(of_type=String), required=False)
     from_pool = Field(PrefixPoolInput, required=False)
     _relation__is_visible = Boolean(required=False)
     _relation__is_protected = Boolean(required=False)

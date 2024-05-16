@@ -91,7 +91,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         self._peer: Optional[Union[Node, str]] = None
         self.peer_id: Optional[str] = None
-        self.peer_guid: Optional[list[str]] = None
+        self.peer_hfid: Optional[list[str]] = None
         self.data: Optional[Union[dict, RelationshipPeerData, str]] = None
 
         self.from_pool: Optional[dict[str, Any]] = None
@@ -158,8 +158,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             for key, value in data.items():
                 if key in ["peer", "id"]:
                     await self.set_peer(value=data.get(key, None))
-                elif key == "guid" and self.peer_id is None:
-                    self.peer_guid = value
+                elif key == "hfid" and self.peer_id is None:
+                    self.peer_hfid = value
                 elif key.startswith(PREFIX_PROPERTY) and key.replace(PREFIX_PROPERTY, "") in self._flag_properties:
                     setattr(self, key.replace(PREFIX_PROPERTY, ""), value)
                 elif key.startswith(PREFIX_PROPERTY) and key.replace(PREFIX_PROPERTY, "") in self._node_properties:
@@ -374,9 +374,9 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             if peer:
                 await self.set_peer(value=peer)
 
-        if not self.peer_id and self.peer_guid:
-            peer = await registry.manager.get_one_by_guid(
-                db=db, guid=self.peer_guid, branch=self.branch, kind=self.schema.peer, fields={"display_label": None}
+        if not self.peer_id and self.peer_hfid:
+            peer = await registry.manager.get_one_by_hfid(
+                db=db, hfid=self.peer_hfid, branch=self.branch, kind=self.schema.peer, fields={"display_label": None}
             )
             if peer:
                 await self.set_peer(value=peer)

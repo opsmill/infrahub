@@ -205,7 +205,7 @@ async def test_update_by_id_to_nonunique_value_raises_error(
     assert any(expected_error in error.message for error in result.errors)
 
 
-async def test_with_guid_existing(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_person_schema):
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -221,7 +221,7 @@ async def test_with_guid_existing(db: InfrahubDatabase, default_branch, animal_p
         """
     mutation {
         TestDogUpsert(data: {
-            guid: ["Jack", "Rocky"],
+            hfid: ["Jack", "Rocky"],
             name: { value: "Bella" },
             breed: { value: "Labrador" },
             color: { value: "black" },
@@ -252,7 +252,7 @@ async def test_with_guid_existing(db: InfrahubDatabase, default_branch, animal_p
     assert result.data["TestDogUpsert"]["object"] == {"color": {"value": "black"}, "id": dog1.id}
 
 
-async def test_with_guid_new(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_with_hfid_new(db: InfrahubDatabase, default_branch, animal_person_schema):
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -268,7 +268,7 @@ async def test_with_guid_new(db: InfrahubDatabase, default_branch, animal_person
         """
     mutation {
         TestDogUpsert(data: {
-            guid: ["Jack", "Bella"],
+            hfid: ["Jack", "Bella"],
             name: { value: "Bella" },
             breed: { value: "Labrador" },
             color: { value: "black" },
