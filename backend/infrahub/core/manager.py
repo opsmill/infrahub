@@ -579,7 +579,16 @@ class NodeManager:
         node = result[id]
         node_schema = node.get_schema()
 
+        # Temporary list of exception to the validation of the kind
+        kind_validation_exceptions = [
+            ("CoreChangeThread", "CoreObjectThread"),  # issue/3318
+        ]
+
         if kind and (node_schema.kind != kind and kind not in node_schema.inherit_from):
+            for item in kind_validation_exceptions:
+                if item[0] == kind and item[1] == node.get_kind():
+                    return node
+
             raise NodeNotFoundError(
                 branch_name=branch.name,
                 node_type=kind,
