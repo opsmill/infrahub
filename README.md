@@ -14,7 +14,13 @@ Leveraging [GitHub Codespaces](https://docs.github.com/en/codespaces/overview), 
 |---|---|
 | [![Launch in GitHub Codespaces (No Data)](https://img.shields.io/badge/Launch%20Infrahub-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable) | [![Launch in GitHub Codespaces (Demo Data)](https://img.shields.io/badge/Infrahub%20with%20Data-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable) |
 
-To deploy a local instance of Infrahub please refer to our guide: [Installing Infrahub](https://docs.infrahub.app/guides/installation)
+Alternately, to quickly deploy Infrahub locally:
+
+```bash
+curl https://infrahub.opsmill.io | docker compose -f - up -d
+```
+
+For more details on how to deploy a local instance of Infrahub please refer to our guide: [Installing Infrahub](https://docs.infrahub.app/guides/installation)
 
 ## Documentation
 
@@ -36,34 +42,9 @@ If you need help, support for the open-source Infrahub project is provided on [!
 
 [View our CONTRIBUTING](./CONTRIBUTING.md) policy to find the latest information.
 
-## Telemetry Data Collection
+## Telemetry
 
-By default, Infrahub collects the following non-user-identifying telemetry data:
-
-- Up/Down status of services
-- Number of Nodes
-- Number of Objects Created
-- Count of Branches Created
-- Count of Branches not yet merged
-- Number of Resource Pools
-- Obfuscated Schema Summary
-- Infrahub Version
-- Number of GIT repos
-- Number of workers
-- Number of generators
-- Number of artifact definitions
-- Number of times artifacts are being generated
-- Number of transformation
-- Number of groups
-- Number of profiles
-- Number of webhooks
-- Number of times webhooks are fired
-
-To disable telemetry on Infrahub deployment, set the following environmental variable:
-
-```bash
-export INFRAHUB_TELEMETRY_OPTOUT=true
-```
+By default, Infrahub collects non-user-identifying telemetry data. [View our TELEMETRY](./TELEMETRY.md) policy to find details and options.
 
 ## Security
 
