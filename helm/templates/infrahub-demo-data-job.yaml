@@ -49,8 +49,5 @@ spec:
           imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.infrahubDemoData.imagePullPolicy }}
           name: infrahub-demo-data-job
           resources: {}
-          volumeMounts:
-            - name: config-volume
-              mountPath: /config
       restartPolicy: Never
 {{- end }}
