@@ -157,13 +157,7 @@ class Attribute:
 class RelatedNodeBase:
     """Base class for representing a related node in a relationship."""
 
-    def __init__(
-        self,
-        branch: str,
-        schema: RelationshipSchema,
-        data: Union[Any, dict],
-        name: Optional[str] = None,
-    ):
+    def __init__(self, branch: str, schema: RelationshipSchema, data: Union[Any, dict], name: Optional[str] = None):
         """
         Args:
             branch (str): The branch where the related node resides.
@@ -187,10 +181,8 @@ class RelatedNodeBase:
 
         if isinstance(data, (InfrahubNode, InfrahubNodeSync)):
             self._peer = data
-
             for prop in self._properties:
                 setattr(self, prop, None)
-
         elif not isinstance(data, dict):
             data = {"id": data}
 
@@ -313,10 +305,10 @@ class RelatedNode(RelatedNodeBase):
         self._peer = await self._client.get(kind=self.typename, id=self.id, populate_store=True, branch=self._branch)
 
     @property
-    async def peer(self) -> InfrahubNode:
-        return await self.get()
+    def peer(self) -> InfrahubNode:
+        return self.get()
 
-    async def get(self) -> InfrahubNode:
+    def get(self) -> InfrahubNode:
         if self._peer:
             return self._peer  # type: ignore[return-value]
 
@@ -324,11 +316,7 @@ class RelatedNode(RelatedNodeBase):
             raise ValueError("Node id must be defined to query it.")
 
         if self.id and self.typename:
-            try:
-                return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
-            except NodeNotFoundError:
-                await self.fetch()
-                return self._peer  # type: ignore[return-value]
+            return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
 
         raise NodeNotFoundError(branch_name=self._branch, node_type=self.schema.peer, identifier={"key": [self.id]})
 
@@ -373,11 +361,7 @@ class RelatedNodeSync(RelatedNodeBase):
             raise ValueError("Node id must be defined to query it.")
 
         if self.id and self.typename:
-            try:
-                return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
-            except NodeNotFoundError:
-                self.fetch()
-                return self._peer  # type: ignore[return-value]
+            return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
 
         raise NodeNotFoundError(branch_name=self._branch, node_type=self.schema.peer, identifier={"key": [self.id]})
 
