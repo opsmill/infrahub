@@ -14,7 +14,7 @@ export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
 const CardWithBorderRoot = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ children, className }, ref) => {
     return (
-      <div ref={ref} className={classNames("border rounded-lg", className)}>
+      <div ref={ref} className={classNames("bg-custom-white border rounded-lg", className)}>
         <div className="border rounded-md m-3 overflow-hidden">{children}</div>
       </div>
     );
