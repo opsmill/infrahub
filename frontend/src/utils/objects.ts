@@ -3,15 +3,7 @@ const regex = /^Related/; // starts with Related
 export const getObjectDetailsUrl = (nodeId: string, nodeType: string): string => {
   const peerKind: string = nodeType?.replace(regex, "");
 
-  // if (peerKind === "CoreStandardGroup") {
-  //   const url = `/groups/${peerKind}/${nodeId}`;
-
-  //   return url;
-  // }
-
-  const url = `/objects/${peerKind}/${nodeId}`;
-
-  return url;
+  return `/objects/${peerKind}/${nodeId}`;
 };
 
 export const resolve = (path: string, object: any, separator: string = ".") => {
