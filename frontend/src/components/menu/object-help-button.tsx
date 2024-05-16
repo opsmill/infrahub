@@ -4,18 +4,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { Button } from "../buttons/button-primitive";
+import { Button, ButtonProps } from "../buttons/button-primitive";
 import { Link } from "react-router-dom";
 import { INFRAHUB_DOC_LOCAL } from "../../config/config";
 import { Icon } from "@iconify-icon/react";
 import { constructPath } from "../../utils/fetch";
 
-type ObjectHelpButtonProps = {
+interface ObjectHelpButtonProps extends ButtonProps {
+  className?: string;
   documentationUrl?: string | null;
   kind?: string | null;
-};
+}
 
-export const ObjectHelpButton = ({ documentationUrl, kind }: ObjectHelpButtonProps) => {
+export const ObjectHelpButton = ({ documentationUrl, kind, ...props }: ObjectHelpButtonProps) => {
   const docFullUrl = documentationUrl
     ? documentationUrl.startsWith("http")
       ? INFRAHUB_DOC_LOCAL
@@ -25,7 +26,7 @@ export const ObjectHelpButton = ({ documentationUrl, kind }: ObjectHelpButtonPro
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon">
+        <Button variant="outline" size="icon" {...props}>
           ?
         </Button>
       </DropdownMenuTrigger>
