@@ -56,9 +56,9 @@ class GeneratedBaseNodeSchema(HashableModel):
         pattern=r"^[a-z0-9\_]+$",
         json_schema_extra={"update": "allowed"},
     )
-    global_identifiers: Optional[list[str]] = Field(
+    human_friendly_id: Optional[list[str]] = Field(
         default=None,
-        description="Global identifiers meant to be human redeable.",
+        description="Human friendly and unique identifier for the object.",
         json_schema_extra={"update": "allowed"},
     )
     display_labels: Optional[list[str]] = Field(

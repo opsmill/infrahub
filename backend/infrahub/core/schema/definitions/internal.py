@@ -277,7 +277,7 @@ base_node_schema = SchemaNode(
             name="human_friendly_id",
             kind="List",
             internal_kind=str,
-            description="Global identifiers meant to be human redeable.",
+            description="Human friendly and unique identifier for the object.",
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
