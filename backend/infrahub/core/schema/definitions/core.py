@@ -1687,7 +1687,7 @@ core_models: dict[str, Any] = {
                 {
                     "name": "default_member_type",
                     "kind": "Text",
-                    "enum": ["prefix", "subnet"],
+                    "enum": ["prefix", "address"],
                     "default_value": "prefix",
                     "optional": True,
                 },
