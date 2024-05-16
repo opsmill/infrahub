@@ -169,6 +169,7 @@ select = [
     "N",     # pep8-naming
     "PIE",   # flake8-pie
     "PL",    # pylint
+    "PTH",   # flake8-use-pathlib
     "PYI",   # flake8-pyi
     "Q",     # flake8-quotes
     "RET",   # flake8-return
