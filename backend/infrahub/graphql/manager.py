@@ -436,8 +436,10 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         }
 
         main_attrs = {
-            "id": graphene.String(required=True),
-            "_updated_at": graphene.DateTime(required=False),
+            "id": graphene.Field(graphene.String, required=True, description="Unique identifier"),
+            "hfid": graphene.Field(
+                graphene.List(of_type=graphene.String), required=False, description="Human friendly identifier"
+            ),
             "display_label": graphene.String(required=False),
             "Meta": type("Meta", (object,), meta_attrs),
         }
@@ -463,6 +465,10 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         }
 
         main_attrs = {
+            "id": graphene.Field(graphene.String, required=False, description="Unique identifier"),
+            "hfid": graphene.Field(
+                graphene.List(of_type=graphene.String), required=False, description="Human friendly identifier"
+            ),
             "display_label": graphene.String(required=False),
             "Meta": type("Meta", (object,), meta_attrs),
         }
@@ -471,8 +477,6 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             attr_kind = get_attr_kind(node_schema=schema, attr_schema=attr)
             attr_type = self.get_type(name=get_attribute_type(kind=attr_kind).get_graphql_type_name())
             main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
-
-        main_attrs["id"] = graphene.Field(graphene.String, required=False, description="Unique identifier")
 
         interface_object = type(schema.kind, (InfrahubInterface,), main_attrs)
 

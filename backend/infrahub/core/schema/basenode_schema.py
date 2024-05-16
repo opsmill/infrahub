@@ -323,26 +323,44 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
     def unique_attributes(self) -> List[AttributeSchema]:
         return [item for item in self.attributes if item.unique]
 
-    def generate_fields_for_display_label(self) -> Dict:
+    @classmethod
+    def convert_path_to_graphql_fields(cls, path: str) -> dict:
+        subpaths = path.split("__", maxsplit=1)
+        fields = {}
+        if len(subpaths) == 1:
+            fields[subpaths[0]] = None
+        elif len(subpaths) == 2:
+            fields[subpaths[0]] = cls.convert_path_to_graphql_fields(path=subpaths[1])
+        return fields
+
+    def generate_fields_for_display_label(self) -> Optional[dict]:
         """Generate a Dictionary containing the list of fields that are required
         to generate the display_label.
 
         If display_labels is not defined, we return None which equal to everything.
         """
 
-        if not hasattr(self, "display_labels") or not isinstance(self.display_labels, list):
+        if not self.display_labels:
             return None
 
         fields: dict[str, Union[str, None, dict[str, None]]] = {}
         for item in self.display_labels:
-            elements = item.split("__")
-            if len(elements) == 1:
-                fields[elements[0]] = None
-            elif len(elements) == 2:
-                fields[elements[0]] = {elements[1]: None}
-            else:
-                raise ValueError(f"Unexpected value for display_labels, {item} is not valid.")
+            fields.update(self.convert_path_to_graphql_fields(path=item))
+        return fields
 
+    def generate_fields_for_hfid(self) -> Optional[dict]:
+        """Generate a Dictionary containing the list of fields that are required
+        to generate the hfid.
+
+        If display_labels is not defined, we return None which equal to everything.
+        """
+
+        if not self.human_friendly_id:
+            return None
+
+        fields: dict[str, Union[str, None, dict[str, None]]] = {}
+        for item in self.human_friendly_id:
+            fields.update(self.convert_path_to_graphql_fields(path=item))
         return fields
 
     @field_validator("name")

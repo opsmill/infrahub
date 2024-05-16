@@ -161,10 +161,14 @@ class NodeManager:
         await query.execute(db=db)
         node_ids = query.get_node_ids()
 
-        # if display_label has been requested we need to ensure we are querying the right fields
+        # if display_label or hfid has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields and schema.display_labels:
             display_label_fields = schema.generate_fields_for_display_label()
             fields = deep_merge_dict(fields, display_label_fields)
+
+        if fields and "hfid" in fields and schema.human_friendly_id:
+            hfid_fields = schema.generate_fields_for_hfid()
+            fields = deep_merge_dict(fields, hfid_fields)
 
         response = await cls.get_many(
             ids=node_ids,
