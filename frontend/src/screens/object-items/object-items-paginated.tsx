@@ -54,11 +54,13 @@ type ObjectItemsProps = {
   objectname?: string;
   filters?: Array<string>;
   preventBlock?: boolean;
+  overrideDetailsViewUrl?: (objectId: string, objectKind: string) => string;
 };
 
 export default function ObjectItems({
   objectname: objectnameFromProps = "",
   filters: filtersFromProps = [],
+  overrideDetailsViewUrl,
   preventBlock,
 }: ObjectItemsProps) {
   const { objectname: objectnameFromParams } = useParams();
@@ -306,7 +308,11 @@ export default function ObjectItems({
                       <td key={row.id + "-" + attribute.name} className="p-0">
                         <Link
                           className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
-                          to={constructPath(getObjectDetailsUrl(row.id, row.__typename))}>
+                          to={
+                            overrideDetailsViewUrl
+                              ? overrideDetailsViewUrl(row.id, row.__typename)
+                              : constructPath(getObjectDetailsUrl(row.id, row.__typename))
+                          }>
                           <div>{getObjectItemDisplayValue(row, attribute)}</div>
                         </Link>
                       </td>
