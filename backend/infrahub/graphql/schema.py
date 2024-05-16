@@ -34,6 +34,7 @@ from .queries import (
     DiffSummary,
     DiffSummaryOld,
     InfrahubInfo,
+    InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
     InfrahubStatus,
     Relationship,
@@ -86,6 +87,7 @@ class InfrahubBaseQuery(ObjectType):
 
     InfrahubTask = Task
 
+    IPAddressGetNextAvailable = InfrahubIPAddressGetNextAvailable
     IPPrefixGetNextAvailable = InfrahubIPPrefixGetNextAvailable
 
 

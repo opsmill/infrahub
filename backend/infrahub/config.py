@@ -51,6 +51,16 @@ class TraceTransportProtocol(str, Enum):
     # HTTP_JSON = "http/json"
 
 
+class BrokerDriver(str, Enum):
+    RabbitMQ = "rabbitmq"
+    NATS = "nats"
+
+
+class CacheDriver(str, Enum):
+    Redis = "redis"
+    NATS = "nats"
+
+
 class MainSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_")
     docs_index_path: str = Field(
@@ -126,6 +136,9 @@ class DatabaseSettings(BaseSettings):
     address: str = "localhost"
     port: int = 7687
     database: Optional[str] = Field(default=None, pattern=VALID_DATABASE_NAME_REGEX, description="Name of the database")
+    tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
+    tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
+    tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
     query_size_limit: int = Field(
         default=5000,
         ge=1,
@@ -150,6 +163,8 @@ class BrokerSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
     enable: bool = True
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
+    tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
+    tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
     username: str = "infrahub"
     password: str = "infrahub"
     address: str = "localhost"
@@ -162,10 +177,13 @@ class BrokerSettings(BaseSettings):
         default=2, description="The maximum number of concurrent messages fetched by each worker", ge=1
     )
     virtualhost: str = Field(default="/", description="The virtual host to connect to")
+    driver: BrokerDriver = BrokerDriver.RabbitMQ
 
     @property
     def service_port(self) -> int:
         default_ports: Dict[bool, int] = {True: 5671, False: 5672}
+        if self.driver == BrokerDriver.NATS:
+            return self.port or 4222
         return self.port or default_ports[self.tls_enabled]
 
 
@@ -177,10 +195,18 @@ class CacheSettings(BaseSettings):
         default=None, ge=1, le=65535, description="Specified if running on a non default port (6379)"
     )
     database: int = Field(default=0, ge=0, le=15, description="Id of the database to use")
+    driver: CacheDriver = CacheDriver.Redis
+    username: str = "infrahub"
+    password: str = "infrahub"
+    tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
+    tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
+    tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
 
     @property
     def service_port(self) -> int:
         default_ports: int = 6379
+        if self.driver == CacheDriver.NATS:
+            return self.port or 4222
         return self.port or default_ports
 
 

@@ -1,0 +1,22 @@
+---
+# yamllint disable rule:line-length
+services:
+  message-queue:
+    image: "${MESSAGE_QUEUE_DOCKER_IMAGE:-nats:alpine}"  # need alpine since latest is based on scratch (no wget available)
+    volumes:
+      - ./nats-server.conf:/etc/nats/nats-server.conf
+    healthcheck:
+      test: wget -O /dev/null http://localhost:8222/varz || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+  # This is actually unused but required to not break all the other compose files requiring this service...
+  cache:
+    image: "${MESSAGE_QUEUE_DOCKER_IMAGE:-nats:alpine}"
+    healthcheck:
+      test: wget -O /dev/null http://localhost:8222/varz || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s

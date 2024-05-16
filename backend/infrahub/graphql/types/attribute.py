@@ -16,6 +16,13 @@ class RelatedNodeInput(InputObjectType):
     _relation__source = String(required=False)
 
 
+class IPAddressPoolInput(InputObjectType):
+    id = String(required=True)
+    prefixlen = Int(required=False)
+    identifier = String(required=False)
+    data = GenericScalar(required=False)
+
+
 class PrefixPoolInput(InputObjectType):
     id = String(required=True)
     size = Int(required=False)
@@ -23,6 +30,15 @@ class PrefixPoolInput(InputObjectType):
     member_type = String(required=False)
     prefix_type = String(required=False)
     data = GenericScalar(required=False)
+
+
+class RelatedIPAddressNodeInput(InputObjectType):
+    id = String(required=False)
+    from_pool = Field(IPAddressPoolInput, required=False)
+    _relation__is_visible = Boolean(required=False)
+    _relation__is_protected = Boolean(required=False)
+    _relation__owner = String(required=False)
+    _relation__source = String(required=False)
 
 
 class RelatedPrefixNodeInput(InputObjectType):

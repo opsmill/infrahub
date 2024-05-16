@@ -144,6 +144,33 @@ async def test_schema_kind_default_branch(
     assert "relationships" in schema
 
 
+async def test_json_schema_kind_default_branch(
+    db: InfrahubDatabase,
+    client,
+    client_headers,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    car_person_data_generic,
+):
+    with client:
+        response = client.get(
+            f"/api/schema/json_schema/{InfrahubKind.TAG}",
+            headers=client_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json() is not None
+
+    schema = response.json()
+
+    assert "$schema" in schema
+    assert "title" in schema
+    assert "type" in schema
+    assert "properties" in schema
+    assert "required" in schema
+    assert "description" in schema
+
+
 async def test_schema_kind_not_valid(
     db: InfrahubDatabase,
     client,

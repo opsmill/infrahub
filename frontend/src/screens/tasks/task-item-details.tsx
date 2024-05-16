@@ -9,13 +9,13 @@ import { BADGE_TYPES, Badge } from "../../components/display/badge";
 import { DateDisplay } from "../../components/display/date-display";
 import { DurationDisplay } from "../../components/display/duration-display";
 import { List } from "../../components/table/list";
+import { SearchInput } from "../../components/ui/search-input";
 import { Id } from "../../components/utils/id";
 import { QSP } from "../../config/qsp";
 import { getTaskItemDetails } from "../../graphql/queries/tasks/getTasksItemDetails";
-import ErrorScreen from "../error-screen/error-screen";
+import ErrorScreen from "../errors/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { Logs, tLog } from "./logs";
-import { SearchInput } from "../../components/ui/search-input";
 
 export const getConclusionBadge: { [key: string]: any } = {
   success: <Badge type={BADGE_TYPES.VALIDATE}>success</Badge>,

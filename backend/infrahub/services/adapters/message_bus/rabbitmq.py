@@ -90,6 +90,11 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             password=self.settings.password,
             port=self.settings.service_port,
             virtualhost=self.settings.virtualhost,
+            ssl=self.settings.tls_enabled,
+            ssl_options={
+                "no_verify_ssl": int(self.settings.tls_insecure),
+                "cafile": self.settings.tls_ca_file if self.settings.tls_ca_file else "",
+            },
         )
 
         self.channel = await self.connection.channel()
@@ -137,25 +142,13 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         queue = await self.channel.declare_queue(
             f"{self.settings.namespace}.rpcs",
             durable=True,
-            arguments={"x-max-priority": 5},
+            arguments={"x-max-priority": 5, "x-consumer-timeout": self.DELIVER_TIMEOUT * 1000},
         )
 
-        worker_bindings = [
-            "check.*.*",
-            "event.*.*",
-            "finalize.*.*",
-            "git.*.*",
-            "refresh.webhook.*",
-            "request.*.*",
-            "send.*.*",
-            "schema.*.*",
-            "transform.*.*",
-            "trigger.*.*",
-        ]
         self.delayed_exchange = await self.channel.declare_exchange(
             f"{self.settings.namespace}.delayed", type="headers", durable=True
         )
-        for routing_key in worker_bindings:
+        for routing_key in self.worker_bindings:
             await queue.bind(self.exchange, routing_key=routing_key)
             await queue.bind(self.dlx, routing_key=routing_key)
 
@@ -174,7 +167,8 @@ class RabbitMQMessageBus(InfrahubMessageBus):
                 arguments={"x-match": "all", "delay": ttl.value},
             )
 
-        await self.events_queue.bind(self.exchange, routing_key="refresh.registry.*")
+        for routing_key in self.event_bindings:
+            await self.events_queue.bind(self.exchange, routing_key=routing_key)
 
         self.message_enrichers.append(_add_request_id)
 
@@ -184,7 +178,9 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.exchange = await self.channel.declare_exchange(
             f"{self.settings.namespace}.events", type="topic", durable=True
         )
-        await events_queue.bind(self.exchange, routing_key="refresh.registry.*")
+
+        for routing_key in self.event_bindings:
+            await events_queue.bind(self.exchange, routing_key=routing_key)
         self.delayed_exchange = await self.channel.get_exchange(name=f"{self.settings.namespace}.delayed")
 
         await events_queue.consume(callback=self.on_callback, no_ack=True)
@@ -199,7 +195,9 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         queue = await message_channel.get_queue(f"{self.settings.namespace}.rpcs")
         await queue.consume(callback=self.on_message, no_ack=False)
 
-    async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
+    async def publish(
+        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+    ) -> None:
         for enricher in self.message_enrichers:
             await enricher(message)
         message.assign_priority(priority=messages.message_priority(routing_key=routing_key))

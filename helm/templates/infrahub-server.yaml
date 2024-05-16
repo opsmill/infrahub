@@ -23,12 +23,31 @@ spec:
       {{- end }}
       containers:
         - args: {{- toYaml .Values.infrahubServer.infrahubServer.args | nindent 12 }}
-          {{- with .Values.infrahubServer.infrahubServer.env }}
           env:
-            {{- range $key, $value := . }}
+            - name: INFRAHUB_INTERNAL_ADDRESS
+              value: "http://{{ include "infrahub-helm.fullname" . }}-infrahub-server.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}:8000"
+            - name: INFRAHUB_DB_ADDRESS
+              value: "{{ include "infrahub-helm.fullname" . }}-database.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
+            - name: INFRAHUB_DB_PORT
+              value: "{{ (index .Values.database.ports 2).port }}"
+            - name: INFRAHUB_BROKER_ADDRESS
+              value: "{{ include "infrahub-helm.fullname" . }}-message-queue.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
+            - name: INFRAHUB_BROKER_USERNAME
+              value: {{ .Values.messageQueue.auth.username | quote }}
+            - name: INFRAHUB_BROKER_PASSWORD
+              value: {{ .Values.messageQueue.auth.password | quote }}
+            - name: INFRAHUB_CACHE_ADDRESS
+              value: "{{ include "infrahub-helm.fullname" . }}-cache.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
+            - name: INFRAHUB_CACHE_PORT
+              value: "{{ (index .Values.cache.ports 0).port }}"
+            {{- range $key, $value := .Values.infrahubServer.infrahubServer.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+          {{- with .Values.infrahubServer.infrahubServer.envFromExistingSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ . }}
           {{- end }}
           image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
           imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.infrahubServer.infrahubServer.imagePullPolicy }}
@@ -56,8 +75,6 @@ spec:
           volumeMounts:
             - mountPath: /opt/infrahub/storage
               name: infrahub-server-storage-data
-            - name: config-volume
-              mountPath: /config
       restartPolicy: Always
       volumes:
         {{- if and .Values.infrahubServer.persistence.enabled }}
@@ -68,9 +85,6 @@ spec:
         - name: infrahub-server-storage-data
           emptyDir: {}
         {{- end }}
-        - name: config-volume
-          configMap:
-            name: {{ include "infrahub-helm.fullname" . }}-infrahub-config
 
 ---
 apiVersion: v1

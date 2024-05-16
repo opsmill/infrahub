@@ -21,7 +21,7 @@ import { DataDiff } from "../diff/data-diff";
 import { DIFF_TABS } from "../diff/diff";
 import { FilesDiff } from "../diff/file-diff/files-diff";
 import { SchemaDiff } from "../diff/schema-diff";
-import ErrorScreen from "../error-screen/error-screen";
+import ErrorScreen from "../errors/error-screen";
 import Content from "../layout/content";
 import { TaskItemDetails } from "../tasks/task-item-details";
 import { TaskItems } from "../tasks/task-items";

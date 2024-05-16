@@ -2,12 +2,12 @@
 name = "infrahub-sdk"
 version = "0.11.0-dev"
 description = "Python Client to interact with Infrahub"
-authors = ["OpsMill <contact@opsmill.com>"]
+authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
 license = "Apache-2.0"
-homepage = "https://opsmill.io"
-repository = "https://opsmill.io"
-documentation = "https://opsmill.io"
+homepage = "https://opsmill.com"
+repository = "https://github.com/opsmill/infrahub"
+documentation = "https://docs.infrahub.app/python-sdk/"
 packages = [
     {include = "infrahub_sdk"}
 ]
@@ -33,6 +33,7 @@ pendulum = [
     { version = ">=3", python = ">=3.12" }
 ]
 gitpython = "^3"
+ujson = "^5"
 Jinja2 = { version = "^3", optional = true }
 numpy = [
     { version = "^1.24.2", optional = true,  python = ">=3.9,<3.12" },
@@ -42,7 +43,6 @@ pyarrow = { version = "^14", optional = true }
 rich = { version = "^13", optional = true }
 toml = { version = "^0.10", optional = true }
 typer = { version = "^0", optional = true }
-ujson = { version = "^5", optional = true }
 pytest = { version = "*", optional = true }
 pyyaml = { version = "^6", optional = true }
 
@@ -75,7 +75,6 @@ ctl = [
     "rich",
     "toml",
     "typer",
-    "ujson"
 ]
 tests = [
     "Jinja2",
@@ -92,7 +91,6 @@ all = [
     "rich",
     "toml",
     "typer",
-    "ujson"
 ]
 
 [tool.poetry.scripts]
@@ -227,6 +225,7 @@ select = [
     "N",     # pep8-naming
     "PIE",   # flake8-pie
     "PL",    # pylint
+    "PTH",   # flake8-use-pathlib
     "PYI",   # flake8-pyi
     "Q",     # flake8-quotes
     "RET",   # flake8-return
@@ -238,7 +237,6 @@ select = [
 ]
 
 ignore = [
-
 ##################################################################################################
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one. Alternatively ignored after further       #
@@ -260,6 +258,13 @@ ignore = [
     "PLR6301", # Method could be a function, class method, or static method
     "PLW0603", # Using the global statement to update `SETTINGS` is discouraged
     "PLW1641", # Object does not implement `__hash__` method
+    "PTH100",  # `os.path.abspath()` should be replaced by `Path.resolve()`
+    "PTH109",  # `os.getcwd()` should be replaced by `Path.cwd()`
+    "PTH119",  # `os.path.basename()` should be replaced by `Path.name`
+    "PTH120",  # `os.path.dirname()` should be replaced by `Path.parent`
+    "PTH122",  # `os.path.splitext()` should be replaced by `Path.suffix`, `Path.stem`, and `Path.parent`
+    "PTH123",  # `open()` should be replaced by `Path.open()`
+    "PTH207",  # Replace `glob` with `Path.glob` or `Path.rglob`
     "RET504",  # Unnecessary assignment to `data` before `return` statement
 ]
 

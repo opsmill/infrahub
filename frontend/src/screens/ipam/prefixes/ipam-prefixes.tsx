@@ -6,7 +6,7 @@ import IpamIPPrefixDetails from "./ipam-prefix-details";
 import IpamIPPrefixesSummary from "./ipam-prefixes-summary";
 
 const IpamIPPrefixes = forwardRef((props, ref) => {
-  const [qspTab] = useQueryParam(IPAM_QSP, StringParam);
+  const [qspTab] = useQueryParam(IPAM_QSP.TAB, StringParam);
 
   switch (qspTab) {
     case IPAM_TABS.PREFIX_DETAILS: {

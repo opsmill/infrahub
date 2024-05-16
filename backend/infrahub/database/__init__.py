@@ -13,6 +13,9 @@ from neo4j import (
     AsyncSession,
     AsyncTransaction,
     Record,
+    TrustAll,
+    TrustCustomCAs,
+    TrustSystemCAs,
 )
 from neo4j.exceptions import ClientError, Neo4jError, ServiceUnavailable, TransientError
 from opentelemetry import trace
@@ -190,7 +193,7 @@ class InfrahubDatabase:
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query") as span:
             span.set_attribute("query", query)
 
-            with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
+            with QUERY_EXECUTION_METRICS.labels(self._session_mode.value, name).time():
                 response = await self.run_query(query=query, params=params)
                 return [item async for item in response]
 
@@ -200,7 +203,7 @@ class InfrahubDatabase:
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query_with_metadata") as span:
             span.set_attribute("query", query)
 
-            with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
+            with QUERY_EXECUTION_METRICS.labels(self._session_mode.value, name).time():
                 response = await self.run_query(query=query, params=params)
                 results = [item async for item in response]
                 return results, response._metadata or {}
@@ -277,7 +280,19 @@ async def validate_database(
 
 async def get_db(retry: int = 0) -> AsyncDriver:
     URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}:{config.SETTINGS.database.port}"
-    driver = AsyncGraphDatabase.driver(URI, auth=(config.SETTINGS.database.username, config.SETTINGS.database.password))
+
+    trusted_certificates = TrustSystemCAs()
+    if config.SETTINGS.database.tls_insecure:
+        trusted_certificates = TrustAll()
+    elif config.SETTINGS.database.tls_ca_file:
+        trusted_certificates = TrustCustomCAs(config.SETTINGS.database.tls_ca_file)
+
+    driver = AsyncGraphDatabase.driver(
+        URI,
+        auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
+        encrypted=config.SETTINGS.database.tls_enabled,
+        trusted_certificates=trusted_certificates,
+    )
 
     if config.SETTINGS.database.database_name not in validated_database:
         await validate_database(

@@ -5,6 +5,7 @@ from infrahub_sdk import UUIDT
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp
 from infrahub.message_bus import InfrahubMessage, Meta, messages
+from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
 
 
@@ -108,7 +109,9 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
 
         checks_in_execution = ",".join(check_execution_ids)
         await service.cache.set(
-            key=f"validator_execution_id:{validator_execution_id}:checks", value=checks_in_execution, expires=7200
+            key=f"validator_execution_id:{validator_execution_id}:checks",
+            value=checks_in_execution,
+            expires=KVTTL.TWO_HOURS,
         )
         events.append(
             messages.FinalizeValidatorExecution(

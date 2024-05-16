@@ -73,6 +73,7 @@ class InfrahubServices:
         """Initialize the Services"""
         await self.component.initialize(service=self)
         await self.message_bus.initialize(service=self)
+        await self.cache.initialize(service=self)
         await self.scheduler.initialize(service=self)
 
     async def shutdown(self) -> None:
@@ -80,11 +81,11 @@ class InfrahubServices:
         await self.scheduler.shutdown()
         await self.message_bus.shutdown()
 
-    async def send(self, message: InfrahubMessage, delay: Optional[MessageTTL] = None) -> None:
+    async def send(self, message: InfrahubMessage, delay: Optional[MessageTTL] = None, is_retry: bool = False) -> None:
         routing_key = ROUTING_KEY_MAP.get(type(message))
         if not routing_key:
             raise ValueError("Unable to determine routing key")
-        await self.message_bus.publish(message, routing_key=routing_key, delay=delay)
+        await self.message_bus.publish(message, routing_key=routing_key, delay=delay, is_retry=is_retry)
 
     async def reply(self, message: InfrahubResponse, initiator: InfrahubMessage) -> None:
         if initiator.meta:

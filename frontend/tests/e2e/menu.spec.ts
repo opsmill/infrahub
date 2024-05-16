@@ -23,10 +23,32 @@ test.describe("Sidebar menu", () => {
       await page.getByTestId("search-menu").fill("inter");
     });
 
-    await test.step("only items who includes 'bgp' are visible", async () => {
+    await test.step("only items who includes 'inter' are visible", async () => {
       await expect(page.getByRole("button", { name: "Device" })).toBeVisible();
       await expect(page.getByRole("link", { name: "Interface L2", exact: true })).toBeVisible();
       await expect(page.getByRole("link", { name: "Interface L3", exact: true })).toBeVisible();
     });
+  });
+
+  test("display groups and all items when group matches but no items matches", async ({ page }) => {
+    await page.goto("/");
+
+    await page.getByTestId("search-menu").fill("ipam");
+
+    await test.step("all items under Ipam group are visible", async () => {
+      await expect(page.getByRole("button", { name: "IPAM" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Namespaces" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Prefixes" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "IP Addresses" })).toBeVisible();
+    });
+  });
+
+  test("display no items nor groups when there is no match", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("button", { name: "Objects" })).toBeVisible();
+
+    await page.getByTestId("search-menu").fill("no-item-found");
+
+    await expect(page.getByTestId("sidebar-menu").getByRole("link")).toBeHidden();
   });
 });

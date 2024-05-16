@@ -174,7 +174,7 @@ export const accountDetailsMocksSchema = [
 ];
 
 export const accountDetailsMocksQuery = `query CoreAccount {
-  CoreAccount (ids: ["${accountId}"]) {
+  CoreAccount (ids: ["${accountId}"] ) {
     edges {
       node {
         id

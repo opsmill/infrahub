@@ -73,14 +73,17 @@ nodes:
         optional: true
     relationships:
       - name: devices
+        identifier: "site__devices"
         cardinality: many
         peer: InfraDevice
         kind: Component
       - name: vlans
+        identifier: "site__vlans"
         cardinality: many
         kind: Component
         peer: InfraVLAN
       - name: circuit_endpoints
+        identifier: "site__circuit_endpoints"
         cardinality: many
         kind: Component
         peer: InfraCircuitEndpoint

@@ -26,6 +26,20 @@ class MessageTTL(int, Enum):
         return [cls(cls.__members__[member].value) for member in list(cls.__members__)]
 
 
+class KVTTL(int, Enum):
+    """Defines the KV TTL in seconds."""
+
+    ONE = 1
+    TEN = 10
+    FIFTEEN = 15
+    TWO_HOURS = 7200
+
+    @classmethod
+    def variations(cls) -> List[KVTTL]:
+        """Return available variations of KV time to live."""
+        return [cls(cls.__members__[member].value) for member in list(cls.__members__)]
+
+
 class ProposedChangeRepository(BaseModel):
     repository_id: str
     repository_name: str

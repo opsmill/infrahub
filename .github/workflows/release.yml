@@ -52,7 +52,7 @@ jobs:
   publish-helm-chart:
     uses: ./.github/workflows/publish-helm-chart.yml
     secrets: inherit
-    needs: extract-version
+    # needs: extract-version
     with:
       publish: true
       # version: ${{ needs.extract-version.outputs.version }}
