@@ -50,14 +50,18 @@ import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 
-export default function ObjectItems(props: any) {
-  const { objectname: objectnameFromParams } = useParams();
+type ObjectItemsProps = {
+  objectname?: string;
+  filters?: Array<string>;
+  preventBlock?: boolean;
+};
 
-  const {
-    objectname: objectnameFromProps = "",
-    filters: filtersFromProps = [],
-    preventBlock,
-  } = props;
+export default function ObjectItems({
+  objectname: objectnameFromProps = "",
+  filters: filtersFromProps = [],
+  preventBlock,
+}: ObjectItemsProps) {
+  const { objectname: objectnameFromParams } = useParams();
 
   const objectname = objectnameFromProps || objectnameFromParams;
 
