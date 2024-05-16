@@ -10,7 +10,7 @@ import { RESOURCE_GENERIC_KIND } from "./constants";
 import NoDataFound from "../errors/no-data-found";
 import { getSchemaObjectColumns, getTabs } from "../../utils/getSchemaObjectColumns";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
-import { TASK_OBJECT } from "../../config/constants";
+import { DEFAULT_BRANCH_NAME, TASK_OBJECT } from "../../config/constants";
 import ErrorScreen from "../errors/error-screen";
 import { Icon } from "@iconify-icon/react";
 import { constructPath } from "../../utils/fetch";
@@ -21,6 +21,13 @@ import ProgressBarChart from "../../components/stats/progress-bar-chart";
 import { ObjectAttributeValue } from "../../utils/getObjectItemDisplayValue";
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "../ipam/constants";
 import { getObjectDetailsUrl } from "../../utils/objects";
+import { Badge } from "../../components/ui/badge";
+import { ButtonWithTooltip } from "../../components/buttons/button-primitive";
+import { usePermission } from "../../hooks/usePermission";
+import { useState } from "react";
+import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
+import SlideOver from "../../components/display/slide-over";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 const ResourcePoolPage = () => {
   const { resourcePoolId } = useParams();
@@ -48,6 +55,10 @@ type ResourcePoolContentProps = {
 };
 
 const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
+  const permission = usePermission();
+  const branch = useAtomValue(currentBranchAtom);
+  const [showEditDrawer, setShowEditDrawer] = useState(false);
+
   const columns = getSchemaObjectColumns({ schema });
   const relationshipsTabs = getTabs(schema);
 
@@ -62,7 +73,7 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
     })
   );
 
-  const { loading, error, data } = useQuery(query);
+  const { loading, error, data, refetch } = useQuery(query);
 
   if (loading) return <LoadingScreen />;
   if (error) return <ErrorScreen message="Error when fetching the resource pool details" />;
@@ -132,9 +143,77 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
 
       <main className="p-2 flex">
         <CardWithBorder>
+          <CardWithBorder.Title className="flex items-center justify-between gap-1">
+            <div>
+              <Badge variant="blue">{schema.namespace}</Badge> {schema.label}
+            </div>
+            <ButtonWithTooltip
+              variant="outline"
+              size="icon"
+              onClick={() => setShowEditDrawer(true)}
+              disabled={!permission.write.allow}
+              tooltipEnabled={!permission.write.allow}
+              tooltipContent={permission.write.message ?? undefined}
+              data-testid="ip-summary-edit-button">
+              <Icon icon="mdi:pencil" />
+            </ButtonWithTooltip>
+          </CardWithBorder.Title>
+
           <PropertyList properties={properties} labelClassName="font-semibold" />
         </CardWithBorder>
       </main>
+
+      <SlideOver
+        title={
+          <div className="space-y-2">
+            <div className="flex items-start">
+              <div className="flex-grow flex items-center flex-wrap overflow-hidden">
+                <span className="font-semibold text-gray-900 truncate">{schema.label}</span>
+
+                <Icon icon="mdi:chevron-right" />
+
+                <span className="flex-grow text-gray-500 overflow-hidden break-words line-clamp-3">
+                  {data.display_label}
+                </span>
+              </div>
+
+              <div className="flex items-center ml-3">
+                <Icon icon="mdi:layers-triple" />
+                <span className="ml-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</span>
+              </div>
+            </div>
+
+            <div className="">{schema?.description}</div>
+
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
+              <svg
+                className="h-1.5 w-1.5 mr-1 fill-yellow-500"
+                viewBox="0 0 6 6"
+                aria-hidden="true">
+                <circle cx={3} cy={3} r={3} />
+              </svg>
+              {schema.kind}
+            </span>
+            <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10">
+              <svg
+                className="h-1.5 w-1.5 mr-1 fill-custom-blue-500"
+                viewBox="0 0 6 6"
+                aria-hidden="true">
+                <circle cx={3} cy={3} r={3} />
+              </svg>
+              ID: {data.id}
+            </div>
+          </div>
+        }
+        open={showEditDrawer}
+        setOpen={setShowEditDrawer}>
+        <ObjectItemEditComponent
+          closeDrawer={() => setShowEditDrawer(false)}
+          onUpdateComplete={() => refetch()}
+          objectid={resourcePool.id as string}
+          objectname={schema.kind as string}
+        />
+      </SlideOver>
     </Content>
   );
 };
