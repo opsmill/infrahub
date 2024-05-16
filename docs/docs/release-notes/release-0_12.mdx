@@ -24,11 +24,11 @@ title: Release 0.12
 
 # Release 0.12.0 - Beta #1
 
-## Main Changes
+## Main changes
 
-### Unified Storage
+### Unified storage
 
-#### Schema Update & Migrations
+#### Schema update & migrations
 
 It's now possible to update the schema without losing data. Infrahub will automatically apply the validations and the migrations to ensure the data currently in the database is compliant with the new schema.
 
@@ -38,7 +38,7 @@ The validations and the migrations will also be applied :
 - During a branch rebase
 - During a branch merge
 
-#### Non Isolated Branches
+#### Non isolated branches
 
 The default behavior for a branch has been updated to keep in sync with the main branch by default.  
 With this new behavior, all changes applied to the main branch will automatically be visible in the branches without the need for rebase.
@@ -46,10 +46,10 @@ With this new behavior, all changes applied to the main branch will automaticall
 A new isolated branch mode has been introduced. It allows a branch to be isolated from the main branch. Isolated branches are not kept in sync with the changes in the main branch.
 With these changes, the `rebase` flag in the API and in the transformations has been deprecated.
 
-The flag `data_only` on a branch has been renamed to `sync_with_git` to provide a better description of its intent.  
+The flag `data_only` on a branch has been renamed to `sync_with_git` to provide a better description of its intent.
 The meaning of this flag has been switched so `is_data_only=true` is the same as `sync_with_git=false`.
 
-#### Additional Constraints for the Schema
+#### Additional constraints for the schema
 
 A few additional constraints have been added to the schema to enforce your business logic.
 
@@ -87,23 +87,23 @@ On a relationship of cardinality many, it's now possible to define a minimum or 
         min_count: 2
 ```
 
-#### New Version of the Data & Time Picker
+#### New Version of the data & time picker
 
 The widget to select the active date and time has been updated to improve its usability.
 In addition to this change, all edits have been disabled while viewing past data to avoid any confusions and guarantee the immutability of the database.
 
-### CI Pipeline
+### CI pipeline
 
 The CI Pipeline as part of a Proposed Change has been significantly improved to provide more visibility to the user.
 
-#### New version of the Check View
+#### New version of the check view
 
 The page to display the progression and the results of the checks has been redesigned to provide more visibility.
 
 ![Proposed Change ](../media/release_notes/infrahub_0_12_0/proposed_change_checks.png)
 ![Proposed Change ](../media/release_notes/infrahub_0_12_0/proposed_change_failed_checks.png)
 
-#### Background Tasks
+#### Background tasks
 
 Information about background pipeline tasks are now available in the Tasks tab of the proposed change view.
 
@@ -111,14 +111,14 @@ Information about background pipeline tasks are now available in the Tasks tab o
 
 ### Schema
 
-#### Schema Visualizer
+#### Schema visualizer
 
 The Schema page in the frontend has been redesigned to make it easier to navigate the current schema.
 All information are now accessible, in the future the page will be updated to modify the schema directly from the frontend as well.
 
 ![schema visualizer](../media/release_notes/infrahub_0_12_0/schema_visualizer.png)
 
-#### Schema Documentation
+#### Schema documentation
 
 The internal schema has been refactored in order to generate better documentation and to be able to provide better validation of new schema.
 A new definition of the internal schema has been published in JSONSchema format and it's accessible at `https://schema.infrahub.app/infrahub/schema/latest.json`
@@ -145,14 +145,14 @@ The previous version of the Query has been migrated to `DiffSummaryOld` and it w
 
 ### Other
 
-#### Enhanced Search Bar
+#### Enhanced search bar
 
 The search bar has been enhanced to return more information. In addition to the objects, it's now possible to search the documentation and to navigate directly to other pages in the frontend.
 The search results view has also been redesigned to make it faster and more accessible.
 
 ![search bar](../media/release_notes/infrahub_0_12_0/search_bar_02.png)
 
-#### Performance Improvement
+#### Performance improvement
 
 The processing of the schema internally has been significantly improved and as a result:
 
@@ -160,12 +160,12 @@ The processing of the schema internally has been significantly improved and as a
 - Loading a new schema is 3x faster
 - Loading the frontend for the first time is significantly faster too
 
-#### Sync Engine
+#### Sync engine
 
 The Synchronization Engine has been improved to be able to run in standalone mode and it has been integrated with Dagster, to provide more visibility into the process and leverage its orchestration capabilities.
 The project has been packaged as a dedicated Python package and it's now available on PyPI `infrahub-sync`.
 
-#### Documentation Update
+#### Documentation update
 
 There have been multiple improvements to the documentation, including:
 

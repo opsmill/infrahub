@@ -29,7 +29,7 @@ Infrahub stores all of the data that it needs for every remote repository in a d
 
 Please note that each Git agent must have access to the same directory on the file system so that they can share work among each other.
 
-## Read-only Repository vs. CoreRepository {#read-only-vs-core}
+## Read-only repository vs. CoreRepository {#read-only-vs-core}
 
 Feature                 | CoreRepository                | Read-only Repository
 ------------------------|-------------------------------|---------------------
@@ -37,7 +37,7 @@ Branches                | Tracks all remote branches    | Data from one remote c
 Updates **from** remote | Automatic via background task | Manually, by updating `ref` or `commit`
 Updates **to** remote   | When merging Proposed Change  | No
 
-### Read-only Repository {#read-only-repository}
+### Read-only repository {#read-only-repository}
 
 Read-only Repositories will only pull data from an external repository into Infrahub and will never push any data to the external repository. A Read-only Repository will pull changes from a single `ref` (branch, tag, or commit) into the Infrahub branch(es) on which it exists. Read-only repositories are not automatically updated. To update a Read-only Repository, you must manually update the `commit` and/or `ref` property to a new value, then the Git agent will pull the appropriate commit and create the appropriate objects in Infrahub.
 

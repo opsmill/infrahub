@@ -11,7 +11,7 @@ Infrahub supports two different types of connections to external Git repositorie
 - [**CoreRepository**](/topics/repository#core-repository) fully integrates with Git version control, including branch tracking and two-way branch synchronization.
 - [**Read-only Repository**](/topics/repository#read-only-repository) links a particular branch in Infrahub to a particular ref in the Git repository. It will only read from the Git repository. It will never make any changes to the external repository.
 
-## GitHub Personal access token {#personal-access-token}
+## GitHub personal access token {#personal-access-token}
 
 <details>
   <summary>Generate a GitHub fine-grained personal access token</summary>
@@ -188,6 +188,6 @@ Infrahub does not automatically update Read-only Repositories with changes on th
 
 When a [Proposed Change](/topics/proposed-change) is merged, if the source and destination Infrahub branches are both linked to branches on the same external Git repository, then Infrahub will handle merging the branches on the external Git repository. This is the only time that Infrahub will push changes to the external repository. Other changes made within Infrahub will not be pushed to an external repository and **could potentially be overwritten** when Infrahub pulls new commits from the external repository.
 
-### Read-only Repository
+### Read-only repository
 
 No changes to objects owned by a Read-only Repository are ever pushed to the external Git repository.
