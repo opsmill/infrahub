@@ -32,11 +32,11 @@ If you'd like to learn more about Infrahub, please refer to the following resour
 
 ## Project status
 
-Infrahub is currently in in open beta, which means that not all features we are targeting for the first major release have been implemented yet and the project is still evolving at a very rapid pace. For upcoming development plans, see our [public roadmap](https://opsmill.atlassian.net/jira/discovery/share/views/7e5d4ab1-63d7-405e-b453-ad50cd9d5b71)
+Infrahub is currently in in open beta, which means that not all features we are targeting for the first major release have been implemented yet and the project is still evolving at a very rapid pace. For upcoming development plans, see our [public roadmap](https://opsmill.atlassian.net/jira/discovery/share/views/7e5d4ab1-63d7-405e-b453-ad50cd9d5b71).
 
 ## Support and Community
 
-If you need help, support for the open-source Infrahub project is provided on [![Join our Discord server](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/jXMRp9hXSX) or via [filing an issue on GitHub](https://github.com/opsmill/infrahub/issues)
+If you need help, support for the open-source Infrahub project is provided on [![Join our Discord server](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/jXMRp9hXSX) or via [filing an issue on GitHub](https://github.com/opsmill/infrahub/issues).
 
 ## Contributing
 
