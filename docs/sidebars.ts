@@ -14,7 +14,13 @@ const sidebars: SidebarsConfig = {
   docsSidebar: [
     'readme',
     {
-      'Tutorials': [
+      type: 'category',
+      label: 'Tutorials',
+      link: {
+        type: 'generated-index',
+        slug: 'tutorials'
+      },
+      items: [
         {
           type: 'category',
           label: 'Infrahub Overview',
