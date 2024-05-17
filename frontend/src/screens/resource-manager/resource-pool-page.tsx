@@ -154,7 +154,7 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
               disabled={!permission.write.allow}
               tooltipEnabled={!permission.write.allow}
               tooltipContent={permission.write.message ?? undefined}
-              data-testid="ip-summary-edit-button">
+              data-testid="pool-edit-button">
               <Icon icon="mdi:pencil" />
             </ButtonWithTooltip>
           </CardWithBorder.Title>
