@@ -1,3 +1,4 @@
+from .account import AccountToken
 from .branch import BranchQueryList
 from .diff.diff import DiffSummary
 from .diff.old import DiffSummaryOld
@@ -9,6 +10,7 @@ from .status import InfrahubStatus
 from .task import Task
 
 __all__ = [
+    "AccountToken",
     "BranchQueryList",
     "DiffSummary",
     "DiffSummaryOld",
