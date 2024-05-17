@@ -1,36 +1,30 @@
 import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 
 /**
- * Creating a sidebar enables you to:
- - create an ordered group of docs
- - render a sidebar for each doc of that group
- - provide next/previous navigation
+  * Creating a sidebar enables you to:
+  - create an ordered group of docs
+  - render a sidebar for each doc of that group
+  - provide next/previous navigation
 
- The sidebars can be generated from the filesystem, or explicitly defined here.
+  The sidebars can be generated from the filesystem, or explicitly defined here.
 
- Create as many sidebars as you want.
+  Create as many sidebars as you want.
  */
 const sidebars: SidebarsConfig = {
   docsSidebar: [
     'readme',
     {
       type: 'category',
-      label: 'Tutorials',
-      link: {
-        type: 'generated-index',
-        slug: 'tutorials'
-      },
+      label: 'Infrahub Overview',
+      link: {type: 'doc', id: 'overview/readme'},
       items: [
-        {
-          type: 'category',
-          label: 'Infrahub Overview',
-          link: {type: 'doc', id: 'tutorials/infrahub-overview/readme'},
-          items: [
-            'tutorials/infrahub-overview/interfaces',
-            'tutorials/infrahub-overview/schema',
-            'tutorials/infrahub-overview/data',
-          ],
-        },
+        'overview/interfaces',
+        'overview/schema',
+        'overview/data',
+      ],
+    },
+    {
+      'Tutorials': [
         {
           type: 'category',
           label: 'Getting started',

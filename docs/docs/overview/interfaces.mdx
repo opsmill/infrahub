@@ -4,7 +4,7 @@ title: Ways to interface with Infrahub
 
 # Ways to interface with Infrahub
 
-![Infrahub interfaces](./../../media/design-interfaces.png)
+![Infrahub interfaces](./../media/design-interfaces.excalidraw.svg)
 
 Managing infrastructure at scale often means many people, teams, workflows and other systems must interact with the Infrahub infrastructure management platform. Infrahub provides multiple methods to interact:
 
@@ -20,7 +20,7 @@ Managing infrastructure at scale often means many people, teams, workflows and o
 
 - By default, exposed on TCP port `8000` at the endpoint: `http://<API_SERVER_IP>:8000/graphql`
 - The Frontend utilizes the GraphQL API for most tasks
-- More information can be found in the [GraphQL topic](../../topics/graphql)
+- More information can be found in the [GraphQL topic](../topics/graphql)
 
 ## REST API
 
@@ -31,13 +31,13 @@ Managing infrastructure at scale often means many people, teams, workflows and o
 
 `infrahubctl` is a command line utility designed to help with the day to day management of an Infrahub installation. It's meant to run on any laptop or server and it communicates with a remote Infrahub server over the network.
 
-More information can be found in the [infrahubctl](../../infrahubctl/) documentation section.
+More information can be found in the [infrahubctl](../infrahubctl/) documentation section.
 
 ## Python SDK
 
 The Infrahub Python SDK greatly simplifies how you can interact with Infrahub programmatically.
 
-More information can be found in the [Python SDK](../../python-sdk/) documentation section.
+More information can be found in the [Python SDK](../python-sdk/) documentation section.
 
 ## Git
 
@@ -45,4 +45,4 @@ One of the three pillars Infrahub is built on is the idea of having unified stor
 
 When integrating a Git repository with Infrahub, the Git agent will ensure that both systems stay in sync at any time. Changes to branches or files in a Git repository will be synced to Infrahub automatically.
 
-More information can be found in the [external repositories guide](../../guides/repository)
+More information can be found in the [external repositories guide](../guides/repository)
