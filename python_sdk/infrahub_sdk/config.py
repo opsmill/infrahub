@@ -59,6 +59,16 @@ class ConfigBase(pydantic.BaseSettings):
     proxy: Optional[str] = pydantic.Field(default=None, description="Proxy address")
     proxy_mounts: Optional[ProxyMountsConfig] = pydantic.Field(default=None, description="Proxy mounts configuration")
     update_group_context: bool = pydantic.Field(default=False, description="Update GraphQL query groups")
+    tls_insecure: bool = pydantic.Field(
+        default=False,
+        description="""
+    Indicates if TLS certificates are verified.
+    Enabling this option will disable: CA verification, expiry date verification, hostname verification).
+    Can be useful to test with self-signed certificates.""",
+    )
+    tls_ca_file: Optional[str] = pydantic.Field(
+        default=None, description="File path to CA cert or bundle in PEM format"
+    )
 
     class Config:
         env_prefix = "INFRAHUB_"
