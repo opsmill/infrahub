@@ -44,6 +44,12 @@ class NodeSchema(GeneratedNodeSchema):
             existing_inherited_relationships.keys()
         )
 
+        # NOTE, for now we are only inheriting 'human_friendly_id' but we need to revisit this part to support more properties
+        properties_to_inherit = ["human_friendly_id"]
+        for prop_name in properties_to_inherit:
+            if getattr(interface, prop_name) and not getattr(self, prop_name):
+                setattr(self, prop_name, getattr(interface, prop_name))
+
         for attribute in interface.attributes:
             if attribute.name in self.valid_input_names:
                 continue

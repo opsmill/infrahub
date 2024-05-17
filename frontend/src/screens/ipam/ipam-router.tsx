@@ -11,6 +11,7 @@ import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { usePermission } from "../../hooks/usePermission";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { constructPath } from "../../utils/fetch";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import {
   IPAM_QSP,
@@ -20,9 +21,9 @@ import {
   IP_PREFIX_GENERIC,
 } from "./constants";
 import IpamIPAddresses from "./ip-addresses/ipam-ip-address";
-import IpamIPPrefixes from "./prefixes/ipam-prefixes";
-import { constructPath } from "../../utils/fetch";
 import { reloadIpamTreeAtom } from "./ipam-tree/ipam-tree.state";
+import IpamIPPrefixes from "./prefixes/ipam-prefixes";
+import { defaultIpNamespaceAtom } from "./common/namespace.state";
 
 const tabToKind = {
   [IPAM_TABS.IP_DETAILS]: IP_ADDRESS_GENERIC,
@@ -30,13 +31,15 @@ const tabToKind = {
 };
 
 export default function IpamRouter() {
-  const [qspTab] = useQueryParam(IPAM_QSP, StringParam);
+  const [qspTab] = useQueryParam(IPAM_QSP.TAB, StringParam);
   const navigate = useNavigate();
   const { prefix } = useParams();
   const permission = usePermission();
   const branch = useAtomValue(currentBranchAtom);
   const schemaList = useAtomValue(schemaState);
   const genericList = useAtomValue(genericsState);
+  const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
+  const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
   const refetchRef = useRef(null);
 
@@ -53,11 +56,11 @@ export default function IpamRouter() {
       name: IPAM_TABS.SUMMARY,
       onClick: () => {
         if (prefix) {
-          navigate(constructPath(`${IPAM_ROUTE.PREFIXES}/${prefix}`));
+          navigate(constructPath(`${IPAM_ROUTE.PREFIXES}/${prefix}`, [], [IPAM_QSP.NAMESPACE]));
           return;
         }
 
-        navigate(constructPath(IPAM_ROUTE.PREFIXES));
+        navigate(constructPath(IPAM_ROUTE.PREFIXES, [], [IPAM_QSP.NAMESPACE]));
         return;
       },
     },
@@ -66,9 +69,11 @@ export default function IpamRouter() {
       name: IPAM_TABS.PREFIX_DETAILS,
       onClick: () => {
         navigate(
-          constructPath(prefix ? `${IPAM_ROUTE.PREFIXES}/${prefix}` : IPAM_ROUTE.PREFIXES, [
-            { name: IPAM_QSP, value: IPAM_TABS.PREFIX_DETAILS },
-          ])
+          constructPath(
+            prefix ? `${IPAM_ROUTE.PREFIXES}/${prefix}` : IPAM_ROUTE.PREFIXES,
+            [{ name: IPAM_QSP.TAB, value: IPAM_TABS.PREFIX_DETAILS }],
+            [IPAM_QSP.NAMESPACE]
+          )
         );
         return;
       },
@@ -79,15 +84,21 @@ export default function IpamRouter() {
       onClick: () => {
         if (prefix) {
           navigate(
-            constructPath(`${IPAM_ROUTE.PREFIXES}/${prefix}`, [
-              { name: IPAM_QSP, value: IPAM_TABS.IP_DETAILS },
-            ])
+            constructPath(
+              `${IPAM_ROUTE.PREFIXES}/${prefix}`,
+              [{ name: IPAM_QSP.TAB, value: IPAM_TABS.IP_DETAILS }],
+              [IPAM_QSP.NAMESPACE]
+            )
           );
           return;
         }
 
         navigate(
-          constructPath(IPAM_ROUTE.ADDRESSES, [{ name: IPAM_QSP, value: IPAM_TABS.IP_DETAILS }])
+          constructPath(
+            IPAM_ROUTE.ADDRESSES,
+            [{ name: IPAM_QSP.TAB, value: IPAM_TABS.IP_DETAILS }],
+            [IPAM_QSP.NAMESPACE]
+          )
         );
         return;
       },
@@ -121,7 +132,7 @@ export default function IpamRouter() {
 
   return (
     <Card className="p-0 overflow-hidden flex flex-col h-full" data-testid="ipam-main-content">
-      <Tabs tabs={tabs} qsp={IPAM_QSP} rightItems={rightitems} />
+      <Tabs tabs={tabs} qsp={IPAM_QSP.TAB} rightItems={rightitems} />
 
       <div className="m-4 flex-grow overflow-auto">{renderContent()}</div>
 
@@ -154,8 +165,12 @@ export default function IpamRouter() {
         setOpen={setShowCreateDrawer}>
         <ObjectItemCreate
           onCreate={() => {
-            reloadIpamTree(prefix);
             setShowCreateDrawer(false);
+
+            const currentIpNamespace = namespace ?? defaultIpNamespace;
+            if (currentIpNamespace) {
+              reloadIpamTree(currentIpNamespace, prefix);
+            }
           }}
           onCancel={() => setShowCreateDrawer(false)}
           objectname={objectname!}

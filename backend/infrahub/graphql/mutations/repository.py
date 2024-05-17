@@ -94,7 +94,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         if not node:
             node = await NodeManager.get_one_by_id_or_default_filter(
                 db=context.db,
-                schema_name=cls._meta.schema.kind,
+                kind=cls._meta.schema.kind,
                 id=data.get("id"),
                 branch=branch,
                 at=at,

@@ -274,6 +274,14 @@ base_node_schema = SchemaNode(
             extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
+            name="human_friendly_id",
+            kind="List",
+            internal_kind=str,
+            description="Human friendly and unique identifier for the object.",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
             name="display_labels",
             kind="List",
             internal_kind=str,

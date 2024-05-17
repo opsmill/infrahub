@@ -1,3 +1,4 @@
+export const NAMESPACE_GENERIC = "BuiltinIPNamespace";
 export const IP_ADDRESS_GENERIC = "BuiltinIPAddress";
 export const IP_PREFIX_GENERIC = "BuiltinIPPrefix";
 export const POOLS_PEER = [IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC];
@@ -21,7 +22,10 @@ export const IPAM_ROUTE = {
   PREFIXES: `${IPAM_BASE_ROUTE}/prefixes`,
 } as const;
 
-export const IPAM_QSP = "ipam-tab";
+export const IPAM_QSP = {
+  TAB: "ipam-tab",
+  NAMESPACE: "namespace",
+};
 
 export const IP_SUMMARY_RELATIONSHIPS_BLACKLIST = [
   "ip_addresses",

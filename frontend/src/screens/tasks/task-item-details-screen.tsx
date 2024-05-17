@@ -3,15 +3,15 @@ import { TASK_OBJECT } from "../../config/constants";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 
+import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router-dom";
 import { Link } from "../../components/utils/link";
 import { getTaskItemDetailsTitle } from "../../graphql/queries/tasks/getTasksItemDetailsTitle";
 import { constructPath } from "../../utils/fetch";
-import ErrorScreen from "../error-screen/error-screen";
+import ErrorScreen from "../errors/error-screen";
+import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { TaskItemDetails } from "./task-item-details";
-import Content from "../layout/content";
-import { Icon } from "@iconify-icon/react";
 
 const TaskItemDetailsScreen = () => {
   useTitle("Task details");

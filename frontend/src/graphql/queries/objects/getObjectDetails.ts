@@ -3,7 +3,7 @@ import "../../../utils/handlebars"; // Import handlebars utils
 
 export const getObjectDetailsPaginated = Handlebars.compile(`
 query {{kind}} {
-  {{kind}} (ids: ["{{objectid}}"]) {
+  {{kind}} (ids: ["{{objectid}}"] {{#if filters}} {{{filters}}} {{/if}}) {
     edges {
       node {
         id

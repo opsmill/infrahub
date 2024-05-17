@@ -292,7 +292,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     async def test_step_06_check_attribute_unique_change_success(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_05_attribute_unique
     ):
-        pinto = await NodeManager.get_one_by_default_filter(db=db, id="pinto", schema_name="TestingCar")
+        pinto = await NodeManager.get_one_by_default_filter(db=db, id="pinto", kind="TestingCar", raise_on_error=True)
         await pinto.delete(db=db)
 
         success, response = await client.schema.check(schemas=[schema_05_attribute_unique])

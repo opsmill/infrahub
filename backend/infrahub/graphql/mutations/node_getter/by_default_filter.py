@@ -41,7 +41,7 @@ class MutationNodeGetterByDefaultFilter(MutationNodeGetterInterface):
         return await self.node_manager.get_one_by_default_filter(
             db=self.db,
             id=default_filter_value,
-            schema_name=node_schema.kind,
+            kind=node_schema.kind,
             branch=branch,
             at=at,
         )

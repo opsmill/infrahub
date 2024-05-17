@@ -644,11 +644,9 @@ async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
 async def mock_check_create(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
-            InfrahubKind.CHECKDEFINITION: {
+            f"{InfrahubKind.CHECKDEFINITION}Create": {
                 "ok": True,
-                "object": {
-                    "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-                },
+                "object": {"id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"},
             }
         }
     }

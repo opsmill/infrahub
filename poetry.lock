@@ -1825,11 +1825,11 @@ pyyaml = {version = "^6", optional = true}
 rich = {version = "^13", optional = true}
 toml = {version = "^0.10", optional = true}
 typer = {version = "^0", optional = true}
-ujson = {version = "^5", optional = true}
+ujson = "^5"
 
 [package.extras]
-all = ["Jinja2 (>=3,<4)", "numpy (>=1.24.2,<2.0.0)", "numpy (>=1.26.2,<2.0.0)", "pyarrow (>=14,<15)", "pytest", "pyyaml (>=6,<7)", "rich (>=13,<14)", "toml (>=0.10,<0.11)", "typer (>=0,<1)", "ujson (>=5,<6)"]
-ctl = ["Jinja2 (>=3,<4)", "numpy (>=1.24.2,<2.0.0)", "numpy (>=1.26.2,<2.0.0)", "pyarrow (>=14,<15)", "pyyaml (>=6,<7)", "rich (>=13,<14)", "toml (>=0.10,<0.11)", "typer (>=0,<1)", "ujson (>=5,<6)"]
+all = ["Jinja2 (>=3,<4)", "numpy (>=1.24.2,<2.0.0)", "numpy (>=1.26.2,<2.0.0)", "pyarrow (>=14,<15)", "pytest", "pyyaml (>=6,<7)", "rich (>=13,<14)", "toml (>=0.10,<0.11)", "typer (>=0,<1)"]
+ctl = ["Jinja2 (>=3,<4)", "numpy (>=1.24.2,<2.0.0)", "numpy (>=1.26.2,<2.0.0)", "pyarrow (>=14,<15)", "pyyaml (>=6,<7)", "rich (>=13,<14)", "toml (>=0.10,<0.11)", "typer (>=0,<1)"]
 tests = ["Jinja2 (>=3,<4)", "pytest", "pyyaml (>=6,<7)", "rich (>=13,<14)"]
 
 [package.source]
@@ -2544,12 +2544,12 @@ nkeys = ["nkeys"]
 
 [[package]]
 name = "neo4j"
-version = "5.18.0"
+version = "5.20.0"
 description = "Neo4j Bolt driver for Python"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "neo4j-5.18.0.tar.gz", hash = "sha256:4014406ae5b8b485a8ba46c9f00b6f5b4aaf88e7c3a50603445030c2aab701c9"},
+    {file = "neo4j-5.20.0.tar.gz", hash = "sha256:c59e54a0c0fa1f109f1d2fa5293c29c2bb30ba388b4f9dd9656919793c10063a"},
 ]
 
 [package.dependencies]
@@ -2559,6 +2559,86 @@ pytz = "*"
 numpy = ["numpy (>=1.7.0,<2.0.0)"]
 pandas = ["numpy (>=1.7.0,<2.0.0)", "pandas (>=1.1.0,<3.0.0)"]
 pyarrow = ["pyarrow (>=1.0.0)"]
+
+[[package]]
+name = "neo4j-rust-ext"
+version = "5.20.0.0"
+description = "Rust Extensions for a Faster Neo4j Bolt Driver for Python"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "neo4j_rust_ext-5.20.0.0-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:54c2c1a8d81c813562be53d851889421f9b2a30b40694911d54f19d170a69f72"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:3fad226a4fbd940031a18158bb774ffa6fffd023b45b53b61434b5cecf9863db"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:a84973f1fc7fe8efb487fa0ed6198199eb2054e96aa00a032d2abfa69abf8db2"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp310-cp310-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:934646dd607ded164912cb246d848c174dc752cc1a0191c13b466b10e669ad86"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:bae3a489c519e706cd784ad40356d528dbb8dee3c87b18dcd4467a3ac38bee4b"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:8d51e6dc6f26a9219184d317276e8dd0098ca278f977eaf8ef6497937486c09b"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp310-none-win32.whl", hash = "sha256:7cb3739f29e36de8d796b6754556417555458b662b45250c4730cd200a2791b8"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp310-none-win_amd64.whl", hash = "sha256:c47096015867abcb1c3e2dac09e70652777f963855e6d7f75f144bfd692280b5"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp311-cp311-macosx_10_12_x86_64.whl", hash = "sha256:b01c7162db371de596583f87b443166bca805cb19e3643b5841be77a4caea79a"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:34c2f7c8a3b6a3bb8cbddb2a59474419c8da3ab783256e6b31bd18e88c2ab67b"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:30ade0e4717a6e920e7d00a0a8a6318e349a29d152d30d9824f88212dc3a0cb2"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp311-cp311-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:41b10de036c1ec54574288f6ae0785a83bf65d0b76e4c712852774a6907b56c9"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:31dbfc099fced3b8446d6b54441e3d104a1e32fc73217ee200f78f66ff75b395"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:81cc0c89b210bcde0ce3a9fec4e56911b189e481857117392a8ee9f8a499eeaa"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp311-none-win32.whl", hash = "sha256:d589253e4909df35c293a53f72181f695a74e3f04408b77038f0319548a9e8fe"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp311-none-win_amd64.whl", hash = "sha256:c505dfc6285c5140a10bae683f0fe63343bb5ea3c8b9668c934287d747402d1f"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp312-cp312-macosx_10_12_x86_64.whl", hash = "sha256:e9e4cc93c552c6a39fa022063853c5f3c23d72b6f3ebb509a6ac18173ecf699e"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:0f7e992d4017f5e439e0434ffd34a0a01d9044944345ee14876b4b75dbb757c2"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e84a614c62ad32a27de530051c1910ce83ff6268e21b355e1239b57c52f959e4"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp312-cp312-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:1038e7a7eabe0bca5df103fefaa963c5ede0b57553ad32044706b6a579707c6f"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d4244d828e66795ea8c2e693790a1ed9d7685450ed5d8269ac361b59a6bbd3ae"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:48c339205c48b9a005e35d97bb40a58256d252870fbd1cdb702ab4e9db48c2a9"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp312-none-win32.whl", hash = "sha256:4695598e487f67e4cc8877ea068ef0cd40cfd37dfbc4b1d08f945b94e7c3aa39"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp312-none-win_amd64.whl", hash = "sha256:ccbc25626a40bf9f92c10cc40107c40b36fc66c44318126c8e3bf547ef6129f9"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp37-cp37m-macosx_10_12_x86_64.whl", hash = "sha256:47b960ebc7caa34da3b0db994ad9a8d612136f853a3db7cb4bdab2d12c2922a9"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp37-cp37m-macosx_11_0_arm64.whl", hash = "sha256:a8550c15b2bcc78f6551582f8227d2794a46e6209b68e2f589dbcfd4a66db707"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp37-cp37m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:bd63db067b777d446c7efe5c1581547215502fcc0542b20d0a3a36b1ca3c8e55"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp37-cp37m-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:df1fcb9d401c39be2dea118236d19e014b28055eff8fb9291c4b5df59e078cce"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0d5f8ae8332fca6ee6d22dc313b9e9b434eb37656ded53b4d3e1c14cc8aeb108"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp37-cp37m-musllinux_1_2_x86_64.whl", hash = "sha256:18576ecf7d870fd08ff7b1e51fd16d79a693f0242ace95d15f30c7c59ab08ba2"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp37-none-win32.whl", hash = "sha256:8e415bd41df52d8be98335da53b8007cd89eb07c7d50f91f1cedca8eb323bdbf"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp37-none-win_amd64.whl", hash = "sha256:221c411fef942358dd06c7ca11f092a5d9279cadd4fb2a6024548ea96395f4a7"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp38-cp38-macosx_10_12_x86_64.whl", hash = "sha256:d84122a245419b126fd74fc66261d063d2a2800c2ce8b0f4a834003b63639c8a"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:474f616f779d56323ac27dba2d4303f8e774240470d94ca144943fa0361ae63b"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:13e4f93bacde1ba8dad845c98c5d1548f0c3853197e2048a889bf11026d02ba0"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp38-cp38-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:c96782684e7774eba1432784b3d66e02bac99f066d9804765f68c35c83a27e2e"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8b661907f28f6b3ad5006f70513c537ca42342906521b33fa55fc6c623247b73"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp38-cp38-musllinux_1_2_x86_64.whl", hash = "sha256:529022f5fa2265844beebb04ddec24707a0ce5c68471964fe1f9cf23fc43feb8"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp38-none-win32.whl", hash = "sha256:1ae9514f1b556ad7e8b0f76157f428acdad56165c8199827f3128dbdf1bfe6dc"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp38-none-win_amd64.whl", hash = "sha256:de2a3adf176819a6b39135fa4f98e849279ad48ffda224385f47479f90a3101c"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp39-cp39-macosx_10_12_x86_64.whl", hash = "sha256:707ccaa43a11f9f5d31a17a7c41d363b660127140323b776b8e6dfbb80dbb583"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:58f8521cb38441ac3e8b44dbacfd0c288bba1e19cb65f0abe02ab4833b0f5bbb"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:7f907424fe207fa7d7a77585174a9a1d544c72c6b909212a8f595ebb4fc5388d"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp39-cp39-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:8062e2d0fe41465eca91af4c77ede4db74a1c9bd82957556103e415549d428fe"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0dd6123372a13e116cb2ff919b12bf763e3baceed6e008db8a1797adf7a7d8a9"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp39-cp39-musllinux_1_2_x86_64.whl", hash = "sha256:8d02d2d4822f1fd49ec9c37bb25b437844af3d45f928e57255c1c7637725da7e"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp39-none-win32.whl", hash = "sha256:2c2b71b7af97ae8cc3a5e79e93e322e0b3204e1b51f6c6c823caa8f4d70c6a23"},
+    {file = "neo4j_rust_ext-5.20.0.0-cp39-none-win_amd64.whl", hash = "sha256:fc4e7a12253db1ea573831cbff967999b70c9b8552000606e52b4247e75be1ca"},
+    {file = "neo4j_rust_ext-5.20.0.0.tar.gz", hash = "sha256:c26065d6f3255d17c43f5a9cf50b4abeed0f47481c59c0fbd5ab5c08c28d043b"},
+]
+
+[package.dependencies]
+neo4j = "5.20.0"
+
+[package.extras]
+numpy = ["neo4j[numpy]"]
+pandas = ["neo4j[pandas]"]
+pyarrow = ["neo4j[pyarrow]"]
+
+[[package]]
+name = "netaddr"
+version = "1.2.1"
+description = "A network address manipulation library for Python"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "netaddr-1.2.1-py3-none-any.whl", hash = "sha256:bd9e9534b0d46af328cf64f0e5a23a5a43fca292df221c85580b27394793496e"},
+    {file = "netaddr-1.2.1.tar.gz", hash = "sha256:6eb8fedf0412c6d294d06885c110de945cf4d22d2b510d0404f4e06950857987"},
+]
+
+[package.extras]
+nicer-shell = ["ipython"]
 
 [[package]]
 name = "nodeenv"
@@ -5070,4 +5150,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9, < 3.13"
-content-hash = "2be6af480543c74e27d330baad7a0d66197d4f8cfd47ba58f0fbea7f97a4b0a2"
+content-hash = "08eec49cc1a9c4a85ab1b955fe9bf52a79881c8d65354efe6eed5db4328e15b9"

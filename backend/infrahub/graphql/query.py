@@ -31,7 +31,7 @@ async def execute_query(
     at = Timestamp(at)
 
     graphql_query = await NodeManager.get_one_by_default_filter(
-        db=db, id=name, schema_name=InfrahubKind.GRAPHQLQUERY, branch=branch, at=at
+        db=db, id=name, kind=InfrahubKind.GRAPHQLQUERY, branch=branch, at=at
     )
     if not graphql_query:
         raise ValueError(f"Unable to find the {InfrahubKind.GRAPHQLQUERY} {name}")

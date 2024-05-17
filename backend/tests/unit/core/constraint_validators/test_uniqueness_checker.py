@@ -236,11 +236,9 @@ class TestUniquenessChecker:
         branch: Branch,
         default_branch: Branch,
     ):
-        nolt_car = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, schema_name="TestGazCar", id="nolt", branch=branch
-        )
+        nolt_car = await NodeManager.get_one_by_id_or_default_filter(db=db, kind="TestGazCar", id="nolt", branch=branch)
         volt_car = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, schema_name="TestElectricCar", id="volt", branch=branch
+            db=db, kind="TestElectricCar", id="volt", branch=branch
         )
         volt_car.name.value = "nolt"
         await volt_car.save(db=db)
@@ -291,14 +289,12 @@ class TestUniquenessChecker:
         await nolt_owner.save(db=db)
 
         volt_car = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, schema_name="TestElectricCar", id="volt", branch=branch
+            db=db, kind="TestElectricCar", id="volt", branch=branch
         )
         await volt_car.owner.get_peer(db=db)
         await volt_car.previous_owner.update(data=nolt_owner, db=db)
         await volt_car.save(db=db)
-        nolt_car = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, schema_name="TestGazCar", id="nolt", branch=branch
-        )
+        nolt_car = await NodeManager.get_one_by_id_or_default_filter(db=db, kind="TestGazCar", id="nolt", branch=branch)
         await nolt_car.owner.update(data=nolt_owner, db=db)
         await nolt_car.previous_owner.update(data=nolt_owner, db=db)
         await nolt_car.save(db=db)
@@ -372,12 +368,12 @@ class TestUniquenessChecker:
     ):
         owner = car_person_generics_data_simple["p1"]
         volt_car = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, schema_name="TestElectricCar", id="volt", branch=branch
+            db=db, kind="TestElectricCar", id="volt", branch=branch
         )
         await volt_car.previous_owner.update(data=owner, db=db)
         await volt_car.save(db=db)
         bolt_car = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, schema_name="TestElectricCar", id="bolt", branch=branch
+            db=db, kind="TestElectricCar", id="bolt", branch=branch
         )
         await bolt_car.previous_owner.update(data=owner, db=db)
         await bolt_car.save(db=db)

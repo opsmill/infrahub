@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import reduce
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Type, Union, overload
 
 from infrahub_sdk.utils import deep_merge_dict
 
@@ -161,10 +161,14 @@ class NodeManager:
         await query.execute(db=db)
         node_ids = query.get_node_ids()
 
-        # if display_label has been requested we need to ensure we are querying the right fields
+        # if display_label or hfid has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields and schema.display_labels:
             display_label_fields = schema.generate_fields_for_display_label()
             fields = deep_merge_dict(fields, display_label_fields)
+
+        if fields and "hfid" in fields and schema.human_friendly_id:
+            hfid_fields = schema.generate_fields_for_hfid()
+            fields = deep_merge_dict(fields, hfid_fields)
 
         response = await cls.get_many(
             ids=node_ids,
@@ -359,12 +363,13 @@ class NodeManager:
             db=db, ids=peers_ids, fields=fields, at=at, branch=branch, include_owner=True, include_source=True
         )
 
+    @overload
     @classmethod
     async def get_one_by_default_filter(
         cls,
         db: InfrahubDatabase,
         id: str,
-        schema_name: str,
+        kind: str,
         fields: Optional[dict] = None,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
@@ -372,13 +377,47 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
-    ) -> Node:
+        raise_on_error: Literal[False] = False,
+    ) -> Optional[Node]: ...
+
+    @overload
+    @classmethod
+    async def get_one_by_default_filter(
+        cls,
+        db: InfrahubDatabase,
+        id: str,
+        kind: str,
+        fields: Optional[dict] = None,
+        at: Union[Timestamp, str] = None,
+        branch: Union[Branch, str] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        prefetch_relationships: bool = False,
+        account=None,
+        raise_on_error: Literal[True] = True,
+    ) -> Node: ...
+
+    @classmethod
+    async def get_one_by_default_filter(
+        cls,
+        db: InfrahubDatabase,
+        id: str,
+        kind: str,
+        fields: Optional[dict] = None,
+        at: Union[Timestamp, str] = None,
+        branch: Union[Branch, str] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        prefetch_relationships: bool = False,
+        account=None,
+        raise_on_error: bool = False,
+    ) -> Optional[Node]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        node_schema = registry.schema.get(name=schema_name, branch=branch)
+        node_schema = registry.schema.get(name=kind, branch=branch)
         if not node_schema.default_filter:
-            raise NodeNotFoundError(branch_name=branch.name, node_type=schema_name, identifier=id)
+            raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=id)
 
         items = await NodeManager.query(
             db=db,
@@ -397,9 +436,67 @@ class NodeManager:
         if len(items) > 1:
             raise NodeNotFoundError(
                 branch_name=branch.name,
-                node_type=schema_name,
+                node_type=kind,
                 identifier=id,
                 message=f"Unable to find node {id!r}, {len(items)} nodes returned, expected 1",
+            )
+
+        if items:
+            return items[0]
+        if not raise_on_error:
+            return None
+
+        raise NodeNotFoundError(
+            branch_name=branch.name,
+            node_type=kind,
+            identifier=id,
+        )
+
+    @classmethod
+    async def get_one_by_hfid(
+        cls,
+        db: InfrahubDatabase,
+        hfid: list[str],
+        kind: str,
+        fields: Optional[dict] = None,
+        at: Union[Timestamp, str] = None,
+        branch: Union[Branch, str] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        prefetch_relationships: bool = False,
+        account=None,
+    ) -> Node:
+        branch = await registry.get_branch(branch=branch, db=db)
+        at = Timestamp(at)
+
+        hfid_str = " :: ".join(hfid)
+        node_schema = registry.schema.get(name=kind, branch=branch)
+
+        if not node_schema.human_friendly_id or len(node_schema.human_friendly_id) != len(hfid):
+            raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=hfid_str)
+
+        filters = {node_schema.human_friendly_id[idx]: item for idx, item in enumerate(hfid)}
+
+        items = await NodeManager.query(
+            db=db,
+            schema=node_schema,
+            fields=fields,
+            limit=2,
+            filters=filters,
+            branch=branch,
+            at=at,
+            include_owner=include_owner,
+            include_source=include_source,
+            prefetch_relationships=prefetch_relationships,
+            account=account,
+        )
+
+        if len(items) > 1:
+            raise NodeNotFoundError(
+                branch_name=branch.name,
+                node_type=kind,
+                identifier=hfid_str,
+                message=f"Unable to find node {hfid_str!r}, {len(items)} nodes returned, expected 1",
             )
 
         return items[0] if items else None
@@ -409,7 +506,7 @@ class NodeManager:
         cls,
         db: InfrahubDatabase,
         id: str,
-        schema_name: str,
+        kind: str,
         fields: Optional[dict] = None,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
@@ -438,7 +535,7 @@ class NodeManager:
         node = await cls.get_one_by_default_filter(
             db=db,
             id=id,
-            schema_name=schema_name,
+            kind=kind,
             fields=fields,
             at=at,
             branch=branch,
@@ -448,7 +545,7 @@ class NodeManager:
             account=account,
         )
         if not node:
-            raise NodeNotFoundError(branch_name=branch.name, node_type=schema_name, identifier=id)
+            raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=id)
         return node
 
     @classmethod
@@ -486,7 +583,16 @@ class NodeManager:
         node = result[id]
         node_schema = node.get_schema()
 
+        # Temporary list of exception to the validation of the kind
+        kind_validation_exceptions = [
+            ("CoreChangeThread", "CoreObjectThread"),  # issue/3318
+        ]
+
         if kind and (node_schema.kind != kind and kind not in node_schema.inherit_from):
+            for item in kind_validation_exceptions:
+                if item[0] == kind and item[1] == node.get_kind():
+                    return node
+
             raise NodeNotFoundError(
                 branch_name=branch.name,
                 node_type=kind,

@@ -22,8 +22,8 @@ export const GET_PREFIXES_ONLY = gql`
 `;
 
 export const GET_PREFIXES = gql`
-  query GET_PREFIXES($namespace: String, $offset: Int, $limit: Int) {
-    BuiltinIPPrefix(ip_namespace__name__value: $namespace, offset: $offset, limit: $limit) {
+  query GET_PREFIXES($namespaces: [ID], $offset: Int, $limit: Int) {
+    BuiltinIPPrefix(ip_namespace__ids: $namespaces, offset: $offset, limit: $limit) {
       count
       edges {
         node {
@@ -171,8 +171,8 @@ export const GET_PREFIX_KIND = gql`
 `;
 
 export const GET_TOP_LEVEL_PREFIXES = gql`
-  query GET_TOP_LEVEL_PREFIXES {
-    BuiltinIPPrefix(is_top_level__value: true) {
+  query GET_TOP_LEVEL_PREFIXES($namespaces: [ID]) {
+    BuiltinIPPrefix(is_top_level__value: true, ip_namespace__ids: $namespaces) {
       edges {
         node {
           id
@@ -192,8 +192,8 @@ export const GET_TOP_LEVEL_PREFIXES = gql`
 `;
 
 export const GET_PREFIX_ANCESTORS = gql`
-  query GET_PREFIX_ANCESTORS($ids: [ID]) {
-    BuiltinIPPrefix(ids: $ids) {
+  query GET_PREFIX_ANCESTORS($ids: [ID], $namespaces: [ID]) {
+    BuiltinIPPrefix(ids: $ids, ip_namespace__ids: $namespaces) {
       edges {
         node {
           id

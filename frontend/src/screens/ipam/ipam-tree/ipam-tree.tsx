@@ -1,26 +1,30 @@
+import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Icon } from "@iconify-icon/react";
-import { TreeItemProps, Tree } from "../../../components/ui/tree";
+import { Tree, TreeItemProps } from "../../../components/ui/tree";
 import { useLazyQuery } from "../../../hooks/useQuery";
 
+import { StringParam, useQueryParam } from "use-query-params";
 import { GET_PREFIXES_ONLY } from "../../../graphql/queries/ipam/prefixes";
+import { defaultIpNamespaceAtom } from "../common/namespace.state";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { constructPathForIpam } from "../common/utils";
+import { IPAM_QSP, IPAM_ROUTE } from "../constants";
 import { IpamTreeSkeleton } from "./ipam-tree-skeleton";
-import { IPAM_ROUTE } from "../constants";
+import { ipamTreeAtom, reloadIpamTreeAtom } from "./ipam-tree.state";
 import {
+  PrefixData,
   formatIPPrefixResponseForTreeView,
   getTreeItemAncestors,
-  PrefixData,
   updateTreeData,
 } from "./utils";
-import { ipamTreeAtom, reloadIpamTreeAtom } from "./ipam-tree.state";
 
 export default function IpamTree() {
   const { prefix } = useParams();
+  const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
+  const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
   const [expandedIds, setExpandedIds] = useState<NodeId[]>([]);
   const [isLoading, setLoading] = useState(true);
   const [treeData, setTreeData] = useAtom(ipamTreeAtom);
@@ -29,14 +33,17 @@ export default function IpamTree() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    reloadIpamTree(prefix).then((newTree) => {
+    const currentIpNamespace = namespace ?? defaultIpNamespace;
+    if (!currentIpNamespace) return;
+
+    reloadIpamTree(currentIpNamespace, prefix).then((newTree) => {
       if (prefix) {
         const ancestorIds = getTreeItemAncestors(newTree, prefix).map(({ id }) => id);
         setExpandedIds(ancestorIds);
       }
       setLoading(false);
     });
-  }, []);
+  }, [namespace, defaultIpNamespace]);
 
   const onLoadData = async ({ element }: ITreeViewOnLoadDataProps) => {
     if (element.children.length > 0) return; // To avoid refetching data
@@ -53,7 +60,7 @@ export default function IpamTree() {
 
   return (
     <nav className="min-w-64">
-      <h3 className="font-semibold text-sm px-1 pt-1.5 pb-4">Navigation</h3>
+      <h3 className="font-semibold text-sm mb-3">Navigation</h3>
 
       {isLoading ? (
         <IpamTreeSkeleton />

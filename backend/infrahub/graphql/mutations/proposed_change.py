@@ -95,7 +95,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
 
         obj = await NodeManager.get_one_by_id_or_default_filter(
             db=context.db,
-            schema_name=cls._meta.schema.kind,
+            kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
             at=at,
@@ -201,7 +201,7 @@ class ProposedChangeRequestRunCheck(Mutation):
 
         identifier = data.get("id", "")
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=identifier, schema_name=InfrahubKind.PROPOSEDCHANGE, db=context.db
+            id=identifier, kind=InfrahubKind.PROPOSEDCHANGE, db=context.db
         )
         state = ProposedChangeState(proposed_change.state.value.value)
         state.validate_state_check_run()

@@ -70,7 +70,7 @@ class TestProposedChangePipeline(TestInfrahubApp):
         await richard.save(db=db)
 
         john = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id="John", schema_name=TestKind.PERSON, branch=branch1.name
+            db=db, id="John", kind=TestKind.PERSON, branch=branch1.name
         )
         john.age.value = 26  # type: ignore[attr-defined]
         await john.save(db=db)
@@ -78,12 +78,12 @@ class TestProposedChangePipeline(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def conflict_dataset(self, db: InfrahubDatabase, initial_dataset: None) -> None:
         branch1 = await create_branch(db=db, branch_name="conflict_data")
-        john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="John", schema_name=TestKind.PERSON)
+        john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="John", kind=TestKind.PERSON)
         john.description.value = "Who is this?"  # type: ignore[attr-defined]
         await john.save(db=db)
 
         john_branch = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id="John", schema_name=TestKind.PERSON, branch=branch1
+            db=db, id="John", kind=TestKind.PERSON, branch=branch1
         )
         john_branch.description.value = "Oh boy"  # type: ignore[attr-defined]
         john_branch.age.value = 30  # type: ignore[attr-defined]
@@ -97,7 +97,7 @@ class TestProposedChangePipeline(TestInfrahubApp):
         await proposed_change_create.save()
 
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id=proposed_change_create.id, schema_name=InfrahubKind.PROPOSEDCHANGE
+            db=db, id=proposed_change_create.id, kind=InfrahubKind.PROPOSEDCHANGE
         )
         peers = await proposed_change.validations.get_peers(db=db)  # type: ignore[attr-defined]
         assert peers
@@ -136,7 +136,7 @@ class TestProposedChangePipeline(TestInfrahubApp):
         await proposed_change_create.save()
 
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id=proposed_change_create.id, schema_name=InfrahubKind.PROPOSEDCHANGE
+            db=db, id=proposed_change_create.id, kind=InfrahubKind.PROPOSEDCHANGE
         )
         peers = await proposed_change.validations.get_peers(db=db)  # type: ignore[attr-defined]
         assert peers
@@ -158,7 +158,7 @@ class TestProposedChangePipeline(TestInfrahubApp):
         await data_check.save()
         proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
         await proposed_change_create.save()
-        john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="John", schema_name=TestKind.PERSON)
+        john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="John", kind=TestKind.PERSON)
         # The value of the description should match that of the source branch that was selected
         # as the branch to keep in the data conflict
         assert john.description.value == "Oh boy"  # type: ignore[attr-defined]

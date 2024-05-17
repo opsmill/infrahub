@@ -43,7 +43,7 @@ async def transform_python(
     transform = await NodeManager.get_one_by_id_or_default_filter(
         db=db,
         id=transform_id,
-        schema_name=InfrahubKind.TRANSFORMPYTHON,
+        kind=InfrahubKind.TRANSFORMPYTHON,
         branch=branch_params.branch,
         at=branch_params.at,
     )
@@ -92,7 +92,7 @@ async def transform_jinja2(
     transform = await NodeManager.get_one_by_id_or_default_filter(
         db=db,
         id=transform_id,
-        schema_name=InfrahubKind.TRANSFORMJINJA2,
+        kind=InfrahubKind.TRANSFORMJINJA2,
         branch=branch_params.branch,
         at=branch_params.at,
     )

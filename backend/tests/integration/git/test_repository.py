@@ -51,11 +51,11 @@ class TestCreateRepository(TestInfrahubApp):
         await client_repository.save()
 
         repository = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id=client_repository.id, schema_name=InfrahubKind.REPOSITORY
+            db=db, id=client_repository.id, kind=InfrahubKind.REPOSITORY
         )
 
         check_definition = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id="car_description_check", schema_name=InfrahubKind.CHECKDEFINITION
+            db=db, id="car_description_check", kind=InfrahubKind.CHECKDEFINITION
         )
 
         assert repository.commit.value  # type: ignore[attr-defined]
