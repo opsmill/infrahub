@@ -70,13 +70,22 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         raise InitializationError("The node has not been saved yet and doesn't have an id")
 
-    async def get_hfid(self, db: InfrahubDatabase) -> Optional[list[str]]:
+    async def get_hfid(self, db: InfrahubDatabase, include_kind: bool = False) -> Optional[list[str]]:
         """Return the Human friendly id of the node."""
-
         if not self._schema.human_friendly_id:
             return None
 
-        return [await self.get_path_value(db=db, path=item) for item in self._schema.human_friendly_id]
+        hfid = [await self.get_path_value(db=db, path=item) for item in self._schema.human_friendly_id]
+        if include_kind:
+            return [self.get_kind()] + hfid
+        return hfid
+
+    async def get_hfid_as_string(self, db: InfrahubDatabase, include_kind: bool = False) -> Optional[str]:
+        """Return the Human friendly id of the node in string format separated with double dunder (__) ."""
+        hfid = await self.get_hfid(db=db, include_kind=include_kind)
+        if not hfid:
+            return None
+        return "__".join(hfid)
 
     async def get_path_value(self, db: InfrahubDatabase, path: str) -> str:
         schema_path = self._schema.parse_schema_path(
