@@ -6,7 +6,8 @@ generics:
     namespace: Infra
     description: "Generic Network Interface"
     label: "Interface"
-    include_in_menu: false
+    include_in_menu: true
+    menu_placement: "InfraDevice"
     display_labels:
       - name__value
     order_by:
@@ -107,7 +108,8 @@ generics:
   - name: LagInterface
     namespace: Infra
     description: "Generic Lag Interface"
-    include_in_menu: false
+    include_in_menu: true
+    menu_placement: "InfraDevice"
     attributes:
       - name: lacp
         label: LACP
@@ -145,6 +147,8 @@ generics:
     namespace: Infra
     description: "MLAG Interface"
     label: "MLAG Interface"
+    include_in_menu: true
+    menu_placement: "InfraDevice"
     attributes:
       - name: mlag_id
         label: MLAG Id
@@ -273,8 +277,7 @@ nodes:
     description: "Network Layer 3 Interface"
     label: "Interface L3"
     icon: "mdi:ethernet"
-    menu_placement: "InfraDevice"
-    include_in_menu: true
+    include_in_menu: false
     display_labels:
       - name__value
     order_by:
@@ -311,8 +314,7 @@ nodes:
     description: "Network Layer 3 Lag Interface"
     label: "Lag Interface L3"
     icon: "mdi:ethernet"
-    menu_placement: "InfraDevice"
-    include_in_menu: true
+    include_in_menu: false
     display_labels:
       - name__value
     order_by:
@@ -338,8 +340,7 @@ nodes:
     description: "Network Layer 2 Interface"
     label: "Interface L2"
     icon: "mdi:ethernet"
-    menu_placement: "InfraDevice"
-    include_in_menu: true
+    include_in_menu: false
     display_labels:
       - name__value
     order_by:
@@ -389,8 +390,7 @@ nodes:
     description: "Network Layer 2 Lag Interface"
     label: "Lag Interface L2"
     icon: "mdi:ethernet"
-    menu_placement: "InfraDevice"
-    include_in_menu: true
+    include_in_menu: false
     display_labels:
       - name__value
     order_by:
@@ -597,8 +597,7 @@ nodes:
     description: "L2 MLAG Interface"
     label: "MLAG Interface L2"
     icon: "mdi:ethernet"
-    menu_placement: "InfraDevice"
-    include_in_menu: true
+    include_in_menu: false
     display_labels:
       - mlag_id__value
     inherit_from:
@@ -616,8 +615,7 @@ nodes:
     description: "L3 MLAG Interface"
     label: "MLAG Interface L3"
     icon: "mdi:ethernet"
-    menu_placement: "InfraDevice"
-    include_in_menu: true
+    include_in_menu: false
     display_labels:
       - mlag_id__value
     inherit_from:
