@@ -32,6 +32,21 @@ query GetPool($pool_id: ID!) {
 }
 """
 
+PREFIX_UTILIZATION_QUERY = """
+query GetPrefix($prefix_ids: [ID]!) {
+    IpamIPPrefix(ids: $prefix_ids) {
+        edges {
+            node {
+                prefix { value }
+                member_type { value }
+                utilization { value }
+                utilization_default_branch { value }
+            }
+        }
+    }
+}
+"""
+
 
 class TestIpamUtilization(TestInfrahubApp):
     @pytest.fixture(scope="class")
@@ -159,24 +174,39 @@ class TestIpamUtilization(TestInfrahubApp):
         assert await getter.get_use_percentage(ip_prefixes=[prefix2]) == 0
         assert await getter.get_use_percentage(ip_prefixes=[prefix]) == 50.0
 
-    @pytest.mark.skip
     async def test_step01_graphql_utilization(
         self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset
     ):
+        container = initial_dataset["container"]
+        prefix = initial_dataset["prefix"]
         gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
-            source=PREFIX_POOL_UTILIZATION_QUERY,
+            source=PREFIX_UTILIZATION_QUERY,
             context_value=gql_params.context,
-            variable_values={"pool_id": initial_dataset["prefix_pool"].id},
+            variable_values={"prefix_ids": [container.id, prefix.id]},
         )
 
         assert not result.errors
         assert result.data
-        pools = result.data["CorePrefixPool"]["edges"]
-        assert len(pools) == 1
-        assert pools[0]["utilization"]["value"] == 1 / 16
-        assert pools[0]["utilization_default_branch"]["value"] == 1 / 16
+        prefixes = result.data["IpamIPPrefix"]["edges"]
+        assert len(prefixes) == 2
+        assert {
+            "node": {
+                "member_type": {"value": "prefix"},
+                "prefix": {"value": container.prefix.value},
+                "utilization": {"value": 12},
+                "utilization_default_branch": {"value": 12},
+            }
+        } in prefixes
+        assert {
+            "node": {
+                "member_type": {"value": "address"},
+                "prefix": {"value": prefix.prefix.value},
+                "utilization": {"value": 50},
+                "utilization_default_branch": {"value": 50},
+            }
+        } in prefixes
 
     async def test_step02_branch_utilization(
         self, db: InfrahubDatabase, default_branch: Branch, branch2: Branch, initial_dataset, step_02_dataset

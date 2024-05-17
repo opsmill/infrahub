@@ -560,6 +560,13 @@ core_models: dict[str, Any] = {
                     "allow_override": AllowOverrideType.NONE,
                 },
                 {
+                    "name": "utilization_default_branch",
+                    "kind": "Number",
+                    "read_only": True,
+                    "optional": True,
+                    "allow_override": AllowOverrideType.NONE,
+                },
+                {
                     "name": "netmask",
                     "kind": "Text",
                     "read_only": True,

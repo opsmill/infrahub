@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
+from infrahub.core import registry
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 
 from . import Node
@@ -27,9 +28,15 @@ class BuiltinIPPrefix(Node):
                 if read_only_attr in fields:
                     response[read_only_attr] = {"value": getattr(self.prefix, read_only_attr)}  # type: ignore[attr-defined]
 
-            if "utilization" in fields:
+            if "utilization" in fields or "utilization_default_branch" in fields:
                 getter = PrefixUtilizationGetter(db=db, ip_prefixes=[self])
-                utilization = await getter.get_use_percentage(ip_prefixes=[self], branch_names=[self._branch.name])
-                response["utilization"] = {"value": int(utilization)}
+                if "utilization" in fields:
+                    utilization = await getter.get_use_percentage(ip_prefixes=[self])
+                    response["utilization"] = {"value": int(utilization)}
+                if "utilization_default_branch" in fields:
+                    utilization_default_branch = await getter.get_use_percentage(
+                        ip_prefixes=[self], branch_names=[registry.default_branch]
+                    )
+                    response["utilization_default_branch"] = {"value": int(utilization_default_branch)}
 
         return response
