@@ -173,7 +173,7 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
                 <Icon icon="mdi:chevron-right" />
 
                 <span className="flex-grow text-gray-500 overflow-hidden break-words line-clamp-3">
-                  {data.display_label}
+                  {resourcePool.display_label}
                 </span>
               </div>
 
@@ -201,7 +201,7 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
                 aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
-              ID: {data.id}
+              ID: {resourcePool.id}
             </div>
           </div>
         }
