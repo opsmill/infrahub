@@ -94,6 +94,25 @@ async def test_init_node_no_data(client, location_schema, client_type):
 
 
 @pytest.mark.parametrize("client_type", client_types)
+async def test_node_hfid(client, schema_with_hfid, client_type):
+    location_data = {"name": {"value": "JFK1"}, "description": {"value": "JFK Airport"}, "type": {"value": "SITE"}}
+    if client_type == "standard":
+        location = InfrahubNode(client=client, schema=schema_with_hfid["location"], data=location_data)
+    else:
+        location = InfrahubNodeSync(client=client, schema=schema_with_hfid["location"], data=location_data)
+
+    assert location.hfid == [location.name.value]
+
+    rack_data = {"facility_id": {"value": "RACK1"}, "location": location}
+    if client_type == "standard":
+        rack = InfrahubNode(client=client, schema=schema_with_hfid["rack"], data=rack_data)
+    else:
+        rack = InfrahubNodeSync(client=client, schema=schema_with_hfid["rack"], data=rack_data)
+
+    assert rack.hfid == [rack.facility_id.value, rack.location.get().name.value]
+
+
+@pytest.mark.parametrize("client_type", client_types)
 async def test_init_node_data_user(client, location_schema, client_type):
     data = {
         "name": {"value": "JFK1"},
