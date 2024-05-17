@@ -6,7 +6,7 @@ from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import is_valid_uuid
 
 from infrahub.core import registry
-from infrahub.core.constants import BranchSupportType, InfrahubKind
+from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality
 from infrahub.core.query.node import (
     NodeCheckIDQuery,
     NodeCreateAllQuery,
@@ -69,6 +69,40 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return self.id
 
         raise InitializationError("The node has not been saved yet and doesn't have an id")
+
+    async def get_hfid(self, db: InfrahubDatabase) -> Optional[list[str]]:
+        """Return the Human friendly id of the node."""
+
+        if not self._schema.human_friendly_id:
+            return None
+
+        return [await self.get_path_value(db=db, path=item) for item in self._schema.human_friendly_id]
+
+    async def get_path_value(self, db: InfrahubDatabase, path: str) -> str:
+        schema_path = self._schema.parse_schema_path(
+            path=path, schema=registry.schema.get_schema_branch(name=self._branch.name)
+        )
+
+        if not schema_path.has_property:
+            raise ValueError(f"Unable to retrive the value of a path without property {path!r} on {self.get_kind()!r}")
+
+        if (
+            schema_path.is_type_relationship
+            and schema_path.relationship_schema.cardinality == RelationshipCardinality.MANY
+        ):
+            raise ValueError(
+                f"Unable to retrive the value of a path on a relationship of cardinality many {path!r} on {self.get_kind()!r}"
+            )
+
+        if schema_path.is_type_attribute:
+            attr = getattr(self, schema_path.attribute_schema.name)
+            return getattr(attr, schema_path.attribute_property_name)
+
+        if schema_path.is_type_relationship:
+            relm: RelationshipManager = getattr(self, schema_path.relationship_schema.name)
+            node = await relm.get_peer(db=db)
+            attr = getattr(node, schema_path.attribute_schema.name)
+            return getattr(attr, schema_path.attribute_property_name)
 
     def get_labels(self) -> List[str]:
         """Return the labels for this object, composed of the kind
@@ -307,6 +341,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return self
 
+    async def resolve_relationships(self, db: InfrahubDatabase) -> None:
+        for name in self._relationships:
+            relm: RelationshipManager = getattr(self, name)
+            await relm.resolve(db=db)
+
     async def load(
         self,
         db: InfrahubDatabase,
@@ -454,6 +493,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 response[field_name] = await self.render_display_label(db=db)
                 continue
 
+            if field_name == "hfid":
+                response[field_name] = await self.get_hfid(db=db)
+                continue
+
             if field_name == "_updated_at":
                 if self._updated_at:
                     response[field_name] = await self._updated_at.to_graphql()
@@ -498,7 +541,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return changed
 
-    async def render_display_label(self, db: Optional[InfrahubDatabase] = None):  # pylint: disable=unused-argument
+    async def render_display_label(self, db: Optional[InfrahubDatabase] = None) -> str:  # pylint: disable=unused-argument
         if not self._schema.display_labels:
             return repr(self)
 

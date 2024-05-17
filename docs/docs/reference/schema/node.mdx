@@ -21,6 +21,7 @@ Below is the list of all available options to define a Node in the schema
 | [**display_labels**](#display_labels) | Attribute | List of attributes to use to generate the display label | False |
 | [**documentation**](#documentation) | Attribute | Link to a documentation associated with this object, can be internal or external. | False |
 | [**hierarchy**](#hierarchy) | Attribute | Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode | False |
+| [**human_friendly_id**](#human_friendly_id) | Attribute | Human friendly and unique identifier for the object. | False |
 | [**icon**](#icon) | Attribute | Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/ | False |
 | [**include_in_menu**](#include_in_menu) | Attribute | Defines if objects of this kind should be included in the menu. | False |
 | [**inherit_from**](#inherit_from) | Attribute | List of Generic Kind that this node is inheriting from | False |
@@ -111,6 +112,17 @@ Below is the list of all available options to define a Node in the schema
 | **Name** | hierarchy |
 | **Kind** | `Text` |
 | **Description** | Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode |
+| **Optional**  | True |
+| **Default Value** |  |
+| **Constraints** |  |
+
+### human_friendly_id
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | human_friendly_id |
+| **Kind** | `List` |
+| **Description** | Human friendly and unique identifier for the object. |
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |

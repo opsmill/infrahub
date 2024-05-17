@@ -203,3 +203,110 @@ async def test_update_by_id_to_nonunique_value_raises_error(
 
     expected_error = "An object already exist with this value: name: Jim at name"
     assert any(expected_error in error.message for error in result.errors)
+
+
+async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_person_schema):
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+
+    dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
+    await dog1.save(db=db)
+
+    query = (
+        """
+    mutation {
+        TestDogUpsert(data: {
+            hfid: ["Jack", "Rocky"],
+            name: { value: "Bella" },
+            breed: { value: "Labrador" },
+            color: { value: "black" },
+            owner: { id: "%s" }
+        }) {
+            ok
+            object {
+                id
+                color {
+                    value
+                }
+            }
+        }
+    }
+    """
+        % person1.id
+    )
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+    assert result.data["TestDogUpsert"]["ok"] is True
+    assert result.data["TestDogUpsert"]["object"] == {"color": {"value": "black"}, "id": dog1.id}
+
+
+async def test_with_hfid_new(db: InfrahubDatabase, default_branch, animal_person_schema):
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+
+    dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
+    await dog1.save(db=db)
+
+    query = (
+        """
+    mutation {
+        TestDogUpsert(data: {
+            hfid: ["Jack", "Bella"],
+            name: { value: "Bella" },
+            breed: { value: "Labrador" },
+            color: { value: "black" },
+            owner: { id: "%s" }
+        }) {
+            ok
+            object {
+                id
+                name {
+                    value
+                }
+                color {
+                    value
+                }
+                breed {
+                    value
+                }
+            }
+        }
+    }
+    """
+        % person1.id
+    )
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+    assert result.data["TestDogUpsert"]["ok"] is True
+    new_id = result.data["TestDogUpsert"]["object"]["id"]
+    assert result.data["TestDogUpsert"]["object"] == {
+        "breed": {"value": "Labrador"},
+        "color": {"value": "black"},
+        "id": new_id,
+        "name": {"value": "Bella"},
+    }

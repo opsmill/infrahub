@@ -11,7 +11,7 @@ from infrahub.database import InfrahubDatabase
 from .interface import MutationNodeGetterInterface
 
 
-class MutationNodeGetterByDefaultFilter(MutationNodeGetterInterface):
+class MutationNodeGetterByHfid(MutationNodeGetterInterface):
     def __init__(self, db: InfrahubDatabase, node_manager: NodeManager):
         self.db = db
         self.node_manager = node_manager
@@ -24,23 +24,12 @@ class MutationNodeGetterByDefaultFilter(MutationNodeGetterInterface):
         at: str,
     ) -> Optional[Node]:
         node = None
-        default_filter_value = None
-        if not node_schema.default_filter:
-            return node
-        this_datum = data
-
-        for filter_key in node_schema.default_filter.split("__"):
-            if filter_key not in this_datum:
-                break
-            this_datum = this_datum[filter_key]
-        default_filter_value = this_datum
-
-        if not default_filter_value:
+        if not node_schema.human_friendly_id or "hfid" not in data:
             return node
 
-        return await self.node_manager.get_one_by_default_filter(
+        return await self.node_manager.get_one_by_hfid(
             db=self.db,
-            id=default_filter_value,
+            hfid=data["hfid"],
             kind=node_schema.kind,
             branch=branch,
             at=at,

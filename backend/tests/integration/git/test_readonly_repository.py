@@ -70,11 +70,11 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         await client_repository.save()
 
         repository = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id=client_repository.id, schema_name=InfrahubKind.READONLYREPOSITORY, branch=branch.name
+            db=db, id=client_repository.id, kind=InfrahubKind.READONLYREPOSITORY, branch=branch.name
         )
 
         check_definition = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id="car_description_check", schema_name=InfrahubKind.CHECKDEFINITION, branch=branch.name
+            db=db, id="car_description_check", kind=InfrahubKind.CHECKDEFINITION, branch=branch.name
         )
 
         assert repository.commit.value  # type: ignore[attr-defined]
@@ -89,7 +89,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         await client.branch.merge(branch_name="ro_repository")
 
         check_definition = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id="car_description_check", schema_name=InfrahubKind.CHECKDEFINITION
+            db=db, id="car_description_check", kind=InfrahubKind.CHECKDEFINITION
         )
         assert check_definition.file_path.value == "checks/car_overview.py"  # type: ignore[attr-defined]
 

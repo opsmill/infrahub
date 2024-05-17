@@ -282,12 +282,12 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert not response.errors
 
         boomer_main = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, schema_name=CYLON_KIND, id=initial_dataset["boomer"]
+            db=db, kind=CYLON_KIND, id=initial_dataset["boomer"]
         )
         boomer_main.favorite_color.value = "green"  # type: ignore[attr-defined]
         await boomer_main.save(db=db)
         athena_branch = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, schema_name=CYLON_KIND, id=initial_dataset["athena"], branch=branch_2
+            db=db, kind=CYLON_KIND, id=initial_dataset["athena"], branch=branch_2
         )
         athena_branch.favorite_color.value = "green"  # type: ignore[attr-defined]
         await athena_branch.save(db=db)
@@ -307,12 +307,12 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         schema_03_generic_and_node_uniqueness_failure,
     ):
         boomer_main = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, schema_name=CYLON_KIND, id=initial_dataset["boomer"]
+            db=db, kind=CYLON_KIND, id=initial_dataset["boomer"]
         )
         boomer_main.favorite_color.value = "green"  # type: ignore[attr-defined]
         await boomer_main.save(db=db)
         caprica_main = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, schema_name=CYLON_KIND, id=initial_dataset["caprica"]
+            db=db, kind=CYLON_KIND, id=initial_dataset["caprica"]
         )
         caprica_main.favorite_color.value = "green"  # type: ignore[attr-defined]
         await caprica_main.save(db=db)
@@ -332,12 +332,12 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     async def test_step_03_reset(self, db: InfrahubDatabase, initial_dataset):
         boomer_main = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, schema_name=CYLON_KIND, id=initial_dataset["boomer"]
+            db=db, kind=CYLON_KIND, id=initial_dataset["boomer"]
         )
         boomer_main.favorite_color.value = None  # type: ignore[attr-defined]
         await boomer_main.save(db=db)
         caprica_main = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, schema_name=CYLON_KIND, id=initial_dataset["caprica"]
+            db=db, kind=CYLON_KIND, id=initial_dataset["caprica"]
         )
         caprica_main.favorite_color.value = None  # type: ignore[attr-defined]
         await caprica_main.save(db=db)
@@ -356,22 +356,22 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert not response.errors
 
         boomer_main = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, schema_name=CYLON_KIND, id=initial_dataset["boomer"]
+            db=db, kind=CYLON_KIND, id=initial_dataset["boomer"]
         )
         boomer_main.favorite_color.value = "green"  # type: ignore[attr-defined]
         await boomer_main.save(db=db)
         athena_branch = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, schema_name=CYLON_KIND, id=initial_dataset["athena"], branch=branch_2
+            db=db, kind=CYLON_KIND, id=initial_dataset["athena"], branch=branch_2
         )
         athena_branch.favorite_color.value = "green"  # type: ignore[attr-defined]
         await athena_branch.save(db=db)
         starbuck_main = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, schema_name=PERSON_KIND, id=initial_dataset["starbuck"]
+            db=db, kind=PERSON_KIND, id=initial_dataset["starbuck"]
         )
         starbuck_main.favorite_color.value = "purple"  # type: ignore[attr-defined]
         await starbuck_main.save(db=db)
         president_branch = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, schema_name=PERSON_KIND, id=initial_dataset["president"], branch=branch_2
+            db=db, kind=PERSON_KIND, id=initial_dataset["president"], branch=branch_2
         )
         president_branch.favorite_color.value = "purple"  # type: ignore[attr-defined]
         await president_branch.save(db=db)

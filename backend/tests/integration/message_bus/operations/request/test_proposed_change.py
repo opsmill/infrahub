@@ -184,6 +184,6 @@ async def test_cancel(
     await cancel(message=message, service=services.service)
     assert fake_log.info_logs == ["Canceling proposed change as the source branch was deleted"]
     proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-        db=db, id=prepare_proposed_change, schema_name=InfrahubKind.PROPOSEDCHANGE
+        db=db, id=prepare_proposed_change, kind=InfrahubKind.PROPOSEDCHANGE
     )
     assert proposed_change.state.value.value == ProposedChangeState.CANCELED.value  # type: ignore[attr-defined]
