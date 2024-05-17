@@ -1,8 +1,21 @@
 [tool.poetry]
 name = "infrahub"
 version = "0.14.0-dev"
-description = ""
+description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
+readme = "README.md"
+license = "AGPL-3.0-only"
+homepage = "https://opsmill.com"
+repository = "https://github.com/opsmill/infrahub"
+documentation = "https://docs.infrahub.app/"
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
 
 packages = [
     { include = "infrahub", from = "backend" }
