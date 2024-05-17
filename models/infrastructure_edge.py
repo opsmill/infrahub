@@ -152,7 +152,7 @@ INTERFACE_L2_NAMES = {
     "7280R3": ["Ethernet11", "Ethernet12"],
     "ASR1002-HX": ["Ethernet11", "Ethernet12"],
     "MX204": ["et-0/0/3"],
-    "7010TX-48": [f"Ethernet{idx}" for idx in range(1,49)],
+    "7010TX-48": [f"Ethernet{idx}" for idx in range(1, 49)],
 }
 
 LAG_INTERFACE_L2 = {
