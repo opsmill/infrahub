@@ -64,6 +64,7 @@ COMMAND_MAP = {
     "request.repository.user_checks": requests.repository.user_checks,
     "send.echo.request": send.echo.request,
     "send.webhook.event": send.webhook.event,
+    "send.telemetry.push": send.telemetry.push,
     "schema.migration.path": schema.migration.path,
     "schema.validator.path": schema.validator.path,
     "transform.jinja.template": transform.jinja.template,

@@ -26,3 +26,10 @@ async def resync_repositories(service: InfrahubServices) -> None:
         message = messages.RequestGitSync()
         message.assign_expiration(config.SETTINGS.git.sync_interval)
         await service.send(message=message)
+
+
+async def push_telemetry(service: InfrahubServices) -> None:
+    if await service.component.is_primary_api():
+        service.log.debug(f"Primary identity matches my identity={WORKER_IDENTITY}. Pushing usage telemetry.")
+        message = messages.SendTelemetryPush()
+        await service.send(message=message)
