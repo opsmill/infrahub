@@ -740,6 +740,7 @@ class InfrahubNodeBase:
         Returns:
             Dict[str, Dict]: Representation of an input data in dict format
         """
+        # pylint: disable=too-many-branches
         data = {}
         variables = {}
 
