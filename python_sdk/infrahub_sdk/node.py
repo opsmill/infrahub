@@ -47,12 +47,7 @@ PROPERTIES_FLAG = ["is_visible", "is_protected"]
 PROPERTIES_OBJECT = ["source", "owner"]
 SAFE_VALUE = re.compile(r"(^[\. /:a-zA-Z0-9_-]+$)|(^$)")
 
-IP_TYPES = Union[
-    ipaddress.IPv4Interface,
-    ipaddress.IPv6Interface,
-    ipaddress.IPv4Network,
-    ipaddress.IPv6Network,
-]
+IP_TYPES = Union[ipaddress.IPv4Interface, ipaddress.IPv6Interface, ipaddress.IPv4Network, ipaddress.IPv6Network]
 
 ARTIFACT_FETCH_FEATURE_NOT_SUPPORTED_MESSAGE = (
     "calling artifact_fetch is only supported for nodes that are Artifact Definition target"
@@ -213,16 +208,14 @@ class RelatedNodeBase:
                     setattr(self, prop, None)
 
     @property
-    def initialized(self) -> bool:
-        if self.id:
-            return True
-        return False
-
-    @property
     def id(self) -> Optional[str]:
         if self._peer:
             return self._peer.id
         return self._id
+
+    @property
+    def initialized(self) -> bool:
+        return bool(self.id)
 
     @property
     def display_label(self) -> Optional[str]:
@@ -638,12 +631,7 @@ class RelationshipManagerSync(RelationshipManagerBase):
 class InfrahubNodeBase:
     """Base class for InfrahubNode and InfrahubNodeSync"""
 
-    def __init__(
-        self,
-        schema: MainSchemaTypes,
-        branch: str,
-        data: Optional[dict] = None,
-    ) -> None:
+    def __init__(self, schema: MainSchemaTypes, branch: str, data: Optional[dict] = None) -> None:
         """
         Args:
             schema (MainSchemaTypes): The schema of the node.
@@ -670,6 +658,45 @@ class InfrahubNodeBase:
 
         self._init_attributes(data)
         self._init_relationships(data)
+
+    def get_path_value(self, path: str) -> Any:
+        path_parts = path.split("__")
+
+        # Manage relationship value lookup
+        if path_parts[0] in self._schema.relationship_names:
+            related_node = getattr(self, path_parts[0], None).get()
+            if attribute_piece := path_parts[1] if len(path_parts) > 1 else None:
+                related_node_attribute = getattr(related_node, attribute_piece, None)
+            else:
+                return related_node
+
+            if property_piece := path_parts[2] if len(path_parts) > 2 else None:
+                return getattr(related_node_attribute, property_piece, None)
+
+            return related_node_attribute
+
+        # Manage attribute value lookup
+        if path_parts[0] in self._schema.attribute_names:
+            attribute = getattr(self, path_parts[0], None)
+            if property_piece := path_parts[1] if len(path_parts) > 1 else None:
+                return getattr(attribute, property_piece, None)
+            return attribute
+
+        raise ValueError(f"{path} seems to be invalid")
+
+    def get_human_friendly_id(self) -> Optional[List[Any]]:
+        if not hasattr(self._schema, "human_friendly_id"):
+            return None
+
+        if not self._schema.human_friendly_id:
+            # FIXME: compute based on uniqueness constraints?
+            return None
+
+        return [self.get_path_value(path=item) for item in self._schema.human_friendly_id]
+
+    @property
+    def hfid(self) -> Optional[List[Any]]:
+        return self.get_human_friendly_id()
 
     def _init_attributes(self, data: Optional[dict] = None) -> None:
         for attr_name in self._attributes:
@@ -707,13 +734,12 @@ class InfrahubNodeBase:
     def get_raw_graphql_data(self) -> Optional[Dict]:
         return self._data
 
-    def _generate_input_data(self, exclude_unmodified: bool = False) -> Dict[str, Dict]:
+    def _generate_input_data(self, exclude_unmodified: bool = False) -> Dict[str, Dict]:  # noqa: C901
         """Generate a dictionary that represent the input data required by a mutation.
 
         Returns:
             Dict[str, Dict]: Representation of an input data in dict format
         """
-        # pylint: disable=too-many-branches
         data = {}
         variables = {}
 
@@ -764,7 +790,6 @@ class InfrahubNodeBase:
                     data[item_name] = rel_data
                 if variable_names := rel_data.get("variables"):
                     variables.update(variable_names)
-
             elif isinstance(rel_data, list):
                 data[item_name] = rel_data
             elif rel_schema.cardinality == RelationshipCardinality.MANY:
@@ -775,14 +800,12 @@ class InfrahubNodeBase:
 
         mutation_variables = {key: type(value) for key, value in variables.items()}
 
-        if self.id is not None:
+        if self.hfid is not None:
+            data["hfid"] = self.hfid
+        elif self.id is not None:
             data["id"] = self.id
 
-        return {
-            "data": {"data": data},
-            "variables": variables,
-            "mutation_variables": mutation_variables,
-        }
+        return {"data": {"data": data}, "variables": variables, "mutation_variables": mutation_variables}
 
     @staticmethod
     def _strip_unmodified_dict(data: dict, original_data: dict, variables: dict, item: str) -> None:
@@ -901,7 +924,7 @@ class InfrahubNodeBase:
     ) -> Dict[str, Union[Any, Dict]]:
         data: Dict[str, Any] = {
             "count": None,
-            "edges": {"node": {"id": None, "display_label": None, "__typename": None}},
+            "edges": {"node": {"id": None, "hfid": None, "display_label": None, "__typename": None}},
         }
 
         data["@filters"] = filters or {}

@@ -421,6 +421,7 @@ class NodeSchema(BaseNodeSchema):
     inherit_from: List[str] = pydantic.Field(default_factory=list)
     branch: Optional[BranchSupportType] = None
     default_filter: Optional[str] = None
+    human_friendly_id: Optional[List[str]] = None
 
 
 class ProfileSchema(BaseNodeSchema):
