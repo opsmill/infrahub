@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 # pylint: disable=no-member,too-many-lines
 # type: ignore[attr-defined]
 
-async_node_methods = [method for method in dir(InfrahubNode) if not method.startswith("_")]
-sync_node_methods = [method for method in dir(InfrahubNodeSync) if not method.startswith("_")]
+async_node_methods = [method for method in dir(InfrahubNode) if not method.startswith("_") and method != "hfid"]
+sync_node_methods = [method for method in dir(InfrahubNodeSync) if not method.startswith("_") and method != "hfid"]
 
 client_types = ["standard", "sync"]
 
@@ -176,6 +176,7 @@ async def test_query_data_no_filters(clients, location_schema, client_type):
                 "node": {
                     "__typename": None,
                     "id": None,
+                    "hfid": None,
                     "display_label": None,
                     "name": {
                         "is_default": None,
@@ -339,6 +340,7 @@ async def test_query_data_with_prefetch_relationships(clients, mock_schema_query
                 "node": {
                     "__typename": None,
                     "id": None,
+                    "hfid": None,
                     "display_label": None,
                     "name": {
                         "is_default": None,
@@ -548,6 +550,7 @@ async def test_query_data_generic(clients, mock_schema_query_02, client_type):  
                 "node": {
                     "__typename": None,
                     "id": None,
+                    "hfid": None,
                     "display_label": None,
                 },
             },
@@ -693,6 +696,7 @@ async def test_query_data_generic_fragment(clients, mock_schema_query_02, client
                     },
                     "display_label": None,
                     "id": None,
+                    "hfid": None,
                 },
             },
         },
@@ -716,6 +720,7 @@ async def test_query_data_include(client, location_schema, client_type):
                 "node": {
                     "__typename": None,
                     "id": None,
+                    "hfid": None,
                     "display_label": None,
                     "name": {
                         "is_default": None,
@@ -836,6 +841,7 @@ async def test_query_data_exclude(client, location_schema, client_type):
                 "node": {
                     "__typename": None,
                     "id": None,
+                    "hfid": None,
                     "display_label": None,
                     "name": {
                         "is_default": None,
