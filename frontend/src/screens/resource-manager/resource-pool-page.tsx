@@ -141,27 +141,33 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
         />
       </Content.Title>
 
-      <main className="p-2 flex">
-        <CardWithBorder>
-          <CardWithBorder.Title className="flex items-center justify-between gap-1">
-            <div>
-              <Badge variant="blue">{schema.namespace}</Badge> {schema.label}
-            </div>
-            <ButtonWithTooltip
-              variant="outline"
-              size="icon"
-              onClick={() => setShowEditDrawer(true)}
-              disabled={!permission.write.allow}
-              tooltipEnabled={!permission.write.allow}
-              tooltipContent={permission.write.message ?? undefined}
-              data-testid="pool-edit-button">
-              <Icon icon="mdi:pencil" />
-            </ButtonWithTooltip>
-          </CardWithBorder.Title>
+      <div className="p-2 gap-2 flex">
+        <aside className="inline-flex flex-col gap-2">
+          <CardWithBorder>
+            <CardWithBorder.Title className="flex items-center justify-between gap-1">
+              <div>
+                <Badge variant="blue">{schema.namespace}</Badge> {schema.label}
+              </div>
+              <ButtonWithTooltip
+                variant="outline"
+                size="icon"
+                onClick={() => setShowEditDrawer(true)}
+                disabled={!permission.write.allow}
+                tooltipEnabled={!permission.write.allow}
+                tooltipContent={permission.write.message ?? undefined}
+                data-testid="pool-edit-button">
+                <Icon icon="mdi:pencil" />
+              </ButtonWithTooltip>
+            </CardWithBorder.Title>
 
-          <PropertyList properties={properties} labelClassName="font-semibold" />
-        </CardWithBorder>
-      </main>
+            <PropertyList properties={properties} labelClassName="font-semibold" />
+          </CardWithBorder>
+
+          <ResourcePoolSelector resources={resourcePool.resources.edges} />
+        </aside>
+
+        <section>wip: allocated resources</section>
+      </div>
 
       <SlideOver
         title={
@@ -215,6 +221,29 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
         />
       </SlideOver>
     </Content>
+  );
+};
+
+type ResourcePoolSelectorProps = {
+  resources: Array<{
+    node: Record<string, any>;
+    properties: Record<string, any>;
+  }>;
+};
+
+const ResourcePoolSelector = ({ resources }: ResourcePoolSelectorProps) => {
+  return (
+    <CardWithBorder className="divide-y">
+      <CardWithBorder.Title>
+        Select Resource pools <Badge variant="blue">{resources.length}</Badge>
+      </CardWithBorder.Title>
+
+      {resources.map(({ node }) => (
+        <div key={node.id} className="p-2">
+          {node.display_label} <Link to={"resources/" + node.id}>View</Link>
+        </div>
+      ))}
+    </CardWithBorder>
   );
 };
 
