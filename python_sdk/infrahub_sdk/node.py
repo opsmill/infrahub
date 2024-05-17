@@ -734,7 +734,7 @@ class InfrahubNodeBase:
     def get_raw_graphql_data(self) -> Optional[Dict]:
         return self._data
 
-    def _generate_input_data(self, exclude_unmodified: bool = False) -> Dict[str, Dict]:  # noqa: C901
+    def _generate_input_data(self, exclude_unmodified: bool = False, exclude_hfid: bool = False) -> Dict[str, Dict]:  # noqa: C901
         """Generate a dictionary that represent the input data required by a mutation.
 
         Returns:
@@ -801,7 +801,7 @@ class InfrahubNodeBase:
 
         mutation_variables = {key: type(value) for key, value in variables.items()}
 
-        if self.hfid is not None:
+        if self.hfid is not None and not exclude_hfid:
             data["hfid"] = self.hfid
         elif self.id is not None:
             data["id"] = self.id
@@ -1273,7 +1273,7 @@ class InfrahubNode(InfrahubNodeBase):
 
     async def create(self, at: Optional[Timestamp] = None, allow_upsert: bool = False) -> None:
         self._deprecated_parameter(at=at)
-        input_data = self._generate_input_data()
+        input_data = self._generate_input_data(exclude_hfid=True)
         mutation_query = {"ok": None, "object": {"id": None}}
         if allow_upsert:
             mutation_name = f"{self._schema.kind}Upsert"
@@ -1604,7 +1604,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
     def create(self, at: Optional[Timestamp] = None, allow_upsert: bool = False) -> None:
         self._deprecated_parameter(at=at)
-        input_data = self._generate_input_data()
+        input_data = self._generate_input_data(exclude_hfid=True)
         mutation_query = {"ok": None, "object": {"id": None}}
         if allow_upsert:
             mutation_name = f"{self._schema.kind}Upsert"
