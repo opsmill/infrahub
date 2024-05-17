@@ -36,6 +36,7 @@ from .queries import (
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
+    InfrahubResourcePoolUtilization,
     InfrahubStatus,
     Relationship,
     Task,
@@ -89,6 +90,7 @@ class InfrahubBaseQuery(ObjectType):
 
     IPAddressGetNextAvailable = InfrahubIPAddressGetNextAvailable
     IPPrefixGetNextAvailable = InfrahubIPPrefixGetNextAvailable
+    InfrahubResourcePoolUtilization = InfrahubResourcePoolUtilization
 
 
 class InfrahubBaseMutation(ObjectType):
