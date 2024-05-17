@@ -18,6 +18,7 @@ from .mutations import (
     BranchValidate,
     CoreAccountSelfUpdate,
     CoreAccountTokenCreate,
+    CoreAccountTokenDelete,
     ProposedChangeRequestRunCheck,
     RelationshipAdd,
     RelationshipRemove,
@@ -30,6 +31,7 @@ from .mutations import (
 )
 from .parser import extract_selection
 from .queries import (
+    AccountToken,
     BranchQueryList,
     DiffSummary,
     DiffSummaryOld,
@@ -77,6 +79,7 @@ async def account_resolver(root, info: GraphQLResolveInfo):
 
 class InfrahubBaseQuery(ObjectType):
     Branch = BranchQueryList
+    CoreAccountToken = AccountToken
 
     DiffSummary = DiffSummary
     DiffSummaryOld = DiffSummaryOld
@@ -96,6 +99,7 @@ class InfrahubBaseQuery(ObjectType):
 class InfrahubBaseMutation(ObjectType):
     CoreAccountTokenCreate = CoreAccountTokenCreate.Field()
     CoreAccountSelfUpdate = CoreAccountSelfUpdate.Field()
+    CoreAccountTokenDelete = CoreAccountTokenDelete.Field()
     CoreProposedChangeRunCheck = ProposedChangeRequestRunCheck.Field()
 
     BranchCreate = BranchCreate.Field()

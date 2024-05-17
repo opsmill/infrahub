@@ -28,6 +28,10 @@ class CoreAccountTokenCreateInput(InputObjectType):
     expiration = InputField(String(required=False), description="Timestamp when the token expires")
 
 
+class CoreAccountTokenDeleteInput(InputObjectType):
+    id = InputField(String(required=True), description="The id of the token to delete")
+
+
 class CoreAccountUpdateSelfInput(InputObjectType):
     password = InputField(String(required=False), description="The new password")
     description = InputField(String(required=False), description="The new description")
@@ -38,6 +42,7 @@ class ValueType(InfrahubObjectType):
 
 
 class CoreAccountTokenType(InfrahubObjectType):
+    id = String(required=True)
     token = Field(ValueType)
 
 
@@ -65,7 +70,11 @@ class AccountMixin:
 
         account = results[0]
 
-        mutation_map = {"CoreAccountTokenCreate": cls.create_token, "CoreAccountSelfUpdate": cls.update_self}
+        mutation_map = {
+            "CoreAccountTokenCreate": cls.create_token,
+            "CoreAccountTokenDelete": cls.delete_token,
+            "CoreAccountSelfUpdate": cls.update_self,
+        }
         response = await mutation_map[cls.__name__](db=context.db, account=account, data=data, info=info)
 
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
@@ -95,6 +104,25 @@ class AccountMixin:
         return cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=True)  # type: ignore[call-arg]
 
     @classmethod
+    @retry_db_transaction(name="account_token_delete")
+    async def delete_token(
+        cls, db: InfrahubDatabase, account: Node, data: Dict[str, Any], info: GraphQLResolveInfo
+    ) -> Self:
+        token_id = str(data.get("id"))
+
+        results = await NodeManager.query(
+            schema=InfrahubKind.ACCOUNTTOKEN, filters={"account_ids": [account.id], "ids": [token_id]}, db=db
+        )
+
+        if not results:
+            raise NodeNotFoundError(node_type="AccountToken", identifier=token_id)
+
+        async with db.start_transaction() as dbt:
+            await results[0].delete(db=dbt)
+
+        return cls(ok=True)  # type: ignore[call-arg]
+
+    @classmethod
     @retry_db_transaction(name="account_update_self")
     async def update_self(
         cls, db: InfrahubDatabase, account: Node, data: Dict[str, Any], info: GraphQLResolveInfo
@@ -115,6 +143,13 @@ class CoreAccountTokenCreate(AccountMixin, Mutation):
 
     ok = Boolean()
     object = Field(CoreAccountTokenType)
+
+
+class CoreAccountTokenDelete(AccountMixin, Mutation):
+    class Arguments:
+        data = CoreAccountTokenDeleteInput(required=True)
+
+    ok = Boolean()
 
 
 class CoreAccountSelfUpdate(AccountMixin, Mutation):
