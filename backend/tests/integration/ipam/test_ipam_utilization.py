@@ -19,33 +19,24 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-PREFIX_POOL_UTILIZATION_QUERY = """
-query GetPool($pool_id: ID!) {
-    CorePrefixPool(ids: [$pool_id]) {
-        edges {
-            node {
-                utilization { value }
-                utilization_default_branch { value }
-            }
-        }
+POOL_UTILIZATION_QUERY = """
+query GetPool($pool_id: String!) {
+  InfrahubResourcePoolUtilization(pool_id: $pool_id) {
+    count
+    utilization
+    utilization_default_branch
+    edges {
+      node {
+        display_label
+        id
+        kind
+        utilization
+        utilization_default_branch
+        weight
+      }
     }
-}
-"""
-
-PREFIX_UTILIZATION_QUERY = """
-query GetPrefix($prefix_ids: [ID]!) {
-    IpamIPPrefix(ids: $prefix_ids) {
-        edges {
-            node {
-                prefix { value }
-                member_type { value }
-                utilization { value }
-                utilization_default_branch { value }
-            }
-        }
-    }
-}
-"""
+  }
+}"""
 
 
 class TestIpamUtilization(TestInfrahubApp):
@@ -178,35 +169,36 @@ class TestIpamUtilization(TestInfrahubApp):
         self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset
     ):
         container = initial_dataset["container"]
-        prefix = initial_dataset["prefix"]
+        prefix_pool = initial_dataset["prefix_pool"]
         gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
-            source=PREFIX_UTILIZATION_QUERY,
+            source=POOL_UTILIZATION_QUERY,
             context_value=gql_params.context,
-            variable_values={"prefix_ids": [container.id, prefix.id]},
+            variable_values={"pool_id": prefix_pool.id},
         )
 
         assert not result.errors
         assert result.data
-        prefixes = result.data["IpamIPPrefix"]["edges"]
-        assert len(prefixes) == 2
-        assert {
-            "node": {
-                "member_type": {"value": "prefix"},
-                "prefix": {"value": container.prefix.value},
-                "utilization": {"value": 12},
-                "utilization_default_branch": {"value": 12},
+        assert result.data == {
+            "InfrahubResourcePoolUtilization": {
+                "count": 1,
+                "utilization": 12.5,
+                "utilization_default_branch": 12.5,
+                "edges": [
+                    {
+                        "node": {
+                            "display_label": await container.render_display_label(db=db),
+                            "id": container.id,
+                            "kind": "IpamIPPrefix",
+                            "utilization": 12.5,
+                            "utilization_default_branch": 12.5,
+                            "weight": 256,
+                        }
+                    }
+                ],
             }
-        } in prefixes
-        assert {
-            "node": {
-                "member_type": {"value": "address"},
-                "prefix": {"value": prefix.prefix.value},
-                "utilization": {"value": 50},
-                "utilization_default_branch": {"value": 50},
-            }
-        } in prefixes
+        }
 
     async def test_step02_branch_utilization(
         self, db: InfrahubDatabase, default_branch: Branch, branch2: Branch, initial_dataset, step_02_dataset

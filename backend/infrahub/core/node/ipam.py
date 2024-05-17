@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
-from infrahub.core import registry
-from infrahub.core.ipam.utilization import PrefixUtilizationGetter
+from infrahub.core.ipam.size import get_prefix_space
+from infrahub.core.manager import NodeManager
 
 from . import Node
 
@@ -26,17 +26,17 @@ class BuiltinIPPrefix(Node):
         if fields:
             for read_only_attr in ["netmask", "hostmask", "network_address", "broadcast_address"]:
                 if read_only_attr in fields:
-                    response[read_only_attr] = {"value": getattr(self.prefix, read_only_attr)}  # type: ignore[attr-defined]
-
-            if "utilization" in fields or "utilization_default_branch" in fields:
-                getter = PrefixUtilizationGetter(db=db, ip_prefixes=[self])
-                if "utilization" in fields:
-                    utilization = await getter.get_use_percentage(ip_prefixes=[self])
-                    response["utilization"] = {"value": int(utilization)}
-                if "utilization_default_branch" in fields:
-                    utilization_default_branch = await getter.get_use_percentage(
-                        ip_prefixes=[self], branch_names=[registry.default_branch]
-                    )
-                    response["utilization_default_branch"] = {"value": int(utilization_default_branch)}
+                    response[read_only_attr] = {"value": getattr(self.prefix, read_only_attr)}  # type: ignore[attr-defined,has-type]
 
         return response
+
+    async def get_resource_weight(self, db: InfrahubDatabase) -> int:
+        member_type = self.member_type.value  # type: ignore[has-type]  # pylint: disable=access-member-before-definition
+        prefixlen = self.prefix.prefixlen  # type: ignore[has-type]  # pylint: disable=access-member-before-definition
+        if member_type is None or prefixlen is None:
+            retrieved = await NodeManager.get_one(
+                db=db, branch=self._branch, id=self.id, fields={"member_type": None, "prefix": None}
+            )
+            self.member_type = retrieved.member_type  # type: ignore[union-attr]  # pylint: disable=attribute-defined-outside-init
+            self.prefix = retrieved.prefix  # type: ignore[union-attr]  # pylint: disable=attribute-defined-outside-init
+        return get_prefix_space(self)

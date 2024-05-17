@@ -13,7 +13,6 @@ from infrahub.exceptions import PoolExhaustedError, ValidationError
 from infrahub.pools.address import get_available
 
 from .. import Node
-from .ip_base import IPResourceManagerBase
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -21,7 +20,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class CoreIPAddressPool(IPResourceManagerBase):
+class CoreIPAddressPool(Node):
     async def get_resource(
         self,
         db: InfrahubDatabase,

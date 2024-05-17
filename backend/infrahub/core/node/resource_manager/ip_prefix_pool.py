@@ -12,7 +12,6 @@ from infrahub.core.query.resource_manager import (
 from infrahub.pools.prefix import PrefixPool
 
 from .. import Node
-from .ip_base import IPResourceManagerBase
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -20,7 +19,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class CorePrefixPool(IPResourceManagerBase):
+class CorePrefixPool(Node):
     async def get_resource(
         self,
         db: InfrahubDatabase,
