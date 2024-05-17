@@ -54,7 +54,7 @@ type SelectProps = {
   name?: string;
   peer?: string;
   options: SelectOption[];
-  onChange: (value: SelectOption | SelectOption[]) => void;
+  onChange: (value: any) => void;
   disabled?: boolean;
   error?: FormFieldError;
   direction?: SelectDirection;
@@ -113,7 +113,7 @@ export const Select = (props: SelectProps) => {
   const [localOptions, setLocalOptions] = useState(options);
   const [selectedOption, setSelectedOption] = useState(
     multiple
-      ? localOptions.filter((option) => value?.includes(option.id))
+      ? localOptions.filter((option) => value?.list?.includes(option.id))
       : localOptions?.find((option) => option?.id === value || option.name === value)
   );
 
@@ -156,7 +156,10 @@ export const Select = (props: SelectProps) => {
   const optionsResult =
     peer && data ? data[hasBeenOpened ? peer : poolPeer]?.edges.map((edge: any) => edge.node) : [];
 
-  const optionsList = getOptionsFromRelationship(optionsResult, schemaList);
+  const optionsList = getOptionsFromRelationship({
+    options: optionsResult,
+    schemas: schemaList,
+  });
 
   const addOption: SelectOption = {
     name: "Add option",
@@ -197,7 +200,7 @@ export const Select = (props: SelectProps) => {
 
     if (newValue.id === emptyOption.id) {
       setSelectedOption(emptyOption);
-      onChange("");
+      onChange(newValue);
       return;
     }
 
@@ -211,7 +214,7 @@ export const Select = (props: SelectProps) => {
 
       setOpen(false);
       setSelectedOption(newValue);
-      onChange(newValue.map((item) => item.id));
+      onChange({ list: newValue.map((item) => item.id) });
 
       return;
     }
@@ -219,7 +222,18 @@ export const Select = (props: SelectProps) => {
     setSelectedOption(newValue);
     setQuery("");
     setOpen(false);
-    onChange(newValue.id);
+
+    if (hasPoolsBeenOpened) {
+      onChange(hasPoolsBeenOpened ? { from_pool: { id: newValue.id } } : { id: newValue.id });
+      return;
+    }
+
+    if (dropdown || enumBoolean) {
+      onChange(newValue.id);
+      return;
+    }
+
+    onChange({ id: newValue.id });
   };
 
   const handleCreate = (response: any) => {
@@ -261,7 +275,7 @@ export const Select = (props: SelectProps) => {
 
   const handleFocusPools = () => {
     // Do not fetch if there is no peer
-    if (!canRequestPools || hasPoolsBeenOpened) return;
+    if (!poolPeer || hasPoolsBeenOpened) return;
 
     setHasPoolsBeenOpened(true);
     setHasBeenOpened(false);

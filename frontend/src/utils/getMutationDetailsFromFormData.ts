@@ -17,10 +17,7 @@ const getMutationDetailsFromFormData = (
   const updatedObject = R.clone(formData);
 
   schema.attributes?.forEach((attribute) => {
-    const updatedValue =
-      updatedObject[attribute.name]?.value?.id ??
-      updatedObject[attribute.name]?.value ??
-      attribute?.default_value;
+    const updatedValue = updatedObject[attribute.name] ?? attribute?.default_value;
 
     const profileValue =
       profile && (profile[attribute.name]?.value?.id ?? profile[attribute.name]?.value);
@@ -65,6 +62,8 @@ const getMutationDetailsFromFormData = (
     ) {
       // Remove property if it's empty or comes from the profile
       delete updatedObject[attribute.name];
+    } else {
+      updatedObject[attribute.name] = { value: updatedValue };
     }
   });
 
@@ -116,7 +115,11 @@ const getMutationDetailsFromFormData = (
       }
     }
 
-    if (isOneToOne && updatedObject[relationship.name] && !updatedObject[relationship.name].id) {
+    if (
+      isOneToOne &&
+      updatedObject[relationship.name] &&
+      !(updatedObject[relationship.name].id || updatedObject[relationship.name].from_pool)
+    ) {
       // Set to null to remove the relationship
       updatedObject[relationship.name] = null;
       return;

@@ -347,7 +347,17 @@ export const getOptionsFromAttribute = (attribute: any, value: any) => {
   return [];
 };
 
-export const getOptionsFromRelationship = (options: any[] = [], schemas?: any, generic?: any) => {
+type tgetOptionsFromRelationship = {
+  options: any[];
+  schemas?: any;
+  generic?: any;
+};
+
+export const getOptionsFromRelationship = ({
+  options,
+  schemas,
+  generic,
+}: tgetOptionsFromRelationship) => {
   if (!generic) {
     return options.map((option: any) => ({
       name: option.display_label,
