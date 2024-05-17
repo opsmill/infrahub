@@ -91,8 +91,6 @@ export const DynamicControl = (props: DynamicFieldData) => {
             child: null,
           }; // Initial value msut be empty if not defined
 
-      console.log("---");
-      console.log("selectValue: ", selectValue);
       return (
         <OpsSelect2Step
           {...props}
