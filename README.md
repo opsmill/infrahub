@@ -28,7 +28,7 @@ For more details on how to deploy a local instance of Infrahub please refer to o
 
 If you'd like to learn more about Infrahub, please refer to the following resources:
 
-- [Infrahub Overview](https://docs.infrahub.app/tutorials/infrahub-overview/)
+- [Infrahub Overview](https://docs.infrahub.app/overview/)
 - [Getting Started](https://docs.infrahub.app/tutorials/getting-started/)
 - [Infrahub Documentation](https://docs.infrahub.app/)
 
