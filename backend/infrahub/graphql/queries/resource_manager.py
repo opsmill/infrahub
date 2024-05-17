@@ -48,8 +48,7 @@ class IPPrefixPoolUtilization(ObjectType):
     ) -> dict:
         context: GraphqlContext = info.context
         db: InfrahubDatabase = context.db
-
-        pool = await NodeManager.get_one(id=pool_id, db=db, branch=registry.get_global_branch())
+        pool = await NodeManager.get_one(id=pool_id, db=db, branch=context.branch)
         resources_map: dict[str, Node] = await pool.resources.get_peers(db=db, branch_agnostic=True)  # type: ignore[attr-defined,union-attr]
         utilization_getter = PrefixUtilizationGetter(db=db, ip_prefixes=list(resources_map.values()), at=context.at)
         fields = await extract_fields(info.field_nodes[0].selection_set)

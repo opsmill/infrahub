@@ -424,7 +424,9 @@ class NodeListGetAttributeQuery(Query):
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic
+        )
         self.params.update(branch_params)
 
         query = """
@@ -566,7 +568,7 @@ class NodeListGetRelationshipsQuery(Query):
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
 
-        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
+        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at, branch_agnostic=self.branch_agnostic)
         self.params.update(rels_params)
 
         query = (
@@ -604,7 +606,9 @@ class NodeListGetInfoQuery(Query):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic
+        )
         self.params.update(branch_params)
 
         query = """

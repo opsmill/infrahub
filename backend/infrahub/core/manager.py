@@ -619,6 +619,7 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
+        branch_agnostic: bool = False,
     ) -> Dict[str, Node]:
         """Return a list of nodes based on their IDs."""
 
@@ -626,7 +627,9 @@ class NodeManager:
         at = Timestamp(at)
 
         # Query all nodes
-        query = await NodeListGetInfoQuery.init(db=db, ids=ids, branch=branch, account=account, at=at)
+        query = await NodeListGetInfoQuery.init(
+            db=db, ids=ids, branch=branch, account=account, at=at, branch_agnostic=branch_agnostic
+        )
         await query.execute(db=db)
         nodes_info_by_id: Dict[str, NodeToProcess] = {
             node.node_uuid: node async for node in query.get_nodes(duplicate=False)
@@ -652,6 +655,7 @@ class NodeManager:
             include_owner=include_owner,
             account=account,
             at=at,
+            branch_agnostic=branch_agnostic,
         )
         await query.execute(db=db)
         all_node_attributes = query.get_attributes_group_by_node()
@@ -671,7 +675,9 @@ class NodeManager:
         peers_per_node = None
         peers = None
         if prefetch_relationships:
-            query = await NodeListGetRelationshipsQuery.init(db=db, ids=ids, branch=branch, at=at)
+            query = await NodeListGetRelationshipsQuery.init(
+                db=db, ids=ids, branch=branch, at=at, branch_agnostic=branch_agnostic
+            )
             await query.execute(db=db)
             peers_per_node = query.get_peers_group_by_node()
             peer_ids = []

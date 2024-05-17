@@ -8,15 +8,16 @@ from graphql import graphql
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch, create_ipam_namespace, get_default_ipnamespace
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.graphql import prepare_graphql_params
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
-    from infrahub_sdk.client import InfrahubClient
-
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
+# mypy: disable-error-code="union-attr"
 
 
 POOL_UTILIZATION_QUERY = """
@@ -109,6 +110,12 @@ class TestIpamUtilization(TestInfrahubApp):
         address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=branch2)
         container = initial_dataset["container"]
         prefix = initial_dataset["prefix"]
+        prefix_pool = initial_dataset["prefix_pool"]
+        address_pool = initial_dataset["address_pool"]
+
+        container_branch = await Node.init(db=db, branch=branch2, schema=prefix_schema)
+        await container_branch.new(db=db, prefix="192.0.4.0/24", member_type="prefix")
+        await container_branch.save(db=db)
 
         prefix_branch = await Node.init(db=db, branch=branch2, schema=prefix_schema)
         await prefix_branch.new(db=db, prefix="192.0.3.0/28", member_type="address", parent=container)
@@ -132,7 +139,17 @@ class TestIpamUtilization(TestInfrahubApp):
             await address.save(db=db)
             addresses.append(address)
 
+        prefix_pool_updated = await NodeManager.get_one(db=db, id=prefix_pool.id, branch=branch2)
+        peers = await prefix_pool_updated.resources.get_peers(db=db)
+        await prefix_pool_updated.resources.update(db=db, data=list(peers.values()) + [container_branch])
+        await prefix_pool_updated.save(db=db)
+        address_pool_updated = await NodeManager.get_one(db=db, id=address_pool.id, branch=branch2)
+        peers = await address_pool_updated.resources.get_peers(db=db)
+        await address_pool_updated.resources.update(db=db, data=list(peers.values()) + [prefix_branch])
+        await address_pool_updated.save(db=db)
+
         return {
+            "container_branch": container_branch,
             "prefix_branch": prefix_branch,
             "prefix2_branch": prefix2_branch,
             "addresses": addresses,
@@ -165,8 +182,8 @@ class TestIpamUtilization(TestInfrahubApp):
         assert await getter.get_use_percentage(ip_prefixes=[prefix2]) == 0
         assert await getter.get_use_percentage(ip_prefixes=[prefix]) == 50.0
 
-    async def test_step01_graphql_utilization(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset
+    async def test_step01_graphql_prefix_pool_utilization(
+        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset
     ):
         container = initial_dataset["container"]
         prefix_pool = initial_dataset["prefix_pool"]
@@ -200,6 +217,41 @@ class TestIpamUtilization(TestInfrahubApp):
             }
         }
 
+    async def test_step01_graphql_address_pool_utilization(
+        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset
+    ):
+        prefix = initial_dataset["prefix"]
+        address_pool = initial_dataset["address_pool"]
+        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=POOL_UTILIZATION_QUERY,
+            context_value=gql_params.context,
+            variable_values={"pool_id": address_pool.id},
+        )
+
+        assert not result.errors
+        assert result.data
+        assert result.data == {
+            "InfrahubResourcePoolUtilization": {
+                "count": 1,
+                "utilization": 50,
+                "utilization_default_branch": 50,
+                "edges": [
+                    {
+                        "node": {
+                            "display_label": await prefix.render_display_label(db=db),
+                            "id": prefix.id,
+                            "kind": "IpamIPPrefix",
+                            "utilization": 50,
+                            "utilization_default_branch": 50,
+                            "weight": 14,
+                        }
+                    }
+                ],
+            }
+        }
+
     async def test_step02_branch_utilization(
         self, db: InfrahubDatabase, default_branch: Branch, branch2: Branch, initial_dataset, step_02_dataset
     ):
@@ -221,6 +273,90 @@ class TestIpamUtilization(TestInfrahubApp):
         assert await getter.get_use_percentage(ip_prefixes=[prefix]) == 100.0
         assert await getter.get_use_percentage(ip_prefixes=[prefix], branch_names=[branch2.name]) == 50.0
         assert await getter.get_use_percentage(ip_prefixes=[prefix], branch_names=[default_branch.name]) == 50.0
+
+    async def test_step02_graphql_prefix_pool_branch_utilization(
+        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset, step_02_dataset
+    ):
+        container = initial_dataset["container"]
+        container_branch = step_02_dataset["container_branch"]
+        prefix_pool = initial_dataset["prefix_pool"]
+        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=POOL_UTILIZATION_QUERY,
+            context_value=gql_params.context,
+            variable_values={"pool_id": prefix_pool.id},
+        )
+
+        assert not result.errors
+        assert result.data
+        pool_data = result.data["InfrahubResourcePoolUtilization"]
+        assert pool_data["count"] == 2
+        assert pool_data["utilization"] == 12.5
+        assert pool_data["utilization_default_branch"] == 100 / 16
+        prefix_details_list = pool_data["edges"]
+        assert {
+            "node": {
+                "display_label": await container.render_display_label(db=db),
+                "id": container.id,
+                "kind": "IpamIPPrefix",
+                "utilization": 25.0,
+                "utilization_default_branch": 12.5,
+                "weight": 256,
+            }
+        } in prefix_details_list
+        assert {
+            "node": {
+                "display_label": await container_branch.render_display_label(db=db),
+                "id": container_branch.id,
+                "kind": "IpamIPPrefix",
+                "utilization": 0,
+                "utilization_default_branch": 0,
+                "weight": 256,
+            }
+        } in prefix_details_list
+
+    async def test_step02_graphql_address_pool_branch_utilization(
+        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset, step_02_dataset
+    ):
+        prefix = initial_dataset["prefix"]
+        prefix_branch = step_02_dataset["prefix_branch"]
+        address_pool = initial_dataset["address_pool"]
+        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=POOL_UTILIZATION_QUERY,
+            context_value=gql_params.context,
+            variable_values={"pool_id": address_pool.id},
+        )
+
+        assert not result.errors
+        assert result.data
+        pool_data = result.data["InfrahubResourcePoolUtilization"]
+        assert pool_data["count"] == 2
+        assert pool_data["utilization"] == 100
+        assert pool_data["utilization_default_branch"] == 25.0
+        prefix_details_list = pool_data["edges"]
+        assert {
+            "node": {
+                "display_label": await prefix.render_display_label(db=db),
+                "id": prefix.id,
+                "kind": "IpamIPPrefix",
+                "utilization": 100,
+                "utilization_default_branch": 50,
+                "weight": 14,
+            }
+        } in prefix_details_list
+        assert {
+            "node": {
+                "display_label": await prefix_branch.render_display_label(db=db),
+                "id": prefix_branch.id,
+                "kind": "IpamIPPrefix",
+                "utilization": 100,
+                "utilization_default_branch": 0,
+                "weight": 14,
+            }
+        } in prefix_details_list
 
     async def test_step03_utilization_with_deletes(
         self,
@@ -249,3 +385,87 @@ class TestIpamUtilization(TestInfrahubApp):
         assert (
             await getter.get_use_percentage(ip_prefixes=[prefix], branch_names=[default_branch.name]) == (6 / 14) * 100
         )
+
+    async def test_step03_graphql_prefix_pool_delete_utilization(
+        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset, step_02_dataset, step_03_dataset
+    ):
+        container = initial_dataset["container"]
+        container_branch = step_02_dataset["container_branch"]
+        prefix_pool = initial_dataset["prefix_pool"]
+        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=POOL_UTILIZATION_QUERY,
+            context_value=gql_params.context,
+            variable_values={"pool_id": prefix_pool.id},
+        )
+
+        assert not result.errors
+        assert result.data
+        pool_data = result.data["InfrahubResourcePoolUtilization"]
+        assert pool_data["count"] == 2
+        assert pool_data["utilization"] == 100 / 16
+        assert pool_data["utilization_default_branch"] == 100 / 32
+        prefix_details_list = pool_data["edges"]
+        assert {
+            "node": {
+                "display_label": await container.render_display_label(db=db),
+                "id": container.id,
+                "kind": "IpamIPPrefix",
+                "utilization": 12.5,
+                "utilization_default_branch": 100 / 16,
+                "weight": 256,
+            }
+        } in prefix_details_list
+        assert {
+            "node": {
+                "display_label": await container_branch.render_display_label(db=db),
+                "id": container_branch.id,
+                "kind": "IpamIPPrefix",
+                "utilization": 0,
+                "utilization_default_branch": 0,
+                "weight": 256,
+            }
+        } in prefix_details_list
+
+    async def test_step03_graphql_address_pool_delete_utilization(
+        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset, step_02_dataset, step_03_dataset
+    ):
+        prefix = initial_dataset["prefix"]
+        prefix_branch = step_02_dataset["prefix_branch"]
+        address_pool = initial_dataset["address_pool"]
+        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=POOL_UTILIZATION_QUERY,
+            context_value=gql_params.context,
+            variable_values={"pool_id": address_pool.id},
+        )
+
+        assert not result.errors
+        assert result.data
+        pool_data = result.data["InfrahubResourcePoolUtilization"]
+        assert pool_data["count"] == 2
+        assert pool_data["utilization"] == (25 / 28) * 100
+        assert pool_data["utilization_default_branch"] == (6 / 28) * 100
+        prefix_details_list = pool_data["edges"]
+        assert {
+            "node": {
+                "display_label": await prefix.render_display_label(db=db),
+                "id": prefix.id,
+                "kind": "IpamIPPrefix",
+                "utilization": (12 / 14) * 100,
+                "utilization_default_branch": (6 / 14) * 100,
+                "weight": 14,
+            }
+        } in prefix_details_list
+        assert {
+            "node": {
+                "display_label": await prefix_branch.render_display_label(db=db),
+                "id": prefix_branch.id,
+                "kind": "IpamIPPrefix",
+                "utilization": (13 / 14) * 100,
+                "utilization_default_branch": 0,
+                "weight": 14,
+            }
+        } in prefix_details_list

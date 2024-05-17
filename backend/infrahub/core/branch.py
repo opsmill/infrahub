@@ -279,7 +279,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
         return filters, params
 
     def get_query_filter_path(
-        self, at: Optional[Union[Timestamp, str]] = None, is_isolated: bool = True
+        self, at: Optional[Union[Timestamp, str]] = None, is_isolated: bool = True, branch_agnostic: bool = False
     ) -> Tuple[str, Dict]:
         """
         Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
@@ -292,10 +292,16 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
             There is a currently an assumption that the relationship in the path will be named 'r'
         """
 
-        at = Timestamp(at)
-        branches_times = self.get_branches_and_times_to_query_global(at=at.to_string(), is_isolated=is_isolated)
-
         params: dict[str, Any] = {}
+        at = Timestamp(at)
+        at_str = at.to_string()
+        if branch_agnostic:
+            filter_str = "r.from <= $time1 AND (r.to IS NULL or r.to >= $time1)"
+            params["time1"] = at_str
+            return filter_str, params
+
+        branches_times = self.get_branches_and_times_to_query_global(at=at_str, is_isolated=is_isolated)
+
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
             params[f"branch{idx}"] = list(branch_name)
             params[f"time{idx}"] = time_to_query
