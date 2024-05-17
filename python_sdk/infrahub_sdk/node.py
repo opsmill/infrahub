@@ -812,10 +812,10 @@ class InfrahubNodeBase:
 
         mutation_variables = {key: type(value) for key, value in variables.items()}
 
-        if self.hfid is not None and not exclude_hfid:
-            data["hfid"] = self.hfid
-        elif self.id is not None:
+        if self.id is not None:
             data["id"] = self.id
+        elif self.hfid is not None and not exclude_hfid:
+            data["hfid"] = self.hfid
 
         return {"data": {"data": data}, "variables": variables, "mutation_variables": mutation_variables}
 
