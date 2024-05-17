@@ -7,6 +7,7 @@ generics:
     description: "Generic Network Interface"
     label: "Interface"
     include_in_menu: true
+    icon: "mdi:ethernet"
     menu_placement: "InfraDevice"
     display_labels:
       - name__value
@@ -108,8 +109,7 @@ generics:
   - name: LagInterface
     namespace: Infra
     description: "Generic Lag Interface"
-    include_in_menu: true
-    menu_placement: "InfraDevice"
+    include_in_menu: false
     attributes:
       - name: lacp
         label: LACP
@@ -147,6 +147,7 @@ generics:
     namespace: Infra
     description: "MLAG Interface"
     label: "MLAG Interface"
+    icon: "mdi:ethernet"
     include_in_menu: true
     menu_placement: "InfraDevice"
     attributes:
@@ -276,7 +277,6 @@ nodes:
     namespace: Infra
     description: "Network Layer 3 Interface"
     label: "Interface L3"
-    icon: "mdi:ethernet"
     include_in_menu: false
     display_labels:
       - name__value
@@ -313,7 +313,6 @@ nodes:
     namespace: Infra
     description: "Network Layer 3 Lag Interface"
     label: "Lag Interface L3"
-    icon: "mdi:ethernet"
     include_in_menu: false
     display_labels:
       - name__value
@@ -339,7 +338,6 @@ nodes:
     namespace: Infra
     description: "Network Layer 2 Interface"
     label: "Interface L2"
-    icon: "mdi:ethernet"
     include_in_menu: false
     display_labels:
       - name__value
@@ -614,7 +612,6 @@ nodes:
     namespace: Infra
     description: "L3 MLAG Interface"
     label: "MLAG Interface L3"
-    icon: "mdi:ethernet"
     include_in_menu: false
     display_labels:
       - mlag_id__value
