@@ -29,6 +29,8 @@ const getMutationDetailsFromFormData = (
 
     if (mode === "update" && existingObject) {
       const existingValue = existingObject[attribute.name]?.value;
+      // Set value property for mutation
+      updatedObject[attribute.name] = { value: updatedValue };
 
       if (
         existingValue &&
@@ -62,8 +64,6 @@ const getMutationDetailsFromFormData = (
     ) {
       // Remove property if it's empty or comes from the profile
       delete updatedObject[attribute.name];
-    } else {
-      updatedObject[attribute.name] = { value: updatedValue };
     }
   });
 
