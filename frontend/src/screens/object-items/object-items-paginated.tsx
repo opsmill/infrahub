@@ -50,14 +50,20 @@ import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 
-export default function ObjectItems(props: any) {
-  const { objectname: objectnameFromParams } = useParams();
+type ObjectItemsProps = {
+  objectname?: string;
+  filters?: Array<string>;
+  preventBlock?: boolean;
+  overrideDetailsViewUrl?: (objectId: string, objectKind: string) => string;
+};
 
-  const {
-    objectname: objectnameFromProps = "",
-    filters: filtersFromProps = [],
-    preventBlock,
-  } = props;
+export default function ObjectItems({
+  objectname: objectnameFromProps = "",
+  filters: filtersFromProps = [],
+  overrideDetailsViewUrl,
+  preventBlock,
+}: ObjectItemsProps) {
+  const { objectname: objectnameFromParams } = useParams();
 
   const objectname = objectnameFromProps || objectnameFromParams;
 
@@ -302,7 +308,11 @@ export default function ObjectItems(props: any) {
                       <td key={row.id + "-" + attribute.name} className="p-0">
                         <Link
                           className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
-                          to={constructPath(getObjectDetailsUrl(row.id, row.__typename))}>
+                          to={
+                            overrideDetailsViewUrl
+                              ? overrideDetailsViewUrl(row.id, row.__typename)
+                              : constructPath(getObjectDetailsUrl(row.id, row.__typename))
+                          }>
                           <div>{getObjectItemDisplayValue(row, attribute)}</div>
                         </Link>
                       </td>

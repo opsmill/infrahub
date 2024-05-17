@@ -6,7 +6,9 @@ generics:
     namespace: Infra
     description: "Generic Network Interface"
     label: "Interface"
-    include_in_menu: false
+    include_in_menu: true
+    icon: "mdi:ethernet"
+    menu_placement: "InfraDevice"
     display_labels:
       - name__value
     order_by:
@@ -122,6 +124,13 @@ generics:
         label: MaxBundle
         kind: Number
         optional: true
+    relationships:
+      - name: mlag
+        peer: InfraMlagInterface
+        cardinality: one
+        optional: true
+        kind: Attribute
+        identifier: mlag_member_lag_interface
   - name: Endpoint
     namespace: Infra
     description: "Generic Endpoint to connect two objects together"
@@ -134,7 +143,25 @@ generics:
         cardinality: one
         kind: Attribute
         identifier: connected__endpoint
-
+  - name: MlagInterface
+    namespace: Infra
+    description: "MLAG Interface"
+    label: "MLAG Interface"
+    icon: "mdi:ethernet"
+    include_in_menu: true
+    menu_placement: "InfraDevice"
+    attributes:
+      - name: mlag_id
+        label: MLAG Id
+        kind: Number
+        optional: false
+    relationships:
+      - name: mlag_domain
+        label: MLAG Domain
+        peer: InfraMlagDomain
+        kind: Attribute
+        cardinality: one
+        optional: false
 nodes:
   # --------------------  Device (Platforms, Device, Interfaces)  --------------------
   - name: Device
@@ -241,13 +268,16 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+      - name: mlag_domain
+        peer: InfraMlagDomain
+        optional: true
+        cardinality: one
+        kind: Attribute
   - name: InterfaceL3
     namespace: Infra
     description: "Network Layer 3 Interface"
     label: "Interface L3"
-    icon: "mdi:ethernet"
-    menu_placement: "InfraDevice"
-    include_in_menu: true
+    include_in_menu: false
     display_labels:
       - name__value
     order_by:
@@ -283,9 +313,7 @@ nodes:
     namespace: Infra
     description: "Network Layer 3 Lag Interface"
     label: "Lag Interface L3"
-    icon: "mdi:ethernet"
-    menu_placement: "InfraDevice"
-    include_in_menu: true
+    include_in_menu: false
     display_labels:
       - name__value
     order_by:
@@ -310,9 +338,7 @@ nodes:
     namespace: Infra
     description: "Network Layer 2 Interface"
     label: "Interface L2"
-    icon: "mdi:ethernet"
-    menu_placement: "InfraDevice"
-    include_in_menu: true
+    include_in_menu: false
     display_labels:
       - name__value
     order_by:
@@ -362,8 +388,7 @@ nodes:
     description: "Network Layer 2 Lag Interface"
     label: "Lag Interface L2"
     icon: "mdi:ethernet"
-    menu_placement: "InfraDevice"
-    include_in_menu: true
+    include_in_menu: false
     display_labels:
       - name__value
     order_by:
@@ -533,3 +558,70 @@ nodes:
         optional: false
         cardinality: one
         kind: Parent
+  - name: MlagDomain
+    namespace: Infra
+    description: "Represents the group of devices that share interfaces in a multi chassis link aggregation group"
+    label: "MLAG Domain"
+    icon: "eos-icons:cluster-management"
+    menu_placement: "InfraDevice"
+    include_in_menu: true
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        label: Name
+        description: Name of a group of devices forming an MLAG Group
+        kind: Text
+        optional: false
+        unique: true
+      - name: domain_id
+        label: Domain Id
+        description: Domain Id of a group of devices forming an MLAG Group
+        kind: Number
+        optional: false
+    relationships:
+      - name: devices
+        cardinality: many
+        peer: InfraDevice
+        kind: Attribute
+        optional: false
+      - name: peer_interfaces
+        cardinality: many
+        peer: InfraLagInterfaceL2
+        kind: Attribute
+        optional: false
+  - name: MlagInterfaceL2
+    namespace: Infra
+    description: "L2 MLAG Interface"
+    label: "MLAG Interface L2"
+    icon: "mdi:ethernet"
+    include_in_menu: false
+    display_labels:
+      - mlag_id__value
+    inherit_from:
+      - InfraMlagInterface
+    relationships:
+      - name: members
+        peer: InfraLagInterfaceL2
+        label: Members
+        kind: Attribute
+        optional: false
+        cardinality: many
+        identifier: mlag_member_lag_interface
+  - name: MlagInterfaceL3
+    namespace: Infra
+    description: "L3 MLAG Interface"
+    label: "MLAG Interface L3"
+    include_in_menu: false
+    display_labels:
+      - mlag_id__value
+    inherit_from:
+      - InfraMlagInterface
+    relationships:
+      - name: members
+        peer: InfraLagInterfaceL3
+        label: Members
+        kind: Attribute
+        optional: false
+        cardinality: many
+        identifier: mlag_member_lag_interface

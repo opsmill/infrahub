@@ -218,9 +218,10 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
         CoreAccountTokenCreate(data: { name: "my-first-token" }) {
             ok
             object {
-            token {
-                value
-            }
+                id
+                token {
+                    value
+                }
             }
         }
     }
@@ -234,6 +235,7 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
 
     assert jwt_response.status_code == 200
     api_token = jwt_response.json()["data"]["CoreAccountTokenCreate"]["object"]["token"]["value"]
+    token_id = jwt_response.json()["data"]["CoreAccountTokenCreate"]["object"]["id"]
 
     # Validate that the generated API token can't be used to generate another API token
     with client:
@@ -246,3 +248,60 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
     assert api_response.status_code == 200
     assert not api_response.json()["data"]["CoreAccountTokenCreate"]
     assert api_response.json()["errors"][0]["message"] == api_response.json()["errors"][0]["message"]
+
+    token_query = """
+    query CoreAccountToken {
+    CoreAccountToken(offset: 0, limit: 5) {
+        count
+        edges {
+        node {
+            expiration
+            id
+            name
+        }
+        }
+    }
+    }
+    """
+    with client:
+        token_query_response = client.post(
+            "/graphql",
+            json={"query": token_query},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+    assert token_query_response.status_code == 200
+    tokens = token_query_response.json()["data"]["CoreAccountToken"]["edges"]
+    assert token_id in [token["node"]["id"] for token in tokens]
+
+    token_delete_mutation = (
+        """
+    mutation MyMutation {
+        CoreAccountTokenDelete(data: {id: "%s"}) {
+            ok
+        }
+    }
+    """
+        % token_id
+    )
+
+    with client:
+        token_delete_response = client.post(
+            "/graphql",
+            json={"query": token_delete_mutation},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+    assert token_delete_response.status_code == 200
+    assert token_delete_response.json()["data"]["CoreAccountTokenDelete"]["ok"]
+
+    with client:
+        token_query_response = client.post(
+            "/graphql",
+            json={"query": token_query},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+    assert token_query_response.status_code == 200
+    tokens = token_query_response.json()["data"]["CoreAccountToken"]["edges"]
+    assert token_id not in [token["node"]["id"] for token in tokens]

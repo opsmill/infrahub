@@ -71,6 +71,11 @@ class MainSettings(BaseSettings):
     allow_anonymous_access: bool = Field(
         default=True, description="Indicates if the system allows anonymous read access"
     )
+    telemetry_optout: bool = Field(default=False, description="Disable anonymous usage reporting")
+    telemetry_endpoint: str = "https://telemetry.opsmill.cloud/infrahub"
+    telemetry_interval: int = Field(
+        default=3600 * 24, ge=60, description="Time (in seconds) between telemetry usage push"
+    )
 
 
 class FileSystemStorageSettings(BaseSettings):
@@ -119,7 +124,7 @@ class S3StorageSettings(BaseSettings):
 
 
 class StorageSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_STORAGE")
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_STORAGE_")
     driver: StorageDriver = StorageDriver.FileSystemStorage
     local: FileSystemStorageSettings = FileSystemStorageSettings()
     s3: S3StorageSettings = S3StorageSettings()
@@ -229,6 +234,7 @@ class ApiSettings(BaseSettings):
 
 
 class GitSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_GIT_")
     repositories_directory: str = "repositories"
     sync_interval: int = Field(
         default=10, ge=0, description="Time (in seconds) between git repositories synchronizations"

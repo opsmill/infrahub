@@ -51,7 +51,7 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
                 return (
                   <div
                     {...(isSelectedLast && { ref })}
-                    key={schema.id}
+                    key={schema.kind}
                     className={`
                       h-24 overflow-hidden pl-9 pr-2 cursor-pointer flex items-center relative hover:bg-gray-100 mix-blend-multiply
                       hover:rounded

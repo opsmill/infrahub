@@ -173,6 +173,24 @@ The following settings can be defined in the Config class
 **Default value**: False<br />
 **Environment variable**: `INFRAHUB_UPDATE_GROUP_CONTEXT`<br />
 
+## tls_insecure
+
+**Property**: tls_insecure<br />
+**Description**:  
+    Indicates if TLS certificates are verified.
+    Enabling this option will disable: CA verification, expiry date verification, hostname verification).
+    Can be useful to test with self-signed certificates.<br />
+**Type**: `boolean`<br />
+**Default value**: False<br />
+**Environment variable**: `INFRAHUB_TLS_INSECURE`<br />
+
+## tls_ca_file
+
+**Property**: tls_ca_file<br />
+**Description**: File path to CA cert or bundle in PEM format<br />
+**Type**: `string`<br />
+**Environment variable**: `INFRAHUB_TLS_CA_FILE`<br />
+
 ## recorder
 
 **Property**: recorder<br />

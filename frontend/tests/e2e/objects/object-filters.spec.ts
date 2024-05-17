@@ -13,7 +13,7 @@ test.describe("Object filters", () => {
     await test.step("access objects list and verify initial state", async () => {
       await page.goto("/objects/InfraDevice");
       await expect(page.getByRole("main")).toContainText("Filters: 0");
-      await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 20 results");
+      await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 30 results");
     });
 
     await test.step("start filtering objects", async () => {
@@ -51,7 +51,7 @@ test.describe("Object filters", () => {
     await test.step("remove filters and verify initial state", async () => {
       await page.getByTestId("remove-filters").click();
       await expect(page.getByRole("main")).toContainText("Filters: 0");
-      await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 20 results");
+      await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 30 results");
     });
   });
 });

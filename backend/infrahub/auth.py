@@ -40,6 +40,10 @@ class AccountSession(BaseModel):
     def read_only(self) -> bool:
         return self.role == "read-only"
 
+    @property
+    def authenticated_by_jwt(self) -> bool:
+        return self.auth_type == AuthType.JWT
+
 
 async def authenticate_with_password(
     db: InfrahubDatabase, credentials: models.PasswordCredential, branch: Optional[str] = None
