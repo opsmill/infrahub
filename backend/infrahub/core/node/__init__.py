@@ -81,7 +81,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return hfid
 
     async def get_hfid_as_string(self, db: InfrahubDatabase, include_kind: bool = False) -> Optional[str]:
-        """Return the Human friendly id of the node in string format separated with double dunder (__) ."""
+        """Return the Human friendly id of the node in string format separated with a dunder (__) ."""
         hfid = await self.get_hfid(db=db, include_kind=include_kind)
         if not hfid:
             return None
