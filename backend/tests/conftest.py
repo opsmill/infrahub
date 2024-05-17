@@ -278,8 +278,88 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
 
 
 @pytest.fixture
-async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered) -> None:
-    registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
+async def car_person_schema(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered
+) -> SchemaBranch:
+    return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
+
+
+@pytest.fixture
+async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_schema, data_schema) -> SchemaRoot:
+    schema: dict[str, Any] = {
+        "generics": [
+            {
+                "name": "Animal",
+                "namespace": "Test",
+                "human_friendly_id": ["owner__name__value", "name__value"],
+                "uniqueness_constraints": [
+                    ["owner", "name__value"],
+                ],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text"},
+                ],
+                "relationships": [
+                    {
+                        "name": "owner",
+                        "peer": "TestPerson",
+                        "optional": False,
+                        "identifier": "person__animal",
+                        "cardinality": "one",
+                        "direction": "outbound",
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Dog",
+                "namespace": "Test",
+                "inherit_from": ["TestAnimal"],
+                "attributes": [
+                    {"name": "breed", "kind": "Text", "optional": False},
+                    {"name": "color", "kind": "Color", "default_value": "#444444", "optional": True},
+                ],
+            },
+            {
+                "name": "Cat",
+                "namespace": "Test",
+                "inherit_from": ["TestAnimal"],
+                "attributes": [
+                    {"name": "breed", "kind": "Text", "optional": False},
+                    {"name": "color", "kind": "Color", "default_value": "#444444", "optional": True},
+                ],
+            },
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "display_labels": ["name__value"],
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "height", "kind": "Number", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "animals",
+                        "peer": "TestAnimal",
+                        "identifier": "person__animal",
+                        "cardinality": "many",
+                        "direction": "inbound",
+                    }
+                ],
+            },
+        ],
+    }
+
+    return SchemaRoot(**schema)
+
+
+@pytest.fixture
+async def animal_person_schema(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema_unregistered
+) -> SchemaBranch:
+    return registry.schema.register_schema(schema=animal_person_schema_unregistered, branch=default_branch.name)
 
 
 @pytest.fixture

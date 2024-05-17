@@ -8,6 +8,7 @@ from infrahub.core.node import Node
 from infrahub.core.query.node import NodeToProcess
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
+from infrahub.core.schema_manager import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
@@ -187,21 +188,50 @@ async def test_get_one_relationship_with_flag_property(db: InfrahubDatabase, def
 async def test_get_one_by_id_or_default_filter(
     db: InfrahubDatabase,
     default_branch: Branch,
-    criticality_schema: NodeSchema,
+    criticality_schema: SchemaBranch,
     criticality_low: Node,
     criticality_medium: Node,
 ):
     node1 = await NodeManager.get_one_by_id_or_default_filter(
-        db=db, id=criticality_low.id, schema_name=criticality_schema.kind
+        db=db, id=criticality_low.id, kind=criticality_schema.kind
     )
     assert isinstance(node1, Node)
     assert node1.id == criticality_low.id
 
     node2 = await NodeManager.get_one_by_id_or_default_filter(
-        db=db, id=criticality_low.name.value, schema_name=criticality_schema.kind
+        db=db, id=criticality_low.name.value, kind=criticality_schema.kind
     )
     assert isinstance(node2, Node)
     assert node2.id == criticality_low.id
+
+
+async def test_get_one_by_hfid(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    animal_person_schema: SchemaBranch,
+):
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+
+    person2 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person2.new(db=db, name="Jim")
+    await person2.save(db=db)
+
+    dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
+    await dog1.save(db=db)
+
+    dog2 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog2.new(db=db, name="Bella", breed="French Bulldog", owner=person1)
+    await dog2.save(db=db)
+
+    node1 = await NodeManager.get_one_by_hfid(db=db, hfid=["Jack", "Rocky"], kind=dog_schema.kind)
+    assert isinstance(node1, Node)
+    assert node1.id == dog1.id
 
 
 async def test_get_many(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium):

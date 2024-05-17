@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, Flag, auto
 
 
 class FlagProperty(Enum):
@@ -24,3 +24,16 @@ class UpdateValidationErrorType(Enum):
     VALIDATOR_FAILED = "validator_failed"
     MIGRATION_NOT_AVAILABLE = "migration_not_available"
     VALIDATOR_NOT_AVAILABLE = "validator_not_available"
+
+
+class SchemaElementPathType(Flag):
+    ATTR = auto()
+    REL_ONE_NO_ATTR = auto()
+    REL_ONE_ATTR = auto()
+    REL_MANY_NO_ATTR = auto()
+    REL_MANY_ATTR = auto()
+    ALL_RELS = REL_ONE_NO_ATTR | REL_MANY_NO_ATTR | REL_ONE_ATTR | REL_MANY_ATTR
+    RELS_ATTR = REL_ONE_ATTR | REL_MANY_ATTR
+    RELS_NO_ATTR = REL_ONE_NO_ATTR | REL_MANY_NO_ATTR
+    REL_ONE = REL_ONE_NO_ATTR | REL_ONE_ATTR
+    REL_MANY = REL_MANY_NO_ATTR | REL_MANY_ATTR

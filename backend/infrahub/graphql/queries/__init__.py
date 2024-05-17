@@ -2,8 +2,9 @@ from .branch import BranchQueryList
 from .diff.diff import DiffSummary
 from .diff.old import DiffSummaryOld
 from .internal import InfrahubInfo
-from .ipam import InfrahubIPPrefixGetNextAvailable
+from .ipam import InfrahubIPAddressGetNextAvailable, InfrahubIPPrefixGetNextAvailable
 from .relationship import Relationship
+from .resource_manager import InfrahubResourcePoolUtilization
 from .status import InfrahubStatus
 from .task import Task
 
@@ -13,7 +14,9 @@ __all__ = [
     "DiffSummaryOld",
     "InfrahubInfo",
     "InfrahubStatus",
+    "InfrahubIPAddressGetNextAvailable",
     "InfrahubIPPrefixGetNextAvailable",
+    "InfrahubResourcePoolUtilization",
     "Relationship",
     "Task",
 ]

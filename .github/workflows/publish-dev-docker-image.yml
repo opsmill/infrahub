@@ -58,7 +58,6 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
             org.opencontainers.image.version=dev-${{ steps.short_ref.outputs.short_ref }}
-            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
           flavor: |
             latest=false
 

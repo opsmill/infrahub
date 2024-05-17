@@ -9,7 +9,7 @@ import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { getAttributeColumnsFromNodeOrGenericSchema } from "../../utils/getSchemaObjectColumns";
-import ErrorScreen from "../error-screen/error-screen";
+import ErrorScreen from "../errors/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import GroupRelationship from "./group-relationship";
 

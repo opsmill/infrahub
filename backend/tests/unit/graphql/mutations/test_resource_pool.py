@@ -4,13 +4,13 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
-from infrahub.core.node.resource_manager import CorePrefixPool
+from infrahub.core.node.resource_manager import CoreIPAddressPool, CorePrefixPool
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
 
 
-async def test_assign_from_pool(
+async def test_assign_prefix_from_pool(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_ipnamespace: Node,
@@ -79,11 +79,93 @@ async def test_assign_from_pool(
     )
 
     assert not result.errors
+    assert result.data
     assert result.data["TestMandatoryPrefixCreate"]["ok"]
     assert result.data["TestMandatoryPrefixCreate"]["object"] == {
         "name": {"value": "site1"},
         "prefix": {
             "node": {"prefix": {"value": "10.10.0.0/24"}},
+            "properties": {
+                "source": {"id": pool.id},
+            },
+        },
+    }
+
+
+async def test_assign_address_from_pool(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_extended_schema: SchemaBranch,
+    init_nodes_registry,
+    ip_dataset_prefix_v4,
+):
+    ns1 = ip_dataset_prefix_v4["ns1"]
+    net145 = ip_dataset_prefix_v4["net145"]
+
+    address_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+
+    pool = await CoreIPAddressPool.init(schema=address_pool_schema, db=db, branch=default_branch)
+    await pool.new(
+        db=db,
+        name="pool1",
+        default_address_type="IpamIPAddress",
+        resources=[net145],
+        ip_namespace=ns1,
+    )
+    await pool.save(db=db)
+
+    query = (
+        """
+    mutation {
+        TestMandatoryAddressCreate(data: {
+            name: { value: "server1" }
+            address: {
+                from_pool: {
+                    id: "%s"
+                }
+            }
+        }) {
+            ok
+            object {
+                name {
+                    value
+                }
+                address {
+                    node {
+                        address {
+                            value
+                        }
+                    }
+                    properties {
+                        source {
+                            id
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+        % pool.id
+    )
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert not result.errors
+    assert result.data
+    assert result.data["TestMandatoryAddressCreate"]["ok"]
+    assert result.data["TestMandatoryAddressCreate"]["object"] == {
+        "name": {"value": "server1"},
+        "address": {
+            "node": {"address": {"value": "10.10.3.2/27"}},
             "properties": {
                 "source": {"id": pool.id},
             },

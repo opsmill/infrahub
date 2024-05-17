@@ -136,7 +136,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
 
         address = node or await NodeManager.get_one_by_id_or_default_filter(
             db=db,
-            schema_name=cls._meta.schema.kind,
+            kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
             at=at,
@@ -253,7 +253,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
 
         prefix = node or await NodeManager.get_one_by_id_or_default_filter(
             db=db,
-            schema_name=cls._meta.schema.kind,
+            kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
             at=at,

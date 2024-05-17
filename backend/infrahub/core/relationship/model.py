@@ -5,7 +5,7 @@ import sys
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple, Union
 
 from infrahub_sdk import UUIDT
-from infrahub_sdk.utils import intersection
+from infrahub_sdk.utils import intersection, is_valid_uuid
 from pydantic.v1 import BaseModel, Field
 
 from infrahub.core import registry
@@ -91,6 +91,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         self._peer: Optional[Union[Node, str]] = None
         self.peer_id: Optional[str] = None
+        self.peer_hfid: Optional[list[str]] = None
         self.data: Optional[Union[dict, RelationshipPeerData, str]] = None
 
         self.from_pool: Optional[dict[str, Any]] = None
@@ -139,7 +140,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self.data = data
 
         if isinstance(data, RelationshipPeerData):
-            await self.set_peer(str(data.peer_id))
+            await self.set_peer(value=str(data.peer_id))
 
             if not self.id and data.rel_node_id:
                 self.id = data.rel_node_id
@@ -157,6 +158,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             for key, value in data.items():
                 if key in ["peer", "id"]:
                     await self.set_peer(value=data.get(key, None))
+                elif key == "hfid" and self.peer_id is None:
+                    self.peer_hfid = value
                 elif key.startswith(PREFIX_PROPERTY) and key.replace(PREFIX_PROPERTY, "") in self._flag_properties:
                     setattr(self, key.replace(PREFIX_PROPERTY, ""), value)
                 elif key.startswith(PREFIX_PROPERTY) and key.replace(PREFIX_PROPERTY, "") in self._node_properties:
@@ -209,7 +212,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         node = await registry.manager.get_one_by_id_or_default_filter(
             db=db,
             id=self.node_id,
-            schema_name=self.schema.kind,
+            kind=self.schema.kind,
             branch=self.branch,
             at=self.at,
             include_owner=True,
@@ -246,7 +249,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             peer = await registry.manager.get_one_by_id_or_default_filter(
                 db=db,
                 id=self.get_peer_id(),
-                schema_name=self.schema.peer,
+                kind=self.schema.peer,
                 branch=self.branch,
                 at=self.at,
                 include_owner=True,
@@ -364,6 +367,20 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
     async def resolve(self, db: InfrahubDatabase) -> None:
         """Resolve the peer of the relationship."""
 
+        if self.peer_id and not is_valid_uuid(self.peer_id):
+            peer = await registry.manager.get_one_by_default_filter(
+                db=db, id=self.peer_id, branch=self.branch, kind=self.schema.peer, fields={"display_label": None}
+            )
+            if peer:
+                await self.set_peer(value=peer)
+
+        if not self.peer_id and self.peer_hfid:
+            peer = await registry.manager.get_one_by_hfid(
+                db=db, hfid=self.peer_hfid, branch=self.branch, kind=self.schema.peer, fields={"display_label": None}
+            )
+            if peer:
+                await self.set_peer(value=peer)
+
         if not self.peer_id and self.from_pool and "id" in self.from_pool:
             pool_id = str(self.from_pool.get("id"))
             pool = await registry.manager.get_one(db=db, id=pool_id, branch=self.branch)
@@ -379,8 +396,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             data_from_pool = copy.deepcopy(self.from_pool)
             del data_from_pool["id"]
 
-            peer = await pool.get_resource(db=db, branch=self.branch, **data_from_pool)  # type: ignore[attr-defined]
-            await self.set_peer(value=peer)
+            assigned_peer: Node = await pool.get_resource(db=db, branch=self.branch, **data_from_pool)  # type: ignore[attr-defined]
+            await self.set_peer(value=assigned_peer)
             self.set_source(value=pool.id)
 
     async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> Self:

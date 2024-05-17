@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test.describe("/ipam/prefixes - Prefix list", () => {
   test("view the prefix list, use the pagination and view prefix summary", async ({ page }) => {
     await page.goto("/ipam/prefixes");
-    await page.getByTestId("select-open-option-button").click();
+    await page.getByTestId("ipam-main-content").getByTestId("select-open-option-button").click();
     await page.getByRole("option", { name: "20" }).click();
     await page
       .getByTestId("ipam-main-content")

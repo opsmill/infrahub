@@ -4,6 +4,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import { StringParam, useQueryParam } from "use-query-params";
 import SlideOver from "../../../components/display/slide-over";
 import ModalDelete from "../../../components/modals/modal-delete";
 import ProgressBarChart from "../../../components/stats/progress-bar-chart";
@@ -16,25 +17,31 @@ import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
 import { GET_PREFIXES } from "../../../graphql/queries/ipam/prefixes";
 import useQuery from "../../../hooks/useQuery";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
+import { defaultIpNamespaceAtom } from "../common/namespace.state";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "../../../utils/string";
-import ErrorScreen from "../../error-screen/error-screen";
+import ErrorScreen from "../../errors/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
-import { IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
+import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
 import { reloadIpamTreeAtom } from "../ipam-tree/ipam-tree.state";
 
 const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
   const { prefix } = useParams();
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
+  const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState();
   const [isLoading, setIsLoading] = useState(false);
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
 
-  const { loading, error, data, refetch } = useQuery(GET_PREFIXES);
+  const { loading, error, data, refetch } = useQuery(GET_PREFIXES, {
+    variables: { namespaces: namespace ? [namespace] : [defaultIpNamespace] },
+    skip: !defaultIpNamespace,
+  });
 
   useImperativeHandle(ref, () => ({ refetch }));
 
@@ -108,7 +115,11 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
       });
 
       refetch();
-      reloadIpamTree(prefix);
+
+      const currentIpNamespace = namespace ?? defaultIpNamespace;
+      if (currentIpNamespace) {
+        reloadIpamTree(currentIpNamespace, prefix);
+      }
 
       setRelatedRowToDelete(undefined);
 
@@ -131,7 +142,7 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
 
   return (
     <div>
-      {loading && <LoadingScreen hideText />}
+      {(loading || !defaultIpNamespace) && <LoadingScreen hideText />}
 
       {data && (
         <Table rows={rows} columns={columns} onDelete={handleDelete} onUpdate={handleUpdate} />

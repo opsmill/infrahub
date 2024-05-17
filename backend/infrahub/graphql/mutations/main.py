@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
-from infrahub_sdk.utils import extract_fields
+from infrahub_sdk.utils import extract_fields, is_valid_uuid
 from typing_extensions import Self
 
 from infrahub import config
@@ -23,13 +23,14 @@ from infrahub.core.schema.profile_schema import ProfileSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.exceptions import NodeNotFoundError, ValidationError
+from infrahub.exceptions import ProcessingError, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
+from .node_getter.by_hfid import MutationNodeGetterByHfid
 from .node_getter.by_id import MutationNodeGetterById
 
 if TYPE_CHECKING:
@@ -55,6 +56,51 @@ class InfrahubMutationOptions(MutationOptions):
 
 class InfrahubMutationMixin:
     @classmethod
+    async def find_object(
+        cls,
+        db: InfrahubDatabase,
+        at: Union[Timestamp, str] = None,
+        branch: Union[Branch, str] = None,
+        id: Optional[str] = None,  # pylint: disable=redefined-builtin
+        hfid: Optional[list[str]] = None,
+    ) -> Node:
+        if not id and not hfid:
+            raise ProcessingError(message="either id or hfid must be provided.")
+
+        if id and is_valid_uuid(id):
+            return await NodeManager.get_one(
+                db=db,
+                kind=cls._meta.schema.kind,
+                id=id,
+                branch=branch,
+                at=at,
+                include_owner=True,
+                include_source=True,
+            )
+
+        if hfid:
+            return await NodeManager.get_one_by_hfid(
+                db=db,
+                kind=cls._meta.schema.kind,
+                hfid=hfid,
+                branch=branch,
+                at=at,
+                include_owner=True,
+                include_source=True,
+            )
+
+        return await NodeManager.get_one_by_default_filter(
+            db=db,
+            kind=cls._meta.schema.kind,
+            id=id,
+            branch=branch,
+            at=at,
+            include_owner=True,
+            include_source=True,
+            raise_on_error=True,
+        )
+
+    @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, *args, **kwargs):
         context: GraphqlContext = info.context
 
@@ -76,8 +122,9 @@ class InfrahubMutationMixin:
         elif "Upsert" in cls.__name__:
             node_manager = NodeManager()
             node_getters = [
-                MutationNodeGetterById(context.db, node_manager),
-                MutationNodeGetterByDefaultFilter(context.db, node_manager),
+                MutationNodeGetterById(db=context.db, node_manager=node_manager),
+                MutationNodeGetterByHfid(db=context.db, node_manager=node_manager),
+                MutationNodeGetterByDefaultFilter(db=context.db, node_manager=node_manager),
             ]
             obj, mutation, created = await cls.mutate_upsert(
                 root=root, info=info, branch=context.branch, at=context.at, node_getters=node_getters, *args, **kwargs
@@ -134,7 +181,7 @@ class InfrahubMutationMixin:
         if previous_profile_ids is None or previous_profile_ids != current_profile_ids:
             return await NodeManager.get_one_by_id_or_default_filter(
                 db=db,
-                schema_name=cls._meta.schema.kind,
+                kind=cls._meta.schema.kind,
                 id=obj.get_id(),
                 branch=branch,
                 include_owner=True,
@@ -178,7 +225,6 @@ class InfrahubMutationMixin:
             await obj.new(db=db, **data)
             fields_to_validate = list(data)
             await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
-
             if db.is_transaction:
                 await obj.save(db=db)
             else:
@@ -216,15 +262,8 @@ class InfrahubMutationMixin:
         context: GraphqlContext = info.context
         db = database or context.db
 
-        obj = node or await NodeManager.get_one_by_id_or_default_filter(
-            db=db,
-            schema_name=cls._meta.schema.kind,
-            id=data.get("id"),
-            branch=branch,
-            at=at,
-            include_owner=True,
-            include_source=True,
-        )
+        obj = node or await cls.find_object(db=db, id=data.get("id"), hfid=data.get("hfid"), branch=branch, at=at)
+
         try:
             if db.is_transaction:
                 obj = await cls.mutate_update_object(db=db, info=info, data=data, branch=branch, obj=obj)
@@ -259,6 +298,8 @@ class InfrahubMutationMixin:
         fields = list(data.keys())
         if "id" in fields:
             fields.remove("id")
+        if "hfid" in fields:
+            fields.remove("hfid")
         validate_mutation_permissions_update_node(
             operation=cls.__name__, node_id=node_id, account_session=context.account_session, fields=fields
         )
@@ -309,7 +350,11 @@ class InfrahubMutationMixin:
                 root=root, info=info, data=data, branch=branch, at=at, database=database, node=node
             )
             return updated_obj, mutation, False
-        created_obj, mutation = await cls.mutate_create(root=root, info=info, data=data, branch=branch, at=at)
+        # We need to convert the InputObjectType into a dict in order to remove hfid that isn't a valid input when creating the object
+        data_dict = dict(data)
+        if "hfid" in data:
+            del data_dict["hfid"]
+        created_obj, mutation = await cls.mutate_create(root=root, info=info, data=data_dict, branch=branch, at=at)
         return created_obj, mutation, True
 
     @classmethod
@@ -324,8 +369,7 @@ class InfrahubMutationMixin:
     ):
         context: GraphqlContext = info.context
 
-        if not (obj := await NodeManager.get_one(db=context.db, id=data.get("id"), branch=branch, at=at)):
-            raise NodeNotFoundError(branch, cls._meta.schema.kind, data.get("id"))
+        obj = await cls.find_object(db=context.db, id=data.get("id"), hfid=data.get("hfid"), branch=branch, at=at)
 
         try:
             async with context.db.start_transaction() as db:

@@ -7,9 +7,16 @@ from infrahub.core.constants import infrahubkind as InfrahubKind
 from infrahub.exceptions import ValidationError
 from infrahub.utils import InfrahubStringEnum
 
-from .schema import FlagProperty, NodeProperty, UpdateSupport, UpdateValidationErrorType
+from .schema import FlagProperty, NodeProperty, SchemaElementPathType, UpdateSupport, UpdateValidationErrorType
 
-__all__ = ["InfrahubKind", "FlagProperty", "NodeProperty", "UpdateSupport", "UpdateValidationErrorType"]
+__all__ = [
+    "InfrahubKind",
+    "FlagProperty",
+    "NodeProperty",
+    "UpdateSupport",
+    "UpdateValidationErrorType",
+    "SchemaElementPathType",
+]
 
 
 GLOBAL_BRANCH_NAME = "-global-"
@@ -29,6 +36,7 @@ RESERVED_ATTR_REL_NAMES = [
     "rel",
     "rels",
     "save",
+    "hfid",
 ]
 
 RESERVED_ATTR_GEN_NAMES = ["type"]

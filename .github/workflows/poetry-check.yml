@@ -5,7 +5,6 @@ on:
   workflow_call:
     inputs:
       directory:
-        required: true
         type: "string"
         description: "Directory in which poetry check will be executed"
         default: "./"

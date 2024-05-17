@@ -1,5 +1,4 @@
 import importlib
-import os
 import sys
 from pathlib import Path
 from typing import List, MutableMapping, Optional, Tuple, Union
@@ -23,9 +22,7 @@ def render_adapter(
     )
     rendered_files = []
     for adapter in [sync_instance.source, sync_instance.destination]:
-        output_dir_absolute = str(os.path.join(sync_instance.directory, adapter.name))
-
-        output_dir_path = Path(output_dir_absolute)
+        output_dir_path = Path(sync_instance.directory, adapter.name)
         if not output_dir_path.is_dir():
             output_dir_path.mkdir(exist_ok=True)
 
@@ -36,12 +33,12 @@ def render_adapter(
         for item in files_to_render:
             render_template(
                 template_file=item[0],
-                output_dir=output_dir_absolute,
+                output_dir=output_dir_path,
                 output_file=item[1],
                 context={"schema": schema, "adapter": adapter, "config": sync_instance},
             )
-            output_file_path = Path(output_dir_absolute, item[1])
-            rendered_files.append((item[0], str(output_file_path)))
+            output_file_path = output_dir_path / item[1]
+            rendered_files.append((item[0], output_file_path))
 
     return rendered_files
 

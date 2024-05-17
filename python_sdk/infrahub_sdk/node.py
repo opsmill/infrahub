@@ -693,8 +693,7 @@ class InfrahubNodeBase:
         self._branch = branch
         self._existing: bool = True
 
-        extracted_uuid = data.get("id", None) if isinstance(data, dict) else None
-        self.id = extracted_uuid or str(UUIDT())
+        self.id = data.get("id", None) if isinstance(data, dict) else None
         self.display_label: Optional[str] = data.get("display_label", None) if isinstance(data, dict) else None
         self.typename: Optional[str] = data.get("__typename", schema.kind) if isinstance(data, dict) else schema.kind
 
@@ -704,7 +703,7 @@ class InfrahubNodeBase:
         self._artifact_support = hasattr(schema, "inherit_from") and "CoreArtifactTarget" in schema.inherit_from
         self._artifact_definition_support = schema.kind == "CoreArtifactDefinition"
 
-        if not extracted_uuid:
+        if not self.id:
             self._existing = False
 
         self._init_attributes(data)
@@ -1305,11 +1304,8 @@ class InfrahubNode(InfrahubNodeBase):
         response = await self._client.execute_graphql(
             query=query.render(), branch_name=self._branch, tracker=tracker, variables=input_data["variables"]
         )
+        self.id = response[mutation_name]["object"]["id"]
         self._existing = True
-
-        # If Upsert was use we need to read back the ID from the response in case the node already existed
-        if allow_upsert:
-            self.id = response[mutation_name]["object"]["id"]
 
     async def update(self, at: Optional[Timestamp] = None, do_full_update: bool = False) -> None:
         self._deprecated_parameter(at=at)
@@ -1640,11 +1636,8 @@ class InfrahubNodeSync(InfrahubNodeBase):
         response = self._client.execute_graphql(
             query=query.render(), branch_name=self._branch, at=at, tracker=tracker, variables=input_data["variables"]
         )
+        self.id = response[mutation_name]["object"]["id"]
         self._existing = True
-
-        # If Upsert was use we need to read back the ID from the response in case the node already existed
-        if allow_upsert:
-            self.id = response[mutation_name]["object"]["id"]
 
     def update(self, at: Optional[Timestamp] = None, do_full_update: bool = False) -> None:
         self._deprecated_parameter(at=at)

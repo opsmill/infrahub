@@ -4,16 +4,16 @@ import { useAtomValue } from "jotai/index";
 import { useParams } from "react-router-dom";
 import { Link } from "../../../components/utils/link";
 import { GET_IP_ADDRESS_KIND } from "../../../graphql/queries/ipam/ip-address";
+import { getObjectDetailsPaginated } from "../../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../../hooks/useQuery";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { getSchemaObjectColumns } from "../../../utils/getSchemaObjectColumns";
-import ErrorScreen from "../../error-screen/error-screen";
+import ErrorScreen from "../../errors/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import { IpDetailsCard } from "../common/ip-details-card";
 import { constructPathForIpam } from "../common/utils";
-import { IP_ADDRESS_GENERIC, IPAM_ROUTE } from "../constants";
+import { IPAM_ROUTE, IP_ADDRESS_GENERIC } from "../constants";
 import { IpamSummarySkeleton } from "../prefixes/ipam-summary-skeleton";
-import { getObjectDetailsPaginated } from "../../../graphql/queries/objects/getObjectDetails";
 
 export default function IpAddressSummary() {
   const { prefix, ip_address } = useParams();

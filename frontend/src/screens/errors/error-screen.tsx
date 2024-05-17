@@ -1,4 +1,4 @@
-import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { ReactElement } from "react";
 
 type tNoData = {
@@ -13,10 +13,10 @@ export default function ErrorScreen(props: tNoData) {
 
   return (
     <div className="flex flex-col flex-1 items-center justify-center p-8">
-      <div className="bg-custom-white rounded-full p-4 text-red-300">
-        {icon || <ExclamationCircleIcon className="h-8 w-8" />}
+      <div className="bg-custom-white rounded-full text-red-300">
+        {icon || <Icon icon={"mdi:warning-circle-outline"} className="text-3xl" />}
       </div>
-      <div className="mt-4">{message ?? DEFAULT_MESSAGE}</div>
+      <div>{message ?? DEFAULT_MESSAGE}</div>
     </div>
   );
 }

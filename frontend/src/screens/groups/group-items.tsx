@@ -10,10 +10,10 @@ import ModalDelete from "../../components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { Pagination } from "../../components/utils/pagination";
 import { GROUP_OBJECT } from "../../config/constants";
-import { useAuth } from "../../hooks/useAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getGroups } from "../../graphql/queries/groups/getGroups";
+import { useAuth } from "../../hooks/useAuth";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
@@ -27,9 +27,9 @@ import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue
 import { getGroupColumns } from "../../utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
-import ErrorScreen from "../error-screen/error-screen";
+import ErrorScreen from "../errors/error-screen";
+import NoDataFound from "../errors/no-data-found";
 import LoadingScreen from "../loading-screen/loading-screen";
-import NoDataFound from "../no-data-found/no-data-found";
 
 export default function GroupItems() {
   const { groupname } = useParams();

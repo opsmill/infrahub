@@ -21,12 +21,14 @@ import { currentBranchAtom } from "../../../state/atoms/branches.atom";
 import { genericsState } from "../../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "../../../utils/string";
-import ErrorScreen from "../../error-screen/error-screen";
+import ErrorScreen from "../../errors/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
 import { constructPathForIpam } from "../common/utils";
-import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "../constants";
+import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC, IPAM_QSP } from "../constants";
 import { reloadIpamTreeAtom } from "../ipam-tree/ipam-tree.state";
+import { StringParam, useQueryParam } from "use-query-params";
+import { defaultIpNamespaceAtom } from "../common/namespace.state";
 
 const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const { prefix } = useParams();
@@ -36,10 +38,12 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState();
   const [isLoading, setIsLoading] = useState(false);
   const generics = useAtomValue(genericsState);
+  const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
+  const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
 
   const prefixSchema = generics.find(({ kind }) => kind === IP_PREFIX_GENERIC);
-  const adressSchema = generics.find(({ kind }) => kind === IP_ADDRESS_GENERIC);
+  const addressSchema = generics.find(({ kind }) => kind === IP_ADDRESS_GENERIC);
 
   const { loading, error, data, refetch } = useQuery(GET_PREFIX, {
     variables: { ids: [prefix] },
@@ -72,9 +76,9 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
     ) : (
       ""
     ),
-    prefix: adressSchema?.icon ? (
+    prefix: addressSchema?.icon ? (
       <Tooltip content="IP Adress" enabled>
-        <Icon icon={adressSchema.icon as string} />
+        <Icon icon={addressSchema.icon as string} />
       </Tooltip>
     ) : (
       ""
@@ -144,17 +148,21 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
       });
 
       refetch();
-      reloadIpamTree(prefix);
+
+      const currentIpNamespace = namespace ?? defaultIpNamespace;
+      if (currentIpNamespace) {
+        reloadIpamTree(currentIpNamespace, prefix);
+      }
 
       setRelatedRowToDelete(undefined);
 
-      toast(
+      toast(() => (
         <Alert
           type={ALERT_TYPES.SUCCESS}
           data-testid="alert-prefix-deleted"
           message={`Prefix ${relatedRowToDelete?.values?.prefix} deleted`}
         />
-      );
+      ));
     } catch (error) {
       console.error("Error while deleting address: ", error);
     }

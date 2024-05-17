@@ -17,7 +17,7 @@ import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schem
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
-import ErrorScreen from "../error-screen/error-screen";
+import ErrorScreen from "../errors/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import RelationshipDetails from "./relationship-details-paginated";
 
