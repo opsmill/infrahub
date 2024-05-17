@@ -51,6 +51,7 @@ export default function ObjectItemCreate(props: iProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [kind, setKind] = useState("");
   const [profile, setProfile] = useState("");
+  console.log("profile: ", profile);
 
   const generic = genericsList.find((s) => s.kind === objectname);
 
@@ -109,7 +110,7 @@ export default function ObjectItemCreate(props: iProps) {
     });
 
   const handleProfileChange = (newProfile: string) => {
-    setProfile(newProfile);
+    setProfile(newProfile.id);
   };
 
   const handleKindChange = (newKind: string) => {
@@ -137,7 +138,7 @@ export default function ObjectItemCreate(props: iProps) {
         data: stringifyWithoutQuotes({
           ...newObject,
           ...customObject,
-          ...(profile ? { profiles: [{ id: profile }] } : {}),
+          ...(profile ? { profiles: [{ id: profile.id }] } : {}),
         }),
       });
 
