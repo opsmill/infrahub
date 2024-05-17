@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { Select } from "../../components/inputs/select";
+import { Select, SelectOption } from "../../components/inputs/select";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { PROFILE_KIND } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
@@ -51,7 +51,6 @@ export default function ObjectItemCreate(props: iProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [kind, setKind] = useState("");
   const [profile, setProfile] = useState("");
-  console.log("profile: ", profile);
 
   const generic = genericsList.find((s) => s.kind === objectname);
 
@@ -109,7 +108,7 @@ export default function ObjectItemCreate(props: iProps) {
       profile: currentProfile,
     });
 
-  const handleProfileChange = (newProfile: string) => {
+  const handleProfileChange = (newProfile: SelectOption) => {
     setProfile(newProfile.id);
   };
 
