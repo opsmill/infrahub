@@ -136,7 +136,8 @@ const sidebars: SidebarsConfig = {
         'reference/message-bus-events',
         'reference/api-server',
         'reference/dotinfrahub',
-        'reference/infrahub-tests'
+        'reference/infrahub-tests',
+        'reference/schema-validation'
       ],
     },
     {
