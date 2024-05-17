@@ -490,21 +490,15 @@ class SchemaAttributePath:
 
     @property
     def is_type_attribute(self) -> bool:
-        if self.attribute_schema and not self.related_schema and not self.relationship_schema:
-            return True
-        return False
+        return bool(self.attribute_schema and not self.related_schema and not self.relationship_schema)
 
     @property
     def is_type_relationship(self) -> bool:
-        if self.relationship_schema and self.related_schema:
-            return True
-        return False
+        return bool(self.relationship_schema and self.related_schema)
 
     @property
     def has_property(self) -> bool:
-        if not self.attribute_property_name:
-            return False
-        return True
+        return bool(self.attribute_property_name)
 
 
 @dataclass

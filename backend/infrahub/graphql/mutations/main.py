@@ -30,7 +30,7 @@ from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
-from .node_getter.by_hfid import MutationNodeGetterByhfid
+from .node_getter.by_hfid import MutationNodeGetterByHfid
 from .node_getter.by_id import MutationNodeGetterById
 
 if TYPE_CHECKING:
@@ -123,7 +123,7 @@ class InfrahubMutationMixin:
             node_manager = NodeManager()
             node_getters = [
                 MutationNodeGetterById(db=context.db, node_manager=node_manager),
-                MutationNodeGetterByhfid(db=context.db, node_manager=node_manager),
+                MutationNodeGetterByHfid(db=context.db, node_manager=node_manager),
                 MutationNodeGetterByDefaultFilter(db=context.db, node_manager=node_manager),
             ]
             obj, mutation, created = await cls.mutate_upsert(

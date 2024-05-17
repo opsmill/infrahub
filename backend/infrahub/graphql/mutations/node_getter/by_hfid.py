@@ -11,7 +11,7 @@ from infrahub.database import InfrahubDatabase
 from .interface import MutationNodeGetterInterface
 
 
-class MutationNodeGetterByhfid(MutationNodeGetterInterface):
+class MutationNodeGetterByHfid(MutationNodeGetterInterface):
     def __init__(self, db: InfrahubDatabase, node_manager: NodeManager):
         self.db = db
         self.node_manager = node_manager

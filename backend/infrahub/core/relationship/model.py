@@ -396,8 +396,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             data_from_pool = copy.deepcopy(self.from_pool)
             del data_from_pool["id"]
 
-            new_peer: Node = await pool.get_resource(db=db, branch=self.branch, **data_from_pool)  # type: ignore[attr-defined]
-            await self.set_peer(value=new_peer)
+            assigned_peer: Node = await pool.get_resource(db=db, branch=self.branch, **data_from_pool)  # type: ignore[attr-defined]
+            await self.set_peer(value=assigned_peer)
             self.set_source(value=pool.id)
 
     async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> Self:
