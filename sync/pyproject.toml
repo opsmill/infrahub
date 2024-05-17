@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-sync"
-version = "0.4.0"
+version = "0.4.1"
 description = "Infrahub-Sync is a versatile Python package that synchronizes data between a source and a destination system"
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
