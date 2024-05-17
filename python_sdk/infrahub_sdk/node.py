@@ -661,28 +661,39 @@ class InfrahubNodeBase:
 
     def get_path_value(self, path: str) -> Any:
         path_parts = path.split("__")
+        return_value = None
 
         # Manage relationship value lookup
         if path_parts[0] in self._schema.relationship_names:
-            related_node = getattr(self, path_parts[0], None).get()
+            related_node = getattr(self, path_parts[0], None)
+            if not related_node:
+                return None
+
+            peer = related_node.get()
             if attribute_piece := path_parts[1] if len(path_parts) > 1 else None:
-                related_node_attribute = getattr(related_node, attribute_piece, None)
+                related_node_attribute = getattr(peer, attribute_piece, None)
             else:
-                return related_node
+                return peer.hfid or peer.id
 
             if property_piece := path_parts[2] if len(path_parts) > 2 else None:
-                return getattr(related_node_attribute, property_piece, None)
-
-            return related_node_attribute
+                return_value = getattr(related_node_attribute, property_piece, None)
+            else:
+                return_value = related_node_attribute
 
         # Manage attribute value lookup
         if path_parts[0] in self._schema.attribute_names:
             attribute = getattr(self, path_parts[0], None)
             if property_piece := path_parts[1] if len(path_parts) > 1 else None:
-                return getattr(attribute, property_piece, None)
-            return attribute
+                return_value = getattr(attribute, property_piece, None)
+            else:
+                return_value = attribute
 
-        raise ValueError(f"{path} seems to be invalid")
+        if isinstance(
+            return_value,
+            (ipaddress.IPv4Address, ipaddress.IPv6Address, ipaddress.IPv4Network, ipaddress.IPv6Network),
+        ):
+            return str(return_value)
+        return return_value
 
     def get_human_friendly_id(self) -> Optional[List[Any]]:
         if not hasattr(self._schema, "human_friendly_id"):
