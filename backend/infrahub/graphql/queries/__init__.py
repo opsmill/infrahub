@@ -5,7 +5,7 @@ from .diff.old import DiffSummaryOld
 from .internal import InfrahubInfo
 from .ipam import InfrahubIPAddressGetNextAvailable, InfrahubIPPrefixGetNextAvailable
 from .relationship import Relationship
-from .resource_manager import InfrahubResourcePoolUtilization
+from .resource_manager import InfrahubResourcePoolAllocated, InfrahubResourcePoolUtilization
 from .status import InfrahubStatus
 from .task import Task
 
@@ -18,6 +18,7 @@ __all__ = [
     "InfrahubStatus",
     "InfrahubIPAddressGetNextAvailable",
     "InfrahubIPPrefixGetNextAvailable",
+    "InfrahubResourcePoolAllocated",
     "InfrahubResourcePoolUtilization",
     "Relationship",
     "Task",
