@@ -3,16 +3,34 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 
 import pytest
+from graphql import graphql
 
 from infrahub.core import registry
-from infrahub.core.initialization import create_branch
+from infrahub.core.initialization import create_branch, create_ipam_namespace, get_default_ipnamespace
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 from infrahub.core.node import Node
+from infrahub.graphql import prepare_graphql_params
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
+    from infrahub_sdk.client import InfrahubClient
+
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
+
+PREFIX_POOL_UTILIZATION_QUERY = """
+query GetPool($pool_id: ID!) {
+    CorePrefixPool(ids: [$pool_id]) {
+        edges {
+            node {
+                utilization { value }
+                utilization_default_branch { value }
+            }
+        }
+    }
+}
+"""
 
 
 class TestIpamUtilization(TestInfrahubApp):
@@ -23,10 +41,14 @@ class TestIpamUtilization(TestInfrahubApp):
         initialize_registry: None,
         register_ipam_schema,
     ) -> dict[str, Union[Node, list[Node]]]:
+        await create_ipam_namespace(db=db)
+        default_ipnamespace = await get_default_ipnamespace(db=db)
         default_branch = registry.default_branch
 
         prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
         address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+        prefix_pool_schema = registry.schema.get_node_schema(name="CorePrefixPool", branch=default_branch)
+        address_pool_schema = registry.schema.get_node_schema(name="CoreIPAddressPool", branch=default_branch)
 
         container = await Node.init(db=db, schema=prefix_schema)
         await container.new(db=db, prefix="192.0.2.0/24", member_type="prefix")
@@ -47,7 +69,27 @@ class TestIpamUtilization(TestInfrahubApp):
             await address.save(db=db)
             addresses.append(address)
 
-        return {"container": container, "prefix": prefix, "prefix2": prefix2, "addresses": addresses}
+        prefix_pool = await Node.init(db=db, schema=prefix_pool_schema)
+        await prefix_pool.new(db=db, name="prefix_pool", ip_namespace=default_ipnamespace, resources=[container])
+        await prefix_pool.save(db=db)
+        address_pool = await Node.init(db=db, schema=address_pool_schema)
+        await address_pool.new(
+            db=db,
+            name="address_pool",
+            default_address_type="IpamIPAddress",
+            ip_namespace=default_ipnamespace,
+            resources=[prefix],
+        )
+        await address_pool.save(db=db)
+
+        return {
+            "container": container,
+            "prefix": prefix,
+            "prefix2": prefix2,
+            "addresses": addresses,
+            "prefix_pool": prefix_pool,
+            "address_pool": address_pool,
+        }
 
     @pytest.fixture(scope="class")
     async def branch2(self, db: InfrahubDatabase) -> Branch:
@@ -116,6 +158,25 @@ class TestIpamUtilization(TestInfrahubApp):
         assert await getter.get_use_percentage(ip_prefixes=[container]) == 100 / 8
         assert await getter.get_use_percentage(ip_prefixes=[prefix2]) == 0
         assert await getter.get_use_percentage(ip_prefixes=[prefix]) == 50.0
+
+    @pytest.mark.skip
+    async def test_step01_graphql_utilization(
+        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset
+    ):
+        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=PREFIX_POOL_UTILIZATION_QUERY,
+            context_value=gql_params.context,
+            variable_values={"pool_id": initial_dataset["prefix_pool"].id},
+        )
+
+        assert not result.errors
+        assert result.data
+        pools = result.data["CorePrefixPool"]["edges"]
+        assert len(pools) == 1
+        assert pools[0]["utilization"]["value"] == 1 / 16
+        assert pools[0]["utilization_default_branch"]["value"] == 1 / 16
 
     async def test_step02_branch_utilization(
         self, db: InfrahubDatabase, default_branch: Branch, branch2: Branch, initial_dataset, step_02_dataset

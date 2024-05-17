@@ -702,10 +702,11 @@ class RelationshipManager:
 
         return await rels[0].get_peer(db=db)
 
-    async def get_peers(self, db: InfrahubDatabase) -> Dict[str, Node]:
+    async def get_peers(self, db: InfrahubDatabase, branch_agnostic: bool = False) -> Dict[str, Node]:
         rels = await self.get_relationships(db=db)
         peer_ids = [rel.peer_id for rel in rels if rel.peer_id]
-        nodes = await registry.manager.get_many(db=db, ids=peer_ids, branch=self.branch)
+        branch = registry.get_global_branch() if branch_agnostic else self.branch
+        nodes = await registry.manager.get_many(db=db, ids=peer_ids, branch=branch)
         return nodes
 
     def get_branch_based_on_support_type(self) -> Branch:

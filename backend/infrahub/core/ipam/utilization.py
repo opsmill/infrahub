@@ -66,7 +66,9 @@ class PrefixUtilizationGetter:
         branch_names: Optional[list[str]] = None,
     ) -> list[PrefixChildDetails]:
         await self._fetch_data()
-        prefix_child_details_list = []
+        prefix_child_details_list: list[PrefixChildDetails] = []
+        if ip_prefixes is None:
+            ip_prefixes = self.ip_prefixes
         prefix_ids = {prefix.get_id() for prefix in ip_prefixes}
         prefix_ids &= set(self._results_by_prefix_id.keys())
         if not prefix_ids:
@@ -97,6 +99,8 @@ class PrefixUtilizationGetter:
     ) -> tuple[int, int]:
         total_prefix_space = 0
         total_used_space = 0
+        if ip_prefixes is None:
+            ip_prefixes = self.ip_prefixes
         for ip_prefix in ip_prefixes:
             total_prefix_space += get_prefix_space(ip_prefix=ip_prefix)
             max_prefixlen = ip_prefix.prefix.obj.max_prefixlen  # type: ignore[attr-defined]
@@ -111,6 +115,8 @@ class PrefixUtilizationGetter:
         self, ip_prefixes: Optional[list[Node]] = None, branch_names: Optional[list[str]] = None
     ) -> tuple[int, int]:
         total_prefix_space = 0
+        if ip_prefixes is None:
+            ip_prefixes = self.ip_prefixes
         for ip_prefix in ip_prefixes:
             total_prefix_space += get_prefix_space(ip_prefix=ip_prefix)
         total_used_space = await self.get_num_children_in_use(
@@ -123,8 +129,10 @@ class PrefixUtilizationGetter:
     ) -> float:
         grand_total_used, grand_total_space = 0, 0
         address_prefixes, prefix_prefixes = [], []
+        if ip_prefixes is None:
+            ip_prefixes = self.ip_prefixes
         for ip_prefix in ip_prefixes:
-            if ip_prefix.member_type.value == PrefixMemberType.ADDRESS.value:  # type: ignore[attr-defined]
+            if ip_prefix.member_type.value == PrefixMemberType.ADDRESS.value:  # type: ignore[union-attr,attr-defined]
                 address_prefixes.append(ip_prefix)
             else:
                 prefix_prefixes.append(ip_prefix)

@@ -688,21 +688,7 @@ core_models: dict[str, Any] = {
                     "allow_override": AllowOverrideType.NONE,
                 },
                 {
-                    "name": "total_member_count",
-                    "kind": "Number",
-                    "read_only": True,
-                    "optional": True,
-                    "allow_override": AllowOverrideType.NONE,
-                },
-                {
-                    "name": "all_used_member_count",
-                    "kind": "Number",
-                    "read_only": True,
-                    "optional": True,
-                    "allow_override": AllowOverrideType.NONE,
-                },
-                {
-                    "name": "branch_used_member_count",
+                    "name": "utilization_default_branch",
                     "kind": "Number",
                     "read_only": True,
                     "optional": True,

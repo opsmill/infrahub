@@ -22,8 +22,6 @@ class BuiltinIPPrefix(Node):
             db, fields=fields, related_node_ids=related_node_ids, filter_sensitive=filter_sensitive
         )
 
-        # TODO: add handling for the calculated count fields
-        special_fields = {"total_member_count", "all_used_member_count", "branch_used_member_count", "utilization"}
         if fields:
             for read_only_attr in ["netmask", "hostmask", "network_address", "broadcast_address"]:
                 if read_only_attr in fields:
@@ -31,7 +29,7 @@ class BuiltinIPPrefix(Node):
 
             if "utilization" in fields:
                 getter = PrefixUtilizationGetter(db=db, ip_prefixes=[self])
-                utilization = await getter.get_use_percentage(ip_prefix=self, branch_name=self._branch.name)
+                utilization = await getter.get_use_percentage(ip_prefixes=[self], branch_names=[self._branch.name])
                 response["utilization"] = {"value": int(utilization)}
 
         return response
