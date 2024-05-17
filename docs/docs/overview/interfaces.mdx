@@ -18,11 +18,22 @@ Managing infrastructure at scale often means many people, teams, workflows and o
 
 ## GraphQL API
 
+GraphQL is the primary API to interact with data, and allows access to everything defined by the schema. The [Python SDK](../python-sdk/) is built on top of the GraphQL API.
+
 - By default, exposed on TCP port `8000` at the endpoint: `http://<API_SERVER_IP>:8000/graphql`
 - The Frontend utilizes the GraphQL API for most tasks
 - More information can be found in the [GraphQL topic](../topics/graphql)
 
 ## REST API
+
+GraphQL can only accept a query in string format and returns JSON, so there are certain workflows that are available via the REST API.
+
+- Loading the schema
+- Retrieving artifacts
+- Accessing the object store
+- Executing a saved GraphQL query
+
+The REST API has the following properties:
 
 - By default, exposed on TCP port `8000` at the endpoint: `http://<API_SERVER_IP>:8000/api`
 - Swagger docs can be found at: `http://<API_SERVER_IP>:8000/api/docs`
