@@ -7,7 +7,7 @@ from ipaddress import IPv4Network, IPv6Network
 from typing import Dict, List
 
 from infrahub_sdk import UUIDT, InfrahubClient, InfrahubNode, NodeStore
-from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk.exceptions import GraphQLError, NodeNotFoundError
 from infrahub_sdk.graphql import Mutation
 
 # flake8: noqa
@@ -47,6 +47,8 @@ DEVICES = (
     ("edge2", "active", "ASR1002-HX", "profile1", "edge", ["red", "blue", "green"], "Cisco IOS"),
     ("core1", "drained", "MX204", "profile1", "core", ["blue"], "Juniper JunOS"),
     ("core2", "provisioning", "MX204", "profile1", "core", ["red"], "Juniper JunOS"),
+    ("leaf1", "active", "7010TX-48", "profile1", "leaf", ["red", "green"], "Arista EOS"),
+    ("leaf2", "active", "7010TX-48", "profile1", "leaf", ["red", "green"], "Arista EOS"),
 )
 
 
@@ -113,6 +115,7 @@ BACKBONE_CIRCUIT_IDS = [
 
 INTERFACE_MGMT_NAME = {
     "7280R3": "Management0",
+    "7010TX-48": "Management0",
     "ASR1002-HX": "Management0",
     "MX204": "MGMT",
 }
@@ -142,17 +145,35 @@ INTERFACE_L3_NAMES = {
         "Ethernet9",
         "Ethernet10",
     ],
+    "7010TX-48": [],
     "MX204": ["et-0/0/0", "et-0/0/1", "et-0/0/2"],
 }
 INTERFACE_L2_NAMES = {
     "7280R3": ["Ethernet11", "Ethernet12"],
     "ASR1002-HX": ["Ethernet11", "Ethernet12"],
     "MX204": ["et-0/0/3"],
+    "7010TX-48": [f"Ethernet{idx}" for idx in range(1, 49)],
 }
 
-LAG_INTERFACE_L2 = {"7280R3": [{"name": "port-channel1", "lacp": "Active", "members": ["Ethernet11", "Ethernet12"]}]}
+LAG_INTERFACE_L2 = {
+    "7280R3": [{"name": "port-channel1", "lacp": "Active", "members": ["Ethernet11", "Ethernet12"]}],
+    "7010TX-48": [
+        {
+            "name": "port-channel1",
+            "description": "MLAG peer link",
+            "lacp": "Active",
+            "members": ["Ethernet1", "Ethernet2"],
+        },
+        {
+            "name": "port-channel2",
+            "description": "MLAG to Server",
+            "lacp": "Active",
+            "members": ["Ethernet5", "Ethernet6"],
+        },
+    ],
+}
 
-INTERFACE_ROLES_MAPPING = {
+INTERFACE_L3_ROLES_MAPPING = {
     "edge": [
         "peer",
         "peer",
@@ -173,6 +194,30 @@ INTERFACE_ROLES_MAPPING = {
         "backbone",
         "spare",
     ],
+    "leaf": [],
+}
+
+INTERFACE_L2_ROLES_MAPPING = {
+    "leaf": [
+        "peer",
+        "peer",
+    ],
+}
+
+LAG_INTERFACE_L2_ROLES_MAPPING = {"leaf": {"port-channel1": "peer", "port-channel2": "server"}}
+
+INTERFACE_L2_MODE_MAPPING = {"peer": "Trunk (ALL)"}
+
+MLAG_DOMAINS = {"leaf": {"domain_id": 1, "peer_interfaces": ["port-channel1", "port-channel1"]}}
+
+MLAG_INTERFACE_L2 = {
+    "leaf": [
+        {
+            "mlag_id": 2,
+            "mlag_domain": 1,
+            "members": ["port-channel2", "port-channel2"],
+        }
+    ]
 }
 
 TAGS = ["blue", "green", "red"]
@@ -421,7 +466,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
         # L3 Interfaces
         for intf_idx, intf_name in enumerate(INTERFACE_L3_NAMES[device_type]):
-            intf_role = INTERFACE_ROLES_MAPPING[device[4]][intf_idx]
+            intf_role = INTERFACE_L3_ROLES_MAPPING[device[4]][intf_idx]
 
             intf = await client.create(
                 branch=branch,
@@ -546,7 +591,16 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
         # L2 Interfaces
         for intf_idx, intf_name in enumerate(INTERFACE_L2_NAMES[device_type]):
-            intf_role = "server"
+            try:
+                intf_role = INTERFACE_L2_ROLES_MAPPING.get(device[4], [])[intf_idx]
+            except IndexError:
+                intf_role = "server"
+
+            l2_mode = INTERFACE_L2_MODE_MAPPING.get(intf_role, "Access")
+
+            untagged_vlan = None
+            if l2_mode == "Access":
+                untagged_vlan = store.get(kind="InfraVLAN", key=f"{site_name}_server")
 
             intf = await client.create(
                 branch=branch,
@@ -557,24 +611,36 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                 enabled=True,
                 status={"value": ACTIVE_STATUS, "owner": group_ops.id},
                 role={"value": intf_role, "source": account_pop.id},
-                l2_mode="Access",
-                untagged_vlan={"id": store.get(kind="InfraVLAN", key=f"{site_name}_server").id},
+                l2_mode=l2_mode,
+                untagged_vlan=untagged_vlan,
             )
             await intf.save()
             store.set(key=f"{device_name}-l2-{intf_name}", node=intf)
 
         for lag_intf in LAG_INTERFACE_L2.get(device_type, []):
-            intf_role = "server"
+            try:
+                intf_role = LAG_INTERFACE_L2_ROLES_MAPPING[device[4]][lag_intf["name"]]
+            except KeyError:
+                intf_role = "server"
+
+            l2_mode = INTERFACE_L2_MODE_MAPPING.get(intf_role, "Access")
+
+            description = lag_intf.get("description", "")
+
+            untagged_vlan = None
+            if l2_mode == "Access":
+                untagged_vlan = store.get(kind="InfraVLAN", key=f"{site_name}_server")
 
             lag = await client.create(
                 branch=branch,
                 kind="InfraLagInterfaceL2",
                 device={"id": obj.id, "is_protected": True},
                 name=lag_intf["name"],
+                description=description,
                 speed=10000,
                 enabled=True,
-                l2_mode="Access",
-                untagged_vlan={"id": store.get(kind="InfraVLAN", key=f"{site_name}_server").id},
+                l2_mode=l2_mode,
+                untagged_vlan=untagged_vlan,
                 status={"value": ACTIVE_STATUS, "owner": group_ops.id},
                 role={"value": intf_role, "source": account_pop.id},
                 lacp=lag_intf["lacp"],
@@ -583,9 +649,59 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             await lag.save()
             await lag.members.fetch()
 
+            store.set(key=f"{device_name}-lagl2-{lag_intf['name']}", node=lag)
+
             members = [store.get(key=f"{device_name}-l2-{member}") for member in lag_intf["members"]]
             lag.members.extend(members)
             await lag.save()
+
+    # --------------------------------------------------
+    # Set up MLAG domains
+    # --------------------------------------------------
+    for role, domain in MLAG_DOMAINS.items():
+        devices = [
+            store.get(kind="InfraDevice", key=f"{site_name}-{role}1"),
+            store.get(kind="InfraDevice", key=f"{site_name}-{role}2"),
+        ]
+        name = f"{site_name}-{role}-12"
+
+        peer_interfaces = [
+            store.get(kind="InfraLagInterfaceL2", key=f"{device.name.value}-lagl2-{domain['peer_interfaces'][idx]}")
+            for idx, device in enumerate(devices)
+        ]
+
+        mlag_domain = await client.create(
+            kind="InfraMlagDomain",
+            name=name,
+            domain_id=domain["domain_id"],
+            devices=devices,
+            peer_interfaces=peer_interfaces,
+        )
+
+        await mlag_domain.save()
+        store.set(key=f"mlag-domain-{name}", node=mlag_domain)
+
+    # --------------------------------------------------
+    # Set up MLAG Interfaces
+    # --------------------------------------------------
+    for role, mlags in MLAG_INTERFACE_L2.items():
+        devices = [
+            store.get(kind="InfraDevice", key=f"{site_name}-{role}1"),
+            store.get(kind="InfraDevice", key=f"{site_name}-{role}2"),
+        ]
+
+        for mlag in mlags:
+            members = [
+                store.get(kind="InfraLagInterfaceL2", key=f"{device.name.value}-lagl2-{mlag['members'][idx]}")
+                for idx, device in enumerate(devices)
+            ]
+            mlag_domain = store.get(kind="InfraMlagDomain", key=f"mlag-domain-{site_name}-{role}-12")
+
+            mlag_interface = await client.create(
+                kind="InfraMlagInterfaceL2", mlag_domain=mlag_domain, mlag_id=mlag["mlag_id"], members=members
+            )
+
+            await mlag_interface.save()
 
     # --------------------------------------------------
     # Connect both devices within the Site together with 2 interfaces
@@ -602,6 +718,22 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         await intf2.save()
 
         log.info(f" - Connected '{site_name}-edge1::{intf1.name.value}' <> '{site_name}-edge2::{intf2.name.value}'")
+
+    # --------------------------------------------------
+    # Connect both leaf devices within a Site together with the 2 peer interfaces
+    # --------------------------------------------------
+    for idx in range(0, 2):
+        intf1 = store.get(kind="InfraInterfaceL2", key=f"{site_name}-leaf1-l2-Ethernet{idx+1}")
+        intf2 = store.get(kind="InfraInterfaceL2", key=f"{site_name}-leaf2-l2-Ethernet{idx+1}")
+
+        intf1.description.value = f"Connected to {site_name}-leaf2 {intf2.name.value}"
+        intf1.connected_endpoint = intf2
+        await intf1.save()
+
+        intf2.description.value = f"Connected to {site_name}-leaf1 {intf1.name.value}"
+        await intf2.save()
+
+        log.info(f" - Connected '{site_name}-leaf1::{intf1.name.value}' <> '{site_name}-leaf2::{intf2.name.value}'")
 
     # --------------------------------------------------
     # Update all the group we may have touch during the site creation
