@@ -156,7 +156,9 @@ Read-only repositories and CoreRepositories work in different ways when it comes
 
 The [Infrahub Git agent](/reference/git-agent) checks for changes in external repositories several times per minute. If there are no conflicts between the remote and the Infrahub branches, the Git agent will automatically pull any new changes into the appropriate Infrahub branch.
 
-### Read-only repository
+<!-- vale off -->
+### Read-only Repository
+<!-- vale on -->
 
 Infrahub does not automatically update Read-only Repositories with changes on the external repository. To pull in changes from the external repository you must either set the `ref` **and/or** `commit` of the Read-only Repository to the desired value. You can perform this update either through the user interface or via an update mutation through the GraphQL API. Either way, the Infrahub web server will use the Git agent to retrieve the appropriate changes in a background task.
 
@@ -188,6 +190,8 @@ Infrahub does not automatically update Read-only Repositories with changes on th
 
 When a [Proposed Change](/topics/proposed-change) is merged, if the source and destination Infrahub branches are both linked to branches on the same external Git repository, then Infrahub will handle merging the branches on the external Git repository. This is the only time that Infrahub will push changes to the external repository. Other changes made within Infrahub will not be pushed to an external repository and **could potentially be overwritten** when Infrahub pulls new commits from the external repository.
 
-### Read-only repository
+<!-- vale off -->
+### Read-only Repository
+<!-- vale on -->
 
 No changes to objects owned by a Read-only Repository are ever pushed to the external Git repository.

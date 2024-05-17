@@ -197,6 +197,18 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'category',
+          label: 'Infrahub Ansible Collection',
+          link: {
+            type: 'doc',
+            id: 'integrations/infrahub-ansible/readme'
+          },
+          items: [
+            {
+            },
+          ],
+        },
+        {
+          type: 'category',
           label: 'Infrahub Sync',
           link: {
             type: 'doc',
@@ -224,10 +236,10 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
-          label: 'Infrahub Ansible Collection',
+          label: 'Nornir plugin for Infrahub',
           link: {
             type: 'doc',
-            id: 'integrations/infrahub-ansible/readme'
+            id: 'integrations/nornir-infrahub/readme'
           },
           items: [
             {

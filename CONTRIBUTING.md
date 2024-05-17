@@ -1,6 +1,6 @@
 # Contributing
 
-We develop Infrahub for customers and for the community. We are open to pull requests. Please first discuss your intentions via [Issues](https://github.com/opsmill/infrahub/issues).
+We develop Infrahub for customers and for the community. We are open to pull requests. Please first discuss your intentions via [Discussions](https://github.com/opsmill/infrahub/discussions).
 
 ## Contribute to Infrahub
 
@@ -10,10 +10,7 @@ We maintain a [list of issues that are appropriate to newcomers](https://github.
 
 ## Contributor License Agreement
 
-Contributions to this repository are subject to the Individual or Corporate Contributor License Agreement, depending on where the contribution is made and on whose behalf:
-
-- By submitting code contributions as an individual to the repository, you agree to the Individual Contributor License Agreement.
-- By submitting code contributions on behalf of a corporation to the repository, you agree to the Corporate Contributor License Agreement.
+A CLA is a tool that allows outside contributors to sign a Contributor License Agreement (CLA), an important license protection for OpsMill and our contributors. Signing this agreement allows external contributors to contribute code to OpsMill open-source repos. Contributions to this repository are subject to the Contributor License Agreement.
 
 ## Code of Conduct
 

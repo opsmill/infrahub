@@ -14,7 +14,7 @@ Leveraging [GitHub Codespaces](https://docs.github.com/en/codespaces/overview), 
 |---|---|
 | [![Launch in GitHub Codespaces (No Data)](https://img.shields.io/badge/Launch%20Infrahub-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable) | [![Launch in GitHub Codespaces (Demo Data)](https://img.shields.io/badge/Infrahub%20with%20Data-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable) |
 
-Alternately, to quickly deploy Infrahub locally:
+Alternately, to quickly test Infrahub locally:
 
 ```bash
 curl https://infrahub.opsmill.io | docker compose -f - up -d

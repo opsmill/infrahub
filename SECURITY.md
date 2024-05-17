@@ -8,7 +8,7 @@ If you discover a security vulnerability, please use the GitHub Security Advisor
 
 Please include as much of the information listed below as you can to help us better understand and resolve the issue:
 
-- The type of issue (e.g., buffer overflow, SQL injection, or cross-site scripting)
+- The type of issue (e.g., buffer overflow, input validation, or cross-site scripting)
 - Full paths of source file(s) related to the manifestation of the issue
 - The location of the affected source code (tag/branch/commit or direct URL)
 - Any special configuration required to reproduce the issue
