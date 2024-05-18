@@ -74,29 +74,33 @@ class DatabaseSchemaManager:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
             return registry.schema.get(name=name, branch=branch, duplicate=duplicate)
-        return self._db._schemas[branch_name].get(name=name, branch=branch)
+        return self._db._schemas[branch_name].get(name=name, duplicate=duplicate)
 
     def set(self, name: str, schema: MainSchemaTypes, branch: Optional[str] = None) -> int:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
             return registry.schema.set(name=name, schema=schema, branch=branch)
-        return self._db._schemas[branch_name].set(name=name, schema=schema, branch=branch)
+        return self._db._schemas[branch_name].set(name=name, schema=schema)
 
     def has(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
             return registry.schema.has(name=name, branch=branch)
-        return self._db._schemas[branch_name].has(name=name, branch=branch)
+        return self._db._schemas[branch_name].has(name=name)
 
-    def get_full(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, MainSchemaTypes]:
+    def get_full(
+        self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+    ) -> Dict[str, MainSchemaTypes]:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
             return registry.schema.get_full(branch=branch)
-        return self._db._schemas[branch_name].get_all()
+        return self._db._schemas[branch_name].get_all(duplicate=duplicate)
 
-    async def get_full_safe(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, MainSchemaTypes]:
+    async def get_full_safe(
+        self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+    ) -> Dict[str, MainSchemaTypes]:
         await lock.registry.local_schema_wait()
-        return self.get_full(branch=branch)
+        return self.get_full(branch=branch, duplicate=duplicate)
 
     def get_schema_branch(self, name: str) -> SchemaBranch:
         if name not in self._db._schemas:
