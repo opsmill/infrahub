@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 def load_infrastructure_data(context: Context, database: str, namespace: str) -> None:
     with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_compose_files_cmd(database=database)
+        compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
         base_cmd = f"{get_env_vars(context, namespace=namespace)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
         command = f"{base_cmd} run infrahub-git infrahubctl run models/infrastructure_edge.py"
         execute_command(context=context, command=command)
@@ -21,7 +21,7 @@ def load_infrastructure_schema(
     context: Context, database: str, namespace: str, add_wait: bool = True, target: str = "models/base"
 ) -> None:
     with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_compose_files_cmd(database=database)
+        compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
         base_cmd = f"{get_env_vars(context, namespace=namespace)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
         command = f"{base_cmd} run infrahub-git infrahubctl schema load {target}"
         if add_wait:

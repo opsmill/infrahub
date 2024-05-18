@@ -2,11 +2,23 @@
 title: Architecture
 ---
 
-# Architecture diagram
+# Infrahub architecture
 
-![](../media/high_level_architecture.excalidraw.svg)
+Infrahub is deployed as a container-based architecture, composed of multiple components. A minimum deployment consists of the following architecture:
+
+![Infrahub Architecture](../media/high_level_architecture.excalidraw.svg)
 
 ## Infrahub components
+
+The main components are:
+
+- A **Frontend** written in React and rendered in the user's browser.
+- An **API server** written in Python with FastAPI.
+- A **Git agent** written in Python to manage the interaction with external Git repositories.
+- A **Graph database** based on `neo4j`.
+- A **Message bus** based on `RabbitMQ`.
+- A **Cache** based on `redis`.
+- An **Object Store** based on local storage or `Amazon S3`.
 
 ### API server
 
@@ -66,15 +78,18 @@ Infrahub also supports NATS JetStream for the cache.
 
 Any Git server. The most popular being: GitHub, GitLab, or Bitbucket.
 
+<!-- vale off -->
 ## TLS-secured connections
+<!-- vale on -->
 
 Infrahub supports TLS connections toward the dependencies above.
 The following configuration variables are available to configure TLS:
 
 ```bash
-INFRAHUB_BROKER_TLS_CA_FILE
-INFRAHUB_BROKER_TLS_ENABLED
-INFRAHUB_BROKER_TLS_INSECURE
+INFRAHUB_BROKER_TLS_CA_FILE=/opt/ssl/ca.pem # File path to a CA certificate or bundle in PEM format
+INFRAHUB_BROKER_TLS_ENABLED=true # Boolean to enable TLS connections (allowed values: 1, True, true, 0, False, false)
+INFRAHUB_BROKER_TLS_INSECURE=true # Boolean to ignore certificate verification, useful for self-signed certificates (CA is not verified, expiry is not verified, hostname is not verified)
+
 INFRAHUB_CACHE_TLS_CA_FILE
 INFRAHUB_CACHE_TLS_ENABLED
 INFRAHUB_CACHE_TLS_INSECURE
@@ -94,3 +109,9 @@ NEO4J_dbms_ssl_policy_bolt_private__key=cert.key
 NEO4J_dbms_ssl_policy_bolt_public__certificate=cert.pem
 NEO4J_dbms_connector_bolt_tls__level=REQUIRED
 ```
+
+## Infrahub High Availability Deployment
+
+Infrahub may be deployed with no single-point of failure, and horizontally scaled architectures can be deployed. An example of a HA deployment is below:
+
+![Infrahub Architecture](../media/high_level_architecture_ha.excalidraw.svg)

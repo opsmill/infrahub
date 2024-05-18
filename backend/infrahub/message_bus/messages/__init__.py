@@ -47,6 +47,7 @@ from .request_repository_userchecks import RequestRepositoryUserChecks
 from .schema_migration_path import SchemaMigrationPath, SchemaMigrationPathResponse
 from .schema_validator_path import SchemaValidatorPath, SchemaValidatorPathResponse
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
+from .send_telemetry_push import SendTelemetryPush
 from .send_webhook_event import SendWebhookEvent
 from .transform_jinja_template import TransformJinjaTemplate, TransformJinjaTemplateResponse
 from .transform_python_data import TransformPythonData, TransformPythonDataResponse
@@ -103,6 +104,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "request.repository.user_checks": RequestRepositoryUserChecks,
     "send.echo.request": SendEchoRequest,
     "send.webhook.event": SendWebhookEvent,
+    "send.telemetry.push": SendTelemetryPush,
     "transform.jinja.template": TransformJinjaTemplate,
     "transform.python.data": TransformPythonData,
     "trigger.artifact_definition.generate": TriggerArtifactDefinitionGenerate,

@@ -188,7 +188,7 @@ class NodeManager:
     async def count(
         cls,
         db: InfrahubDatabase,
-        schema: NodeSchema,
+        schema: Union[NodeSchema, GenericSchema, ProfileSchema, str],
         filters: Optional[dict] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
@@ -209,6 +209,11 @@ class NodeManager:
 
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
+
+        if isinstance(schema, str):
+            schema = registry.schema.get(name=schema, branch=branch.name)
+        elif not isinstance(schema, (NodeSchema, GenericSchema, ProfileSchema)):
+            raise ValueError(f"Invalid schema provided {schema}")
 
         query = await NodeGetListQuery.init(
             db=db, schema=schema, branch=branch, filters=filters, at=at, partial_match=partial_match

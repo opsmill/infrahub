@@ -78,6 +78,18 @@ def generate_bus_events(context: Context):
 
 
 @task
+def install(context: Context):
+    """Install documentation dependencies."""
+    exec_cmd = "npm install"
+
+    with context.cd(DOCUMENTATION_DIRECTORY):
+        output = context.run(exec_cmd)
+
+    if output.exited != 0:
+        sys.exit(-1)
+
+
+@task
 def validate(context: Context, docker: bool = False):
     """Validate that the generated documentation is committed to Git."""
 
