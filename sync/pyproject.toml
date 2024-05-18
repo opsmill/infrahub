@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "infrahub-sync"
-version = "0.4.0"
+version = "0.4.1"
 description = "Infrahub-Sync is a versatile Python package that synchronizes data between a source and a destination system"
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
 license = "Apache-2.0"
 homepage = "https://opsmill.com"
 repository = "https://github.com/opsmill/infrahub"
-documentation = "https://docs.infrahub.app/sync/"
+documentation = "https://docs.infrahub.app/integrations/sync/"
 packages = [
     { include = "infrahub_sync", from = "infrahub-sync"},
     { include = "potenda", from = "potenda"},
