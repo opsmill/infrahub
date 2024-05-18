@@ -44,10 +44,6 @@ If you need help, support for the open-source Infrahub project is provided on [!
 
 [View our CONTRIBUTING](./CONTRIBUTING.md) policy to find the latest information.
 
-## Telemetry
-
-By default, Infrahub collects non-user-identifying telemetry data. [View our TELEMETRY](./TELEMETRY.md) policy to find details and options.
-
 ## Security
 
 [View our SECURITY](./SECURITY.md) policy to find the latest information.
