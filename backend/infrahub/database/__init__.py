@@ -96,11 +96,7 @@ class DatabaseSchemaManager:
 
     async def get_full_safe(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, MainSchemaTypes]:
         await lock.registry.local_schema_wait()
-        branch_name = get_branch_name(branch=branch)
-        if branch_name not in self._db._schemas:
-            schema = registry.schema.get_schema_branch(name=branch_name)
-            return schema.get_all()
-        return self._db._schemas[branch_name].get_all()
+        return self.get_full(branch=branch)
 
     def get_schema_branch(self, name: str) -> SchemaBranch:
         if name not in self._db._schemas:
