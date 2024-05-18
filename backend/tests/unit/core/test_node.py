@@ -238,6 +238,10 @@ async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_sche
     await dog1.save(db=db)
 
     assert await dog1.get_hfid(db=db) == ["Jack", "Rocky"]
+    assert await dog1.get_hfid(db=db, include_kind=True) == ["TestDog", "Jack", "Rocky"]
+
+    assert await dog1.get_hfid_as_string(db=db) == "Jack__Rocky"
+    assert await dog1.get_hfid_as_string(db=db, include_kind=True) == "TestDog__Jack__Rocky"
 
 
 async def test_get_path_value(db: InfrahubDatabase, default_branch, animal_person_schema):
