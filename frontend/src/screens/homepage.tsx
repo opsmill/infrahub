@@ -13,14 +13,14 @@ const Homepage = () => {
             to="https://docs.infrahub.app/"
             target="_blank"
             className="text-custom-blue-700 font-semibold">
-            developer docs
+            documentation
           </Link>{" "}
           or{" "}
           <Link
-            to="https://docs.infrahub.app/guides"
+            to="https://docs.infrahub.app/tutorials/"
             target="_blank"
             className="text-custom-blue-700 font-semibold">
-            explore all the ways
+            tutorials
           </Link>{" "}
           to start using <strong className="font-semibold">Infrahub</strong>.
         </h2>
@@ -68,16 +68,16 @@ const Homepage = () => {
         <HelperCard
           icon="mdi:toy-brick-marker-outline"
           title="Nornir"
-          description="Infrahub can be used as an inventory source for Nornir."
-          docLabel="About Nornir"
-          docTo="https://nornir.readthedocs.io/en/latest/"
+          description="Nornir plugin for Infrahub"
+          docLabel="About Nornir plugin"
+          docTo="https://pypi.org/project/nornir-infrahub/"
         />
 
         <HelperCard
           icon="mdi:developer-board"
           title="Infrahub Python SDK"
           description="The Infrahub Python SDK greatly simplifies how you can interact with Infrahub programmatically."
-          docLabel="About SDK"
+          docLabel="About Infrahub SDK"
           docTo="https://docs.infrahub.app/python-sdk/"
         />
 
@@ -85,7 +85,7 @@ const Homepage = () => {
           icon="mdi:ansible"
           title="Infrahub Ansible Collection"
           description="Infrahub Collection for Ansible Galaxy"
-          docLabel="About Ansible"
+          docLabel="About Infrahub Ansible collection"
           docTo="https://infrahub-ansible.readthedocs.io/en/latest/"
         />
       </div>

@@ -1,4 +1,5 @@
 agent
+Ansible
 APIs
 artifact_definitions
 artifact_name
@@ -60,6 +61,7 @@ namespace
 namespaces
 Nautobot
 Netbox
+Nornir
 npm
 o'brian
 openconfig
