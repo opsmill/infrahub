@@ -269,7 +269,7 @@ base_node_schema = SchemaNode(
             name="default_filter",
             kind="Text",
             regex=str(NAME_REGEX),
-            description="Default filter used to search for a node in addition to its ID. (deprecated: please use humain_friendly_id instead)",
+            description="Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)",
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),

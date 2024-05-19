@@ -266,7 +266,7 @@ Having a humain friendly way to identify an object is very important to build pr
 
 In the example below, each `ExamplePerson`,  will have a `hfid` composed of his/her `lastname` and `firstname`.
 
-`humain_friendly_id` can be composed of N number of attribute or relationship of cardinality one:
+`human_friendly_id` can be composed of N number of attribute or relationship of cardinality one:
 
 - For an attribute, the valid format is `<attributename>__value`. *Currently only value is supported but in the future the plan is to allow additiona metadata to be used as well.*
 - For a relationship, the name of the relationship and the name of a unique attribute must be provided `<relationshipname>__<attributename>__value`. *Only relationship of cardinality one are supported and the relationship must be mandatory.*
@@ -275,7 +275,7 @@ In the example below, each `ExamplePerson`,  will have a `hfid` composed of his/
 nodes:
   - name: Person
     namespace: Example
-    humain_friendly_id: ["lastname__value", "firstname__value"]
+    human_friendly_id: ["lastname__value", "firstname__value"]
     attributes:
       - name: firstname
         kind: Text
@@ -285,9 +285,9 @@ nodes:
 
 :::info
 
-If a `humain_friendly_id` is defined on a node but no `uniqueness_constraints` are present, a uniqueness constraints matching the `humain_friendly_id` will be automatically created.
+If a `human_friendly_id` is defined on a node but no `uniqueness_constraints` are present, a uniqueness constraints matching the `human_friendly_id` will be automatically created.
 
-If at least one attribute is marked as unique, and `humain_friendly_id` hasn't been defined, `humain_friendly_id` will be automatically created.
+If at least one attribute is marked as unique, and `human_friendly_id` hasn't been defined, `human_friendly_id` will be automatically created.
 
 :::
 

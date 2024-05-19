@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 class Migration008(InternalSchemaMigration):
-    name: str = "008_node_add_humain_friendly_id"
+    name: str = "008_node_add_human_friendly_id"
     minimum_version: int = 7
 
     @classmethod
@@ -30,14 +30,14 @@ class Migration008(InternalSchemaMigration):
                 new_node_schema=schema_node,
                 previous_node_schema=schema_node,
                 schema_path=SchemaPath(
-                    schema_kind="SchemaNode", path_type=SchemaPathType.ATTRIBUTE, field_name="humain_friendly_id"
+                    schema_kind="SchemaNode", path_type=SchemaPathType.ATTRIBUTE, field_name="human_friendly_id"
                 ),
             ),
             NodeAttributeAddMigration(
                 new_node_schema=schema_generic,
                 previous_node_schema=schema_generic,
                 schema_path=SchemaPath(
-                    schema_kind="SchemaGeneric", path_type=SchemaPathType.ATTRIBUTE, field_name="humain_friendly_id"
+                    schema_kind="SchemaGeneric", path_type=SchemaPathType.ATTRIBUTE, field_name="human_friendly_id"
                 ),
             ),
         ]
