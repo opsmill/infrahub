@@ -269,8 +269,8 @@ async def test_get_path_value(db: InfrahubDatabase, default_branch, animal_perso
 
 
 async def test_node_init_with_single_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -300,8 +300,8 @@ async def test_node_init_with_single_relationship(db: InfrahubDatabase, default_
 
 
 async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -335,8 +335,8 @@ async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, car_pers
 
 
 async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -539,8 +539,8 @@ async def test_node_create_attribute_with_different_owner(
 
 
 async def test_node_create_with_single_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -609,8 +609,8 @@ async def test_node_create_with_single_relationship(db: InfrahubDatabase, defaul
 
 
 async def test_node_create_with_multiple_relationship(db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema):
-    fruit = registry.schema.get(name="GardenFruit")
-    tag = registry.schema.get(name=InfrahubKind.TAG)
+    fruit = db.schema.get(name="GardenFruit")
+    tag = db.schema.get(name=InfrahubKind.TAG)
 
     t1 = await Node.init(db=db, schema=tag)
     await t1.new(db=db, name="tag1")
@@ -1128,7 +1128,7 @@ async def test_node_relationship_interface(db: InfrahubDatabase, default_branch:
 
 
 async def test_node_serialize_prefix(db: InfrahubDatabase, default_branch: Branch, prefix_schema):
-    prefix = registry.schema.get(name="TestPrefix")
+    prefix = db.schema.get(name="TestPrefix")
 
     p1 = await Node.init(db=db, schema=prefix)
     await p1.new(db=db, prefix="192.0.2.1", name="prefix1")
@@ -1153,7 +1153,7 @@ async def test_node_serialize_prefix(db: InfrahubDatabase, default_branch: Branc
 
 
 async def test_node_serialize_address(db: InfrahubDatabase, default_branch: Branch, prefix_schema):
-    ip = registry.schema.get(name="TestIp")
+    ip = db.schema.get(name="TestIp")
 
     i1 = await Node.init(db=db, schema=ip)
     await i1.new(db=db, address="192.0.2.1", name="ip1")

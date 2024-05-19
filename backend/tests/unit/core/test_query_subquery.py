@@ -1,4 +1,3 @@
-from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.schema import NodeSchema
@@ -82,7 +81,7 @@ async def test_build_subquery_filter_attribute_int(
 
 
 async def test_build_subquery_filter_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = db.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship(name="owner")
 
     query, params, result_name = await build_subquery_filter(
@@ -124,7 +123,7 @@ async def test_build_subquery_filter_relationship(db: InfrahubDatabase, default_
 
 
 async def test_build_subquery_filter_relationship_ids(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = db.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship(name="owner")
 
     query, params, result_name = await build_subquery_filter(
@@ -162,7 +161,7 @@ async def test_build_subquery_filter_relationship_ids(db: InfrahubDatabase, defa
 
 
 async def test_build_subquery_order_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = db.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship(name="owner")
 
     query, params, result_name = await build_subquery_order(
@@ -232,7 +231,7 @@ async def test_build_subquery_filter_attribute_multiple_values(
 async def test_build_subquery_filter_relationship_multiple_values(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema
 ):
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = db.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship(name="owner")
 
     query, params, result_name = await build_subquery_filter(

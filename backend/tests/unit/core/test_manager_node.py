@@ -111,8 +111,8 @@ async def test_get_one_attribute_with_flag_property(
 
 
 async def test_get_one_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -251,7 +251,7 @@ async def test_get_many_prefetch(db: InfrahubDatabase, default_branch: Branch, p
 
 
 async def test_get_many_with_profile(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium):
-    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
+    profile_schema = db.schema.get("ProfileTestCriticality", branch=default_branch)
     crit_profile_1 = await Node.init(db=db, schema=profile_schema)
     await crit_profile_1.new(db=db, profile_name="crit_profile_1", color="green", profile_priority=1001)
     await crit_profile_1.save(db=db)
@@ -272,7 +272,7 @@ async def test_get_many_with_profile(db: InfrahubDatabase, default_branch: Branc
 async def test_get_many_with_multiple_profiles_same_priority(
     db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
 ):
-    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
+    profile_schema = db.schema.get("ProfileTestCriticality", branch=default_branch)
     crit_profiles = []
     for i in range(1, 10):
         crit_profile = await Node.init(db=db, schema=profile_schema)
@@ -348,7 +348,7 @@ async def test_query_with_filter_bool_rel(
     car_camry_main,
     branch: Branch,
 ):
-    car = registry.schema.get(name="TestCar")
+    car = db.schema.get(name="TestCar")
 
     # Check filter with a boolean
     nodes = await NodeManager.query(db=db, schema=car, branch=branch, filters={"is_electric__value": False})
@@ -369,7 +369,7 @@ async def test_query_filter_with_multiple_values_rel(
     car_camry_main,
     branch: Branch,
 ):
-    car = registry.schema.get(name="TestCar")
+    car = db.schema.get(name="TestCar")
 
     nodes = await NodeManager.query(db=db, schema=car, branch=branch, filters={"owner__name__values": ["John", "Jane"]})
     assert len(nodes) == 4
@@ -385,7 +385,7 @@ async def test_qeury_with_multiple_values_invalid_type(
     car_camry_main,
     branch: Branch,
 ):
-    car = registry.schema.get(name="TestCar")
+    car = db.schema.get(name="TestCar")
 
     with pytest.raises(TypeError):
         await NodeManager.query(db=db, schema=car, branch=branch, filters={"owner__name__values": [1.0]})

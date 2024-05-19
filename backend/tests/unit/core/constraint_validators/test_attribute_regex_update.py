@@ -21,7 +21,7 @@ async def test_query(
     await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
     await person.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = db.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
     name_attr.regex = r"^[A-Z]+$"
 
@@ -51,7 +51,7 @@ async def test_query(
 async def test_query_NULL_allowed(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, person_john_main
 ):
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = db.schema.get(name="TestCar")
     color_attr = car_schema.get_attribute(name="color")
     color_attr.optional = True
     registry.schema.set(name="TestCar", schema=car_schema)
@@ -67,7 +67,7 @@ async def test_query_NULL_allowed(
     )
     await upper_color_car.save(db=db)
 
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = db.schema.get(name="TestCar")
     color_attr = car_schema.get_attribute(name="color")
     color_attr.regex = r"^#[a-z0-9]+$"
 
@@ -108,7 +108,7 @@ async def test_query_update_on_branch(
     await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
     await person.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = db.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
     name_attr.regex = r"^[A-Z]+$"
 
@@ -139,7 +139,7 @@ async def test_query_node_deleted_on_branch(
     await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
     await person.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = db.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
     name_attr.regex = r"^[A-Z]+$"
 
@@ -164,7 +164,7 @@ async def test_validator(
     await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
     await person.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson", branch=default_branch)
+    person_schema = db.schema.get(name="TestPerson", branch=default_branch)
     name_attr = person_schema.get_attribute(name="name")
     name_attr.regex = r"^[A-Z]+$"
     registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
@@ -188,7 +188,7 @@ async def test_validator(
 async def test_rpc(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main, helper
 ):
-    person_schema = registry.schema.get(name="TestPerson", branch=default_branch)
+    person_schema = db.schema.get(name="TestPerson", branch=default_branch)
     name_attr = person_schema.get_attribute(name="name")
     name_attr.regex = r"^[A-Z]+$"
     registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)

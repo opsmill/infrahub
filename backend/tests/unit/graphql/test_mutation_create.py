@@ -2,7 +2,6 @@ import pytest
 from graphql import graphql
 
 from infrahub import config
-from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -947,7 +946,7 @@ async def test_create_with_attribute_not_valid(db: InfrahubDatabase, default_bra
 
 
 async def test_create_with_uniqueness_constraint_violation(db: InfrahubDatabase, default_branch, car_person_schema):
-    car_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
+    car_schema = db.schema.get("TestCar", branch=default_branch, duplicate=False)
     car_schema.uniqueness_constraints = [["owner", "color"]]
 
     p1 = await Node.init(db=db, schema="TestPerson")

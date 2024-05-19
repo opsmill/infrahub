@@ -2026,7 +2026,7 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
 
     await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
 
-    node2 = registry.schema.get(name=node.kind, branch=default_branch)
+    node2 = db.schema.get(name=node.kind, branch=default_branch)
     assert node2.id
     assert node2.relationships[0].id
     assert node2.attributes[0].id
@@ -2075,7 +2075,7 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
     await registry.schema.load_node_to_db(node=NodeSchema(**SCHEMA), db=db, branch=default_branch)
 
-    node = registry.schema.get(name="BuiltinCriticality", branch=default_branch)
+    node = db.schema.get(name="BuiltinCriticality", branch=default_branch)
 
     new_node = node.duplicate()
 
@@ -2096,7 +2096,7 @@ async def test_load_schema_to_db_internal_models(db: InfrahubDatabase, default_b
 
     await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch.name)
 
-    node_schema = registry.schema.get(name="SchemaNode", branch=default_branch)
+    node_schema = db.schema.get(name="SchemaNode", branch=default_branch)
     results = await SchemaManager.query(schema=node_schema, db=db)
     assert len(results) > 1
     assert all(r for r in results if r.namespace.value != "Profile")
@@ -2110,7 +2110,7 @@ async def test_load_schema_to_db_core_models(
 
     await registry.schema.load_schema_to_db(schema=new_schema, db=db)
 
-    node_schema = registry.schema.get(name="SchemaGeneric")
+    node_schema = db.schema.get(name="SchemaGeneric")
     results = await SchemaManager.query(schema=node_schema, db=db)
     assert len(results) > 1
     assert all(r for r in results if r.namespace.value != "Profile")
@@ -2127,7 +2127,7 @@ async def test_load_schema_to_db_simple_01(
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
     await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch)
 
-    node_schema = registry.schema.get(name="SchemaNode")
+    node_schema = db.schema.get(name="SchemaNode")
     results = await SchemaManager.query(
         schema=node_schema, filters={"name__value": "Device"}, db=db, branch=default_branch
     )
@@ -2145,7 +2145,7 @@ async def test_load_schema_to_db_w_generics_01(
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
     await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch)
 
-    node_schema = registry.schema.get(name="SchemaNode")
+    node_schema = db.schema.get(name="SchemaNode")
     results = await SchemaManager.query(
         schema=node_schema, filters={"name__value": "InterfaceL3"}, db=db, branch=default_branch
     )

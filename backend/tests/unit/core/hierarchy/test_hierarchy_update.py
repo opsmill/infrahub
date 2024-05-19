@@ -1,4 +1,3 @@
-from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
 
@@ -9,7 +8,7 @@ RETURN rel
 
 
 async def test_update_node_with_hierarchy(db: InfrahubDatabase, hierarchical_location_data):
-    site_schema = registry.schema.get(name="LocationSite", duplicate=False)
+    site_schema = db.schema.get(name="LocationSite", duplicate=False)
     retrieved_node = await NodeManager.get_one(db=db, id=hierarchical_location_data["seattle"].id)
     new_parent = await NodeManager.get_one(db=db, id=hierarchical_location_data["europe"].id)
     results = await db.execute_query(

@@ -1328,9 +1328,9 @@ async def car_person_schema_generics(
 
 @pytest.fixture
 async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_generics) -> Dict[str, Node]:
-    ecar = registry.schema.get(name="TestElectricCar")
-    gcar = registry.schema.get(name="TestGazCar")
-    person = registry.schema.get(name="TestPerson")
+    ecar = db.schema.get(name="TestElectricCar")
+    gcar = db.schema.get(name="TestGazCar")
+    person = db.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -1723,7 +1723,7 @@ async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group
     node = NodeSchema(**SCHEMA)
     registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
     registry.schema.process_schema_branch(name=default_branch.name)
-    return registry.schema.get(name=node.kind, branch=default_branch.name)
+    return db.schema.get(name=node.kind, branch=default_branch.name)
 
 
 @pytest.fixture

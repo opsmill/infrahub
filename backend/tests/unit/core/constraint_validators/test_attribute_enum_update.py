@@ -1,4 +1,3 @@
-from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
@@ -9,7 +8,7 @@ from infrahub.database import InfrahubDatabase
 
 
 async def test_query_new_choice_value(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = db.schema.get(name="TestCar")
     transmission_attr = car_schema.get_attribute(name="transmission")
     transmission_attr.enum.append("warp-drive")
 
@@ -31,7 +30,7 @@ async def test_query_remove_choice(db: InfrahubDatabase, default_branch: Branch,
     car.transmission.value = "manual"
     await car.save(db=db)
 
-    car_schema = registry.schema.get(name="TestCar", branch=default_branch)
+    car_schema = db.schema.get(name="TestCar", branch=default_branch)
     transmission_attr = car_schema.get_attribute(name="transmission")
     transmission_attr.enum = ["flintstone-feet"]
 
@@ -64,7 +63,7 @@ async def test_query_convert_to_enum(db: InfrahubDatabase, default_branch: Branc
     car.color.value = "#123123"
     await car.save(db=db)
 
-    car_schema = registry.schema.get(name="TestCar", branch=default_branch)
+    car_schema = db.schema.get(name="TestCar", branch=default_branch)
     color_attr = car_schema.get_attribute(name="color")
     color_attr.enum = ["#444444", "#123123"]
 
@@ -89,7 +88,7 @@ async def test_query_update_on_branch(db: InfrahubDatabase, branch: Branch, car_
     car.color.value = "#123123"
     await car.save(db=db)
 
-    car_schema = registry.schema.get(name="TestCar", branch=branch)
+    car_schema = db.schema.get(name="TestCar", branch=branch)
     color_attr = car_schema.get_attribute(name="color")
     color_attr.enum = ["#444444", "#123123"]
 
@@ -113,7 +112,7 @@ async def test_query_delete_on_branch(db: InfrahubDatabase, branch: Branch, car_
     car = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
     await car.delete(db=db)
 
-    car_schema = registry.schema.get(name="TestCar", branch=branch)
+    car_schema = db.schema.get(name="TestCar", branch=branch)
     color_attr = car_schema.get_attribute(name="color")
     color_attr.enum = ["#444444", "#123123"]
 
@@ -138,7 +137,7 @@ async def test_validator(
     car.color.value = "#123123"
     await car.save(db=db)
 
-    car_schema = registry.schema.get(name="TestCar", branch=branch)
+    car_schema = db.schema.get(name="TestCar", branch=branch)
     color_attr = car_schema.get_attribute(name="color")
     color_attr.enum = ["#123123"]
 

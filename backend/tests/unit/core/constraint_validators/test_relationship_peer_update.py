@@ -120,7 +120,7 @@ async def test_query(
     car_volt_main: Node,
     person_john_main,
 ):
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = db.schema.get(name="TestCar")
     owner_rel = car_schema.get_relationship(name="owner")
     owner_rel.peer = "TestCar"
 
@@ -167,7 +167,7 @@ async def test_query_no_relationships(
         await fresh_car.owner.update(db=db, data=None)
         await fresh_car.save(db=db)
 
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = db.schema.get(name="TestCar")
     owner_rel = car_schema.get_relationship(name="owner")
     owner_rel.peer = "TestCar"
 
@@ -184,7 +184,7 @@ async def test_query_no_relationships(
 
 
 async def test_query_switch_from_generic_to_node_success(db: InfrahubDatabase, branch: Branch, car_person_generic_data):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = db.schema.get(name="TestPerson")
     cars_rel = person_schema.get_relationship(name="cars")
     cars_rel.peer = "TestElectricCar"
 
@@ -206,7 +206,7 @@ async def test_query_switch_from_generic_to_node_failure(db: InfrahubDatabase, b
     await g_car.new(db=db, name="GCar", nbr_seats=3, mpg=23, owner=p_1)
     await g_car.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = db.schema.get(name="TestPerson")
     cars_rel = person_schema.get_relationship(name="cars")
     cars_rel.peer = "TestElectricCar"
 
@@ -240,7 +240,7 @@ async def test_query_switch_from_node_to_generic_success(db: InfrahubDatabase, b
     await p_1.electric_cars.update(db=db, data=[g_car, e_car])
     await p_1.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = db.schema.get(name="TestPerson")
     ecars_rel = person_schema.get_relationship(name="electric_cars")
     ecars_rel.peer = "TestCar"
 
@@ -268,7 +268,7 @@ async def test_query_switch_from_node_to_generic_failure(db: InfrahubDatabase, b
     await p_1.electric_cars.update(db=db, data=[g_car, e_car])
     await p_1.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = db.schema.get(name="TestPerson")
     ecars_rel = person_schema.get_relationship(name="electric_cars")
     ecars_rel.peer = "TestPerson"
 
@@ -325,7 +325,7 @@ async def test_query_update_on_branch_success(
     await p_1.cars.update(db=db, data=[e_car])
     await p_1.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = db.schema.get(name="TestPerson")
     cars_rel = person_schema.get_relationship(name="cars")
     cars_rel.peer = "TestElectricCar"
 
@@ -355,7 +355,7 @@ async def test_query_update_on_branch_failure(
     await p_1.cars.update(db=db, data=[e_car, g_car])
     await p_1.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = db.schema.get(name="TestPerson")
     cars_rel = person_schema.get_relationship(name="cars")
     cars_rel.peer = "TestElectricCar"
 
@@ -408,7 +408,7 @@ async def test_query_delete_on_branch(
     p_1 = await NodeManager.get_one(db=db, id=p_1.id, branch=branch)
     await p_1.delete(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = db.schema.get(name="TestPerson")
     cars_rel = person_schema.get_relationship(name="cars")
     cars_rel.peer = "TestElectricCar"
 
@@ -432,7 +432,7 @@ async def test_validator(
     car_volt_main: Node,
     person_john_main,
 ):
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = db.schema.get(name="TestCar")
     owner_rel = car_schema.get_relationship(name="owner")
     owner_rel.peer = "TestCar"
 

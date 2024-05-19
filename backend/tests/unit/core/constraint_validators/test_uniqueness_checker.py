@@ -35,7 +35,7 @@ class TestUniquenessChecker:
         car_prius_main,
         branch: Branch,
     ):
-        schema = registry.schema.get("TestCar", branch=branch)
+        schema = db.schema.get("TestCar", branch=branch)
 
         grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
@@ -50,7 +50,7 @@ class TestUniquenessChecker:
         branch: Branch,
         default_branch: Branch,
     ):
-        schema = registry.schema.get("TestCar", branch=branch)
+        schema = db.schema.get("TestCar", branch=branch)
         schema.get_attribute("nbr_seats").unique = True
         schema_root = SchemaRoot(nodes=[schema])
         registry.schema.register_schema(schema=schema_root, branch=branch.name)
@@ -94,7 +94,7 @@ class TestUniquenessChecker:
     ):
         node_to_delete = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
         await node_to_delete.delete(db=db)
-        schema = registry.schema.get("TestCar", branch=branch)
+        schema = db.schema.get("TestCar", branch=branch)
         schema.get_attribute("nbr_seats").unique = True
 
         grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
@@ -112,7 +112,7 @@ class TestUniquenessChecker:
         car_to_update = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
         car_to_update.nbr_seats.value = 3
         await car_to_update.save(db=db)
-        schema = registry.schema.get("TestCar", branch=branch)
+        schema = db.schema.get("TestCar", branch=branch)
 
         grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
@@ -136,7 +136,7 @@ class TestUniquenessChecker:
             color += 1
             car.color.value = f"#{color}"
             await car.save(db=db)
-        schema = registry.schema.get("TestCar", branch=branch)
+        schema = db.schema.get("TestCar", branch=branch)
         schema.uniqueness_constraints = [["color__value", "owner__name"]]
         grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
@@ -169,7 +169,7 @@ class TestUniquenessChecker:
         car_to_update.color.value = "#444445"
         await car_to_update.save(db=db)
 
-        schema = registry.schema.get("TestCar", branch=branch)
+        schema = db.schema.get("TestCar", branch=branch)
         schema.uniqueness_constraints = [["color__value", "owner__height"]]
         schema_root = SchemaRoot(nodes=[schema])
         registry.schema.register_schema(schema=schema_root, branch=branch.name)
@@ -243,7 +243,7 @@ class TestUniquenessChecker:
         volt_car.name.value = "nolt"
         await volt_car.save(db=db)
 
-        schema = registry.schema.get("TestCar", branch=branch)
+        schema = db.schema.get("TestCar", branch=branch)
 
         grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
 
@@ -283,7 +283,7 @@ class TestUniquenessChecker:
         branch: Branch,
         default_branch: Branch,
     ):
-        person = registry.schema.get(name="TestPerson")
+        person = db.schema.get(name="TestPerson")
         nolt_owner = await Node.init(db=db, schema=person)
         await nolt_owner.new(db=db, name="Rupert", height=180)
         await nolt_owner.save(db=db)
@@ -299,7 +299,7 @@ class TestUniquenessChecker:
         await nolt_car.previous_owner.update(data=nolt_owner, db=db)
         await nolt_car.save(db=db)
 
-        schema = registry.schema.get("TestCar", branch=branch)
+        schema = db.schema.get("TestCar", branch=branch)
         schema.uniqueness_constraints = [["owner__height", "previous_owner__height"]]
         schema_root = SchemaRoot(nodes=[schema])
         registry.schema.register_schema(schema=schema_root, branch=branch.name)
@@ -378,7 +378,7 @@ class TestUniquenessChecker:
         await bolt_car.previous_owner.update(data=owner, db=db)
         await bolt_car.save(db=db)
 
-        schema = registry.schema.get("TestCar", branch=branch)
+        schema = db.schema.get("TestCar", branch=branch)
         schema.uniqueness_constraints = [["owner", "previous_owner__height"]]
         schema_root = SchemaRoot(nodes=[schema])
         registry.schema.register_schema(schema=schema_root, branch=branch.name)
@@ -450,7 +450,7 @@ class TestUniquenessChecker:
         await car_to_update.owner.update(data=person_john_main, db=db)
         await car_to_update.save(db=db)
 
-        schema = registry.schema.get("TestCar", branch=branch)
+        schema = db.schema.get("TestCar", branch=branch)
         schema.uniqueness_constraints = [["owner"]]
         schema_root = SchemaRoot(nodes=[schema])
         registry.schema.register_schema(schema=schema_root, branch=branch.name)
@@ -588,7 +588,7 @@ class TestUniquenessChecker:
         car_camry_main.color.value = "#111111"
         await car_camry_main.save(db=db)
 
-        schema = registry.schema.get("TestCar", branch=default_branch)
+        schema = db.schema.get("TestCar", branch=default_branch)
         schema.uniqueness_constraints = [["owner", "color"]]
         grouped_data_paths = await self.__call_system_under_test(db, default_branch, schema)
 
@@ -634,7 +634,7 @@ class TestUniquenessChecker:
         )  # violation
         await car_3_branch.save(db=db)
 
-        schema = registry.schema.get("TestCar", branch=branch)
+        schema = db.schema.get("TestCar", branch=branch)
         schema.uniqueness_constraints = [["owner", "color"], ["color", "nbr_seats"]]
         schema_root = SchemaRoot(nodes=[schema])
         registry.schema.register_schema(schema=schema_root, branch=branch.name)

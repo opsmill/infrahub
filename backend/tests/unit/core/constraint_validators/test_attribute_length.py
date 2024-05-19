@@ -14,7 +14,7 @@ from infrahub.database import InfrahubDatabase
 async def test_query_length_success(
     db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main, min_length, max_length
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = db.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
     name_attr.min_length = min_length
     name_attr.max_length = max_length
@@ -36,7 +36,7 @@ async def test_query_length_success(
 async def test_query_length_too_short(
     db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main, person_albert_main
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = db.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
     name_attr.min_length = 5
     name_attr.max_length = None
@@ -78,7 +78,7 @@ async def test_query_length_too_short(
 async def test_query_length_too_long(
     db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main, person_albert_main
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = db.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
     name_attr.min_length = 2
     name_attr.max_length = 5
@@ -118,7 +118,7 @@ async def test_query_update_on_branch(
     person_john.name.value = "Jon"
     await person_john.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = db.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
     name_attr.min_length = 2
     name_attr.max_length = 5
@@ -157,7 +157,7 @@ async def test_query_delete_on_branch(
     person_john = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
     await person_john.delete(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = db.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
     name_attr.min_length = 2
     name_attr.max_length = 5
@@ -190,7 +190,7 @@ async def test_validator(
     db: InfrahubDatabase, branch: Branch, default_branch: Branch, person_john_main, person_albert_main
 ):
     await branch.rebase(db=db)
-    person_schema = registry.schema.get(name="TestPerson", branch=branch)
+    person_schema = db.schema.get(name="TestPerson", branch=branch)
     name_attr = person_schema.get_attribute(name="name")
     name_attr.min_length = 3
     name_attr.max_length = 5

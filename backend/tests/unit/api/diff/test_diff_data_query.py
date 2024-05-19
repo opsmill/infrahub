@@ -1,4 +1,3 @@
-from infrahub.core import registry
 from infrahub.core.constants import DiffAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
@@ -7,7 +6,7 @@ from infrahub.database import InfrahubDatabase
 
 async def test_diff_data_add_node_on_this_branch(db: InfrahubDatabase, client, client_headers, car_person_schema):
     branch2 = await create_branch("branch2", db=db)
-    person_schema = registry.schema.get(name="TestPerson", branch=branch2)
+    person_schema = db.schema.get(name="TestPerson", branch=branch2)
     person = await Node.init(schema=person_schema, db=db, branch=branch2)
     await person.new(db=db, name="Guy")
     await person.save(db=db)
@@ -36,7 +35,7 @@ async def test_diff_data_add_node_on_another_branch(
 ):
     await create_branch("branch2", db=db)
 
-    person_schema = registry.schema.get(name="TestPerson", branch=default_branch)
+    person_schema = db.schema.get(name="TestPerson", branch=default_branch)
     person = await Node.init(schema=person_schema, db=db, branch=default_branch)
     await person.new(db=db, name="Guy")
     await person.save(db=db)

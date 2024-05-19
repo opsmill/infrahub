@@ -2,7 +2,6 @@ import pytest
 from graphql import graphql
 
 from infrahub import config
-from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -1103,7 +1102,7 @@ async def test_update_relationship_previously_deleted(
 
 
 async def test_update_with_uniqueness_constraint_violation(db: InfrahubDatabase, default_branch, car_person_schema):
-    car_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
+    car_schema = db.schema.get("TestCar", branch=default_branch, duplicate=False)
     car_schema.uniqueness_constraints = [["owner", "color"]]
 
     p1 = await Node.init(db=db, schema="TestPerson")

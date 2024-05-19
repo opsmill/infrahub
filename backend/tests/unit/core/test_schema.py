@@ -3,7 +3,6 @@ from typing import Hashable
 import pytest
 from pydantic import ValidationError
 
-from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.schema import (
     AttributeSchema,
@@ -111,7 +110,7 @@ async def test_node_schema_generate_fields_for_display_label():
 
 
 async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car_person_schema):
-    person = registry.schema.get(name="TestPerson")
+    person = db.schema.get(name="TestPerson")
     rel = person.relationships[0]
 
     # Filter relationships by NAME__VALUE
@@ -146,7 +145,7 @@ async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car
 
 
 async def test_rel_schema_query_filter_no_value(db: InfrahubDatabase, default_branch, car_person_schema):
-    person = registry.schema.get(name="TestPerson")
+    person = db.schema.get(name="TestPerson")
     rel = person.relationships[0]
 
     # Filter relationships by NAME__VALUE

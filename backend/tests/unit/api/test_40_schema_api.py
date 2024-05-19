@@ -378,7 +378,7 @@ async def test_schema_load_endpoint_valid_with_extensions(
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
 
-    org_schema = registry.schema.get(name="CoreOrganization", branch=default_branch.name)
+    org_schema = db.schema.get(name="CoreOrganization", branch=default_branch.name)
     initial_nbr_relationships = len(org_schema.relationships)
 
     schema = registry.schema.get_schema_branch(name=default_branch.name)
@@ -408,7 +408,7 @@ async def test_schema_load_endpoint_valid_with_extensions(
     assert response.json()["schema_updated"]
     assert response.status_code == 200
 
-    org_schema = registry.schema.get(name="CoreOrganization", branch=default_branch.name)
+    org_schema = db.schema.get(name="CoreOrganization", branch=default_branch.name)
     assert len(org_schema.relationships) == initial_nbr_relationships + 1
 
 

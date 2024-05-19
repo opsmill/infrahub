@@ -1,4 +1,3 @@
-from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
@@ -18,7 +17,7 @@ async def test_query_new_choice_value(db: InfrahubDatabase, default_branch: Bran
     await crit_med.new(db=db, name="med", level=4, status="passive")
     await crit_med.save(db=db)
 
-    crit_schema = registry.schema.get(name="TestCriticality")
+    crit_schema = db.schema.get(name="TestCriticality")
     status_attr = crit_schema.get_attribute(name="status")
     status_attr.choices.append(DropdownChoice(name="another-thing"))
 
@@ -44,7 +43,7 @@ async def test_query_remove_choice(db: InfrahubDatabase, default_branch: Branch,
     await crit_med.new(db=db, name="med", level=4, status="passive")
     await crit_med.save(db=db)
 
-    crit_schema = registry.schema.get(name="TestCriticality")
+    crit_schema = db.schema.get(name="TestCriticality")
     status_attr = crit_schema.get_attribute(name="status")
     status_attr.choices = [DropdownChoice(name="active", color="#00ff00", description="Online things")]
 
@@ -79,7 +78,7 @@ async def test_query_convert_to_choice(db: InfrahubDatabase, branch: Branch, cri
     await crit_med.new(db=db, name="med", level=4, status="passive")
     await crit_med.save(db=db)
 
-    crit_schema = registry.schema.get(name="TestCriticality", branch=branch)
+    crit_schema = db.schema.get(name="TestCriticality", branch=branch)
     name_attr = crit_schema.get_attribute(name="name")
     name_attr.choices = [DropdownChoice(name="nothing")]
     name_attr.kind = "Dropdown"
@@ -137,7 +136,7 @@ async def test_query_attribute_update_on_branch(
     await crit_high.new(db=db, name="high", level=4, status="passive")
     await crit_high.save(db=db)
 
-    crit_schema = registry.schema.get(name="TestCriticality", branch=branch)
+    crit_schema = db.schema.get(name="TestCriticality", branch=branch)
     status_attr = crit_schema.get_attribute(name="status")
     status_attr.choices = [DropdownChoice(name="active", color="#00ff00", description="Online things")]
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCriticality", field_name="status")
@@ -191,7 +190,7 @@ async def test_query_node_delete_on_branch(
     await crit_high.new(db=db, name="high", level=4, status="passive")
     await crit_high.save(db=db)
 
-    crit_schema = registry.schema.get(name="TestCriticality", branch=branch)
+    crit_schema = db.schema.get(name="TestCriticality", branch=branch)
     status_attr = crit_schema.get_attribute(name="status")
     status_attr.choices = [DropdownChoice(name="active", color="#00ff00", description="Online things")]
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCriticality", field_name="status")
@@ -241,7 +240,7 @@ async def test_validator(db: InfrahubDatabase, branch: Branch, criticality_schem
     await crit_high.new(db=db, name="high", level=4, status="passive")
     await crit_high.save(db=db)
 
-    crit_schema = registry.schema.get(name="TestCriticality", branch=branch)
+    crit_schema = db.schema.get(name="TestCriticality", branch=branch)
     status_attr = crit_schema.get_attribute(name="status")
     status_attr.choices = [DropdownChoice(name="active", color="#00ff00", description="Online things")]
 

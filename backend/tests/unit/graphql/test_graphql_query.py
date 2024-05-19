@@ -129,7 +129,7 @@ async def test_display_label_one_item(db: InfrahubDatabase, default_branch: Bran
     tmp_schema = NodeSchema(**SCHEMA)
     registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
     registry.schema.process_schema_branch(name=default_branch.name)
-    schema = registry.schema.get(tmp_schema.kind, branch=default_branch)
+    schema = db.schema.get(tmp_schema.kind, branch=default_branch)
     obj1 = await Node.init(db=db, schema=schema)
     await obj1.new(db=db, name="low")
     await obj1.save(db=db)
@@ -177,7 +177,7 @@ async def test_display_label_multiple_items(db: InfrahubDatabase, default_branch
     tmp_schema = NodeSchema(**SCHEMA)
     registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
     registry.schema.process_schema_branch(name=default_branch.name)
-    schema = registry.schema.get(tmp_schema.kind, branch=default_branch)
+    schema = db.schema.get(tmp_schema.kind, branch=default_branch)
 
     obj1 = await Node.init(db=db, schema=schema)
     await obj1.new(db=db, name="low", level=4)
@@ -231,7 +231,7 @@ async def test_display_label_default_value(db: InfrahubDatabase, default_branch:
     tmp_schema = NodeSchema(**SCHEMA)
     registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
     registry.schema.process_schema_branch(name=default_branch.name)
-    schema = registry.schema.get(tmp_schema.kind, branch=default_branch)
+    schema = db.schema.get(tmp_schema.kind, branch=default_branch)
 
     obj1 = await Node.init(db=db, schema=schema)
     await obj1.new(db=db, name="low")
@@ -444,8 +444,8 @@ async def test_all_attributes(db: InfrahubDatabase, default_branch: Branch, data
 
 
 async def test_nested_query(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -508,8 +508,8 @@ async def test_nested_query(db: InfrahubDatabase, default_branch: Branch, car_pe
 
 
 async def test_double_nested_query(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -583,8 +583,8 @@ async def test_double_nested_query(db: InfrahubDatabase, default_branch: Branch,
 
 
 async def test_display_label_nested_query(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -692,8 +692,8 @@ def _check_diff_for_branch_and_id(all_dicts: list[dict], branch_name: str, id: s
 
 
 async def test_query_diffsummary_old(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
 
     p1_main = await Node.init(db=db, schema=person)
     await p1_main.new(db=db, name="John", height=180)
@@ -758,8 +758,8 @@ async def test_query_diffsummary_old(db: InfrahubDatabase, default_branch: Branc
 
 
 async def test_query_diffsummaryold(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
 
     p1_main = await Node.init(db=db, schema=person)
     await p1_main.new(db=db, name="John", height=180)
@@ -824,8 +824,8 @@ async def test_query_diffsummaryold(db: InfrahubDatabase, default_branch: Branch
 
 
 async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
 
     p1_main = await Node.init(db=db, schema=person)
     await p1_main.new(db=db, name="John", height=180)
@@ -1001,8 +1001,8 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
 
 
 async def test_query_typename(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -1202,7 +1202,7 @@ async def test_query_filter_on_enum(
     db: InfrahubDatabase, default_branch: Branch, person_john_main, car_person_schema, graphql_enums_on, enum_value
 ):
     config.SETTINGS.experimental_features.graphql_enums = graphql_enums_on
-    car = registry.schema.get(name="TestCar")
+    car = db.schema.get(name="TestCar")
 
     c1 = await Node.init(db=db, schema=car)
     await c1.new(db=db, name="GoKart", nbr_seats=1, is_electric=True, owner=person_john_main, transmission="manual")
@@ -1238,9 +1238,9 @@ async def test_query_filter_on_enum(
 
 
 async def test_query_multiple_filters(db: InfrahubDatabase, default_branch: Branch, car_person_manufacturer_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
-    manufacturer = registry.schema.get(name="TestManufacturer")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
+    manufacturer = db.schema.get(name="TestManufacturer")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -1387,8 +1387,8 @@ async def test_query_multiple_filters(db: InfrahubDatabase, default_branch: Bran
 
 
 async def test_query_filter_relationships(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -1546,8 +1546,8 @@ async def test_query_filter_relationships_with_generic_filter(
 
 
 async def test_query_filter_relationship_id(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -1654,7 +1654,7 @@ async def test_query_filter_relationship_id(db: InfrahubDatabase, default_branch
 
 
 async def test_query_attribute_multiple_values(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    person = registry.schema.get(name="TestPerson")
+    person = db.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -1687,8 +1687,8 @@ async def test_query_attribute_multiple_values(db: InfrahubDatabase, default_bra
 
 
 async def test_query_relationship_multiple_values(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -2159,8 +2159,8 @@ async def test_query_attribute_node_property_owner(
 async def test_query_relationship_node_property(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema, first_account
 ):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = db.schema.get(name="TestCar")
+    person = db.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)

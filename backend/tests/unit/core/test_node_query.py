@@ -105,7 +105,7 @@ async def test_query_NodeListGetInfoQuery(
 async def test_query_NodeListGetInfoQuery_with_profiles(
     db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):
-    profile_schema = registry.schema.get("ProfileTestPerson", branch=branch)
+    profile_schema = db.schema.get("ProfileTestPerson", branch=branch)
     person_profile = await Node.init(db=db, schema=profile_schema)
     await person_profile.new(db=db, profile_name="person_profile_1", height=172, profile_priority=1001)
     await person_profile.save(db=db)
@@ -130,7 +130,7 @@ async def test_query_NodeListGetInfoQuery_with_profiles(
 async def test_query_NodeListGetInfoQuery_with_profiles_some_deleted(
     db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):
-    profile_schema = registry.schema.get("ProfileTestPerson", branch=branch)
+    profile_schema = db.schema.get("ProfileTestPerson", branch=branch)
     person_profile = await Node.init(db=db, schema=profile_schema)
     await person_profile.new(db=db, profile_name="person_profile_1", height=172, profile_priority=1001)
     await person_profile.save(db=db)
@@ -391,7 +391,7 @@ async def test_query_NodeGetHierarchyQuery_ancestors(
     default_branch: Branch,
     hierarchical_location_data,
 ):
-    node_schema = registry.schema.get(name="LocationRack", branch=default_branch)
+    node_schema = db.schema.get(name="LocationRack", branch=default_branch)
 
     europe = hierarchical_location_data["europe"]
     paris = hierarchical_location_data["paris"]
@@ -413,7 +413,7 @@ async def test_query_NodeGetHierarchyQuery_filters(
     default_branch: Branch,
     hierarchical_location_data: Dict[str, Node],
 ):
-    node_schema = registry.schema.get(name="LocationRack", branch=default_branch)
+    node_schema = db.schema.get(name="LocationRack", branch=default_branch)
 
     europe = hierarchical_location_data["europe"]
 

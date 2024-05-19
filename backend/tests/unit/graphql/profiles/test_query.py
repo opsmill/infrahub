@@ -30,7 +30,7 @@ def criticality_schema(default_branch: Branch, data_schema):
 
 
 async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    profile = registry.schema.get("ProfileTestCriticality", branch=default_branch)
+    profile = db.schema.get("ProfileTestCriticality", branch=default_branch)
 
     obj1 = await Node.init(db=db, schema=profile)
     await obj1.new(db=db, profile_name="prof1", level=8)
@@ -65,7 +65,7 @@ async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Br
 
 
 async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    profile = registry.schema.get("ProfileTestCriticality", branch=default_branch)
+    profile = db.schema.get("ProfileTestCriticality", branch=default_branch)
 
     obj1 = await Node.init(db=db, schema=profile)
     await obj1.new(db=db, profile_name="prof1", level=8)
@@ -111,7 +111,7 @@ async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Br
 
 
 async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
+    profile_schema = db.schema.get("ProfileTestCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_schema)
     await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
     await prof_1.save(db=db)
@@ -119,7 +119,7 @@ async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criti
     await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9)
     await prof_2.save(db=db)
 
-    crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
+    crit_schema = db.schema.get("TestCriticality", branch=default_branch)
     crit_1 = await Node.init(db=db, schema=crit_schema)
     await crit_1.new(db=db, name="crit_1")
     crit_1.level.is_default = True
@@ -182,7 +182,7 @@ async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criti
 
 
 async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
+    profile_schema = db.schema.get("ProfileTestCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_schema)
     await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
     await prof_1.save(db=db)
@@ -190,7 +190,7 @@ async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branc
     await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9, fancy="sometimes")
     await prof_2.save(db=db)
 
-    crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
+    crit_schema = db.schema.get("TestCriticality", branch=default_branch)
     crit_no_profile = await Node.init(db=db, schema=crit_schema)
     await crit_no_profile.new(db=db, name="crit_no_profile", fancy="always")
     await crit_no_profile.save(db=db)
@@ -257,7 +257,7 @@ async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branc
 
 
 async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
+    profile_schema = db.schema.get("ProfileTestCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_schema)
     await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
     await prof_1.save(db=db)
@@ -265,7 +265,7 @@ async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_bra
     await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9, fancy="sometimes")
     await prof_2.save(db=db)
 
-    crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
+    crit_schema = db.schema.get("TestCriticality", branch=default_branch)
     crit_no_profile = await Node.init(db=db, schema=crit_schema)
     await crit_no_profile.new(db=db, name="crit_no_profile", fancy="always")
     await crit_no_profile.save(db=db)
