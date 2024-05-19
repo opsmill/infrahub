@@ -8,6 +8,8 @@ test.describe("/ipam - IP Namespace", () => {
   test("create ip namespace", async ({ page }) => {
     await page.goto("/objects/BuiltinIPNamespace");
 
+    await expect(page.getByRole("link", { name: "default" })).toBeVisible();
+
     await page.getByTestId("create-object-button").click();
     await page.getByTestId("side-panel-container").getByTestId("select-open-option-button").click();
     await page.getByRole("option", { name: "IpamNamespace" }).click();
