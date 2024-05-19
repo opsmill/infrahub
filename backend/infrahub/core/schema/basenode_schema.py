@@ -35,6 +35,18 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
     _sort_by: List[str] = ["namespace", "name"]
 
     @property
+    def is_node_schema(self) -> bool:
+        return False
+
+    @property
+    def is_generic_schema(self) -> bool:
+        return False
+
+    @property
+    def is_profile_schema(self) -> bool:
+        return False
+
+    @property
     def kind(self) -> str:
         if self.namespace == "Attribute":
             return self.name

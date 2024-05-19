@@ -23,7 +23,6 @@ from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.core import registry
-from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
@@ -37,7 +36,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from infrahub.core.branch import Branch
-    from infrahub.core.schema import MainSchemaTypes
+    from infrahub.core.schema import MainSchemaTypes, NodeSchema
     from infrahub.core.schema_manager import SchemaBranch
 
     from .manager import DatabaseManager
@@ -81,7 +80,7 @@ class DatabaseSchemaManager:
         self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
     ) -> NodeSchema:
         schema = self.get(name=name, branch=branch, duplicate=duplicate)
-        if isinstance(schema, NodeSchema):
+        if schema.is_node_schema:
             return schema
 
         raise ValueError("The selected node is not of type NodeSchema")

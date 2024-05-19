@@ -13,6 +13,18 @@ if TYPE_CHECKING:
 
 
 class NodeSchema(GeneratedNodeSchema):
+    @property
+    def is_node_schema(self) -> bool:
+        return True
+
+    @property
+    def is_generic_schema(self) -> bool:
+        return False
+
+    @property
+    def is_profile_schema(self) -> bool:
+        return False
+
     def validate_inheritance(self, interface: GenericSchema) -> None:
         """Check that protected attributes and relationships are not overriden before inheriting them from interface."""
         for attribute in self.attributes:
