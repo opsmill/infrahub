@@ -181,7 +181,7 @@ class InfrahubDatabase:
         return self.__class__(
             mode=InfrahubDatabaseMode.SESSION,
             db_type=self.db_type,
-            schemas=schemas or self._schemas,
+            schemas=schemas or self._schemas.values(),
             db_manager=self.manager,
             driver=self._driver,
             session_mode=session_mode,
@@ -191,7 +191,7 @@ class InfrahubDatabase:
         return self.__class__(
             mode=InfrahubDatabaseMode.TRANSACTION,
             db_type=self.db_type,
-            schemas=schemas or self._schemas,
+            schemas=schemas or self._schemas.values(),
             db_manager=self.manager,
             driver=self._driver,
             session=self._session,
