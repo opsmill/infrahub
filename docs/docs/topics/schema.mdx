@@ -223,7 +223,7 @@ nodes:
 #### Uniqueness Constraints
 
 More complex uniqueness constraints, composed of multiple attributes and/or relationships can be defined at the node or generic level with the property `uniqueness_constraints`.
-It's possible to define multiple uniqueness constraints and each of them will be evaluated individually. 
+It's possible to define multiple uniqueness constraints and each of them will be evaluated individually.
 
 In the example below, the node schema `ExampleCar`, `["owner", "model__value"]` garantee that a car will unique based on the `owner` and the `model` of the car.
 
@@ -257,8 +257,12 @@ nodes:
 
 In addition to the internal id automatically generated for each object (UUID), Infrahub provide a way to define a set of fields that will constitue a humain friendly identifier (hfid).
 
+:::success Examples
+
 The `hfid` is meant to be used to reference objects uniquely across systems, or even before an object has been created in Infrahub.
 Having a humain friendly way to identify an object is very important to build proper data synchronization between systems and to provide true idempotent script.
+
+:::
 
 In the example below, each `ExamplePerson`,  will have a `hfid` composed of his/her `lastname` and `firstname`.
 
@@ -283,9 +287,18 @@ nodes:
 
 If a `humain_friendly_id` is defined on a node but no `uniqueness_constraints` are present, a uniqueness constraints matching the `humain_friendly_id` will be automatically created.
 
-If at least one attribute is marked as unique, 
+If at least one attribute is marked as unique, and `humain_friendly_id` hasn't been defined, `humain_friendly_id` will be automatically created.
+
 :::
 
+#### `hfid` support in GraphQL
+
+`hfid` can be used as a alternative to `id` in most places in GraphQL, including :
+
+- Update Mutation
+- Upsert Mutation
+- Delete Mutation
+- Related Node in all Mutations
 
 ### Branch support
 
@@ -328,11 +341,11 @@ Attributes and relationships can be configured as **branch-aware**, **branch-agn
 nodes:
   - name: Fruit
     namespace: Example
-    branch: True # (Default)
+    branch: "agnostic"
     attributes:
       - kind: Text
         name: name
-        branch: "agnostic"
+        branch: "aware"
 ```
 
 By default, if a specific value is not defined:
