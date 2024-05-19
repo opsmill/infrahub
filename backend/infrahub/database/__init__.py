@@ -59,7 +59,7 @@ class InfrahubDatabaseSessionMode(InfrahubStringEnum):
 
 def get_branch_name(branch: Optional[Union[Branch, str]] = None) -> str:
     if not branch:
-        return config.SETTINGS.main.default_branch
+        return registry.default_branch
     if isinstance(branch, str):
         return branch
 
