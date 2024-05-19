@@ -680,13 +680,6 @@ core_models: dict[str, Any] = {
                     "optional": True,
                     "order_weight": 2000,
                 },
-                {
-                    "name": "utilization",
-                    "kind": "Number",
-                    "read_only": True,
-                    "optional": True,
-                    "allow_override": AllowOverrideType.NONE,
-                },
             ],
         },
     ],

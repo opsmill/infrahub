@@ -6,7 +6,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.node.resource_manager import CorePrefixPool
+from infrahub.core.node.resource_manager.ip_prefix_pool import CorePrefixPool
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship.model import Relationship, RelationshipValidatorList
 from infrahub.core.schema_manager import SchemaBranch

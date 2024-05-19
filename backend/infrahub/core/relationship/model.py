@@ -705,10 +705,12 @@ class RelationshipManager:
 
         return await rels[0].get_peer(db=db)
 
-    async def get_peers(self, db: InfrahubDatabase) -> Dict[str, Node]:
-        rels = await self.get_relationships(db=db)
+    async def get_peers(self, db: InfrahubDatabase, branch_agnostic: bool = False) -> Dict[str, Node]:
+        rels = await self.get_relationships(db=db, branch_agnostic=branch_agnostic)
         peer_ids = [rel.peer_id for rel in rels if rel.peer_id]
-        nodes = await registry.manager.get_many(db=db, ids=peer_ids, branch=self.branch)
+        nodes = await registry.manager.get_many(
+            db=db, ids=peer_ids, branch=self.branch, branch_agnostic=branch_agnostic
+        )
         return nodes
 
     def get_branch_based_on_support_type(self) -> Branch:
@@ -723,7 +725,7 @@ class RelationshipManager:
         return self.branch
 
     async def fetch_relationship_ids(
-        self, db: InfrahubDatabase, at: Optional[Timestamp] = None
+        self, db: InfrahubDatabase, at: Optional[Timestamp] = None, branch_agnostic: bool = False
     ) -> Tuple[List[str], List[str], List[str], Dict[str, RelationshipPeerData]]:
         """Fetch the latest relationships from the database and returns :
         - the list of nodes present on both sides
@@ -737,6 +739,7 @@ class RelationshipManager:
             source=self.node,
             at=at or self.at,
             rel=self.rel_class(schema=self.schema, branch=self.branch, node=self.node),
+            branch_agnostic=branch_agnostic,
         )
         await query.execute(db=db)
 
@@ -750,7 +753,9 @@ class RelationshipManager:
 
         return peer_ids_present_both, peer_ids_present_local_only, peer_ids_present_database_only, peers_database
 
-    async def _fetch_relationships(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
+    async def _fetch_relationships(
+        self, db: InfrahubDatabase, at: Optional[Timestamp] = None, branch_agnostic: bool = False
+    ) -> None:
         """Fetch the latest relationships from the database and update the local cache."""
 
         (
@@ -758,7 +763,7 @@ class RelationshipManager:
             peer_ids_present_local_only,
             peer_ids_present_database_only,
             peers_database,
-        ) = await self.fetch_relationship_ids(at=at, db=db)
+        ) = await self.fetch_relationship_ids(at=at, db=db, branch_agnostic=branch_agnostic)
 
         for peer_id in peer_ids_present_database_only:
             self._relationships.append(
@@ -783,9 +788,9 @@ class RelationshipManager:
 
         return rels
 
-    async def get_relationships(self, db: InfrahubDatabase) -> List[Relationship]:
+    async def get_relationships(self, db: InfrahubDatabase, branch_agnostic: bool = False) -> List[Relationship]:
         if not self.has_fetched_relationships:
-            await self._fetch_relationships(db=db)
+            await self._fetch_relationships(db=db, branch_agnostic=branch_agnostic)
 
         return self._relationships.as_list()
 
