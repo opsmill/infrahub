@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 from infrahub.core.ipam.size import get_prefix_space
+from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 from infrahub.core.manager import NodeManager
 
 from . import Node
@@ -27,6 +28,19 @@ class BuiltinIPPrefix(Node):
             for read_only_attr in ["netmask", "hostmask", "network_address", "broadcast_address"]:
                 if read_only_attr in fields:
                     response[read_only_attr] = {"value": getattr(self.prefix, read_only_attr)}  # type: ignore[attr-defined,has-type]
+
+            if "utilization" in fields:
+                if self.member_type.id is None or self.prefix.id is None:  # type: ignore[has-type]
+                    retrieved = await NodeManager.get_one(
+                        db=db, branch=self._branch, id=self.id, fields={"member_type": None, "prefix": None}
+                    )
+                    self.member_type = retrieved.member_type  # type: ignore[union-attr]  # pylint: disable=attribute-defined-outside-init
+                    self.prefix = retrieved.prefix  # type: ignore[union-attr]  # pylint: disable=attribute-defined-outside-init
+                utilization_getter = PrefixUtilizationGetter(db=db, ip_prefixes=[self])
+                utilization = await utilization_getter.get_use_percentage(
+                    ip_prefixes=[self], branch_names=[self._branch.name]
+                )
+                response["utilization"] = {"value": int(utilization)}
 
         return response
 

@@ -40,6 +40,20 @@ query GetPool($pool_id: String!) {
 }"""
 
 
+PREFIX_UTILIZATION_QUERY = """
+query GetPrefixUtilization($prefix_ids: [ID!]) {
+  BuiltinIPPrefix(ids: $prefix_ids) {
+    edges {
+      node {
+        utilization { value }
+        id
+        prefix { value }
+      }
+    }
+  }
+}"""
+
+
 class TestIpamUtilization(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def initial_dataset(
@@ -217,6 +231,30 @@ class TestIpamUtilization(TestInfrahubApp):
             }
         }
 
+        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=PREFIX_UTILIZATION_QUERY,
+            context_value=gql_params.context,
+            variable_values={"prefix_ids": [container.id]},
+        )
+
+        assert not result.errors
+        assert result.data
+        assert result.data == {
+            "BuiltinIPPrefix": {
+                "edges": [
+                    {
+                        "node": {
+                            "id": container.id,
+                            "utilization": {"value": 12},
+                            "prefix": {"value": container.prefix.value},
+                        }
+                    }
+                ],
+            }
+        }
+
     async def test_step01_graphql_address_pool_utilization(
         self, db: InfrahubDatabase, default_branch: Branch, initial_dataset
     ):
@@ -251,6 +289,29 @@ class TestIpamUtilization(TestInfrahubApp):
                 ],
             }
         }
+        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=PREFIX_UTILIZATION_QUERY,
+            context_value=gql_params.context,
+            variable_values={"prefix_ids": [prefix.id]},
+        )
+
+        assert not result.errors
+        assert result.data
+        assert result.data == {
+            "BuiltinIPPrefix": {
+                "edges": [
+                    {
+                        "node": {
+                            "id": prefix.id,
+                            "utilization": {"value": 50},
+                            "prefix": {"value": prefix.prefix.value},
+                        }
+                    }
+                ],
+            }
+        }
 
     async def test_step02_branch_utilization(
         self, db: InfrahubDatabase, default_branch: Branch, branch2: Branch, initial_dataset, step_02_dataset
@@ -275,7 +336,7 @@ class TestIpamUtilization(TestInfrahubApp):
         assert await getter.get_use_percentage(ip_prefixes=[prefix], branch_names=[default_branch.name]) == 50.0
 
     async def test_step02_graphql_prefix_pool_branch_utilization(
-        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset, step_02_dataset
+        self, db: InfrahubDatabase, default_branch: Branch, branch2: Branch, initial_dataset, step_02_dataset
     ):
         container = initial_dataset["container"]
         container_branch = step_02_dataset["container_branch"]
@@ -316,8 +377,35 @@ class TestIpamUtilization(TestInfrahubApp):
             }
         } in prefix_details_list
 
+        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch2)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=PREFIX_UTILIZATION_QUERY,
+            context_value=gql_params.context,
+            variable_values={"prefix_ids": [container.id, container_branch.id]},
+        )
+
+        assert not result.errors
+        assert result.data
+        prefix_details_list = result.data["BuiltinIPPrefix"]["edges"]
+        assert len(prefix_details_list) == 2
+        assert {
+            "node": {
+                "id": container.id,
+                "utilization": {"value": 12},
+                "prefix": {"value": container.prefix.value},
+            }
+        } in prefix_details_list
+        assert {
+            "node": {
+                "id": container_branch.id,
+                "utilization": {"value": 0},
+                "prefix": {"value": container_branch.prefix.value},
+            }
+        } in prefix_details_list
+
     async def test_step02_graphql_address_pool_branch_utilization(
-        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset, step_02_dataset
+        self, db: InfrahubDatabase, default_branch: Branch, branch2: Branch, initial_dataset, step_02_dataset
     ):
         prefix = initial_dataset["prefix"]
         prefix_branch = step_02_dataset["prefix_branch"]
@@ -358,6 +446,33 @@ class TestIpamUtilization(TestInfrahubApp):
             }
         } in prefix_details_list
 
+        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch2)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=PREFIX_UTILIZATION_QUERY,
+            context_value=gql_params.context,
+            variable_values={"prefix_ids": [prefix.id, prefix_branch.id]},
+        )
+
+        assert not result.errors
+        assert result.data
+        prefix_details_list = result.data["BuiltinIPPrefix"]["edges"]
+        assert len(prefix_details_list) == 2
+        assert {
+            "node": {
+                "id": prefix.id,
+                "utilization": {"value": 50},
+                "prefix": {"value": prefix.prefix.value},
+            }
+        } in prefix_details_list
+        assert {
+            "node": {
+                "id": prefix_branch.id,
+                "utilization": {"value": 100},
+                "prefix": {"value": prefix_branch.prefix.value},
+            }
+        } in prefix_details_list
+
     async def test_step03_utilization_with_deletes(
         self,
         db: InfrahubDatabase,
@@ -387,7 +502,13 @@ class TestIpamUtilization(TestInfrahubApp):
         )
 
     async def test_step03_graphql_prefix_pool_delete_utilization(
-        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset, step_02_dataset, step_03_dataset
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        branch2: Branch,
+        initial_dataset,
+        step_02_dataset,
+        step_03_dataset,
     ):
         container = initial_dataset["container"]
         container_branch = step_02_dataset["container_branch"]
@@ -428,8 +549,41 @@ class TestIpamUtilization(TestInfrahubApp):
             }
         } in prefix_details_list
 
+        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch2)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=PREFIX_UTILIZATION_QUERY,
+            context_value=gql_params.context,
+            variable_values={"prefix_ids": [container.id, container_branch.id]},
+        )
+
+        assert not result.errors
+        assert result.data
+        prefix_details_list = result.data["BuiltinIPPrefix"]["edges"]
+        assert len(prefix_details_list) == 2
+        assert {
+            "node": {
+                "id": container.id,
+                "utilization": {"value": 6},
+                "prefix": {"value": container.prefix.value},
+            }
+        } in prefix_details_list
+        assert {
+            "node": {
+                "id": container_branch.id,
+                "utilization": {"value": 0},
+                "prefix": {"value": container_branch.prefix.value},
+            }
+        } in prefix_details_list
+
     async def test_step03_graphql_address_pool_delete_utilization(
-        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset, step_02_dataset, step_03_dataset
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        branch2: Branch,
+        initial_dataset,
+        step_02_dataset,
+        step_03_dataset,
     ):
         prefix = initial_dataset["prefix"]
         prefix_branch = step_02_dataset["prefix_branch"]
@@ -467,5 +621,32 @@ class TestIpamUtilization(TestInfrahubApp):
                 "utilization": (13 / 14) * 100,
                 "utilization_default_branch": 0,
                 "weight": 14,
+            }
+        } in prefix_details_list
+
+        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch2)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=PREFIX_UTILIZATION_QUERY,
+            context_value=gql_params.context,
+            variable_values={"prefix_ids": [prefix.id, prefix_branch.id]},
+        )
+
+        assert not result.errors
+        assert result.data
+        prefix_details_list = result.data["BuiltinIPPrefix"]["edges"]
+        assert len(prefix_details_list) == 2
+        assert {
+            "node": {
+                "id": prefix.id,
+                "utilization": {"value": int(6 / 14 * 100)},
+                "prefix": {"value": prefix.prefix.value},
+            }
+        } in prefix_details_list
+        assert {
+            "node": {
+                "id": prefix_branch.id,
+                "utilization": {"value": int(13 / 14 * 100)},
+                "prefix": {"value": prefix_branch.prefix.value},
             }
         } in prefix_details_list
