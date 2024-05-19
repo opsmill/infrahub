@@ -574,14 +574,14 @@ class SchemaBranch:
         if not (SchemaElementPathType.ALL_RELS & allowed_path_types) and schema_attribute_path.is_type_relationship:
             raise ValueError(f"{error_header}: this property only supports attributes, not relationships")
 
-        if schema_attribute_path.is_type_relationship:
+        if schema_attribute_path.is_type_relationship and schema_attribute_path.relationship_schema:
             if (
                 schema_attribute_path.relationship_schema.cardinality == RelationshipCardinality.ONE
                 and not SchemaElementPathType.REL_ONE & allowed_path_types
             ):
                 raise ValueError(
                     f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
-                    " relationship must be of cardinality one"
+                    " relationship must be of cardinality many"
                 )
             if (
                 schema_attribute_path.relationship_schema.cardinality == RelationshipCardinality.MANY
@@ -589,7 +589,7 @@ class SchemaBranch:
             ):
                 raise ValueError(
                     f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
-                    " relationship must be of cardinality many"
+                    " relationship must be of cardinality one"
                 )
 
             if schema_attribute_path.has_property and not SchemaElementPathType.RELS_ATTR & allowed_path_types:
