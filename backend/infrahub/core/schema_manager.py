@@ -608,12 +608,18 @@ class SchemaBranch:
 
             for constraint_paths in node_schema.uniqueness_constraints:
                 for constraint_path in constraint_paths:
-                    self.validate_schema_path(
+                    schema_path = self.validate_schema_path(
                         node_schema=node_schema,
                         path=constraint_path,
                         allowed_path_types=SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_NO_ATTR,
                         element_name="uniqueness_constraints",
                     )
+                    if schema_path.is_type_relationship:
+                        if schema_path.relationship_schema.optional:
+                            raise ValueError(
+                                f"Only mandatory relation of cardinality one can be used in uniqueness_constraints,"
+                                f" {schema_path.relationship_schema.name} is not mandatory. ({constraint_path})"
+                            )
 
     def validate_display_labels(self) -> None:
         for name in self.all_names:
@@ -677,16 +683,33 @@ class SchemaBranch:
 
             allowed_types = SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_ATTR
             for item in node_schema.human_friendly_id:
-                self.validate_schema_path(
+                schema_path = self.validate_schema_path(
                     node_schema=node_schema,
                     path=item,
                     allowed_path_types=allowed_types,
                     element_name="human_friendly_id",
                 )
+                if schema_path.is_type_relationship:
+                    if schema_path.relationship_schema.optional:
+                        raise ValueError(
+                            f"Only mandatory relationship of cardinality one can be used in human_friendly_id,"
+                            f" {schema_path.relationship_schema.name} is not mandatory. ({item})"
+                        )
+                    if not schema_path.attribute_schema.unique:
+                        raise ValueError(
+                            f"Only unique attribute on related node can be used used in human_friendly_id,"
+                            f" {schema_path.attribute_schema.name} is not unique on {schema_path.relationship_schema.kind}. ({item})"
+                        )
 
-            # TODO add checks to ensure that
-            # - The relationship is mandatory for this node
-            # - The attribute is unique for the related node
+                if (
+                    schema_path.is_type_attribute
+                    and len(node_schema.human_friendly_id) == 1
+                    and not schema_path.attribute_schema.unique
+                ):
+                    raise ValueError(
+                        f"Only unique attribute can be used on their own in human_friendly_id,"
+                        f" {schema_path.attribute_schema.name} is not unique. ({item})"
+                    )
 
     def validate_parent_component(self) -> None:
         # {parent_kind: {component_kind_1, component_kind_2, ...}}
@@ -921,13 +944,27 @@ class SchemaBranch:
         for name in self.generic_names + self.node_names:
             node = self.get(name=name, duplicate=False)
 
-            if node.human_friendly_id:
+            # If human_friendly_id IS NOT defined
+            #   but some the model has some unique attribute, we generate a human_friendly_id
+            # If human_friendly_id IS defined
+            #   but no unique attributes and no uniquess constraints, we add a uniqueness_constraint
+            if not node.human_friendly_id and node.unique_attributes:
+                for attr in node.unique_attributes:
+                    node = self.get(name=name, duplicate=True)
+                    node.human_friendly_id = [f"{attr.name}__value"]
+                    break
                 continue
 
-            for attr in node.unique_attributes:
-                node = self.get(name=name, duplicate=True)
-                node.human_friendly_id = [f"{attr.name}__value"]
-                break
+            if node.human_friendly_id and not node.unique_attributes and not node.uniqueness_constraints:
+                uniqueness_constraints: list[str] = []
+                for item in node.human_friendly_id:
+                    schema_attribute_path = node.parse_schema_path(path=item, schema=self)
+                    if schema_attribute_path.is_type_attribute:
+                        uniqueness_constraints.append(item)
+                    elif schema_attribute_path.is_type_relationship:
+                        uniqueness_constraints.append(schema_attribute_path.relationship_schema.name)
+
+                node.uniqueness_constraints = [uniqueness_constraints]
 
     def process_hierarchy(self) -> None:
         for name in self.nodes.keys():
