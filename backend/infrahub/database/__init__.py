@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import random
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
 from neo4j import (
     READ_ACCESS,
@@ -21,7 +21,8 @@ from neo4j.exceptions import ClientError, Neo4jError, ServiceUnavailable, Transi
 from opentelemetry import trace
 from typing_extensions import Self
 
-from infrahub import config
+from infrahub import config, lock
+from infrahub.core import registry
 from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
@@ -33,6 +34,10 @@ from .neo4j import DatabaseManagerNeo4j
 
 if TYPE_CHECKING:
     from types import TracebackType
+
+    from infrahub.core.branch import Branch
+    from infrahub.core.schema import MainSchemaTypes
+    from infrahub.core.schema_manager import SchemaBranch
 
     from .manager import DatabaseManager
 
@@ -52,6 +57,57 @@ class InfrahubDatabaseSessionMode(InfrahubStringEnum):
     WRITE = "write"
 
 
+def get_branch_name(branch: Optional[Union[Branch, str]] = None) -> str:
+    if not branch:
+        return config.SETTINGS.main.default_branch
+    if isinstance(branch, str):
+        return branch
+
+    return branch.name
+
+
+class DatabaseSchemaManager:
+    def __init__(self, db: InfrahubDatabase):
+        self._db = db
+
+    def get(self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True) -> MainSchemaTypes:
+        branch_name = get_branch_name(branch=branch)
+        if branch_name not in self._db._schemas:
+            return registry.schema.get(name=name, branch=branch, duplicate=duplicate)
+        return self._db._schemas[branch_name].get(name=name, duplicate=duplicate)
+
+    def set(self, name: str, schema: MainSchemaTypes, branch: Optional[str] = None) -> int:
+        branch_name = get_branch_name(branch=branch)
+        if branch_name not in self._db._schemas:
+            return registry.schema.set(name=name, schema=schema, branch=branch)
+        return self._db._schemas[branch_name].set(name=name, schema=schema)
+
+    def has(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
+        branch_name = get_branch_name(branch=branch)
+        if branch_name not in self._db._schemas:
+            return registry.schema.has(name=name, branch=branch)
+        return self._db._schemas[branch_name].has(name=name)
+
+    def get_full(
+        self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+    ) -> Dict[str, MainSchemaTypes]:
+        branch_name = get_branch_name(branch=branch)
+        if branch_name not in self._db._schemas:
+            return registry.schema.get_full(branch=branch)
+        return self._db._schemas[branch_name].get_all(duplicate=duplicate)
+
+    async def get_full_safe(
+        self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+    ) -> Dict[str, MainSchemaTypes]:
+        await lock.registry.local_schema_wait()
+        return self.get_full(branch=branch, duplicate=duplicate)
+
+    def get_schema_branch(self, name: str) -> SchemaBranch:
+        if name not in self._db._schemas:
+            return registry.schema.get_schema_branch(name=name)
+        return self._db._schemas[name]
+
+
 class InfrahubDatabase:
     """Base class for database access"""
 
@@ -61,16 +117,24 @@ class InfrahubDatabase:
         mode: InfrahubDatabaseMode = InfrahubDatabaseMode.DRIVER,
         db_type: Optional[DatabaseType] = None,
         db_manager: Optional[DatabaseManager] = None,
+        schemas: Optional[List[SchemaBranch]] = None,
         session: Optional[AsyncSession] = None,
         session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
         transaction: Optional[AsyncTransaction] = None,
     ):
-        self._mode = mode
-        self._driver = driver
-        self._session = session
-        self._session_mode = session_mode
-        self._is_session_local = False
-        self._transaction = transaction
+        self._mode: InfrahubDatabaseMode = mode
+        self._driver: AsyncDriver = driver
+        self._session: Optional[AsyncSession] = session
+        self._session_mode: InfrahubDatabaseSessionMode = session_mode
+        self._is_session_local: bool = False
+        self._transaction: Optional[AsyncTransaction] = transaction
+
+        if schemas:
+            self._schemas: Dict[str, SchemaBranch] = {schema.name: schema for schema in schemas}
+        else:
+            self._schemas = {}
+        self.schema: DatabaseSchemaManager = DatabaseSchemaManager(db=self)
+
         if db_type and isinstance(db_type, DatabaseType):
             self.db_type = db_type
         else:
@@ -96,7 +160,10 @@ class InfrahubDatabase:
             return True
         return False
 
-    def start_session(self, read_only: bool = False) -> InfrahubDatabase:
+    def add_schema(self, schema: SchemaBranch, name: Optional[str] = None) -> None:
+        self._schemas[name or schema.name] = schema
+
+    def start_session(self, read_only: bool = False, schemas: Optional[List[SchemaBranch]] = None) -> InfrahubDatabase:
         """Create a new InfrahubDatabase object in Session mode."""
         session_mode = InfrahubDatabaseSessionMode.WRITE
         if read_only:
@@ -105,15 +172,17 @@ class InfrahubDatabase:
         return self.__class__(
             mode=InfrahubDatabaseMode.SESSION,
             db_type=self.db_type,
+            schemas=schemas or self._schemas,
             db_manager=self.manager,
             driver=self._driver,
             session_mode=session_mode,
         )
 
-    def start_transaction(self) -> InfrahubDatabase:
+    def start_transaction(self, schemas: Optional[List[SchemaBranch]] = None) -> InfrahubDatabase:
         return self.__class__(
             mode=InfrahubDatabaseMode.TRANSACTION,
             db_type=self.db_type,
+            schemas=schemas or self._schemas,
             db_manager=self.manager,
             driver=self._driver,
             session=self._session,
