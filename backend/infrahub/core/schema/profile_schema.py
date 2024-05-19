@@ -14,6 +14,18 @@ class ProfileSchema(BaseNodeSchema):
         description="List of Generic Kind that this profile is inheriting from",
     )
 
+    @property
+    def is_node_schema(self) -> bool:
+        return False
+
+    @property
+    def is_generic_schema(self) -> bool:
+        return False
+
+    @property
+    def is_profile_schema(self) -> bool:
+        return True
+
     def get_labels(self) -> List[str]:
         """Return the labels for this object, composed of the kind
         and the list of Generic this object is inheriting from."""

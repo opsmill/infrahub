@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from infrahub.core.branch import Branch
-    from infrahub.core.schema import MainSchemaTypes
+    from infrahub.core.schema import MainSchemaTypes, NodeSchema
     from infrahub.core.schema_manager import SchemaBranch
 
     from .manager import DatabaseManager
@@ -75,6 +75,15 @@ class DatabaseSchemaManager:
         if branch_name not in self._db._schemas:
             return registry.schema.get(name=name, branch=branch, duplicate=duplicate)
         return self._db._schemas[branch_name].get(name=name, duplicate=duplicate)
+
+    def get_node_schema(
+        self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+    ) -> NodeSchema:
+        schema = self.get(name=name, branch=branch, duplicate=duplicate)
+        if schema.is_node_schema:
+            return schema
+
+        raise ValueError("The selected node is not of type NodeSchema")
 
     def set(self, name: str, schema: MainSchemaTypes, branch: Optional[str] = None) -> int:
         branch_name = get_branch_name(branch=branch)
