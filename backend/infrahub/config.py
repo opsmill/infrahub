@@ -156,7 +156,7 @@ class DatabaseSettings(BaseSettings):
         description="Maximum number of level to search in a hierarchy.",
     )
     retry_limit: int = Field(
-        default=3, description="Maximumm number of time a transient issue in a transaction should be retried."
+        default=3, description="Maximum number of times a transient issue in a transaction should be retried."
     )
 
     @property
