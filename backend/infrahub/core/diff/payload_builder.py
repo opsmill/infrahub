@@ -46,7 +46,7 @@ async def get_display_labels_per_kind(
 ) -> Dict[str, str]:
     """Return the display_labels of a list of nodes of a specific kind."""
     branch = await registry.get_branch(branch=branch_name, db=db)
-    schema = registry.schema.get(name=kind, branch=branch)
+    schema = db.schema.get(name=kind, branch=branch)
     fields = schema.generate_fields_for_display_label()
     nodes = await NodeManager.get_many(ids=ids, fields=fields, db=db, branch=branch)
     return {node_id: await node.render_display_label(db=db) for node_id, node in nodes.items()}
@@ -301,7 +301,7 @@ class DiffPayloadBuilder:
         self._add_node_to_diff(node_id=node_diff_dict["id"], kind=node_diff_dict["kind"])
         self._set_display_label(node_id=node_diff_dict["id"], branch=branch_name, display_label=display_label)
         self._set_node_action(node_id=node_diff_dict["id"], branch=branch_name, action=node_diff_dict["action"])
-        schema = registry.schema.get(name=node_diff.kind, branch=node_diff.branch)
+        schema = self.db.schema.get(name=node_diff.kind, branch=node_diff.branch)
 
         # Extract the value from the list of properties
         for element in branch_diff_node.elements.values():
@@ -385,7 +385,7 @@ class DiffPayloadBuilder:
             if self.kinds_to_include and node_kind not in self.kinds_to_include:
                 continue
 
-            schema = registry.schema.get(name=node_kind, branch=branch_name)
+            schema = self.db.schema.get(name=node_kind, branch=branch_name)
             rel_schema = schema.get_relationship_by_identifier(id=rel_name, raise_on_error=False)
             if not rel_schema:
                 continue

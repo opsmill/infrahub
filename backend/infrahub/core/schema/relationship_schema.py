@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel
 
 from infrahub import config
-from infrahub.core import registry
 from infrahub.core.constants import RelationshipDirection
 from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
 from infrahub.core.relationship import Relationship
@@ -34,8 +33,8 @@ class RelationshipSchema(GeneratedRelationshipSchema):
     def get_class(self) -> type[Relationship]:
         return Relationship
 
-    def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None) -> MainSchemaTypes:
-        return registry.schema.get(name=self.peer, branch=branch, duplicate=False)
+    def get_peer_schema(self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> MainSchemaTypes:
+        return db.schema.get(name=self.peer, branch=branch, duplicate=False)
 
     @property
     def internal_peer(self) -> bool:
@@ -79,7 +78,7 @@ class RelationshipSchema(GeneratedRelationshipSchema):
         query_params[f"{prefix}_rel_name"] = self.identifier
 
         rel_type = self.get_class().rel_type
-        peer_schema = self.get_peer_schema(branch=branch)
+        peer_schema = self.get_peer_schema(db=db, branch=branch)
 
         if include_match:
             query_filter.append(QueryNode(name="n"))

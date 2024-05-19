@@ -6,6 +6,7 @@ from .generated.genericnode_schema import GeneratedGenericSchema
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 
 class GenericSchema(GeneratedGenericSchema):
@@ -23,7 +24,7 @@ class GenericSchema(GeneratedGenericSchema):
     def is_profile_schema(self) -> bool:
         return False
 
-    def get_hierarchy_schema(self, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:  # pylint: disable=unused-argument
+    def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:  # pylint: disable=unused-argument
         if self.hierarchical:
             return self
 
