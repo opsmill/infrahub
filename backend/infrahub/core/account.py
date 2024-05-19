@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Tuple, Union
 
-from infrahub.core.constants import InfrahubKind
-from infrahub.core.manager import NodeManager
 from infrahub.core.query import Query
 from infrahub.core.registry import registry
 
@@ -81,51 +79,3 @@ async def validate_token(
     query = await AccountTokenValidateQuery.init(db=db, branch=branch, token=token, at=at)
     await query.execute(db=db)
     return query.get_account_id(), query.get_account_role()
-
-
-async def get_account(
-    account,
-    db: InfrahubDatabase,
-    branch=None,
-    at=None,
-):
-    # No default value supported for now
-    if not account:
-        return None
-
-    if hasattr(account, "schema") and account.schema.kind == InfrahubKind.ACCOUNT:
-        return account
-
-    # Try to get it from the registry
-    #   if not present in the registry, get it from the database directly
-    #   and update the registry
-    if account in registry.account:
-        return registry.account[account]
-
-    account_schema = registry.schema.get(name=InfrahubKind.ACCOUNT)
-
-    obj = await NodeManager.query(
-        schema=account_schema, filters={account_schema.default_filter: account}, branch=branch, at=at, db=db
-    )
-    registry.account[account] = obj
-
-    return obj
-
-
-def get_account_by_id(id: str):  # pylint: disable=unused-argument
-    # No default value supported for now
-    # if not id:
-    return None
-
-    # from .account import Account
-
-    # if id in registry.account_id:
-    #     return registry.account_id[id]
-
-    # obj = Account.get(id=id)
-    # if not obj:
-    #     return None
-
-    # registry.account[obj.name.value] = obj
-    # registry.account_id[id] = obj
-    # return obj
