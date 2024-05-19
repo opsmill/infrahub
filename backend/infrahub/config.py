@@ -114,7 +114,7 @@ class S3StorageSettings(BaseSettings):
     querystring_auth: bool = Field(
         default=False,
         alias="AWS_QUERYSTRING_AUTH",
-        validation_alias=AliasChoices("INFRAHUB_STORAGE_QUERYTSTRING_AUTH", "AWS_QUERYSTRING_AUTH"),
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_QUERYSTRING_AUTH", "AWS_QUERYSTRING_AUTH"),
     )
     custom_domain: str = Field(
         default="",
