@@ -191,6 +191,102 @@ nodes:
         peer: Example1Car
 ```
 
+### Object Uniqueness
+
+The schema provides 2 mechanisms to enforce the uniqueness of a object, within all the objects of the same kind:
+
+- At the attribute level, with the property `unique`
+- At the node, generic level with the property `uniqueness_constraints`
+
+Both type of uniqueness constraints will be automatically validated during the following events:
+
+- Branch merge
+- Proposed Change
+- Branch rebase
+- Schema update
+
+#### Unique attribute
+
+Each attribute with the property `unique: true` will be evaluated individually and will automatically enforce a uniqueness constraint for all the node of the same kind.
+If a unique attribute is defined on a Generic, all nodes inheriting from this generic will respect the uniqueness constraint defined at the Generic level.
+
+```yaml {7}  showLineNumbers
+nodes:
+  - name: Person
+    namespace: Example
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+```
+
+#### Uniqueness Constraints
+
+More complex uniqueness constraints, composed of multiple attributes and/or relationships can be defined at the node or generic level with the property `uniqueness_constraints`.
+It's possible to define multiple uniqueness constraints and each of them will be evaluated individually. 
+
+In the example below, the node schema `ExampleCar`, `["owner", "model__value"]` garantee that a car will unique based on the `owner` and the `model` of the car.
+
+`uniqueness_constraints` can be composed of N number of attribute or relationship of cardinality one:
+
+- For an attribute, the valid format is `<attributename>__value`. *Currently only value is supported but in the future the plan is to allow additiona metadata to be used as well.*
+- For a relationship, only the name of the relationship should be provided `<relationshipname>`. *Only relationship of cardinality one are supported and the relationship must be mandatory.*
+
+```yaml {10} showLineNumbers
+nodes:
+  - name: Person
+    namespace: Example
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+  - name: Car
+    namespace: Example
+    uniqueness_constraints: ["owner", "model__value"]
+    attributes:
+      - name: model
+        kind: Text
+    relationships:
+      - name: owner
+        peer: ExamplePerson
+        optional: false
+        cardinality: one
+```
+
+### Humain friendly identifier (hfid)
+
+In addition to the internal id automatically generated for each object (UUID), Infrahub provide a way to define a set of fields that will constitue a humain friendly identifier (hfid).
+
+The `hfid` is meant to be used to reference objects uniquely across systems, or even before an object has been created in Infrahub.
+Having a humain friendly way to identify an object is very important to build proper data synchronization between systems and to provide true idempotent script.
+
+In the example below, each `ExamplePerson`,  will have a `hfid` composed of his/her `lastname` and `firstname`.
+
+`humain_friendly_id` can be composed of N number of attribute or relationship of cardinality one:
+
+- For an attribute, the valid format is `<attributename>__value`. *Currently only value is supported but in the future the plan is to allow additiona metadata to be used as well.*
+- For a relationship, the name of the relationship and the name of a unique attribute must be provided `<relationshipname>__<attributename>__value`. *Only relationship of cardinality one are supported and the relationship must be mandatory.*
+
+```yaml {4} showLineNumbers
+nodes:
+  - name: Person
+    namespace: Example
+    humain_friendly_id: ["lastname__value", "firstname__value"]
+    attributes:
+      - name: firstname
+        kind: Text
+      - name: lastname
+        kind: Text
+```
+
+:::info
+
+If a `humain_friendly_id` is defined on a node but no `uniqueness_constraints` are present, a uniqueness constraints matching the `humain_friendly_id` will be automatically created.
+
+If at least one attribute is marked as unique, 
+:::
+
+
 ### Branch support
 
 By default, all models defined in the schema will be **branch-aware** which means that any changes to an object based on a **branch-aware** model will be local to the branch and will not affect the other branches.
