@@ -277,7 +277,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'FAQ',
       items: [
-        'FAQ/FAQ',
+        'faq/FAQ',
       ],
     }
   ],
