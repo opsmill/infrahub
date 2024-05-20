@@ -312,6 +312,51 @@ async def test_display_hfid(db: InfrahubDatabase, default_branch, animal_person_
     }
 
 
+async def test_display_label_generic(db: InfrahubDatabase, default_branch, animal_person_schema):
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+    cat_schema = animal_person_schema.get(name="TestCat")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+
+    dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
+    await dog1.save(db=db)
+
+    cat1 = await Node.init(db=db, schema=cat_schema, branch=default_branch)
+    await cat1.new(db=db, name="Kitty", breed="Persian", owner=person1)
+    await cat1.save(db=db)
+
+    query = """
+    query {
+        TestAnimal {
+            edges {
+                node {
+                    display_label
+                }
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["TestAnimal"]["edges"]) == 2
+    expected_results = ["Kitty Persian #444444", "Rocky Labrador"]
+    assert sorted([item["node"]["display_label"] for item in result.data["TestAnimal"]["edges"]]) == expected_results
+
+
 async def test_all_attributes(db: InfrahubDatabase, default_branch: Branch, data_schema, all_attribute_types_schema):
     obj1 = await Node.init(db=db, schema="TestAllAttributeTypes")
     await obj1.new(

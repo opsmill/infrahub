@@ -162,13 +162,16 @@ class NodeManager:
         node_ids = query.get_node_ids()
 
         # if display_label or hfid has been requested we need to ensure we are querying the right fields
-        if fields and "display_label" in fields and schema.display_labels:
-            display_label_fields = schema.generate_fields_for_display_label()
-            fields = deep_merge_dict(fields, display_label_fields)
+        if fields and "display_label" in fields:
+            schema_branch = db.schema.get_schema_branch(name=branch.name)
+            display_label_fields = schema_branch.generate_fields_for_display_label(name=schema.kind)
+            if display_label_fields:
+                fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
         if fields and "hfid" in fields and schema.human_friendly_id:
             hfid_fields = schema.generate_fields_for_hfid()
-            fields = deep_merge_dict(fields, hfid_fields)
+            if hfid_fields:
+                fields = deep_merge_dict(dicta=fields, dictb=hfid_fields)
 
         response = await cls.get_many(
             ids=node_ids,
@@ -280,9 +283,10 @@ class NodeManager:
         # if display_label has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields:
             peer_schema = schema.get_peer_schema(db=db, branch=branch)
-            if peer_schema.display_labels:
-                display_label_fields = peer_schema.generate_fields_for_display_label()
-                fields = deep_merge_dict(fields, display_label_fields)
+            schema_branch = db.schema.get_schema_branch(name=branch.name)
+            display_label_fields = schema_branch.generate_fields_for_display_label(name=peer_schema.kind)
+            if display_label_fields:
+                fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
         return [
             await Relationship(schema=schema, branch=branch, at=at, node_id=peer.source_id).load(
@@ -360,9 +364,10 @@ class NodeManager:
 
         # if display_label has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields:
-            if hierarchy_schema.display_labels:
-                display_label_fields = hierarchy_schema.generate_fields_for_display_label()
-                fields = deep_merge_dict(fields, display_label_fields)
+            schema_branch = db.schema.get_schema_branch(name=branch.name)
+            display_label_fields = schema_branch.generate_fields_for_display_label(name=hierarchy_schema.kind)
+            if display_label_fields:
+                fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
         return await cls.get_many(
             db=db, ids=peers_ids, fields=fields, at=at, branch=branch, include_owner=True, include_source=True
