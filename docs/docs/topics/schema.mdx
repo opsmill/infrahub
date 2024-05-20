@@ -541,3 +541,7 @@ Most changes to an existing schema are supported but there are a few properties 
 ### Known limitations
 
 - When updating the identifier on a relationship, the existing relationships won't be impacted or updated even if it was the last relationship using a given identifier. [ISSUE-2472](https://github.com/opsmill/infrahub/issues/2472)
+
+## Schema validation
+
+Infrahub schemas should be named with the filename extension `.infrahub.yml` (e.g. `schema.infrahub.yml`) to take advantage of automatic schema validation. The Infrahub schema is automatically validated via [SchemaStore](https://www.schemastore.org/json/) and is supported by various editors and IDEs such as Visual Studio Code, PyCharm, Neovim, SublimeText and IntelliJ IDEA.

@@ -2,11 +2,11 @@
 title: Extend the schema
 ---
 import CodeBlock from '@theme/CodeBlock';
-import dcimYaml from '!!raw-loader!../../../../models/base/dcim.yml';
-import ipamYaml from '!!raw-loader!../../../../models/base/ipam.yml';
-import locationYaml from '!!raw-loader!../../../../models/base/location.yml';
-import organizationYaml from '!!raw-loader!../../../../models/base/organization.yml';
-import routingYaml from '!!raw-loader!../../../../models/base/routing.yml';
+import dcimYaml from '!!raw-loader!../../../../models/base/dcim.infrahub.yml';
+import ipamYaml from '!!raw-loader!../../../../models/base/ipam.infrahub.yml';
+import locationYaml from '!!raw-loader!../../../../models/base/location.infrahub.yml';
+import organizationYaml from '!!raw-loader!../../../../models/base/organization.infrahub.yml';
+import routingYaml from '!!raw-loader!../../../../models/base/routing.infrahub.yml';
 
 import ReferenceLink from "../../../src/components/Card";
 
@@ -54,11 +54,11 @@ invoke demo.load-infra-schema
   ```bash
   > invoke demo.load-infra-schema
   --- abbreviated ---
-  schema 'models/base/dcim.yml' loaded successfully
-  schema 'models/base/ipam.yml' loaded successfully
-  schema 'models/base/location.yml' loaded successfully
-  schema 'models/base/organization.yml' loaded successfully
-  schema 'models/base/routing.yml' loaded successfully
+  schema 'models/base/dcim.infrahub.yml' loaded successfully
+  schema 'models/base/ipam.infrahub.yml' loaded successfully
+  schema 'models/base/location.infrahub.yml' loaded successfully
+  schema 'models/base/organization.infrahub.yml' loaded successfully
+  schema 'models/base/routing.infrahub.yml' loaded successfully
   5 schemas processed in 26.640 seconds.
   Waiting for schema to sync across all workers
   Schema updated on all workers.

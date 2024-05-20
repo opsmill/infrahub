@@ -3,7 +3,7 @@ title: Schema file
 ---
 
 import CodeBlock from "@theme/CodeBlock";
-import infrastructureExtensionRackYaml from '!!raw-loader!../../../models/examples/extension_rack.yml';
+import infrastructureExtensionRackYaml from '!!raw-loader!../../../models/examples/extension_rack.infrahub.yml';
 
 # Schema file
 
@@ -44,7 +44,7 @@ infrahubctl schema load <path to schema file or a directory> <path to schema fil
 
 ### Git integration
 
-You can defined a schema in an [external repository](/topics/repository).
+You can define a schema in an [external repository](/topics/repository).
 The schemas that should be loaded must be declared in the ``.infrahub.yml`` file, under schemas.
 
 Individual files and directory are both supported.

@@ -24,7 +24,7 @@ Throughout this guide we will load different schemas into Infrahub into differen
 
 ## 1. Adding nodes and attributes
 
-Create a file named `schema_guide.yml` on your computer. The place where you create the file on the file system is not that important, as long as you know the path to the file. For this guide we will be storing the schema file in the `/tmp` directory.
+Create a file named `schema_guide.infrahub.yml` on your computer. The place where you create the file on the file system is not that important, as long as you know the path to the file. For this guide we will be storing the schema file in the `/tmp` directory.
 
 In the file we will be creating 2 kinds of nodes in the `Network` namespace:
 
@@ -79,7 +79,7 @@ infrahubctl branch create network-device-schema
 Load the schema into Infrahub in the `network-device-schema` branch
 
 ```bash
-infrahubctl schema load --branch network-device-schema /tmp/schema_guide.yml
+infrahubctl schema load --branch network-device-schema /tmp/schema_guide.infrahub.yml
 ```
 
 We can inspect the schema in the [Web UI](http://localhost:8000/schema?branch=network-device-schema) (Unified Storage > Schema)
@@ -114,7 +114,7 @@ We will be adding 2 relationships to the schema:
 1. device > interface, a relation `interfaces` from the device node to the interface node, of cardinality `many` and kind `Component`
 2. interface > device, a relation `device` from the interface node to device node of cardinality `one` and kind `Parent`
 
-Overwrite the `schema_guide.yml` with the following contents:
+Overwrite the `schema_guide.infrahub.yml` with the following contents:
 
 ```yaml
 ---
@@ -159,7 +159,7 @@ infrahubctl branch create network-device-relations
 Load the schema in the branch
 
 ```bash
-infrahubctl schema load --branch network-device-relations /tmp/schema_guide.yml
+infrahubctl schema load --branch network-device-relations /tmp/schema_guide.infrahub.yml
 ```
 
 We can inspect the schema in the [Web UI](http://localhost:8000/schema?branch=network-device-relations)
@@ -199,7 +199,7 @@ We will modify the schema:
 
 The interfaces relationships on a device does not need to be modified. A relationship can point to a generic node as the peer of the relation. This allows us to add relations to both a `NetworkPhysicalInterface` node and `NetworkLogicalInterface`.
 
-Overwrite the `schema_guide.yml` file with the following contents:
+Overwrite the `schema_guide.infrahub.yml` file with the following contents:
 
 ```yaml
 ---
@@ -256,7 +256,7 @@ infrahubctl branch create network-device-generics
 Load the schema in the branch
 
 ```bash
-infrahubctl schema load --branch network-device-generics /tmp/schema_guide.yml
+infrahubctl schema load --branch network-device-generics /tmp/schema_guide.infrahub.yml
 ```
 
 We can inspect the schema in the [Web UI](http://localhost:8000/schema?branch=network-device-generics)
@@ -301,7 +301,7 @@ Although the schema is already a close representation of what we wanted to achie
 
 We will be reusing the branch from the previous step.
 
-Overwrite the contents of the `schema_guide.yml` file with this content:
+Overwrite the contents of the `schema_guide.infrahub.yml` file with this content:
 
 :::note
 
@@ -381,11 +381,11 @@ nodes:
 Use the `infrahubctl schema check` command to validate the schema and to get a `diff` of the schema changes that will be performed
 
 ```bash
-infrahubctl schema check --branch network-device-generics /tmp/schema_guide.yml
+infrahubctl schema check --branch network-device-generics /tmp/schema_guide.infrahub.yml
 ```
 
 ```bash
- schema '/tmp/schema_guide.yml' is Valid!
+ schema '/tmp/schema_guide.infrahub.yml' is Valid!
 diff:
         added: {}
         changed:
@@ -449,7 +449,7 @@ diff:
 Load the schema into `network-device-generics` branch in Infrahub
 
 ```bash
-infrahubctl schema load --branch network-device-generics /tmp/schema_guide.yml
+infrahubctl schema load --branch network-device-generics /tmp/schema_guide.infrahub.yml
 ```
 
 We can inspect the schema in the [Web UI](http://localhost:8000/schema?branch=network-device-generics)
