@@ -49,7 +49,7 @@ export default function ObjectItemCreate(props: iProps) {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
-  const [kind, setKind] = useState("");
+  const [kind, setKind] = useState(null);
   const [profile, setProfile] = useState("");
 
   const generic = genericsList.find((s) => s.kind === objectname);
@@ -58,13 +58,13 @@ export default function ObjectItemCreate(props: iProps) {
   const isProfileCreationForm = objectname === PROFILE_KIND;
 
   const schema = isProfileCreationForm
-    ? profilesList.find((profile) => profile.kind === kind)
-    : schemaList.find((s) => (isGeneric ? s.kind === kind : s.kind === objectname));
+    ? profilesList.find((profile) => profile.kind === kind?.id)
+    : schemaList.find((s) => (isGeneric ? s.kind === kind?.id : s.kind === objectname));
 
-  const isEditingProfile = kind && profileGeneric?.used_by?.includes(kind);
+  const isEditingProfile = kind?.id && profileGeneric?.used_by?.includes(kind?.id);
 
   // Adds "Profile" before kind to get profiles, eccept for profiles themselves
-  const profileName = `Profile${isGeneric && kind ? kind : objectname}`;
+  const profileName = `Profile${isGeneric && kind?.id ? kind?.id : objectname}`;
 
   const displayProfile =
     schema && !profileGeneric?.used_by?.includes(schema.kind) && schema.kind !== PROFILE_KIND;
@@ -82,7 +82,7 @@ export default function ObjectItemCreate(props: iProps) {
   `;
 
   const { data } = useQuery(query, {
-    skip: !(!!generic || !!schema) || (isGeneric && !kind) || isEditingProfile,
+    skip: !(!!generic || !!schema) || (isGeneric && !kind?.id) || isEditingProfile,
   });
 
   const profiles = data && data[profileName]?.edges?.map((edge) => edge.node);
