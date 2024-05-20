@@ -83,7 +83,7 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
           }
         )}
         className={classNames("flex flex-col items-stretch gap-4", className)}>
-        <Card className="flex flex-wrap md:flex-nowrap items-center gap-4 justify-center w-full shadow-sm">
+        <Card className="flex flex-wrap md:flex-nowrap items-center gap-4 justify-center w-full shadow-sm border-gray-300">
           <div className="w-full">
             <DynamicControl
               name="source_branch"
