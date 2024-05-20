@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Optional, Union
 
-from infrahub.core import registry
 from infrahub.core.constants import AllowOverrideType, InfrahubKind
 
 from .generated.node_schema import GeneratedNodeSchema
@@ -10,9 +9,22 @@ from .generic_schema import GenericSchema
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 
 class NodeSchema(GeneratedNodeSchema):
+    @property
+    def is_node_schema(self) -> bool:
+        return True
+
+    @property
+    def is_generic_schema(self) -> bool:
+        return False
+
+    @property
+    def is_profile_schema(self) -> bool:
+        return False
+
     def validate_inheritance(self, interface: GenericSchema) -> None:
         """Check that protected attributes and relationships are not overriden before inheriting them from interface."""
         for attribute in self.attributes:
@@ -76,10 +88,10 @@ class NodeSchema(GeneratedNodeSchema):
                 item_idx = existing_inherited_relationships[relationship.name]
                 self.relationships[item_idx] = new_relationship
 
-    def get_hierarchy_schema(self, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:
+    def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:
         if not self.hierarchy:
             raise ValueError("The node is not part of a hierarchy")
-        schema = registry.schema.get(name=self.hierarchy, branch=branch)
+        schema = db.schema.get(name=self.hierarchy, branch=branch)
         if not isinstance(schema, GenericSchema):
             raise TypeError
         return schema

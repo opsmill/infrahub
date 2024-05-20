@@ -344,123 +344,67 @@ async def get_ip_prefix_for_ip_address(
     return query.get_container()
 
 
-class IPPrefixUtilizationPrefix(Query):
+class IPPrefixUtilization(Query):
     name: str = "ipprefix_utilization_prefix"
 
-    def __init__(self, ip_prefix: Node, *args, **kwargs):
-        self.ip_prefix = ip_prefix
+    def __init__(self, ip_prefixes: list[str], *args, **kwargs):
+        self.ip_prefixes = ip_prefixes
         super().__init__(*args, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
-        self.params.update(branch_params)
+        self.params["ids"] = [p.get_id() for p in self.ip_prefixes]
+        self.params["time_at"] = self.at.to_string()
 
-        self.params["id"] = self.ip_prefix.id
+        def rel_filter(rel_name: str) -> str:
+            return f"{rel_name}.from <= $time_at AND ({rel_name}.to IS NULL OR {rel_name}.to >= $time_at)"
 
-        query = """
-        MATCH path = (pfx:Node)<-[:IS_RELATED]-(rl:Relationship)<-[:IS_RELATED]-(children:%(label)s)
-        WHERE pfx.uuid = $id
-          AND all(r IN relationships(path) WHERE (%(branch_filter)s))
-          AND rl.name = "parent__child"
-        CALL {
-            WITH pfx, children
-            MATCH path = (pfx)<-[r1:IS_RELATED]-(rl:Relationship)<-[r2:IS_RELATED]-(children:%(label)s)
-            WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
-                AND rl.name = "parent__child"
-            RETURN r1 as r11, r2 as r21
-            ORDER BY r1.branch_level DESC, r1.from DESC, r2.branch_level DESC, r2.from DESC
-            LIMIT 1
-        }
-        WITH pfx, children, r11, r21
-        WHERE r11.status = "active" AND r21.status = "active"
-        CALL {
-            WITH children
-            MATCH path = (children)-[r1:HAS_ATTRIBUTE]-(:Attribute {name: "prefix"})-[r2:HAS_VALUE]-(av:AttributeIPNetwork)
-            WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
-            RETURN r1 as r12, r2 as r22, av
-            ORDER BY r1.branch_level DESC, r1.from DESC, r2.branch_level DESC, r2.from DESC
-            LIMIT 1
-        }
-        WITH pfx, children, r12, r22, av
-        WHERE r12.status = "active" AND r22.status = "active"
-        """ % {"label": InfrahubKind.IPPREFIX, "branch_filter": branch_filter}  # noqa: E501
-
-        self.return_labels = ["av.prefixlen as prefixlen"]
-
+        query = f"""
+        MATCH (pfx:Node WHERE pfx.uuid IN $ids)
+        CALL {{
+            WITH pfx
+            MATCH (
+                (pfx)
+                <-[r_rel1:IS_RELATED WHERE ({rel_filter("r_rel1")})]-(rl:Relationship {{name: "parent__child"}})
+                <-[r_rel2:IS_RELATED WHERE ({rel_filter("r_rel2")})]-(child:{InfrahubKind.IPPREFIX})
+            )
+            RETURN r_rel1, rl, r_rel2, child
+            UNION
+            MATCH path = (
+                (pfx)
+                -[r_rel1:IS_RELATED WHERE ({rel_filter("r_rel1")})]->(rl:Relationship {{name: "ip_prefix__ip_address"}})
+                <-[r_rel2:IS_RELATED WHERE ({rel_filter("r_rel2")})]-(child:{InfrahubKind.IPADDRESS})
+            )
+            RETURN r_rel1, rl, r_rel2, child
+        }}
+        MATCH path = (
+            (pfx)-[r_rel1]-(rl)-[r_rel2]-(child)
+            -[r_attr:HAS_ATTRIBUTE WHERE ({rel_filter("r_attr")})]->(attr:Attribute WHERE attr.name IN ["prefix", "address"])
+            -[r_attr_val:HAS_VALUE WHERE ({rel_filter("r_attr_val")})]->(av:AttributeIPNetwork|AttributeIPHost)
+        )
+        WITH
+            path,
+            pfx,
+            child,
+            av,
+            reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS sum_branch_level,
+            all(r in relationships(path) WHERE r.status = "active") AS is_active,
+            reverse([r IN relationships(path) | r.from]) AS from_times,
+            reduce(
+                b_details = [0, null], r in relationships(path) |
+                CASE WHEN r.branch_level > b_details[0] THEN [r.branch_level, r.branch] ELSE b_details END
+            ) as deepest_branch_details
+        ORDER BY pfx, child, av, sum_branch_level DESC, from_times DESC
+        WITH
+            pfx,
+            child,
+            av,
+            deepest_branch_details[0] AS branch_level,
+            deepest_branch_details[1] AS branch,
+            head(collect(is_active)) AS is_latest_active
+        WHERE is_latest_active = TRUE
+        """
+        self.return_labels = ["pfx", "child", "av", "branch_level", "branch"]
         self.add_to_query(query)
-
-    def get_percentage(self):
-        prefix_space = self.ip_prefix.prefix.num_addresses
-        max_prefixlen = self.ip_prefix.prefix.obj.max_prefixlen
-        used_space = 0
-        for result in self.get_results():
-            used_space += 2 ** (max_prefixlen - int(result.get("prefixlen")))
-
-        return (used_space / prefix_space) * 100
-
-
-class IPPrefixUtilizationAddress(Query):
-    name: str = "ipprefix_utilization_address"
-
-    def __init__(self, ip_prefix: Node, *args, **kwargs):
-        self.ip_prefix = ip_prefix
-        super().__init__(*args, **kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
-        self.params.update(branch_params)
-
-        self.params["id"] = self.ip_prefix.id
-
-        query = """
-        MATCH path = (pfx:Node)-[:IS_RELATED]->(rl:Relationship)<-[:IS_RELATED]-(children:%(label)s)
-        WHERE pfx.uuid = $id
-          AND all(r IN relationships(path) WHERE (%(branch_filter)s))
-          AND rl.name = "ip_prefix__ip_address"
-        CALL {
-            WITH pfx, children
-            MATCH path = (pfx)-[r1:IS_RELATED]->(rl:Relationship)<-[r2:IS_RELATED]-(children:%(label)s)
-            WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
-                AND rl.name = "ip_prefix__ip_address"
-            RETURN r1, r2
-            ORDER BY r1.branch_level DESC, r1.from DESC, r2.branch_level DESC, r2.from DESC
-            LIMIT 1
-        }
-        WITH pfx, children, r1, r2
-        WHERE r1.status = "active" AND r2.status = "active"
-        """ % {"label": InfrahubKind.IPADDRESS, "branch_filter": branch_filter}  # noqa: E501
-
-        self.return_labels = ["count(children) as nbr_children"]
-
-        self.add_to_query(query)
-
-    def get_percentage(self):
-        prefix_space = self.ip_prefix.prefix.num_addresses
-
-        # Non-RFC3021 subnet
-        if (
-            self.ip_prefix.prefix.version == 4
-            and self.ip_prefix.prefix.prefixlen < 31
-            and not self.ip_prefix.is_pool.value
-        ):
-            prefix_space -= 2
-
-        return (self.get_result().get("nbr_children") / prefix_space) * 100
-
-
-async def get_utilization(
-    ip_prefix: Node,
-    db: InfrahubDatabase,
-    branch: Optional[Branch] = None,
-    at: Optional[Union[Timestamp, str]] = None,
-) -> float:
-    if ip_prefix.member_type.value == "address":
-        query = await IPPrefixUtilizationAddress.init(db, branch=branch, at=at, ip_prefix=ip_prefix)
-    else:
-        query = await IPPrefixUtilizationPrefix.init(db, branch=branch, at=at, ip_prefix=ip_prefix)
-
-    await query.execute(db=db)
-    return query.get_percentage()
 
 
 class IPPrefixReconcileQuery(Query):

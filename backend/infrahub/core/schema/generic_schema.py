@@ -6,12 +6,25 @@ from .generated.genericnode_schema import GeneratedGenericSchema
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 
 class GenericSchema(GeneratedGenericSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
-    def get_hierarchy_schema(self, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:  # pylint: disable=unused-argument
+    @property
+    def is_node_schema(self) -> bool:
+        return False
+
+    @property
+    def is_generic_schema(self) -> bool:
+        return True
+
+    @property
+    def is_profile_schema(self) -> bool:
+        return False
+
+    def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:  # pylint: disable=unused-argument
         if self.hierarchical:
             return self
 

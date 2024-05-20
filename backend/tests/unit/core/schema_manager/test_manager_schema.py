@@ -822,11 +822,11 @@ async def test_validate_uniqueness_constraints_success(schema_all_in_one, unique
         ),
         (
             [["primary_tag__name__value"]],
-            "InfraGenericInterface.uniqueness_constraints: cannot use attributes of related node in constraint, only the relationship",
+            "InfraGenericInterface.uniqueness_constraints: cannot use attributes of related node, only the relationship",
         ),
         (
             [["mybool__value", "status__name__value"]],
-            "InfraGenericInterface.uniqueness_constraints: cannot use attributes of related node in constraint, only the relationship",
+            "InfraGenericInterface.uniqueness_constraints: cannot use attributes of related node, only the relationship",
         ),
     ],
 )

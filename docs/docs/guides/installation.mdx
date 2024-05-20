@@ -8,21 +8,20 @@ import ReferenceLink from "../../src/components/Card";
 
 # Installing Infrahub
 
-Infrahub is composed of multiple components. The backend is mostly written in Python and the frontend in React.
+Infrahub is deployed as a container-based architecture, comprised of multiple components. The main components are:
 
-The main components are:
-
-- A **Frontend** written in react.
+- A **Frontend** written in React.
 - An **API server** written in Python with FastAPI.
 - A **Git agent** to manage the interaction with external Git repositories.
-- A **Graph database** based on `Neo4j` 5.x.
+- A **Graph database** based on `Neo4j`.
 - A **Message bus** based on `RabbitMQ`.
+- A **Cache** based on `redis`.
 
-Refer to [Architecture](/topics/architecture) for a more in-depth view of the components interaction.
+Refer to [Architecture](/topics/architecture) for a more in-depth view of the components' interaction.
 
 ## Hardware requirements
 
-Systems on which you want to install Infrahub, have to meet the [hardware requirements](/topics/hardware-requirements).
+Please ensure the systems on which you want to install Infrahub meet the [hardware requirements](/topics/hardware-requirements).
 
 ## From Git repository
 
@@ -142,12 +141,20 @@ invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data
 <!-- vale off -->
 ### GitHub Codespaces
 <!-- vale on -->
-The project is pre-configured to run in GitHub Codespaces. We have two devcontainer configuration:
+The Infrahub GitHub repository is designed to launch an instance via [GitHub Codespaces](https://docs.github.com/en/codespaces/overview). We have two devcontainer configurations:
 
-- Infrahub: bare-bones container with the app running without any [Schema extension](/tutorials/getting-started/schema) or data
-- Infrahub-demo: container running the [demo environment](/topics/local-demo-environment.mdx)
+- **infrahub:** a deployment running without any [Schema](/tutorials/getting-started/schema) or data pre-installed
+- **infrahub-demo:** a deployment running the [demo environment](/topics/local-demo-environment)
 
-The default devcontainer `.devcontainer/devcontainer.json` is the bare-bones one. If you want to run the demo, you will need to choose it in your GitHub Codespaces options.
+|  No Data | Demo Data |
+|---|---|
+| [![Launch in GitHub Codespaces (No Data)](https://img.shields.io/badge/Launch%20Infrahub-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable) | [![Launch in GitHub Codespaces (Demo Data)](https://img.shields.io/badge/Infrahub%20with%20Data-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable) |
+
+:::note
+
+The default devcontainer `.devcontainer/devcontainer.json` launches Infrahub with no schema or data. If you want to launch a deployment with the demo schema and data, you will need to choose the alternate `Dev container configuration` in the GitHub Codespaces creation options.
+
+:::
 
 <ReferenceLink title="Infrahub devcontainer file" url="https://github.com/opsmill/infrahub/tree/stable/.devcontainer/devcontainer.json" openInNewTab />
 

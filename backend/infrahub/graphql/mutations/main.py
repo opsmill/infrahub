@@ -337,7 +337,11 @@ class InfrahubMutationMixin:
         database: Optional[InfrahubDatabase] = None,
     ) -> Tuple[Node, Self, bool]:
         schema_name = cls._meta.schema.kind
-        node_schema = registry.schema.get(name=schema_name, branch=branch)
+
+        context: GraphqlContext = info.context
+        db = database or context.db
+
+        node_schema = db.schema.get(name=schema_name, branch=branch)
 
         node = None
         for getter in node_getters:
@@ -347,7 +351,7 @@ class InfrahubMutationMixin:
 
         if node:
             updated_obj, mutation = await cls.mutate_update(
-                root=root, info=info, data=data, branch=branch, at=at, database=database, node=node
+                root=root, info=info, data=data, branch=branch, at=at, database=db, node=node
             )
             return updated_obj, mutation, False
         # We need to convert the InputObjectType into a dict in order to remove hfid that isn't a valid input when creating the object

@@ -142,7 +142,8 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         at: Optional[Timestamp] = None,
         filters: Optional[List[str]] = None,
     ) -> None:
-        path_groups = node_schema.get_unique_constraint_schema_attribute_paths(branch=self.branch)
+        schema_branch = self.db.schema.get_schema_branch(name=self.branch.name)
+        path_groups = node_schema.get_unique_constraint_schema_attribute_paths(schema_branch=schema_branch)
         query_request = self._build_query_request(
             updated_node=node, node_schema=node_schema, path_groups=path_groups, filters=filters
         )

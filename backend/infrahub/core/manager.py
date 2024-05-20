@@ -143,7 +143,7 @@ class NodeManager:
         at = Timestamp(at)
 
         if isinstance(schema, str):
-            schema = registry.schema.get(name=schema, branch=branch.name)
+            schema = db.schema.get(name=schema, branch=branch.name)
         elif not isinstance(schema, (NodeSchema, GenericSchema, ProfileSchema)):
             raise ValueError(f"Invalid schema provided {schema}")
 
@@ -211,7 +211,7 @@ class NodeManager:
         at = Timestamp(at)
 
         if isinstance(schema, str):
-            schema = registry.schema.get(name=schema, branch=branch.name)
+            schema = db.schema.get(name=schema, branch=branch.name)
         elif not isinstance(schema, (NodeSchema, GenericSchema, ProfileSchema)):
             raise ValueError(f"Invalid schema provided {schema}")
 
@@ -279,7 +279,7 @@ class NodeManager:
 
         # if display_label has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields:
-            peer_schema = schema.get_peer_schema(branch=branch)
+            peer_schema = schema.get_peer_schema(db=db, branch=branch)
             if peer_schema.display_labels:
                 display_label_fields = peer_schema.generate_fields_for_display_label()
                 fields = deep_merge_dict(fields, display_label_fields)
@@ -356,7 +356,7 @@ class NodeManager:
         if not peers_ids:
             return []
 
-        hierarchy_schema = node_schema.get_hierarchy_schema()
+        hierarchy_schema = node_schema.get_hierarchy_schema(db=db, branch=branch)
 
         # if display_label has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields:
@@ -420,7 +420,7 @@ class NodeManager:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        node_schema = registry.schema.get(name=kind, branch=branch)
+        node_schema = db.schema.get(name=kind, branch=branch)
         if not node_schema.default_filter:
             raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=id)
 
@@ -475,7 +475,7 @@ class NodeManager:
         at = Timestamp(at)
 
         hfid_str = " :: ".join(hfid)
-        node_schema = registry.schema.get(name=kind, branch=branch)
+        node_schema = db.schema.get(name=kind, branch=branch)
 
         if not node_schema.human_friendly_id or len(node_schema.human_friendly_id) != len(hfid):
             raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=hfid_str)
@@ -619,6 +619,7 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
+        branch_agnostic: bool = False,
     ) -> Dict[str, Node]:
         """Return a list of nodes based on their IDs."""
 
@@ -626,11 +627,11 @@ class NodeManager:
         at = Timestamp(at)
 
         # Query all nodes
-        query = await NodeListGetInfoQuery.init(db=db, ids=ids, branch=branch, account=account, at=at)
+        query = await NodeListGetInfoQuery.init(
+            db=db, ids=ids, branch=branch, account=account, at=at, branch_agnostic=branch_agnostic
+        )
         await query.execute(db=db)
-        nodes_info_by_id: Dict[str, NodeToProcess] = {
-            node.node_uuid: node async for node in query.get_nodes(duplicate=False)
-        }
+        nodes_info_by_id: Dict[str, NodeToProcess] = {node.node_uuid: node async for node in query.get_nodes(db=db)}
         profile_ids_by_node_id = query.get_profile_ids_by_node_id()
         all_profile_ids = reduce(
             lambda all_ids, these_ids: all_ids | set(these_ids), profile_ids_by_node_id.values(), set()
@@ -652,6 +653,7 @@ class NodeManager:
             include_owner=include_owner,
             account=account,
             at=at,
+            branch_agnostic=branch_agnostic,
         )
         await query.execute(db=db)
         all_node_attributes = query.get_attributes_group_by_node()
@@ -671,7 +673,9 @@ class NodeManager:
         peers_per_node = None
         peers = None
         if prefetch_relationships:
-            query = await NodeListGetRelationshipsQuery.init(db=db, ids=ids, branch=branch, at=at)
+            query = await NodeListGetRelationshipsQuery.init(
+                db=db, ids=ids, branch=branch, at=at, branch_agnostic=branch_agnostic
+            )
             await query.execute(db=db)
             peers_per_node = query.get_peers_group_by_node()
             peer_ids = []

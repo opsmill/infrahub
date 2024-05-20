@@ -127,8 +127,11 @@ class UniquenessChecker(ConstraintCheckerInterface):
         relationship_schema_by_identifier = {rel.identifier: rel for rel in schema.relationships}
         all_non_unique_nodes: list[NonUniqueNode] = []
         results_index = UniquenessQueryResultsIndex(query_results=query_results)
+
+        branch = await self.get_branch()
+        schema_branch = self.db.schema.get_schema_branch(name=branch.name)
         path_groups = schema.get_unique_constraint_schema_attribute_paths(
-            include_unique_attributes=True, branch=await self.get_branch()
+            include_unique_attributes=True, schema_branch=schema_branch
         )
         for constraint_group in path_groups:
             non_unique_nodes_by_id: dict[str, NonUniqueNode] = {}

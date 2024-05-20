@@ -7,7 +7,8 @@ from infrahub.core.constants import DEFAULT_IP_NAMESPACE, GLOBAL_BRANCH_NAME, In
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
-from infrahub.core.node.resource_manager import CoreIPAddressPool, CorePrefixPool
+from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
+from infrahub.core.node.resource_manager.ip_prefix_pool import CorePrefixPool
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema_manager import SchemaManager
@@ -230,7 +231,7 @@ async def create_account(
     password: Optional[str] = None,
     token_value: Optional[str] = None,
 ) -> Node:
-    token_schema = registry.schema.get_node_schema(name=InfrahubKind.ACCOUNTTOKEN)
+    token_schema = db.schema.get_node_schema(name=InfrahubKind.ACCOUNTTOKEN)
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await obj.new(
         db=db,

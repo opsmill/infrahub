@@ -4,7 +4,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
-from infrahub.core.node.resource_manager import CorePrefixPool
+from infrahub.core.node.resource_manager.ip_prefix_pool import CorePrefixPool
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
 

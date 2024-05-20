@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from infrahub.core import registry
 from infrahub.core.constants import DiffAction, InfrahubKind
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_VALUE_LABEL
 from infrahub.core.diff.branch_differ import BranchDiffer
@@ -30,16 +29,16 @@ class IpamDiffParser:
         self.db = db
 
     async def get_changed_ipam_node_details(self) -> list[IpamNodeDetails]:
-        prefix_generic_schema_source = registry.schema.get(
+        prefix_generic_schema_source = self.db.schema.get(
             InfrahubKind.IPPREFIX, branch=self.source_branch_name, duplicate=False
         )
-        prefix_generic_schema_target = registry.schema.get(
+        prefix_generic_schema_target = self.db.schema.get(
             InfrahubKind.IPPREFIX, branch=self.target_branch_name, duplicate=False
         )
-        address_generic_schema_source = registry.schema.get(
+        address_generic_schema_source = self.db.schema.get(
             InfrahubKind.IPADDRESS, branch=self.source_branch_name, duplicate=False
         )
-        address_generic_schema_target = registry.schema.get(
+        address_generic_schema_target = self.db.schema.get(
             InfrahubKind.IPADDRESS, branch=self.target_branch_name, duplicate=False
         )
 

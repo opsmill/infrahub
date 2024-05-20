@@ -23,7 +23,8 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
-from infrahub.core.node.resource_manager import CoreIPAddressPool, CorePrefixPool
+from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
+from infrahub.core.node.resource_manager.ip_prefix_pool import CorePrefixPool
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,

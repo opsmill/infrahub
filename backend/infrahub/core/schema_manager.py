@@ -574,14 +574,14 @@ class SchemaBranch:
         if not (SchemaElementPathType.ALL_RELS & allowed_path_types) and schema_attribute_path.is_type_relationship:
             raise ValueError(f"{error_header}: this property only supports attributes, not relationships")
 
-        if schema_attribute_path.is_type_relationship:
+        if schema_attribute_path.is_type_relationship and schema_attribute_path.relationship_schema:
             if (
                 schema_attribute_path.relationship_schema.cardinality == RelationshipCardinality.ONE
                 and not SchemaElementPathType.REL_ONE & allowed_path_types
             ):
                 raise ValueError(
                     f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
-                    " relationship must be of cardinality one"
+                    " relationship must be of cardinality many"
                 )
             if (
                 schema_attribute_path.relationship_schema.cardinality == RelationshipCardinality.MANY
@@ -589,7 +589,7 @@ class SchemaBranch:
             ):
                 raise ValueError(
                     f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
-                    " relationship must be of cardinality many"
+                    " relationship must be of cardinality one"
                 )
 
             if schema_attribute_path.has_property and not SchemaElementPathType.RELS_ATTR & allowed_path_types:
@@ -599,48 +599,7 @@ class SchemaBranch:
 
         return schema_attribute_path
 
-    def _validate_attribute_path(
-        self,
-        node_schema: BaseNodeSchema,
-        path: str,
-        schema_map_override: Dict[str, Union[NodeSchema, GenericSchema]],
-        relationship_allowed: bool = False,
-        relationship_attribute_allowed: bool = False,
-        schema_attribute_name: Optional[str] = None,
-    ) -> SchemaAttributePath:
-        error_header = f"{node_schema.kind}"
-        error_header += f".{schema_attribute_name}" if schema_attribute_name else ""
-        allowed_leaf_properties = ["value", "version", "binary_address"]
-        try:
-            schema_attribute_path = node_schema.parse_attribute_path(path, schema_map_override=schema_map_override)
-        except AttributePathParsingError as exc:
-            raise ValueError(f"{error_header}: {exc}") from exc
-
-        if schema_attribute_path.relationship_schema:
-            if not relationship_allowed:
-                raise ValueError(f"{error_header}: this property only supports attributes, not relationships")
-            if schema_attribute_path.relationship_schema.cardinality != RelationshipCardinality.ONE:
-                raise ValueError(
-                    f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
-                    " relationship must be of cardinality one"
-                )
-            if not relationship_attribute_allowed and schema_attribute_path.attribute_schema:
-                raise ValueError(
-                    f"{error_header}: cannot use attributes of related node in constraint, only the relationship"
-                )
-
-        if (
-            schema_attribute_path.attribute_property_name
-            and schema_attribute_path.attribute_property_name not in allowed_leaf_properties
-        ):
-            raise ValueError(
-                f"{error_header}: attribute property must be one of {allowed_leaf_properties}, not {schema_attribute_path.attribute_property_name}"
-            )
-        return schema_attribute_path
-
     def validate_uniqueness_constraints(self) -> None:
-        full_schema_objects = self.to_dict_schema_object()
-        schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
@@ -649,12 +608,11 @@ class SchemaBranch:
 
             for constraint_paths in node_schema.uniqueness_constraints:
                 for constraint_path in constraint_paths:
-                    self._validate_attribute_path(
-                        node_schema,
-                        constraint_path,
-                        schema_map,
-                        schema_attribute_name="uniqueness_constraints",
-                        relationship_allowed=True,
+                    self.validate_schema_path(
+                        node_schema=node_schema,
+                        path=constraint_path,
+                        allowed_path_types=SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_NO_ATTR,
+                        element_name="uniqueness_constraints",
                     )
 
     def validate_display_labels(self) -> None:
@@ -681,38 +639,33 @@ class SchemaBranch:
                     node_schema.display_labels = generic_display_labels[0]
 
     def validate_order_by(self) -> None:
-        full_schema_objects = self.to_dict_schema_object()
-        schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.order_by:
                 continue
 
+            allowed_types = SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE
             for order_by_path in node_schema.order_by:
-                self._validate_attribute_path(
-                    node_schema,
-                    order_by_path,
-                    schema_map,
-                    relationship_allowed=True,
-                    relationship_attribute_allowed=True,
-                    schema_attribute_name="order_by",
+                self.validate_schema_path(
+                    node_schema=node_schema,
+                    path=order_by_path,
+                    allowed_path_types=allowed_types,
+                    element_name="order_by",
                 )
 
     def validate_default_filters(self) -> None:
-        full_schema_objects = self.to_dict_schema_object()
-        schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.default_filter:
                 continue
 
-            self._validate_attribute_path(
+            self.validate_schema_path(
                 node_schema=node_schema,
                 path=node_schema.default_filter,
-                schema_map_override=schema_map,
-                schema_attribute_name="default_filter",
+                allowed_path_types=SchemaElementPathType.ATTR,
+                element_name="default_filter",
             )
 
     def validate_human_friendly_id(self):
@@ -723,7 +676,6 @@ class SchemaBranch:
                 continue
 
             allowed_types = SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_ATTR
-
             for item in node_schema.human_friendly_id:
                 self.validate_schema_path(
                     node_schema=node_schema,
