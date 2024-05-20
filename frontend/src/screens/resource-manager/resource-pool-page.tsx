@@ -28,6 +28,7 @@ import { useState } from "react";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import SlideOver from "../../components/display/slide-over";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import ResourceSelector from "./resource-selector";
 
 const ResourcePoolPage = () => {
   const { resourcePoolId } = useParams();
@@ -163,7 +164,7 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
             <PropertyList properties={properties} labelClassName="font-semibold" />
           </CardWithBorder>
 
-          <ResourcePoolSelector resources={resourcePool.resources.edges} />
+          <ResourceSelector resources={resourcePool.resources.edges} />
         </aside>
 
         <section>wip: allocated resources</section>
@@ -221,29 +222,6 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
         />
       </SlideOver>
     </Content>
-  );
-};
-
-type ResourcePoolSelectorProps = {
-  resources: Array<{
-    node: Record<string, any>;
-    properties: Record<string, any>;
-  }>;
-};
-
-const ResourcePoolSelector = ({ resources }: ResourcePoolSelectorProps) => {
-  return (
-    <CardWithBorder className="divide-y">
-      <CardWithBorder.Title>
-        Select Resource pools <Badge variant="blue">{resources.length}</Badge>
-      </CardWithBorder.Title>
-
-      {resources.map(({ node }) => (
-        <div key={node.id} className="p-2">
-          {node.display_label} <Link to={"resources/" + node.id}>View</Link>
-        </div>
-      ))}
-    </CardWithBorder>
   );
 };
 
