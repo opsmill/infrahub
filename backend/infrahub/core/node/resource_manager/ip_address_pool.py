@@ -87,10 +87,7 @@ class CoreIPAddressPool(Node):
                 raise ValidationError(input_value="Invalid prefix length for current selected prefix")
 
             addresses = await get_ip_addresses(
-                db=db,
-                ip_prefix=ip_prefix,
-                namespace=ip_namespace,
-                branch=self._branch,
+                db=db, ip_prefix=ip_prefix, namespace=ip_namespace, branch=self._branch, branch_agnostic=True
             )
 
             available = get_available(

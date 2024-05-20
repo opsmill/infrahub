@@ -99,7 +99,7 @@ def schema_all_in_one():
                         "peer": InfrahubKind.TAG,
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
-                        "optional": True,
+                        "optional": False,
                         "cardinality": "one",
                         "branch": BranchSupportType.AGNOSTIC.value,
                     },

@@ -2,7 +2,7 @@ import re
 import sys
 from dataclasses import dataclass
 from io import StringIO
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, Dict, Optional
 
 import pytest
 import ujson
@@ -120,6 +120,71 @@ async def location_schema() -> NodeSchema:
         ],
     }
     return NodeSchema(**data)  # type: ignore
+
+
+@pytest.fixture
+async def schema_with_hfid() -> Dict[str, NodeSchema]:
+    data = {
+        "location": {
+            "name": "Location",
+            "namespace": "Builtin",
+            "default_filter": "name__value",
+            "human_friendly_id": ["name__value"],
+            "attributes": [
+                {"name": "name", "kind": "String", "unique": True},
+                {"name": "description", "kind": "String", "optional": True},
+                {"name": "type", "kind": "String"},
+            ],
+            "relationships": [
+                {
+                    "name": "tags",
+                    "peer": "BuiltinTag",
+                    "optional": True,
+                    "cardinality": "many",
+                },
+                {
+                    "name": "primary_tag",
+                    "peer": "BuiltinTag",
+                    "optional": True,
+                    "cardinality": "one",
+                },
+                {
+                    "name": "member_of_groups",
+                    "peer": "CoreGroup",
+                    "optional": True,
+                    "cardinality": "many",
+                    "kind": "Group",
+                },
+            ],
+        },
+        "rack": {
+            "name": "Rack",
+            "namespace": "Builtin",
+            "default_filter": "facility_id__value",
+            "human_friendly_id": ["facility_id__value", "location__name__value"],
+            "attributes": [
+                {"name": "facility_id", "kind": "String", "unique": True},
+                {"name": "description", "kind": "String", "optional": True},
+            ],
+            "relationships": [
+                {"name": "location", "peer": "BuiltinLocation", "cardinality": "one"},
+                {
+                    "name": "tags",
+                    "peer": "BuiltinTag",
+                    "optional": True,
+                    "cardinality": "many",
+                },
+                {
+                    "name": "member_of_groups",
+                    "peer": "CoreGroup",
+                    "optional": True,
+                    "cardinality": "many",
+                    "kind": "Group",
+                },
+            ],
+        },
+    }
+    return {k: NodeSchema(**v) for k, v in data.items()}  # type: ignore
 
 
 @pytest.fixture

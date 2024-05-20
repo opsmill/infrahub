@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 # pylint: disable=no-member,too-many-lines
 # type: ignore[attr-defined]
 
-async_node_methods = [method for method in dir(InfrahubNode) if not method.startswith("_")]
-sync_node_methods = [method for method in dir(InfrahubNodeSync) if not method.startswith("_")]
+async_node_methods = [method for method in dir(InfrahubNode) if not method.startswith("_") and method != "hfid"]
+sync_node_methods = [method for method in dir(InfrahubNodeSync) if not method.startswith("_") and method != "hfid"]
 
 client_types = ["standard", "sync"]
 
@@ -91,6 +91,25 @@ async def test_init_node_no_data(client, location_schema, client_type):
     assert hasattr(node, "name")
     assert hasattr(node, "description")
     assert hasattr(node, "type")
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_node_hfid(client, schema_with_hfid, client_type):
+    location_data = {"name": {"value": "JFK1"}, "description": {"value": "JFK Airport"}, "type": {"value": "SITE"}}
+    if client_type == "standard":
+        location = InfrahubNode(client=client, schema=schema_with_hfid["location"], data=location_data)
+    else:
+        location = InfrahubNodeSync(client=client, schema=schema_with_hfid["location"], data=location_data)
+
+    assert location.hfid == [location.name.value]
+
+    rack_data = {"facility_id": {"value": "RACK1"}, "location": location}
+    if client_type == "standard":
+        rack = InfrahubNode(client=client, schema=schema_with_hfid["rack"], data=rack_data)
+    else:
+        rack = InfrahubNodeSync(client=client, schema=schema_with_hfid["rack"], data=rack_data)
+
+    assert rack.hfid == [rack.facility_id.value, rack.location.get().name.value]
 
 
 @pytest.mark.parametrize("client_type", client_types)
@@ -176,6 +195,7 @@ async def test_query_data_no_filters(clients, location_schema, client_type):
                 "node": {
                     "__typename": None,
                     "id": None,
+                    "hfid": None,
                     "display_label": None,
                     "name": {
                         "is_default": None,
@@ -339,6 +359,7 @@ async def test_query_data_with_prefetch_relationships(clients, mock_schema_query
                 "node": {
                     "__typename": None,
                     "id": None,
+                    "hfid": None,
                     "display_label": None,
                     "name": {
                         "is_default": None,
@@ -548,6 +569,7 @@ async def test_query_data_generic(clients, mock_schema_query_02, client_type):  
                 "node": {
                     "__typename": None,
                     "id": None,
+                    "hfid": None,
                     "display_label": None,
                 },
             },
@@ -693,6 +715,7 @@ async def test_query_data_generic_fragment(clients, mock_schema_query_02, client
                     },
                     "display_label": None,
                     "id": None,
+                    "hfid": None,
                 },
             },
         },
@@ -716,6 +739,7 @@ async def test_query_data_include(client, location_schema, client_type):
                 "node": {
                     "__typename": None,
                     "id": None,
+                    "hfid": None,
                     "display_label": None,
                     "name": {
                         "is_default": None,
@@ -836,6 +860,7 @@ async def test_query_data_exclude(client, location_schema, client_type):
                 "node": {
                     "__typename": None,
                     "id": None,
+                    "hfid": None,
                     "display_label": None,
                     "name": {
                         "is_default": None,

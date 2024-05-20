@@ -316,6 +316,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                 "name": "Dog",
                 "namespace": "Test",
                 "inherit_from": ["TestAnimal"],
+                "display_labels": ["name__value", "breed__value"],
                 "attributes": [
                     {"name": "breed", "kind": "Text", "optional": False},
                     {"name": "color", "kind": "Color", "default_value": "#444444", "optional": True},
@@ -325,6 +326,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                 "name": "Cat",
                 "namespace": "Test",
                 "inherit_from": ["TestAnimal"],
+                "display_labels": ["name__value", "breed__value", "color__value"],
                 "attributes": [
                     {"name": "breed", "kind": "Text", "optional": False},
                     {"name": "color", "kind": "Color", "default_value": "#444444", "optional": True},
