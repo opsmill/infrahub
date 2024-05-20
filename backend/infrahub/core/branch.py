@@ -41,7 +41,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
         default=True,
         description="Indicate if the branch should be extended to Git and if Infrahub should merge the branch in Git as part of a proposed change",
     )
-    is_isolated: bool = False
+    is_isolated: bool = True
     schema_changed_at: Optional[str] = None
     schema_hash: Optional[SchemaBranchHash] = None
 
