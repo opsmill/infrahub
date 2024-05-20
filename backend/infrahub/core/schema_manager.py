@@ -6,7 +6,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
-from infrahub_sdk.utils import compare_lists, duplicates, intersection
+from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from pydantic import BaseModel
 
 from infrahub import lock
@@ -422,6 +422,22 @@ class SchemaBranch:
             if rel:
                 nodes.append(self.get(name=node_name, duplicate=True))
         return nodes
+
+    def generate_fields_for_display_label(self, name: str) -> Optional[dict]:
+        node = self.get(name=name, duplicate=False)
+        if isinstance(node, NodeSchema):
+            return node.generate_fields_for_display_label()
+
+        fields: dict[str, Union[str, None, dict[str, None]]] = {}
+        if isinstance(node, GenericSchema):
+            for child_node_name in node.used_by:
+                child_node = self.get(name=child_node_name, duplicate=False)
+                resp = child_node.generate_fields_for_display_label()
+                if not resp:
+                    continue
+                fields = deep_merge_dict(dicta=fields, dictb=resp)
+
+        return fields or None
 
     def load_schema(self, schema: SchemaRoot) -> None:
         """Load a SchemaRoot object and store all NodeSchema or GenericSchema.

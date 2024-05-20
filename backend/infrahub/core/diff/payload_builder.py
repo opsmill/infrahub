@@ -46,8 +46,8 @@ async def get_display_labels_per_kind(
 ) -> Dict[str, str]:
     """Return the display_labels of a list of nodes of a specific kind."""
     branch = await registry.get_branch(branch=branch_name, db=db)
-    schema = db.schema.get(name=kind, branch=branch)
-    fields = schema.generate_fields_for_display_label()
+    schema_branch = db.schema.get_schema_branch(name=branch.name)
+    fields = schema_branch.generate_fields_for_display_label(name=kind)
     nodes = await NodeManager.get_many(ids=ids, fields=fields, db=db, branch=branch)
     return {node_id: await node.render_display_label(db=db) for node_id, node in nodes.items()}
 
