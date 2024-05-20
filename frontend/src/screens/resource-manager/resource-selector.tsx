@@ -4,8 +4,8 @@ import { Link } from "../../components/utils/link";
 
 type ResourcePoolSelectorProps = {
   resources: Array<{
-    node: Record<string, any>;
-    properties: Record<string, any>;
+    id: string;
+    display_label: string;
   }>;
 };
 
@@ -16,9 +16,9 @@ const ResourceSelector = ({ resources }: ResourcePoolSelectorProps) => {
         Select Resource pools <Badge variant="blue">{resources.length}</Badge>
       </CardWithBorder.Title>
 
-      {resources.map(({ node }) => (
-        <div key={node.id} className="p-2">
-          {node.display_label} <Link to={"resources/" + node.id}>View</Link>
+      {resources.map(({ id, display_label }) => (
+        <div key={id} className="p-2">
+          {display_label} <Link to={"resources/" + id}>View</Link>
         </div>
       ))}
     </CardWithBorder>
