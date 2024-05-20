@@ -49,6 +49,7 @@ jobs:
       python_sdk_poetry_files: ${{ steps.changes.outputs.python_sdk_poetry_files }}
       sync_poetry_files: ${{ steps.changes.outputs.sync_poetry_files }}
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
+      e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -717,6 +718,16 @@ jobs:
         run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::HandleMessage(char const*, int, bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
       - name: Patch chromium
         run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
+
+      - name: Wait for artifacts to be generated before restarting infrahub
+        if: needs.files-changed.outputs.e2e_tests == 'true'
+        run: npx playwright test artifact
+
+      - name: Add response delay if required
+        if: needs.files-changed.outputs.e2e_tests == 'true'
+        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=2" >> $GITHUB_ENV && invoke dev.start
+        env:
+          INFRAHUB_MISC_RESPONSE_DELAY: 2
 
       - name: Run Playwright tests
         run: npm run ci:test:e2e
