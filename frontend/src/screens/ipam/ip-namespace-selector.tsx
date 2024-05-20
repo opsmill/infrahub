@@ -3,7 +3,7 @@ import { useAtom } from "jotai";
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Select } from "../../components/inputs/select";
+import { Select, SelectOption } from "../../components/inputs/select";
 import { Skeleton } from "../../components/skeleton";
 import { GET_IP_NAMESPACES } from "../../graphql/queries/ipam/ip-namespaces";
 import useQuery from "../../hooks/useQuery";
@@ -43,11 +43,11 @@ const IpNamespaceSelectorContent = ({
     setDefaultIpNamespace(defaultNamespace.id);
   }, []);
 
-  const handleNamespaceChange = (newValue: string) => {
+  const handleNamespaceChange = (newValue: SelectOption) => {
     if (!newValue?.id || newValue?.id === defaultIpNamespace) {
       setNamespaceQSP(undefined); // Removes QSP for default namespace
     } else {
-      setNamespaceQSP(newValue?.id);
+      setNamespaceQSP(newValue.id);
     }
 
     if (prefix || ip_address) {
