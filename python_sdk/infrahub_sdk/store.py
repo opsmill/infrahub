@@ -55,13 +55,13 @@ class NodeStoreBase:
     def _get_by_hfid(self, key: str, raise_when_missing: bool = True):  # type: ignore[no-untyped-def]
         try:
             return self._store_by_hfid[key]
-        except KeyError:
+        except KeyError as exc:
             if raise_when_missing:
                 raise NodeNotFoundError(
                     node_type="n/a",
                     identifier={"key": [key]},
                     message="Unable to find the node {key!r} in the store",
-                )
+                ) from exc
         return None
 
 

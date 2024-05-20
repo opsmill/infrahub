@@ -311,11 +311,14 @@ class RelatedNode(RelatedNodeBase):
         if self._peer:
             return self._peer  # type: ignore[return-value]
 
-        if not self.id:
-            raise ValueError("Node id must be defined to query it.")
+        if not self.id and not self.hfid:
+            raise ValueError("Node must have at least one identifier (ID or HFID) to query it.")
 
         if self.id and self.typename:
             return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
+
+        if self.hfid:
+            return self._client.store.get_by_hfid(key=self.hfid)  # type: ignore[return-value]
 
         raise NodeNotFoundError(branch_name=self._branch, node_type=self.schema.peer, identifier={"key": [self.id]})
 
@@ -356,11 +359,14 @@ class RelatedNodeSync(RelatedNodeBase):
         if self._peer:
             return self._peer  # type: ignore[return-value]
 
-        if not self.id:
-            raise ValueError("Node id must be defined to query it.")
+        if not self.id and not self.hfid:
+            raise ValueError("Node must have at least one identifier (ID or HFID) to query it.")
 
         if self.id and self.typename:
             return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
+
+        if self.hfid:
+            return self._client.store.get_by_hfid(key=self.hfid)  # type: ignore[return-value]
 
         raise NodeNotFoundError(branch_name=self._branch, node_type=self.schema.peer, identifier={"key": [self.id]})
 
