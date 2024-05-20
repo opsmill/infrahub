@@ -191,6 +191,120 @@ nodes:
         peer: Example1Car
 ```
 
+### Object Uniqueness
+
+The schema provides 2 mechanisms to enforce the uniqueness of an object, within all the objects of the same kind:
+
+- At the attribute level, with the property `unique`
+- At the Node or Generic level with the property `uniqueness_constraints`
+
+Both type of uniqueness constraints will be automatically validated during the following events:
+
+- Branch merge
+- Proposed Change
+- Branch rebase
+- Schema update
+
+#### Unique attribute
+
+Each attribute with the property `unique: true` will be evaluated individually and will automatically enforce a uniqueness constraint for all the nodes of the same kind.
+If a unique attribute is defined on a Generic, all nodes inheriting from this Generic will respect the uniqueness constraint defined at the Generic level.
+
+```yaml {7}  showLineNumbers
+nodes:
+  - name: Person
+    namespace: Example
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+```
+
+#### Uniqueness Constraints
+
+More complex uniqueness constraints, composed of multiple attributes and/or relationships can be defined at the Node or Generic level with the property `uniqueness_constraints`.
+It's possible to define multiple uniqueness constraints and each of them will be evaluated individually.
+
+In the example below, the node schema `ExampleCar`, `["owner", "model__value"]` guarantee that a car will unique based on the `owner` and the `model` of the car.
+
+`uniqueness_constraints` can be composed of N number of attribute or relationship of cardinality one:
+
+- For an attribute, the valid format is `<attributename>__value`. *Currently only value is supported but in the future the plan is to allow additional metadata to be used as well.*
+- For a relationship, only the name of the relationship should be provided `<relationshipname>`. *Only relationship of cardinality one are supported and the relationship must be mandatory.*
+
+```yaml {10} showLineNumbers
+nodes:
+  - name: Person
+    namespace: Example
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+  - name: Car
+    namespace: Example
+    uniqueness_constraints: ["owner", "model__value"]
+    attributes:
+      - name: model
+        kind: Text
+    relationships:
+      - name: owner
+        peer: ExamplePerson
+        optional: false
+        cardinality: one
+```
+
+### Human friendly identifier (hfid)
+
+In addition to the internal id automatically generated for each object (UUID), Infrahub provide a way to define a set of fields that will constitue a human friendly identifier (hfid).
+
+:::success Use Case
+
+The `hfid` is meant to be used to reference objects uniquely across systems, or even before an object has been created in Infrahub.
+Having a human friendly way to identify an object is very important to build robust data synchronization between systems and to provide true idempotent script.
+
+In the network industry:
+
+- the `hfid` of a device will be could be its `name` : `atl1-edge01`
+- the `hfid` of an interface will be the combination of the name of the device and the name of the interface: (`atl1-edge01`, `Ethernet1`)
+
+:::
+
+In the example below, each `ExamplePerson`,  will have a `hfid` composed of his/her `lastname` and `firstname`.
+
+`human_friendly_id` can be composed of N number of attribute or relationship of cardinality one:
+
+- For an attribute, the valid format is `<attributename>__value`. *Currently only value is supported but in the future the plan is to allow additional metadata to be used as well.*
+- For a relationship, the name of the relationship and the name of a unique attribute must be provided `<relationshipname>__<attributename>__value`. *Only relationship of cardinality one are supported and the relationship must be mandatory.*
+
+```yaml {4} showLineNumbers
+nodes:
+  - name: Person
+    namespace: Example
+    human_friendly_id: ["lastname__value", "firstname__value"]
+    attributes:
+      - name: firstname
+        kind: Text
+      - name: lastname
+        kind: Text
+```
+
+:::info
+
+If a `human_friendly_id` is defined on a node but no `uniqueness_constraints` are present, a uniqueness constraints matching the `human_friendly_id` will be automatically created.
+
+If at least one attribute is marked as unique, and `human_friendly_id` hasn't been defined, `human_friendly_id` will be automatically created.
+
+:::
+
+#### `hfid` support in GraphQL
+
+`hfid` can be used as a alternative to `id` in most places in GraphQL, including :
+
+- Update Mutation
+- Upsert Mutation
+- Delete Mutation
+- Related Node in all Mutations
+
 ### Branch support
 
 By default, all models defined in the schema will be **branch-aware** which means that any changes to an object based on a **branch-aware** model will be local to the branch and will not affect the other branches.
@@ -232,11 +346,11 @@ Attributes and relationships can be configured as **branch-aware**, **branch-agn
 nodes:
   - name: Fruit
     namespace: Example
-    branch: True # (Default)
+    branch: "agnostic"
     attributes:
       - kind: Text
         name: name
-        branch: "agnostic"
+        branch: "aware"
 ```
 
 By default, if a specific value is not defined:
