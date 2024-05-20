@@ -26,6 +26,7 @@ query GetPool($pool_id: String!) {
     count
     utilization
     utilization_default_branch
+    utilization_branches
     edges {
       node {
         display_label
@@ -33,6 +34,7 @@ query GetPool($pool_id: String!) {
         kind
         utilization
         utilization_default_branch
+        utilization_branches
         weight
       }
     }
@@ -216,6 +218,7 @@ class TestIpamUtilization(TestInfrahubApp):
                 "count": 1,
                 "utilization": 12.5,
                 "utilization_default_branch": 12.5,
+                "utilization_branches": 0,
                 "edges": [
                     {
                         "node": {
@@ -224,6 +227,7 @@ class TestIpamUtilization(TestInfrahubApp):
                             "kind": "IpamIPPrefix",
                             "utilization": 12.5,
                             "utilization_default_branch": 12.5,
+                            "utilization_branches": 0,
                             "weight": 256,
                         }
                     }
@@ -275,6 +279,7 @@ class TestIpamUtilization(TestInfrahubApp):
                 "count": 1,
                 "utilization": 50,
                 "utilization_default_branch": 50,
+                "utilization_branches": 0,
                 "edges": [
                     {
                         "node": {
@@ -283,6 +288,7 @@ class TestIpamUtilization(TestInfrahubApp):
                             "kind": "IpamIPPrefix",
                             "utilization": 50,
                             "utilization_default_branch": 50,
+                            "utilization_branches": 0,
                             "weight": 14,
                         }
                     }
@@ -355,6 +361,7 @@ class TestIpamUtilization(TestInfrahubApp):
         assert pool_data["count"] == 2
         assert pool_data["utilization"] == 12.5
         assert pool_data["utilization_default_branch"] == 100 / 16
+        assert pool_data["utilization_branches"] == 100 / 16
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
@@ -363,6 +370,7 @@ class TestIpamUtilization(TestInfrahubApp):
                 "kind": "IpamIPPrefix",
                 "utilization": 25.0,
                 "utilization_default_branch": 12.5,
+                "utilization_branches": 12.5,
                 "weight": 256,
             }
         } in prefix_details_list
@@ -373,6 +381,7 @@ class TestIpamUtilization(TestInfrahubApp):
                 "kind": "IpamIPPrefix",
                 "utilization": 0,
                 "utilization_default_branch": 0,
+                "utilization_branches": 0,
                 "weight": 256,
             }
         } in prefix_details_list
@@ -424,6 +433,7 @@ class TestIpamUtilization(TestInfrahubApp):
         assert pool_data["count"] == 2
         assert pool_data["utilization"] == 100
         assert pool_data["utilization_default_branch"] == 25.0
+        assert pool_data["utilization_branches"] == 75.0
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
@@ -432,6 +442,7 @@ class TestIpamUtilization(TestInfrahubApp):
                 "kind": "IpamIPPrefix",
                 "utilization": 100,
                 "utilization_default_branch": 50,
+                "utilization_branches": 50,
                 "weight": 14,
             }
         } in prefix_details_list
@@ -442,6 +453,7 @@ class TestIpamUtilization(TestInfrahubApp):
                 "kind": "IpamIPPrefix",
                 "utilization": 100,
                 "utilization_default_branch": 0,
+                "utilization_branches": 100,
                 "weight": 14,
             }
         } in prefix_details_list
@@ -527,6 +539,7 @@ class TestIpamUtilization(TestInfrahubApp):
         assert pool_data["count"] == 2
         assert pool_data["utilization"] == 100 / 16
         assert pool_data["utilization_default_branch"] == 100 / 32
+        assert pool_data["utilization_branches"] == 100 / 32
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
@@ -535,6 +548,7 @@ class TestIpamUtilization(TestInfrahubApp):
                 "kind": "IpamIPPrefix",
                 "utilization": 12.5,
                 "utilization_default_branch": 100 / 16,
+                "utilization_branches": 100 / 16,
                 "weight": 256,
             }
         } in prefix_details_list
@@ -545,6 +559,7 @@ class TestIpamUtilization(TestInfrahubApp):
                 "kind": "IpamIPPrefix",
                 "utilization": 0,
                 "utilization_default_branch": 0,
+                "utilization_branches": 0,
                 "weight": 256,
             }
         } in prefix_details_list
@@ -602,6 +617,7 @@ class TestIpamUtilization(TestInfrahubApp):
         assert pool_data["count"] == 2
         assert pool_data["utilization"] == (25 / 28) * 100
         assert pool_data["utilization_default_branch"] == (6 / 28) * 100
+        assert pool_data["utilization_branches"] == (19 / 28) * 100
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
@@ -610,6 +626,7 @@ class TestIpamUtilization(TestInfrahubApp):
                 "kind": "IpamIPPrefix",
                 "utilization": (12 / 14) * 100,
                 "utilization_default_branch": (6 / 14) * 100,
+                "utilization_branches": (6 / 14) * 100,
                 "weight": 14,
             }
         } in prefix_details_list
@@ -620,6 +637,7 @@ class TestIpamUtilization(TestInfrahubApp):
                 "kind": "IpamIPPrefix",
                 "utilization": (13 / 14) * 100,
                 "utilization_default_branch": 0,
+                "utilization_branches": (13 / 14) * 100,
                 "weight": 14,
             }
         } in prefix_details_list
