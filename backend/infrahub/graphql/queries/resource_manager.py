@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Union
 
 from graphene import Field, Float, Int, List, ObjectType, String
-from infrahub_sdk.utils import extract_fields
+from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.core import registry
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
@@ -100,7 +100,7 @@ class PoolUtilization(ObjectType):
         pool = await NodeManager.get_one(id=pool_id, db=db, branch=context.branch)
         resources_map: dict[str, Node] = await pool.resources.get_peers(db=db, branch_agnostic=True)  # type: ignore[attr-defined,union-attr]
         utilization_getter = PrefixUtilizationGetter(db=db, ip_prefixes=list(resources_map.values()), at=context.at)
-        fields = await extract_fields(info.field_nodes[0].selection_set)
+        fields = await extract_fields_first_node(info=info)
         response: dict[str, Any] = {}
         if "count" in fields:
             response["count"] = len(resources_map)
