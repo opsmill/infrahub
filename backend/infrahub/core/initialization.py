@@ -231,7 +231,7 @@ async def create_account(
     password: Optional[str] = None,
     token_value: Optional[str] = None,
 ) -> Node:
-    token_schema = registry.schema.get_node_schema(name=InfrahubKind.ACCOUNTTOKEN)
+    token_schema = db.schema.get_node_schema(name=InfrahubKind.ACCOUNTTOKEN)
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await obj.new(
         db=db,

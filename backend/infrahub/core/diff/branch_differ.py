@@ -23,7 +23,6 @@ from infrahub.core.query.diff import (
     DiffRelationshipPropertyQuery,
     DiffRelationshipQuery,
 )
-from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import (
     DiffFromRequiredOnDefaultBranchError,
@@ -355,7 +354,7 @@ class BranchDiffer:
                 for _, rel in rels.items():
                     for node_id in rel.nodes:
                         neighbor_id = [neighbor for neighbor in rel.nodes.keys() if neighbor != node_id][0]
-                        schema = registry.schema.get(name=rel.nodes[node_id].kind, branch=branch_name)
+                        schema = self.db.schema.get(name=rel.nodes[node_id].kind, branch=branch_name)
                         matching_relationship = [r for r in schema.relationships if r.identifier == rel_name]
                         if (
                             matching_relationship
@@ -410,7 +409,7 @@ class BranchDiffer:
 
         for branch_name, entries in branch_kind_node.items():
             for kind, ids in entries.items():
-                schema = registry.schema.get(name=kind, branch=branch_name)
+                schema = self.db.schema.get(name=kind, branch=branch_name)
                 fields = schema.generate_fields_for_display_label()
                 query_nodes = await NodeManager.get_many(ids=ids, fields=fields, db=self.db, branch=branch_name)
                 for node_id, node in query_nodes.items():
@@ -902,15 +901,14 @@ class BranchDiffer:
 
         self._calculated_diff_rels_at = Timestamp()
 
-    @staticmethod
     def parse_relationship_paths(
-        nodes: Dict[str, RelationshipEdgeNodeDiffElement], branch_name: str, relationship_name: str
+        self, nodes: Dict[str, RelationshipEdgeNodeDiffElement], branch_name: str, relationship_name: str
     ) -> RelationshipPath:
         node_ids = list(nodes.keys())
         neighbor_map = {node_ids[0]: node_ids[1], node_ids[1]: node_ids[0]}
         relationship_paths = RelationshipPath()
         for relationship in nodes.values():
-            schema = registry.schema.get(name=relationship.kind, branch=branch_name)
+            schema = self.db.schema.get(name=relationship.kind, branch=branch_name)
             matching_relationship = [r for r in schema.relationships if r.identifier == relationship_name]
             relationship_path_name = "-undefined-"
             if matching_relationship:

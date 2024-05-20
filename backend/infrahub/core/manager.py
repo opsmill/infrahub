@@ -143,7 +143,7 @@ class NodeManager:
         at = Timestamp(at)
 
         if isinstance(schema, str):
-            schema = registry.schema.get(name=schema, branch=branch.name)
+            schema = db.schema.get(name=schema, branch=branch.name)
         elif not isinstance(schema, (NodeSchema, GenericSchema, ProfileSchema)):
             raise ValueError(f"Invalid schema provided {schema}")
 
@@ -211,7 +211,7 @@ class NodeManager:
         at = Timestamp(at)
 
         if isinstance(schema, str):
-            schema = registry.schema.get(name=schema, branch=branch.name)
+            schema = db.schema.get(name=schema, branch=branch.name)
         elif not isinstance(schema, (NodeSchema, GenericSchema, ProfileSchema)):
             raise ValueError(f"Invalid schema provided {schema}")
 
@@ -279,7 +279,7 @@ class NodeManager:
 
         # if display_label has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields:
-            peer_schema = schema.get_peer_schema(branch=branch)
+            peer_schema = schema.get_peer_schema(db=db, branch=branch)
             if peer_schema.display_labels:
                 display_label_fields = peer_schema.generate_fields_for_display_label()
                 fields = deep_merge_dict(fields, display_label_fields)
@@ -356,7 +356,7 @@ class NodeManager:
         if not peers_ids:
             return []
 
-        hierarchy_schema = node_schema.get_hierarchy_schema()
+        hierarchy_schema = node_schema.get_hierarchy_schema(db=db, branch=branch)
 
         # if display_label has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields:
@@ -420,7 +420,7 @@ class NodeManager:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        node_schema = registry.schema.get(name=kind, branch=branch)
+        node_schema = db.schema.get(name=kind, branch=branch)
         if not node_schema.default_filter:
             raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=id)
 
@@ -475,7 +475,7 @@ class NodeManager:
         at = Timestamp(at)
 
         hfid_str = " :: ".join(hfid)
-        node_schema = registry.schema.get(name=kind, branch=branch)
+        node_schema = db.schema.get(name=kind, branch=branch)
 
         if not node_schema.human_friendly_id or len(node_schema.human_friendly_id) != len(hfid):
             raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=hfid_str)

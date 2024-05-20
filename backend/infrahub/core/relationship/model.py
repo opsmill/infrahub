@@ -262,8 +262,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self._peer = peer
         self.peer_id = self._peer.id
 
-    def get_peer_schema(self) -> MainSchemaTypes:
-        return registry.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
+    def get_peer_schema(self, db: InfrahubDatabase) -> MainSchemaTypes:
+        return db.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
 
     def compare_properties_with_data(self, data: RelationshipPeerData) -> List[str]:
         different_properties = []
