@@ -1,0 +1,9 @@
+---
+title: FAQ
+---
+
+# FAQ
+
+## What is the status of the Infrahub Project?
+
+## Does Infrahub Collect Telemetry?
