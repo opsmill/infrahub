@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 from infrahub_sdk.exceptions import NodeNotFoundError
 
@@ -18,13 +18,14 @@ class NodeStoreBase:
 
     def __init__(self) -> None:
         self._store: Dict[str, Dict] = defaultdict(dict)
+        self._store_by_hfid: Dict[str, Any] = defaultdict(dict)
 
-    def _set(self, key: str, node) -> None:  # type: ignore[no-untyped-def]
-        if "InfrahubNode" not in node.__class__.__name__:
-            raise TypeError(f"'node' must be of type InfrahubNode, not {type(node)!r}")
-
+    def _set(self, key: str, node: Union[InfrahubNode, InfrahubNodeSync]) -> None:
         node_kind = node._schema.kind
         self._store[node_kind][key] = node  # type: ignore[attr-defined]
+
+        if hfid := node.get_human_friendly_id_as_string(include_kind=True):
+            self._store_by_hfid[hfid] = node
 
     def _get(self, key: str, kind: Optional[str] = None, raise_when_missing: bool = True):  # type: ignore[no-untyped-def]
         if kind and kind not in self._store and key not in self._store[kind]:  # type: ignore[attr-defined]
@@ -48,13 +49,28 @@ class NodeStoreBase:
         raise NodeNotFoundError(
             node_type="n/a",
             identifier={"key": [key]},
-            message=f"Unable to find the node {key!r} in the Store",
+            message=f"Unable to find the node {key!r} in the store",
         )
+
+    def _get_by_hfid(self, key: str, raise_when_missing: bool = True):  # type: ignore[no-untyped-def]
+        try:
+            return self._store_by_hfid[key]
+        except KeyError:
+            if raise_when_missing:
+                raise NodeNotFoundError(
+                    node_type="n/a",
+                    identifier={"key": [key]},
+                    message="Unable to find the node {key!r} in the store",
+                )
+        return None
 
 
 class NodeStore(NodeStoreBase):
     def get(self, key: str, kind: Optional[str] = None, raise_when_missing: bool = True) -> Optional[InfrahubNode]:
         return self._get(key=key, kind=kind, raise_when_missing=raise_when_missing)
+
+    def get_by_hfid(self, key: str, raise_when_missing: bool = True) -> Optional[InfrahubNode]:
+        return self._get_by_hfid(key=key, raise_when_missing=raise_when_missing)
 
     def set(self, key: str, node: InfrahubNode) -> None:
         return self._set(key=key, node=node)
@@ -63,6 +79,9 @@ class NodeStore(NodeStoreBase):
 class NodeStoreSync(NodeStoreBase):
     def get(self, key: str, kind: Optional[str] = None, raise_when_missing: bool = True) -> Optional[InfrahubNodeSync]:
         return self._get(key=key, kind=kind, raise_when_missing=raise_when_missing)
+
+    def get_by_hfid(self, key: str, raise_when_missing: bool = True) -> Optional[InfrahubNodeSync]:
+        return self._get_by_hfid(key=key, raise_when_missing=raise_when_missing)
 
     def set(self, key: str, node: InfrahubNodeSync) -> None:
         return self._set(key=key, node=node)

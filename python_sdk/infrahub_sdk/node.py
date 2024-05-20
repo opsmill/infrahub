@@ -214,6 +214,12 @@ class RelatedNodeBase:
         return self._id
 
     @property
+    def hfid(self) -> Optional[str]:
+        if self._peer:
+            return self._peer.hfid
+        return None
+
+    @property
     def initialized(self) -> bool:
         return bool(self.id)
 
@@ -384,6 +390,10 @@ class RelationshipManagerBase:
     @property
     def peer_ids(self) -> List[str]:
         return [peer.id for peer in self.peers if peer.id]
+
+    @property
+    def peer_hfids(self) -> List[str]:
+        return [peer.hfid for peer in self.peers if peer.hfid]
 
     @property
     def has_update(self) -> bool:
@@ -704,6 +714,14 @@ class InfrahubNodeBase:
             return None
 
         return [self.get_path_value(path=item) for item in self._schema.human_friendly_id]
+
+    def get_human_friendly_id_as_string(self, include_kind: bool = False) -> Optional[str]:
+        hfid = self.get_human_friendly_id()
+        if not hfid:
+            return None
+        if include_kind:
+            hfid = [self.get_kind()] + hfid
+        return "__".join(hfid)
 
     @property
     def hfid(self) -> Optional[List[Any]]:

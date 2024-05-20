@@ -102,6 +102,8 @@ async def test_node_hfid(client, schema_with_hfid, client_type):
         location = InfrahubNodeSync(client=client, schema=schema_with_hfid["location"], data=location_data)
 
     assert location.hfid == [location.name.value]
+    assert location.get_human_friendly_id_as_string() == "JFK1"
+    assert location.get_human_friendly_id_as_string(include_kind=True) == "BuiltinLocation__JFK1"
 
     rack_data = {"facility_id": {"value": "RACK1"}, "location": location}
     if client_type == "standard":
@@ -110,6 +112,8 @@ async def test_node_hfid(client, schema_with_hfid, client_type):
         rack = InfrahubNodeSync(client=client, schema=schema_with_hfid["rack"], data=rack_data)
 
     assert rack.hfid == [rack.facility_id.value, rack.location.get().name.value]
+    assert rack.get_human_friendly_id_as_string() == "RACK1__JFK1"
+    assert rack.get_human_friendly_id_as_string(include_kind=True) == "BuiltinRack__RACK1__JFK1"
 
 
 @pytest.mark.parametrize("client_type", client_types)
