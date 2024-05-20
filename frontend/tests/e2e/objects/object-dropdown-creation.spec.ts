@@ -29,7 +29,16 @@ test.describe("object dropdown creation", () => {
     ]);
 
     // Open creation form
-    await page.getByTestId("create-object-button").click();
+    await Promise.all([
+      page.waitForResponse((response) => {
+        const reqData = response.request().postDataJSON();
+        const status = response.status();
+
+        return reqData?.operationName === "ProfileInfraDevice" && status === 200;
+      }),
+
+      page.getByTestId("create-object-button").click(),
+    ]);
 
     // Open tags options
     await page
