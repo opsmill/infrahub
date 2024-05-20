@@ -65,7 +65,9 @@ class IPPrefixSubnetFetch(Query):
         self.params["maxprefixlen"] = self.obj.prefixlen
         self.params["ip_version"] = self.obj.version
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
         self.params.update(branch_params)
 
         # ruff: noqa: E501
@@ -243,7 +245,9 @@ class IPPrefixIPAddressFetch(Query):
         self.params["maxprefixlen"] = self.obj.prefixlen
         self.params["ip_version"] = self.obj.version
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
         self.params.update(branch_params)
 
         # ruff: noqa: E501
@@ -311,9 +315,12 @@ async def get_subnets(
     namespace: Optional[Union[Node, str]] = None,
     branch: Optional[Union[Branch, str]] = None,
     at: Optional[Union[Timestamp, str]] = None,
+    branch_agnostic: bool = False,
 ) -> Iterable[IPPrefixData]:
     branch = await registry.get_branch(db=db, branch=branch)
-    query = await IPPrefixSubnetFetch.init(db=db, branch=branch, obj=ip_prefix, namespace=namespace, at=at)
+    query = await IPPrefixSubnetFetch.init(
+        db=db, branch=branch, obj=ip_prefix, namespace=namespace, at=at, branch_agnostic=branch_agnostic
+    )
     await query.execute(db=db)
     return query.get_subnets()
 
@@ -324,9 +331,12 @@ async def get_ip_addresses(
     namespace: Optional[Union[Node, str]] = None,
     branch: Optional[Union[Branch, str]] = None,
     at=None,
+    branch_agnostic: bool = False,
 ) -> Iterable[IPAddressData]:
     branch = await registry.get_branch(db=db, branch=branch)
-    query = await IPPrefixIPAddressFetch.init(db=db, branch=branch, obj=ip_prefix, namespace=namespace, at=at)
+    query = await IPPrefixIPAddressFetch.init(
+        db=db, branch=branch, obj=ip_prefix, namespace=namespace, at=at, branch_agnostic=branch_agnostic
+    )
     await query.execute(db=db)
     return query.get_addresses()
 

@@ -2711,7 +2711,9 @@ async def ip_dataset_prefix_v4(
     await ip1_net147.new(db=db, address="10.200.0.1/30", ip_prefix=net147, ip_namespace=ns1)
     await ip1_net147.save(db=db)
 
-    ip2_net147 = await Node.init(db=db, schema=address_schema)
+    ip_branch = await create_branch(branch_name="ip_branch1", db=db)
+
+    ip2_net147 = await Node.init(db=db, schema=address_schema, branch=ip_branch)
     await ip2_net147.new(db=db, address="10.200.0.2/30", ip_prefix=net147, ip_namespace=ns1)
     await ip2_net147.save(db=db)
 
