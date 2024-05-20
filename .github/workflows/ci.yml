@@ -758,6 +758,10 @@ jobs:
         if: always()
         run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
 
+      - name: Display message-queue logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-message-queue-1"
+
       - name: Display server status
         if: always()
         run: invoke demo.status
