@@ -14,7 +14,6 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                     "is_default": True,
                     "origin_branch": "main",
                     "branched_from": "2023-02-17T09:30:17.811719Z",
-                    "is_isolated": False,
                     "has_schema_changes": False,
                 },
                 {
@@ -24,7 +23,6 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                     "is_default": False,
                     "origin_branch": "main",
                     "branched_from": "2023-02-17T09:30:17.811719Z",
-                    "is_isolated": True,
                     "has_schema_changes": True,
                 },
             ]
