@@ -18,7 +18,6 @@ const getMutationDetailsFromFormData = (
 
   schema.attributes?.forEach((attribute) => {
     const updatedValue = updatedObject[attribute.name] ?? attribute?.default_value;
-    console.log("updatedValue: ", updatedValue);
 
     const profileValue =
       profile && (profile[attribute.name]?.value?.id ?? profile[attribute.name]?.value);
@@ -93,8 +92,10 @@ const getMutationDetailsFromFormData = (
         const existingValue = existingObject[relationship.name]?.edges
           .map((r: any) => r.node?.id)
           .sort();
+        console.log("existingValue: ", existingValue);
 
         const updatedIds = updatedObject[relationship.name]?.list?.sort() ?? [];
+        console.log("updatedIds: ", updatedIds);
 
         if (JSON.stringify(updatedIds) === JSON.stringify(existingValue)) {
           delete updatedObject[relationship.name];
