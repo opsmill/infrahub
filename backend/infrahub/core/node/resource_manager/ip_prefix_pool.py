@@ -89,6 +89,7 @@ class CorePrefixPool(Node):
                 ip_prefix=ipaddress.ip_network(resource.prefix.value),  # type: ignore[attr-defined]
                 namespace=ip_namespace,
                 branch=self._branch,
+                branch_agnostic=True,
             )
 
             pool = PrefixPool(resource.prefix.value)  # type: ignore[attr-defined]

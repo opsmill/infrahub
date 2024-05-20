@@ -160,9 +160,12 @@ class PrefixPool:
 
     def remove_subnet_from_available_list(self, subnet: Union[IPv4Network, IPv6Network]) -> None:
         """Remove a subnet from the list of available Subnet."""
-
-        idx = self.available_subnets[subnet.prefixlen].index(str(subnet))
-        del self.available_subnets[subnet.prefixlen][idx]
+        try:
+            idx = self.available_subnets[subnet.prefixlen].index(str(subnet))
+            del self.available_subnets[subnet.prefixlen][idx]
+        except ValueError:
+            # Already removed
+            pass
 
         # if idx:
         #     return True

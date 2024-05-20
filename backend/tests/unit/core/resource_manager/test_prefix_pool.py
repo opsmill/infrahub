@@ -3,6 +3,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_prefix_pool import CorePrefixPool
 from infrahub.core.schema_manager import SchemaBranch
@@ -108,8 +109,9 @@ async def test_get_all_resources(
     prefix2 = await pool.get_resource(
         db=db, size=17, prefix_type="IpamIPPrefix", member_type="prefix", branch=default_branch
     )
+    another_branch = await create_branch(branch_name="another_branch", db=db)
     prefix3 = await pool.get_resource(
-        db=db, size=17, prefix_type="IpamIPPrefix", member_type="prefix", branch=default_branch
+        db=db, size=17, prefix_type="IpamIPPrefix", member_type="prefix", branch=another_branch
     )
     with pytest.raises(IndexError):
         await pool.get_resource(db=db, size=17, prefix_type="IpamIPPrefix", member_type="prefix", branch=default_branch)
