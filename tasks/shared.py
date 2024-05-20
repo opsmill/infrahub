@@ -81,7 +81,7 @@ TEST_SCALE_OVERRIDE_FILE_NAME = "development/docker-compose-test-scale-override.
 
 IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", "registry.opsmill.io/opsmill/infrahub")
 REQUESTED_IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER")
-IMAGE_VER = REQUESTED_IMAGE_VER or "stable"
+IMAGE_VER = REQUESTED_IMAGE_VER or "latest"
 
 OVERRIDE_FILE_NAME = "development/docker-compose.override.yml"
 DEFAULT_FILE_NAME = "development/docker-compose.default.yml"
