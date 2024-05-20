@@ -425,7 +425,7 @@ class SchemaBranch:
 
     def generate_fields_for_display_label(self, name: str) -> Optional[dict]:
         node = self.get(name=name, duplicate=False)
-        if isinstance(node, NodeSchema):
+        if isinstance(node, (NodeSchema, ProfileSchema)):
             return node.generate_fields_for_display_label()
 
         fields: dict[str, Union[str, None, dict[str, None]]] = {}
