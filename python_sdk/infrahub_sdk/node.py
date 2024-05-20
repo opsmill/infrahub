@@ -214,9 +214,15 @@ class RelatedNodeBase:
         return self._id
 
     @property
-    def hfid(self) -> Optional[str]:
+    def hfid(self) -> Optional[List[Any]]:
         if self._peer:
             return self._peer.hfid
+        return None
+
+    @property
+    def hfid_str(self) -> Optional[str]:
+        if self._peer and self.hfid:
+            return self._peer.get_human_friendly_id_as_string(include_kind=True)
         return None
 
     @property
@@ -311,16 +317,13 @@ class RelatedNode(RelatedNodeBase):
         if self._peer:
             return self._peer  # type: ignore[return-value]
 
-        if not self.id and not self.hfid:
-            raise ValueError("Node must have at least one identifier (ID or HFID) to query it.")
-
         if self.id and self.typename:
             return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
 
-        if self.hfid:
-            return self._client.store.get_by_hfid(key=self.hfid)  # type: ignore[return-value]
+        if self.hfid_str:
+            return self._client.store.get_by_hfid(key=self.hfid_str)  # type: ignore[return-value]
 
-        raise NodeNotFoundError(branch_name=self._branch, node_type=self.schema.peer, identifier={"key": [self.id]})
+        raise ValueError("Node must have at least one identifier (ID or HFID) to query it.")
 
 
 class RelatedNodeSync(RelatedNodeBase):
@@ -359,16 +362,13 @@ class RelatedNodeSync(RelatedNodeBase):
         if self._peer:
             return self._peer  # type: ignore[return-value]
 
-        if not self.id and not self.hfid:
-            raise ValueError("Node must have at least one identifier (ID or HFID) to query it.")
-
         if self.id and self.typename:
             return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
 
-        if self.hfid:
-            return self._client.store.get_by_hfid(key=self.hfid)  # type: ignore[return-value]
+        if self.hfid_str:
+            return self._client.store.get_by_hfid(key=self.hfid_str)  # type: ignore[return-value]
 
-        raise NodeNotFoundError(branch_name=self._branch, node_type=self.schema.peer, identifier={"key": [self.id]})
+        raise ValueError("Node must have at least one identifier (ID or HFID) to query it.")
 
 
 class RelationshipManagerBase:
@@ -398,8 +398,12 @@ class RelationshipManagerBase:
         return [peer.id for peer in self.peers if peer.id]
 
     @property
-    def peer_hfids(self) -> List[str]:
+    def peer_hfids(self) -> List[List[Any]]:
         return [peer.hfid for peer in self.peers if peer.hfid]
+
+    @property
+    def peer_hfids_str(self) -> List[str]:
+        return [peer.hfid_str for peer in self.peers if peer.hfid_str]
 
     @property
     def has_update(self) -> bool:
@@ -732,6 +736,10 @@ class InfrahubNodeBase:
     @property
     def hfid(self) -> Optional[List[Any]]:
         return self.get_human_friendly_id()
+
+    @property
+    def hfid_str(self) -> Optional[str]:
+        return self.get_human_friendly_id_as_string(include_kind=True)
 
     def _init_attributes(self, data: Optional[dict] = None) -> None:
         for attr_name in self._attributes:

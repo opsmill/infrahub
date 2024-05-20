@@ -60,7 +60,7 @@ class NodeStoreBase:
                 raise NodeNotFoundError(
                     node_type="n/a",
                     identifier={"key": [key]},
-                    message="Unable to find the node {key!r} in the store",
+                    message=f"Unable to find the node {key!r} in the store",
                 ) from exc
         return None
 
