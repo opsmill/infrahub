@@ -99,7 +99,7 @@ async def create(
     sync_with_git: bool = typer.Option(
         False, help="Extend the branch to Git and have Infrahub create the branch in connected repositories."
     ),
-    isolated: bool = typer.Option(True, hidden=True, help="Set the branch to isolated mode (deprecated)"),
+    isolated: bool = typer.Option(True, hidden=True, help="Set the branch to isolated mode (deprecated)"),  # pylint: disable=unused-argument
     _: str = CONFIG_PARAM,
 ) -> None:
     """Create a new branch."""

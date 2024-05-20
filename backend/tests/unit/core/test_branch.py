@@ -175,6 +175,7 @@ async def test_get_branches_and_times_to_query_branch1(db: InfrahubDatabase, bas
     assert results[frozenset(["branch1"])] == t1.to_string()
     assert results[frozenset(["main"])] == base_dataset_02["time_m45"]
 
+
 async def test_get_branches_and_times_to_query_global_main(db: InfrahubDatabase, base_dataset_02):
     now = Timestamp("1s")
 
