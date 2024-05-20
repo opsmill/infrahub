@@ -225,7 +225,7 @@ nodes:
 More complex uniqueness constraints, composed of multiple attributes and/or relationships can be defined at the Node or Generic level with the property `uniqueness_constraints`.
 It's possible to define multiple uniqueness constraints and each of them will be evaluated individually.
 
-In the example below, the node schema `ExampleCar`, `["owner", "model__value"]` garantee that a car will unique based on the `owner` and the `model` of the car.
+In the example below, the node schema `ExampleCar`, `["owner", "model__value"]` guarantee that a car will unique based on the `owner` and the `model` of the car.
 
 `uniqueness_constraints` can be composed of N number of attribute or relationship of cardinality one:
 
@@ -253,14 +253,14 @@ nodes:
         cardinality: one
 ```
 
-### Humain friendly identifier (hfid)
+### Human friendly identifier (hfid)
 
-In addition to the internal id automatically generated for each object (UUID), Infrahub provide a way to define a set of fields that will constitue a humain friendly identifier (hfid).
+In addition to the internal id automatically generated for each object (UUID), Infrahub provide a way to define a set of fields that will constitue a human friendly identifier (hfid).
 
 :::success Use Case
 
 The `hfid` is meant to be used to reference objects uniquely across systems, or even before an object has been created in Infrahub.
-Having a humain friendly way to identify an object is very important to build robust data synchronization between systems and to provide true idempotent script.
+Having a human friendly way to identify an object is very important to build robust data synchronization between systems and to provide true idempotent script.
 
 In the network industry:
 
