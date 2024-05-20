@@ -26,6 +26,12 @@ Throughout this guide we will load different schemas into Infrahub into differen
 
 Create a file named `schema_guide.infrahub.yml` on your computer. The place where you create the file on the file system is not that important, as long as you know the path to the file. For this guide we will be storing the schema file in the `/tmp` directory.
 
+:::note
+
+Schemas should be named with the extension `<FILENAME>.infrahub.yml` to take advantage of [automatic schema validation](../topics/schema.mdx#schema-validation)
+
+:::
+
 In the file we will be creating 2 kinds of nodes in the `Network` namespace:
 
 - device: the network device we want to model
