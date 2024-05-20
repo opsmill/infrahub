@@ -31,10 +31,10 @@ import { Input } from "./input";
 import { MultipleInput } from "./multiple-input";
 
 import { getObjectDisplayLabel } from "../../graphql/queries/objects/getObjectDisplayLabel";
-import LoadingScreen from "../../screens/loading-screen/loading-screen";
-import { getOptionsFromRelationship } from "../../utils/getSchemaObjectColumns";
 import { POOLS_DICTIONNARY, POOLS_PEER } from "../../screens/ipam/constants";
+import LoadingScreen from "../../screens/loading-screen/loading-screen";
 import { comparedOptions } from "../../utils/array";
+import { getOptionsFromRelationship } from "../../utils/getSchemaObjectColumns";
 import { Tooltip } from "../ui/tooltip";
 
 export type SelectOption = {
