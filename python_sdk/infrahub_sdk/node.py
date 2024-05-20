@@ -18,13 +18,7 @@ from typing import (
 )
 
 from infrahub_sdk.constants import InfrahubClientMode
-from infrahub_sdk.exceptions import (
-    Error,
-    FeatureNotSupportedError,
-    FilterNotFoundError,
-    NodeNotFoundError,
-    UninitializedError,
-)
+from infrahub_sdk.exceptions import Error, FeatureNotSupportedError, FilterNotFoundError, UninitializedError
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.schema import GenericSchema, RelationshipCardinality, RelationshipKind
 from infrahub_sdk.timestamp import Timestamp
@@ -35,11 +29,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
-    from infrahub_sdk.schema import (
-        AttributeSchema,
-        MainSchemaTypes,
-        RelationshipSchema,
-    )
+    from infrahub_sdk.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
 
 # pylint: disable=too-many-lines
 
