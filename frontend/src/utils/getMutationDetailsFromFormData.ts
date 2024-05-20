@@ -18,6 +18,7 @@ const getMutationDetailsFromFormData = (
 
   schema.attributes?.forEach((attribute) => {
     const updatedValue = updatedObject[attribute.name] ?? attribute?.default_value;
+    console.log("updatedValue: ", updatedValue);
 
     const profileValue =
       profile && (profile[attribute.name]?.value?.id ?? profile[attribute.name]?.value);
@@ -27,10 +28,11 @@ const getMutationDetailsFromFormData = (
       delete updatedObject[attribute.name];
     }
 
+    // Set value property for mutation
+    updatedObject[attribute.name] = { value: updatedValue };
+
     if (mode === "update" && existingObject) {
       const existingValue = existingObject[attribute.name]?.value;
-      // Set value property for mutation
-      updatedObject[attribute.name] = { value: updatedValue };
 
       if (
         existingValue &&
