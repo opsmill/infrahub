@@ -17,7 +17,7 @@ We accept feature requests in our [GitHub](https://github.com/opsmill/infrahub/i
 There are a few different ways to get involved with Infrahub:
 
 1. As you use Infrahub, submit bugs and feature requests.
-2. Reach out to Opsmill on [Discord](https://discord.gg/typQmqXan5) and set up a user feedback session to share your thoughts with us.
+2. Reach out to OpsMill on [Discord](https://discord.gg/typQmqXan5) and set up a user feedback session to share your thoughts with us.
 3. If you are a developer make a ticket on our [GitHub](https://github.com/opsmill/infrahub/issues) and send a PR our way to fix it.
 
 ## Does Infrahub Collect Telemetry?
