@@ -9,6 +9,7 @@ import { RESOURCE_POOL_ALLOCATED_KIND } from "./constants";
 import { Icon } from "@iconify-icon/react";
 import { Button } from "../../components/buttons/button-primitive";
 import { constructPath } from "../../utils/fetch";
+import { getObjectDetailsUrl2 } from "../../utils/objects";
 
 const ResourceAllocationDetails = () => {
   const { resourcePoolId, resourceId } = useParams();
@@ -21,6 +22,7 @@ const ResourceAllocationDetails = () => {
   const getResourcePoolAllocatedData = data[RESOURCE_POOL_ALLOCATED_KIND];
   const resourcesAllocated = getResourcePoolAllocatedData.edges.map(({ node }: any) => ({
     values: { ...node },
+    link: getObjectDetailsUrl2(node.kind, node.id),
   }));
   const totalOfResourcesAllocated = getResourcePoolAllocatedData.count;
 
