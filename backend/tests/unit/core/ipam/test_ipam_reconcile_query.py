@@ -371,3 +371,30 @@ async def test_reconcile_parent_child_identification(
         assert address_children == {
             address_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in address_id_map
         }
+
+
+async def test_address_cannot_be_parent(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    ip_namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ip_namespace.new(db=db, name="ns1")
+    await ip_namespace.save(db=db)
+    prefix_node = await Node.init(db=db, schema=prefix_schema)
+    await prefix_node.new(db=db, prefix="172.20.20.0/27", ip_namespace=ip_namespace)
+    await prefix_node.save(db=db)
+    address_node = await Node.init(db=db, schema=address_schema)
+    await address_node.new(db=db, address="172.20.20.0/24", ip_namespace=ip_namespace)
+    await address_node.save(db=db)
+
+    for ip_value in (ipaddress.ip_interface("172.20.20.0/24"), ipaddress.ip_network("172.20.20.0/27")):
+        query = await IPPrefixReconcileQuery.init(
+            db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ip_value
+        )
+        await query.execute(db=db)
+        assert query.get_calculated_parent_uuid() is None
+        assert query.get_calculated_children_uuids() == []

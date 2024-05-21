@@ -339,6 +339,7 @@ class IPPrefixReconcileQuery(Query):
         else:
             is_address = False
             prefixlen = self.ip_value.prefixlen
+        self.params["is_prefix"] = not is_address
         self.params["prefixlen"] = prefixlen
         prefix_bin = convert_ip_to_binary_str(self.ip_value)
         prefix_bin_host = prefix_bin[:prefixlen]
@@ -467,14 +468,15 @@ class IPPrefixReconcileQuery(Query):
                  ->(a:Attribute)-[hvr:HAS_VALUE]
                  ->(av:AttributeValue)
             )
-            WHERE ns_rel.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
+            WHERE $is_prefix  // only prefix nodes can have children
+            AND ns_rel.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
             AND any(child_kind IN [$ip_prefix_kind, $ip_address_kind] WHERE child_kind IN labels(maybe_new_child))
             AND a.name in ["prefix", "address"]
             AND any(attr_kind IN [$ip_prefix_attribute_kind, $ip_address_attribute_kind] WHERE attr_kind IN labels(av))
             AND (ip_node IS NULL OR maybe_new_child.uuid <> ip_node.uuid)
             AND (
-                ($ip_prefix_kind IN LABELS(maybe_new_child) AND av.prefixlen > $prefixlen)
-                OR ($ip_address_kind IN LABELS(maybe_new_child) AND av.prefixlen >= $prefixlen)
+                ($ip_prefix_kind IN labels(maybe_new_child) AND av.prefixlen > $prefixlen)
+                OR ($ip_address_kind IN labels(maybe_new_child) AND av.prefixlen >= $prefixlen)
             )
             AND av.version = $ip_version
             AND av.binary_address STARTS WITH $prefix_binary_host
@@ -506,9 +508,9 @@ class IPPrefixReconcileQuery(Query):
                     WHEN has_more_specific_parent THEN has_more_specific_parent  // keep it True once set
                     WHEN potential_parent IS NULL OR ips[ind][0] IS NULL THEN has_more_specific_parent
                     WHEN potential_parent[0] = ips[ind][0] THEN has_more_specific_parent  // skip comparison to self
-                    WHEN $ip_address_kind in LABELS(potential_parent[0]) THEN has_more_specific_parent  // address cannot be a parent
-                    WHEN $ip_prefix_attribute_kind IN LABELS(ips[ind][1]) AND (potential_parent[1]).prefixlen >= (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with same or greater prefixlen for prefix cannot be parent
-                    WHEN $ip_address_attribute_kind IN LABELS(ips[ind][1]) AND (potential_parent[1]).prefixlen > (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with greater prefixlen for address cannot be parent
+                    WHEN $ip_address_kind in labels(potential_parent[0]) THEN has_more_specific_parent  // address cannot be a parent
+                    WHEN $ip_prefix_attribute_kind IN labels(ips[ind][1]) AND (potential_parent[1]).prefixlen >= (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with same or greater prefixlen for prefix cannot be parent
+                    WHEN $ip_address_attribute_kind IN labels(ips[ind][1]) AND (potential_parent[1]).prefixlen > (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with greater prefixlen for address cannot be parent
                     WHEN (ips[ind][1]).binary_address STARTS WITH SUBSTRING((potential_parent[1]).binary_address, 0, (potential_parent[1]).prefixlen) THEN TRUE  // we found a parent
                     ELSE has_more_specific_parent
                 END
