@@ -14,7 +14,6 @@ export interface MultipleProgressBarProps extends ProgressPrimitive.ProgressProp
 
 const MultipleProgressBar = ({ elements, className, ...props }: MultipleProgressBarProps) => {
   const { length } = elements;
-  const elementOrderedByValue = elements.sort((a, b) => a.value - b.value);
 
   return (
     <ProgressPrimitive.Root
@@ -23,25 +22,21 @@ const MultipleProgressBar = ({ elements, className, ...props }: MultipleProgress
         className
       )}
       {...props}>
-      {elementOrderedByValue.map(
-        ({ className, color, style, tooltip, value, ...props }, index, array) => {
-          const previousValue = array[index - 1]?.value ?? 0;
-
-          return (
-            <Tooltip key={index} content={tooltip} enabled={!!tooltip} className="max-w-48">
-              <ProgressPrimitive.Indicator
-                className={classNames("h-full transition-all", className)}
-                style={{
-                  width: `${value - previousValue}%`,
-                  backgroundColor: color ?? `rgba(9,135,168, ${1 - index * (1 / length)})`,
-                  ...style,
-                }}
-                {...props}
-              />
-            </Tooltip>
-          );
-        }
-      )}
+      {elements.map(({ className, color, style, tooltip, value, ...props }, index) => {
+        return (
+          <Tooltip key={index} content={tooltip} enabled={!!tooltip} className="max-w-48">
+            <ProgressPrimitive.Indicator
+              className={classNames("h-full transition-all", className)}
+              style={{
+                width: `${value}%`,
+                backgroundColor: color ?? `rgba(9,135,168, ${1 - index * (1 / length)})`,
+                ...style,
+              }}
+              {...props}
+            />
+          </Tooltip>
+        );
+      })}
     </ProgressPrimitive.Root>
   );
 };

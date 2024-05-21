@@ -4,30 +4,29 @@ import MultipleProgressBar, {
 import { classNames } from "../../../utils/common";
 
 interface ResourcePoolUtilizationProps extends Omit<MultipleProgressBarProps, "elements"> {
-  utilizationOverall: number;
   utilizationDefaultBranch: number;
+  utilizationOtherBranches: number;
 }
 
 const ResourcePoolUtilization = ({
   utilizationDefaultBranch,
-  utilizationOverall,
+  utilizationOtherBranches,
   className,
   ...props
 }: ResourcePoolUtilizationProps) => {
-  const utilizationOtherBranches = utilizationOverall - utilizationDefaultBranch;
-
   return (
     <MultipleProgressBar
       className={classNames("h-3", className)}
       elements={[
         {
-          value: utilizationOverall,
+          value: utilizationDefaultBranch,
           tooltip: (
             <ResourceUtilizationTooltipContent
-              value={utilizationOverall}
+              value={utilizationDefaultBranch}
               description="The overall utilization of the pool isolated to the default branch"
             />
           ),
+          color: "#0987a8",
         },
         {
           value: utilizationOtherBranches,
@@ -37,6 +36,7 @@ const ResourcePoolUtilization = ({
               description="The utilization of the pool across all branches aside from the default one"
             />
           ),
+          color: "#54b6cf",
         },
       ]}
       {...props}

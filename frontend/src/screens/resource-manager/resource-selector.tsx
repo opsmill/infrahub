@@ -10,7 +10,7 @@ type ResourceProps = {
   id: string;
   display_label: string;
   kind: string;
-  utilization: number;
+  utilization_branches: number;
   utilization_default_branch: number;
 };
 type ResourcePoolSelectorProps = {
@@ -26,18 +26,18 @@ const ResourceSelector = ({ resources }: ResourcePoolSelectorProps) => {
 
       <div className="divide-y">
         {resources.map((resource) => (
-          <ResourcePoolOption key={resource.id} {...resource} />
+          <ResourceOption key={resource.id} {...resource} />
         ))}
       </div>
     </CardWithBorder>
   );
 };
 
-const ResourcePoolOption = ({
+const ResourceOption = ({
   display_label,
   id,
   kind,
-  utilization,
+  utilization_branches,
   utilization_default_branch,
 }: ResourceProps) => {
   const { resourceId } = useParams();
@@ -53,7 +53,7 @@ const ResourcePoolOption = ({
       </Link>
 
       <ResourcePoolUtilization
-        utilizationOverall={utilization}
+        utilizationOtherBranches={utilization_branches}
         utilizationDefaultBranch={utilization_default_branch}
       />
 

@@ -99,8 +99,8 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
           name: schemaAttribute.label || schemaAttribute.name,
           value: (
             <ResourcePoolUtilization
-              utilizationOverall={resourcePoolUtilization.utilization}
               utilizationDefaultBranch={resourcePoolUtilization.utilization_default_branch}
+              utilizationOtherBranches={resourcePoolUtilization.utilization_branches}
             />
           ),
         };

@@ -24,11 +24,13 @@ export const GET_RESOURCE_POOL_UTILIZATION = gql`
           kind
           weight
           utilization
+          utilization_branches
           utilization_default_branch
         }
       }
       count
       utilization
+      utilization_branches
       utilization_default_branch
     }
   }
