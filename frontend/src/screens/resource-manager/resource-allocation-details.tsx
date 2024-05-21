@@ -13,7 +13,7 @@ import { constructPath } from "../../utils/fetch";
 const ResourceAllocationDetails = () => {
   const { resourcePoolId, resourceId } = useParams();
   const { data, loading } = useQuery(GET_RESOURCE_POOL_ALLOCATED, {
-    variables: { resourceId: resourceId },
+    variables: { poolId: resourcePoolId, resourceId: resourceId },
   });
 
   if (loading) return <Spinner />;
