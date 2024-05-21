@@ -50,12 +50,14 @@ test.describe("Object update", () => {
         .click();
       await page.getByRole("option", { name: "AS701 701" }).click();
 
-      await page
+      const tagsMultiSelectOpenButton = page
         .getByTestId("side-panel-container")
         .getByText("Tags")
-        .locator("..")
-        .getByTestId("select-open-option-button")
-        .click();
+        .locator("../..")
+        .getByTestId("select-open-option-button");
+      await tagsMultiSelectOpenButton.scrollIntoViewIfNeeded();
+      await tagsMultiSelectOpenButton.click();
+
       await page.getByRole("option", { name: "blue" }).click(); // Removes blue
       await page.getByRole("option", { name: "green" }).click(); // Adds green
       await page.getByRole("option", { name: "red" }).click(); // Adds red

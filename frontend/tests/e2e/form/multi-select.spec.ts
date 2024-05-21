@@ -24,9 +24,11 @@ test.describe("Verify multi select behaviour", () => {
       const tagsMultiSelectOpenButton = page
         .getByTestId("side-panel-container")
         .getByText("Tags")
-        .locator("..")
+        .locator("../..")
         .getByTestId("select-open-option-button");
+      await tagsMultiSelectOpenButton.scrollIntoViewIfNeeded();
       await tagsMultiSelectOpenButton.click();
+
       await page.getByRole("option", { name: "blue" }).click();
       await page.getByRole("option", { name: "green" }).click();
       await page.getByRole("option", { name: "red" }).click();

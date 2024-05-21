@@ -25,20 +25,21 @@ test.describe("Object filters", () => {
         .getByTestId("select-open-option-button")
         .click();
       await page.getByRole("option", { name: "Provisioning In the process" }).click();
-      await page
+
+      const tagsMultiSelectOpenButton = page
         .getByTestId("side-panel-container")
         .getByText("Tags")
-        .locator("..")
-        .getByTestId("select-open-option-button")
-        .click();
+        .locator("../..")
+        .getByTestId("select-open-option-button");
+
+      await tagsMultiSelectOpenButton.scrollIntoViewIfNeeded();
+      await tagsMultiSelectOpenButton.click();
+
       await page.getByTestId("side-panel-container").getByText("red").click();
+
       // Closes the multiselect
-      await page
-        .getByTestId("side-panel-container")
-        .getByText("Tags")
-        .locator("..")
-        .getByTestId("select-open-option-button")
-        .click();
+      await tagsMultiSelectOpenButton.click();
+
       await page.getByRole("button", { name: "Apply filters" }).scrollIntoViewIfNeeded();
       await page.getByRole("button", { name: "Apply filters" }).click();
     });
