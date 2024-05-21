@@ -34,7 +34,7 @@ Infrahub collects limited telemetry for the purpose of product analytics.
 6. Number of Resource Pools
 7. Obfuscated Schema Summary
 8. Infrahub Version
-9. Number of GIT repositorys
+9. Number of GIT Repositories
 10. Number of workers
 11. Number of generators
 12. Number of artifact definitions
