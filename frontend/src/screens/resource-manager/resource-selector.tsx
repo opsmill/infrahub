@@ -10,6 +10,7 @@ export type ResourceProps = {
   id: string;
   display_label: string;
   kind: string;
+  utilization: number;
   utilization_branches: number;
   utilization_default_branch: number;
 };
@@ -37,6 +38,7 @@ const ResourceOption = ({
   display_label,
   id,
   kind,
+  utilization,
   utilization_branches,
   utilization_default_branch,
 }: ResourceProps) => {
@@ -53,12 +55,13 @@ const ResourceOption = ({
       </Link>
 
       <ResourcePoolUtilization
+        utilizationOverall={utilization}
         utilizationOtherBranches={utilization_branches}
         utilizationDefaultBranch={utilization_default_branch}
       />
 
       <Link to={"resources/" + id} className="flex items-center gap-1 text-nowrap hover:underline">
-        View allocations <Icon icon="mdi:arrow-right" />
+        View <Icon icon="mdi:eye-outline" />
       </Link>
     </div>
   );
