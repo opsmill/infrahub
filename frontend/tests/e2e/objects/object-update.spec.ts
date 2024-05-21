@@ -65,7 +65,7 @@ test.describe("Object update", () => {
       await page
         .getByTestId("side-panel-container")
         .getByText("Tags")
-        .locator("..")
+        .locator("../..")
         .getByTestId("select-open-option-button")
         .click();
 
