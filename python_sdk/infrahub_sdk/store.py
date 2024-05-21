@@ -30,7 +30,7 @@ class NodeStoreBase:
             node_kind = node._schema.kind
             self._store[node_kind][key] = node
 
-        if hfid := node.get_human_friendly_id_as_string(include_kind=True):
+        if hfid:
             self._store_by_hfid[hfid] = node
 
     def _get(self, key: str, kind: Optional[str] = None, raise_when_missing: bool = True):  # type: ignore[no-untyped-def]
