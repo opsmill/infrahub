@@ -3,8 +3,9 @@ import { Icon } from "@iconify-icon/react";
 import ResourceUtilizationTooltipContent from "./resource-utilization-tooltip";
 import MultipleProgressBar from "../../components/stats/multiple-progress-bar";
 import { Badge } from "../../components/ui/badge";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { getObjectDetailsUrl2 } from "../../utils/objects";
+import { classNames } from "../../utils/common";
 
 type ResourceProps = {
   id: string;
@@ -24,7 +25,7 @@ const ResourceSelector = ({ resources }: ResourcePoolSelectorProps) => {
         Resources <Badge>{resources.length}</Badge>
       </CardWithBorder.Title>
 
-      <div className="px-2 divide-y">
+      <div className="divide-y">
         {resources.map((resource) => (
           <ResourcePoolOption key={resource.id} {...resource} />
         ))}
@@ -40,10 +41,15 @@ const ResourcePoolOption = ({
   utilization,
   utilization_default_branch,
 }: ResourceProps) => {
+  const { resourceId } = useParams();
   const utilization_branches = utilization - utilization_default_branch;
 
   return (
-    <div className="p-2 flex items-center gap-4 text-sm">
+    <div
+      className={classNames(
+        "p-2 flex items-center gap-4 text-sm text-gray-600",
+        resourceId === id && "bg-sky-50"
+      )}>
       <Link to={getObjectDetailsUrl2(kind, id)} className="font-semibold underline">
         {display_label}
       </Link>
