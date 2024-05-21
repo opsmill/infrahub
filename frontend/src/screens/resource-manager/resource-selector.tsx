@@ -4,10 +4,12 @@ import ResourceUtilizationTooltipContent from "./resource-utilization-tooltip";
 import MultipleProgressBar from "../../components/stats/multiple-progress-bar";
 import { Badge } from "../../components/ui/badge";
 import { Link } from "react-router-dom";
+import { getObjectDetailsUrl2 } from "../../utils/objects";
 
 type ResourceProps = {
   id: string;
   display_label: string;
+  kind: string;
   utilization: number;
   utilization_default_branch: number;
 };
@@ -34,6 +36,7 @@ const ResourceSelector = ({ resources }: ResourcePoolSelectorProps) => {
 const ResourcePoolOption = ({
   display_label,
   id,
+  kind,
   utilization,
   utilization_default_branch,
 }: ResourceProps) => {
@@ -41,7 +44,9 @@ const ResourcePoolOption = ({
 
   return (
     <div className="p-2 flex items-center gap-4 text-sm">
-      <span className="font-semibold">{display_label}</span>
+      <Link to={getObjectDetailsUrl2(kind, id)} className="font-semibold underline">
+        {display_label}
+      </Link>
 
       <MultipleProgressBar
         className="h-3"
