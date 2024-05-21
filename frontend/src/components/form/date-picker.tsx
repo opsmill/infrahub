@@ -1,10 +1,12 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { FormFieldError } from "../../screens/edit-form-hook/form";
 import { classNames } from "../../utils/common";
+import { QuestionMark } from "../display/question-mark";
 import { DatePicker } from "../inputs/date-picker";
 
 type OpsDatePickerProps = {
   label: string;
+  description?: string;
   value?: Date;
   onChange: (value?: Date) => void;
   className?: string;
@@ -15,7 +17,17 @@ type OpsDatePickerProps = {
 };
 
 export const OpsDatePicker = (props: OpsDatePickerProps) => {
-  const { className, onChange, value, label, error, isOptional, disabled, isProtected } = props;
+  const {
+    className,
+    description,
+    onChange,
+    value,
+    label,
+    error,
+    isOptional,
+    disabled,
+    isProtected,
+  } = props;
 
   return (
     <>
@@ -24,6 +36,7 @@ export const OpsDatePicker = (props: OpsDatePickerProps) => {
           {label} {isOptional ? "" : "*"}
         </div>
         <div className="ml-2"> {isProtected ? <LockClosedIcon className="w-4 h-4" /> : null} </div>
+        <QuestionMark message={description} />
       </label>
       <DatePicker
         onChange={onChange}
