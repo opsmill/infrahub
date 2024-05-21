@@ -47,5 +47,5 @@ Infrahub collects limited telemetry for the purpose of product analytics.
 
 ### Controling Telemetry
 
-To disable telemetry you can set INFRAHUB_TELEMETRY_OPTOUT prior to the build step for Infrahub. 
+To disable telemetry you can set INFRAHUB_TELEMETRY_OPTOUT prior to the build step for Infrahub.
     export INFRAHUB_TELEMETRY_OPTOUT=true
