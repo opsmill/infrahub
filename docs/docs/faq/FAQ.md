@@ -57,6 +57,8 @@ Yes. Infrahub can be deployed in a production environment. If you are deploying 
 We accept feature requests in our [GitHub](https://github.com/opsmill/infrahub/issues), in our [Discord](https://discord.gg/typQmqXan5)
 
 </details>
+
+<details>
 <summary>
 
 ## How can I get involved?
