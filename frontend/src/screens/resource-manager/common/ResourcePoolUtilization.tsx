@@ -3,6 +3,7 @@ import MultipleProgressBar, {
 } from "../../../components/stats/multiple-progress-bar";
 import { classNames } from "../../../utils/common";
 import { roundNumber } from "../../../utils/number";
+import { Tooltip } from "../../../components/ui/tooltip";
 
 interface ResourcePoolUtilizationProps extends Omit<MultipleProgressBarProps, "elements"> {
   utilizationOverall: number;
@@ -27,7 +28,7 @@ const ResourcePoolUtilization = ({
             tooltip: (
               <ResourceUtilizationTooltipContent
                 value={utilizationDefaultBranch}
-                description="The overall utilization within the default branch"
+                description="Utilization of pool within the default branch"
               />
             ),
             color: "#0987a8",
@@ -37,7 +38,7 @@ const ResourcePoolUtilization = ({
             tooltip: (
               <ResourceUtilizationTooltipContent
                 value={utilizationOtherBranches}
-                description="The utilization of pool within other branches"
+                description="Utilization of pool within other branches"
               />
             ),
             color: "#54b6cf",
@@ -45,9 +46,18 @@ const ResourcePoolUtilization = ({
         ]}
         {...props}
       />
-      <span className="text-custom-blue-700 font-medium">
-        {roundNumber(utilizationOverall, 0)}%
-      </span>
+      <Tooltip
+        content={
+          <ResourceUtilizationTooltipContent
+            value={utilizationOverall}
+            description="The overall utilization of the pool"
+          />
+        }
+        enabled>
+        <span className="text-custom-blue-700 font-medium">
+          {roundNumber(utilizationOverall, 0)}%
+        </span>
+      </Tooltip>
     </div>
   );
 };
@@ -56,6 +66,7 @@ type ResourceUtilizationTooltipContentProps = {
   value: number;
   description: string;
 };
+
 const ResourceUtilizationTooltipContent = ({
   value,
   description,
