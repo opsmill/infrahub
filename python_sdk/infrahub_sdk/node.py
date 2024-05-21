@@ -669,7 +669,13 @@ class InfrahubNodeBase:
             if not related_node:
                 return None
 
-            peer = related_node.get()
+            try:
+                peer = related_node.get()
+            except NodeNotFoundError:
+                # This can happen while batch creating nodes, the lookup won't work as the store is not populated
+                # If so we cannot complete the HFID computation as we cannot access the related node attribute value
+                return None
+
             if attribute_piece := path_parts[1] if len(path_parts) > 1 else None:
                 related_node_attribute = getattr(peer, attribute_piece, None)
             else:
@@ -700,7 +706,6 @@ class InfrahubNodeBase:
             return None
 
         if not self._schema.human_friendly_id:
-            # FIXME: compute based on uniqueness constraints?
             return None
 
         return [self.get_path_value(path=item) for item in self._schema.human_friendly_id]
