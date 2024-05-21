@@ -1,27 +1,76 @@
 import { CardWithBorder } from "../../components/ui/card";
+import { Icon } from "@iconify-icon/react";
+import ResourceUtilizationTooltipContent from "./resource-utilization-tooltip";
+import MultipleProgressBar from "../../components/stats/multiple-progress-bar";
 import { Badge } from "../../components/ui/badge";
-import { Link } from "../../components/utils/link";
+import { Link } from "react-router-dom";
 
+type ResourceProps = {
+  id: string;
+  display_label: string;
+  utilization: number;
+  utilization_default_branch: number;
+};
 type ResourcePoolSelectorProps = {
-  resources: Array<{
-    id: string;
-    display_label: string;
-  }>;
+  resources: Array<ResourceProps>;
 };
 
 const ResourceSelector = ({ resources }: ResourcePoolSelectorProps) => {
   return (
     <CardWithBorder className="divide-y">
-      <CardWithBorder.Title>
-        Select Resource pools <Badge variant="blue">{resources.length}</Badge>
+      <CardWithBorder.Title className="bg-custom-white border-b">
+        Resources <Badge>{resources.length}</Badge>
       </CardWithBorder.Title>
 
-      {resources.map(({ id, display_label }) => (
-        <div key={id} className="p-2">
-          {display_label} <Link to={"resources/" + id}>View</Link>
-        </div>
-      ))}
+      <div className="px-2 divide-y">
+        {resources.map((resource) => (
+          <ResourcePoolOption key={resource.id} {...resource} />
+        ))}
+      </div>
     </CardWithBorder>
+  );
+};
+
+const ResourcePoolOption = ({
+  display_label,
+  id,
+  utilization,
+  utilization_default_branch,
+}: ResourceProps) => {
+  const utilization_branches = utilization - utilization_default_branch;
+
+  return (
+    <div className="p-2 flex items-center gap-4 text-sm">
+      <span className="font-semibold">{display_label}</span>
+
+      <MultipleProgressBar
+        className="h-3"
+        elements={[
+          {
+            value: utilization_default_branch,
+            tooltip: (
+              <ResourceUtilizationTooltipContent
+                value={utilization_default_branch}
+                description="The overall utilization of the pool isolated to the default branch"
+              />
+            ),
+          },
+          {
+            value: utilization_branches,
+            tooltip: (
+              <ResourceUtilizationTooltipContent
+                value={utilization_branches}
+                description="The utilization of the pool across all branches aside from the default one"
+              />
+            ),
+          },
+        ]}
+      />
+
+      <Link to={"resources/" + id} className="flex items-center gap-1 text-nowrap hover:underline">
+        View allocations <Icon icon="mdi:arrow-right" />
+      </Link>
+    </div>
   );
 };
 
