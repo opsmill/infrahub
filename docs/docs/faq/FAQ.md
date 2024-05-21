@@ -17,6 +17,8 @@ Infrahub offers best in class features for infrastructure automation such as:
 - Object Profiles
 - IPAM with IPv4 and IPv6 support
 - Resource Managment
+- User Defined Artifact Generation in CI
+- User Defined Object Generation
 - GUI, API, and SDK operations
 - Data import with Infrahub Sync
 
