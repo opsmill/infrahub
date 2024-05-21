@@ -76,7 +76,7 @@ nodes:
     icon: "mdi:router"
     inherit_from:
       - "CoreArtifactTarget"
-    human_friendly_id: ["remote_as__asn__value", "remote_ip__address__value"]
+    human_friendly_id: ["remote_as__asn__value", "remote_ip__address__value", "device__name__value"]
     order_by:
       - device__name__value
       - remote_as__asn__value
@@ -154,7 +154,7 @@ nodes:
         kind: Attribute
       - name: device
         peer: InfraDevice
-        optional: true
+        optional: false
         cardinality: one
       - name: peer_group
         peer: InfraBGPPeerGroup
