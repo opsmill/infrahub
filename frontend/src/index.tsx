@@ -1,5 +1,5 @@
 import { ApolloProvider } from "@apollo/client";
-import { Provider, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import queryString from "query-string";
 import { useEffect, useState } from "react";
 import { BrowserRouter } from "react-router-dom";
@@ -18,7 +18,6 @@ import LoadingScreen from "./screens/loading-screen/loading-screen";
 
 import { fetchUrl } from "./utils/fetch";
 import "./styles/index.css";
-import { store } from "./state";
 
 export const Infrahub = () => {
   const setConfig = useSetAtom(configState);
@@ -69,28 +68,26 @@ export const Infrahub = () => {
   }
 
   return (
-    <Provider store={store}>
-      <BrowserRouter basename="/">
-        <QueryParamProvider
-          adapter={ReactRouter6Adapter}
-          options={{
-            searchStringToObject: queryString.parse,
-            objectToSearchString: queryString.stringify,
-          }}>
-          <ApolloProvider client={graphqlClient}>
-            <ToastContainer
-              hideProgressBar={true}
-              transition={Slide}
-              autoClose={5000}
-              closeOnClick={false}
-              newestOnTop
-              position="bottom-right"
-            />
-            <App />
-          </ApolloProvider>
-        </QueryParamProvider>
-      </BrowserRouter>
-    </Provider>
+    <BrowserRouter basename="/">
+      <QueryParamProvider
+        adapter={ReactRouter6Adapter}
+        options={{
+          searchStringToObject: queryString.parse,
+          objectToSearchString: queryString.stringify,
+        }}>
+        <ApolloProvider client={graphqlClient}>
+          <ToastContainer
+            hideProgressBar={true}
+            transition={Slide}
+            autoClose={5000}
+            closeOnClick={false}
+            newestOnTop
+            position="bottom-right"
+          />
+          <App />
+        </ApolloProvider>
+      </QueryParamProvider>
+    </BrowserRouter>
   );
 };
 
