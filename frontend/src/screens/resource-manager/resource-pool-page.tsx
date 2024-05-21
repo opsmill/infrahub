@@ -247,7 +247,10 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
         setOpen={setShowEditDrawer}>
         <ObjectItemEditComponent
           closeDrawer={() => setShowEditDrawer(false)}
-          onUpdateComplete={() => refetch()}
+          onUpdateComplete={() => {
+            refetch();
+            getResourcePoolUtilizationQuery.refetch();
+          }}
           objectid={resourcePool.id as string}
           objectname={schema.kind as string}
         />
