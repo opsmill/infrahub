@@ -92,10 +92,8 @@ const getMutationDetailsFromFormData = (
         const existingValue = existingObject[relationship.name]?.edges
           .map((r: any) => r.node?.id)
           .sort();
-        console.log("existingValue: ", existingValue);
 
         const updatedIds = updatedObject[relationship.name]?.list?.sort() ?? [];
-        console.log("updatedIds: ", updatedIds);
 
         if (JSON.stringify(updatedIds) === JSON.stringify(existingValue)) {
           delete updatedObject[relationship.name];
