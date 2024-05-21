@@ -49,6 +49,7 @@ jobs:
       python_sdk_poetry_files: ${{ steps.changes.outputs.python_sdk_poetry_files }}
       sync_poetry_files: ${{ steps.changes.outputs.sync_poetry_files }}
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
+      e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -718,6 +719,16 @@ jobs:
       - name: Patch chromium
         run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
 
+      - name: Wait for artifacts to be generated before restarting infrahub
+        if: needs.files-changed.outputs.e2e_tests == 'true'
+        run: npx playwright test artifact
+
+      - name: Add response delay if required
+        if: needs.files-changed.outputs.e2e_tests == 'true'
+        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=2" >> $GITHUB_ENV && invoke dev.start
+        env:
+          INFRAHUB_MISC_RESPONSE_DELAY: 2
+
       - name: Run Playwright tests
         run: npm run ci:test:e2e
 
@@ -757,6 +768,10 @@ jobs:
       - name: Display database logs
         if: always()
         run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
+
+      - name: Display message-queue logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-message-queue-1"
 
       - name: Display server status
         if: always()

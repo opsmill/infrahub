@@ -268,7 +268,9 @@ export const getRelationshipValue = ({ row, field, isFilters }: tgetRelationship
   }
 
   if (value.edges) {
-    return value.edges.map((edge: any) => edge.node.id);
+    return {
+      list: value.edges.map((edge: any) => edge.node.id),
+    };
   }
 
   return "";
@@ -347,7 +349,17 @@ export const getOptionsFromAttribute = (attribute: any, value: any) => {
   return [];
 };
 
-export const getOptionsFromRelationship = (options: any[] = [], schemas?: any, generic?: any) => {
+type tgetOptionsFromRelationship = {
+  options: any[];
+  schemas?: any;
+  generic?: any;
+};
+
+export const getOptionsFromRelationship = ({
+  options,
+  schemas,
+  generic,
+}: tgetOptionsFromRelationship) => {
   if (!generic) {
     return options.map((option: any) => ({
       name: option.display_label,

@@ -75,6 +75,7 @@ async def app_initialization(application: FastAPI) -> None:
         await initialization(db=db)
     services.prepare(service=service)
     application.state.service = service
+    application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
 
 
 async def shutdown(application: FastAPI) -> None:

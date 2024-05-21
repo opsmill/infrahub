@@ -818,7 +818,7 @@ export const accountTokenDetailsMocksDataWithDateBis = {
 
 export const accountTokenFormStructure = [
   {
-    name: "name.value",
+    name: "name",
     kind: "Text",
     type: "text",
     label: "Name",
@@ -831,7 +831,7 @@ export const accountTokenFormStructure = [
     isUnique: false,
   },
   {
-    name: "token.value",
+    name: "token",
     kind: "Text",
     type: "text",
     label: "Token",
@@ -844,7 +844,7 @@ export const accountTokenFormStructure = [
     isUnique: true,
   },
   {
-    name: "expiration.value",
+    name: "expiration",
     kind: "DateTime",
     type: "datepicker",
     label: "Expiration",
@@ -857,7 +857,7 @@ export const accountTokenFormStructure = [
     isUnique: false,
   },
   {
-    name: "account.id",
+    name: "account",
     kind: "String",
     peer: "CoreAccount",
     type: "select",
@@ -871,9 +871,9 @@ export const accountTokenFormStructure = [
 ];
 
 export const accountTokenDetailsUpdateDataMocksData = {
-  name: { value: "New name" },
-  token: { value: "06438eb2-8019-4776-878c-0941b1f1d1ec" },
-  expiration: { value: "2023-07-15T22:00:00.000Z" },
+  name: "New name",
+  token: "06438eb2-8019-4776-878c-0941b1f1d1ec",
+  expiration: "2023-07-15T22:00:00.000Z",
   account: { id: "95b04b43-91de-4e29-844d-5655abe696b5" },
 };
 

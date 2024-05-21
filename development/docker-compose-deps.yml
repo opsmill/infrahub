@@ -6,7 +6,7 @@ services:
       - "RABBITMQ_DEFAULT_USER=infrahub"
       - "RABBITMQ_DEFAULT_PASS=infrahub"
     healthcheck:
-      test: rabbitmq-diagnostics -q ping
+      test: rabbitmq-diagnostics -q check_port_connectivity
       interval: 5s
       timeout: 30s
       retries: 3
