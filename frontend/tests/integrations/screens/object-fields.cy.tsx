@@ -38,9 +38,12 @@ import {
 } from "../../mocks/data/task_3";
 import {
   taskMocksData as taskMocksData4,
+  taskMocksData as taskMocksData5,
   taskMocksQuery as taskMocksQuery4,
+  taskMocksQuery as taskMocksQuery5,
   taskMocksSchema as taskMocksSchema4,
-} from "../../mocks/data/task_4";
+  taskMocksSchema as taskMocksSchema5,
+} from "../../mocks/data/task_5";
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
@@ -104,6 +107,17 @@ const mocks: any[] = [
     },
     result: {
       data: taskMocksData4,
+    },
+  },
+  {
+    request: {
+      query: gql`
+        ${taskMocksQuery5}
+      `,
+      variables: { offset: 0, limit: 10 },
+    },
+    result: {
+      data: taskMocksData5,
     },
   },
 ];
@@ -511,6 +525,46 @@ describe("Object list", () => {
       return (
         <TestProvider
           initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema4]]]}>
+          <AuthenticatedObjectItems />
+        </TestProvider>
+      );
+    };
+
+    // Mount the view with the default route and the mocked data
+    cy.mount(
+      <MockedProvider mocks={mocks} addTypename={false}>
+        <Routes>
+          <Route element={<ObjectItemsProvider />} path={mockedPath} />
+        </Routes>
+      </MockedProvider>,
+      {
+        // Add iniital route for the app router, to display the current items view
+        routerProps: {
+          initialEntries: [mockedUrl],
+        },
+      }
+    );
+
+    // Open edit panel
+    cy.get("[data-cy='create']").click();
+
+    // Save
+    cy.get(".bg-custom-blue-700").click();
+
+    // The required message should appear
+    cy.get("[data-cy='field-error-message']").should("have.text", "Required");
+  });
+
+  it("should open the add panel, submit without defining a multiselect relationships and should display a required message", function () {
+    cy.viewport(1920, 1080);
+
+    cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
+
+    // Provide the initial value for jotai
+    const ObjectItemsProvider = () => {
+      return (
+        <TestProvider
+          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema5]]]}>
           <AuthenticatedObjectItems />
         </TestProvider>
       );
