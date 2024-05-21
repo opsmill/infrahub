@@ -10,8 +10,9 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import toml
 from infrahub_sdk import generate_uuid
-from pydantic import AliasChoices, Field, ValidationError
+from pydantic import AliasChoices, Field, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing_extensions import Self
 
 from infrahub.database.constants import DatabaseType
 from infrahub.exceptions import InitializationError
@@ -249,6 +250,22 @@ class InitialSettings(BaseSettings):
     )
     admin_token: Optional[str] = Field(default=None, description="An optional initial token for the admin account.")
     admin_password: str = Field(default="infrahub", description="The initial password for the admin user")
+    agent_token: Optional[str] = Field(default=None, description="An optional initial token for a git-agent account.")
+    agent_password: Optional[str] = Field(
+        default=None, description="An optional initial password for a git-agent account."
+    )
+
+    @property
+    def create_agent_user(self) -> bool:
+        if self.agent_token or self.agent_password:
+            return True
+        return False
+
+    @model_validator(mode="after")
+    def check_tokens_match(self) -> Self:
+        if self.admin_token is not None and self.agent_token is not None and self.admin_token == self.agent_token:
+            raise ValueError("Initial user tokens can't have the same values")
+        return self
 
 
 class MiscellaneousSettings(BaseSettings):
