@@ -5,7 +5,11 @@ title: FAQ
 # FAQ
 
 <details>
-<summary>Infrahub Product Status</summary>
+<summary>
+
+## Infrahub Product Status
+
+</summary>
 
 ## What is the status of the Infrahub Project?
 
@@ -31,7 +35,11 @@ Yes. Infrahub can be deployed in a production environment. If you are deploying 
 </details>
 
 <details>
-<summary>Getting Involved with Infrahub</summary>
+<summary>
+
+## Getting Involved with Infrahub
+
+</summary>
 
 ## How can I submit a feature request?
 
@@ -48,7 +56,11 @@ There are a few different ways to get involved with Infrahub:
 </details>
 
 <details>
-<summary>Infrahub Telemetry</summary>
+<summary>
+
+## Infrahub Telemetry
+
+</summary>
 
 ## Does Infrahub Collect Telemetry?
 
