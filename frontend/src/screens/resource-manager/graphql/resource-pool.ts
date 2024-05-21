@@ -33,3 +33,20 @@ export const GET_RESOURCE_POOL_UTILIZATION = gql`
     }
   }
 `;
+
+export const GET_RESOURCE_POOL_ALLOCATED = gql`
+  query GET_RESOURCE_POOL_ALLOCATED($resourceId: String!) {
+    InfrahubResourcePoolAllocated(pool_id: $resourceId) {
+      count
+      edges {
+        node {
+          id
+          display_label
+          kind
+          branch
+          identifier
+        }
+      }
+    }
+  }
+`;

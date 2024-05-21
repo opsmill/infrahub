@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai";
-import { useParams } from "react-router-dom";
+import { Outlet, useParams } from "react-router-dom";
 import Content from "../layout/content";
 import { ObjectHelpButton } from "../../components/menu/object-help-button";
 import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
@@ -198,7 +198,7 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
           <ResourceSelector resources={resourcePoolUtilization.edges.map(({ node }) => node)} />
         </aside>
 
-        <section>wip: allocated resources</section>
+        <Outlet />
       </div>
 
       <SlideOver
