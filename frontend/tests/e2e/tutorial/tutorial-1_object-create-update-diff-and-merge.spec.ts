@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { format, subMinutes } from "date-fns";
+import { format } from "date-fns";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { saveScreenshotForDocs } from "../../utils";
 
@@ -15,7 +15,13 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
   });
 
+  let dateBeforeTest: Date;
+
   test("1. Create a new organization", async ({ page }) => {
+    dateBeforeTest = new Date(
+      Math.floor(new Date().getTime() / (1000 * 60 * 10)) * (1000 * 60 * 10)
+    );
+
     await page.goto("/");
     await page.getByTestId("sidebar-menu").getByRole("link", { name: "Tenant" }).click();
 
@@ -132,10 +138,10 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
 
     await test.step("Row my-first-tenant is not visible when date prior to its creation is selected", async () => {
-      const dateAt5MinAgo = format(subMinutes(new Date(), 50), "iiii, MMMM do,");
       await page.getByTestId("timeframe-selector").click();
       await saveScreenshotForDocs(page, "tutorial_2_historical");
-      await page.getByLabel(`Choose ${dateAt5MinAgo}`).click();
+      //await page.getByLabel(`Choose ${format(dateBeforeTest, "iiii, MMMM do,")}`).click();
+      await page.getByRole("option", { name: format(dateBeforeTest, "h:mm aa") }).click();
       await expect(page.locator("tbody")).not.toContainText("my-first-tenant");
     });
 

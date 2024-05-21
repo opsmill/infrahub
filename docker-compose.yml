@@ -60,6 +60,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_LOG_LEVEL: "INFO"
   INFRAHUB_MISC_MAXIMUM_VALIDATOR_EXECUTION_TIME:
   INFRAHUB_MISC_PRINT_QUERY_DETAILS:
+  INFRAHUB_MISC_RESPONSE_DELAY:
   INFRAHUB_MISC_START_BACKGROUND_RUNNER:
   INFRAHUB_PRODUCTION: "false"
   INFRAHUB_SECURITY_ACCESS_TOKEN_LIFETIME:
@@ -91,7 +92,7 @@ services:
       RABBITMQ_DEFAULT_USER: *broker_username
       RABBITMQ_DEFAULT_PASS: *broker_password
     healthcheck:
-      test: rabbitmq-diagnostics -q ping
+      test: rabbitmq-diagnostics -q check_port_connectivity
       interval: 5s
       timeout: 30s
       retries: 3

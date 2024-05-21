@@ -258,6 +258,7 @@ class MiscellaneousSettings(BaseSettings):
     maximum_validator_execution_time: int = Field(
         default=1800, description="The maximum allowed time (in seconds) for a validator to run."
     )
+    response_delay: int = Field(default=0, description="Arbitrary delay to add when processing API requests.")
 
 
 class RemoteLoggingSettings(BaseSettings):

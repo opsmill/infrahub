@@ -39,7 +39,7 @@ spec:
               command:
                 - sh
                 - -c
-                - rabbitmq-diagnostics -q ping
+                - rabbitmq-diagnostics -q check_port_connectivity
             initialDelaySeconds: {{ .Values.messageQueue.livenessProbe.initialDelaySeconds }}
             timeoutSeconds: {{ .Values.messageQueue.livenessProbe.timeoutSeconds }}
             periodSeconds: {{ .Values.messageQueue.livenessProbe.periodSeconds }}

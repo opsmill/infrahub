@@ -62,9 +62,42 @@ test.describe("/ipam - IP Namespace", () => {
   });
 
   test("create, validate ui and delete a prefix on other namespace", async ({ page }) => {
-    await page.goto("/ipam");
+    await Promise.all([
+      page.waitForResponse((response) => {
+        const reqData = response.request().postDataJSON();
+        const status = response.status();
+
+        return reqData?.operationName === "GET_TOP_LEVEL_PREFIXES" && status === 200;
+      }),
+
+      page.waitForResponse((response) => {
+        const reqData = response.request().postDataJSON();
+        const status = response.status();
+
+        return reqData?.operationName === "GET_PREFIXES" && status === 200;
+      }),
+
+      page.goto("/ipam"),
+    ]);
     await page.getByTestId("namespace-select").getByTestId("select-open-option-button").click();
-    await page.getByRole("option", { name: "test-namespace" }).click();
+
+    await Promise.all([
+      page.waitForResponse((response) => {
+        const reqData = response.request().postDataJSON();
+        const status = response.status();
+
+        return reqData?.operationName === "GET_TOP_LEVEL_PREFIXES" && status === 200;
+      }),
+
+      page.waitForResponse((response) => {
+        const reqData = response.request().postDataJSON();
+        const status = response.status();
+
+        return reqData?.operationName === "GET_PREFIXES" && status === 200;
+      }),
+
+      page.getByRole("option", { name: "test-namespace" }).click(),
+    ]);
 
     await test.step("create a prefix at top level", async () => {
       await page.getByTestId("create-object-button").click();
@@ -72,10 +105,32 @@ test.describe("/ipam - IP Namespace", () => {
         .getByTestId("side-panel-container")
         .getByTestId("select-open-option-button")
         .click();
-      await page.getByRole("option", { name: "IpamIPPrefix" }).click();
+
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          return reqData?.operationName === "ProfileIpamIPPrefix" && status === 200;
+        }),
+
+        page.getByRole("option", { name: "IpamIPPrefix" }).click(),
+      ]);
+
       await page.getByLabel("Prefix *").fill("11.0.0.0/8");
       await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
-      await page.getByRole("option", { name: "Namespace" }).click();
+
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          return reqData?.operationName === "DropdownOptions" && status === 200;
+        }), // wait for second dropdown to appear
+
+        page.getByRole("option", { name: "Namespace" }).click(),
+      ]);
+
       await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: "test-namespace" }).click();
       await page.getByRole("button", { name: "Create" }).click();
@@ -93,10 +148,32 @@ test.describe("/ipam - IP Namespace", () => {
         .getByTestId("side-panel-container")
         .getByTestId("select-open-option-button")
         .click();
-      await page.getByRole("option", { name: "IpamIPPrefix" }).click();
+
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          return reqData?.operationName === "ProfileIpamIPPrefix" && status === 200;
+        }),
+
+        page.getByRole("option", { name: "IpamIPPrefix" }).click(),
+      ]);
+
       await page.getByLabel("Prefix *").fill("11.0.0.0/16");
       await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
-      await page.getByRole("option", { name: "Namespace" }).click();
+
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          return reqData?.operationName === "DropdownOptions" && status === 200;
+        }), // wait for second dropdown to appear
+
+        page.getByRole("option", { name: "Namespace" }).click(),
+      ]);
+
       await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: "test-namespace" }).click();
       await page.getByRole("button", { name: "Create" }).click();
@@ -119,10 +196,32 @@ test.describe("/ipam - IP Namespace", () => {
         .getByTestId("side-panel-container")
         .getByTestId("select-open-option-button")
         .click();
-      await page.getByRole("option", { name: "IpamIPPrefix" }).click();
+
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          return reqData?.operationName === "ProfileIpamIPPrefix" && status === 200;
+        }),
+
+        page.getByRole("option", { name: "IpamIPPrefix" }).click(),
+      ]);
+
       await page.getByLabel("Prefix *").fill("11.0.0.0/10");
       await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
-      await page.getByRole("option", { name: "Namespace" }).click();
+
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          return reqData?.operationName === "DropdownOptions" && status === 200;
+        }), // wait for second dropdown to appear
+
+        page.getByRole("option", { name: "Namespace" }).click(),
+      ]);
+
       await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: "test-namespace" }).click();
       await page.getByRole("button", { name: "Create" }).click();
