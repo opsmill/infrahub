@@ -10,7 +10,7 @@ Infrahub is currently in Open Beta. Many functionalities are still being activel
 
 ## How can I submit a feature request?
 
-We accept feature requests in our [Github](https://github.com/opsmill/infrahub/issues), in our [Discord](https://discord.gg/typQmqXan5)
+We accept feature requests in our [GitHub](https://github.com/opsmill/infrahub/issues), in our [Discord](https://discord.gg/typQmqXan5)
 
 ## How can I get involved?
 
@@ -18,7 +18,7 @@ There are a few different ways to get involved with Infrahub:
 
 1. As you use Infrahub, submit bugs and feature requests.
 2. Reach out to Opsmill on [Discord](https://discord.gg/typQmqXan5) and set up a user feedback session to share your thoughts with us.
-3. If you are a developer make a ticket on our [Github](https://github.com/opsmill/infrahub/issues) and send a PR our way to fix it.
+3. If you are a developer make a ticket on our [GitHub](https://github.com/opsmill/infrahub/issues) and send a PR our way to fix it.
 
 ## Does Infrahub Collect Telemetry?
 
@@ -34,7 +34,7 @@ Infrahub collects limited telemetry for the purpose of product analytics.
 6. Number of Resource Pools
 7. Obfuscated Schema Summary
 8. Infrahub Version
-9. Number of GIT repos
+9. Number of GIT repositorys
 10. Number of workers
 11. Number of generators
 12. Number of artifact definitions
@@ -45,7 +45,7 @@ Infrahub collects limited telemetry for the purpose of product analytics.
 17. Number of webhooks
 18. Number of times webhooks fired
 
-### Controling Telemetry
+### Controlling Telemetry
 
 To disable telemetry you can set INFRAHUB_TELEMETRY_OPTOUT prior to the build step for Infrahub.
     export INFRAHUB_TELEMETRY_OPTOUT=true
