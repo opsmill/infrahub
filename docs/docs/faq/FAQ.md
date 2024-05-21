@@ -20,13 +20,13 @@ Infrahub offers best in class features for infrastructure automation such as:
 - CI validations and approval process
 - Object Profiles
 - IPAM with IPv4 and IPv6 support
-- Resource Managment
+- Resource Management
 - User Defined Artifact Generation in CI
 - User Defined Object Generation
 - GUI, API, and SDK operations
 - Data import with Infrahub Sync
 
-Infrahub is still being actively developed with new features and functionalities coming on a regular basis. Check out our [roadmap](https://opsmill.atlassian.net/jira/discovery/share/views/7e5d4ab1-63d7-405e-b453-ad50cd9d5b71) to see where we aer going next!
+Infrahub is still being actively developed with new features and functionalities coming on a regular basis. Check out our [roadmap](https://opsmill.atlassian.net/jira/discovery/share/views/7e5d4ab1-63d7-405e-b453-ad50cd9d5b71) to see where we are going next!
 
 <details>
 <summary>
@@ -35,7 +35,7 @@ Infrahub is still being actively developed with new features and functionalities
 
 </summary>
 
-Yes. Infrahub can be deployed in a production environment. If you are deploying a large production environment we recommend reacthing out to our customer success team at customer-success@opsmill.com to understand any specific requirments for your deployment.
+Yes. Infrahub can be deployed in a production environment. If you are deploying a large production environment we recommend reaching out to our customer success team at customer-success@opsmill.com to understand any specific requirements for your deployment.
 
 </details>
 </details>
