@@ -698,14 +698,9 @@ class InfrahubNodeBase:
             else:
                 return_value = attribute
 
-        if isinstance(
-            return_value,
-            (ipaddress.IPv4Address, ipaddress.IPv6Address, ipaddress.IPv4Network, ipaddress.IPv6Network),
-        ):
-            return str(return_value)
         return return_value
 
-    def get_human_friendly_id(self) -> Optional[List[Any]]:
+    def get_human_friendly_id(self) -> Optional[List[str]]:
         if not hasattr(self._schema, "human_friendly_id"):
             return None
 
@@ -713,7 +708,7 @@ class InfrahubNodeBase:
             # FIXME: compute based on uniqueness constraints?
             return None
 
-        return [self.get_path_value(path=item) for item in self._schema.human_friendly_id]
+        return [str(self.get_path_value(path=item)) for item in self._schema.human_friendly_id]
 
     def get_human_friendly_id_as_string(self, include_kind: bool = False) -> Optional[str]:
         hfid = self.get_human_friendly_id()
@@ -724,7 +719,7 @@ class InfrahubNodeBase:
         return "__".join(hfid)
 
     @property
-    def hfid(self) -> Optional[List[Any]]:
+    def hfid(self) -> Optional[List[str]]:
         return self.get_human_friendly_id()
 
     @property
