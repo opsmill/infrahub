@@ -1125,3 +1125,63 @@ async def test_prefix_ancestors_descendants(
     assert children == [{"node": {"id": net16.id}}]
     descendants = prefix_details["descendants"]["edges"]
     assert descendants == [{"node": {"id": net16.id}}]
+
+
+async def test_3322(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    prefix_1 = "10.16.0.0/24"
+    prefix_2 = "10.26.1.0/25"
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"prefix": prefix_1},
+    )
+    assert not result.errors
+    assert result.data["IpamIPPrefixCreate"]["ok"]
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(prefix_2)},
+    )
+    assert not result.errors
+    assert result.data["IpamIPPrefixCreate"]["ok"]
+
+    result_prefix_1 = await graphql(
+        schema=gql_params.schema,
+        source=GET_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"prefix": prefix_1},
+    )
+    assert not result_prefix_1.errors
+    assert len(result_prefix_1.data["IpamIPPrefix"]["edges"]) == 1
+    prefix_1_details = result_prefix_1.data["IpamIPPrefix"]["edges"][0]["node"]
+    assert not prefix_1_details["parent"]["node"]
+    assert prefix_1_details["is_top_level"]["value"]
+    assert prefix_1_details["prefix"]["value"] == prefix_1
+    # assert prefix_1_details["utilization"]["value"] == 0
+    assert prefix_1_details["children"]["edges"] == []
+    assert prefix_1_details["ip_addresses"]["edges"] == []
+    result_prefix_2 = await graphql(
+        schema=gql_params.schema,
+        source=GET_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"prefix": prefix_2},
+    )
+    assert not result_prefix_2.errors
+    assert len(result_prefix_2.data["IpamIPPrefix"]["edges"]) == 1
+    prefix_2_details = result_prefix_2.data["IpamIPPrefix"]["edges"][0]["node"]
+    assert not prefix_2_details["parent"]["node"]
+    assert prefix_2_details["is_top_level"]["value"]
+    assert prefix_2_details["prefix"]["value"] == prefix_2
+    # assert prefix_2_details["utilization"]["value"] == 0
+    assert prefix_2_details["children"]["edges"] == []
+    assert prefix_2_details["ip_addresses"]["edges"] == []

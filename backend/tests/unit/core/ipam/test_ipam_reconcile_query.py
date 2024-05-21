@@ -2,9 +2,11 @@ import ipaddress
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch, create_ipam_namespace, get_default_ipnamespace
 from infrahub.core.node import Node
 from infrahub.core.query.ipam import IPPrefixReconcileQuery
+from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 
@@ -293,3 +295,79 @@ async def test_branch_updates_respected(db: InfrahubDatabase, default_branch: Br
         new_address_main.id,
     }
     assert set(query.get_calculated_children_uuids()) == expected_children_after_rebase
+
+
+async def test_reconcile_parent_child_identification(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    ip_namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ip_namespace.new(db=db, name="ns1")
+    await ip_namespace.save(db=db)
+    prefix_id_map = {}
+    for network in [
+        "136.0.0.0/8",
+        "136.128.0.0/12",
+        "136.136.0.0/16",
+        "136.136.128.0/20",
+        "136.136.136.0/24",
+        "136.136.136.128/28",
+        "136.136.136.136/32",
+    ]:
+        prefix_node = await Node.init(db=db, schema=prefix_schema)
+        await prefix_node.new(db=db, prefix=network, ip_namespace=ip_namespace)
+        await prefix_node.save(db=db)
+        prefix_id_map[prefix_node.id] = network
+    address_id_map = {}
+    for address in ["136.136.136.136/30", "136.136.136.136/31", "136.136.136.136/32"]:
+        address_node = await Node.init(db=db, schema=address_schema)
+        await address_node.new(db=db, address=address, ip_namespace=ip_namespace)
+        await address_node.save(db=db)
+        address_id_map[address_node.id] = address
+
+    for prefix_to_check, parent, children in (
+        (ipaddress.ip_network("136.0.0.0/8"), None, {"136.128.0.0/12"}),
+        (ipaddress.ip_network("136.128.0.0/12"), "136.0.0.0/8", {"136.136.0.0/16"}),
+        (ipaddress.ip_network("136.136.0.0/16"), "136.128.0.0/12", {"136.136.128.0/20"}),
+    ):
+        query = await IPPrefixReconcileQuery.init(
+            db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=prefix_to_check
+        )
+        await query.execute(db=db)
+        calculated_parent_uuid = query.get_calculated_parent_uuid()
+        if parent is None:
+            assert calculated_parent_uuid is None
+        else:
+            assert parent == prefix_id_map.get(calculated_parent_uuid)
+        assert children == {prefix_id_map.get(ccu) for ccu in query.get_calculated_children_uuids()}
+
+    for prefix_to_check, parent, prefix_children, address_children in (
+        (ipaddress.ip_network("136.136.136.136/32"), "136.136.136.128/28", set(), {"136.136.136.136/32"}),
+        # 136.136.136.136/32 is not an address child for the below b/c its correct parent is prefix 136.136.136.136/32, not 136.136.136.136/30
+        (
+            ipaddress.ip_network("136.136.136.136/30"),
+            "136.136.136.128/28",
+            {"136.136.136.136/32"},
+            {"136.136.136.136/30", "136.136.136.136/31"},
+        ),
+    ):
+        query = await IPPrefixReconcileQuery.init(
+            db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=prefix_to_check
+        )
+        await query.execute(db=db)
+
+        calculated_parent_uuid = query.get_calculated_parent_uuid()
+        if parent is None:
+            assert calculated_parent_uuid is None
+        else:
+            assert parent == prefix_id_map.get(calculated_parent_uuid)
+        assert prefix_children == {
+            prefix_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in prefix_id_map
+        }
+        assert address_children == {
+            address_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in address_id_map
+        }
