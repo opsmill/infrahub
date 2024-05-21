@@ -525,7 +525,6 @@ class IPPrefixReconcileQuery(Query):
             collect(new_child) as new_children
         """ % {
             "branch_filter": branch_filter,
-
         }
         self.add_to_query(get_new_children_query)
         self.return_labels = ["ip_node", "current_parent", "current_children", "new_parent", "new_children"]
