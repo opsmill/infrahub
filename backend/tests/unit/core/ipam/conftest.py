@@ -15,8 +15,8 @@ async def ip_dataset_01(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
-    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    prefix_schema = db.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    address_schema = db.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
     # -----------------------
     # Namespace NS1

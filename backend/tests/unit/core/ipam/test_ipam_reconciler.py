@@ -26,7 +26,7 @@ async def test_first_prefix(
 ):
     await create_ipam_namespace(db=db)
     default_ipnamespace = await get_default_ipnamespace(db=db)
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    prefix_schema = db.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     net161 = await Node.init(db=db, schema=prefix_schema)
     await net161.new(db=db, prefix="2001:db8::/48", ip_namespace=default_ipnamespace)
     await net161.save(db=db)
@@ -66,7 +66,7 @@ async def test_ipprefix_reconciler_new_prefix_update(db: InfrahubDatabase, defau
     await create_ipam_namespace(db=db)
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    prefix_schema = db.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     namespace = ip_dataset_01["ns1"]
     new_prefix = await Node.init(db=db, schema=prefix_schema)
     await new_prefix.new(db=db, prefix="10.10.0.0/18", ip_namespace=namespace, parent=ip_dataset_01["net146"])
@@ -117,7 +117,7 @@ async def test_ipprefix_reconciler_new_address_update(db: InfrahubDatabase, defa
     await create_ipam_namespace(db=db)
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
-    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    address_schema = db.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
     namespace = ip_dataset_01["ns1"]
     new_address = await Node.init(db=db, schema=address_schema)
     await new_address.new(db=db, address="10.10.3.1", ip_namespace=namespace)

@@ -22,7 +22,7 @@ async def test_assign_prefix_from_pool(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = db.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
 
     pool = await CorePrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
     await pool.new(
@@ -104,7 +104,7 @@ async def test_assign_address_from_pool(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
 
-    address_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+    address_pool_schema = db.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
 
     pool = await CoreIPAddressPool.init(schema=address_pool_schema, db=db, branch=default_branch)
     await pool.new(

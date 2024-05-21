@@ -1024,7 +1024,7 @@ async def test_prefix_ancestors_descendants(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    prefix_schema = db.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
     ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await ns1.new(db=db, name="ns1")

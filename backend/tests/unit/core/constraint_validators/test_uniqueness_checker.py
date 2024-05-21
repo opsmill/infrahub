@@ -506,7 +506,7 @@ class TestUniquenessChecker:
         branch: Branch,
         default_branch: Branch,
     ):
-        schema_on_branch = registry.schema.get_node_schema(name="TestCar", branch=branch)
+        schema_on_branch = db.schema.get_node_schema(name="TestCar", branch=branch)
         schema_on_branch.relationships.append(
             RelationshipSchema(
                 name="yet_another_owner",

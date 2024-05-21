@@ -25,7 +25,7 @@ async def test_ipprefix_creation(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    prefix_schema = db.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
     prefix1 = await Node.init(db=db, schema=prefix_schema)
     await prefix1.new(db=db, prefix="2001:db8::/32")
@@ -42,7 +42,7 @@ async def test_ipaddress_creation(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
-    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    address_schema = db.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
     address1 = await Node.init(db=db, schema=address_schema)
     await address1.new(db=db, address="2001:db8::/64")
@@ -60,7 +60,7 @@ async def test_ipprefix_is_within_container(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    prefix_schema = db.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
     container = await Node.init(db=db, schema=prefix_schema)
     await container.new(db=db, prefix="2001:db8::/32", ip_namespace=default_ipnamespace)
@@ -107,7 +107,7 @@ async def test_ipprefix_subnets_small_dataset(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    prefix_schema = db.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
     ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await ns1.new(db=db, name="ns1")
@@ -151,8 +151,8 @@ async def test_ipaddress_is_within_ipprefix(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
-    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    prefix_schema = db.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    address_schema = db.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
     prefix = await Node.init(db=db, schema=prefix_schema)
     await prefix.new(db=db, prefix="2001:db8::/64", ip_namespace=default_ipnamespace)
@@ -179,7 +179,7 @@ async def test_ipaddress_is_within_ipprefix(
 
 
 async def test_query_by_parent_ids(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    prefix_schema = db.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     reconciler = IpamReconciler(db=db, branch=default_branch)
     ns1 = ip_dataset_01["ns1"]
     net146 = ip_dataset_01["net146"]

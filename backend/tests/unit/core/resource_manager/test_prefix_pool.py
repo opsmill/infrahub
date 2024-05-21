@@ -21,7 +21,7 @@ async def test_get_next(
     net140 = ip_dataset_prefix_v4["net140"]
     net141 = ip_dataset_prefix_v4["net141"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = db.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
 
     pool = await CorePrefixPool.init(schema=prefix_pool_schema, db=db)
     await pool.new(db=db, name="pool1", resources=[net140, net141], ip_namespace=ns1)
@@ -54,7 +54,7 @@ async def test_get_one(
     net140 = ip_dataset_prefix_v4["net140"]
     net141 = ip_dataset_prefix_v4["net141"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = db.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
 
     pool = await CorePrefixPool.init(schema=prefix_pool_schema, db=db)
     await pool.new(db=db, name="pool1", resources=[net140, net141], ip_namespace=ns1)
@@ -95,7 +95,7 @@ async def test_get_all_resources(
     net140 = ip_dataset_prefix_v4["net140"]
     net141 = ip_dataset_prefix_v4["net141"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = db.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
 
     pool = await CorePrefixPool.init(schema=prefix_pool_schema, db=db)
     await pool.new(db=db, name="pool1", resources=[net140, net141], ip_namespace=ns1)

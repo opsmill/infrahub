@@ -418,8 +418,8 @@ async def test_relationship_assign_from_pool(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
-    mandatory_prefix_schema = registry.schema.get_node_schema(name="TestMandatoryPrefix", branch=default_branch)
+    prefix_pool_schema = db.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
+    mandatory_prefix_schema = db.schema.get_node_schema(name="TestMandatoryPrefix", branch=default_branch)
 
     pool = await CorePrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
     await pool.new(

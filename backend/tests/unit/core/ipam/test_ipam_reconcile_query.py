@@ -73,7 +73,7 @@ async def test_ipprefix_reconcile_query_for_new_address_with_node(
     db: InfrahubDatabase, default_branch: Branch, ip_dataset_01
 ):
     ns1_id = ip_dataset_01["ns1"].id
-    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    address_schema = db.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
     new_address = await Node.init(db=db, schema=address_schema)
     await new_address.new(db=db, address="10.10.3.1", ip_namespace=ns1_id)
     await new_address.save(db=db)
@@ -236,8 +236,8 @@ async def test_ipprefix_reconcile_query_get_deleted_node_by_uuid(
 
 async def test_branch_updates_respected(db: InfrahubDatabase, branch: Branch, default_branch: Branch, ip_dataset_01):
     ns1_id = ip_dataset_01["ns1"].id
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=branch)
-    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=branch)
+    prefix_schema = db.schema.get_node_schema(name="IpamIPPrefix", branch=branch)
+    address_schema = db.schema.get_node_schema(name="IpamIPAddress", branch=branch)
     await branch.rebase(db=db)
     net140 = ip_dataset_01["net140"]
     await net140.delete(db=db)
