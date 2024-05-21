@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { Select } from "../../components/inputs/select";
+import { Select, SelectOption } from "../../components/inputs/select";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { PROFILE_KIND } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
@@ -49,7 +49,7 @@ export default function ObjectItemCreate(props: iProps) {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
-  const [kind, setKind] = useState("");
+  const [kind, setKind] = useState(null);
   const [profile, setProfile] = useState("");
 
   const generic = genericsList.find((s) => s.kind === objectname);
@@ -58,13 +58,13 @@ export default function ObjectItemCreate(props: iProps) {
   const isProfileCreationForm = objectname === PROFILE_KIND;
 
   const schema = isProfileCreationForm
-    ? profilesList.find((profile) => profile.kind === kind)
-    : schemaList.find((s) => (isGeneric ? s.kind === kind : s.kind === objectname));
+    ? profilesList.find((profile) => profile.kind === kind?.id)
+    : schemaList.find((s) => (isGeneric ? s.kind === kind?.id : s.kind === objectname));
 
-  const isEditingProfile = kind && profileGeneric?.used_by?.includes(kind);
+  const isEditingProfile = kind?.id && profileGeneric?.used_by?.includes(kind?.id);
 
   // Adds "Profile" before kind to get profiles, eccept for profiles themselves
-  const profileName = `Profile${isGeneric && kind ? kind : objectname}`;
+  const profileName = `Profile${isGeneric && kind?.id ? kind?.id : objectname}`;
 
   const displayProfile =
     schema && !profileGeneric?.used_by?.includes(schema.kind) && schema.kind !== PROFILE_KIND;
@@ -82,7 +82,7 @@ export default function ObjectItemCreate(props: iProps) {
   `;
 
   const { data } = useQuery(query, {
-    skip: !(!!generic || !!schema) || (isGeneric && !kind) || isEditingProfile,
+    skip: !(!!generic || !!schema) || (isGeneric && !kind?.id) || isEditingProfile,
   });
 
   const profiles = data && data[profileName]?.edges?.map((edge) => edge.node);
@@ -108,8 +108,8 @@ export default function ObjectItemCreate(props: iProps) {
       profile: currentProfile,
     });
 
-  const handleProfileChange = (newProfile: string) => {
-    setProfile(newProfile);
+  const handleProfileChange = (newProfile: SelectOption) => {
+    setProfile(newProfile.id);
   };
 
   const handleKindChange = (newKind: string) => {
@@ -137,7 +137,7 @@ export default function ObjectItemCreate(props: iProps) {
         data: stringifyWithoutQuotes({
           ...newObject,
           ...customObject,
-          ...(profile ? { profiles: [{ id: profile }] } : {}),
+          ...(profile ? { profiles: [{ id: profile.id }] } : {}),
         }),
       });
 
@@ -172,7 +172,7 @@ export default function ObjectItemCreate(props: iProps) {
   }
 
   return (
-    <div className="bg-custom-white flex-1 overflow-auto">
+    <div className="bg-custom-white flex flex-col flex-1 overflow-auto">
       {isGeneric && (
         <div className="p-4 pt-3 bg-gray-200">
           <div className="flex items-center">
@@ -196,16 +196,14 @@ export default function ObjectItemCreate(props: iProps) {
       )}
 
       {schema && fields && (
-        <div className="flex-1">
-          <Form
-            onSubmit={onSubmit}
-            onCancel={onCancel}
-            fields={fields}
-            isLoading={isLoading}
-            submitLabel={submitLabel ?? "Create"}
-            preventObjectsCreation={preventObjectsCreation}
-          />
-        </div>
+        <Form
+          onSubmit={onSubmit}
+          onCancel={onCancel}
+          fields={fields}
+          isLoading={isLoading}
+          submitLabel={submitLabel ?? "Create"}
+          preventObjectsCreation={preventObjectsCreation}
+        />
       )}
     </div>
   );

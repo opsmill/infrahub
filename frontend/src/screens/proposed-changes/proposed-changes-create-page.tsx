@@ -1,25 +1,24 @@
-import { Link, Navigate, useNavigate } from "react-router-dom";
-import { usePermission } from "../../hooks/usePermission";
-import { constructPath } from "../../utils/fetch";
-import { Card } from "../../components/ui/card";
-import { Icon } from "@iconify-icon/react";
-import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
-import { useAtomValue } from "jotai/index";
-import { branchesState } from "../../state/atoms/branches.atom";
-import { Button, BUTTON_TYPES } from "../../components/buttons/button";
-import { branchesToSelectOptions } from "../../utils/branches";
-import { FormProvider, useForm } from "react-hook-form";
-import React from "react";
-import { DynamicControl } from "../edit-form-hook/dynamic-control";
 import { useMutation } from "@apollo/client";
-import useQuery from "../../hooks/useQuery";
-import { CREATE_PROPOSED_CHANGE } from "../../graphql/mutations/proposed-changes/createProposedChange";
-import { useAuth } from "../../hooks/useAuth";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai/index";
+import { FormProvider, useForm } from "react-hook-form";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "../../components/utils/alert";
-import { classNames } from "../../utils/common";
-import Content from "../layout/content";
+import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
+import { Card } from "../../components/ui/card";
+import { ALERT_TYPES, Alert } from "../../components/utils/alert";
+import { CREATE_PROPOSED_CHANGE } from "../../graphql/mutations/proposed-changes/createProposedChange";
 import { GET_ALL_ACCOUNTS } from "../../graphql/queries/accounts/getAllAccounts";
+import { useAuth } from "../../hooks/useAuth";
+import { usePermission } from "../../hooks/usePermission";
+import useQuery from "../../hooks/useQuery";
+import { branchesState } from "../../state/atoms/branches.atom";
+import { branchesToSelectOptions } from "../../utils/branches";
+import { classNames } from "../../utils/common";
+import { constructPath } from "../../utils/fetch";
+import { DynamicControl } from "../edit-form-hook/dynamic-control";
+import Content from "../layout/content";
 
 const ProposedChangesCreatePage = () => {
   const permission = usePermission();
@@ -62,11 +61,11 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
           async ({ source_branch, destination_branch, name, description, reviewers }) => {
             const { data } = await createProposedChange({
               variables: {
-                source_branch,
+                source_branch: source_branch.id,
                 destination_branch,
                 name,
                 description,
-                reviewers: reviewers.map((id: string) => ({ id })),
+                reviewers: reviewers?.list?.map((id: string) => ({ id })) || [],
                 created_by: {
                   id: user?.id,
                 },

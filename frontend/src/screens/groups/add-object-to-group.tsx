@@ -89,8 +89,8 @@ export default function AddObjectToGroup(props: Props) {
 
     const previousIds = objectGroups.map((group: any) => group.id);
 
-    const newGroups = groupids.filter((id: string) => !previousIds.includes(id));
-    const removedGroups = previousIds.filter((id: string) => !groupids.includes(id));
+    const newGroups = groupids.list.filter((id: string) => !previousIds.includes(id));
+    const removedGroups = previousIds.filter((id: string) => !groupids.list.includes(id));
 
     try {
       if (newGroups.length) {

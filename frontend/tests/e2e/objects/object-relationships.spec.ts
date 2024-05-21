@@ -55,7 +55,7 @@ test.describe("/objects/:objectname/:objectid - relationship tab", () => {
       });
     });
 
-    test("should be add a new relationship", async ({ page }) => {
+    test("should add a new relationship", async ({ page }) => {
       await test.step("Navigate to relationship tab of an object", async () => {
         await page.goto("/objects/InfraPlatform");
         await page.getByRole("link", { name: "Juniper JunOS" }).click();

@@ -12,14 +12,14 @@ import { SelectOption } from "../inputs/select";
 import { OpsSelect } from "./select";
 
 export interface iTwoStepDropdownData {
-  parent: string | number;
-  child: string | number;
+  parent: null | string | number;
+  child: null | string | number;
 }
 
 interface Props {
   label: string;
   options: SelectOption[];
-  value: string | iTwoStepDropdownData;
+  value: iTwoStepDropdownData;
   onChange: (value: iTwoStepDropdownData) => void;
   error?: FormFieldError;
   isProtected?: boolean;
@@ -38,22 +38,21 @@ export const OpsSelect2Step = (props: Props) => {
   const date = useAtomValue(datetimeAtom);
 
   const [optionsRight, setOptionsRight] = useState([]);
-
   const [selectedLeft, setSelectedLeft] = useState(
-    value && value?.parent ? options.find((option) => option.id === value?.parent)?.id : null
+    value && value?.parent ? options.find((option) => option.id === value?.parent) : null
   );
 
   const [selectedRight, setSelectedRight] = useState(
-    value && value?.child ? optionsRight.find((option) => option.id === value?.child)?.id : null
+    value && value?.child ? optionsRight.find((option) => option.id === value?.child) : null
   );
 
   const setRightDropdownOptions = useCallback(async () => {
-    if (!selectedLeft) {
+    if (!selectedLeft?.id) {
       return;
     }
 
     const queryString = getDropdownOptions({
-      kind: selectedLeft,
+      kind: selectedLeft.id,
     });
 
     const query = gql`
@@ -69,7 +68,7 @@ export const OpsSelect2Step = (props: Props) => {
     });
 
     // Filter the options to not select the current object
-    const newRigthOptions = data[selectedLeft]?.edges
+    const newRigthOptions = data[selectedLeft.id]?.edges
       .map((edge: any) => edge.node)
       .filter((option: any) => option.id !== objectid)
       .map((option: any) => ({
@@ -82,15 +81,15 @@ export const OpsSelect2Step = (props: Props) => {
     const rightOptionsIds = newRigthOptions.map((option: any) => option.id);
 
     if (value.child && rightOptionsIds.includes(value.child)) {
-      return setSelectedRight(value.child);
+      return setSelectedRight({ id: value.child });
     }
 
-    return setSelectedRight("");
-  }, [selectedLeft]);
+    return setSelectedRight(null);
+  }, [selectedLeft?.id]);
 
   useEffect(() => {
     setRightDropdownOptions();
-  }, [selectedLeft]);
+  }, [selectedLeft?.id]);
 
   return (
     <div className="flex flex-col">
@@ -104,7 +103,7 @@ export const OpsSelect2Step = (props: Props) => {
         <div className="sm:col-span-3 mr-2 mt-1">
           <OpsSelect
             {...propsToPass}
-            value={selectedLeft}
+            value={selectedLeft?.id}
             options={options}
             label=""
             onChange={setSelectedLeft}
@@ -116,13 +115,13 @@ export const OpsSelect2Step = (props: Props) => {
           {!!selectedLeft && optionsRight.length > 0 && (
             <OpsSelect
               {...propsToPass}
-              value={selectedRight}
+              value={selectedRight?.id}
               options={optionsRight}
               label=""
               onChange={(value) => {
                 setSelectedRight(value);
                 onChange({
-                  parent: selectedLeft,
+                  parent: selectedLeft?.id,
                   child: value,
                 });
               }}

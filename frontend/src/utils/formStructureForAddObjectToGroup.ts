@@ -15,7 +15,7 @@ export const getFormStructureForAddObjectToGroup = (
     {
       label: "Group",
       name: "groupids",
-      value: values,
+      value: { list: values },
       type: "multiselect",
       options,
     },
