@@ -39,8 +39,8 @@ const ObjectItemDetailsPaginated = loadable(
 const Homepage = loadable(() => import("./screens/homepage"));
 const ResourceManager = loadable(() => import("./screens/resource-manager/resource-manager-page"));
 const ResourcePool = loadable(() => import("./screens/resource-manager/resource-pool-page"));
-const ResourceAllocationDetails = loadable(
-  () => import("./screens/resource-manager/resource-allocation-details")
+const ResourceAllocationPage = loadable(
+  () => import("./screens/resource-manager/resource-allocation-page")
 );
 const SignIn = loadable(() => import("./screens/sign-in/sign-in"));
 const IpamPage = loadable(() => import("./screens/ipam/ipam-page"));
@@ -77,7 +77,7 @@ const App = () => {
           <Route path="/resource-manager/:resourcePoolId" element={<ResourcePool />}>
             <Route
               path="/resource-manager/:resourcePoolId/resources/:resourceId"
-              element={<ResourceAllocationDetails />}
+              element={<ResourceAllocationPage />}
             />
           </Route>
           <Route path="/schema" element={<SchemaPage />} />

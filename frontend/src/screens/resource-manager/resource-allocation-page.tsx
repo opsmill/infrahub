@@ -10,19 +10,22 @@ import { Button } from "../../components/buttons/button-primitive";
 import { constructPath } from "../../utils/fetch";
 import { getObjectDetailsUrl2 } from "../../utils/objects";
 import { Skeleton } from "../../components/skeleton";
+import { QSP } from "../../config/qsp";
 
-const ResourceAllocationDetails = () => {
+const ResourceAllocationPage = () => {
   const { resourcePoolId, resourceId } = useParams();
   const { data, loading } = useQuery(GET_RESOURCE_POOL_ALLOCATED, {
     variables: { poolId: resourcePoolId, resourceId: resourceId },
   });
 
-  if (loading) return <ResourceAllocationDetailsSkeleton />;
+  if (loading) return <ResourceAllocationPageSkeleton />;
 
   const getResourcePoolAllocatedData = data[RESOURCE_POOL_ALLOCATED_KIND];
   const resourcesAllocated = getResourcePoolAllocatedData.edges.map(({ node }: any) => ({
     values: { ...node },
-    link: getObjectDetailsUrl2(node.kind, node.id),
+    link: constructPath(getObjectDetailsUrl2(node.kind, node.id), [
+      { name: QSP.BRANCH, value: node.branch },
+    ]),
   }));
   const totalOfResourcesAllocated = getResourcePoolAllocatedData.count;
 
@@ -66,7 +69,7 @@ const ResourceAllocationDetails = () => {
   );
 };
 
-const ResourceAllocationDetailsSkeleton = () => {
+const ResourceAllocationPageSkeleton = () => {
   const { resourcePoolId } = useParams();
 
   return (
@@ -92,4 +95,4 @@ const ResourceAllocationDetailsSkeleton = () => {
     </Card>
   );
 };
-export default ResourceAllocationDetails;
+export default ResourceAllocationPage;
