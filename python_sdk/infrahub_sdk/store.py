@@ -20,9 +20,15 @@ class NodeStoreBase:
         self._store: Dict[str, Dict] = defaultdict(dict)
         self._store_by_hfid: Dict[str, Any] = defaultdict(dict)
 
-    def _set(self, key: str, node: Union[InfrahubNode, InfrahubNodeSync]) -> None:
-        node_kind = node._schema.kind
-        self._store[node_kind][key] = node  # type: ignore[attr-defined]
+    def _set(self, node: Union[InfrahubNode, InfrahubNodeSync], key: Optional[str] = None) -> None:
+        hfid = node.get_human_friendly_id_as_string(include_kind=True)
+
+        if not key and not hfid:
+            raise ValueError("Cannot store node without human friendly ID or key.")
+
+        if key:
+            node_kind = node._schema.kind
+            self._store[node_kind][key] = node
 
         if hfid := node.get_human_friendly_id_as_string(include_kind=True):
             self._store_by_hfid[hfid] = node
@@ -86,8 +92,8 @@ class NodeStore(NodeStoreBase):
     def get_by_hfid(self, key: str, raise_when_missing: bool = True) -> Optional[InfrahubNode]:
         return self._get_by_hfid(key=key, raise_when_missing=raise_when_missing)
 
-    def set(self, key: str, node: InfrahubNode) -> None:
-        return self._set(key=key, node=node)
+    def set(self, node: InfrahubNode, key: Optional[str] = None) -> None:
+        return self._set(node=node, key=key)
 
 
 class NodeStoreSync(NodeStoreBase):
@@ -113,5 +119,5 @@ class NodeStoreSync(NodeStoreBase):
     def get_by_hfid(self, key: str, raise_when_missing: bool = True) -> Optional[InfrahubNodeSync]:
         return self._get_by_hfid(key=key, raise_when_missing=raise_when_missing)
 
-    def set(self, key: str, node: InfrahubNodeSync) -> None:
-        return self._set(key=key, node=node)
+    def set(self, node: InfrahubNodeSync, key: Optional[str] = None) -> None:
+        return self._set(node=node, key=key)
