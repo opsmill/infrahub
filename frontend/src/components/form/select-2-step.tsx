@@ -8,6 +8,7 @@ import { getDropdownOptions } from "../../graphql/queries/objects/dropdownOption
 import { FormFieldError } from "../../screens/edit-form-hook/form";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
+import { QuestionMark } from "../display/question-mark";
 import { SelectOption } from "../inputs/select";
 import { OpsSelect } from "./select";
 
@@ -18,6 +19,7 @@ export interface iTwoStepDropdownData {
 
 interface Props {
   label: string;
+  description?: string;
   options: SelectOption[];
   value: string | iTwoStepDropdownData;
   onChange: (value: iTwoStepDropdownData) => void;
@@ -30,7 +32,7 @@ interface Props {
 
 export const OpsSelect2Step = (props: Props) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, react/prop-types, no-unused-vars
-  const { label, options, value, onChange, isOptional, peer, ...propsToPass } = props;
+  const { label, description, options, value, onChange, isOptional, peer, ...propsToPass } = props;
   const { isProtected } = props;
 
   const { objectid } = useParams();
@@ -99,6 +101,7 @@ export const OpsSelect2Step = (props: Props) => {
           {label} {!isOptional && "*"}
         </label>
         {isProtected && <LockClosedIcon className="w-4 h-4" />}
+        <QuestionMark message={description} />
       </div>
       <div className="flex">
         <div className="sm:col-span-3 mr-2 mt-1">

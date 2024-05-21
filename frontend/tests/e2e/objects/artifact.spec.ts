@@ -9,7 +9,9 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
     });
   });
   test("should generate artifacts successfully", async ({ page }) => {
-    await page.goto("/objects/CoreArtifact?filters=[{\"name\":\"name__value\",\"value\":\"Startup Config for Edge devices\"}]");
+    await page.goto(
+      "/objects/CoreArtifact?filters=[{\"name\":\"name__value\",\"value\":\"Startup Config for Edge devices\"}]"
+    );
     await page.getByRole("link", { name: "startup Config for Edge devices" }).first().click();
     await expect(page.getByText("no aaa root").first()).toBeVisible();
   });
