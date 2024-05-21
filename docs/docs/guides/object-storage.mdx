@@ -1,0 +1,74 @@
+---
+title: Using the object-storage
+---
+
+In this guide we will be showing you how you can store and retrieve objects or files in Infrahub's object-storage.
+For more information on the object-storage please see the [object-storage topic](/topics/object-storage).
+
+## Uploading a file to the object-storage
+
+To upload a file to the object-storage we can use the `/api/storage/upload/file` REST API endpoint.
+
+Create a file on your system. You can save the file anywhere you want, with any filename you want. But in this guide we will be using `/tmp/test.json`
+
+```json
+{
+    "key": "value",
+    "list": [
+        "item1",
+        "item2",
+        "item3"
+    ]
+}
+```
+
+We will be using the `curl` command to upload the file. You might have to change the X-INFRAHUB-KEY header value to the API token of your user, if you are not using the default.
+
+```sh
+curl -X POST --header "X-INFRAHUB-KEY: 06438eb2-8019-4776-878c-0941b1f1d1ec" http://localhost:8000/api/storage/upload/file -F file=@/tmp/test.json
+```
+
+The response will be a JSON object representing the object in the object-storage. Take note of the identifier.
+
+```json
+{"identifier":"17d198df-3102-00e0-3349-c51ae276e246","checksum":"f4516d51f2c894fc47df1782c6661ebc"}
+```
+
+## Retrieving the object from the object-storage
+
+To retrieve objects from the object-storage we can use the `/api/storage/object/<identifier>` REST API endpoint.
+
+You might have to change the X-INFRAHUB-KEY header value to the API token of your user, if you are not using the default. The identifier in the URL should be the identifier that you gathered from the previous step.
+
+```curl
+curl --header "X-INFRAHUB-KEY: 06438eb2-8019-4776-878c-0941b1f1d1ec" http://localhost:8000/api/storage/object/17d198df-3102-00e0-3349-c51ae276e246
+{
+    "key": "value",
+    "list": [
+        "item1",
+        "item2",
+        "item3"
+    ]
+}
+```
+
+## Storing objects in the object-storage
+
+You can upload any string based object into the object-storage, as an alternative to uploading a file.
+In this step we will be storing the string "interface Ethernet1\n  description: Connected to Ethernet2" into the object-storage.
+
+You might have to change the X-INFRAHUB-KEY header value to the API token of your user, if you are not using the default.
+
+```sh
+curl -X POST --header "Content-Type: application/json" --header "X-INFRAHUB-KEY: 06438eb2-8019-4776-878c-0941b1f1d1ec" http://localhost:8000/api/storage/upload/content --data '{"content": "interface Ethernet1\n  description: Connected to Ethernet2"}'
+```
+
+```json
+{"identifier":"17d19962-4420-4972-334d-c51beb03e477","checksum":"843cde3df258ab3027618712952499cd"}
+```
+
+Retrieving the object works as described in the previous step.
+
+```sh
+curl --header "X-INFRAHUB-KEY: 06438eb2-8019-4776-878c-0941b1f1d1ec" http://localhost:8000/api/storage/object/17d19962-4420-4972-334d-c51beb03e477
+```
