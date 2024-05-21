@@ -54,7 +54,7 @@ const ResourcePoolUtilization = ({
           />
         }
         enabled>
-        <span className="text-custom-blue-700 font-medium">
+        <span className="text-custom-blue-700 font-medium w-8 text-right">
           {roundNumber(utilizationOverall, 0)}%
         </span>
       </Tooltip>
@@ -73,7 +73,7 @@ const ResourceUtilizationTooltipContent = ({
 }: ResourceUtilizationTooltipContentProps) => {
   return (
     <div>
-      <p className="text-xs">value : {roundNumber(value)}%</p>
+      <p className="text-xs text-center">{roundNumber(value)}%</p>
       <p className="text-xxs">{description}</p>
     </div>
   );
