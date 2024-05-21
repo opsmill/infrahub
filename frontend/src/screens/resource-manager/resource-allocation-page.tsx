@@ -73,7 +73,7 @@ const ResourceAllocationPageSkeleton = () => {
   const { resourcePoolId } = useParams();
 
   return (
-    <Card className="min-w-[493px]">
+    <Card className="w-full max-w-[606px]">
       <div className="pb-2 flex bg-custom-white items-center gap-1">
         <h3 className="font-semibold">Allocated resources</h3>
         <Badge>...</Badge>
