@@ -158,7 +158,8 @@ const sidebars: SidebarsConfig = {
             'python-sdk/guides/branches',
             'python-sdk/guides/store',
             'python-sdk/guides/tracking',
-	    'python-sdk/guides/batch'
+            'python-sdk/guides/batch',
+            'python-sdk/guides/object-storage'
           ],
         },
         {

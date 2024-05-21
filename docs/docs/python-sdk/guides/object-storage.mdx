@@ -1,0 +1,48 @@
+---
+title: Object-storage
+---
+
+The Python SDK can be used to interface with Infrahub's [object-storage](/topics/object-storage).
+
+## Storing string objects to the object-storage
+
+We can use the SDK to store string objects into the object-storage.
+
+```python
+import json
+
+from infrahub_sdk import InfrahubClientSync
+
+
+client = InfrahubClientSync.init()
+
+data = {
+    "key": "value",
+    "list": [
+        "item1",
+        "item2",
+        "item3",
+    ]
+}
+
+response = client.object_store.upload(content=json.dumps(data))
+print(response)
+```
+
+## Retrieving objects from the object-storage
+
+Retrieving objects from the object-storage can be done using the object's identifier. In this step we will be using the identifier that we got as a response to the previous step.
+
+```python
+import json
+
+from infrahub_sdk import InfrahubClientSync
+
+
+client = InfrahubClientSync.init()
+identifier = "17d19a20-70f6-3e44-3341-c5124065cda9"
+
+response = client.object_store.get(identifier="17d19a20-70f6-3e44-3341-c5124065cda9")
+print(json.loads(response))
+
+```
