@@ -328,6 +328,10 @@ class IPPrefixReconcileQuery(Query):
         self.params.update(branch_params)
         self.params["namespace_kind"] = InfrahubKind.IPNAMESPACE
         self.params["namespace_id"] = self.namespace_id
+        self.params["ip_prefix_kind"] = InfrahubKind.IPPREFIX
+        self.params["ip_address_kind"] = InfrahubKind.IPADDRESS
+        self.params["ip_prefix_attribute_kind"] = PREFIX_ATTRIBUTE_LABEL
+        self.params["ip_address_attribute_kind"] = ADDRESS_ATTRIBUTE_LABEL
 
         if isinstance(self.ip_value, IPAddressType):
             is_address = True
@@ -372,9 +376,10 @@ class IPPrefixReconcileQuery(Query):
             // Get IP Prefix node by prefix value
             OPTIONAL MATCH ip_node_path = (:Root)<-[:IS_PART_OF]-(ip_node:%(ip_kind)s)
             -[:HAS_ATTRIBUTE]->(a:Attribute)-[:HAS_VALUE]->(aipn:%(ip_attribute_kind)s),
-            (ip_namespace)-[:IS_RELATED]-(nsr:Relationship WHERE nsr.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"])
+            (ip_namespace)-[:IS_RELATED]-(nsr:Relationship)
             -[:IS_RELATED]-(ip_node)
-            WHERE aipn.binary_address = $prefix_binary_full
+            WHERE nsr.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
+            AND aipn.binary_address = $prefix_binary_full
             AND aipn.prefixlen = $prefixlen
             AND aipn.version = $ip_version
             AND all(r IN relationships(ip_node_path) WHERE (%(branch_filter)s) and r.status = "active")
@@ -457,15 +462,19 @@ class IPPrefixReconcileQuery(Query):
             WITH ip_namespace, ip_node
             OPTIONAL MATCH child_path = (
                  (ip_namespace)-[:IS_RELATED]
-                 -(ns_rel:Relationship WHERE ns_rel.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"])-[:IS_RELATED]
-                 -(maybe_new_child:%(ip_prefix_kind)s|%(ip_address_kind)s)-[har:HAS_ATTRIBUTE]
-                 ->(a:Attribute WHERE a.name in ["prefix", "address"])-[hvr:HAS_VALUE]
-                 ->(av:%(ip_prefix_attribute_kind)s|%(ip_address_attribute_kind)s)
+                 -(ns_rel:Relationship)-[:IS_RELATED]
+                 -(maybe_new_child:Node)-[har:HAS_ATTRIBUTE]
+                 ->(a:Attribute)-[hvr:HAS_VALUE]
+                 ->(av:AttributeValue)
             )
-            WHERE (ip_node IS NULL OR maybe_new_child.uuid <> ip_node.uuid)
+            WHERE ns_rel.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
+            AND any(child_kind IN [$ip_prefix_kind, $ip_address_kind] WHERE child_kind IN labels(maybe_new_child))
+            AND a.name in ["prefix", "address"]
+            AND any(attr_kind IN [$ip_prefix_attribute_kind, $ip_address_attribute_kind] WHERE attr_kind IN labels(av))
+            AND (ip_node IS NULL OR maybe_new_child.uuid <> ip_node.uuid)
             AND (
-                ("%(ip_prefix_kind)s" IN LABELS(maybe_new_child) AND av.prefixlen > $prefixlen)
-                OR ("%(ip_address_kind)s" IN LABELS(maybe_new_child) AND av.prefixlen >= $prefixlen)
+                ($ip_prefix_kind IN LABELS(maybe_new_child) AND av.prefixlen > $prefixlen)
+                OR ($ip_address_kind IN LABELS(maybe_new_child) AND av.prefixlen >= $prefixlen)
             )
             AND av.version = $ip_version
             AND av.binary_address STARTS WITH $prefix_binary_host
@@ -497,9 +506,9 @@ class IPPrefixReconcileQuery(Query):
                     WHEN has_more_specific_parent THEN has_more_specific_parent  // keep it True once set
                     WHEN potential_parent IS NULL OR ips[ind][0] IS NULL THEN has_more_specific_parent
                     WHEN potential_parent[0] = ips[ind][0] THEN has_more_specific_parent  // skip comparison to self
-                    WHEN "%(ip_address_kind)s" in LABELS(potential_parent[0]) THEN has_more_specific_parent  // address cannot be a parent
-                    WHEN "%(ip_prefix_attribute_kind)s" IN LABELS(ips[ind][1]) AND (potential_parent[1]).prefixlen >= (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with same or greater prefixlen for prefix cannot be parent
-                    WHEN "%(ip_address_attribute_kind)s" IN LABELS(ips[ind][1]) AND (potential_parent[1]).prefixlen > (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with greater prefixlen for address cannot be parent
+                    WHEN $ip_address_kind in LABELS(potential_parent[0]) THEN has_more_specific_parent  // address cannot be a parent
+                    WHEN $ip_prefix_attribute_kind IN LABELS(ips[ind][1]) AND (potential_parent[1]).prefixlen >= (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with same or greater prefixlen for prefix cannot be parent
+                    WHEN $ip_address_attribute_kind IN LABELS(ips[ind][1]) AND (potential_parent[1]).prefixlen > (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with greater prefixlen for address cannot be parent
                     WHEN (ips[ind][1]).binary_address STARTS WITH SUBSTRING((potential_parent[1]).binary_address, 0, (potential_parent[1]).prefixlen) THEN TRUE  // we found a parent
                     ELSE has_more_specific_parent
                 END
@@ -516,10 +525,7 @@ class IPPrefixReconcileQuery(Query):
             collect(new_child) as new_children
         """ % {
             "branch_filter": branch_filter,
-            "ip_prefix_kind": InfrahubKind.IPPREFIX,
-            "ip_address_kind": InfrahubKind.IPADDRESS,
-            "ip_prefix_attribute_kind": PREFIX_ATTRIBUTE_LABEL,
-            "ip_address_attribute_kind": ADDRESS_ATTRIBUTE_LABEL,
+
         }
         self.add_to_query(get_new_children_query)
         self.return_labels = ["ip_node", "current_parent", "current_children", "new_parent", "new_children"]
