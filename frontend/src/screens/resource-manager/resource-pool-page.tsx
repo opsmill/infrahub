@@ -27,7 +27,7 @@ import { useState } from "react";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import SlideOver from "../../components/display/slide-over";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import ResourceSelector from "./resource-selector";
+import ResourceSelector, { ResourceProps } from "./resource-selector";
 import ResourcePoolUtilization from "./common/ResourcePoolUtilization";
 
 const ResourcePoolPage = () => {
@@ -174,7 +174,11 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
             <PropertyList properties={properties} labelClassName="font-semibold" />
           </CardWithBorder>
 
-          <ResourceSelector resources={resourcePoolUtilization.edges.map(({ node }) => node)} />
+          <ResourceSelector
+            resources={resourcePoolUtilization.edges.map(
+              ({ node }: { node: ResourceProps }) => node
+            )}
+          />
         </aside>
 
         <Outlet />

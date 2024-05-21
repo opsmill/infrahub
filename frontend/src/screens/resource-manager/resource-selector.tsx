@@ -6,7 +6,7 @@ import { getObjectDetailsUrl2 } from "../../utils/objects";
 import { classNames } from "../../utils/common";
 import ResourcePoolUtilization from "./common/ResourcePoolUtilization";
 
-type ResourceProps = {
+export type ResourceProps = {
   id: string;
   display_label: string;
   kind: string;
