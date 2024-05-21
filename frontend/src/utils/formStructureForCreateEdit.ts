@@ -114,8 +114,7 @@ const getFormStructureForCreateEdit = ({
           value: getRelationshipValue({ row, field, isFilters }),
           options: getRelationshipOptions(row, field, schemas, generics),
           config: {
-            validate: (value: any) =>
-              isFilters ? true : validate(value, undefined, field.optional),
+            validate: (value: any) => (isFilters ? true : validate(value, field, field.optional)),
           },
           isOptional: isFilters || field.optional,
           isProtected: getIsDisabled({

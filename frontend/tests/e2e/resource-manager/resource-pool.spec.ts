@@ -15,7 +15,7 @@ test.describe("/resource-manager - Resource Manager", () => {
     await page.getByLabel("Name *").fill("test prefix pool");
     await page
       .getByText("Resources")
-      .locator("..")
+      .locator("../..")
       .getByTestId("select-open-option-button")
       .click();
     await page.getByRole("option", { name: "10.0.0.0/8" }).click();
