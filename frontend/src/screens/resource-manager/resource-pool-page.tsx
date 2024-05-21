@@ -28,8 +28,7 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit-pagina
 import SlideOver from "../../components/display/slide-over";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import ResourceSelector from "./resource-selector";
-import MultipleProgressBar from "../../components/stats/multiple-progress-bar";
-import ResourceUtilizationTooltipContent from "./resource-utilization-tooltip";
+import ResourcePoolUtilization from "./common/ResourcePoolUtilization";
 
 const ResourcePoolPage = () => {
   const { resourcePoolId } = useParams();
@@ -96,32 +95,12 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
     { name: "ID", value: resourcePool.id },
     ...(schema.attributes ?? []).map((schemaAttribute) => {
       if (schemaAttribute.name === "utilization") {
-        const { utilization, utilization_default_branch } = resourcePoolUtilization;
-        const utilization_branches = utilization - utilization_default_branch;
         return {
           name: schemaAttribute.label || schemaAttribute.name,
           value: (
-            <MultipleProgressBar
-              elements={[
-                {
-                  value: utilization_default_branch,
-                  tooltip: (
-                    <ResourceUtilizationTooltipContent
-                      value={utilization_default_branch}
-                      description="The overall utilization of the pool isolated to the default branch"
-                    />
-                  ),
-                },
-                {
-                  value: utilization_branches,
-                  tooltip: (
-                    <ResourceUtilizationTooltipContent
-                      value={utilization_branches}
-                      description="The utilization of the pool across all branches aside from the default one"
-                    />
-                  ),
-                },
-              ]}
+            <ResourcePoolUtilization
+              utilizationOverall={resourcePoolUtilization.utilization}
+              utilizationDefaultBranch={resourcePoolUtilization.utilization_default_branch}
             />
           ),
         };

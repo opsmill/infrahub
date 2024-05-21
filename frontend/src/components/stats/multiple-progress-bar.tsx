@@ -8,7 +8,7 @@ interface ProgressBarItemProps extends ProgressPrimitive.ProgressIndicatorProps 
   tooltip?: TooltipProps["content"];
 }
 
-interface MultipleProgressBarProps extends ProgressPrimitive.ProgressProps {
+export interface MultipleProgressBarProps extends ProgressPrimitive.ProgressProps {
   elements: Array<ProgressBarItemProps>;
 }
 

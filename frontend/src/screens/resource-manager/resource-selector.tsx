@@ -1,11 +1,10 @@
 import { CardWithBorder } from "../../components/ui/card";
 import { Icon } from "@iconify-icon/react";
-import ResourceUtilizationTooltipContent from "./resource-utilization-tooltip";
-import MultipleProgressBar from "../../components/stats/multiple-progress-bar";
 import { Badge } from "../../components/ui/badge";
 import { Link, useParams } from "react-router-dom";
 import { getObjectDetailsUrl2 } from "../../utils/objects";
 import { classNames } from "../../utils/common";
+import ResourcePoolUtilization from "./common/ResourcePoolUtilization";
 
 type ResourceProps = {
   id: string;
@@ -42,7 +41,6 @@ const ResourcePoolOption = ({
   utilization_default_branch,
 }: ResourceProps) => {
   const { resourceId } = useParams();
-  const utilization_branches = utilization - utilization_default_branch;
 
   return (
     <div
@@ -54,28 +52,9 @@ const ResourcePoolOption = ({
         {display_label}
       </Link>
 
-      <MultipleProgressBar
-        className="h-3"
-        elements={[
-          {
-            value: utilization_default_branch,
-            tooltip: (
-              <ResourceUtilizationTooltipContent
-                value={utilization_default_branch}
-                description="The overall utilization of the pool isolated to the default branch"
-              />
-            ),
-          },
-          {
-            value: utilization_branches,
-            tooltip: (
-              <ResourceUtilizationTooltipContent
-                value={utilization_branches}
-                description="The utilization of the pool across all branches aside from the default one"
-              />
-            ),
-          },
-        ]}
+      <ResourcePoolUtilization
+        utilizationOverall={utilization}
+        utilizationDefaultBranch={utilization_default_branch}
       />
 
       <Link to={"resources/" + id} className="flex items-center gap-1 text-nowrap hover:underline">
