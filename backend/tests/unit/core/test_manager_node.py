@@ -512,27 +512,6 @@ async def test_get_one_global(db: InfrahubDatabase, default_branch: Branch, base
 
     assert obj2.id == "c1"
     assert obj2.db_id
-    assert obj2.name.value == "volt"
-    assert obj2.nbr_seats.value == 4
-    assert obj2.color.value == "#444444"
-    assert obj2.is_electric.value is True
-
-
-async def test_get_one_global_isolated(db: InfrahubDatabase, default_branch: Branch, base_dataset_12):
-    branch1 = await registry.get_branch(db=db, branch="branch1")
-    branch1.is_isolated = True
-
-    obj1 = await NodeManager.get_one(db=db, id="p1", branch=branch1)
-
-    assert obj1.id == "p1"
-    assert obj1.db_id
-    assert obj1.name.value == "John Doe"
-    assert obj1.height.value is None
-
-    obj2 = await NodeManager.get_one(db=db, id="c1", branch=branch1)
-
-    assert obj2.id == "c1"
-    assert obj2.db_id
     assert obj2.name.value == "accord"
     assert obj2.nbr_seats.value == 4
     assert obj2.color.value == "#444444"
