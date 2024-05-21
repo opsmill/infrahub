@@ -14,6 +14,7 @@ type SelectProps = {
   isOptional?: boolean;
   dropdown?: boolean;
   enum?: boolean;
+  multiple?: boolean;
 };
 
 export const OpsSelect = (props: SelectProps) => {

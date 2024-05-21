@@ -11,6 +11,11 @@ on:
       - stable
     paths:
       - 'pyproject.toml'
+  pull_request:
+    branches:
+      - stable
+    types:
+      - closed
 
 jobs:
   update-docker-compose:

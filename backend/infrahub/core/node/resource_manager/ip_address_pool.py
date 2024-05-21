@@ -4,6 +4,7 @@ import ipaddress
 from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub.core import registry
+from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.query.ipam import get_ip_addresses
 from infrahub.core.query.resource_manager import (
     IPAddressPoolGetReserved,
@@ -65,6 +66,8 @@ class CoreIPAddressPool(Node):
         node = await Node.init(db=db, schema=target_schema, branch=branch)
         await node.new(db=db, address=str(next_prefix), ip_namespace=ip_namespace, **data)
         await node.save(db=db)
+        reconciler = IpamReconciler(db=db, branch=branch)
+        await reconciler.reconcile(ip_value=next_prefix, namespace=ip_namespace.id, node_uuid=node.get_id())
 
         if identifier:
             query_set = await IPAddressPoolSetReserved.init(
