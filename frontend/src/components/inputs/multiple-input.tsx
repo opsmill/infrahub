@@ -1,6 +1,7 @@
 import React from "react";
 import { classNames } from "../../utils/common";
 import { Badge } from "../display/badge";
+import { ErrorMessage } from "./constants";
 import { SelectOption } from "./select";
 
 type MultipleInputProps = {
@@ -8,12 +9,13 @@ type MultipleInputProps = {
   onChange: (items: (string | SelectOption)[]) => void;
   className?: string;
   disabled?: boolean;
+  error?: ErrorMessage;
 };
 
 // Forward ref used for Combobox.Input in Select
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
 export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: any) => {
-  const { className, onChange, value, disabled } = props;
+  const { className, onChange, value, disabled, error } = props;
 
   // Remove item from list
   const handleDelete = (item: string | SelectOption) => {
@@ -32,19 +34,30 @@ export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: a
 
   if (!value?.length) {
     return (
-      <div
-        className={classNames(
-          `flex items-center justify-center flex-wrap w-full rounded-md border-0 shadow-sm ring-1 ring-inset ring-gray-300 min-h-[44px]
+      <>
+        <div
+          className={classNames(
+            `flex items-center justify-center flex-wrap w-full rounded-md border-0 shadow-sm ring-1 ring-inset ring-gray-300 min-h-[44px]
           border-gray-300 bg-custom-white
           sm:text-sm sm:leading-6 px-2
           text-gray-400 italic
-        `,
-          className ?? "",
-          disabled ? "cursor-not-allowed bg-gray-100" : ""
+          `,
+            className ?? "",
+            disabled ? "cursor-not-allowed bg-gray-100" : "",
+            error && error?.message ? "ring-red-500 focus:ring-red-600" : ""
+          )}
+          data-testid="multi-select-input">
+          Empty list
+        </div>
+
+        {error?.message && (
+          <div
+            className="absolute text-sm text-red-500 bg-custom-white -bottom-2 ml-2 px-2 text-left"
+            data-cy="field-error-message">
+            {error?.message}
+          </div>
         )}
-        data-testid="multi-select-input">
-        Empty list
-      </div>
+      </>
     );
   }
 
