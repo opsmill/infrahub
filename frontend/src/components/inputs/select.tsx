@@ -93,7 +93,6 @@ export const Select = (props: SelectProps) => {
     isUnique, // Avoid proving useless props
     ...otherProps
   } = props;
-
   const { kind } = props;
 
   const { checkSchemaUpdate } = useContext(SchemaContext);
@@ -556,6 +555,23 @@ export const Select = (props: SelectProps) => {
     }
 
     if (dropdown || enumBoolean) {
+      if (field.inherited) {
+        return (
+          <Combobox.Option
+            disabled
+            value={addOption}
+            className={
+              "flex relative select-none py-2 pl-3 pr-9 m-2 rounded-md bg-gray-100 text-gray-900 cursor-not-allowed"
+            }>
+            <Tooltip content="Can't add an option defined from the generic" enabled>
+              <span className={"truncate flex flex-grow items-center"}>
+                <Icon icon={"mdi:plus"} className="mr-2" /> Add option
+              </span>
+            </Tooltip>
+          </Combobox.Option>
+        );
+      }
+
       return (
         <Combobox.Option
           value={addOption}
