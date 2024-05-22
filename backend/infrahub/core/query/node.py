@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class NodeToProcess:
-    schema: Union[NodeSchema, ProfileSchema]
+    schema: Optional[Union[NodeSchema, ProfileSchema]]
 
     node_id: str
     node_uuid: str

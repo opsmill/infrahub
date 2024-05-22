@@ -43,6 +43,8 @@ class RelationshipPeerKindConstraint(RelationshipManagerConstraintInterface):
 
         errors: list[ValidationError] = []
         async for peer_node in peers_query.get_nodes(db=self.db, duplicate=False):
+            if not peer_node.schema:
+                raise ValueError(f"Cannot identify schema for node {peer_node.node_uuid}")
             if peer_node.schema.kind not in allowed_kinds:
                 errors.append(
                     ValidationError(
