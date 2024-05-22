@@ -18,7 +18,13 @@ from typing import (
 )
 
 from infrahub_sdk.constants import InfrahubClientMode
-from infrahub_sdk.exceptions import Error, FeatureNotSupportedError, FilterNotFoundError, UninitializedError
+from infrahub_sdk.exceptions import (
+    Error,
+    FeatureNotSupportedError,
+    FilterNotFoundError,
+    NodeNotFoundError,
+    UninitializedError,
+)
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.schema import GenericSchema, RelationshipCardinality, RelationshipKind
 from infrahub_sdk.timestamp import Timestamp
