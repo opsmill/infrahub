@@ -93,7 +93,6 @@ export const Select = (props: SelectProps) => {
     isUnique, // Avoid proving useless props
     ...otherProps
   } = props;
-
   const { kind } = props;
 
   const { checkSchemaUpdate } = useContext(SchemaContext);
@@ -556,6 +555,23 @@ export const Select = (props: SelectProps) => {
     }
 
     if (dropdown || enumBoolean) {
+      if (field.inherited) {
+        return (
+          <Combobox.Option
+            disabled
+            value={addOption}
+            className={
+              "flex relative select-none py-2 pl-3 pr-9 m-2 rounded-md bg-gray-100 text-gray-900 cursor-not-allowed"
+            }>
+            <Tooltip content="Can't add an option on an attribute inherited from a generic" enabled>
+              <span className={"truncate flex flex-grow items-center"}>
+                <Icon icon={"mdi:plus"} className="mr-2" /> Add option
+              </span>
+            </Tooltip>
+          </Combobox.Option>
+        );
+      }
+
       return (
         <Combobox.Option
           value={addOption}
@@ -892,12 +908,20 @@ export const Select = (props: SelectProps) => {
                       )}
 
                       {canRemoveOption(option.id) && (
-                        <Button
-                          buttonType={BUTTON_TYPES.INVISIBLE}
-                          className="p-0"
-                          onClick={() => setOptionToDelete(option.id)}>
-                          <Icon icon="mdi:trash" className="text-red-500" />
-                        </Button>
+                        <Tooltip
+                          content="Can't delete an option on an attribute inherited from a generic"
+                          enabled={field.inherited}>
+                          <Button
+                            disabled={field.inherited}
+                            buttonType={BUTTON_TYPES.INVISIBLE}
+                            className="p-0"
+                            onClick={() => setOptionToDelete(option.id)}>
+                            <Icon
+                              icon="mdi:trash"
+                              className={field.inherited ? "text-gray-400" : "text-red-500"}
+                            />
+                          </Button>
+                        </Tooltip>
                       )}
                     </div>
                   )}
