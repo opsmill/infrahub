@@ -15,6 +15,7 @@ generics:
       - name__value
     uniqueness_constraints:
       - ["device", "name__value"]
+    human_friendly_id: ["device__name__value", "name__value"]
     attributes:
       - name: name
         kind: Text
@@ -170,6 +171,7 @@ nodes:
     label: "Device"
     icon: "mdi:server"
     default_filter: name__value
+    human_friendly_id: ["name__value"]
     inherit_from:
       - "CoreArtifactTarget"
     order_by:
@@ -430,6 +432,7 @@ nodes:
     icon: "mdi:application-cog-outline"
     menu_placement: "InfraDevice"
     default_filter: name__value
+    human_friendly_id: ["name__value"]
     order_by:
       - name__value
     display_labels:
@@ -466,6 +469,7 @@ nodes:
     label: "Circuit"
     icon: "mdi:cable-data"
     default_filter: circuit_id__value
+    human_friendly_id: ["circuit_id__value"]
     order_by:
       - circuit_id__value
     display_labels:
