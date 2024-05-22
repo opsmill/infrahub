@@ -30,6 +30,17 @@ class TestInfrahubNode:
         response = await client.schema.load(schemas=[builtin_org_schema])
         assert not response.errors
 
+    @pytest.fixture(scope="class")
+    async def load_ipam_schema(self, db: InfrahubDatabase, test_client: InfrahubTestClient, ipam_schema) -> None:
+        config = Config(username="admin", password="infrahub", requester=test_client.async_request)
+        client = await InfrahubClient.init(config=config)
+        response = await client.schema.load(schemas=[ipam_schema])
+        assert not response.errors
+
+    @pytest.fixture
+    async def default_ipam_namespace(self, client: InfrahubClient) -> InfrahubNode:
+        return await client.get(kind="IpamNamespace", name__value="default")
+
     async def test_node_create(self, client: InfrahubClient, init_db_base, load_builtin_schema, location_schema):
         data = {
             "name": {"value": "JFK1"},
@@ -334,3 +345,28 @@ class TestInfrahubNode:
         refreshed_rack_with_tag = await client.get("InfraRack", id=rack.id)
         await refreshed_rack_with_tag.tags.fetch()
         assert [t.id for t in refreshed_rack_with_tag.tags.peers] == [tag_2.id]
+
+    async def test_node_create_from_pool(
+        self, db: InfrahubDatabase, client: InfrahubClient, init_db_base, default_ipam_namespace, load_ipam_schema
+    ):
+        ip_prefix = await client.create(kind="IpamIPPrefix", prefix="192.0.2.0/24")
+        await ip_prefix.save()
+
+        ip_pool = await client.create(
+            kind="CoreIPAddressPool",
+            name="Core loopbacks",
+            default_address_type="IpamIPAddress",
+            default_prefix_size=32,
+            ip_namespace=default_ipam_namespace,
+            resources=[ip_prefix],
+        )
+        await ip_pool.save()
+
+        devices = []
+        for i in range(1, 5):
+            d = await client.create(kind="InfraDevice", name=f"core0{i}", primary_address=ip_pool)
+            await d.save()
+            devices.append(d)
+
+        ip_addresses = await client.all(kind="IpamIPAddress")
+        assert [str(ip) for ip in ip_addresses] == ["192.0.2.1/32", "192.0.2.2/32", "192.0.2.3/32", "192.0.2.4/32"]

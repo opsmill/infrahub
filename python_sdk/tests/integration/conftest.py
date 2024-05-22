@@ -469,6 +469,54 @@ async def schema_extension_02() -> Dict[str, Any]:
     }
 
 
+@pytest.fixture(scope="module")
+async def ipam_schema() -> SchemaRoot:
+    SCHEMA = {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "IPPrefix",
+                "namespace": "Ipam",
+                "include_in_menu": False,
+                "inherit_from": ["BuiltinIPPrefix"],
+                "description": "IPv4 or IPv6 network",
+                "icon": "mdi:ip-network",
+                "label": "IP Prefix",
+            },
+            {
+                "name": "IPAddress",
+                "namespace": "Ipam",
+                "include_in_menu": False,
+                "inherit_from": ["BuiltinIPAddress"],
+                "description": "IP Address",
+                "icon": "mdi:ip-outline",
+                "label": "IP Address",
+            },
+            {
+                "name": "Device",
+                "namespace": "Infra",
+                "label": "Device",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["name__value"],
+                "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+                "relationships": [
+                    {
+                        "name": "primary_address",
+                        "peer": "IpamIPAddress",
+                        "label": "Primary IP Address",
+                        "optional": True,
+                        "cardinality": "one",
+                        "kind": "Attribute",
+                    }
+                ],
+            },
+        ],
+    }
+
+    return SCHEMA
+
+
 class BusRecorder(InfrahubMessageBus):
     def __init__(self, component_type: Optional[ComponentType] = None):
         self.messages: List[InfrahubMessage] = []
