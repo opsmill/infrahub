@@ -34,4 +34,5 @@ class NodeConstraintRunner:
                 continue
             relationship_manager: RelationshipManager = getattr(node, relationship_name)
             for relationship_constraint in self.relationship_manager_constraints:
-                await relationship_constraint.check(relationship_manager)
+                update_details = await relationship_manager.fetch_relationship_ids(db=self.db)
+                await relationship_constraint.check(relm=relationship_manager, update_details=update_details)

@@ -9,7 +9,7 @@ from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 
-from ..model import RelationshipManager
+from ..model import RelationshipManager, RelationshipUpdateDetails
 from .interface import RelationshipManagerConstraintInterface
 
 
@@ -26,19 +26,20 @@ class RelationshipPeerKindConstraint(RelationshipManagerConstraintInterface):
         self.db = db
         self.branch = branch
 
-    async def check(self, relm: RelationshipManager) -> None:
+    async def check(self, relm: RelationshipManager, update_details: RelationshipUpdateDetails) -> None:
         branch = await registry.get_branch(db=self.db) if not self.branch else self.branch
         peer_schema = registry.schema.get(name=relm.schema.peer, branch=branch, duplicate=False)
         if isinstance(peer_schema, GenericSchema):
             allowed_kinds = peer_schema.used_by
         else:
             allowed_kinds = [peer_schema.kind]
-        (_, peer_ids_present_local_only, _, _) = await relm.fetch_relationship_ids(db=self.db)
 
-        if not peer_ids_present_local_only:
+        if not update_details.peer_ids_present_local_only:
             return
 
-        peers_query = await NodeListGetInfoQuery.init(db=self.db, branch=branch, ids=peer_ids_present_local_only)
+        peers_query = await NodeListGetInfoQuery.init(
+            db=self.db, branch=branch, ids=update_details.peer_ids_present_local_only
+        )
         await peers_query.execute(db=self.db)
 
         errors: list[ValidationError] = []

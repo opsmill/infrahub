@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import copy
 import sys
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple, Union
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Optional, Sequence, Union
 
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import intersection, is_valid_uuid
@@ -59,6 +60,14 @@ class RelationshipCreateData(BaseModel):
     hierarchical: Optional[str] = None
     source_prop: List[NodePropertyData] = Field(default_factory=list)
     owner_prop: List[NodePropertyData] = Field(default_factory=list)
+
+
+@dataclass
+class RelationshipUpdateDetails:
+    peers_database: dict[str, RelationshipPeerData]
+    peer_ids_present_both: list[str]
+    peer_ids_present_local_only: list[str]
+    peer_ids_present_database_only: list[str]
 
 
 class Relationship(FlagPropertyMixin, NodePropertyMixin):
@@ -727,7 +736,7 @@ class RelationshipManager:
 
     async def fetch_relationship_ids(
         self, db: InfrahubDatabase, at: Optional[Timestamp] = None, branch_agnostic: bool = False
-    ) -> Tuple[List[str], List[str], List[str], Dict[str, RelationshipPeerData]]:
+    ) -> RelationshipUpdateDetails:
         """Fetch the latest relationships from the database and returns :
         - the list of nodes present on both sides
         - the list of nodes present only locally
@@ -752,33 +761,33 @@ class RelationshipManager:
         peer_ids_present_local_only = list(set(current_peer_ids) - set(peer_ids_present_both))
         peer_ids_present_database_only = list(set(peer_ids) - set(peer_ids_present_both))
 
-        return peer_ids_present_both, peer_ids_present_local_only, peer_ids_present_database_only, peers_database
+        return RelationshipUpdateDetails(
+            peer_ids_present_both=peer_ids_present_both,
+            peer_ids_present_local_only=peer_ids_present_local_only,
+            peer_ids_present_database_only=peer_ids_present_database_only,
+            peers_database=peers_database,
+        )
 
     async def _fetch_relationships(
         self, db: InfrahubDatabase, at: Optional[Timestamp] = None, branch_agnostic: bool = False
     ) -> None:
         """Fetch the latest relationships from the database and update the local cache."""
 
-        (
-            _,
-            peer_ids_present_local_only,
-            peer_ids_present_database_only,
-            peers_database,
-        ) = await self.fetch_relationship_ids(at=at, db=db, branch_agnostic=branch_agnostic)
+        details = await self.fetch_relationship_ids(at=at, db=db, branch_agnostic=branch_agnostic)
 
-        for peer_id in peer_ids_present_database_only:
+        for peer_id in details.peer_ids_present_database_only:
             self._relationships.append(
                 await Relationship(
                     schema=self.schema,
                     branch=self.branch,
                     at=at or self.at,
                     node=self.node,
-                ).load(db=db, data=peers_database[peer_id])
+                ).load(db=db, data=details.peers_database[peer_id])
             )
 
         self.has_fetched_relationships = True
 
-        for peer_id in peer_ids_present_local_only:
+        for peer_id in details.peer_ids_present_local_only:
             await self.remove(peer_id=peer_id, db=db)
 
     async def get(self, db: InfrahubDatabase) -> Union[Relationship, List[Relationship]]:
@@ -934,31 +943,28 @@ class RelationshipManager:
         await self.resolve(db=db)
 
         save_at = Timestamp(at)
-        (
-            peer_ids_present_both,
-            peer_ids_present_local_only,
-            peer_ids_present_database_only,
-            peers_database,
-        ) = await self.fetch_relationship_ids(db=db)
+        details = await self.fetch_relationship_ids(db=db)
 
         # If we have previously fetched the relationships from the database
         # Update the one in the database that shouldn't be here.
         if self.has_fetched_relationships:
-            for peer_id in peer_ids_present_database_only:
-                await self.remove_in_db(peer_data=peers_database[peer_id], at=save_at, db=db)
+            for peer_id in details.peer_ids_present_database_only:
+                await self.remove_in_db(peer_data=details.peers_database[peer_id], at=save_at, db=db)
 
         # Create the new relationship that are not present in the database
         #  and Compare the existing one
         for rel in await self.get_relationships(db=db):
-            if rel.peer_id in peer_ids_present_local_only:
+            if rel.peer_id in details.peer_ids_present_local_only:
                 await rel.save(at=save_at, db=db)
 
-            elif rel.peer_id in peer_ids_present_both:
-                if properties_not_matching := rel.compare_properties_with_data(data=peers_database[rel.peer_id]):
+            elif rel.peer_id in details.peer_ids_present_both:
+                if properties_not_matching := rel.compare_properties_with_data(
+                    data=details.peers_database[rel.peer_id]
+                ):
                     await rel.update(
                         at=save_at,
                         properties_to_update=properties_not_matching,
-                        data=peers_database[rel.peer_id],
+                        data=details.peers_database[rel.peer_id],
                         db=db,
                     )
 
