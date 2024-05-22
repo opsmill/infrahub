@@ -1,10 +1,10 @@
 ---
-title: Object storage
+title: Object-storage
 ---
 
-# Object storage
+# Object-storage
 
-Infrahub provides an interface to store and retrieve files or objects in an object storage. The object storage is used internally within Infrahub to store rendered artifacts, but it can be used to store any text based file or content.
+Infrahub provides an interface to store and retrieve files or objects in an object-storage. The object-storage is used internally within Infrahub to store rendered artifacts, but it can be used to store any text based file or content.
 
 You can interface with the object-storage through the REST API and Python SDK.
 See the [object-storage guide](/guides/object-storage) and [object-storage Python SDK](/python-sdk/guides/object-storage) guide for more information.
@@ -16,6 +16,7 @@ At this moment Infrahub supports using local storage, or AWS S3 storage backends
 ### Local storage
 
 Infrahub can use local storage as a storage backend. It can be any directory on a filesystem that is attached to the system on which Infrahub runs. The only requirement is that all the Infrahub API servers and Git Agents need access to the filesystem.
+
 To setup Infrahub to use local storage backend you can use the following configuration:
 
 ```toml
@@ -31,6 +32,7 @@ More details can be found in the [configuration documentation](/reference/config
 ### AWS S3 storage
 
 Infrahub can use AWS S3 or any other S3 API compatible storage as a storage system.
+
 To setup Infrahub to use AWS S3 as a storage backend you can use the following configuration:
 
 ```toml
@@ -48,4 +50,4 @@ More details can be found in the [configuration documentation](/reference/config
 
 ## Object model
 
-Objects or files stored with the object-storage, are identified by its identifier (UUID). An identifier is assigned to the object at time of creation within the object-storage. Interactions with the object then happen leveraging the identifier.
+Objects or files stored within the object-storage, are identified by an identifier (UUID). An identifier is assigned to the object at time of creation within the object-storage. Interactions with the object then happen leveraging that identifier.
