@@ -368,5 +368,9 @@ class TestInfrahubNode:
             await d.save()
             devices.append(d)
 
-        ip_addresses = await client.all(kind="IpamIPAddress")
-        assert [str(ip) for ip in ip_addresses] == ["192.0.2.1/32", "192.0.2.2/32", "192.0.2.3/32", "192.0.2.4/32"]
+        assert [str(device.primary_address.peer.address.value) for device in devices] == [
+            "192.0.2.1/32",
+            "192.0.2.2/32",
+            "192.0.2.3/32",
+            "192.0.2.4/32",
+        ]

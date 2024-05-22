@@ -1456,3 +1456,48 @@ async def test_create_input_data_with_resource_pool_relationship(
             "primary_address": {"from_pool": {"id": "pppppppp-pppp-pppp-pppp-pppppppppppp"}},
         },
     }
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_create_mutation_query_with_resource_pool_relationship(
+    client, ipaddress_pool_schema, ipam_ipprefix_schema, simple_device_schema, ipam_ipprefix_data, client_type
+):
+    if client_type == "standard":
+        ip_prefix = InfrahubNode(client=client, schema=ipam_ipprefix_schema, data=ipam_ipprefix_data)
+        ip_pool = InfrahubNode(
+            client=client,
+            schema=ipaddress_pool_schema,
+            data={
+                "id": "pppppppp-pppp-pppp-pppp-pppppppppppp",
+                "name": "Core loopbacks",
+                "default_address_type": "IpamIPAddress",
+                "default_prefix_size": 32,
+                "ip_namespace": "ip_namespace",
+                "resources": [ip_prefix],
+            },
+        )
+        device = InfrahubNode(
+            client=client, schema=simple_device_schema, data={"name": "device-01", "primary_address": ip_pool}
+        )
+    else:
+        ip_prefix = InfrahubNodeSync(client=client, schema=ipam_ipprefix_schema, data=ipam_ipprefix_data)
+        ip_pool = InfrahubNodeSync(
+            client=client,
+            schema=ipaddress_pool_schema,
+            data={
+                "id": "pppppppp-pppp-pppp-pppp-pppppppppppp",
+                "name": "Core loopbacks",
+                "default_address_type": "IpamIPAddress",
+                "default_prefix_size": 32,
+                "ip_namespace": "ip_namespace",
+                "resources": [ip_prefix],
+            },
+        )
+        device = InfrahubNode(
+            client=client, schema=simple_device_schema, data={"name": "device-01", "primary_address": ip_pool}
+        )
+
+    assert device._generate_mutation_query() == {
+        "object": {"id": None, "primary_address": {"node": {"__typename": None, "display_label": None, "id": None}}},
+        "ok": None,
+    }
