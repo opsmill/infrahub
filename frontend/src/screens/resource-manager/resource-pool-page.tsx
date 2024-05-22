@@ -82,7 +82,8 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
   });
 
   if (loading || getResourcePoolUtilizationQuery.loading) return <LoadingScreen />;
-  if (error) return <ErrorScreen message="Error when fetching the resource pool details" />;
+  if (error || getResourcePoolUtilizationQuery.error)
+    return <ErrorScreen message="Error when fetching the resource pool details" />;
 
   const resourcePoolData = data[schema.kind!].edges[0];
   if (!resourcePoolData) return <NoDataFound />;
