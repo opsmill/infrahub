@@ -24,7 +24,7 @@ class IPPrefixPoolGetResourceInput(InputObjectType):
     size = InputField(Int(required=False), description="Size of the prefix to allocate")
     member_type = InputField(String(required=False), description="member_type of the newly created prefix")
     prefix_type = InputField(String(required=False), description="kind of prefix to allocate")
-    data = InputField(GenericScalar(required=False), description="Additional data to pass toe the newly created prefix")
+    data = InputField(GenericScalar(required=False), description="Additional data to pass to the newly created prefix")
 
 
 class IPAddressPoolGetResourceInput(InputObjectType):
@@ -36,7 +36,7 @@ class IPAddressPoolGetResourceInput(InputObjectType):
     )
     address_type = InputField(String(required=False), description="kind of ip address to allocate")
     data = InputField(
-        GenericScalar(required=False), description="Additional data to pass toe the newly created ip address"
+        GenericScalar(required=False), description="Additional data to pass to the newly created ip address"
     )
 
 
