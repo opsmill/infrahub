@@ -397,7 +397,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             del data_from_pool["id"]
 
             if "identifier" not in data_from_pool and self._node:
-                data_from_pool["identifier"] = await self._node.get_hfid_as_string(db=db, include_kind=True)
+                hfid_str = await self._node.get_hfid_as_string(db=db, include_kind=True)
+                data_from_pool["identifier"] = f"hfid={hfid_str} rel={self.name}"
 
             assigned_peer: Node = await pool.get_resource(db=db, branch=self.branch, **data_from_pool)  # type: ignore[attr-defined]
             await self.set_peer(value=assigned_peer)
