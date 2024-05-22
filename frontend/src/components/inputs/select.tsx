@@ -563,7 +563,7 @@ export const Select = (props: SelectProps) => {
             className={
               "flex relative select-none py-2 pl-3 pr-9 m-2 rounded-md bg-gray-100 text-gray-900 cursor-not-allowed"
             }>
-            <Tooltip content="Can't add an option defined from the generic" enabled>
+            <Tooltip content="Can't add an option on an attribute inherited from a generic" enabled>
               <span className={"truncate flex flex-grow items-center"}>
                 <Icon icon={"mdi:plus"} className="mr-2" /> Add option
               </span>
