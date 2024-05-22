@@ -1,6 +1,6 @@
 # Contributing
 
-We develop Infrahub for customers and for the community. We are open to pull requests. Please first discuss your intentions via [Discussions](https://github.com/opsmill/infrahub/discussions).
+We develop Infrahub for customers and with the community. We are open to pull requests. Please first discuss your intentions via [Discussions](https://github.com/opsmill/infrahub/discussions).
 
 ## Contribute to Infrahub
 
