@@ -687,7 +687,7 @@ class InfrahubNodeBase:
 
             try:
                 peer = related_node.get()
-            except NodeNotFoundError:
+            except (NodeNotFoundError, ValueError):
                 # This can happen while batch creating nodes, the lookup won't work as the store is not populated
                 # If so we cannot complete the HFID computation as we cannot access the related node attribute value
                 return None
