@@ -1,12 +1,12 @@
 import { useAtomValue } from "jotai";
-import { useParams } from "react-router-dom";
+import { Outlet, useParams } from "react-router-dom";
 import Content from "../layout/content";
 import { ObjectHelpButton } from "../../components/menu/object-help-button";
 import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { gql, useQuery } from "@apollo/client";
-import { GET_KIND_FOR_RESOURCE_POOL } from "./graphql/resource-pool";
+import { GET_KIND_FOR_RESOURCE_POOL, GET_RESOURCE_POOL_UTILIZATION } from "./graphql/resource-pool";
 import LoadingScreen from "../loading-screen/loading-screen";
-import { RESOURCE_GENERIC_KIND } from "./constants";
+import { RESOURCE_GENERIC_KIND, RESOURCE_POOL_UTILIZATION_KIND } from "./constants";
 import NoDataFound from "../errors/no-data-found";
 import { getSchemaObjectColumns, getTabs } from "../../utils/getSchemaObjectColumns";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
@@ -17,7 +17,6 @@ import { constructPath } from "../../utils/fetch";
 import { Link } from "../../components/utils/link";
 import { CardWithBorder } from "../../components/ui/card";
 import { Property, PropertyList } from "../../components/table/property-list";
-import ProgressBarChart from "../../components/stats/progress-bar-chart";
 import { ObjectAttributeValue } from "../../utils/getObjectItemDisplayValue";
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "../ipam/constants";
 import { getObjectDetailsUrl } from "../../utils/objects";
@@ -28,6 +27,8 @@ import { useState } from "react";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import SlideOver from "../../components/display/slide-over";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import ResourceSelector, { ResourceProps } from "./resource-selector";
+import ResourcePoolUtilization from "./common/ResourcePoolUtilization";
 
 const ResourcePoolPage = () => {
   const { resourcePoolId } = useParams();
@@ -74,14 +75,22 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
   );
 
   const { loading, error, data, refetch } = useQuery(query);
+  const getResourcePoolUtilizationQuery = useQuery(GET_RESOURCE_POOL_UTILIZATION, {
+    variables: {
+      poolId: id,
+    },
+  });
 
-  if (loading) return <LoadingScreen />;
-  if (error) return <ErrorScreen message="Error when fetching the resource pool details" />;
+  if (loading || getResourcePoolUtilizationQuery.loading) return <LoadingScreen />;
+  if (error || getResourcePoolUtilizationQuery.error)
+    return <ErrorScreen message="Error when fetching the resource pool details" />;
 
   const resourcePoolData = data[schema.kind!].edges[0];
   if (!resourcePoolData) return <NoDataFound />;
 
   const resourcePool = resourcePoolData.node;
+  const resourcePoolUtilization =
+    getResourcePoolUtilizationQuery.data[RESOURCE_POOL_UTILIZATION_KIND];
 
   const properties: Property[] = [
     { name: "ID", value: resourcePool.id },
@@ -90,7 +99,11 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
         return {
           name: schemaAttribute.label || schemaAttribute.name,
           value: (
-            <ProgressBarChart value={parseInt(resourcePool[schemaAttribute.name].value, 10)} />
+            <ResourcePoolUtilization
+              utilizationOverall={resourcePoolUtilization.utilization}
+              utilizationDefaultBranch={resourcePoolUtilization.utilization_default_branch}
+              utilizationOtherBranches={resourcePoolUtilization.utilization_branches}
+            />
           ),
         };
       }
@@ -141,27 +154,37 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
         />
       </Content.Title>
 
-      <main className="p-2 flex">
-        <CardWithBorder>
-          <CardWithBorder.Title className="flex items-center justify-between gap-1">
-            <div>
-              <Badge variant="blue">{schema.namespace}</Badge> {schema.label}
-            </div>
-            <ButtonWithTooltip
-              variant="outline"
-              size="icon"
-              onClick={() => setShowEditDrawer(true)}
-              disabled={!permission.write.allow}
-              tooltipEnabled={!permission.write.allow}
-              tooltipContent={permission.write.message ?? undefined}
-              data-testid="pool-edit-button">
-              <Icon icon="mdi:pencil" />
-            </ButtonWithTooltip>
-          </CardWithBorder.Title>
+      <div className="p-2 gap-2 flex">
+        <aside className="inline-flex flex-col gap-2">
+          <CardWithBorder>
+            <CardWithBorder.Title className="flex items-center justify-between gap-1">
+              <div>
+                <Badge variant="blue">{schema.namespace}</Badge> {schema.label}
+              </div>
+              <ButtonWithTooltip
+                variant="outline"
+                size="icon"
+                onClick={() => setShowEditDrawer(true)}
+                disabled={!permission.write.allow}
+                tooltipEnabled={!permission.write.allow}
+                tooltipContent={permission.write.message ?? undefined}
+                data-testid="pool-edit-button">
+                <Icon icon="mdi:pencil" />
+              </ButtonWithTooltip>
+            </CardWithBorder.Title>
 
-          <PropertyList properties={properties} labelClassName="font-semibold" />
-        </CardWithBorder>
-      </main>
+            <PropertyList properties={properties} labelClassName="font-semibold" />
+          </CardWithBorder>
+
+          <ResourceSelector
+            resources={resourcePoolUtilization.edges.map(
+              ({ node }: { node: ResourceProps }) => node
+            )}
+          />
+        </aside>
+
+        <Outlet />
+      </div>
 
       <SlideOver
         title={
@@ -209,7 +232,10 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
         setOpen={setShowEditDrawer}>
         <ObjectItemEditComponent
           closeDrawer={() => setShowEditDrawer(false)}
-          onUpdateComplete={() => refetch()}
+          onUpdateComplete={() => {
+            refetch();
+            getResourcePoolUtilizationQuery.refetch();
+          }}
           objectid={resourcePool.id as string}
           objectname={schema.kind as string}
         />

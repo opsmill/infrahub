@@ -1,8 +1,10 @@
 import * as TooltipPrimitives from "@radix-ui/react-tooltip";
-import { ComponentPropsWithoutRef } from "react";
+import { ComponentPropsWithoutRef, ReactNode } from "react";
 import { classNames } from "../../utils/common";
 
-export interface TooltipProps extends ComponentPropsWithoutRef<typeof TooltipPrimitives.Content> {
+export interface TooltipProps
+  extends Omit<ComponentPropsWithoutRef<typeof TooltipPrimitives.Content>, "content"> {
+  content?: ReactNode;
   enabled?: boolean;
 }
 export function Tooltip({
