@@ -8,7 +8,14 @@ import graphene
 from infrahub import config
 from infrahub.core.attribute import String
 from infrahub.core.constants import InfrahubKind, RelationshipKind
-from infrahub.core.schema import AttributeSchema, GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema
+from infrahub.core.schema import (
+    AttributeSchema,
+    GenericSchema,
+    MainSchemaTypes,
+    NodeSchema,
+    ProfileSchema,
+    RelationshipSchema,
+)
 from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
@@ -223,6 +230,20 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 graphql_type=data_type_class.get_graphql_type(),
             )
             ATTRIBUTE_TYPES[base_enum_name] = data_type_class
+
+    def _get_related_input_type(self, relationship: RelationshipSchema) -> type[RelatedNodeInput]:
+        peer_schema = self.schema.get(name=relationship.peer, duplicate=False)
+        if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_prefix()) or (
+            isinstance(peer_schema, GenericSchema) and InfrahubKind.IPPREFIX == relationship.peer
+        ):
+            return RelatedPrefixNodeInput
+
+        if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_address()) or (
+            isinstance(peer_schema, GenericSchema) and InfrahubKind.IPADDRESS == relationship.peer
+        ):
+            return RelatedIPAddressNodeInput
+
+        return RelatedNodeInput
 
     def generate_object_types(self) -> None:  # pylint: disable=too-many-branches,too-many-statements
         """Generate all GraphQL objects for the schema and store them in the internal registry."""
@@ -566,16 +587,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             if rel.internal_peer or rel.read_only:
                 continue
 
-            input_type = RelatedNodeInput
-            peer_schema = self.schema.get(name=rel.peer, duplicate=False)
-            if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_prefix()) or (
-                isinstance(peer_schema, GenericSchema) and InfrahubKind.IPPREFIX == rel.peer
-            ):
-                input_type = RelatedPrefixNodeInput
-            elif (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_address()) or (
-                isinstance(peer_schema, GenericSchema) and InfrahubKind.IPADDRESS == rel.peer
-            ):
-                input_type = RelatedIPAddressNodeInput
+            input_type = self._get_related_input_type(relationship=rel)
 
             required = not rel.optional
             if rel.cardinality == "one":
@@ -618,16 +630,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             if rel.internal_peer or rel.read_only:
                 continue
 
-            input_type = RelatedNodeInput
-            peer_schema = self.schema.get(name=rel.peer, duplicate=False)
-            if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_prefix()) or (
-                isinstance(peer_schema, GenericSchema) and InfrahubKind.IPPREFIX == rel.peer
-            ):
-                input_type = RelatedPrefixNodeInput
-            elif (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_address()) or (
-                isinstance(peer_schema, GenericSchema) and InfrahubKind.IPADDRESS == rel.peer
-            ):
-                input_type = RelatedIPAddressNodeInput
+            input_type = self._get_related_input_type(relationship=rel)
 
             if rel.cardinality == "one":
                 attrs[rel.name] = graphene.InputField(input_type, required=False, description=rel.description)
@@ -674,16 +677,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             if rel.internal_peer or rel.read_only:
                 continue
 
-            input_type = RelatedNodeInput
-            peer_schema = self.schema.get(name=rel.peer, duplicate=False)
-            if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_prefix()) or (
-                isinstance(peer_schema, GenericSchema) and InfrahubKind.IPPREFIX == rel.peer
-            ):
-                input_type = RelatedPrefixNodeInput
-            elif (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_address()) or (
-                isinstance(peer_schema, GenericSchema) and InfrahubKind.IPADDRESS == rel.peer
-            ):
-                input_type = RelatedIPAddressNodeInput
+            input_type = self._get_related_input_type(relationship=rel)
 
             required = not rel.optional
             if rel.cardinality == "one":
