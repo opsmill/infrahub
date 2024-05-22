@@ -162,13 +162,14 @@ async def test_query_no_relationships(
     db: InfrahubDatabase, branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
 ):
     await branch.rebase(db=db)
+    car_schema = registry.schema.get(name="TestCar", duplicate=False)
+    owner_rel = car_schema.get_relationship(name="owner")
+    owner_rel.optional = True
     for car in (car_accord_main, car_volt_main):
         fresh_car = await NodeManager.get_one(db=db, id=car.id, branch=branch)
         await fresh_car.owner.update(db=db, data=None)
         await fresh_car.save(db=db)
 
-    car_schema = registry.schema.get(name="TestCar")
-    owner_rel = car_schema.get_relationship(name="owner")
     owner_rel.peer = "TestCar"
 
     schema_path = SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestCar", field_name="owner")
