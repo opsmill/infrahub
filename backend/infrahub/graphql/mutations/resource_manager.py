@@ -56,7 +56,7 @@ class IPPrefixPoolGetResource(Mutation):
     ) -> Self:
         context: GraphqlContext = info.context
 
-        obj: CorePrefixPool = await registry.manager.find_object(
+        obj: CorePrefixPool = await registry.manager.find_object(  # type: ignore[assignment]
             db=context.db,
             kind=InfrahubKind.PREFIXPOOL,
             id=data.get("id"),
@@ -74,14 +74,15 @@ class IPPrefixPoolGetResource(Mutation):
             data=data.get("data", None),
         )
 
-        # breakpoint()
-        result = {"ok": True}
-        result["node"] = {
-            "id": resource.id,
-            "kind": resource.get_kind(),
-            "identifier": data.get("identifier", None),
-            "display_label": await resource.render_display_label(db=context.db),
-            "branch": context.branch.name,
+        result = {
+            "ok": True,
+            "node": {
+                "id": resource.id,
+                "kind": resource.get_kind(),
+                "identifier": data.get("identifier", None),
+                "display_label": await resource.render_display_label(db=context.db),
+                "branch": context.branch.name,
+            },
         }
 
         return cls(**result)
@@ -103,7 +104,7 @@ class IPAddressPoolGetResource(Mutation):
     ) -> Self:
         context: GraphqlContext = info.context
 
-        obj: CoreIPAddressPool = await registry.manager.find_object(
+        obj: CoreIPAddressPool = await registry.manager.find_object(  # type: ignore[assignment]
             db=context.db,
             kind=InfrahubKind.IPADDRESSPOOL,
             id=data.get("id"),
@@ -120,13 +121,15 @@ class IPAddressPoolGetResource(Mutation):
             data=data.get("data", None),
         )
 
-        result = {"ok": True}
-        result["node"] = {
-            "id": resource.id,
-            "kind": resource.get_kind(),
-            "identifier": data.get("identifier", None),
-            "display_label": await resource.render_display_label(db=context.db),
-            "branch": context.branch.name,
+        result = {
+            "ok": True,
+            "node": {
+                "id": resource.id,
+                "kind": resource.get_kind(),
+                "identifier": data.get("identifier", None),
+                "display_label": await resource.render_display_label(db=context.db),
+                "branch": context.branch.name,
+            },
         }
 
         return cls(**result)
