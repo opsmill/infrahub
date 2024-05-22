@@ -1647,6 +1647,7 @@ core_models: dict[str, Any] = {
             "description": "A namespace that segments IPAM",
             "label": "IPAM Namespace",
             "default_filter": "name__value",
+            "human_friendly_id": ["name__value"],
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "include_in_menu": False,

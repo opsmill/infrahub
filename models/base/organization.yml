@@ -8,6 +8,7 @@ generics:
     description: An organization represent a legal entity, a company.
     default_filter: name__value
     icon: mdi:domain
+    human_friendly_id: ["name__value"]
     include_in_menu: true
     attributes:
       - name: name
