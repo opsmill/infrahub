@@ -222,6 +222,12 @@ class RelatedNodeBase:
         return None
 
     @property
+    def is_resource_pool(self) -> bool:
+        if self._peer:
+            return self._peer.is_resource_pool()
+        return False
+
+    @property
     def initialized(self) -> bool:
         return bool(self.id)
 
@@ -239,6 +245,9 @@ class RelatedNodeBase:
 
     def _generate_input_data(self) -> Dict[str, Any]:
         data = {}
+
+        if self.is_resource_pool:
+            return {"from_pool": {"id": self.id}}
 
         if self.id is not None:
             data["id"] = self.id
@@ -570,27 +579,13 @@ class RelationshipManagerSync(RelationshipManagerBase):
         if isinstance(data, list):
             for item in data:
                 self.peers.append(
-                    RelatedNodeSync(
-                        name=name,
-                        client=self.client,
-                        branch=self.branch,
-                        schema=schema,
-                        data=item,
-                    )
+                    RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
                 )
-
         elif isinstance(data, dict) and "edges" in data:
             for item in data["edges"]:
                 self.peers.append(
-                    RelatedNodeSync(
-                        name=name,
-                        client=self.client,
-                        branch=self.branch,
-                        schema=schema,
-                        data=item,
-                    )
+                    RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
                 )
-
         else:
             raise ValueError(f"Unexpected format for {name} found a {type(data)}, {data}")
 
@@ -769,6 +764,9 @@ class InfrahubNodeBase:
 
     def get_kind(self) -> str:
         return self._schema.kind
+
+    def is_resource_pool(self) -> bool:
+        return hasattr(self._schema, "inherit_from") and "CoreResourcePool" in self._schema.inherit_from
 
     def get_raw_graphql_data(self) -> Optional[Dict]:
         return self._data
