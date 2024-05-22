@@ -744,6 +744,163 @@ async def ipnetwork_schema() -> NodeSchema:
 
 
 @pytest.fixture
+async def ipam_ipprefix_schema() -> NodeSchema:
+    data = {
+        "name": "IPNetwork",
+        "namespace": "Ipam",
+        "default_filter": "prefix__value",
+        "display_labels": ["prefix_value"],
+        "order_by": ["prefix_value"],
+        "inherit_from": ["BuiltinIPAddress"],
+    }
+    return NodeSchema(**data)  # type: ignore
+
+
+@pytest.fixture
+async def simple_device_schema() -> NodeSchema:
+    data = {
+        "name": "Device",
+        "namespace": "Infra",
+        "label": "Device",
+        "default_filter": "name__value",
+        "order_by": ["name__value"],
+        "display_labels": ["name__value"],
+        "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+        "relationships": [
+            {
+                "name": "primary_address",
+                "peer": "IpamIPAddress",
+                "label": "Primary IP Address",
+                "optional": True,
+                "cardinality": "one",
+                "kind": "Attribute",
+            }
+        ],
+    }
+    return NodeSchema(**data)  # type: ignore
+
+
+@pytest.fixture
+async def ipam_ipprefix_data():
+    data = {
+        "node": {
+            "__typename": "IpamIPPrefix",
+            "id": "llllllll-llll-llll-llll-llllllllllll",
+            "display_label": "192.0.2.0/24",
+            "prefix": {
+                "is_protected": True,
+                "is_visible": True,
+                "owner": None,
+                "source": {
+                    "__typename": "Account",
+                    "display_label": "CRM",
+                    "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                },
+                "value": "192.0.2.0/24",
+            },
+            "description": {
+                "is_protected": False,
+                "is_visible": True,
+                "owner": None,
+                "source": None,
+                "value": None,
+            },
+            "member_type": {
+                "is_protected": True,
+                "is_visible": True,
+                "owner": None,
+                "source": {
+                    "__typename": "Account",
+                    "display_label": "CRM",
+                    "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                },
+                "value": "address",
+            },
+            "is_pool": {
+                "is_protected": True,
+                "is_visible": True,
+                "owner": None,
+                "source": {
+                    "__typename": "Account",
+                    "display_label": "CRM",
+                    "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                },
+                "value": False,
+            },
+            "ip_namespace": {
+                "properties": {
+                    "is_protected": True,
+                    "is_visible": True,
+                    "owner": None,
+                    "source": {
+                        "__typename": "Account",
+                        "display_label": "CRM",
+                        "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                    },
+                },
+                "node": {
+                    "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
+                    "display_label": "default",
+                    "__typename": "IpamNamespace",
+                },
+            },
+        }
+    }
+
+    return data
+
+
+@pytest.fixture
+async def ipaddress_pool_schema() -> NodeSchema:
+    data = {
+        "name": "IPAddressPool",
+        "namespace": "Core",
+        "description": "A pool of IP address resources",
+        "label": "IP Address Pool",
+        "default_filter": "name__value",
+        "order_by": ["name__value"],
+        "display_labels": ["name__value"],
+        "include_in_menu": False,
+        "branch": BranchSupportType.AGNOSTIC.value,
+        "inherit_from": ["CoreResourcePool"],
+        "attributes": [
+            {
+                "name": "default_address_type",
+                "kind": "Text",
+                "optional": False,
+                "description": "The object type to create when reserving a resource in the pool",
+            },
+            {
+                "name": "default_prefix_size",
+                "kind": "Number",
+                "optional": True,
+            },
+        ],
+        "relationships": [
+            {
+                "name": "resources",
+                "peer": "BuiltinIPPrefix",
+                "kind": "Attribute",
+                "identifier": "ipaddresspool__resource",
+                "cardinality": "many",
+                "optional": False,
+                "order_weight": 4000,
+            },
+            {
+                "name": "ip_namespace",
+                "peer": "BuiltinIPNamespace",
+                "kind": "Attribute",
+                "identifier": "ipaddresspool__ipnamespace",
+                "cardinality": "one",
+                "optional": False,
+                "order_weight": 5000,
+            },
+        ],
+    }
+    return NodeSchema(**data)  # type: ignore
+
+
+@pytest.fixture
 async def address_schema() -> NodeSchema:
     data = {
         "name": "Address",
