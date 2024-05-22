@@ -1742,8 +1742,10 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
     def update(self, at: Optional[Timestamp] = None, do_full_update: bool = False) -> None:
         self._deprecated_parameter(at=at)
+
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
-        mutation_query = {"ok": None, "object": {"id": None}}
+        mutation_query = self._generate_mutation_query()
+
         query = Mutation(
             mutation=f"{self._schema.kind}Update",
             input_data=input_data["data"],
