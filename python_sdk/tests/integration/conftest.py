@@ -496,7 +496,7 @@ async def ipam_schema() -> SchemaRoot:
                 "name": "Device",
                 "namespace": "Infra",
                 "label": "Device",
-                "default_filter": "name__value",
+                "human_friendly_id": ["name__value"],
                 "order_by": ["name__value"],
                 "display_labels": ["name__value"],
                 "attributes": [{"name": "name", "kind": "Text", "unique": True}],
