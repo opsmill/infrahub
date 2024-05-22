@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import reduce
 from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Type, Union, overload
 
-from infrahub_sdk.utils import deep_merge_dict
+from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
 
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
@@ -24,7 +24,7 @@ from infrahub.core.relationship import Relationship
 from infrahub.core.schema import GenericSchema, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError
+from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFoundError
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -371,6 +371,52 @@ class NodeManager:
 
         return await cls.get_many(
             db=db, ids=peers_ids, fields=fields, at=at, branch=branch, include_owner=True, include_source=True
+        )
+
+    @classmethod
+    async def find_object(
+        cls,
+        db: InfrahubDatabase,
+        kind: str,
+        at: Union[Timestamp, str] = None,
+        branch: Union[Branch, str] = None,
+        id: Optional[str] = None,  # pylint: disable=redefined-builtin
+        hfid: Optional[list[str]] = None,
+    ) -> Node:
+        if not id and not hfid:
+            raise ProcessingError(message="either id or hfid must be provided.")
+
+        if id and is_valid_uuid(id):
+            return await cls.get_one(
+                db=db,
+                kind=kind,
+                id=id,
+                branch=branch,
+                at=at,
+                include_owner=True,
+                include_source=True,
+            )
+
+        if hfid:
+            return await cls.get_one_by_hfid(
+                db=db,
+                kind=kind,
+                hfid=hfid,
+                branch=branch,
+                at=at,
+                include_owner=True,
+                include_source=True,
+            )
+
+        return await cls.get_one_by_default_filter(
+            db=db,
+            kind=kind,
+            id=id,
+            branch=branch,
+            at=at,
+            include_owner=True,
+            include_source=True,
+            raise_on_error=True,
         )
 
     @overload
