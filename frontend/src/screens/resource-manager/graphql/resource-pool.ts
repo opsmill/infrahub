@@ -38,7 +38,7 @@ export const GET_RESOURCE_POOL_UTILIZATION = gql`
 
 export const GET_RESOURCE_POOL_ALLOCATED = gql`
   query GET_RESOURCE_POOL_ALLOCATED($poolId: String!, $resourceId: String!) {
-    InfrahubResourcePoolAllocated(pool_id: $poolId, resource_id: $resourceId) {
+    InfrahubResourcePoolAllocated(pool_id: $poolId, resource_id: $resourceId, limit: 0) {
       count
       edges {
         node {
