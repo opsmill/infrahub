@@ -1,10 +1,12 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { FormFieldError } from "../../screens/edit-form-hook/form";
 import { classNames } from "../../utils/common";
+import { QuestionMark } from "../display/question-mark";
 import { ColorPicker } from "../inputs/color-picker";
 
 type OpsColorPickerProps = {
   label: string;
+  description?: string;
   value: string;
   onChange: (value: string) => void;
   className?: string;
@@ -16,7 +18,17 @@ type OpsColorPickerProps = {
 };
 
 export const OpsColorPicker = (props: OpsColorPickerProps) => {
-  const { className, onChange, value, label, error, isProtected, isOptional, disabled } = props;
+  const {
+    className,
+    onChange,
+    value,
+    label,
+    description,
+    error,
+    isProtected,
+    isOptional,
+    disabled,
+  } = props;
 
   return (
     <>
@@ -25,6 +37,7 @@ export const OpsColorPicker = (props: OpsColorPickerProps) => {
           {label} {!isOptional && "*"}
         </label>
         {isProtected && <LockClosedIcon className="w-4 h-4" />}
+        <QuestionMark message={description} />
       </div>
       <ColorPicker
         onChange={onChange}

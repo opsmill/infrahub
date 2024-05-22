@@ -6,24 +6,54 @@ test.describe("/resource-manager - Resource Manager", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test("create a new pool", async ({ page }) => {
-    await page.goto("/resource-manager");
+    await Promise.all([
+      page.waitForResponse((response) => {
+        const reqData = response.request().postDataJSON();
+        const status = response.status();
+
+        return reqData?.operationName === "CoreResourcePool" && status === 200;
+      }),
+
+      page.goto("/resource-manager"),
+    ]);
     await page.getByTestId("create-object-button").click();
 
     await page.getByTestId("side-panel-container").getByTestId("select-open-option-button").click();
-    await page.getByRole("option", { name: "CorePrefixPool" }).click();
+
+    await Promise.all([
+      page.waitForResponse((response) => {
+        const reqData = response.request().postDataJSON();
+        const status = response.status();
+
+        return reqData?.operationName === "ProfileCorePrefixPool" && status === 200;
+      }),
+
+      page.getByRole("option", { name: "CorePrefixPool" }).click(),
+    ]);
 
     await page.getByLabel("Name *").fill("test prefix pool");
     await page
       .getByText("Resources")
-      .locator("..")
+      .locator("../..")
       .getByTestId("select-open-option-button")
       .click();
     await page.getByRole("option", { name: "10.0.0.0/8" }).click();
     await page.getByRole("option", { name: "10.0.0.0/16" }).click();
     await page.getByRole("option", { name: "10.1.0.0/16" }).click();
-    await page.getByText("Resources").click();
+    await page.getByText("Resources *").click();
     await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
-    await page.getByRole("option", { name: "Namespace" }).click();
+
+    await Promise.all([
+      page.waitForResponse((response) => {
+        const reqData = response.request().postDataJSON();
+        const status = response.status();
+
+        return reqData?.operationName === "DropdownOptions" && status === 200;
+      }), // wait for second dropdown to appear
+
+      page.getByRole("option", { name: "Namespace" }).click(),
+    ]);
+
     await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
     await page.getByRole("option", { name: "default" }).click();
     await page.getByRole("button", { name: "Create" }).click();
@@ -31,7 +61,7 @@ test.describe("/resource-manager - Resource Manager", () => {
     await expect(page.getByRole("link", { name: "test prefix pool" })).toBeVisible();
   });
 
-  test("see details and edit a fool", async ({ page }) => {
+  test("see details and edit a pool", async ({ page }) => {
     await page.goto("/resource-manager");
     await page.getByRole("link", { name: "test prefix pool" }).click();
 

@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("/ipam - Ipam home page", () => {
+  test.describe.configure({ mode: "serial" });
+
   test.describe("When not logged in", () => {
     test("disable buttons that open creation form", async ({ page }) => {
       await page.goto("/ipam");

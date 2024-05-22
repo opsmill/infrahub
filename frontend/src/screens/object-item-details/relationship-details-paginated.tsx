@@ -108,7 +108,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     {
       kind: "Text",
       label: relationshipSchema.label,
-      name: "id",
+      name: "relation",
       options,
       type: "select2step",
       value: {},
@@ -175,15 +175,15 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     );
   };
 
-  const handleSubmit = async (data: any) => {
-    if (data?.id) {
+  const handleSubmit = async ({ relation }: any) => {
+    if (relation?.id) {
       setIsLoading(true);
 
       const mutationString = addRelationship({
         data: stringifyWithoutQuotes({
           id: objectid,
           name: relationshipSchema.name,
-          nodes: [data],
+          nodes: [relation],
         }),
       });
 

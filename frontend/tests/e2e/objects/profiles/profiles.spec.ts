@@ -17,7 +17,16 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
   test("should create a new profile successfully", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
-      await page.goto("/objects/CoreProfile");
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          return reqData?.operationName === "CoreProfile" && status === 200;
+        }),
+
+        page.goto("/objects/CoreProfile"),
+      ]);
       await expect(page.getByRole("heading")).toContainText("Profile");
     });
 
@@ -44,7 +53,16 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
   test("access the created profile, view its data, and edit it", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
-      await page.goto("/objects/CoreProfile");
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          return reqData?.operationName === "CoreProfile" && status === 200;
+        }),
+
+        page.goto("/objects/CoreProfile"),
+      ]);
       await expect(page.getByRole("heading")).toContainText("Profile");
       await page.getByRole("link", { name: "profile test tag" }).click();
     });
@@ -61,7 +79,16 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
   test("create an object with a profile", async ({ page }) => {
     await test.step("Navigate to object creation page", async () => {
-      await page.goto("/objects/BuiltinTag");
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          return reqData?.operationName === "BuiltinTag" && status === 200;
+        }),
+
+        page.goto("/objects/BuiltinTag"),
+      ]);
       await page.getByTestId("create-object-button").click();
     });
 
@@ -108,7 +135,16 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     page,
   }) => {
     await test.step("Navigate to an used profile", async () => {
-      await page.goto("/objects/CoreProfile");
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          return reqData?.operationName === "CoreProfile" && status === 200;
+        }),
+
+        page.goto("/objects/CoreProfile"),
+      ]);
       await expect(page.getByRole("heading")).toContainText("Profile");
       await page.getByRole("link", { name: "profile test tag" }).click();
     });
@@ -129,7 +165,16 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
   test("delete the profile and reset object attribute value", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
-      await page.goto("/objects/CoreProfile");
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          return reqData?.operationName === "CoreProfile" && status === 200;
+        }),
+
+        page.goto("/objects/CoreProfile"),
+      ]);
     });
 
     await test.step("Delete the profile", async () => {
@@ -163,7 +208,16 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
 
   test("should verify the form fields for a new profile for interface L2", async ({ page }) => {
     await test.step("access Interface L2 form", async () => {
-      await page.goto("/objects/CoreProfile");
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          return reqData?.operationName === "CoreProfile" && status === 200;
+        }),
+
+        page.goto("/objects/CoreProfile"),
+      ]);
       await page.getByTestId("create-object-button").click();
       await page.getByTestId("side-panel-container").getByTestId("select-input").fill("l2");
       await page.getByText("ProfileInfraInterfaceL2").click();
@@ -191,7 +245,16 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
 
   test("should create a new profile successfully for interface L2", async ({ page }) => {
     await test.step("access Interface L2 form", async () => {
-      await page.goto("/objects/CoreProfile");
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const reqData = response.request().postDataJSON();
+          const status = response.status();
+
+          return reqData?.operationName === "CoreProfile" && status === 200;
+        }),
+
+        page.goto("/objects/CoreProfile"),
+      ]);
       await page.getByTestId("create-object-button").click();
       await page.getByTestId("side-panel-container").getByTestId("select-input").fill("l2");
       await page.getByText("ProfileInfraInterfaceL2").click();
@@ -209,6 +272,11 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         .click();
       await page.getByText("Provisioning").click();
       await page.getByRole("button", { name: "Create" }).click();
+      await expect(
+        page
+          .locator("#alert-success-InfraInterfaceL2-created")
+          .getByText("InfraInterfaceL2 created")
+      ).toBeVisible();
     });
   });
 

@@ -34,6 +34,9 @@ sync_poetry_files: &sync_poetry_files
 frontend_files: &frontend_files
   - "frontend/**"
 
+e2e_test_files:
+  - "frontend/tests/e2e/**"
+
 demo_files: &demo_files
   - "models/**"
 

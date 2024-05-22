@@ -1,6 +1,7 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { FormFieldError } from "../../screens/edit-form-hook/form";
 import { classNames } from "../../utils/common";
+import { QuestionMark } from "../display/question-mark";
 import { Input } from "../inputs/input";
 
 type OpsInputProps = {
@@ -8,6 +9,7 @@ type OpsInputProps = {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  description?: string;
   error?: FormFieldError;
   type: string;
   isProtected?: boolean;
@@ -19,8 +21,18 @@ type OpsInputProps = {
 const InputUniqueTips = () => <span className="text-xs text-gray-600 italic">must be unique</span>;
 
 export const OpsInput = (props: OpsInputProps) => {
-  const { className, onChange, value, label, error, isProtected, isOptional, isUnique, disabled } =
-    props;
+  const {
+    className,
+    onChange,
+    value,
+    label,
+    description,
+    error,
+    isProtected,
+    isOptional,
+    isUnique,
+    disabled,
+  } = props;
 
   return (
     <>
@@ -30,6 +42,7 @@ export const OpsInput = (props: OpsInputProps) => {
         </label>
         {isProtected && <LockClosedIcon className="w-4 h-4" />}
         {isUnique && <InputUniqueTips />}
+        <QuestionMark message={description} />
       </div>
       <Input
         id={label}

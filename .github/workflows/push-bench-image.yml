@@ -1,0 +1,58 @@
+---
+# yamllint disable rule:truthy
+name: Build And Push Bench image
+
+on:
+  workflow_dispatch:
+
+env:
+  DOCKERFILE: "utilities/benchmark/Dockerfile"
+
+jobs:
+  build:
+    runs-on:
+      group: huge-runners
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        id: login
+        with:
+          registry: ${{ vars.HARBOR_HOST }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Set docker image meta data
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ vars.HARBOR_HOST }}/opsmill/bench
+          tags: |
+            type=raw,value=latest
+          labels: |
+            org.opencontainers.image.source=opsmill/bench
+          flavor: |
+            latest=true
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        id: push
+        with:
+          context: utilities/benchmark
+          file: ${{ env.DOCKERFILE }}
+          provenance: false   # To avoid cross platform "unknown"
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -24,9 +24,11 @@ test.describe("Verify multi select behaviour", () => {
       const tagsMultiSelectOpenButton = page
         .getByTestId("side-panel-container")
         .getByText("Tags")
-        .locator("..")
+        .locator("../..")
         .getByTestId("select-open-option-button");
+      await tagsMultiSelectOpenButton.scrollIntoViewIfNeeded();
       await tagsMultiSelectOpenButton.click();
+
       await page.getByRole("option", { name: "blue" }).click();
       await page.getByRole("option", { name: "green" }).click();
       await page.getByRole("option", { name: "red" }).click();
@@ -50,7 +52,7 @@ test.describe("Verify multi select behaviour", () => {
 
     await test.step("Create a new tag directly on multi select", async () => {
       await page.getByRole("option", { name: "Add Tag" }).click();
-      await page.getByLabel("Create Tag").locator("#Name").fill("new tag");
+      await page.getByLabel("Create TagmainStandard Tag").locator("#Name").fill("new tag");
       await page.getByRole("button", { name: "Create" }).click();
       await expect(page.locator("form").first()).toContainText("bluenew tag");
     });

@@ -106,7 +106,7 @@ const getFormStructureForCreateEdit = ({
         const isInherited = !!generics.find((g) => g.kind === field.peer);
 
         return {
-          name: field.name + (field.cardinality === "one" ? ".id" : ".list"),
+          name: field.name,
           kind: "String" as SchemaAttributeType,
           peer: field.peer,
           type: getInputTypeFromRelationship(field, isInherited),
@@ -114,8 +114,7 @@ const getFormStructureForCreateEdit = ({
           value: getRelationshipValue({ row, field, isFilters }),
           options: getRelationshipOptions(row, field, schemas, generics),
           config: {
-            validate: (value: any) =>
-              isFilters ? true : validate(value, undefined, field.optional),
+            validate: (value: any) => (isFilters ? true : validate(value, field, field.optional)),
           },
           isOptional: isFilters || field.optional,
           isProtected: getIsDisabled({
@@ -150,7 +149,7 @@ const getFormStructureForCreateEdit = ({
       });
 
       return {
-        name: field.name + ".value",
+        name: field.name,
         kind: field.kind as SchemaAttributeType,
         type: getInputTypeFromAttribute(field),
         label: field.label || field.name,

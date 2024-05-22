@@ -22,8 +22,12 @@ if TYPE_CHECKING:
 # pylint: disable=no-member,too-many-lines
 # type: ignore[attr-defined]
 
-async_node_methods = [method for method in dir(InfrahubNode) if not method.startswith("_") and method != "hfid"]
-sync_node_methods = [method for method in dir(InfrahubNodeSync) if not method.startswith("_") and method != "hfid"]
+async_node_methods = [
+    method for method in dir(InfrahubNode) if not method.startswith("_") and method not in ("hfid", "hfid_str")
+]
+sync_node_methods = [
+    method for method in dir(InfrahubNodeSync) if not method.startswith("_") and method not in ("hfid", "hfid_str")
+]
 
 client_types = ["standard", "sync"]
 
@@ -102,6 +106,8 @@ async def test_node_hfid(client, schema_with_hfid, client_type):
         location = InfrahubNodeSync(client=client, schema=schema_with_hfid["location"], data=location_data)
 
     assert location.hfid == [location.name.value]
+    assert location.get_human_friendly_id_as_string() == "JFK1"
+    assert location.hfid_str == "BuiltinLocation__JFK1"
 
     rack_data = {"facility_id": {"value": "RACK1"}, "location": location}
     if client_type == "standard":
@@ -110,6 +116,8 @@ async def test_node_hfid(client, schema_with_hfid, client_type):
         rack = InfrahubNodeSync(client=client, schema=schema_with_hfid["rack"], data=rack_data)
 
     assert rack.hfid == [rack.facility_id.value, rack.location.get().name.value]
+    assert rack.get_human_friendly_id_as_string() == "RACK1__JFK1"
+    assert rack.hfid_str == "BuiltinRack__RACK1__JFK1"
 
 
 @pytest.mark.parametrize("client_type", client_types)

@@ -10,6 +10,33 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+class IPAddressPoolGetIdentifiers(Query):
+    name: str = "ipaddresspool_get_identifiers"
+
+    def __init__(
+        self,
+        *args: Any,
+        pool_id: str,
+        allocated: list[str],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        self.pool_id = pool_id
+        self.addresses = allocated
+
+        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+
+    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: dict[str, Any]) -> None:
+        self.params["pool_id"] = self.pool_id
+        self.params["addresses"] = self.addresses
+
+        query = """
+        MATCH (pool:%(ipaddress_pool)s { uuid: $pool_id })-[reservation:IS_RESERVED]->(allocated:BuiltinIPAddress)
+        WHERE allocated.uuid in $addresses
+        """ % {"ipaddress_pool": InfrahubKind.IPADDRESSPOOL}
+        self.add_to_query(query)
+        self.return_labels = ["allocated", "reservation"]
+
+
 class IPAddressPoolGetReserved(Query):
     name: str = "ipaddresspool_get_reserved"
 
@@ -76,6 +103,33 @@ class IPAddressPoolSetReserved(Query):
 
         self.add_to_query(query)
         self.return_labels = ["pool", "rel", "address"]
+
+
+class PrefixPoolGetIdentifiers(Query):
+    name: str = "prefixpool_get_identifiers"
+
+    def __init__(
+        self,
+        *args: Any,
+        pool_id: str,
+        allocated: list[str],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        self.pool_id = pool_id
+        self.prefixes = allocated
+
+        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+
+    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: dict[str, Any]) -> None:
+        self.params["pool_id"] = self.pool_id
+        self.params["prefixes"] = self.prefixes
+
+        query = """
+        MATCH (pool:%(ipaddress_pool)s { uuid: $pool_id })-[reservation:IS_RESERVED]->(allocated:BuiltinIPPrefix)
+        WHERE allocated.uuid in $prefixes
+        """ % {"ipaddress_pool": InfrahubKind.PREFIXPOOL}
+        self.add_to_query(query)
+        self.return_labels = ["allocated", "reservation"]
 
 
 class PrefixPoolGetReserved(Query):

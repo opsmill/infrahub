@@ -9,7 +9,9 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 from infrahub.core.manager import NodeManager
-from infrahub.exceptions import NodeNotFoundError
+from infrahub.core.query.ipam import IPPrefixUtilization
+from infrahub.core.query.resource_manager import IPAddressPoolGetIdentifiers, PrefixPoolGetIdentifiers
+from infrahub.exceptions import NodeNotFoundError, ValidationError
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -49,9 +51,10 @@ class PoolAllocatedEdge(ObjectType):
     node = Field(PoolAllocatedNode, required=True)
 
 
-def _validate_pool_type(pool_id: str, pool: Optional[Node] = None) -> None:
+def _validate_pool_type(pool_id: str, pool: Optional[Node] = None) -> Node:
     if not pool or pool._schema.kind not in [InfrahubKind.IPADDRESSPOOL, InfrahubKind.PREFIXPOOL]:
         raise NodeNotFoundError(node_type="ResourcePool", identifier=pool_id)
+    return pool
 
 
 class PoolAllocated(ObjectType):
@@ -70,31 +73,68 @@ class PoolAllocated(ObjectType):
         context: GraphqlContext = info.context
         pool = await NodeManager.get_one(id=pool_id, db=context.db, branch=context.branch)
 
-        _validate_pool_type(pool_id=pool_id, pool=pool)
+        pool = _validate_pool_type(pool_id=pool_id, pool=pool)
+        resources = await pool.resources.get_peers(db=context.db)  # type: ignore[attr-defined,union-attr]
+        if resource_id not in resources:
+            raise ValidationError(
+                input_value=f"The selected pool_id={pool_id} doesn't contain the requested resource_id={resource_id}"
+            )
 
-        return {
-            "count": 2,
-            "edges": [
-                {
-                    "node": {
-                        "id": "imaginary-id-1",
-                        "kind": "IpamIPPrefix",
-                        "display_label": "10.24.16.0/18",
-                        "branch": "main",
-                        "identifier": "device1__dhcpA",
-                    }
-                },
-                {
-                    "node": {
-                        "id": "imaginary-id-2",
-                        "kind": "IpamIPPrefix",
-                        "display_label": "10.28.0.0/16",
-                        "branch": "branch1",
-                        "identifier": None,
-                    }
-                },
-            ],
-        }
+        resource = resources[resource_id]
+
+        query = await IPPrefixUtilization.init(
+            db=context.db, at=context.at, ip_prefixes=[resource], offset=offset, limit=limit
+        )
+        fields = await extract_fields_first_node(info=info)
+        response: dict[str, Any] = {}
+        if "count" in fields:
+            response["count"] = await query.count(db=context.db)
+
+        if edges := fields.get("edges"):
+            await query.execute(db=context.db)
+
+            node_fields = edges.get("node", {})
+
+            nodes = []
+            for result in query.get_results():
+                child_node = result.get_node("child")
+                child_value_node = result.get_node("av")
+                node_id = str(child_node.get("uuid"))
+
+                child_ip_value = child_value_node.get("value")
+                kind = child_node.get("kind")
+                branch_name = str(result.get("branch"))
+
+                nodes.append(
+                    {"node": {"id": node_id, "kind": kind, "branch": branch_name, "display_label": child_ip_value}}
+                )
+
+            if "identifier" in node_fields:
+                allocated_ids = [node["node"]["id"] for node in nodes]
+                identifier_query_map = {
+                    InfrahubKind.IPADDRESSPOOL: IPAddressPoolGetIdentifiers,
+                    InfrahubKind.PREFIXPOOL: PrefixPoolGetIdentifiers,
+                }
+                identifier_query_class = identifier_query_map.get(pool.get_kind())
+                if not identifier_query_class:
+                    raise ValidationError(input_value=f"This query doesn't get support {pool.get_kind()}")
+                identifier_query = await identifier_query_class.init(
+                    db=context.db, at=context.at, pool_id=pool_id, allocated=allocated_ids
+                )
+                await identifier_query.execute(db=context.db)
+
+                reservations = {}
+                for result in identifier_query.get_results():
+                    reservation = result.get_rel("reservation")
+                    allocated = result.get_node("allocated")
+                    reservations[allocated.get("uuid")] = reservation.get("identifier")
+
+                for node in nodes:
+                    node["node"]["identifier"] = reservations.get(node["node"]["id"])
+
+            response["edges"] = nodes
+
+        return response
 
 
 class PoolUtilization(ObjectType):

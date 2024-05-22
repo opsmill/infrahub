@@ -55,7 +55,7 @@ test.describe("/proposed-changes diff data", () => {
             count++;
           }
 
-          return count == 6; // waiting for 6 diff elements
+          return count == 9; // waiting for 9 diff elements
         }),
         page.waitForResponse((response) => {
           const status = response.status();
