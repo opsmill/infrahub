@@ -168,7 +168,7 @@ async def test_update_object_and_assign_prefix_from_pool(db: InfrahubDatabase, d
     }
 
 
-async def test_assign_address_from_pool(
+async def test_create_object_and_assign_address_from_pool(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_ipnamespace: Node,
@@ -246,4 +246,249 @@ async def test_assign_address_from_pool(
                 "source": {"id": pool.id},
             },
         },
+    }
+
+
+async def test_prefix_pool_get_resource(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_extended_schema: SchemaBranch,
+    init_nodes_registry,
+    ip_dataset_prefix_v4,
+):
+    ns1 = ip_dataset_prefix_v4["ns1"]
+    net140 = ip_dataset_prefix_v4["net140"]
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
+
+    pool = await CorePrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
+    await pool.new(
+        db=db,
+        name="pool1",
+        default_prefix_size=24,
+        default_prefix_type="IpamIPPrefix",
+        resources=[net140],
+        ip_namespace=ns1,
+    )
+    await pool.save(db=db)
+
+    query = (
+        """
+    mutation {
+        IPPrefixPoolGetResource(data: {
+            id: "%s"
+        }) {
+            ok
+            node {
+                kind
+                display_label
+            }
+        }
+    }
+    """
+        % pool.id
+    )
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert not result.errors
+    assert result.data
+    assert result.data["IPPrefixPoolGetResource"]["ok"]
+    assert result.data["IPPrefixPoolGetResource"]["node"] == {
+        "display_label": "10.10.0.0/24",
+        "kind": "IpamIPPrefix",
+    }
+
+
+async def test_prefix_pool_get_resource_with_identifier(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_extended_schema: SchemaBranch,
+    init_nodes_registry,
+    ip_dataset_prefix_v4,
+):
+    ns1 = ip_dataset_prefix_v4["ns1"]
+    net140 = ip_dataset_prefix_v4["net140"]
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
+
+    pool = await CorePrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
+    await pool.new(
+        db=db,
+        name="pool1",
+        default_prefix_size=24,
+        default_prefix_type="IpamIPPrefix",
+        resources=[net140],
+        ip_namespace=ns1,
+    )
+    await pool.save(db=db)
+
+    resource = await pool.get_resource(db=db, identifier="myidentifier", branch=default_branch)
+
+    query = (
+        """
+    mutation {
+        IPPrefixPoolGetResource(data: {
+            id: "%s"
+            identifier: "myidentifier"
+        }) {
+            ok
+            node {
+                id
+                kind
+                display_label
+                identifier
+            }
+        }
+    }
+    """
+        % pool.id
+    )
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert not result.errors
+    assert result.data
+    assert result.data["IPPrefixPoolGetResource"]["ok"]
+    assert result.data["IPPrefixPoolGetResource"]["node"] == {
+        "id": resource.id,
+        "display_label": "10.10.0.0/24",
+        "kind": "IpamIPPrefix",
+        "identifier": "myidentifier",
+    }
+
+
+async def test_address_pool_get_resource(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_extended_schema: SchemaBranch,
+    init_nodes_registry,
+    ip_dataset_prefix_v4,
+):
+    ns1 = ip_dataset_prefix_v4["ns1"]
+    net145 = ip_dataset_prefix_v4["net145"]
+
+    address_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+
+    pool = await CoreIPAddressPool.init(schema=address_pool_schema, db=db, branch=default_branch)
+    await pool.new(
+        db=db,
+        name="pool1",
+        default_address_type="IpamIPAddress",
+        resources=[net145],
+        ip_namespace=ns1,
+    )
+    await pool.save(db=db)
+
+    query = (
+        """
+    mutation {
+        IPAddressPoolGetResource(data: {
+            id: "%s"
+        }) {
+            ok
+            node {
+                kind
+                display_label
+            }
+        }
+    }
+    """
+        % pool.id
+    )
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert not result.errors
+    assert result.data
+    assert result.data["IPAddressPoolGetResource"]["ok"]
+    assert result.data["IPAddressPoolGetResource"]["node"] == {"display_label": "10.10.3.2/27", "kind": "IpamIPAddress"}
+
+
+async def test_address_pool_get_resource_with_identifier(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_extended_schema: SchemaBranch,
+    init_nodes_registry,
+    ip_dataset_prefix_v4,
+):
+    ns1 = ip_dataset_prefix_v4["ns1"]
+    net145 = ip_dataset_prefix_v4["net145"]
+
+    address_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+
+    pool = await CoreIPAddressPool.init(schema=address_pool_schema, db=db, branch=default_branch)
+    await pool.new(
+        db=db,
+        name="pool1",
+        default_address_type="IpamIPAddress",
+        resources=[net145],
+        ip_namespace=ns1,
+    )
+    await pool.save(db=db)
+
+    resource = await pool.get_resource(db=db, identifier="myidentifier", branch=default_branch)
+
+    query = (
+        """
+    mutation {
+        IPAddressPoolGetResource(data: {
+            id: "%s"
+            identifier: "myidentifier"
+        }) {
+            ok
+            node {
+                id
+                kind
+                display_label
+                identifier
+            }
+        }
+    }
+    """
+        % pool.id
+    )
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert not result.errors
+    assert result.data
+    assert result.data["IPAddressPoolGetResource"]["ok"]
+    assert result.data["IPAddressPoolGetResource"]["node"] == {
+        "id": resource.id,
+        "display_label": "10.10.3.2/27",
+        "kind": "IpamIPAddress",
+        "identifier": "myidentifier",
     }
