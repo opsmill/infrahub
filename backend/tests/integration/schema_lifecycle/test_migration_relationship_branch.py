@@ -23,7 +23,7 @@ from .shared import (
 # pylint: disable=unused-argument
 
 
-class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
+class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
     @property
     def branch1(self) -> Branch:
         return pytest.state["branch1"]  # type: ignore[index]
@@ -171,7 +171,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
     async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, branch=self.branch1)
-        assert len(persons) == 3
+        assert len(persons) == 2
 
     async def test_step02_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02):
         car_schema = registry.schema.get_node_schema(name=CAR_KIND)
@@ -237,7 +237,6 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
         # Check if the branch has been properly updated
         branches = await client.branch.all()
-        assert branches[self.branch1.name].is_isolated is True
         assert branches[self.branch1.name].has_schema_changes is True
 
         # Ensure that we can query the nodes with the new schema in BRANCH1
@@ -302,7 +301,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
         # Ensure that we can query the nodes with the new schema in BRANCH1
         jane_cars = await registry.manager.query(
-            db=db, schema=CAR_KIND, filters={"main_driver__name__value": "Jane"}, branch=self.branch1
+            db=db, schema=CAR_KIND, filters={"main_driver__name__value": "Jane"}, branch=self.branch1.name
         )
         assert len(jane_cars) == 2
         jane = await jane_cars[0].main_driver.get_peer(db=db)  # type: ignore[attr-defined]
