@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes, RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
-# pylint: disable=redefined-builtin
+# pylint: disable=redefined-builtin,too-many-lines
 
 
 PREFIX_PROPERTY = "_relation__"
@@ -507,6 +507,7 @@ class RelationshipValidatorList:
     def __init__(
         self,
         *relationships: Relationship,
+        name: str,
         min_count: int = 0,
         max_count: int = 0,
     ) -> None:
@@ -523,6 +524,7 @@ class RelationshipValidatorList:
             raise ValidationError({"msg": "max_count must be greater than min_count"})
         self.min_count: int = min_count
         self.max_count: int = max_count
+        self.name = name
 
         self._relationships: List[Relationship] = [rel for rel in relationships if isinstance(rel, Relationship)]
         self._relationships_count: int = len(self._relationships)
@@ -531,9 +533,9 @@ class RelationshipValidatorList:
         # Allow this class to be instantiated without relationships
         if self._relationships:
             if self.max_count and self._relationships_count > self.max_count:
-                raise ValidationError({relationships[0].node_id: f"Too many relationships, max {self.max_count}"})
+                self._raise_too_many()
             if self.min_count and self._relationships_count < self.min_count:
-                raise ValidationError({relationships[0].node_id: f"Too few relationships, min {self.min_count}"})
+                self._raise_too_few()
 
     def __contains__(self, item: Relationship) -> bool:
         return item in self._relationships
@@ -556,7 +558,7 @@ class RelationshipValidatorList:
 
     def __delitem__(self, index: int) -> None:
         if self._relationships_count - 1 < self.min_count:
-            raise ValidationError({self._relationships[0].name: f"Too few relationships, min {self.min_count}"})
+            self._raise_too_few()
         del self._relationships[index]
 
     def __len__(self) -> int:
@@ -577,9 +579,7 @@ class RelationshipValidatorList:
 
         # If the max_count is greater than 0 then validate
         if self.max_count and self._relationships_count + 1 > self.max_count:
-            raise ValidationError(
-                {rel.name: f"Too many relationships, max {self.max_count}, count {self._relationships_count}"}
-            )
+            self._raise_too_many()
 
         self._relationships.append(rel)
         self._relationships_count += 1
@@ -594,7 +594,7 @@ class RelationshipValidatorList:
         rel_len = len(relationships)
         # If the max_count is greater than 0 then validate
         if self.max_count and self._relationships_count + rel_len > self.max_count:
-            raise ValidationError({self._relationships[0].name: f"Too many relationships, max {self.max_count}"})
+            self._raise_too_many()
 
         self._relationships.extend(relationships)
         self._relationships_count += rel_len
@@ -611,13 +611,13 @@ class RelationshipValidatorList:
         if not isinstance(value, Relationship):
             raise ValidationError("RelationshipValidatorList only accepts Relationship objects")
         if self.max_count and self._relationships_count + 1 > self.max_count:
-            raise ValidationError({value.name: f"Too many relationships, max {self.max_count}"})
+            self._raise_too_many()
         self._relationships.insert(index, value)
         self._relationships_count += 1
 
     def pop(self, idx: int = -1) -> Relationship:
         if self.min_count and self._relationships_count - 1 < self.min_count:
-            raise ValidationError({self._relationships[0].name: f"Too few relationships, min {self.min_count}"})
+            self._raise_too_few()
 
         result = self._relationships.pop(idx)
         self._relationships_count -= 1
@@ -625,12 +625,34 @@ class RelationshipValidatorList:
 
     def remove(self, value: Relationship) -> None:
         if self.min_count and self._relationships_count - 1 < self.min_count:
-            raise ValidationError({self._relationships[0].name: f"Too few relationships, min {self.min_count}"})
+            self._raise_too_few()
         self._relationships.remove(value)
         self._relationships_count -= 1
 
     def as_list(self) -> List[Relationship]:
         return self._relationships
+
+    def _raise_too_few(self) -> None:
+        raise ValidationError({self.name: f"Too few relationships, min {self.min_count}"})
+
+    def _raise_too_many(self) -> None:
+        raise ValidationError({self.name: f"Too many relationships, max {self.max_count}"})
+
+    def validate_min(self) -> None:
+        if not self.min_count:
+            return
+        if self._relationships_count < self.min_count:
+            raise ValidationError({self.name: f"Too few relationships, min {self.min_count}"})
+
+    def validate_max(self) -> None:
+        if not self.max_count:
+            return
+        if self._relationships_count > self.max_count:
+            raise ValidationError({self.name: f"Too many relationships, max {self.max_count}"})
+
+    def validate(self) -> None:
+        self.validate_min()
+        self.validate_max()
 
 
 class RelationshipManager:
@@ -645,7 +667,8 @@ class RelationshipManager:
         self.rel_class = Relationship
 
         self._relationships: RelationshipValidatorList = RelationshipValidatorList(
-            min_count=self.schema.min_count,
+            name=self.schema.name,
+            min_count=0 if self.schema.optional else self.schema.min_count,
             max_count=self.schema.max_count,
         )
         self.has_fetched_relationships: bool = False
@@ -859,6 +882,9 @@ class RelationshipManager:
         # Check if some relationship got removed by checking if the previous list of relationship is a subset of the current list of not
         if set(list(previous_relationships.keys())) <= {rel.peer_id for rel in await self.get_relationships(db=db)}:
             changed = True
+
+        if changed:
+            self._relationships.validate()
 
         return changed
 

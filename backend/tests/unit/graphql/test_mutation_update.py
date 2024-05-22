@@ -616,6 +616,9 @@ async def test_update_delete_optional_relationship_cardinality_one(
     assert result.data["TestCarUpdate"]["ok"] is True
     assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
 
+    car_schema = registry.schema.get_node_schema(name="TestCar", branch=branch, duplicate=False)
+    car_schema.get_relationship(name="owner").optional = True
+    registry.schema.set(name="TestCar", schema=car_schema, branch=branch.name)
     car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(db=db)
     assert car_peer.id == person_jim_main.id
@@ -1263,3 +1266,39 @@ async def test_incorrect_peer_type_prevented(db: InfrahubDatabase, default_branc
     retrieved_dog = await NodeManager.get_one(db=db, branch=default_branch, id=dog1.id)
     owner = await retrieved_dog.owner.get(db=db)
     assert owner.peer_id == person1.id
+
+
+async def test_removing_mandatory_relationship_not_allowed(db: InfrahubDatabase, default_branch, animal_person_schema):
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+
+    dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
+    await dog1.save(db=db)
+
+    query = """
+    mutation {
+        TestDogUpdate(data: {
+            id: "%(animal_id)s",
+            owner: null,
+            breed: {value: "mixed"}
+        }) {
+            ok
+        }
+    }
+    """ % {"animal_id": dog1.id}
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is not None
+    assert len(result.errors) == 1
+    assert result.errors[0].message == "Too few relationships, min 1 at owner"
