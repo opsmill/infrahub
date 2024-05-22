@@ -1,3 +1,4 @@
+import pytest
 from graphql import graphql
 
 from infrahub.core import registry
@@ -11,7 +12,8 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
 
 
-async def test_assign_prefix_from_pool(
+@pytest.fixture
+async def prefix_pool_01(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_ipnamespace: Node,
@@ -34,6 +36,14 @@ async def test_assign_prefix_from_pool(
         ip_namespace=ns1,
     )
     await pool.save(db=db)
+
+    ip_dataset_prefix_v4["pool"] = pool
+
+    return ip_dataset_prefix_v4
+
+
+async def test_create_object_and_assign_prefix_from_pool(db: InfrahubDatabase, default_branch: Branch, prefix_pool_01):
+    pool = prefix_pool_01["pool"]
 
     query = (
         """
@@ -83,6 +93,71 @@ async def test_assign_prefix_from_pool(
     assert result.data
     assert result.data["TestMandatoryPrefixCreate"]["ok"]
     assert result.data["TestMandatoryPrefixCreate"]["object"] == {
+        "name": {"value": "site1"},
+        "prefix": {
+            "node": {"prefix": {"value": "10.10.0.0/24"}},
+            "properties": {
+                "source": {"id": pool.id},
+            },
+        },
+    }
+
+
+async def test_update_object_and_assign_prefix_from_pool(db: InfrahubDatabase, default_branch: Branch, prefix_pool_01):
+    pool = prefix_pool_01["pool"]
+    net142 = prefix_pool_01["net142"]
+
+    schema = registry.schema.get_node_schema(name="TestMandatoryPrefix", branch=default_branch)
+
+    obj = await Node.init(db=db, schema=schema, branch=default_branch)
+    await obj.new(db=db, name="site1", prefix=net142)
+    await obj.save(db=db)
+
+    query = """
+    mutation {
+        TestMandatoryPrefixUpdate(data: {
+            id: "%s"
+            prefix: {
+                from_pool: {
+                    id: "%s"
+                }
+            }
+        }) {
+            ok
+            object {
+                name {
+                    value
+                }
+                prefix {
+                    node {
+                        prefix {
+                            value
+                        }
+                    }
+                    properties {
+                        source {
+                            id
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """ % (obj.id, pool.id)
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert not result.errors
+    assert result.data
+    assert result.data["TestMandatoryPrefixUpdate"]["ok"]
+    assert result.data["TestMandatoryPrefixUpdate"]["object"] == {
         "name": {"value": "site1"},
         "prefix": {
             "node": {"prefix": {"value": "10.10.0.0/24"}},
