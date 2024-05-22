@@ -36,7 +36,7 @@ function ErrorFallback({ error }: ErrorFallbackProps) {
 
   return (
     <div className="bg-gray-100 flex flex-col items-center justify-center h-full">
-      <Card className="flex flex-col items-center justify-center mb-4 p-4">
+      <Card className="flex flex-col items-center mb-4 p-4">
         <h1 className="flex items-center gap-2 font-semibold text-lg">
           <Icon
             icon="mdi:bug"
@@ -48,17 +48,33 @@ function ErrorFallback({ error }: ErrorFallbackProps) {
           Uh-oh, something went wrong :(
         </h1>
 
-        <p className="">Looks like you found a bug...</p>
+        <p>Looks like you found a bug...</p>
 
         <Button className="my-4" onClick={resetBoundary}>
           Refresh
         </Button>
 
-        <p className="font-semibold text-xs">
+        <p className="font-semibold text-xs mb-1">
           Press <Kbd>Enter</Kbd> to refresh
         </p>
         <p className="text-xs text-gray-600">
-          or reach out to us on Discord or via email, we will reply super fast.
+          or reach out to us on{" "}
+          <a
+            className="underline"
+            href="https://discord.com/channels/1212332642801025064/1212669187198025759"
+            target="_blank"
+            rel="noreferrer">
+            Discord
+          </a>
+          {" or "}
+          <a
+            className="underline"
+            href="https://github.com/opsmill/infrahub/issues/new/choose"
+            target="_blank"
+            rel="noreferrer">
+            GitHub
+          </a>
+          , we will reply super fast.
         </p>
       </Card>
 
