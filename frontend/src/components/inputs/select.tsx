@@ -908,16 +908,20 @@ export const Select = (props: SelectProps) => {
                       )}
 
                       {canRemoveOption(option.id) && (
-                        <Button
-                          disabled={field.inherited}
-                          buttonType={BUTTON_TYPES.INVISIBLE}
-                          className="p-0"
-                          onClick={() => setOptionToDelete(option.id)}>
-                          <Icon
-                            icon="mdi:trash"
-                            className={field.inherited ? "text-gray-400" : "text-red-500"}
-                          />
-                        </Button>
+                        <Tooltip
+                          content="Can't delete an option on an attribute inherited from a generic"
+                          enabled={field.inherited}>
+                          <Button
+                            disabled={field.inherited}
+                            buttonType={BUTTON_TYPES.INVISIBLE}
+                            className="p-0"
+                            onClick={() => setOptionToDelete(option.id)}>
+                            <Icon
+                              icon="mdi:trash"
+                              className={field.inherited ? "text-gray-400" : "text-red-500"}
+                            />
+                          </Button>
+                        </Tooltip>
                       )}
                     </div>
                   )}
