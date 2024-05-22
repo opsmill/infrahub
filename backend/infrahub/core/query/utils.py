@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Union
 
 from infrahub.core.schema import NodeSchema, ProfileSchema
 
@@ -13,11 +13,11 @@ if TYPE_CHECKING:
 
 def find_node_schema(
     db: InfrahubDatabase, node: Neo4jNode, branch: Union[Branch, str], duplicate: bool = False
-) -> Optional[Union[NodeSchema, ProfileSchema]]:
+) -> Union[NodeSchema, ProfileSchema]:
     for label in node.labels:
         if db.schema.has(name=label, branch=branch):
             schema = db.schema.get(name=label, branch=branch, duplicate=duplicate)
             if isinstance(schema, (NodeSchema, ProfileSchema)):
                 return schema
 
-    return None
+    raise ValueError(f"""Cannot identify schema for node {node.get("uuid")}""")
