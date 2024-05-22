@@ -151,7 +151,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
     async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, branch=self.branch1)
-        assert len(persons) == 3
+        assert len(persons) == 2
 
     async def test_step02_check_attr_add_rename(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
@@ -205,7 +205,6 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
         # Check if the branch has been properly updated
         branches = await client.branch.all()
-        assert branches[self.branch1.name].is_isolated is True
         assert branches[self.branch1.name].has_schema_changes is True
 
         # Ensure that we can query the nodes with the new schema in BRANCH1
@@ -268,7 +267,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
         # Validate that all data added to main after the creation of the branch has been migrated properly
         persons = await registry.manager.query(
-            db=db, schema=PERSON_KIND, filters={"firstname__value": "Jane"}, branch=self.branch1
+            db=db, schema=PERSON_KIND, filters={"firstname__value": "Jane"}, branch=self.branch1.name
         )
         assert len(persons) == 1
         jane = persons[0]

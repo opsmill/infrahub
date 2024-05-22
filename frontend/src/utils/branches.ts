@@ -13,7 +13,6 @@ export const branchesToSelectOptions = (branches: Branch[]) =>
       name: branch.name,
       sync_with_git: branch.sync_with_git,
       is_default: branch.is_default,
-      is_isolated: branch.is_isolated,
       has_schema_changes: branch.has_schema_changes,
       created_at: branch.created_at,
     }))
