@@ -376,6 +376,9 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
     async def resolve(self, db: InfrahubDatabase) -> None:
         """Resolve the peer of the relationship."""
 
+        if self._peer is not None:
+            return
+
         if self.peer_id and not is_valid_uuid(self.peer_id):
             peer = await registry.manager.get_one_by_default_filter(
                 db=db, id=self.peer_id, branch=self.branch, kind=self.schema.peer, fields={"display_label": None}
