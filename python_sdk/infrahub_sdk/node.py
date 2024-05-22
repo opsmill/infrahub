@@ -18,7 +18,13 @@ from typing import (
 )
 
 from infrahub_sdk.constants import InfrahubClientMode
-from infrahub_sdk.exceptions import Error, FeatureNotSupportedError, FilterNotFoundError, UninitializedError
+from infrahub_sdk.exceptions import (
+    Error,
+    FeatureNotSupportedError,
+    FilterNotFoundError,
+    NodeNotFoundError,
+    UninitializedError,
+)
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.schema import GenericSchema, RelationshipCardinality, RelationshipKind
 from infrahub_sdk.timestamp import Timestamp
@@ -681,7 +687,7 @@ class InfrahubNodeBase:
 
             try:
                 peer = related_node.get()
-            except NodeNotFoundError:
+            except (NodeNotFoundError, ValueError):
                 # This can happen while batch creating nodes, the lookup won't work as the store is not populated
                 # If so we cannot complete the HFID computation as we cannot access the related node attribute value
                 return None
