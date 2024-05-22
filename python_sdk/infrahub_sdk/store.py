@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Union, overload
 
 from infrahub_sdk.exceptions import NodeNotFoundError
 
@@ -18,13 +18,20 @@ class NodeStoreBase:
 
     def __init__(self) -> None:
         self._store: Dict[str, Dict] = defaultdict(dict)
+        self._store_by_hfid: Dict[str, Any] = defaultdict(dict)
 
-    def _set(self, key: str, node) -> None:  # type: ignore[no-untyped-def]
-        if "InfrahubNode" not in node.__class__.__name__:
-            raise TypeError(f"'node' must be of type InfrahubNode, not {type(node)!r}")
+    def _set(self, node: Union[InfrahubNode, InfrahubNodeSync], key: Optional[str] = None) -> None:
+        hfid = node.get_human_friendly_id_as_string(include_kind=True)
 
-        node_kind = node._schema.kind
-        self._store[node_kind][key] = node  # type: ignore[attr-defined]
+        if not key and not hfid:
+            raise ValueError("Cannot store node without human friendly ID or key.")
+
+        if key:
+            node_kind = node._schema.kind
+            self._store[node_kind][key] = node
+
+        if hfid:
+            self._store_by_hfid[hfid] = node
 
     def _get(self, key: str, kind: Optional[str] = None, raise_when_missing: bool = True):  # type: ignore[no-untyped-def]
         if kind and kind not in self._store and key not in self._store[kind]:  # type: ignore[attr-defined]
@@ -48,21 +55,69 @@ class NodeStoreBase:
         raise NodeNotFoundError(
             node_type="n/a",
             identifier={"key": [key]},
-            message=f"Unable to find the node {key!r} in the Store",
+            message=f"Unable to find the node {key!r} in the store",
         )
+
+    def _get_by_hfid(self, key: str, raise_when_missing: bool = True):  # type: ignore[no-untyped-def]
+        try:
+            return self._store_by_hfid[key]
+        except KeyError as exc:
+            if raise_when_missing:
+                raise NodeNotFoundError(
+                    node_type="n/a",
+                    identifier={"key": [key]},
+                    message=f"Unable to find the node {key!r} in the store",
+                ) from exc
+        return None
 
 
 class NodeStore(NodeStoreBase):
+    @overload
+    def get(self, key: str, kind: Optional[str] = None, raise_when_missing: Literal[True] = True) -> InfrahubNode: ...
+
+    @overload
+    def get(
+        self, key: str, kind: Optional[str] = None, raise_when_missing: Literal[False] = False
+    ) -> Optional[InfrahubNode]: ...
+
     def get(self, key: str, kind: Optional[str] = None, raise_when_missing: bool = True) -> Optional[InfrahubNode]:
         return self._get(key=key, kind=kind, raise_when_missing=raise_when_missing)
 
-    def set(self, key: str, node: InfrahubNode) -> None:
-        return self._set(key=key, node=node)
+    @overload
+    def get_by_hfid(self, key: str, raise_when_missing: Literal[True] = True) -> InfrahubNode: ...
+
+    @overload
+    def get_by_hfid(self, key: str, raise_when_missing: Literal[False] = False) -> Optional[InfrahubNode]: ...
+
+    def get_by_hfid(self, key: str, raise_when_missing: bool = True) -> Optional[InfrahubNode]:
+        return self._get_by_hfid(key=key, raise_when_missing=raise_when_missing)
+
+    def set(self, node: InfrahubNode, key: Optional[str] = None) -> None:
+        return self._set(node=node, key=key)
 
 
 class NodeStoreSync(NodeStoreBase):
+    @overload
+    def get(
+        self, key: str, kind: Optional[str] = None, raise_when_missing: Literal[True] = True
+    ) -> InfrahubNodeSync: ...
+
+    @overload
+    def get(
+        self, key: str, kind: Optional[str] = None, raise_when_missing: Literal[False] = False
+    ) -> Optional[InfrahubNodeSync]: ...
+
     def get(self, key: str, kind: Optional[str] = None, raise_when_missing: bool = True) -> Optional[InfrahubNodeSync]:
         return self._get(key=key, kind=kind, raise_when_missing=raise_when_missing)
 
-    def set(self, key: str, node: InfrahubNodeSync) -> None:
-        return self._set(key=key, node=node)
+    @overload
+    def get_by_hfid(self, key: str, raise_when_missing: Literal[True] = True) -> InfrahubNodeSync: ...
+
+    @overload
+    def get_by_hfid(self, key: str, raise_when_missing: Literal[False] = False) -> Optional[InfrahubNodeSync]: ...
+
+    def get_by_hfid(self, key: str, raise_when_missing: bool = True) -> Optional[InfrahubNodeSync]:
+        return self._get_by_hfid(key=key, raise_when_missing=raise_when_missing)
+
+    def set(self, node: InfrahubNodeSync, key: Optional[str] = None) -> None:
+        return self._set(node=node, key=key)

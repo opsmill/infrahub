@@ -661,12 +661,10 @@ core_models: dict[str, Any] = {
         {
             "name": "ResourcePool",
             "namespace": "Core",
-            "description": "xx",
-            "include_in_menu": True,
-            # "default_filter": "address__value",
-            # "order_by": ["address__version", "address__binary_address"],
-            # "display_labels": ["address__value"],
-            # "icon": "mdi:ip-outline",
+            "label": "Resource Pool",
+            "description": "The resource manager contains pools of resources to allow for automatic assignments.",
+            "include_in_menu": False,
+            "icon": "mdi:view-grid-outline",
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {
@@ -1649,6 +1647,7 @@ core_models: dict[str, Any] = {
             "description": "A namespace that segments IPAM",
             "label": "IPAM Namespace",
             "default_filter": "name__value",
+            "human_friendly_id": ["name__value"],
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "include_in_menu": False,

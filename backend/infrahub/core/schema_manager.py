@@ -697,6 +697,7 @@ class SchemaBranch:
             if not node_schema.human_friendly_id:
                 continue
 
+            has_unique_item = False
             allowed_types = SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_ATTR
             for item in node_schema.human_friendly_id:
                 schema_path = self.validate_schema_path(
@@ -705,27 +706,38 @@ class SchemaBranch:
                     allowed_path_types=allowed_types,
                     element_name="human_friendly_id",
                 )
+
+                if schema_path.attribute_schema.unique:
+                    has_unique_item = True
+
                 if schema_path.is_type_relationship:
                     if schema_path.relationship_schema.optional:
                         raise ValueError(
-                            f"Only mandatory relationship of cardinality one can be used in human_friendly_id,"
-                            f" {schema_path.relationship_schema.name} is not mandatory. ({item})"
+                            f"Only mandatory relationship of cardinality one can be used in human_friendly_id, "
+                            f"{schema_path.relationship_schema.name} is not mandatory on {schema_path.relationship_schema.kind} for "
+                            f"{node_schema.kind}. ({item})"
                         )
-                    if not schema_path.attribute_schema.unique:
-                        raise ValueError(
-                            f"Only unique attribute on related node can be used used in human_friendly_id,"
-                            f" {schema_path.attribute_schema.name} is not unique on {schema_path.relationship_schema.kind}. ({item})"
-                        )
+                #     if not schema_path.attribute_schema.unique:
+                #         raise ValueError(
+                #             f"Only unique attribute on related node can be used used in human_friendly_id, "
+                #             f"{schema_path.attribute_schema.name} is not unique on {schema_path.relationship_schema.kind} for "
+                #             f"{node_schema.kind}. ({item})"
+                #         )
 
-                if (
-                    schema_path.is_type_attribute
-                    and len(node_schema.human_friendly_id) == 1
-                    and not schema_path.attribute_schema.unique
-                ):
-                    raise ValueError(
-                        f"Only unique attribute can be used on their own in human_friendly_id,"
-                        f" {schema_path.attribute_schema.name} is not unique. ({item})"
-                    )
+                # if (
+                #     schema_path.is_type_attribute
+                #     and len(node_schema.human_friendly_id) == 1
+                #     and not schema_path.attribute_schema.unique
+                # ):
+                #     raise ValueError(
+                #         f"Only unique attribute can be used on their own in human_friendly_id, "
+                #         f"{schema_path.attribute_schema.name} is not unique for {node_schema.kind}. ({item})"
+                #     )
+
+            if not has_unique_item:
+                raise ValueError(
+                    f"At least one attribute must be unique in the human_friendly_id for {node_schema.kind}."
+                )
 
     def validate_parent_component(self) -> None:
         # {parent_kind: {component_kind_1, component_kind_2, ...}}

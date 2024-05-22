@@ -18,13 +18,7 @@ from typing import (
 )
 
 from infrahub_sdk.constants import InfrahubClientMode
-from infrahub_sdk.exceptions import (
-    Error,
-    FeatureNotSupportedError,
-    FilterNotFoundError,
-    NodeNotFoundError,
-    UninitializedError,
-)
+from infrahub_sdk.exceptions import Error, FeatureNotSupportedError, FilterNotFoundError, UninitializedError
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.schema import GenericSchema, RelationshipCardinality, RelationshipKind
 from infrahub_sdk.timestamp import Timestamp
@@ -35,11 +29,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
-    from infrahub_sdk.schema import (
-        AttributeSchema,
-        MainSchemaTypes,
-        RelationshipSchema,
-    )
+    from infrahub_sdk.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
 
 # pylint: disable=too-many-lines
 
@@ -214,6 +204,18 @@ class RelatedNodeBase:
         return self._id
 
     @property
+    def hfid(self) -> Optional[List[Any]]:
+        if self._peer:
+            return self._peer.hfid
+        return None
+
+    @property
+    def hfid_str(self) -> Optional[str]:
+        if self._peer and self.hfid:
+            return self._peer.get_human_friendly_id_as_string(include_kind=True)
+        return None
+
+    @property
     def initialized(self) -> bool:
         return bool(self.id)
 
@@ -305,13 +307,13 @@ class RelatedNode(RelatedNodeBase):
         if self._peer:
             return self._peer  # type: ignore[return-value]
 
-        if not self.id:
-            raise ValueError("Node id must be defined to query it.")
-
         if self.id and self.typename:
             return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
 
-        raise NodeNotFoundError(branch_name=self._branch, node_type=self.schema.peer, identifier={"key": [self.id]})
+        if self.hfid_str:
+            return self._client.store.get_by_hfid(key=self.hfid_str)  # type: ignore[return-value]
+
+        raise ValueError("Node must have at least one identifier (ID or HFID) to query it.")
 
 
 class RelatedNodeSync(RelatedNodeBase):
@@ -350,13 +352,13 @@ class RelatedNodeSync(RelatedNodeBase):
         if self._peer:
             return self._peer  # type: ignore[return-value]
 
-        if not self.id:
-            raise ValueError("Node id must be defined to query it.")
-
         if self.id and self.typename:
             return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
 
-        raise NodeNotFoundError(branch_name=self._branch, node_type=self.schema.peer, identifier={"key": [self.id]})
+        if self.hfid_str:
+            return self._client.store.get_by_hfid(key=self.hfid_str)  # type: ignore[return-value]
+
+        raise ValueError("Node must have at least one identifier (ID or HFID) to query it.")
 
 
 class RelationshipManagerBase:
@@ -384,6 +386,14 @@ class RelationshipManagerBase:
     @property
     def peer_ids(self) -> List[str]:
         return [peer.id for peer in self.peers if peer.id]
+
+    @property
+    def peer_hfids(self) -> List[List[Any]]:
+        return [peer.hfid for peer in self.peers if peer.hfid]
+
+    @property
+    def peer_hfids_str(self) -> List[str]:
+        return [peer.hfid_str for peer in self.peers if peer.hfid_str]
 
     @property
     def has_update(self) -> bool:
@@ -669,7 +679,13 @@ class InfrahubNodeBase:
             if not related_node:
                 return None
 
-            peer = related_node.get()
+            try:
+                peer = related_node.get()
+            except NodeNotFoundError:
+                # This can happen while batch creating nodes, the lookup won't work as the store is not populated
+                # If so we cannot complete the HFID computation as we cannot access the related node attribute value
+                return None
+
             if attribute_piece := path_parts[1] if len(path_parts) > 1 else None:
                 related_node_attribute = getattr(peer, attribute_piece, None)
             else:
@@ -688,26 +704,32 @@ class InfrahubNodeBase:
             else:
                 return_value = attribute
 
-        if isinstance(
-            return_value,
-            (ipaddress.IPv4Address, ipaddress.IPv6Address, ipaddress.IPv4Network, ipaddress.IPv6Network),
-        ):
-            return str(return_value)
         return return_value
 
-    def get_human_friendly_id(self) -> Optional[List[Any]]:
+    def get_human_friendly_id(self) -> Optional[List[str]]:
         if not hasattr(self._schema, "human_friendly_id"):
             return None
 
         if not self._schema.human_friendly_id:
-            # FIXME: compute based on uniqueness constraints?
             return None
 
-        return [self.get_path_value(path=item) for item in self._schema.human_friendly_id]
+        return [str(self.get_path_value(path=item)) for item in self._schema.human_friendly_id]
+
+    def get_human_friendly_id_as_string(self, include_kind: bool = False) -> Optional[str]:
+        hfid = self.get_human_friendly_id()
+        if not hfid:
+            return None
+        if include_kind:
+            hfid = [self.get_kind()] + hfid
+        return "__".join(hfid)
 
     @property
-    def hfid(self) -> Optional[List[Any]]:
+    def hfid(self) -> Optional[List[str]]:
         return self.get_human_friendly_id()
+
+    @property
+    def hfid_str(self) -> Optional[str]:
+        return self.get_human_friendly_id_as_string(include_kind=True)
 
     def _init_attributes(self, data: Optional[dict] = None) -> None:
         for attr_name in self._attributes:

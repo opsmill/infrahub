@@ -115,7 +115,7 @@ async def get_menu(
 
     objects.children.sort()
     groups = InterfaceMenu(
-        title="Groups & Profiles",
+        title="Object Management",
         children=[
             InterfaceMenu(
                 title="All Groups",
@@ -129,6 +129,16 @@ async def get_menu(
             ),
         ],
     )
+
+    if has_ipam:
+        groups.children.append(
+            InterfaceMenu(
+                title="Resource Manager",
+                path="/resource-manager",
+                icon=_extract_node_icon(full_schema[InfrahubKind.RESOURCEPOOL]),
+            )
+        )
+
     unified_storage = InterfaceMenu(
         title="Unified Storage",
         children=[

@@ -40,7 +40,7 @@ test.describe("/resource-manager - Resource Manager", () => {
     await page.getByRole("option", { name: "10.0.0.0/8" }).click();
     await page.getByRole("option", { name: "10.0.0.0/16" }).click();
     await page.getByRole("option", { name: "10.1.0.0/16" }).click();
-    await page.getByText("Resources").click();
+    await page.getByText("Resources *").click();
     await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
 
     await Promise.all([

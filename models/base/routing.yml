@@ -10,6 +10,7 @@ nodes:
     icon: "mdi:bank-circle-outline"
     menu_placement: InfraBGPSession
     default_filter: name__value
+    human_friendly_id: ["name__value", "asn__value"]
     order_by: ["asn__value"]
     display_labels:
       - name__value
@@ -37,6 +38,7 @@ nodes:
     icon: "mdi:view-grid-plus-outline"
     menu_placement: InfraBGPSession
     default_filter: name__value
+    human_friendly_id: ["name__value"]
     order_by:
       - name__value
     display_labels:
@@ -44,6 +46,7 @@ nodes:
     attributes:
       - name: name
         kind: Text
+        unique: true
       - name: description
         kind: Text
         optional: true
@@ -73,6 +76,7 @@ nodes:
     icon: "mdi:router"
     inherit_from:
       - "CoreArtifactTarget"
+    human_friendly_id: ["remote_as__asn__value", "remote_ip__address__value", "device__name__value"]
     order_by:
       - device__name__value
       - remote_as__asn__value
@@ -133,7 +137,7 @@ nodes:
       - name: remote_as
         identifier: bgpsession__remote_as
         peer: InfraAutonomousSystem
-        optional: true
+        optional: false
         cardinality: one
         kind: Attribute
       - name: local_ip
@@ -145,12 +149,12 @@ nodes:
       - name: remote_ip
         identifier: bgpsession__remote_ip
         peer: BuiltinIPAddress
-        optional: true
+        optional: false
         cardinality: one
         kind: Attribute
       - name: device
         peer: InfraDevice
-        optional: true
+        optional: false
         cardinality: one
       - name: peer_group
         peer: InfraBGPPeerGroup
