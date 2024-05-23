@@ -1,8 +1,9 @@
 import re
 import sys
 from dataclasses import dataclass
+from inspect import Parameter
 from io import StringIO
-from typing import AsyncGenerator, Dict, Optional
+from typing import AsyncGenerator, Dict, Mapping, Optional, Tuple
 
 import pytest
 import ujson
@@ -71,6 +72,20 @@ def replace_async_return_annotation():
 
 
 @pytest.fixture
+def replace_async_parameter_annotations(replace_async_return_annotation):
+    """Allows for comparison between sync and async parameter annotations."""
+
+    def replace_annotations(parameters: Mapping[str, Parameter]) -> Tuple[str, str]:
+        parameter_tuples = []
+        for name, parameter in parameters.items():
+            parameter_tuples.append((name, replace_async_return_annotation(parameter.annotation)))
+
+        return parameter_tuples
+
+    return replace_annotations
+
+
+@pytest.fixture
 def replace_sync_return_annotation() -> str:
     """Allows for comparison between sync and async return annotations."""
 
@@ -84,6 +99,20 @@ def replace_sync_return_annotation() -> str:
         return replacements.get(annotation) or annotation
 
     return replace_annotation
+
+
+@pytest.fixture
+def replace_sync_parameter_annotations(replace_sync_return_annotation):
+    """Allows for comparison between sync and async parameter annotations."""
+
+    def replace_annotations(parameters: Mapping[str, Parameter]) -> Tuple[str, str]:
+        parameter_tuples = []
+        for name, parameter in parameters.items():
+            parameter_tuples.append((name, replace_sync_return_annotation(parameter.annotation)))
+
+        return parameter_tuples
+
+    return replace_annotations
 
 
 @pytest.fixture
