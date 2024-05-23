@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
-from ..model import RelationshipManager, RelationshipUpdateDetails
+from ..model import RelationshipManager
 
 
 class RelationshipManagerConstraintInterface(ABC):
     @abstractmethod
-    async def check(self, relm: RelationshipManager, update_details: RelationshipUpdateDetails) -> None: ...
+    async def check(self, relm: RelationshipManager) -> None: ...

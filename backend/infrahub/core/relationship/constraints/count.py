@@ -8,7 +8,7 @@ from infrahub.core.query.relationship import RelationshipCountPerNodeQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 
-from ..model import RelationshipManager, RelationshipUpdateDetails
+from ..model import RelationshipManager
 from .interface import RelationshipManagerConstraintInterface
 
 
@@ -25,7 +25,7 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         self.db = db
         self.branch = branch
 
-    async def check(self, relm: RelationshipManager, update_details: RelationshipUpdateDetails) -> None:
+    async def check(self, relm: RelationshipManager) -> None:
         branch = await registry.get_branch(db=self.db) if not self.branch else self.branch
 
         # NOTE adding resolve here because we need to retrieve the real ID
@@ -44,6 +44,7 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         if not peer_rels:
             return
 
+        update_details = await relm.fetch_relationship_ids(db=self.db, force_refresh=False)
         for peer_rel in peer_rels:
             # If a relationship is directional and both have the same direction they can't work together
             if relm.schema.direction == peer_rel.direction and peer_rel.direction != RelationshipDirection.BIDIR:

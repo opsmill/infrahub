@@ -72,9 +72,9 @@ class IPNodesToReconcile:
         if not node:
             return set()
         child_uuids = set()
-        child_prefix_rels = await node.children.get_relationships(db=db)  # type: ignore[attr-defined]
+        child_prefix_rels = await node.children.get_relationships(db=db, force_refresh=False)  # type: ignore[attr-defined]
         child_uuids |= {cpr.get_peer_id() for cpr in child_prefix_rels}
-        child_address_rels = await node.ip_addresses.get_relationships(db=db)  # type: ignore[attr-defined]
+        child_address_rels = await node.ip_addresses.get_relationships(db=db, force_refresh=False)  # type: ignore[attr-defined]
         child_uuids |= {car.get_peer_id() for car in child_address_rels}
         return child_uuids
 

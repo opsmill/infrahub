@@ -674,6 +674,7 @@ class RelationshipManager:
             min_count=0 if self.schema.optional else self.schema.min_count,
             max_count=self.schema.max_count,
         )
+        self._relationship_id_details: Optional[RelationshipUpdateDetails] = None
         self.has_fetched_relationships: bool = False
 
     @classmethod
@@ -761,13 +762,20 @@ class RelationshipManager:
         return self.branch
 
     async def fetch_relationship_ids(
-        self, db: InfrahubDatabase, at: Optional[Timestamp] = None, branch_agnostic: bool = False
+        self,
+        db: InfrahubDatabase,
+        at: Optional[Timestamp] = None,
+        branch_agnostic: bool = False,
+        force_refresh: bool = True,
     ) -> RelationshipUpdateDetails:
         """Fetch the latest relationships from the database and returns :
         - the list of nodes present on both sides
         - the list of nodes present only locally
         - the list of nodes present only in the database
         """
+        if not force_refresh and self._relationship_id_details is not None:
+            return self._relationship_id_details
+
         current_peer_ids = [rel.get_peer_id() for rel in self._relationships]
 
         query = await RelationshipGetPeerQuery.init(
@@ -787,19 +795,26 @@ class RelationshipManager:
         peer_ids_present_local_only = list(set(current_peer_ids) - set(peer_ids_present_both))
         peer_ids_present_database_only = list(set(peer_ids) - set(peer_ids_present_both))
 
-        return RelationshipUpdateDetails(
+        self._relationship_id_details = RelationshipUpdateDetails(
             peer_ids_present_both=peer_ids_present_both,
             peer_ids_present_local_only=peer_ids_present_local_only,
             peer_ids_present_database_only=peer_ids_present_database_only,
             peers_database=peers_database,
         )
+        return self._relationship_id_details
 
     async def _fetch_relationships(
-        self, db: InfrahubDatabase, at: Optional[Timestamp] = None, branch_agnostic: bool = False
+        self,
+        db: InfrahubDatabase,
+        at: Optional[Timestamp] = None,
+        branch_agnostic: bool = False,
+        force_refresh: bool = True,
     ) -> None:
         """Fetch the latest relationships from the database and update the local cache."""
 
-        details = await self.fetch_relationship_ids(at=at, db=db, branch_agnostic=branch_agnostic)
+        details = await self.fetch_relationship_ids(
+            at=at, db=db, branch_agnostic=branch_agnostic, force_refresh=force_refresh
+        )
 
         for peer_id in details.peer_ids_present_database_only:
             self._relationships.append(
@@ -824,9 +839,11 @@ class RelationshipManager:
 
         return rels
 
-    async def get_relationships(self, db: InfrahubDatabase, branch_agnostic: bool = False) -> List[Relationship]:
-        if not self.has_fetched_relationships:
-            await self._fetch_relationships(db=db, branch_agnostic=branch_agnostic)
+    async def get_relationships(
+        self, db: InfrahubDatabase, branch_agnostic: bool = False, force_refresh: bool = False
+    ) -> List[Relationship]:
+        if force_refresh or not self.has_fetched_relationships:
+            await self._fetch_relationships(db=db, branch_agnostic=branch_agnostic, force_refresh=force_refresh)
 
         return self._relationships.as_list()
 
@@ -924,7 +941,7 @@ class RelationshipManager:
         db: InfrahubDatabase,
         update_db: bool = False,
     ) -> bool:
-        """Remote a peer id from the local relationships list,
+        """Remove a peer id from the local relationships list,
         need to investigate if and when we should update the relationship in the database."""
 
         for idx, rel in enumerate(await self.get_relationships(db=db)):
@@ -972,7 +989,7 @@ class RelationshipManager:
         await self.resolve(db=db)
 
         save_at = Timestamp(at)
-        details = await self.fetch_relationship_ids(db=db)
+        details = await self.fetch_relationship_ids(db=db, force_refresh=True)
 
         # If we have previously fetched the relationships from the database
         # Update the one in the database that shouldn't be here.
@@ -1008,7 +1025,7 @@ class RelationshipManager:
 
         delete_at = Timestamp(at)
 
-        await self._fetch_relationships(at=delete_at, db=db)
+        await self._fetch_relationships(at=delete_at, db=db, force_refresh=True)
 
         for rel in await self.get_relationships(db=db):
             await rel.delete(at=delete_at, db=db)

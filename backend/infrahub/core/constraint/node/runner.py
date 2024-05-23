@@ -33,6 +33,5 @@ class NodeConstraintRunner:
             if field_filters and relationship_name not in field_filters:
                 continue
             relationship_manager: RelationshipManager = getattr(node, relationship_name)
-            update_details = await relationship_manager.fetch_relationship_ids(db=self.db)
             for relationship_constraint in self.relationship_manager_constraints:
-                await relationship_constraint.check(relm=relationship_manager, update_details=update_details)
+                await relationship_constraint.check(relm=relationship_manager)
