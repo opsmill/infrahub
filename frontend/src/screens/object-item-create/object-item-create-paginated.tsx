@@ -49,7 +49,7 @@ export default function ObjectItemCreate(props: iProps) {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
-  const [kind, setKind] = useState(null);
+  const [kind, setKind] = useState({});
   const [profile, setProfile] = useState("");
 
   const generic = genericsList.find((s) => s.kind === objectname);
@@ -88,16 +88,22 @@ export default function ObjectItemCreate(props: iProps) {
   const profiles = data && data[profileName]?.edges?.map((edge) => edge.node);
 
   const profilesOptions =
-    profiles &&
-    profiles.map((profile) => ({
-      id: profile.id,
-      name: profile.display_label,
-      values: profile,
-    }));
+    (profiles &&
+      profiles.map((profile) => ({
+        id: profile.id,
+        name: profile.display_label,
+        values: profile,
+      }))) ??
+    [];
 
   const kindOptions = generic?.used_by?.map((kind: string) => ({ id: kind, name: kind })) ?? [];
 
-  const currentProfile = profilesOptions?.find((p) => p.id === profile)?.values;
+  if (kindOptions.length === 1 && !kind.id) {
+    // Pre-check first kind option for generic
+    setKind(kindOptions[0]);
+  }
+
+  const currentProfile = profilesOptions?.find((p) => p.id === profile.id)?.values;
 
   const fields =
     formStructure ??
@@ -109,10 +115,10 @@ export default function ObjectItemCreate(props: iProps) {
     });
 
   const handleProfileChange = (newProfile: SelectOption) => {
-    setProfile(newProfile.id);
+    setProfile(newProfile);
   };
 
-  const handleKindChange = (newKind: string) => {
+  const handleKindChange = (newKind: SelectOption) => {
     setKind(newKind);
   };
 
@@ -173,25 +179,25 @@ export default function ObjectItemCreate(props: iProps) {
 
   return (
     <div className="bg-custom-white flex flex-col flex-1 overflow-auto">
-      {isGeneric && (
+      {isGeneric && !!kindOptions.length && (
         <div className="p-4 pt-3 bg-gray-200">
           <div className="flex items-center">
             <label className="block text-sm font-medium leading-6 text-gray-900">
               Select an object type
             </label>
           </div>
-          <Select options={kindOptions} value={kind} onChange={handleKindChange} preventEmpty />
+          <Select options={kindOptions} value={kind.id} onChange={handleKindChange} preventEmpty />
         </div>
       )}
 
-      {(!isGeneric || (isGeneric && kind)) && displayProfile && (
+      {(!isGeneric || (isGeneric && kind)) && displayProfile && !!profilesOptions.length && (
         <div className="p-4 pt-3 bg-gray-100">
           <div className="flex items-center">
             <label className="block text-sm font-medium leading-6 text-gray-900">
               Select a Profile <span className="text-xs italic text-gray-500 ml-1">optional</span>
             </label>
           </div>
-          <Select options={profilesOptions} value={profile} onChange={handleProfileChange} />
+          <Select options={profilesOptions} value={profile.id} onChange={handleProfileChange} />
         </div>
       )}
 
