@@ -682,9 +682,9 @@ class BranchDiffer:
         )
         for branch_name, items in rels.items():
             for item in items.values():
-                for sub_item in item.values():
-                    for node_id, _ in sub_item.nodes.items():
-                        rels_per_node[branch_name][node_id][sub_item.name].append(sub_item)
+                for rel_diff_element in item.values():
+                    for node_id, _ in rel_diff_element.nodes.items():
+                        rels_per_node[branch_name][node_id][rel_diff_element.name].append(rel_diff_element)
 
         return rels_per_node
 
