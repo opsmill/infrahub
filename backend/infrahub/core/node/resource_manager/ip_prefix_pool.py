@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class CorePrefixPool(Node):
+class CoreIPPrefixPool(Node):
     async def get_resource(
         self,
         db: InfrahubDatabase,
