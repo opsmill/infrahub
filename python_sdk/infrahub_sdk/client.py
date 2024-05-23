@@ -808,6 +808,18 @@ class InfrahubClient(BaseClient):
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
     ) -> Optional[InfrahubNode]:
+        """Allocate a new IP address by using the provided resource pool.
+
+        Args:
+            resource_pool (InfrahubNode): Node corresponding to the pool to allocate resources from.
+            identifier (str, optional): Value to perform indempotend allocation, the same resource will be returned for a given identifier.
+            branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
+            timeout (int, optional): Flag to indicate whether to populate the store with the retrieved nodes.
+            tracker (str, optional): The offset for pagination.
+            raise_for_error (bool, optional): The limit for pagination.
+        Returns:
+            InfrahubNode: Node corresponding to the allocated resource.
+        """
         if resource_pool.get_kind() != "CoreIPAddressPool":
             raise ValueError("resource_pool is not an IP address pool")
 
@@ -853,7 +865,19 @@ class InfrahubClient(BaseClient):
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
     ) -> Optional[InfrahubNode]:
-        if resource_pool.get_kind() != "CorePrefixPool":
+        """Allocate a new IP prefix by using the provided resource pool.
+
+        Args:
+            resource_pool (InfrahubNode): Node corresponding to the pool to allocate resources from.
+            identifier (str, optional): Value to perform indempotend allocation, the same resource will be returned for a given identifier.
+            branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
+            timeout (int, optional): Flag to indicate whether to populate the store with the retrieved nodes.
+            tracker (str, optional): The offset for pagination.
+            raise_for_error (bool, optional): The limit for pagination.
+        Returns:
+            InfrahubNode: Node corresponding to the allocated resource.
+        """
+        if resource_pool.get_kind() != "CoreIPPrefixPool":
             raise ValueError("resource_pool is not an IP prefix pool")
 
         branch = branch or self.default_branch
@@ -1413,6 +1437,18 @@ class InfrahubClientSync(BaseClient):
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
     ) -> Optional[InfrahubNodeSync]:
+        """Allocate a new IP address by using the provided resource pool.
+
+        Args:
+            resource_pool (InfrahubNodeSync): Node corresponding to the pool to allocate resources from.
+            identifier (str, optional): Value to perform indempotend allocation, the same resource will be returned for a given identifier.
+            branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
+            timeout (int, optional): Flag to indicate whether to populate the store with the retrieved nodes.
+            tracker (str, optional): The offset for pagination.
+            raise_for_error (bool, optional): The limit for pagination.
+        Returns:
+            InfrahubNodeSync: Node corresponding to the allocated resource.
+        """
         if resource_pool.get_kind() != "CoreIPAddressPool":
             raise ValueError("resource_pool is not an IP address pool")
 
@@ -1458,7 +1494,19 @@ class InfrahubClientSync(BaseClient):
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
     ) -> Optional[InfrahubNodeSync]:
-        if resource_pool.get_kind() != "CorePrefixPool":
+        """Allocate a new IP prefix by using the provided resource pool.
+
+        Args:
+            resource_pool (InfrahubNodeSync): Node corresponding to the pool to allocate resources from.
+            identifier (str, optional): Value to perform indempotend allocation, the same resource will be returned for a given identifier.
+            branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
+            timeout (int, optional): Flag to indicate whether to populate the store with the retrieved nodes.
+            tracker (str, optional): The offset for pagination.
+            raise_for_error (bool, optional): The limit for pagination.
+        Returns:
+            InfrahubNodeSync: Node corresponding to the allocated resource.
+        """
+        if resource_pool.get_kind() != "CoreIPPrefixPool":
             raise ValueError("resource_pool is not an IP prefix pool")
 
         branch = branch or self.default_branch
