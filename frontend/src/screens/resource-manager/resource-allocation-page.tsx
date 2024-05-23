@@ -52,7 +52,7 @@ const ResourceAllocationPage = () => {
     },
   ];
   return (
-    <Card>
+    <Card className="flex flex-col ml-1 h-full min-w-min max-w-fit sticky right-2 overflow-hidden">
       <div className="pb-2 flex bg-custom-white items-center gap-1">
         <h3 className="font-semibold">Allocated resources</h3>
         <Badge>{totalOfResourcesAllocated}</Badge>
@@ -64,7 +64,9 @@ const ResourceAllocationPage = () => {
         </Link>
       </div>
 
-      <Table columns={columns} rows={resourcesAllocated} />
+      <div className="min-h-0 overflow-y-auto">
+        <Table columns={columns} rows={resourcesAllocated} />
+      </div>
     </Card>
   );
 };
@@ -73,7 +75,7 @@ const ResourceAllocationPageSkeleton = () => {
   const { resourcePoolId } = useParams();
 
   return (
-    <Card className="w-full max-w-[606px]">
+    <Card className="ml-1 w-full min-w-[450px] max-w-[606px] sticky right-2">
       <div className="pb-2 flex bg-custom-white items-center gap-1">
         <h3 className="font-semibold">Allocated resources</h3>
         <Badge>...</Badge>
@@ -86,6 +88,9 @@ const ResourceAllocationPageSkeleton = () => {
       </div>
 
       <div className="space-y-1">
+        <Skeleton className="h-7" />
+        <Skeleton className="h-7" />
+        <Skeleton className="h-7" />
         <Skeleton className="h-7" />
         <Skeleton className="h-7" />
         <Skeleton className="h-7" />
