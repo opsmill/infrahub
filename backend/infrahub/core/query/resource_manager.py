@@ -127,7 +127,7 @@ class PrefixPoolGetIdentifiers(Query):
         query = """
         MATCH (pool:%(ipaddress_pool)s { uuid: $pool_id })-[reservation:IS_RESERVED]->(allocated:BuiltinIPPrefix)
         WHERE allocated.uuid in $prefixes
-        """ % {"ipaddress_pool": InfrahubKind.PREFIXPOOL}
+        """ % {"ipaddress_pool": InfrahubKind.IPPREFIXPOOL}
         self.add_to_query(query)
         self.return_labels = ["allocated", "reservation"]
 
@@ -154,7 +154,7 @@ class PrefixPoolGetReserved(Query):
         query = """
         MATCH (pool:%(prefix_pool)s { uuid: $pool_id })-[rel:IS_RESERVED]->(prefix:BuiltinIPPrefix)
         WHERE rel.identifier = $identifier
-        """ % {"prefix_pool": InfrahubKind.PREFIXPOOL}
+        """ % {"prefix_pool": InfrahubKind.IPPREFIXPOOL}
         self.add_to_query(query)
         self.return_labels = ["prefix"]
 
@@ -194,7 +194,7 @@ class PrefixPoolSetReserved(Query):
         MATCH (pool:%(prefix_pool)s { uuid: $pool_id })
         MATCH (prefix:Node { uuid: $prefix_id })
         CREATE (pool)-[rel:IS_RESERVED $rel_prop]->(prefix)
-        """ % {"prefix_pool": InfrahubKind.PREFIXPOOL}
+        """ % {"prefix_pool": InfrahubKind.IPPREFIXPOOL}
 
         self.add_to_query(query)
         self.return_labels = ["pool", "rel", "prefix"]

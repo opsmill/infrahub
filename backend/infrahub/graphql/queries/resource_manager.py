@@ -52,7 +52,7 @@ class PoolAllocatedEdge(ObjectType):
 
 
 def _validate_pool_type(pool_id: str, pool: Optional[Node] = None) -> Node:
-    if not pool or pool._schema.kind not in [InfrahubKind.IPADDRESSPOOL, InfrahubKind.PREFIXPOOL]:
+    if not pool or pool._schema.kind not in [InfrahubKind.IPADDRESSPOOL, InfrahubKind.IPPREFIXPOOL]:
         raise NodeNotFoundError(node_type="ResourcePool", identifier=pool_id)
     return pool
 
@@ -113,7 +113,7 @@ class PoolAllocated(ObjectType):
                 allocated_ids = [node["node"]["id"] for node in nodes]
                 identifier_query_map = {
                     InfrahubKind.IPADDRESSPOOL: IPAddressPoolGetIdentifiers,
-                    InfrahubKind.PREFIXPOOL: PrefixPoolGetIdentifiers,
+                    InfrahubKind.IPPREFIXPOOL: PrefixPoolGetIdentifiers,
                 }
                 identifier_query_class = identifier_query_map.get(pool.get_kind())
                 if not identifier_query_class:

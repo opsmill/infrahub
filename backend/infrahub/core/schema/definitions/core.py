@@ -1659,7 +1659,7 @@ core_models: dict[str, Any] = {
             ],
         },
         {
-            "name": "PrefixPool",
+            "name": "IPPrefixPool",
             "namespace": "Core",
             "description": "A pool of IP prefix resources",
             "label": "Prefix Pool",
