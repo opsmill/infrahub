@@ -41,11 +41,13 @@ test.describe("object dropdown creation", () => {
     ]);
 
     // Open tags options
-    await page
-      .getByTestId("select-container")
-      .nth(6)
-      .getByTestId("select-open-option-button")
-      .click();
+    const tagsMultiSelectOpenButton = page
+      .getByTestId("side-panel-container")
+      .getByText("Tags")
+      .locator("../..")
+      .getByTestId("select-open-option-button");
+
+    await tagsMultiSelectOpenButton.click();
 
     // Add new option
     await page.getByRole("option", { name: "Add Tag" }).click();
