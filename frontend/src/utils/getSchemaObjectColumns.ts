@@ -325,7 +325,7 @@ export const getSelectParent = (row: any, field: any) => {
 
 export const getOptionsFromAttribute = (attribute: any, value: any) => {
   if (attribute.kind === "List") {
-    return value?.map((option: any) => ({
+    return (value || [])?.map((option: any) => ({
       name: option,
       id: option,
     }));
