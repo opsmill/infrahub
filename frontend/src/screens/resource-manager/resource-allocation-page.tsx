@@ -11,6 +11,7 @@ import { constructPath } from "../../utils/fetch";
 import { getObjectDetailsUrl2 } from "../../utils/objects";
 import { Skeleton } from "../../components/skeleton";
 import { QSP } from "../../config/qsp";
+import { Pagination } from "../../components/utils/pagination";
 
 const ResourceAllocationPage = () => {
   const { resourcePoolId, resourceId } = useParams();
@@ -64,8 +65,9 @@ const ResourceAllocationPage = () => {
         </Link>
       </div>
 
-      <div className="min-h-0 overflow-y-auto">
+      <div className="overflow-y-auto">
         <Table columns={columns} rows={resourcesAllocated} />
+        <Pagination count={totalOfResourcesAllocated} className="pb-0" />
       </div>
     </Card>
   );
