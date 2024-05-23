@@ -259,28 +259,29 @@ class IPPrefixUtilization(Query):
             return f"{rel_name}.from <= $time_at AND ({rel_name}.to IS NULL OR {rel_name}.to >= $time_at)"
 
         query = f"""
-        MATCH (pfx:Node WHERE pfx.uuid IN $ids)
+        MATCH (pfx:Node)
+        WHERE pfx.uuid IN $ids
         CALL {{
             WITH pfx
-            MATCH (
-                (pfx)
-                <-[r_rel1:IS_RELATED WHERE ({rel_filter("r_rel1")})]-(rl:Relationship {{name: "parent__child"}})
-                <-[r_rel2:IS_RELATED WHERE ({rel_filter("r_rel2")})]-(child:{InfrahubKind.IPPREFIX})
-            )
-            RETURN r_rel1, rl, r_rel2, child
-            UNION
-            MATCH path = (
-                (pfx)
-                -[r_rel1:IS_RELATED WHERE ({rel_filter("r_rel1")})]->(rl:Relationship {{name: "ip_prefix__ip_address"}})
-                <-[r_rel2:IS_RELATED WHERE ({rel_filter("r_rel2")})]-(child:{InfrahubKind.IPADDRESS})
-            )
+            MATCH (pfx)-[r_rel1:IS_RELATED]-(rl:Relationship)<-[r_rel2:IS_RELATED]-(child:Node)
+            WHERE rl.name IN ["parent__child", "ip_prefix__ip_address"]
+            AND any(l IN labels(child) WHERE l in ["{InfrahubKind.IPPREFIX}", "{InfrahubKind.IPADDRESS}"])
+            AND ({rel_filter("r_rel1")})
+            AND ({rel_filter("r_rel2")})
             RETURN r_rel1, rl, r_rel2, child
         }}
+        WITH pfx, r_rel1, rl, r_rel2, child
         MATCH path = (
-            (pfx)-[r_rel1]-(rl)-[r_rel2]-(child)
-            -[r_attr:HAS_ATTRIBUTE WHERE ({rel_filter("r_attr")})]->(attr:Attribute WHERE attr.name IN ["prefix", "address"])
-            -[r_attr_val:HAS_VALUE WHERE ({rel_filter("r_attr_val")})]->(av:AttributeIPNetwork|AttributeIPHost)
+            (pfx)-[r_1:IS_RELATED]-(rl:Relationship)-[r_2:IS_RELATED]-(child:Node)
+            -[r_attr:HAS_ATTRIBUTE]->(attr:Attribute)
+            -[r_attr_val:HAS_VALUE]->(av:AttributeValue)
         )
+        WHERE ID(r_1) = ID(r_rel1)
+        AND ID(r_2) = ID(r_rel2)
+        AND ({rel_filter("r_attr")})
+        AND ({rel_filter("r_attr_val")})
+        AND attr.name IN ["prefix", "address"]
+        AND any(l in labels(av) WHERE l in ["{PREFIX_ATTRIBUTE_LABEL}", "{ADDRESS_ATTRIBUTE_LABEL}"])
         WITH
             path,
             pfx,
@@ -288,12 +289,12 @@ class IPPrefixUtilization(Query):
             av,
             reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS sum_branch_level,
             all(r in relationships(path) WHERE r.status = "active") AS is_active,
-            reverse([r IN relationships(path) | r.from]) AS from_times,
+            [r_attr_val.from, r_attr.from, r_2.from, r_1.from] AS from_times,
             reduce(
                 b_details = [0, null], r in relationships(path) |
                 CASE WHEN r.branch_level > b_details[0] THEN [r.branch_level, r.branch] ELSE b_details END
             ) as deepest_branch_details
-        ORDER BY pfx, child, av, sum_branch_level DESC, from_times DESC
+        ORDER BY pfx.uuid, child.uuid, av.uuid, sum_branch_level DESC, from_times[3] DESC, from_times[2] DESC, from_times[1] DESC, from_times[0] DESC
         WITH
             pfx,
             child,
