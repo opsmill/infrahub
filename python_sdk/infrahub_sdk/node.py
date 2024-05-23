@@ -423,6 +423,10 @@ class RelationshipManagerBase:
     def _generate_input_data(self) -> List[Dict]:
         return [peer._generate_input_data() for peer in self.peers]
 
+    def _generate_mutation_query(self) -> Dict[str, Any]:
+        # Does nothing for now
+        return {}
+
     @classmethod
     def _generate_query_data(cls, peer_data: Optional[Dict[str, Any]] = None) -> Dict:
         """Generates the basic structure of a GraphQL query for relationships with multiple nodes.
@@ -1341,7 +1345,7 @@ class InfrahubNode(InfrahubNodeBase):
 
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
-            if not isinstance(rel, RelatedNode) or not rel.is_resource_pool:
+            if rel_name not in object_response or not isinstance(rel, RelatedNode) or not rel.is_resource_pool:
                 continue
 
             # Process allocated resource from a pool and update related node
@@ -1380,19 +1384,21 @@ class InfrahubNode(InfrahubNodeBase):
 
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
         mutation_query = self._generate_mutation_query()
+        mutation_name = f"{self._schema.kind}Update"
 
         query = Mutation(
-            mutation=f"{self._schema.kind}Update",
+            mutation=mutation_name,
             input_data=input_data["data"],
             query=mutation_query,
             variables=input_data["mutation_variables"],
         )
-        await self._client.execute_graphql(
+        response = await self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
             variables=input_data["variables"],
         )
+        await self._process_mutation_result(mutation_name=mutation_name, response=response)
 
     async def _process_relationships(
         self, node_data: Dict[str, Any], branch: str, related_nodes: List[InfrahubNode]
@@ -1705,7 +1711,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
         for rel_name in self._relationships:
             rel = getattr(self, rel_name)
-            if not isinstance(rel, RelatedNodeSync) or not rel.is_resource_pool:
+            if rel_name not in object_response or not isinstance(rel, RelatedNodeSync) or not rel.is_resource_pool:
                 continue
 
             # Process allocated resource from a pool and update related node
@@ -1745,21 +1751,23 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
         mutation_query = self._generate_mutation_query()
+        mutation_name = f"{self._schema.kind}Update"
 
         query = Mutation(
-            mutation=f"{self._schema.kind}Update",
+            mutation=mutation_name,
             input_data=input_data["data"],
             query=mutation_query,
             variables=input_data["mutation_variables"],
         )
 
-        self._client.execute_graphql(
+        response = self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
             variables=input_data["variables"],
         )
+        self._process_mutation_result(mutation_name=mutation_name, response=response)
 
     def _process_relationships(
         self, node_data: Dict[str, Any], branch: str, related_nodes: List[InfrahubNodeSync]

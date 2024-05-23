@@ -374,3 +374,30 @@ class TestInfrahubNode:
             "192.0.2.3/32",
             "192.0.2.4/32",
         ]
+
+    async def test_node_update_from_pool(
+        self, db: InfrahubDatabase, client: InfrahubClient, init_db_base, default_ipam_namespace, load_ipam_schema
+    ):
+        starter_ip_address = await client.create(kind="IpamIPAddress", address="10.0.0.1/32")
+        await starter_ip_address.save()
+
+        ip_prefix = await client.create(kind="IpamIPPrefix", prefix="192.0.2.0/24")
+        await ip_prefix.save()
+
+        ip_pool = await client.create(
+            kind="CoreIPAddressPool",
+            name="Core loopbacks",
+            default_address_type="IpamIPAddress",
+            default_prefix_size=32,
+            ip_namespace=default_ipam_namespace,
+            resources=[ip_prefix],
+        )
+        await ip_pool.save()
+
+        device = await client.create(kind="InfraDevice", name="core01", primary_address=starter_ip_address)
+        await device.save()
+
+        device.primary_address = ip_pool
+        await device.save()
+
+        assert str(device.primary_address.peer.address.value) == "192.0.2.1/32"
