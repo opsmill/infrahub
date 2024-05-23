@@ -799,6 +799,96 @@ class InfrahubClient(BaseClient):
         )
         return response["DiffSummary"]
 
+    async def allocate_next_ip_address(
+        self,
+        resource_pool: InfrahubNode,
+        identifier: Optional[str] = None,
+        branch: Optional[str] = None,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> Optional[InfrahubNode]:
+        if resource_pool.get_kind() != "CoreIPAddressPool":
+            raise ValueError("resource_pool is not an IP address pool")
+
+        branch = branch or self.default_branch
+
+        mutation_parameters = f'id: "{resource_pool.id}"'
+        if identifier:
+            mutation_parameters += f'\nidentifier: "{identifier}"'
+
+        query = (
+            """
+            mutation {
+                IPAddressPoolGetResource(data: {
+                    %s
+                }) {
+                    ok
+                    node {
+                        id
+                        kind
+                        identifier
+                        display_label
+                    }
+                }
+            }
+        """
+            % mutation_parameters
+        )
+        response = await self.execute_graphql(
+            query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
+        )
+
+        if response["IPAddressPoolGetResource"]["ok"]:
+            resource_details = response["IPAddressPoolGetResource"]["node"]
+            return await self.get(kind=resource_details["kind"], id=resource_details["id"], branch=branch)
+        return None
+
+    async def allocate_next_ip_prefix(
+        self,
+        resource_pool: InfrahubNode,
+        identifier: Optional[str] = None,
+        branch: Optional[str] = None,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> Optional[InfrahubNode]:
+        if resource_pool.get_kind() != "CorePrefixPool":
+            raise ValueError("resource_pool is not an IP prefix pool")
+
+        branch = branch or self.default_branch
+
+        mutation_parameters = f'id: "{resource_pool.id}"'
+        if identifier:
+            mutation_parameters += f'\nidentifier: "{identifier}"'
+
+        query = (
+            """
+            mutation {
+                IPPrefixPoolGetResource(data: {
+                    %s
+                }) {
+                    ok
+                    node {
+                        id
+                        kind
+                        identifier
+                        display_label
+                    }
+                }
+            }
+        """
+            % mutation_parameters
+        )
+        response = await self.execute_graphql(
+            query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
+        )
+
+        if response["IPPrefixPoolGetResource"]["ok"]:
+            resource_details = response["IPPrefixPoolGetResource"]["node"]
+            return await self.get(kind=resource_details["kind"], id=resource_details["id"], branch=branch)
+        return None
+
     async def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:
         return InfrahubBatch(semaphore=self.concurrent_execution_limit, return_exceptions=return_exceptions)
 
@@ -1313,6 +1403,96 @@ class InfrahubClientSync(BaseClient):
             query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
         )
         return response["DiffSummary"]
+
+    def allocate_next_ip_address(
+        self,
+        resource_pool: InfrahubNodeSync,
+        identifier: Optional[str] = None,
+        branch: Optional[str] = None,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> Optional[InfrahubNodeSync]:
+        if resource_pool.get_kind() != "CoreIPAddressPool":
+            raise ValueError("resource_pool is not an IP address pool")
+
+        branch = branch or self.default_branch
+
+        mutation_parameters = f'id: "{resource_pool.id}"'
+        if identifier:
+            mutation_parameters += f'\nidentifier: "{identifier}"'
+
+        query = (
+            """
+            mutation {
+                IPAddressPoolGetResource(data: {
+                    %s
+                }) {
+                    ok
+                    node {
+                        id
+                        kind
+                        identifier
+                        display_label
+                    }
+                }
+            }
+        """
+            % mutation_parameters
+        )
+        response = self.execute_graphql(
+            query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
+        )
+
+        if response["IPAddressPoolGetResource"]["ok"]:
+            resource_details = response["IPAddressPoolGetResource"]["node"]
+            return self.get(kind=resource_details["kind"], id=resource_details["id"], branch=branch)
+        return None
+
+    def allocate_next_ip_prefix(
+        self,
+        resource_pool: InfrahubNodeSync,
+        identifier: Optional[str] = None,
+        branch: Optional[str] = None,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> Optional[InfrahubNodeSync]:
+        if resource_pool.get_kind() != "CorePrefixPool":
+            raise ValueError("resource_pool is not an IP prefix pool")
+
+        branch = branch or self.default_branch
+
+        mutation_parameters = f'id: "{resource_pool.id}"'
+        if identifier:
+            mutation_parameters += f'\nidentifier: "{identifier}"'
+
+        query = (
+            """
+            mutation {
+                IPPrefixPoolGetResource(data: {
+                    %s
+                }) {
+                    ok
+                    node {
+                        id
+                        kind
+                        identifier
+                        display_label
+                    }
+                }
+            }
+        """
+            % mutation_parameters
+        )
+        response = self.execute_graphql(
+            query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
+        )
+
+        if response["IPPrefixPoolGetResource"]["ok"]:
+            resource_details = response["IPPrefixPoolGetResource"]["node"]
+            return self.get(kind=resource_details["kind"], id=resource_details["id"], branch=branch)
+        return None
 
     def repository_update_commit(
         self, branch_name: str, repository_id: str, commit: str, is_read_only: bool = False
