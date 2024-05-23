@@ -95,19 +95,6 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
   const properties: Property[] = [
     { name: "ID", value: resourcePool.id },
     ...(schema.attributes ?? []).map((schemaAttribute) => {
-      if (schemaAttribute.name === "utilization") {
-        return {
-          name: schemaAttribute.label || schemaAttribute.name,
-          value: (
-            <ResourcePoolUtilization
-              utilizationOverall={resourcePoolUtilization.utilization}
-              utilizationDefaultBranch={resourcePoolUtilization.utilization_default_branch}
-              utilizationOtherBranches={resourcePoolUtilization.utilization_branches}
-            />
-          ),
-        };
-      }
-
       return {
         name: schemaAttribute.label || schemaAttribute.name,
         value: (
@@ -118,6 +105,16 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
         ),
       };
     }),
+    {
+      name: "Utilization",
+      value: (
+        <ResourcePoolUtilization
+          utilizationOverall={resourcePoolUtilization.utilization}
+          utilizationDefaultBranch={resourcePoolUtilization.utilization_default_branch}
+          utilizationOtherBranches={resourcePoolUtilization.utilization_branches}
+        />
+      ),
+    },
     ...(schema.relationships ?? [])
       .filter(({ name }) => !IP_SUMMARY_RELATIONSHIPS_BLACKLIST.includes(name))
       .map((schemaRelationship) => {
