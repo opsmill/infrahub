@@ -12,10 +12,10 @@ test.describe("/proposed-changes", () => {
   });
 
   test.describe("when not logged in", () => {
-    test.fixme("should not be able to create a proposed changes", async ({ page }) => {
+    test("should not be able to create a proposed changes", async ({ page }) => {
       await page.goto("/proposed-changes");
 
-      await expect(page.getByText("ProposedChange")).toBeVisible();
+      await expect(page.getByRole("main").getByText("Proposed changes")).toBeVisible();
       await expect(page.getByTestId("add-proposed-changes-button")).toBeDisabled();
     });
   });
