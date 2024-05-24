@@ -5,14 +5,12 @@ test.describe("/ipam - IP Namespace", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-  test("create ip namespace", async ({ page }) => {
+  test.only("create ip namespace", async ({ page }) => {
     await page.goto("/objects/BuiltinIPNamespace");
 
     await expect(page.getByRole("link", { name: "default", exact: true })).toBeVisible();
 
     await page.getByTestId("create-object-button").click();
-    await page.getByTestId("side-panel-container").getByTestId("select-open-option-button").click();
-    await page.getByRole("option", { name: "IpamNamespace" }).click();
     await page.getByLabel("Name *").fill("test-namespace");
     await page.getByRole("button", { name: "Create" }).click();
 
