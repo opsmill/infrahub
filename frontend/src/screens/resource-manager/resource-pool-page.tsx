@@ -151,9 +151,9 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
         />
       </Content.Title>
 
-      <div className="p-2 gap-2 flex">
-        <aside className="inline-flex flex-col gap-2">
-          <CardWithBorder>
+      <div className="p-2 flex items-start h-[calc(100%-64px)] overflow-hidden">
+        <aside className="inline-flex flex-col gap-2 shrink-0 mr-1">
+          <CardWithBorder className="shrink-0">
             <CardWithBorder.Title className="flex items-center justify-between gap-1">
               <div>
                 <Badge variant="blue">{schema.namespace}</Badge> {schema.label}
