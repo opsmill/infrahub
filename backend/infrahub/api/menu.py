@@ -76,7 +76,7 @@ async def get_menu(
                 icon=_extract_node_icon(full_schema[InfrahubKind.IPNAMESPACE]),
             ),
             InterfaceMenu(
-                title="Prefixes", path="/ipam/prefixes", icon=_extract_node_icon(full_schema[InfrahubKind.IPPREFIX])
+                title="IP Prefixes", path="/ipam/prefixes", icon=_extract_node_icon(full_schema[InfrahubKind.IPPREFIX])
             ),
             InterfaceMenu(
                 title="IP Addresses",
