@@ -121,10 +121,13 @@ async def get_paths_between_nodes(
     return await db.execute_query(query=query, params=params, name="get_paths_between_nodes")
 
 
-async def count_relationships(db: InfrahubDatabase) -> int:
+async def count_relationships(db: InfrahubDatabase, label: Optional[str] = None) -> int:
     """Return the total number of relationships in the database."""
-    query = """
-    MATCH ()-[r]->()
+
+    label_str = f":{label}" if label else ""
+
+    query = f"""
+    MATCH ()-[r{label_str}]->()
     RETURN count(r) as count
     """
 
@@ -146,11 +149,13 @@ async def get_nodes(db: InfrahubDatabase, label: str) -> List[Neo4jNode]:
     return [result[0] for result in results]
 
 
-async def count_nodes(db: InfrahubDatabase, label: str) -> int:
+async def count_nodes(db: InfrahubDatabase, label: Optional[str] = None) -> int:
     """Return the total number of nodes of a given label in the database."""
-    query = """
-    MATCH (node)
-    WHERE $label IN LABELS(node)
+
+    label_str = f":{label}" if label else ""
+
+    query = f"""
+    MATCH (node{label_str})
     RETURN count(node) as count
     """
     params: dict = {"label": label}
