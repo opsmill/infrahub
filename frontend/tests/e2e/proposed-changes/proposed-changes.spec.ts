@@ -15,7 +15,7 @@ test.describe("/proposed-changes", () => {
     test("should not be able to create a proposed changes", async ({ page }) => {
       await page.goto("/proposed-changes");
 
-      await expect(page.getByRole("main").getByText("Proposed changes")).toBeVisible();
+      await expect(page.getByRole("main")).toContainText("Proposed changes");
       await expect(page.getByTestId("add-proposed-changes-button")).toBeDisabled();
     });
   });
@@ -23,13 +23,13 @@ test.describe("/proposed-changes", () => {
   test.describe("when logged in as Admin", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-    test.fixme("should be able to create a proposed changes", async ({ page }) => {
+    test("should be able to create a proposed changes", async ({ page }) => {
       await page.goto("/proposed-changes");
 
-      await expect(page.getByText("ProposedChange")).toBeVisible();
+      await expect(page.getByRole("main")).toContainText("Proposed changes");
       await expect(page.getByTestId("add-proposed-changes-button")).toBeEnabled();
       await page.getByTestId("add-proposed-changes-button").click();
-      await expect(page.getByText("Create Proposed Changes")).toBeVisible();
+      await expect(page.getByText("Create a proposed change")).toBeVisible();
     });
 
     test.fixme(
