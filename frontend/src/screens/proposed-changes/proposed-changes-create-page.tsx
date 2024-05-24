@@ -18,6 +18,7 @@ import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { DynamicControl } from "../edit-form-hook/dynamic-control";
 import Content from "../layout/content";
+import { resolve } from "../../utils/objects";
 
 const ProposedChangesCreatePage = () => {
   const permission = usePermission();
@@ -91,8 +92,16 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
               label="Source Branch"
               value=""
               options={branchesToSelectOptions(sourceBranches)}
+              error={resolve("source_branch", form.formState.errors)}
               config={{
-                validate: (value) => !!value || "Required",
+                validate: (value) => {
+                  if (!value) return "Required";
+
+                  const branchesName = sourceBranches.map(({ name }) => name);
+                  if (!branchesName.includes(value.id)) return "Branch does not exist";
+
+                  return true;
+                },
               }}
             />
           </div>
@@ -110,6 +119,7 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
               config={{
                 validate: (value) => !!value || "Required",
               }}
+              error={resolve("destination_branch", form.formState.errors)}
               isProtected
             />
           </div>
@@ -122,6 +132,7 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
             type="text"
             label="Name"
             value=""
+            error={resolve("name", form.formState.errors)}
             config={{ validate: (value) => !!value || "Required" }}
           />
         </div>
@@ -133,6 +144,7 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
             type="textarea"
             label="Description"
             value=""
+            error={resolve("description", form.formState.errors)}
             isOptional
           />
         </div>
@@ -150,6 +162,7 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
               })) ?? []
             }
             value={[]}
+            error={resolve("reviewers", form.formState.errors)}
             isOptional
           />
         </div>
