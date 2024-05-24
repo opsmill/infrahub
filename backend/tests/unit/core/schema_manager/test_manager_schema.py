@@ -26,6 +26,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import SchemaNotFoundError
 
 from .conftest import _get_schema_by_kind
 
@@ -369,7 +370,7 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
     schema.process_inheritance()
     schema.add_profile_schemas()
 
-    profile = schema.get(name="ProfileBuiltinCriticality")
+    profile = schema.get(name="ProfileBuiltinCriticality", duplicate=False)
     assert profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
     assert profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
     assert set(profile.attribute_names) == {"profile_name", "profile_priority", "description"}
@@ -393,6 +394,28 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
         "InfraTinySchema",
         "ProfileBuiltinCriticality",
         "ProfileBuiltinTag",
+        "ProfileBuiltinStatus",
+        "ProfileBuiltinBadge",
+        "ProfileCoreStandardGroup",
+        "ProfileInfraTinySchema",
+    }
+
+
+async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one):
+    core_profile_schema = _get_schema_by_kind(core_models, kind="CoreProfile")
+    schema_all_in_one["generics"].append(core_profile_schema)
+    builtin_tag_schema = _get_schema_by_kind(schema_all_in_one, kind="BuiltinTag")
+    builtin_tag_schema["generate_profile"] = False
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    schema.add_profile_schemas()
+
+    with pytest.raises(SchemaNotFoundError):
+        schema.get(name="ProfileBuiltinTag")
+    core_profile_schema = schema.get("CoreProfile")
+    assert set(core_profile_schema.used_by) == {
+        "ProfileBuiltinCriticality",
         "ProfileBuiltinStatus",
         "ProfileBuiltinBadge",
         "ProfileCoreStandardGroup",

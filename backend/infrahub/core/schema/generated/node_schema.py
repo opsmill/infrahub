@@ -15,6 +15,11 @@ class GeneratedNodeSchema(BaseNodeSchema):
         description="List of Generic Kind that this node is inheriting from",
         json_schema_extra={"update": "not_supported"},
     )
+    generate_profile: bool = Field(
+        default=True,
+        description="Indicate if a profile schema should be generated for this schema",
+        json_schema_extra={"update": "validate_constraint"},
+    )
     hierarchy: Optional[str] = Field(
         default=None,
         description="Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode",

@@ -562,9 +562,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 raise ValidationError("Only Attribute can be used in Display Label")
 
             attr = getattr(self, item_elements[0])
-            display_elements.append(str(getattr(attr, item_elements[1])))
+            display_elements.append(getattr(attr, item_elements[1]))
 
-        display_label = " ".join(display_elements)
+        if not display_elements or all(de is None for de in display_elements):
+            return ""
+        display_label = " ".join([str(de) for de in display_elements])
         if not display_label.strip():
             return repr(self)
         return display_label.strip()

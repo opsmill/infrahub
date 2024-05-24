@@ -395,6 +395,14 @@ node_schema = SchemaNode(
             extra={"update": UpdateSupport.NOT_SUPPORTED},
         ),
         SchemaAttribute(
+            name="generate_profile",
+            kind="Boolean",
+            description="Indicate if a profile schema should be generated for this schema",
+            default_value=True,
+            optional=True,
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
             name="hierarchy",
             kind="Text",
             description="Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode",

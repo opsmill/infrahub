@@ -1390,6 +1390,8 @@ class SchemaBranch:
             node = self.get_node(name=node_name, duplicate=False)
             if node.namespace in RESTRICTED_NAMESPACES:
                 continue
+            if not node.generate_profile:
+                continue
 
             profile = self.generate_profile_from_node(node=node)
             self.set(name=profile.kind, schema=profile)
@@ -1423,7 +1425,8 @@ class SchemaBranch:
             node = self.get_node(name=node_name, duplicate=False)
             if node.namespace in RESTRICTED_NAMESPACES:
                 continue
-
+            if not node.generate_profile:
+                continue
             if "profiles" in node.relationship_names:
                 continue
 
