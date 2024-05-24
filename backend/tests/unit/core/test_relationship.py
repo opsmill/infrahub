@@ -6,7 +6,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.node.resource_manager.ip_prefix_pool import CorePrefixPool
+from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship.model import Relationship, RelationshipValidatorList
 from infrahub.core.schema_manager import SchemaBranch
@@ -418,10 +418,10 @@ async def test_relationship_assign_from_pool(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
     mandatory_prefix_schema = registry.schema.get_node_schema(name="TestMandatoryPrefix", branch=default_branch)
 
-    pool = await CorePrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
     await pool.new(
         db=db,
         name="pool1",

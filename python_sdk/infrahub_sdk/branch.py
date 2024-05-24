@@ -9,6 +9,7 @@ except ImportError:
 
 from infrahub_sdk.exceptions import BranchNotFoundError
 from infrahub_sdk.graphql import Mutation, Query
+from infrahub_sdk.utils import decode_json
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
@@ -181,7 +182,7 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
             time_to=time_to,
         )
         response = await self.client._get(url=url, headers=self.client.headers)
-        return response.json()
+        return decode_json(response=response, url=url)
 
 
 class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
@@ -254,7 +255,7 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
             time_to=time_to,
         )
         response = self.client._get(url=url, headers=self.client.headers)
-        return response.json()
+        return decode_json(response=response, url=url)
 
     def merge(self, branch_name: str) -> BranchData:
         input_data = {

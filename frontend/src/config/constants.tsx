@@ -128,6 +128,7 @@ export const VALIDATIONS_ENUM_MAP: { [key: string]: string } = {
 };
 
 export const MAX_VALUE_LENGTH_DISPLAY = 40;
+export const MAX_PASSWORD_DOTS_DISPLAY = 20;
 
 export const attributesKindForListView = [
   "Text",

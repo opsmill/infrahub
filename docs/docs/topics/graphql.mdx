@@ -189,11 +189,11 @@ In addition to the queries and the mutations automatically generated based on th
 - **Mutation**: `BranchMerge`, Merge a branch into main
 - **Mutation**: `BranchValidate`, Validate if a branch has some conflicts
 
-## GraphQLQuery
+## Stored GraphQL queries in the database
 
 The `GraphQLQuery` model has been designed to store a GraphQL query in order to simplify its execution and to associate it with other internal objects like `Transformation`.
 
-A `GraphQLQuery` object can be created directly from the API or it can be imported from a Git repository.
+A `GraphQLQuery` object can be created via the web interface, the API or it can be imported from a Git repository.
 
 Every time a `GraphQLQuery` is created or updated, the content of the query will be analyzed to:
 
@@ -211,3 +211,7 @@ Every time a `GraphQLQuery` is created or updated, the content of the query will
 ### Import from a Git repository
 
 The Git agent will automatically try to import all files with the extension `.gql` into a `GraphQLQuery` with the name of the file as the name of the query.
+
+### Executing stored GraphQL queries
+
+Stored GraphQL queries can be executed by using the `/api/query/{query_id}` REST API endpoint. The `{query_id}` can be the name or the id of the `GraphQLQuery` node in the database. More information can be found in the [Swagger documentation](http://localhost:8000/api/docs).

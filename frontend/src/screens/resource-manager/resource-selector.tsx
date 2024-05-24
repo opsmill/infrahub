@@ -6,6 +6,7 @@ import { getObjectDetailsUrl2 } from "../../utils/objects";
 import ResourcePoolUtilization from "./common/ResourcePoolUtilization";
 import { PropertyList } from "../../components/table/property-list";
 import { constructPath } from "../../utils/fetch";
+import { HTMLAttributes } from "react";
 
 export type ResourceProps = {
   id: string;
@@ -15,18 +16,19 @@ export type ResourceProps = {
   utilization_branches: number;
   utilization_default_branch: number;
 };
-type ResourcePoolSelectorProps = {
+interface ResourcePoolSelectorProps extends HTMLAttributes<HTMLDivElement> {
   resources: Array<ResourceProps>;
-};
+}
 
-const ResourceSelector = ({ resources }: ResourcePoolSelectorProps) => {
+const ResourceSelector = ({ resources, className, ...props }: ResourcePoolSelectorProps) => {
   return (
-    <CardWithBorder className="divide-y">
+    <CardWithBorder className={className} {...props}>
       <CardWithBorder.Title className="bg-custom-white border-b">
         Resources <Badge>{resources.length}</Badge>
       </CardWithBorder.Title>
 
       <PropertyList
+        className="block overflow-auto"
         valueClassName="w-full"
         properties={resources.map((resource) => ({
           name: (

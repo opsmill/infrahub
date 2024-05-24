@@ -11,6 +11,7 @@ import { constructPath } from "../../utils/fetch";
 import { getObjectDetailsUrl2 } from "../../utils/objects";
 import { Skeleton } from "../../components/skeleton";
 import { QSP } from "../../config/qsp";
+import { Pagination } from "../../components/utils/pagination";
 
 const ResourceAllocationPage = () => {
   const { resourcePoolId, resourceId } = useParams();
@@ -52,7 +53,7 @@ const ResourceAllocationPage = () => {
     },
   ];
   return (
-    <Card>
+    <Card className="flex flex-col ml-1 min-w-min max-w-fit sticky right-0 overflow-hidden max-h-full">
       <div className="pb-2 flex bg-custom-white items-center gap-1">
         <h3 className="font-semibold">Allocated resources</h3>
         <Badge>{totalOfResourcesAllocated}</Badge>
@@ -64,7 +65,10 @@ const ResourceAllocationPage = () => {
         </Link>
       </div>
 
-      <Table columns={columns} rows={resourcesAllocated} />
+      <div className="overflow-y-auto">
+        <Table columns={columns} rows={resourcesAllocated} />
+        <Pagination count={totalOfResourcesAllocated} className="pb-0" />
+      </div>
     </Card>
   );
 };
@@ -73,7 +77,7 @@ const ResourceAllocationPageSkeleton = () => {
   const { resourcePoolId } = useParams();
 
   return (
-    <Card className="w-full max-w-[606px]">
+    <Card className="ml-1 w-full min-w-[450px] max-w-[606px] sticky right-0">
       <div className="pb-2 flex bg-custom-white items-center gap-1">
         <h3 className="font-semibold">Allocated resources</h3>
         <Badge>...</Badge>
@@ -86,6 +90,9 @@ const ResourceAllocationPageSkeleton = () => {
       </div>
 
       <div className="space-y-1">
+        <Skeleton className="h-7" />
+        <Skeleton className="h-7" />
+        <Skeleton className="h-7" />
         <Skeleton className="h-7" />
         <Skeleton className="h-7" />
         <Skeleton className="h-7" />

@@ -1,11 +1,10 @@
 import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 import { FormProvider, useForm } from "react-hook-form";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { BUTTON_TYPES, Button } from "../../components/buttons/button";
-import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
+import { Button } from "../../components/buttons/button-primitive";
 import { Card } from "../../components/ui/card";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { CREATE_PROPOSED_CHANGE } from "../../graphql/mutations/proposed-changes/createProposedChange";
@@ -19,6 +18,7 @@ import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { DynamicControl } from "../edit-form-hook/dynamic-control";
 import Content from "../layout/content";
+import { resolve } from "../../utils/objects";
 
 const ProposedChangesCreatePage = () => {
   const permission = usePermission();
@@ -29,7 +29,7 @@ const ProposedChangesCreatePage = () => {
 
   return (
     <Content>
-      <div className="p-4 px-8 max-w-2xl m-auto mt-0 md:mt-4 bg-white rounded-md">
+      <Card className="p-4 px-8 max-w-2xl m-auto mt-0 md:mt-4">
         <h1 className="text-xl font-semibold text-gray-700">Create a proposed change</h1>
         <p className="text-xs text-gray-700 mb-6">
           A proposed change lets you compare two branches, run tests, and finally merge one branch
@@ -37,7 +37,7 @@ const ProposedChangesCreatePage = () => {
         </p>
 
         <ProposedChangeCreateForm />
-      </div>
+      </Card>
     </Content>
   );
 };
@@ -92,8 +92,16 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
               label="Source Branch"
               value=""
               options={branchesToSelectOptions(sourceBranches)}
+              error={resolve("source_branch", form.formState.errors)}
               config={{
-                validate: (value) => !!value || "Required",
+                validate: (value) => {
+                  if (!value) return "Required";
+
+                  const branchesName = sourceBranches.map(({ name }) => name);
+                  if (!branchesName.includes(value.id)) return "Branch does not exist";
+
+                  return true;
+                },
               }}
             />
           </div>
@@ -111,6 +119,7 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
               config={{
                 validate: (value) => !!value || "Required",
               }}
+              error={resolve("destination_branch", form.formState.errors)}
               isProtected
             />
           </div>
@@ -123,6 +132,7 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
             type="text"
             label="Name"
             value=""
+            error={resolve("name", form.formState.errors)}
             config={{ validate: (value) => !!value || "Required" }}
           />
         </div>
@@ -134,6 +144,7 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
             type="textarea"
             label="Description"
             value=""
+            error={resolve("description", form.formState.errors)}
             isOptional
           />
         </div>
@@ -151,17 +162,18 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
               })) ?? []
             }
             value={[]}
+            error={resolve("reviewers", form.formState.errors)}
             isOptional
           />
         </div>
 
         <div className="self-end align-middle">
           <Link to={constructPath("/proposed-changes")} className="mr-2">
-            <Button>Cancel</Button>
+            <Button variant="outline">Cancel</Button>
           </Link>
-          <ButtonWithTooltip type="submit" buttonType={BUTTON_TYPES.MAIN} disabled={loading}>
+          <Button type="submit" disabled={loading}>
             Create proposed change
-          </ButtonWithTooltip>
+          </Button>
         </div>
 
         {error && (

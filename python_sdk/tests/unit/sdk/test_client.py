@@ -20,12 +20,24 @@ async def test_method_sanity():
 
 
 @pytest.mark.parametrize("method", async_client_methods)
-async def test_validate_method_signature(method, replace_async_return_annotation, replace_sync_return_annotation):
+async def test_validate_method_signature(
+    method,
+    replace_async_return_annotation,
+    replace_sync_return_annotation,
+    replace_async_parameter_annotations,
+    replace_sync_parameter_annotations,
+):
     async_method = getattr(InfrahubClient, method)
     sync_method = getattr(InfrahubClientSync, method)
     async_sig = inspect.signature(async_method)
     sync_sig = inspect.signature(sync_method)
-    assert async_sig.parameters == sync_sig.parameters
+
+    assert replace_async_parameter_annotations(async_sig.parameters) == replace_async_parameter_annotations(
+        sync_sig.parameters
+    )
+    assert replace_sync_parameter_annotations(async_sig.parameters) == replace_sync_parameter_annotations(
+        sync_sig.parameters
+    )
     assert async_sig.return_annotation == replace_sync_return_annotation(sync_sig.return_annotation)
     assert replace_async_return_annotation(async_sig.return_annotation) == sync_sig.return_annotation
 

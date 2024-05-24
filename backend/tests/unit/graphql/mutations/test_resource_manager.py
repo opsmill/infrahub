@@ -6,7 +6,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
-from infrahub.core.node.resource_manager.ip_prefix_pool import CorePrefixPool
+from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
@@ -24,9 +24,9 @@ async def prefix_pool_01(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
 
-    pool = await CorePrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
     await pool.new(
         db=db,
         name="pool1",
@@ -260,9 +260,9 @@ async def test_prefix_pool_get_resource(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
 
-    pool = await CorePrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
     await pool.new(
         db=db,
         name="pool1",
@@ -319,9 +319,9 @@ async def test_prefix_pool_get_resource_with_identifier(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
 
-    pool = await CorePrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
     await pool.new(
         db=db,
         name="pool1",

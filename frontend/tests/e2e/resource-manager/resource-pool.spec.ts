@@ -25,10 +25,10 @@ test.describe("/resource-manager - Resource Manager", () => {
         const reqData = response.request().postDataJSON();
         const status = response.status();
 
-        return reqData?.operationName === "ProfileCorePrefixPool" && status === 200;
+        return reqData?.operationName === "ProfileCoreIPPrefixPool" && status === 200;
       }),
 
-      page.getByRole("option", { name: "CorePrefixPool" }).click(),
+      page.getByRole("option", { name: "CoreIPPrefixPool" }).click(),
     ]);
 
     await page.getByLabel("Name *").fill("test prefix pool");

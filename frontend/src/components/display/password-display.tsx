@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
-import { MAX_VALUE_LENGTH_DISPLAY } from "../../config/constants";
+import { MAX_PASSWORD_DOTS_DISPLAY, MAX_VALUE_LENGTH_DISPLAY } from "../../config/constants";
 import { BUTTON_TYPES, Button } from "../buttons/button";
 
 type tPasswordDisplayProps = {
@@ -32,7 +32,9 @@ export const PasswordDisplay = (props: tPasswordDisplayProps) => {
     );
   }
 
-  const passwordCircles = Array.from(Array(value.length)).map((value: null, index: number) => (
+  const passwordCircles = Array.from(
+    Array(value.length < MAX_PASSWORD_DOTS_DISPLAY ? value.length : MAX_PASSWORD_DOTS_DISPLAY)
+  ).map((value: null, index: number) => (
     <Icon key={index} icon={"mdi:circle-medium"} className="text-gray-900" />
   ));
 

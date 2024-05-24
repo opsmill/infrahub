@@ -4,7 +4,7 @@ export const IP_PREFIX_GENERIC = "BuiltinIPPrefix";
 export const POOLS_PEER = [IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC];
 export const POOLS_DICTIONNARY = {
   IpamIPAddress: "CoreIPAddressPool",
-  IpamIPPrefix: "CorePrefixPool",
+  IpamIPPrefix: "CoreIPPrefixPool",
 };
 
 export const IPAM_TREE_ROOT_ID = "root" as const;

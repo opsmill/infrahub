@@ -70,7 +70,7 @@ class TestIpamUtilization(TestInfrahubApp):
 
         prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
         address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
-        prefix_pool_schema = registry.schema.get_node_schema(name="CorePrefixPool", branch=default_branch)
+        prefix_pool_schema = registry.schema.get_node_schema(name="CoreIPPrefixPool", branch=default_branch)
         address_pool_schema = registry.schema.get_node_schema(name="CoreIPAddressPool", branch=default_branch)
 
         container = await Node.init(db=db, schema=prefix_schema)
