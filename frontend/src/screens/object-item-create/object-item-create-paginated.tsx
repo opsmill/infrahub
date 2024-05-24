@@ -98,7 +98,7 @@ export default function ObjectItemCreate(props: iProps) {
 
   const kindOptions = generic?.used_by?.map((kind: string) => ({ id: kind, name: kind })) ?? [];
 
-  if (kindOptions.length === 1 && !kind.id) {
+  if (kindOptions.length === 1 && !kind?.id) {
     // Pre-check first kind option for generic
     setKind(kindOptions[0]);
   }
@@ -186,7 +186,7 @@ export default function ObjectItemCreate(props: iProps) {
               Select an object type
             </label>
           </div>
-          <Select options={kindOptions} value={kind.id} onChange={handleKindChange} preventEmpty />
+          <Select options={kindOptions} value={kind?.id} onChange={handleKindChange} preventEmpty />
         </div>
       )}
 
@@ -197,7 +197,7 @@ export default function ObjectItemCreate(props: iProps) {
               Select a Profile <span className="text-xs italic text-gray-500 ml-1">optional</span>
             </label>
           </div>
-          <Select options={profilesOptions} value={profile.id} onChange={handleProfileChange} />
+          <Select options={profilesOptions} value={profile?.id} onChange={handleProfileChange} />
         </div>
       )}
 
