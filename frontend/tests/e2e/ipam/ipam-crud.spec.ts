@@ -42,11 +42,6 @@ test.describe("/ipam - Ipam home page", () => {
 
       await test.step("create a prefix at top level", async () => {
         await page.getByTestId("create-object-button").click();
-        await page
-          .getByTestId("side-panel-container")
-          .getByTestId("select-open-option-button")
-          .click();
-        await page.getByRole("option", { name: "IpamIPPrefix" }).click();
         await page.getByLabel("Prefix *").fill("11.0.0.0/8");
         await page.getByRole("button", { name: "Create" }).click();
         await expect(page.getByText("IPPrefix created")).toBeVisible();
@@ -59,10 +54,6 @@ test.describe("/ipam - Ipam home page", () => {
 
       await test.step("create a children prefix", async () => {
         await page.getByTestId("create-object-button").click();
-        await page
-          .getByTestId("side-panel-container")
-          .getByTestId("select-open-option-button")
-          .click();
         await page.getByRole("option", { name: "IpamIPPrefix" }).click();
         await page.getByLabel("Prefix *").fill("11.0.0.0/16");
         await page.getByRole("button", { name: "Create" }).click();
@@ -81,10 +72,6 @@ test.describe("/ipam - Ipam home page", () => {
 
       await test.step("create a prefix between a parent and its children", async () => {
         await page.getByTestId("create-object-button").click();
-        await page
-          .getByTestId("side-panel-container")
-          .getByTestId("select-open-option-button")
-          .click();
         await page.getByRole("option", { name: "IpamIPPrefix" }).click();
         await page.getByLabel("Prefix *").fill("11.0.0.0/10");
         await page.getByRole("button", { name: "Create" }).click();
