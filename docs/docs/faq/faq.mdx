@@ -1,7 +1,7 @@
 ---
 title: FAQ
 ---
-# FAQ
+# Frequently asked questions
 
 Here are the key details about Infrahub:
 
@@ -17,7 +17,7 @@ Infrahub is an open-source platform that enables infrastructure as code by provi
 - Unified Storage: Version control for data and files
 - Versioning: Track current state and future intended state of the infrastructure with built-in peer review and a CI pipeline for validation.
 - Immutable Database: Go back in time to view the state of infrastructure at any point.
-- Artifact Generation: Transform infrastructure data into any format (text configs, XML, JSON,, etc.) using generators and templates.
+- Artifact Generation: Transform infrastructure data into any format (text configurations, XML, JSON, etc.) using generators and templates.
 - Data Lineage: View the source and owner for each piece of infrastructure data.
 - Multiple interfaces for each team and need:
   - Web UI: View and manage all infrastructure data, configurations, and CI/CD pipelines through a user interface.
@@ -28,7 +28,7 @@ Infrahub is an open-source platform that enables infrastructure as code by provi
 
 For more information, see our [Infrahub overview](../overview/).
 
-### I’m just getting started with Infrastructure Automation. Do I need Infrahub?
+### I’m just getting started with infrastructure automation. Do I need Infrahub?
 
 If you're new to infrastructure automation, Infrahub can be a valuable tool to help you manage and automate your infrastructure resources without having to learn and assemble multiple automation tools into a workable system.
 
@@ -42,7 +42,7 @@ You can test out Infrahub via [GitHub Codespaces](https://github.com/opsmill/inf
 
 Infrahub is a platform-agnostic solution that can be deployed in various environments, including:
 
-- Cloud platforms (e.g., AWS, Azure, GCP)
+- Cloud platforms such a AWS, Azure, or GCP
 - On-premises data centers
 - Kubernetes clusters (via Helm charts)
 - Docker containers (using Docker Compose)
@@ -51,12 +51,12 @@ The specific system requirements may vary depending on the deployment environmen
 
 In the future, we plan to offer a managed Cloud SaaS offering of Infrahub. Please [subscribe to our mailing list](https://opsmill.com) to stay updated.
 
-### Installation and Deployment
+### Installation and deployment
 
 To install and set up Infrahub:
 
 1. Download the latest version of Infrahub from the [GitHub repository](https://github.com/opsmill/infrahub)
-2. [Deploy](../guides/installation): Deploy Infrahub using the appropriate method for your environment (e.g., Docker Compose, Helm charts).
+2. [Deploy](../guides/installation): Deploy Infrahub using the appropriate method for your environment such as Docker Compose, Helm charts
 
 Detailed installation guides and tutorials are available in [Installing Infrahub](../guides/installation) guide.
 
@@ -119,13 +119,13 @@ If you need assistance with Infrahub, you can reach out to the community and the
 
 While Infrahub is currently an open-source project, the team is developing a plan for paid support and an enterprise version with additional features and services in the future. More information about these plans will be shared as the project progresses.
 
-### I have generated my configs with Infrahub, how can I deploy them to my devices ?
+### I have generated my configurations with Infrahub, how can I deploy them to my devices?
 
 Infrahub is designed to be the source of truth for your infrastructure data and configurations. It does not directly connect to or deploy configurations to your infrastructure devices. Instead, Infrahub integrates with tools like Nornir and Ansible, which can be used to deploy the generated configurations to your infrastructure.
 
 Please see the documentation on [integrations](../integrations) for more information.
 
-### Does Infrahub send telemetry? And how can I disable it ?
+### Does Infrahub send telemetry? And how can I disable it?
 
 Infrahub collects anonymous usage metrics and sends them to OpsMill servers for analysis and improvement purposes. No personally identifiable information is collected. If you prefer to opt-out of telemetry collection, you can do so by setting the `INFRAHUB_TELEMETRY_OPTOUT` environment variable to `true`:
 
