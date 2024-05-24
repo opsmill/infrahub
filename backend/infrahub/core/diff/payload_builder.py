@@ -476,8 +476,18 @@ def extract_diff_relationship_one(
 
     changed_at = None
 
-    if len(rels) == 1:
-        rel = rels[0]
+    unique_action_rels_map: dict[DiffAction, RelationshipDiffElement] = {}
+    for rel in rels:
+        if rel.action not in unique_action_rels_map:
+            unique_action_rels_map[rel.action] = rel
+            continue
+        if rel.changed_at is None or unique_action_rels_map[rel.action].changed_at is None:
+            continue
+        if rel.changed_at > unique_action_rels_map[rel.action].changed_at:
+            unique_action_rels_map[rel.action] = rel
+
+    if len(unique_action_rels_map) == 1:
+        _, rel = unique_action_rels_map.popitem()
 
         if rel.changed_at:
             changed_at = rel.changed_at.to_string()
@@ -508,9 +518,12 @@ def extract_diff_relationship_one(
             action=rel.action,
         )
 
-    if len(rels) == 2:
-        rel_added = [rel for rel in rels if rel.action.value == "added"][0]
-        rel_removed = [rel for rel in rels if rel.action.value == "removed"][0]
+    if len(unique_action_rels_map) == 2 and set(unique_action_rels_map.keys()) == {
+        DiffAction.ADDED,
+        DiffAction.REMOVED,
+    }:
+        rel_added = unique_action_rels_map[DiffAction.ADDED]
+        rel_removed = unique_action_rels_map[DiffAction.REMOVED]
 
         peer_added = dict([rel_node for rel_node in rel_added.nodes.values() if rel_node.id != node_id][0])
         peer_added["display_label"] = display_labels.get(peer_added.get("id", None), "")
@@ -530,10 +543,10 @@ def extract_diff_relationship_one(
             action=DiffAction.UPDATED,
         )
 
-    if len(rels) > 2:
-        log.warning(
-            f"extract_diff_relationship_one: More than 2 relationships received, need to investigate. Node ID {node_id}, Name: {name}"
-        )
+    errors = {r.id: r.action.value for r in rels}
+    log.warning(
+        f"extract_diff_relationship_one: Invalid relationship combination received: {errors}, need to investigate. {node_id=}, {name=}"
+    )
 
     return None
 
