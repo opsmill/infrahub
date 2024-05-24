@@ -93,6 +93,7 @@ const sidebars: SidebarsConfig = {
         'topics/database-backup',
         'topics/resources-testing-framework',
         'topics/profiles',
+        'topics/resource-manager',
       ],
     },
     {
