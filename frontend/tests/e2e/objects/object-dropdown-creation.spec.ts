@@ -46,6 +46,7 @@ test.describe("object dropdown creation", () => {
       .getByText("Tags")
       .locator("../..")
       .getByTestId("select-open-option-button");
+
     await tagsMultiSelectOpenButton.click();
 
     // Add new option

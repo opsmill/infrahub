@@ -31,8 +31,6 @@ test.describe("Object filters", () => {
         .getByText("Tags")
         .locator("../..")
         .getByTestId("select-open-option-button");
-
-      await tagsMultiSelectOpenButton.scrollIntoViewIfNeeded();
       await tagsMultiSelectOpenButton.click();
 
       await page.getByTestId("side-panel-container").getByText("red").click();

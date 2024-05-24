@@ -26,7 +26,6 @@ test.describe("Verify multi select behaviour", () => {
         .getByText("Tags")
         .locator("../..")
         .getByTestId("select-open-option-button");
-      await tagsMultiSelectOpenButton.scrollIntoViewIfNeeded();
       await tagsMultiSelectOpenButton.click();
 
       await page.getByRole("option", { name: "blue" }).click();

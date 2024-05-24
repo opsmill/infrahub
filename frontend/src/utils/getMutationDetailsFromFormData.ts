@@ -89,9 +89,8 @@ const getMutationDetailsFromFormData = (
           return;
         }
       } else {
-        const existingValue = existingObject[relationship.name]?.edges
-          .map((r: any) => r.node?.id)
-          .sort();
+        const existingValue =
+          existingObject[relationship.name]?.edges.map((r: any) => r.node?.id).sort() ?? [];
 
         const updatedIds = updatedObject[relationship.name]?.list?.sort() ?? [];
 

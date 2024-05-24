@@ -95,7 +95,7 @@ const getFormStructureForCreateEdit = ({
 
   const fieldsToParse = sortByOrderWeight([
     ...(schema.attributes ?? []),
-    ...(getObjectRelationshipsForForm(schema) ?? []),
+    ...(getObjectRelationshipsForForm(schema, isUpdate) ?? []),
   ]);
 
   const fields = fieldsToParse

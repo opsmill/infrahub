@@ -55,7 +55,6 @@ test.describe("Object update", () => {
         .getByText("Tags")
         .locator("../..")
         .getByTestId("select-open-option-button");
-      await tagsMultiSelectOpenButton.scrollIntoViewIfNeeded();
       await tagsMultiSelectOpenButton.click();
 
       await page.getByRole("option", { name: "blue" }).click(); // Removes blue
