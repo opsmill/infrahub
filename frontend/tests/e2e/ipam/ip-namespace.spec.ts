@@ -101,22 +101,6 @@ test.describe("/ipam - IP Namespace", () => {
 
     await test.step("create a prefix at top level", async () => {
       await page.getByTestId("create-object-button").click();
-      await page
-        .getByTestId("side-panel-container")
-        .getByTestId("select-open-option-button")
-        .click();
-
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
-
-          return reqData?.operationName === "ProfileIpamIPPrefix" && status === 200;
-        }),
-
-        page.getByRole("option", { name: "IpamIPPrefix" }).click(),
-      ]);
-
       await page.getByLabel("Prefix *").fill("11.0.0.0/8");
       await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
 
@@ -144,22 +128,6 @@ test.describe("/ipam - IP Namespace", () => {
 
     await test.step("create a children prefix", async () => {
       await page.getByTestId("create-object-button").click();
-      await page
-        .getByTestId("side-panel-container")
-        .getByTestId("select-open-option-button")
-        .click();
-
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
-
-          return reqData?.operationName === "ProfileIpamIPPrefix" && status === 200;
-        }),
-
-        page.getByRole("option", { name: "IpamIPPrefix" }).click(),
-      ]);
-
       await page.getByLabel("Prefix *").fill("11.0.0.0/16");
       await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
 
@@ -192,22 +160,6 @@ test.describe("/ipam - IP Namespace", () => {
 
     await test.step("create a prefix between a parent and its children", async () => {
       await page.getByTestId("create-object-button").click();
-      await page
-        .getByTestId("side-panel-container")
-        .getByTestId("select-open-option-button")
-        .click();
-
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
-
-          return reqData?.operationName === "ProfileIpamIPPrefix" && status === 200;
-        }),
-
-        page.getByRole("option", { name: "IpamIPPrefix" }).click(),
-      ]);
-
       await page.getByLabel("Prefix *").fill("11.0.0.0/10");
       await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
 
