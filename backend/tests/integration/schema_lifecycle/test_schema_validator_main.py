@@ -318,6 +318,6 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
                         },
                     },
                 },
-                'human_friendly_id': None,
+                "human_friendly_id": None,
             },
         }
