@@ -44,8 +44,8 @@ export const CodeEditor = (props: any) => {
 
       <Editor
         {...propsToPass}
-        value={value ?? ""}
-        onValueChange={(code) => onChange(code)}
+        value={value ? (typeof value === "string" ? value : JSON.stringify(value)) : ""}
+        onValueChange={onChange}
         highlight={(code) => Prism.highlight(code, Prism.languages.json, "json")}
         padding={10}
         style={{
