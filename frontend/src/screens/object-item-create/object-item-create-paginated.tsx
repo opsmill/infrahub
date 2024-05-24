@@ -49,7 +49,7 @@ export default function ObjectItemCreate(props: iProps) {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
-  const [kind, setKind] = useState({});
+  const [kind, setKind] = useState(null);
   const [profile, setProfile] = useState("");
 
   const generic = genericsList.find((s) => s.kind === objectname);
