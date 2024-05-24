@@ -240,3 +240,9 @@ nfs-server-provisioner:
 ```bash
 helm install infrahub -f values.yml path/to/infrahub/chart
 ```
+
+You can also install the chart using the OpsMill registry.
+
+```bash
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub
+```
