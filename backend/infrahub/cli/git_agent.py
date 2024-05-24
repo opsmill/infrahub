@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 import typer
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.async_typer import AsyncTyper
+from infrahub_sdk.exceptions import Error as SdkError
 from prometheus_client import start_http_server
 from rich.logging import RichHandler
 
@@ -91,7 +92,11 @@ async def start(
     client = InfrahubClient(
         config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=log)
     )
-    await client.branch.all()
+    try:
+        await client.branch.all()
+    except SdkError as exc:
+        log.error(f"Error in communication with Infrahub: {exc.message}")
+        raise typer.Exit(1)
 
     # Initialize trace
     if config.SETTINGS.trace.enable:

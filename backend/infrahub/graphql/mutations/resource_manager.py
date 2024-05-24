@@ -12,7 +12,7 @@ from ..queries.resource_manager import PoolAllocatedNode
 
 if TYPE_CHECKING:
     from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
-    from infrahub.core.node.resource_manager.ip_prefix_pool import CorePrefixPool
+    from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 
     from .. import GraphqlContext
 
@@ -56,9 +56,9 @@ class IPPrefixPoolGetResource(Mutation):
     ) -> Self:
         context: GraphqlContext = info.context
 
-        obj: CorePrefixPool = await registry.manager.find_object(  # type: ignore[assignment]
+        obj: CoreIPPrefixPool = await registry.manager.find_object(  # type: ignore[assignment]
             db=context.db,
-            kind=InfrahubKind.PREFIXPOOL,
+            kind=InfrahubKind.IPPREFIXPOOL,
             id=data.get("id"),
             hfid=data.get("hfid"),
             branch=context.branch,

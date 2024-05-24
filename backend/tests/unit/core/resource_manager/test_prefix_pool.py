@@ -5,7 +5,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
-from infrahub.core.node.resource_manager.ip_prefix_pool import CorePrefixPool
+from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
@@ -21,9 +21,9 @@ async def test_get_next(
     net140 = ip_dataset_prefix_v4["net140"]
     net141 = ip_dataset_prefix_v4["net141"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
 
-    pool = await CorePrefixPool.init(schema=prefix_pool_schema, db=db)
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
     await pool.new(db=db, name="pool1", resources=[net140, net141], ip_namespace=ns1)
     await pool.save(db=db)
 
@@ -54,9 +54,9 @@ async def test_get_one(
     net140 = ip_dataset_prefix_v4["net140"]
     net141 = ip_dataset_prefix_v4["net141"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
 
-    pool = await CorePrefixPool.init(schema=prefix_pool_schema, db=db)
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
     await pool.new(db=db, name="pool1", resources=[net140, net141], ip_namespace=ns1)
     await pool.save(db=db)
 
@@ -95,9 +95,9 @@ async def test_get_all_resources(
     net140 = ip_dataset_prefix_v4["net140"]
     net141 = ip_dataset_prefix_v4["net141"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.PREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
 
-    pool = await CorePrefixPool.init(schema=prefix_pool_schema, db=db)
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
     await pool.new(db=db, name="pool1", resources=[net140, net141], ip_namespace=ns1)
     await pool.save(db=db)
 

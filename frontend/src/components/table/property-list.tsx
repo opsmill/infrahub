@@ -50,10 +50,10 @@ export const PropertyList = ({
       className={classNames("table-auto border-spacing-2 border-collapse text-sm", className)}
       {...props}>
       <tbody className={classNames("divide-y", bodyClassName)}>
-        {properties.map((property) => {
+        {properties.map((property, index) => {
           return (
             <PropertyRow
-              key={property.name}
+              key={index}
               data={property}
               labelClassName={labelClassName}
               valueClassName={valueClassName}

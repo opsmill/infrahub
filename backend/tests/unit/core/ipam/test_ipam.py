@@ -9,11 +9,8 @@ from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.ipam import (
-    IPPrefixContainerFetch,
     IPPrefixSubnetFetch,
-    get_container,
     get_ip_addresses,
-    get_ip_prefix_for_ip_address,
 )
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -51,38 +48,6 @@ async def test_ipaddress_creation(
     address2 = await Node.init(db=db, schema=address_schema)
     await address2.new(db=db, address="192.0.2.0/24")
     await address2.save(db=db)
-
-
-async def test_ipprefix_is_within_container(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    default_ipnamespace: Node,
-    register_core_models_schema: SchemaBranch,
-    register_ipam_schema: SchemaBranch,
-):
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
-
-    container = await Node.init(db=db, schema=prefix_schema)
-    await container.new(db=db, prefix="2001:db8::/32", ip_namespace=default_ipnamespace)
-    await container.save(db=db)
-
-    prefix = await Node.init(db=db, schema=prefix_schema)
-    await prefix.new(db=db, prefix="2001:db8::/48", parent=container, ip_namespace=default_ipnamespace)
-    await prefix.save(db=db)
-
-    unrelated = await Node.init(db=db, schema=prefix_schema)
-    await unrelated.new(db=db, prefix="192.0.2.0/24", ip_namespace=default_ipnamespace)
-    await unrelated.save(db=db)
-
-    container_ip_network = ipaddress.ip_network(container.prefix.value)
-    prefix_ip_network = ipaddress.ip_network(prefix.prefix.value)
-
-    prefix_container = await get_container(db=db, branch=default_branch, ip_prefix=container_ip_network)
-    assert prefix_container is None
-
-    prefix_container = await get_container(db=db, branch=default_branch, ip_prefix=prefix_ip_network)
-    assert prefix_container
-    assert prefix_container.prefix == ipaddress.ip_network(container_ip_network)
 
 
 @pytest.mark.parametrize(
@@ -126,24 +91,6 @@ async def test_ipprefix_subnets_small_dataset(
     assert sorted([str(subnet.prefix) for subnet in subnets]) == ["2001:db8::/48"]
 
 
-@pytest.mark.parametrize(
-    "input,response",
-    [
-        (ipaddress.ip_network("10.10.0.0/22"), "10.10.0.0/16"),
-        (ipaddress.ip_network("10.10.1.0/28"), "10.10.1.0/27"),
-        (ipaddress.ip_interface("10.10.1.10/27"), "10.10.1.0/27"),
-    ],
-)
-async def test_ipprefix_container(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01, input, response):
-    ns1_id = ip_dataset_01["ns1"].id
-    query = await IPPrefixContainerFetch.init(db=db, branch=default_branch, obj=input, namespace=ns1_id)
-
-    await query.execute(db=db)
-    container = query.get_container()
-    assert container is not None
-    assert str(container.prefix) == response
-
-
 async def test_ipaddress_is_within_ipprefix(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -172,10 +119,6 @@ async def test_ipaddress_is_within_ipprefix(
     ip_addresses = await get_ip_addresses(db=db, branch=default_branch, ip_prefix=prefix_ip_network)
     assert len(ip_addresses) == 1
     assert ip_addresses[0].address == address_ip_address
-
-    ip_prefix = await get_ip_prefix_for_ip_address(db=db, branch=default_branch, ip_address=address_ip_address)
-    assert ip_prefix
-    assert ip_prefix.prefix == prefix_ip_network
 
 
 async def test_query_by_parent_ids(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
