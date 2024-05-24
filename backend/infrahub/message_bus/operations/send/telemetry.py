@@ -14,7 +14,7 @@ from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 
 TELEMETRY_KIND: str = "community"
-TELEMETRY_VERSION: str = "20240514"
+TELEMETRY_VERSION: str = "20240524"
 
 
 async def gather_database_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
@@ -55,7 +55,7 @@ async def gather_feature_information(service: InfrahubServices, branch: Branch) 
         InfrahubKind.TRANSFORM,
     ]
     for kind in features_to_count:
-        data[kind] = await utils.count_nodes(db=service.database, label=getattr(InfrahubKind, kind))
+        data[kind] = await utils.count_nodes(db=service.database, label=kind)
 
     return data
 
