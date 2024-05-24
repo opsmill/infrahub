@@ -1264,7 +1264,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         kind="CoreIPAddressPool",
         name="Loopbacks pool",
         default_address_type="IpamIPAddress",
-        default_address_size=32,
+        default_prefix_size=32,
         ip_namespace=default_ip_namespace,
         resources=[loopback_prefix],
         branch=branch,
