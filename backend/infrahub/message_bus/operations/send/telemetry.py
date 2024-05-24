@@ -33,7 +33,7 @@ async def gather_database_information(service: InfrahubServices, branch: Branch)
     return data
 
 
-async def gather_schema_information(service: InfrahubServices, branch: Branch) -> dict:
+async def gather_schema_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
     data = {}
     main_schema = registry.schema.get_schema_branch(name=branch.name)
     data["node_count"] = len(main_schema.node_names)
