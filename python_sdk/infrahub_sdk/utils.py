@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import glob
 import hashlib
+import json
 from itertools import groupby
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
@@ -15,6 +16,8 @@ from graphql import (
     InlineFragmentNode,
     SelectionSetNode,
 )
+
+from infrahub_sdk.exceptions import JsonDecodeError
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -77,6 +80,13 @@ def is_valid_uuid(value: Any) -> bool:
         return True
     except ValueError:
         return False
+
+
+def decode_json(response: httpx.Response, url: Optional[str] = None) -> dict:
+    try:
+        return response.json()
+    except json.decoder.JSONDecodeError as exc:
+        raise JsonDecodeError(content=response.text, url=url) from exc
 
 
 def generate_uuid() -> str:

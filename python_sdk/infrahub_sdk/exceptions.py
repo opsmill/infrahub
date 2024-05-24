@@ -9,6 +9,16 @@ class Error(Exception):
         super().__init__(self.message)
 
 
+class JsonDecodeError(Exception):
+    def __init__(self, message: Optional[str] = None, content: Optional[str] = None, url: Optional[str] = None):
+        self.message = message
+        self.content = content
+        self.url = url
+        if not self.message and self.url:
+            self.message = f"Unable to decode response as JSON data from {self.url}"
+        super().__init__(self.message)
+
+
 class ServerNotReachableError(Error):
     def __init__(self, address: str, message: Optional[str] = None):
         self.address = address
