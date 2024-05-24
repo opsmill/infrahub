@@ -9,7 +9,7 @@ class Error(Exception):
         super().__init__(self.message)
 
 
-class JsonDecodeError(Exception):
+class JsonDecodeError(Error):
     def __init__(self, message: Optional[str] = None, content: Optional[str] = None, url: Optional[str] = None):
         self.message = message
         self.content = content
