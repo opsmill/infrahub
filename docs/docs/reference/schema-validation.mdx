@@ -1,0 +1,65 @@
+---
+title: Schema validation
+---
+
+Infrahub requires the user to define multiple YAML files. One or more files defining the [schema in Infrahub](/topics/schema) and the [external repository configuration file](/topics/repository).
+
+To help with the process of creating and maintaining these files, we publish JSON schemas that allow you to validate the schema of these files.
+
+## Language server
+
+To be able to validate a YAML against a schema, you need to install a language server. Which language server you can use is specific to your environment and the editor that you use. For Visual Studio Code we recommend that you install the
+[Red Hat YAML Language server](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml).
+
+A language server is a software that helps an editor provide advanced language specific features like: code completion, refactoring, navigation, syntax highlighting, schema validation etc.
+
+## Schema validation for Infrahub schema files
+
+The schema for Infrahub schema files is published at https://schema.infrahub.app/infrahub/schema/latest.json
+
+To use this schema for validation, you have to add a modeline near the top, or the bottom of the schema file.
+
+A modeline is a file specific configuration parameter that configures the editor with a specific behavior. In our case it configures the editor's language server to use the schema at the URL for schema validation.
+
+This modeline can be used for Infrahub schema files.
+
+```yaml
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+```
+
+An example in an Infrahub schema file.
+
+```yaml
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+nodes:
+  - name: Test
+    namespace: Infra
+```
+
+## Schema validation for Infrahub external repository configuration files
+
+The schema for an Infrahub external repository configuration file is published at https://schema.infrahub.app/python-sdk/repository-config/latest.json
+
+To use this schema for validation, you have to add a modeline near the top, or the bottom of the repository configuration file.
+
+A modeline is a file specific configuration parameter that configures the editor with a specific behavior. In our case it configures the editor's language server to use the schema at the URL for schema validation.
+
+This modeline can be used for an Infrahub external repository configuration file.
+
+```yaml
+# yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/latest.json
+```
+
+An example in an Infrahub schema file.
+
+```yaml
+# yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/latest.json
+schemas:
+  - ./schemas/locations.yml
+```
+
+:::note
+
+The schema of the Infrahub external repository configuration file has been published on [JSON Schema store](https://www.schemastore.org/json/). It allows an editor, like Visual Studio Code to download the correct schema validation file. Visual Studio Code will automatically validate a file named `.infrahub.y(a)ml` with this schema, if the Red Hat YAML Language server is installed.
+
+:::

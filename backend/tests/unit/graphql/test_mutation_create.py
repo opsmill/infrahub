@@ -1018,3 +1018,78 @@ async def test_relationship_with_hfid(db: InfrahubDatabase, default_branch, anim
     assert result.errors is None
     assert result.data["TestDogCreate"]["ok"] is True
     assert result.data["TestDogCreate"]["object"]["id"]
+
+
+async def test_incorrect_peer_type_prevented(db: InfrahubDatabase, default_branch, animal_person_schema):
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+
+    person2 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person2.new(db=db, name="Jill")
+    await person2.save(db=db)
+
+    dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
+    await dog1.save(db=db)
+
+    dog2 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog2.new(db=db, name="Hank", breed="Chow", owner=person2)
+    await dog2.save(db=db)
+
+    query = """
+    mutation {
+        TestPersonCreate(data: {name: { value: "Herb"}, height: {value: 182}, animals: [{id: "%(animal_id)s"}]}) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """ % {"animal_id": person2.id}
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is not None
+    assert len(result.errors) == 1
+    assert (
+        result.errors[0].message
+        == f"""TestPerson - {person2.id} cannot be added to relationship, must be of type: ['TestCat', 'TestDog'] at animals"""
+    )
+
+    query = """
+    mutation {
+        TestDogCreate(data: {
+            name: { value: "Rocky" },
+            breed: { value: "Labrador" },
+            color: { value: "black" },
+            owner: { id: "%(owner_id)s" },
+        }) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """ % {"owner_id": dog2.id}
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is not None
+    assert len(result.errors) == 1
+    assert (
+        result.errors[0].message
+        == f"""TestDog - {dog2.id} cannot be added to relationship, must be of type: ['TestPerson'] at owner"""
+    )

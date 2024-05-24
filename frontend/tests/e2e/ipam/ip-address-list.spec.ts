@@ -36,7 +36,7 @@ test.describe("/ipam/addresses - IP Address list", () => {
     });
 
     await test.step("click on any ip address row to view summary", async () => {
-      await page.getByRole("link", { name: "172.20.20.1/24" }).click();
+      await page.getByRole("link", { name: "172.20.20.1/28" }).click();
       await expect(page.getByText("Ipam IP Address summary")).toBeVisible();
       await expect(page.url()).toContain("ipam-tab=ip-details");
     });

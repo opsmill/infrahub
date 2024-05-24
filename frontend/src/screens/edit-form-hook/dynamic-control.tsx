@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
-import { CodeEditor } from "../../components/editor/code-editor";
+import { OpsCodeEditor } from "../../components/form/code-editor";
 import OpsCheckbox from "../../components/form/checkbox";
 import { OpsColorPicker } from "../../components/form/color-picker";
 import { OpsDatePicker } from "../../components/form/date-picker";
@@ -113,7 +113,7 @@ export const DynamicControl = (props: DynamicFieldData) => {
     }
     case "json": {
       return (
-        <CodeEditor
+        <OpsCodeEditor
           {...props}
           value={localValue}
           onChange={(value: string) => {

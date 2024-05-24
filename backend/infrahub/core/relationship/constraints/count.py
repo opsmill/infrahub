@@ -32,13 +32,6 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         # but if the validation fails we'll end up with some allocated resources that are not being used
         await relm.resolve(db=self.db)
 
-        (
-            _,
-            peer_ids_present_local_only,
-            peer_ids_present_database_only,
-            _,
-        ) = await relm.fetch_relationship_ids(db=self.db)
-
         nodes_to_validate: List[NodeToValidate] = []
 
         # peer_ids_present_local_only:
@@ -51,18 +44,19 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         if not peer_rels:
             return
 
+        update_details = await relm.fetch_relationship_ids(db=self.db, force_refresh=False)
         for peer_rel in peer_rels:
             # If a relationship is directional and both have the same direction they can't work together
             if relm.schema.direction == peer_rel.direction and peer_rel.direction != RelationshipDirection.BIDIR:
                 continue
 
-            for peer_id in peer_ids_present_local_only + peer_ids_present_database_only:
-                if peer_rel.max_count and peer_id in peer_ids_present_local_only:
+            for peer_id in update_details.peer_ids_present_local_only + update_details.peer_ids_present_database_only:
+                if peer_rel.max_count and peer_id in update_details.peer_ids_present_local_only:
                     nodes_to_validate.append(
                         NodeToValidate(uuid=peer_id, max_count=peer_rel.max_count, cardinality=peer_rel.cardinality)
                     )
 
-                if peer_rel.min_count and peer_id in peer_ids_present_database_only:
+                if peer_rel.min_count and peer_id in update_details.peer_ids_present_database_only:
                     nodes_to_validate.append(
                         NodeToValidate(uuid=peer_id, min_count=peer_rel.min_count, cardinality=peer_rel.cardinality)
                     )

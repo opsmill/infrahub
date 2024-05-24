@@ -52,6 +52,8 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_INITIAL_DEFAULT_BRANCH:
   INFRAHUB_INITIAL_ADMIN_PASSWORD:
   INFRAHUB_INITIAL_ADMIN_TOKEN: "06438eb2-8019-4776-878c-0941b1f1d1ec"
+  INFRAHUB_INITIAL_AGENT_PASSWORD:
+  INFRAHUB_INITIAL_AGENT_TOKEN:
   INFRAHUB_INTERNAL_ADDRESS: "http://infrahub-server:8000"
   INFRAHUB_LOGGING_REMOTE_API_SERVER_DSN:
   INFRAHUB_LOGGING_REMOTE_ENABLE:
@@ -109,7 +111,7 @@ services:
       retries: 3
 
   database:
-    image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.19.0-enterprise}
+    image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.19.0-community}
     restart: unless-stopped
     environment:
       - "NEO4J_AUTH=neo4j/admin"
@@ -129,7 +131,7 @@ services:
       - 6362:6362
 
   infrahub-server:
-    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.12.1}"
+    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.13.0}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -160,7 +162,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.12.1}"
+    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.13.0}"
     command: infrahub git-agent start --debug
     restart: unless-stopped
     depends_on:

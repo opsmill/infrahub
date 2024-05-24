@@ -222,6 +222,12 @@ class RelatedNodeBase:
         return None
 
     @property
+    def is_resource_pool(self) -> bool:
+        if self._peer:
+            return self._peer.is_resource_pool()
+        return False
+
+    @property
     def initialized(self) -> bool:
         return bool(self.id)
 
@@ -240,6 +246,9 @@ class RelatedNodeBase:
     def _generate_input_data(self) -> Dict[str, Any]:
         data = {}
 
+        if self.is_resource_pool:
+            return {"from_pool": {"id": self.id}}
+
         if self.id is not None:
             data["id"] = self.id
 
@@ -248,6 +257,12 @@ class RelatedNodeBase:
                 data[f"_relation__{prop_name}"] = getattr(self, prop_name)
 
         return data
+
+    def _generate_mutation_query(self) -> Dict[str, Any]:
+        if self.name and self.is_resource_pool:
+            # If a related node points to a pool, ask for the ID of the pool allocated resource
+            return {self.name: {"node": {"id": None, "display_label": None, "__typename": None}}}
+        return {}
 
     @classmethod
     def _generate_query_data(cls, peer_data: Optional[Dict[str, Any]] = None) -> Dict:
@@ -407,6 +422,10 @@ class RelationshipManagerBase:
 
     def _generate_input_data(self) -> List[Dict]:
         return [peer._generate_input_data() for peer in self.peers]
+
+    def _generate_mutation_query(self) -> Dict[str, Any]:
+        # Does nothing for now
+        return {}
 
     @classmethod
     def _generate_query_data(cls, peer_data: Optional[Dict[str, Any]] = None) -> Dict:
@@ -570,27 +589,13 @@ class RelationshipManagerSync(RelationshipManagerBase):
         if isinstance(data, list):
             for item in data:
                 self.peers.append(
-                    RelatedNodeSync(
-                        name=name,
-                        client=self.client,
-                        branch=self.branch,
-                        schema=schema,
-                        data=item,
-                    )
+                    RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
                 )
-
         elif isinstance(data, dict) and "edges" in data:
             for item in data["edges"]:
                 self.peers.append(
-                    RelatedNodeSync(
-                        name=name,
-                        client=self.client,
-                        branch=self.branch,
-                        schema=schema,
-                        data=item,
-                    )
+                    RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
                 )
-
         else:
             raise ValueError(f"Unexpected format for {name} found a {type(data)}, {data}")
 
@@ -769,6 +774,17 @@ class InfrahubNodeBase:
 
     def get_kind(self) -> str:
         return self._schema.kind
+
+    def is_ip_prefix(self) -> bool:
+        builtin_ipprefix_kind = "BuiltinIPPrefix"
+        return self.get_kind() == builtin_ipprefix_kind or builtin_ipprefix_kind in self._schema.inherit_from  # type: ignore[union-attr]
+
+    def is_ip_address(self) -> bool:
+        builtin_ipaddress_kind = "BuiltinIPAddress"
+        return self.get_kind() == builtin_ipaddress_kind or builtin_ipaddress_kind in self._schema.inherit_from  # type: ignore[union-attr]
+
+    def is_resource_pool(self) -> bool:
+        return hasattr(self._schema, "inherit_from") and "CoreResourcePool" in self._schema.inherit_from  # type: ignore[union-attr]
 
     def get_raw_graphql_data(self) -> Optional[Dict]:
         return self._data
@@ -1310,10 +1326,42 @@ class InfrahubNode(InfrahubNodeBase):
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipremove-{relation_to_update}"
         await self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
+    def _generate_mutation_query(self) -> Dict[str, Any]:
+        query_result = {"ok": None, "object": {"id": None}}
+
+        for rel_name in self._relationships:
+            rel = getattr(self, rel_name)
+            if not isinstance(rel, RelatedNode):
+                continue
+
+            query_result["object"].update(rel._generate_mutation_query())  # type: ignore[union-attr]
+
+        return query_result
+
+    async def _process_mutation_result(self, mutation_name: str, response: Dict[str, Any]) -> None:
+        object_response: Dict[str, Any] = response[mutation_name]["object"]
+        self.id = object_response["id"]
+        self._existing = True
+
+        for rel_name in self._relationships:
+            rel = getattr(self, rel_name)
+            if rel_name not in object_response or not isinstance(rel, RelatedNode) or not rel.is_resource_pool:
+                continue
+
+            # Process allocated resource from a pool and update related node
+            allocated_resource = object_response[rel_name]
+            related_node = RelatedNode(
+                client=self._client, branch=self._branch, schema=rel.schema, data=allocated_resource
+            )
+            await related_node.fetch()
+            setattr(self, rel_name, related_node)
+
     async def create(self, at: Optional[Timestamp] = None, allow_upsert: bool = False) -> None:
         self._deprecated_parameter(at=at)
+
         input_data = self._generate_input_data(exclude_hfid=True)
-        mutation_query = {"ok": None, "object": {"id": None}}
+        mutation_query = self._generate_mutation_query()
+
         if allow_upsert:
             mutation_name = f"{self._schema.kind}Upsert"
             tracker = f"mutation-{str(self._schema.kind).lower()}-upsert"
@@ -1329,25 +1377,28 @@ class InfrahubNode(InfrahubNodeBase):
         response = await self._client.execute_graphql(
             query=query.render(), branch_name=self._branch, tracker=tracker, variables=input_data["variables"]
         )
-        self.id = response[mutation_name]["object"]["id"]
-        self._existing = True
+        await self._process_mutation_result(mutation_name=mutation_name, response=response)
 
     async def update(self, at: Optional[Timestamp] = None, do_full_update: bool = False) -> None:
         self._deprecated_parameter(at=at)
+
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
-        mutation_query = {"ok": None, "object": {"id": None}}
+        mutation_query = self._generate_mutation_query()
+        mutation_name = f"{self._schema.kind}Update"
+
         query = Mutation(
-            mutation=f"{self._schema.kind}Update",
+            mutation=mutation_name,
             input_data=input_data["data"],
             query=mutation_query,
             variables=input_data["mutation_variables"],
         )
-        await self._client.execute_graphql(
+        response = await self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
             variables=input_data["variables"],
         )
+        await self._process_mutation_result(mutation_name=mutation_name, response=response)
 
     async def _process_relationships(
         self, node_data: Dict[str, Any], branch: str, related_nodes: List[InfrahubNode]
@@ -1641,10 +1692,42 @@ class InfrahubNodeSync(InfrahubNodeBase):
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipremove-{relation_to_update}"
         self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
+    def _generate_mutation_query(self) -> Dict[str, Any]:
+        query_result = {"ok": None, "object": {"id": None}}
+
+        for rel_name in self._relationships:
+            rel = getattr(self, rel_name)
+            if not isinstance(rel, RelatedNodeSync):
+                continue
+
+            query_result["object"].update(rel._generate_mutation_query())  # type: ignore[union-attr]
+
+        return query_result
+
+    def _process_mutation_result(self, mutation_name: str, response: Dict[str, Any]) -> None:
+        object_response: Dict[str, Any] = response[mutation_name]["object"]
+        self.id = object_response["id"]
+        self._existing = True
+
+        for rel_name in self._relationships:
+            rel = getattr(self, rel_name)
+            if rel_name not in object_response or not isinstance(rel, RelatedNodeSync) or not rel.is_resource_pool:
+                continue
+
+            # Process allocated resource from a pool and update related node
+            allocated_resource = object_response[rel_name]
+            related_node = RelatedNodeSync(
+                client=self._client, branch=self._branch, schema=rel.schema, data=allocated_resource
+            )
+            related_node.fetch()
+            setattr(self, rel_name, related_node)
+
     def create(self, at: Optional[Timestamp] = None, allow_upsert: bool = False) -> None:
         self._deprecated_parameter(at=at)
+
         input_data = self._generate_input_data(exclude_hfid=True)
-        mutation_query = {"ok": None, "object": {"id": None}}
+        mutation_query = self._generate_mutation_query()
+
         if allow_upsert:
             mutation_name = f"{self._schema.kind}Upsert"
             tracker = f"mutation-{str(self._schema.kind).lower()}-upsert"
@@ -1661,27 +1744,30 @@ class InfrahubNodeSync(InfrahubNodeBase):
         response = self._client.execute_graphql(
             query=query.render(), branch_name=self._branch, at=at, tracker=tracker, variables=input_data["variables"]
         )
-        self.id = response[mutation_name]["object"]["id"]
-        self._existing = True
+        self._process_mutation_result(mutation_name=mutation_name, response=response)
 
     def update(self, at: Optional[Timestamp] = None, do_full_update: bool = False) -> None:
         self._deprecated_parameter(at=at)
+
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
-        mutation_query = {"ok": None, "object": {"id": None}}
+        mutation_query = self._generate_mutation_query()
+        mutation_name = f"{self._schema.kind}Update"
+
         query = Mutation(
-            mutation=f"{self._schema.kind}Update",
+            mutation=mutation_name,
             input_data=input_data["data"],
             query=mutation_query,
             variables=input_data["mutation_variables"],
         )
 
-        self._client.execute_graphql(
+        response = self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
             variables=input_data["variables"],
         )
+        self._process_mutation_result(mutation_name=mutation_name, response=response)
 
     def _process_relationships(
         self, node_data: Dict[str, Any], branch: str, related_nodes: List[InfrahubNodeSync]

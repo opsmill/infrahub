@@ -33,27 +33,11 @@ A branch provide a safe environment to prepare and validate a change before inte
 Branches are meant to be short lived, from a few seconds to a few weeks, and are hierarchical by nature which means that a branch can only be merged into the branch it was created from.
 
 > Currently only a single level of hierarchy is supported, meaning that all branches must be created from the default branch and be merged into the default branch.
-<!-- vale off -->
-### Sync and Isolated mode
-<!-- vale on -->
-Unlike Git, by default, a branch in Infrahub will automatically stay in sync with the default branch, unless the branch is currently in isolated mode.
-A branch in isolated mode will have a similar behavior as branches in Git and a rebase will be required to integrate the latest changes from the default branch.
-
-:::info Branch Isolation & Git Rebase
-
-In Git, Branches are isolated by default and a rebase is required for a branch to stay in sync with the main branch.
-This behavior works well when we need to prepare a big change and we want to have full control about the changes that gets in but in most cases
-it present a risk of having the working branch out-of-sync with the main branches.
-
-:::
 
 ### Create a branch
 
 Branches in Infrahub are designed to be lightweight, while the recommendation is to keep the lifespan of a branch short, it's possible to have 10s of branches open at the same time.
-When creating a branch it's possible to provide a description as well as these options:
-
-- **Data Only**: When a branch is flagged as **Data Only** it won't be extended to the Read-Write Repositories. By opposition, if a branch isn't **Data Only** it will be automatically created in all the Read-Write repositories.
-- **Isolated Mode**: When operating in isolated mode, the branch won't automatically keep in sync with the main branch.
+When creating a branch it's possible to provide a description and define if the branch should be **Data Only** or not. When a branch is flagged as **Data Only** it won't be extended to the Read-Write Repositories. By opposition, if a branch isn't **Data Only** it will be automatically created in all the Read-Write repositories.
 
 Branch names are fairly permissive, but must conform to git ref format. For example, slashes (/) are allowed, tildes (~) are not.
 
@@ -142,7 +126,7 @@ Using a Proposed Change to merge a branch is recommended to guarantee that all c
 
 ### Rebase a branch
 
-If a branch operates in isolated mode or if it has some conflicts with the default branch, it's possible to rebase it with the latest version of the default branch.
+If a branch is out of sync with the default branch or if it has some conflicts, it's possible to rebase it with the latest version of the default branch.
 Similar to the merge operation, during a rebase only the latest modified values in the branch will be conversed and the history of the branch won't be carried over.
 
 The diagram below present how various changes to 2 objects in the Branch A will be updated during a rebase.

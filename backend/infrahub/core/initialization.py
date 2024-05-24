@@ -1,14 +1,15 @@
 from typing import List, Optional
+from uuid import uuid4
 
 from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DEFAULT_IP_NAMESPACE, GLOBAL_BRANCH_NAME, InfrahubKind
+from infrahub.core.constants import DEFAULT_IP_NAMESPACE, GLOBAL_BRANCH_NAME, AccountRole, InfrahubKind
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
-from infrahub.core.node.resource_manager.ip_prefix_pool import CorePrefixPool
+from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema_manager import SchemaManager
@@ -77,7 +78,7 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     registry.node["Node"] = Node
     registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
     registry.node[InfrahubKind.IPADDRESSPOOL] = CoreIPAddressPool
-    registry.node[InfrahubKind.PREFIXPOOL] = CorePrefixPool
+    registry.node[InfrahubKind.IPPREFIXPOOL] = CoreIPPrefixPool
 
 
 async def initialization(db: InfrahubDatabase) -> None:
@@ -193,7 +194,7 @@ async def create_global_branch(db: InfrahubDatabase) -> Branch:
 
 
 async def create_branch(
-    branch_name: str, db: InfrahubDatabase, description: str = "", isolated: bool = False, at: Optional[str] = None
+    branch_name: str, db: InfrahubDatabase, description: str = "", isolated: bool = True, at: Optional[str] = None
 ) -> Branch:
     """Create a new Branch, currently all the branches are based on Main
 
@@ -299,6 +300,17 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
         password=config.SETTINGS.initial.admin_password,
         token_value=config.SETTINGS.initial.admin_token,
     )
+
+    if config.SETTINGS.initial.create_agent_user:
+        password = config.SETTINGS.initial.agent_password or str(uuid4())
+
+        await create_account(
+            db=db,
+            name="agent",
+            password=password,
+            role=AccountRole.READ_WRITE.value,
+            token_value=config.SETTINGS.initial.agent_token,
+        )
 
     # --------------------------------------------------
     # Create Default IPAM Namespace

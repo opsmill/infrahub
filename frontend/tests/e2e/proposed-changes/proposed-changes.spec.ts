@@ -12,10 +12,10 @@ test.describe("/proposed-changes", () => {
   });
 
   test.describe("when not logged in", () => {
-    test.fixme("should not be able to create a proposed changes", async ({ page }) => {
+    test("should not be able to create a proposed changes", async ({ page }) => {
       await page.goto("/proposed-changes");
 
-      await expect(page.getByText("ProposedChange")).toBeVisible();
+      await expect(page.getByRole("main")).toContainText("Proposed changes");
       await expect(page.getByTestId("add-proposed-changes-button")).toBeDisabled();
     });
   });
@@ -23,31 +23,26 @@ test.describe("/proposed-changes", () => {
   test.describe("when logged in as Admin", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-    test.fixme("should be able to create a proposed changes", async ({ page }) => {
+    test("allow to create a proposed change", async ({ page }) => {
       await page.goto("/proposed-changes");
 
-      await expect(page.getByText("ProposedChange")).toBeVisible();
+      await expect(page.getByRole("main")).toContainText("Proposed changes");
       await expect(page.getByTestId("add-proposed-changes-button")).toBeEnabled();
       await page.getByTestId("add-proposed-changes-button").click();
-      await expect(page.getByText("Create Proposed Changes")).toBeVisible();
+      await expect(page.getByRole("main")).toContainText("Create a proposed change");
     });
 
-    test.fixme(
-      "Should display an error message when proposed change create fails",
-      async ({ page }) => {
-        await page.goto("/proposed-changes");
+    test("display validation errors when form is submitted with wrong value", async ({ page }) => {
+      await page.goto("/proposed-changes");
 
-        await expect(page.getByText("ProposedChange")).toBeVisible();
-        await expect(page.getByTestId("add-proposed-changes-button")).toBeEnabled();
-        await page.getByTestId("add-proposed-changes-button").click();
-        await expect(page.getByText("Create Proposed Changes")).toBeVisible();
-        await page.getByLabel("Name *").fill("test-create-fail");
-        await page.getByRole("button", { name: "Create" }).click();
-        await expect(page.locator("#alert-error")).toContainText(
-          "Field 'CoreProposedChangeCreateInput.source_branch' of required type 'TextAttributeInput!' was not provided."
-        );
-      }
-    );
+      await expect(page.getByRole("main")).toContainText("Proposed changes");
+      await expect(page.getByTestId("add-proposed-changes-button")).toBeEnabled();
+      await page.getByTestId("add-proposed-changes-button").click();
+      await expect(page.getByRole("main")).toContainText("Create a proposed change");
+      await page.getByRole("button", { name: "Create proposed change" }).click();
+      await expect(page.getByLabel("Name *").locator("..")).toContainText("Required");
+      await expect(page.getByText("Source Branch *").locator("../..")).toContainText("Required");
+    });
 
     test.describe("Create, edit and merge proposed change", async () => {
       test.describe.configure({ mode: "serial" });

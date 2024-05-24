@@ -41,9 +41,10 @@ async def get_artifact(
             branch_name=branch_params.branch.name, node_type=InfrahubKind.ARTIFACT, identifier=artifact_id
         )
 
-    content = await registry.storage.retrieve(identifier=artifact.storage_id.value)
-
-    return Response(content=content, headers={"Content-Type": artifact.content_type.value.value})
+    return Response(
+        content=registry.storage.retrieve(identifier=artifact.storage_id.value),
+        headers={"Content-Type": artifact.content_type.value.value},
+    )
 
 
 @router.post("/generate/{artifact_definition_id:str}")

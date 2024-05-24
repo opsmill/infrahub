@@ -1659,7 +1659,7 @@ core_models: dict[str, Any] = {
             ],
         },
         {
-            "name": "PrefixPool",
+            "name": "IPPrefixPool",
             "namespace": "Core",
             "description": "A pool of IP prefix resources",
             "label": "Prefix Pool",
@@ -1675,6 +1675,7 @@ core_models: dict[str, Any] = {
                     "name": "default_prefix_size",
                     "kind": "Number",
                     "optional": True,
+                    "order_weight": 5000,
                 },
                 {
                     "name": "default_member_type",
@@ -1682,11 +1683,13 @@ core_models: dict[str, Any] = {
                     "enum": ["prefix", "address"],
                     "default_value": "prefix",
                     "optional": True,
+                    "order_weight": 3000,
                 },
                 {
                     "name": "default_prefix_type",
                     "kind": "Text",
                     "optional": True,
+                    "order_weight": 4000,
                 },
             ],
             "relationships": [
@@ -1727,11 +1730,13 @@ core_models: dict[str, Any] = {
                     "kind": "Text",
                     "optional": False,
                     "description": "The object type to create when reserving a resource in the pool",
+                    "order_weight": 3000,
                 },
                 {
                     "name": "default_prefix_size",
                     "kind": "Number",
                     "optional": True,
+                    "order_weight": 4000,
                 },
             ],
             "relationships": [
@@ -1742,7 +1747,7 @@ core_models: dict[str, Any] = {
                     "identifier": "ipaddresspool__resource",
                     "cardinality": "many",
                     "optional": False,
-                    "order_weight": 4000,
+                    "order_weight": 5000,
                 },
                 {
                     "name": "ip_namespace",
@@ -1751,7 +1756,7 @@ core_models: dict[str, Any] = {
                     "identifier": "ipaddresspool__ipnamespace",
                     "cardinality": "one",
                     "optional": False,
-                    "order_weight": 5000,
+                    "order_weight": 6000,
                 },
             ],
         },

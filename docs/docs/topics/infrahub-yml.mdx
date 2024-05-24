@@ -22,6 +22,12 @@ An external repository can be used to link the following Infrahub objects to an 
 
 :::
 
+:::note
+
+To help with the development process of a repository configuration file, you can leverage [schema validation](/reference/schema-validation) within your editor.
+
+:::
+
 ## GraphQL query {#graphql-query}
 
 This is the easiest type of object to link to Infrahub through an external repository because they do not need to be specified in the `.infrahub.yml` file. When Infrahub creates a Repository or pulls changes from the associated external repository, it will scan all the files in the repository and save any that have a `.gql` extension as GraphQLQuery objects in Infrahub.

@@ -1,10 +1,7 @@
 import { gql } from "@apollo/client";
-import { PlusIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { Link } from "react-router-dom";
-import { RoundedButton } from "../../components/buttons/rounded-button";
 import { Badge } from "../../components/ui/badge";
-import { Tooltip } from "../../components/ui/tooltip";
 import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
 import { usePermission } from "../../hooks/usePermission";
@@ -17,6 +14,8 @@ import ErrorScreen from "../errors/error-screen";
 import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { ProposedChange } from "./proposed-changes-item";
+import { Button, ButtonWithTooltip } from "../../components/buttons/button-primitive";
+import { Icon } from "@iconify-icon/react";
 
 const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);
@@ -71,25 +70,24 @@ const ProposedChanges = () => {
         }
         reload={handleRefetch}
         isReloadLoading={loading}>
-        <div className="flex-grow text-right">
-          {permission.write.allow ? (
-            <Link to={constructPath("/proposed-changes/new")}>
-              <RoundedButton
-                disabled={!permission.write.allow}
-                data-testid="add-proposed-changes-button">
-                <PlusIcon className="w-4 h-4" aria-hidden="true" />
-              </RoundedButton>
-            </Link>
-          ) : (
-            <Tooltip content={permission.write.message ?? undefined}>
-              <RoundedButton
-                disabled={!permission.write.allow}
-                data-testid="add-proposed-changes-button">
-                <PlusIcon className="w-4 h-4" aria-hidden="true" />
-              </RoundedButton>
-            </Tooltip>
-          )}
-        </div>
+        {permission.write.allow ? (
+          <Link className="ml-auto" to={constructPath("/proposed-changes/new")}>
+            <Button size="icon" variant="outline" data-testid="add-proposed-changes-button">
+              <Icon icon="mdi:plus" />
+            </Button>
+          </Link>
+        ) : (
+          <ButtonWithTooltip
+            className="ml-auto"
+            size="icon"
+            variant="outline"
+            disabled
+            tooltipEnabled
+            tooltipContent={permission.write.message ?? undefined}
+            data-testid="add-proposed-changes-button">
+            <Icon icon="mdi:plus" />
+          </ButtonWithTooltip>
+        )}
       </Content.Title>
 
       <ul className="grid gap-6 grid-cols-1 p-6">

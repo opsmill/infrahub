@@ -4,6 +4,7 @@ from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilder
 from ..node.grouped_uniqueness import NodeGroupedUniquenessConstraintDependency
 from ..node.uniqueness import NodeAttributeUniquenessConstraintDependency
 from ..relationship_manager.count import RelationshipCountConstraintDependency
+from ..relationship_manager.peer_kind import RelationshipPeerKindConstraintDependency
 
 
 class NodeConstraintRunnerDependency(DependencyBuilder[NodeConstraintRunner]):
@@ -16,5 +17,8 @@ class NodeConstraintRunnerDependency(DependencyBuilder[NodeConstraintRunner]):
                 NodeAttributeUniquenessConstraintDependency.build(context=context),
                 NodeGroupedUniquenessConstraintDependency.build(context=context),
             ],
-            relationship_manager_constraints=[RelationshipCountConstraintDependency.build(context=context)],
+            relationship_manager_constraints=[
+                RelationshipPeerKindConstraintDependency.build(context=context),
+                RelationshipCountConstraintDependency.build(context=context),
+            ],
         )

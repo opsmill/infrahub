@@ -3,6 +3,7 @@ import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useNavigate } from "react-router-dom";
 import { DateDisplay } from "../../components/display/date-display";
+import { Badge } from "../../components/ui/badge";
 import { Tooltip } from "../../components/utils/tooltip";
 import GET_BRANCHES from "../../graphql/queries/branches/getBranches";
 import { useLazyQuery } from "../../hooks/useQuery";
@@ -10,7 +11,6 @@ import { useTitle } from "../../hooks/useTitle";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { constructPath } from "../../utils/fetch";
 import Content from "../layout/content";
-import { Badge } from "../../components/ui/badge";
 
 const BranchesItems = () => {
   const [storedBranches, setBranches] = useAtom(branchesState);
@@ -67,12 +67,6 @@ const BranchesItems = () => {
                       {branch.sync_with_git && (
                         <Tooltip message={"Sync with Git"}>
                           <Icon icon={"mdi:git"} className="text-red-400 mr-1" />
-                        </Tooltip>
-                      )}
-
-                      {branch.is_isolated && (
-                        <Tooltip message={"Isolated mode"}>
-                          <Icon icon={"mdi:alpha-i-box"} className="text-gray-400 mr-1" />
                         </Tooltip>
                       )}
 

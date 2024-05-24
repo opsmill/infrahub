@@ -24,7 +24,7 @@ from infrahub.core.initialization import (
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
-from infrahub.core.node.resource_manager.ip_prefix_pool import CorePrefixPool
+from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
@@ -2197,7 +2197,7 @@ async def init_db(empty_database, db: InfrahubDatabase) -> None:
 async def init_nodes_registry(db: InfrahubDatabase) -> None:
     registry.node["Node"] = Node
     registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
-    registry.node[InfrahubKind.PREFIXPOOL] = CorePrefixPool
+    registry.node[InfrahubKind.IPPREFIXPOOL] = CoreIPPrefixPool
     registry.node[InfrahubKind.IPADDRESSPOOL] = CoreIPAddressPool
 
 
