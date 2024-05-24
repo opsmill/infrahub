@@ -113,6 +113,46 @@ async def test_schema_branch_process_inheritance(schema_all_in_one):
     }
 
 
+async def test_schema_branch_process_inheritance_node_level(animal_person_schema_dict):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
+
+    schema.process_inheritance()
+
+    animal = schema.get(name="TestAnimal")
+    assert sorted(animal.used_by) == ["TestCat", "TestDog"]
+
+    dog = schema.get(name="TestDog")
+    cat = schema.get(name="TestCat")
+    assert dog.human_friendly_id == animal.human_friendly_id
+    assert cat.human_friendly_id != animal.human_friendly_id
+
+    assert dog.display_labels == animal.display_labels
+    assert cat.display_labels != animal.display_labels
+
+    assert dog.order_by == animal.order_by
+    assert cat.order_by != animal.order_by
+
+    assert dog.icon == animal.icon
+
+
+async def test_schema_branch_process_humain_friendly_id(animal_person_schema_dict):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
+
+    schema.process_inheritance()
+    schema.process_human_friendly_id()
+
+    animal = schema.get(name="TestAnimal")
+    assert sorted(animal.used_by) == ["TestCat", "TestDog"]
+
+    dog = schema.get(name="TestDog")
+    person = schema.get(name="TestPerson")
+
+    assert person.human_friendly_id == ["name__value"]
+    assert dog.uniqueness_constraints == [["owner", "name__value"]]
+
+
 async def test_schema_branch_process_branch_support(schema_all_in_one):
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
