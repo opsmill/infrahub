@@ -5,7 +5,7 @@ test.describe("/ipam - IP Namespace", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-  test.only("create ip namespace", async ({ page }) => {
+  test("create ip namespace", async ({ page }) => {
     await page.goto("/objects/BuiltinIPNamespace");
 
     await expect(page.getByRole("link", { name: "default", exact: true })).toBeVisible();
