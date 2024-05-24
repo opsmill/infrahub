@@ -1,11 +1,10 @@
 import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 import { FormProvider, useForm } from "react-hook-form";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { BUTTON_TYPES, Button } from "../../components/buttons/button";
-import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
+import { Button } from "../../components/buttons/button-primitive";
 import { Card } from "../../components/ui/card";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { CREATE_PROPOSED_CHANGE } from "../../graphql/mutations/proposed-changes/createProposedChange";
@@ -29,7 +28,7 @@ const ProposedChangesCreatePage = () => {
 
   return (
     <Content>
-      <div className="p-4 px-8 max-w-2xl m-auto mt-0 md:mt-4 bg-white rounded-md">
+      <Card className="p-4 px-8 max-w-2xl m-auto mt-0 md:mt-4">
         <h1 className="text-xl font-semibold text-gray-700">Create a proposed change</h1>
         <p className="text-xs text-gray-700 mb-6">
           A proposed change lets you compare two branches, run tests, and finally merge one branch
@@ -37,7 +36,7 @@ const ProposedChangesCreatePage = () => {
         </p>
 
         <ProposedChangeCreateForm />
-      </div>
+      </Card>
     </Content>
   );
 };
@@ -157,11 +156,11 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
 
         <div className="self-end align-middle">
           <Link to={constructPath("/proposed-changes")} className="mr-2">
-            <Button>Cancel</Button>
+            <Button variant="outline">Cancel</Button>
           </Link>
-          <ButtonWithTooltip type="submit" buttonType={BUTTON_TYPES.MAIN} disabled={loading}>
+          <Button type="submit" disabled={loading}>
             Create proposed change
-          </ButtonWithTooltip>
+          </Button>
         </div>
 
         {error && (
