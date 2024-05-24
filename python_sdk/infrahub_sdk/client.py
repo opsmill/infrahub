@@ -215,6 +215,29 @@ class BaseClient:
 
         return url
 
+    def _build_resource_allocation_query(
+        self, resource_pool_mutation: str, resource_pool_id: str, identifier: Optional[str] = None
+    ) -> str:
+        mutation_parameters = f'id: "{resource_pool_id}"'
+        if identifier:
+            mutation_parameters += f'\nidentifier: "{identifier}"'
+
+        return """
+            mutation {
+                %s(data: {
+                    %s
+                }) {
+                    ok
+                    node {
+                        id
+                        kind
+                        identifier
+                        display_label
+                    }
+                }
+            }
+        """ % (resource_pool_mutation, mutation_parameters)
+
 
 class InfrahubClient(BaseClient):
     """GraphQL Client to interact with Infrahub."""
@@ -803,6 +826,84 @@ class InfrahubClient(BaseClient):
         )
         return response["DiffSummary"]
 
+    async def allocate_next_ip_address(
+        self,
+        resource_pool: InfrahubNode,
+        identifier: Optional[str] = None,
+        branch: Optional[str] = None,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> Optional[InfrahubNode]:
+        """Allocate a new IP address by using the provided resource pool.
+
+        Args:
+            resource_pool (InfrahubNode): Node corresponding to the pool to allocate resources from.
+            identifier (str, optional): Value to perform idempotent allocation, the same resource will be returned for a given identifier.
+            branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
+            timeout (int, optional): Flag to indicate whether to populate the store with the retrieved nodes.
+            tracker (str, optional): The offset for pagination.
+            raise_for_error (bool, optional): The limit for pagination.
+        Returns:
+            InfrahubNode: Node corresponding to the allocated resource.
+        """
+        if resource_pool.get_kind() != "CoreIPAddressPool":
+            raise ValueError("resource_pool is not an IP address pool")
+
+        branch = branch or self.default_branch
+        mutation_name = "IPAddressPoolGetResource"
+
+        query = self._build_resource_allocation_query(
+            resource_pool_mutation=mutation_name, resource_pool_id=resource_pool.id, identifier=identifier
+        )
+        response = await self.execute_graphql(
+            query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
+        )
+
+        if response[mutation_name]["ok"]:
+            resource_details = response[mutation_name]["node"]
+            return await self.get(kind=resource_details["kind"], id=resource_details["id"], branch=branch)
+        return None
+
+    async def allocate_next_ip_prefix(
+        self,
+        resource_pool: InfrahubNode,
+        identifier: Optional[str] = None,
+        branch: Optional[str] = None,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> Optional[InfrahubNode]:
+        """Allocate a new IP prefix by using the provided resource pool.
+
+        Args:
+            resource_pool (InfrahubNode): Node corresponding to the pool to allocate resources from.
+            identifier (str, optional): Value to perform idempotent allocation, the same resource will be returned for a given identifier.
+            branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
+            timeout (int, optional): Flag to indicate whether to populate the store with the retrieved nodes.
+            tracker (str, optional): The offset for pagination.
+            raise_for_error (bool, optional): The limit for pagination.
+        Returns:
+            InfrahubNode: Node corresponding to the allocated resource.
+        """
+        if resource_pool.get_kind() != "CoreIPPrefixPool":
+            raise ValueError("resource_pool is not an IP prefix pool")
+
+        branch = branch or self.default_branch
+        mutation_name = "IPPrefixPoolGetResource"
+
+        query = self._build_resource_allocation_query(
+            resource_pool_mutation=mutation_name, resource_pool_id=resource_pool.id, identifier=identifier
+        )
+        response = await self.execute_graphql(
+            query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
+        )
+
+        if response[mutation_name]["ok"]:
+            resource_details = response[mutation_name]["node"]
+            return await self.get(kind=resource_details["kind"], id=resource_details["id"], branch=branch)
+        return None
+
     async def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:
         return InfrahubBatch(semaphore=self.concurrent_execution_limit, return_exceptions=return_exceptions)
 
@@ -1317,6 +1418,84 @@ class InfrahubClientSync(BaseClient):
             query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
         )
         return response["DiffSummary"]
+
+    def allocate_next_ip_address(
+        self,
+        resource_pool: InfrahubNodeSync,
+        identifier: Optional[str] = None,
+        branch: Optional[str] = None,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> Optional[InfrahubNodeSync]:
+        """Allocate a new IP address by using the provided resource pool.
+
+        Args:
+            resource_pool (InfrahubNodeSync): Node corresponding to the pool to allocate resources from.
+            identifier (str, optional): Value to perform idempotent allocation, the same resource will be returned for a given identifier.
+            branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
+            timeout (int, optional): Flag to indicate whether to populate the store with the retrieved nodes.
+            tracker (str, optional): The offset for pagination.
+            raise_for_error (bool, optional): The limit for pagination.
+        Returns:
+            InfrahubNodeSync: Node corresponding to the allocated resource.
+        """
+        if resource_pool.get_kind() != "CoreIPAddressPool":
+            raise ValueError("resource_pool is not an IP address pool")
+
+        branch = branch or self.default_branch
+        mutation_name = "IPAddressPoolGetResource"
+
+        query = self._build_resource_allocation_query(
+            resource_pool_mutation=mutation_name, resource_pool_id=resource_pool.id, identifier=identifier
+        )
+        response = self.execute_graphql(
+            query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
+        )
+
+        if response[mutation_name]["ok"]:
+            resource_details = response[mutation_name]["node"]
+            return self.get(kind=resource_details["kind"], id=resource_details["id"], branch=branch)
+        return None
+
+    def allocate_next_ip_prefix(
+        self,
+        resource_pool: InfrahubNodeSync,
+        identifier: Optional[str] = None,
+        branch: Optional[str] = None,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> Optional[InfrahubNodeSync]:
+        """Allocate a new IP prefix by using the provided resource pool.
+
+        Args:
+            resource_pool (InfrahubNodeSync): Node corresponding to the pool to allocate resources from.
+            identifier (str, optional): Value to perform idempotent allocation, the same resource will be returned for a given identifier.
+            branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
+            timeout (int, optional): Flag to indicate whether to populate the store with the retrieved nodes.
+            tracker (str, optional): The offset for pagination.
+            raise_for_error (bool, optional): The limit for pagination.
+        Returns:
+            InfrahubNodeSync: Node corresponding to the allocated resource.
+        """
+        if resource_pool.get_kind() != "CoreIPPrefixPool":
+            raise ValueError("resource_pool is not an IP prefix pool")
+
+        branch = branch or self.default_branch
+        mutation_name = "IPPrefixPoolGetResource"
+
+        query = self._build_resource_allocation_query(
+            resource_pool_mutation=mutation_name, resource_pool_id=resource_pool.id, identifier=identifier
+        )
+        response = self.execute_graphql(
+            query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
+        )
+
+        if response[mutation_name]["ok"]:
+            resource_details = response[mutation_name]["node"]
+            return self.get(kind=resource_details["kind"], id=resource_details["id"], branch=branch)
+        return None
 
     def repository_update_commit(
         self, branch_name: str, repository_id: str, commit: str, is_read_only: bool = False
