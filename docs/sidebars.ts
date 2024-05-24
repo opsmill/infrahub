@@ -63,6 +63,7 @@ const sidebars: SidebarsConfig = {
         'guides/database-backup',
         'guides/profiles',
         'guides/object-storage',
+	'guides/check',
       ],
     },
     {
