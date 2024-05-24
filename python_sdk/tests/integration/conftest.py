@@ -118,7 +118,7 @@ async def builtin_org_schema() -> SchemaRoot:
         "nodes": [
             {
                 "name": "Organization",
-                "namespace": "Core",
+                "namespace": "Test",
                 "description": "An organization represent a legal entity, a company.",
                 "include_in_menu": True,
                 "label": "Organization",

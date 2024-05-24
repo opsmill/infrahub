@@ -381,7 +381,6 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
         "ProfileBuiltinTag",
         "ProfileBuiltinStatus",
         "ProfileBuiltinBadge",
-        "ProfileCoreStandardGroup",
         "ProfileInfraTinySchema",
     }
 
@@ -396,7 +395,6 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
         "ProfileBuiltinTag",
         "ProfileBuiltinStatus",
         "ProfileBuiltinBadge",
-        "ProfileCoreStandardGroup",
         "ProfileInfraTinySchema",
     }
 
