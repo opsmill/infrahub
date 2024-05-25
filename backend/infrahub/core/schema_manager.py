@@ -980,6 +980,7 @@ class SchemaBranch:
                 for attr in node.unique_attributes:
                     node = self.get(name=name, duplicate=True)
                     node.human_friendly_id = [f"{attr.name}__value"]
+                    self.set(name=node.kind, schema=node)
                     break
                 continue
 
@@ -993,6 +994,7 @@ class SchemaBranch:
                         uniqueness_constraints.append(schema_attribute_path.relationship_schema.name)
 
                 node.uniqueness_constraints = [uniqueness_constraints]
+                self.set(name=node.kind, schema=node)
 
     def process_hierarchy(self) -> None:
         for name in self.nodes.keys():
