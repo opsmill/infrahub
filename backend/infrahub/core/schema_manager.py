@@ -1399,7 +1399,7 @@ class SchemaBranch:
             core_profile_schema.used_by = sorted(list(profile_schema_kinds))
             self.set(name=InfrahubKind.PROFILE, schema=core_profile_schema)
 
-        try:
+        if self.has(name=InfrahubKind.NODE):
             core_node_schema = self.get(name=InfrahubKind.NODE, duplicate=False)
             current_used_by_node = set(core_node_schema.used_by)
             new_used_by_node = profile_schema_kinds - current_used_by_node
@@ -1409,9 +1409,6 @@ class SchemaBranch:
                 updated_used_by_node = set(chain(profile_schema_kinds, set(core_node_schema.used_by)))
                 core_node_schema.used_by = sorted(list(updated_used_by_node))
                 self.set(name=InfrahubKind.NODE, schema=core_node_schema)
-        except SchemaNotFoundError:
-            # a lot of tests are not loading CoreNode for performance Reason.
-            log.warning("unable to find the schema for CoreNode")
 
     def add_profile_relationships(self):
         for node_name in self.nodes.keys():
