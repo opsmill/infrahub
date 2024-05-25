@@ -12,7 +12,7 @@ from infrahub.graphql import prepare_graphql_params
 
 
 @pytest.fixture
-def criticality_schema(default_branch: Branch, data_schema):
+def criticality_schema(default_branch: Branch, data_schema, node_group_schema):
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Test",
