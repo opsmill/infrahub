@@ -340,6 +340,7 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    schema.process_inheritance()
     schema.add_profile_schemas()
 
     profile = schema.get(name="ProfileBuiltinCriticality")
@@ -347,7 +348,23 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
     assert profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
     assert set(profile.attribute_names) == {"profile_name", "profile_priority", "description"}
     core_profile_schema = schema.get("CoreProfile")
+    core_node_schema = schema.get("CoreNode")
     assert set(core_profile_schema.used_by) == {
+        "ProfileBuiltinCriticality",
+        "ProfileBuiltinTag",
+        "ProfileBuiltinStatus",
+        "ProfileBuiltinBadge",
+        "ProfileCoreStandardGroup",
+        "ProfileInfraTinySchema",
+    }
+
+    assert set(core_node_schema.used_by) == {
+        "BuiltinBadge",
+        "BuiltinCriticality",
+        "BuiltinStatus",
+        "BuiltinTag",
+        "CoreStandardGroup",
+        "InfraTinySchema",
         "ProfileBuiltinCriticality",
         "ProfileBuiltinTag",
         "ProfileBuiltinStatus",

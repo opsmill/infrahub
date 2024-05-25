@@ -139,9 +139,9 @@ async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criti
                     name { value }
                     level { value }
                     id
-                    profiles{
+                    profiles {
                         edges {
-                            node{ id }
+                            node { id }
                         }
                     }
                 }
@@ -254,6 +254,9 @@ async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branc
         "fancy": {"value": "sometimes", "is_from_profile": True},
         "id": crit_2_profile.id,
     }
+
+    assert crit_1_profile.id in gql_params.context.related_node_ids
+    assert crit_2_profile.id in gql_params.context.related_node_ids
 
 
 async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
