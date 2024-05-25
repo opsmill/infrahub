@@ -68,6 +68,7 @@ async def animal_person_schema_dict() -> dict:
                 "display_labels": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "other_name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
                 ],
                 "relationships": [
