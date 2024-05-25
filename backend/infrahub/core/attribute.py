@@ -490,6 +490,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             elif isinstance(field, (int, bool, dict, list)):
                 response[field_name] = field
 
+            if related_node_ids and self.is_from_profile and getattr(self, "source_id"):
+                related_node_ids.add(getattr(self, "source_id"))
+
         return response
 
     def _filter_sensitive(self, value: str, filter_sensitive: bool) -> str:
