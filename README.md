@@ -6,7 +6,7 @@
 
 Infrahub from [OpsMill](https://opsmill.com) is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run. Infrahub offers a central hub to manage the data, templates and playbooks that powers your infrastructure by combining the version control and branch management capabilities of Git with the flexible data model and UI of a graph database.
 
-![infrahub screenshot](docs/docs/media/infrahub-readme.png)
+![infrahub screenshot](docs/docs/media/infrahub-readme.gif)
 
 ## Quick Start
 
@@ -28,10 +28,7 @@ If you'd like to learn more about Infrahub, please refer to the following resour
 - [Infrahub Overview](https://docs.infrahub.app/overview/)
 - [Getting Started](https://docs.infrahub.app/tutorials/getting-started/)
 - [Infrahub Documentation](https://docs.infrahub.app/)
-
-## Project status
-
-Infrahub is currently in in open beta, which means that not all features we are targeting for the first major release have been implemented yet and the project is still evolving at a very rapid pace. For upcoming development plans, see our [public roadmap](https://opsmill.atlassian.net/jira/discovery/share/views/7e5d4ab1-63d7-405e-b453-ad50cd9d5b71).
+- [FAQ](https://docs.infrahub.app/faq/)
 
 ## Support and Community
 
