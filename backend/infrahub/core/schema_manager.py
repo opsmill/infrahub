@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 from collections import defaultdict
+from itertools import chain
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
@@ -1375,6 +1376,7 @@ class SchemaBranch:
             self.set(name=core_profile_schema.kind, schema=core_profile_schema)
         else:
             core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
+
         profile_schema_kinds = set()
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
@@ -1386,14 +1388,26 @@ class SchemaBranch:
             profile_schema_kinds.add(profile.kind)
         if not profile_schema_kinds:
             return
+
+        # Update used_by list for CoreProfile and CoreNode
         core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
-        current_used_by = set(core_profile_schema.used_by)
-        new_used_by = profile_schema_kinds - current_used_by
-        if not new_used_by:
-            return
-        core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=True)
-        core_profile_schema.used_by = sorted(list(profile_schema_kinds))
-        self.set(name=core_profile_schema.kind, schema=core_profile_schema)
+        current_used_by_profile = set(core_profile_schema.used_by)
+        new_used_by_profile = profile_schema_kinds - current_used_by_profile
+
+        core_node_schema = self.get(name=InfrahubKind.NODE, duplicate=False)
+        current_used_by_node = set(core_node_schema.used_by)
+        new_used_by_node = profile_schema_kinds - current_used_by_node
+
+        if new_used_by_profile:
+            core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=True)
+            core_profile_schema.used_by = sorted(list(profile_schema_kinds))
+            self.set(name=InfrahubKind.PROFILE, schema=core_profile_schema)
+
+        if new_used_by_node:
+            core_node_schema = self.get(name=InfrahubKind.NODE, duplicate=True)
+            updated_used_by_node = set(chain(profile_schema_kinds, set(core_node_schema.used_by)))
+            core_node_schema.used_by = sorted(list(updated_used_by_node))
+            self.set(name=InfrahubKind.NODE, schema=core_node_schema)
 
     def add_profile_relationships(self):
         for node_name in self.nodes.keys():
@@ -1440,7 +1454,7 @@ class SchemaBranch:
             branch=node.branch,
             include_in_menu=False,
             display_labels=["profile_name__value"],
-            inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE],
+            inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE, InfrahubKind.NODE],
             default_filter="profile_name__value",
             attributes=[profile_name_attr, profile_priority_attr],
             relationships=[
