@@ -23,6 +23,21 @@ Refer to [Architecture](/topics/architecture) for a more in-depth view of the co
 
 Please ensure the systems on which you want to install Infrahub meet the [hardware requirements](/topics/hardware-requirements).
 
+## Quick start via curl
+
+To quickly test Infrahub locally:
+
+```bash
+curl https://infrahub.opsmill.io | docker compose -f - up -d
+```
+
+Alternative examples:
+
+```bash
+curl https://infrahub.opsmill.io/develop | docker compose -f - up -d
+curl https://infrahub.opsmill.io/0.13.0 | docker compose -f - up -d
+```
+
 ## From Git repository
 
 Create the base directory for the Infrahub installation. For this guide, we'll use `/opt/infrahub`.

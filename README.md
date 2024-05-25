@@ -10,19 +10,16 @@ Infrahub from [OpsMill](https://opsmill.com) is taking a new approach to Infrast
 
 ## Quick Start
 
+> [!NOTE]
+> Infrahub is currently in beta, and the team is actively working towards reaching version 1.0 by the end of the year. The project is committed to ensuring data safety and providing a migration path for future releases. See our [FAQ](https://docs.infrahub.app/faq/) for more information.
+
 Leveraging [GitHub Codespaces](https://docs.github.com/en/codespaces/overview), it's possible to start a new instance of Infrahub in the Cloud in minutes:
 
 |  No Data | Demo Data |
 |---|---|
 | [![Launch in GitHub Codespaces (No Data)](https://img.shields.io/badge/Launch%20Infrahub-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable) | [![Launch in GitHub Codespaces (Demo Data)](https://img.shields.io/badge/Infrahub%20with%20Data-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable) |
 
-Alternately, to quickly test Infrahub locally:
-
-```bash
-curl https://infrahub.opsmill.io | docker compose -f - up -d
-```
-
-For more details on how to deploy a local instance of Infrahub please refer to our guide: [Installing Infrahub](https://docs.infrahub.app/guides/installation)
+For details on how to deploy a local instance of Infrahub please refer to our guide: [Installing Infrahub](https://docs.infrahub.app/guides/installation)
 
 ## Documentation
 
