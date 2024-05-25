@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 class IPPrefixPoolGetResourceInput(InputObjectType):
     id = InputField(String(required=False), description="ID of the pool to allocate from")
     hfid = InputField(String(required=False), description="HFID of the pool to allocate from")
-    identifier = InputField(String(required=False), description="ID of the pool to allocate from")
+    identifier = InputField(String(required=False), description="Identifier for the allocated resource")
     size = InputField(Int(required=False), description="Size of the prefix to allocate")
     member_type = InputField(String(required=False), description="member_type of the newly created prefix")
     prefix_type = InputField(String(required=False), description="kind of prefix to allocate")
@@ -30,7 +30,7 @@ class IPPrefixPoolGetResourceInput(InputObjectType):
 class IPAddressPoolGetResourceInput(InputObjectType):
     id = InputField(String(required=False), description="ID of the pool to allocate from")
     hfid = InputField(String(required=False), description="HFID of the pool to allocate from")
-    identifier = InputField(String(required=False), description="ID of the pool to allocate from")
+    identifier = InputField(String(required=False), description="Identifier for the allocated resource")
     prefixlen = InputField(
         String(required=False), description="size of the prefix mask to allocate on the new ip address"
     )
