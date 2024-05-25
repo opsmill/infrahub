@@ -277,13 +277,7 @@ const sidebars: SidebarsConfig = {
         'release-notes/release-0_7',
         'release-notes/release-0_6'],
     },
-    {
-      type: 'category',
-      label: 'FAQ',
-      items: [
-        'faq/FAQ',
-      ],
-    }
+    'faq/faq',
   ],
 };
 
