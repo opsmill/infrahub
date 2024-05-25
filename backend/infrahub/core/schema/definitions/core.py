@@ -1733,7 +1733,7 @@ core_models: dict[str, Any] = {
                     "order_weight": 3000,
                 },
                 {
-                    "name": "default_prefix_size",
+                    "name": "default_prefix_length",
                     "kind": "Number",
                     "optional": True,
                     "order_weight": 4000,
