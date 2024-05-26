@@ -898,7 +898,6 @@ class InfrahubClient(BaseClient):
         query = self._build_ip_address_allocation_query(
             resource_pool_id=resource_pool.id, identifier=identifier, data=data
         )
-        print(query)
         response = await self.execute_graphql(
             query=query,
             branch_name=branch,
