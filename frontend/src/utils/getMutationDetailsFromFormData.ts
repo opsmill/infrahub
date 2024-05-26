@@ -74,10 +74,10 @@ const getMutationDetailsFromFormData = (
     const isOneToMany = relationship.cardinality === "many";
 
     if (mode === "update" && existingObject) {
+      const updatedValue = updatedObject[relationship.name];
+
       if (isOneToOne) {
         const existingValue = existingObject[relationship.name]?.node?.id;
-
-        const updatedValue = updatedObject[relationship.name];
 
         if (updatedValue === existingValue) {
           delete updatedObject[relationship.name];
@@ -92,9 +92,7 @@ const getMutationDetailsFromFormData = (
         const existingValue =
           existingObject[relationship.name]?.edges.map((r: any) => r.node?.id).sort() ?? [];
 
-        const updatedIds = updatedObject[relationship.name]?.list?.sort() ?? [];
-
-        if (JSON.stringify(updatedIds) === JSON.stringify(existingValue)) {
+        if (JSON.stringify(updatedValue) === JSON.stringify(existingValue)) {
           delete updatedObject[relationship.name];
           return;
         }

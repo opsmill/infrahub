@@ -273,9 +273,7 @@ export const getRelationshipValue = ({ row, field, isFilters }: tgetRelationship
   }
 
   if (value.edges) {
-    return {
-      list: value.edges.map((edge: any) => edge.node.id),
-    };
+    return value.edges.map((edge: any) => ({ id: edge.node.id }));
   }
 
   return "";

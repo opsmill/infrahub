@@ -112,7 +112,9 @@ export const Select = (props: SelectProps) => {
   const [localOptions, setLocalOptions] = useState(options);
   const [selectedOption, setSelectedOption] = useState(
     multiple
-      ? localOptions.filter((option) => value?.list?.includes(option.id))
+      ? localOptions.filter(
+          (option) => Array.isArray(value) && value.map((v) => v.id)?.includes(option.id)
+        )
       : localOptions?.find((option) => option?.id === value || option.name === value)
   );
 
@@ -213,8 +215,13 @@ export const Select = (props: SelectProps) => {
 
       setOpen(false);
       setSelectedOption(newValue);
-      onChange({ list: newValue.map((item) => item.id) });
 
+      if (hasPoolsBeenOpened) {
+        onChange(newValue.map((item) => ({ from_pool: { id: item.id } })));
+        return;
+      }
+
+      onChange(newValue.map((item) => ({ id: item.id })));
       return;
     }
 
