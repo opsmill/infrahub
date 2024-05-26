@@ -77,7 +77,9 @@ class TestProposedChangePipelineProfile(TestInfrahubApp):
         assert peers
 
         # Ensure all validators and all tasks are successfull
-        assert all(validator.conclusion.value.value == ValidatorConclusion.SUCCESS.value for validator in peers.values())
+        assert all(
+            validator.conclusion.value.value == ValidatorConclusion.SUCCESS.value for validator in peers.values()
+        )
 
         tasks = await Task.query(db=db, ids=[], fields={}, related_nodes=[proposed_change.id], limit=10, offset=0)
         assert all(task["node"]["conclusion"] == TaskConclusion.SUCCESS for task in tasks["edges"])
