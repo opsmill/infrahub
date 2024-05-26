@@ -398,3 +398,99 @@ async def test_address_cannot_be_parent(
         await query.execute(db=db)
         assert query.get_calculated_parent_uuid() is None
         assert query.get_calculated_children_uuids() == []
+
+
+async def test_adjacent_parents_and_addresses(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    ip_namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ip_namespace.new(db=db, name="ns1")
+    await ip_namespace.save(db=db)
+    prefix_id_map = {}
+    for prefix in ("192.0.2.0/32", "192.0.2.0/31", "192.0.2.0/30", "192.0.2.0/29"):
+        prefix_node = await Node.init(db=db, schema=prefix_schema)
+        await prefix_node.new(db=db, prefix=prefix, ip_namespace=ip_namespace)
+        await prefix_node.save(db=db)
+        prefix_id_map[prefix_node.id] = prefix
+    address_id_map = {}
+    for i in range(7):
+        address = f"192.0.2.{i}/31"
+        address_node = await Node.init(db=db, schema=address_schema)
+        await address_node.new(db=db, address=address, ip_namespace=ip_namespace)
+        await address_node.save(db=db)
+        address_id_map[address_node.id] = address
+
+    # test prefix 192.0.2.0/32
+    query = await IPPrefixReconcileQuery.init(
+        db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_network("192.0.2.0/32")
+    )
+    await query.execute(db=db)
+    assert prefix_id_map[query.get_calculated_parent_uuid()] == "192.0.2.0/31"
+    assert query.get_calculated_children_uuids() == []
+    # test prefix 192.0.2.0/31
+    query = await IPPrefixReconcileQuery.init(
+        db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_network("192.0.2.0/31")
+    )
+    await query.execute(db=db)
+    assert prefix_id_map[query.get_calculated_parent_uuid()] == "192.0.2.0/30"
+    assert {address_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in address_id_map} == {
+        "192.0.2.0/31",
+        "192.0.2.1/31",
+    }
+    assert {prefix_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in prefix_id_map} == {
+        "192.0.2.0/32"
+    }
+    # test prefix 192.0.2.0/30
+    query = await IPPrefixReconcileQuery.init(
+        db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_network("192.0.2.0/30")
+    )
+    await query.execute(db=db)
+    assert prefix_id_map[query.get_calculated_parent_uuid()] == "192.0.2.0/29"
+    assert {address_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in address_id_map} == {
+        "192.0.2.2/31",
+        "192.0.2.3/31",
+    }
+    assert {prefix_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in prefix_id_map} == {
+        "192.0.2.0/31"
+    }
+    # test prefix 192.0.2.0/29
+    query = await IPPrefixReconcileQuery.init(
+        db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_network("192.0.2.0/29")
+    )
+    await query.execute(db=db)
+    assert query.get_calculated_parent_uuid() is None
+    assert {address_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in address_id_map} == {
+        "192.0.2.4/31",
+        "192.0.2.5/31",
+        "192.0.2.6/31",
+    }
+    assert {prefix_id_map[ccu] for ccu in query.get_calculated_children_uuids() if ccu in prefix_id_map} == {
+        "192.0.2.0/30"
+    }
+    # test children address find correct parent
+    for address in ("192.0.2.0/31", "192.0.2.1/31"):
+        query = await IPPrefixReconcileQuery.init(
+            db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_interface(address)
+        )
+        await query.execute(db=db)
+        assert prefix_id_map[query.get_calculated_parent_uuid()] == "192.0.2.0/31"
+        assert query.get_calculated_children_uuids() == []
+    for address in ("192.0.2.2/31", "192.0.2.3/31"):
+        query = await IPPrefixReconcileQuery.init(
+            db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_interface(address)
+        )
+        await query.execute(db=db)
+        assert prefix_id_map[query.get_calculated_parent_uuid()] == "192.0.2.0/30"
+        assert query.get_calculated_children_uuids() == []
+    for address in ("192.0.2.4/31", "192.0.2.5/31", "192.0.2.6/31"):
+        query = await IPPrefixReconcileQuery.init(
+            db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_interface(address)
+        )
+        await query.execute(db=db)
+        assert prefix_id_map[query.get_calculated_parent_uuid()] == "192.0.2.0/29"
+        assert query.get_calculated_children_uuids() == []
