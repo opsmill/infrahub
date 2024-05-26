@@ -179,7 +179,9 @@ export const getObjectRelationshipsForForm = (
     .filter((relationship) => peersKindForForm.includes(relationship?.kind ?? ""))
     // Create form includes cardinality many but only if required, edit form doesn't include it at all
     .filter(
-      (relationship) => relationship.cardinality === "one" || (!isUpdate && !relationship.optional)
+      (relationship) =>
+        relationship.cardinality === "one" ||
+        (isUpdate ? peersKindForForm.includes(relationship?.kind ?? "") : !relationship.optional)
     )
     .filter(Boolean);
 
