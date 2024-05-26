@@ -427,7 +427,9 @@ async def generate_site(
         )
         await intf.save()
 
-        ip = await client.allocate_next_ip_address(resource_pool=loopback_pool, identifier=device_name, branch=branch)
+        ip = await client.allocate_next_ip_address(
+            resource_pool=loopback_pool, identifier=device_name, data={"interface": intf.id}, branch=branch
+        )
         store.set(key=f"{device_name}-loopback", node=ip)
 
         # Management Interface
