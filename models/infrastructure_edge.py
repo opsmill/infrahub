@@ -1259,7 +1259,9 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     await supernet_pool.save()
 
     log.info("Creating IP Loopback Prefix and Pool")
-    loopback_prefix = await client.allocate_next_ip_prefix(resource_pool=supernet_pool, branch=branch)
+    loopback_prefix = await client.allocate_next_ip_prefix(
+        resource_pool=supernet_pool, member_type="address", branch=branch
+    )
     loopback_pool = await client.create(
         kind="CoreIPAddressPool",
         name="Loopbacks pool",
@@ -1284,6 +1286,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         branch=branch,
     )
     await interconnection_pool.save()
+    # Allocate an empty prefix
+    await client.allocate_next_ip_prefix(resource_pool=supernet_pool, branch=branch)
 
     log.info("Creating IP Management Prefix and Pool")
     management_prefix = await client.create(

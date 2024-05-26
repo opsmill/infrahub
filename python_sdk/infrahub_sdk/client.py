@@ -215,16 +215,14 @@ class BaseClient:
 
         return url
 
-    def _build_resource_allocation_query(
-        self, resource_pool_mutation: str, resource_pool_id: str, identifier: Optional[str] = None
-    ) -> str:
+    def _build_ip_address_allocation_query(self, resource_pool_id: str, identifier: Optional[str] = None) -> str:
         mutation_parameters = f'id: "{resource_pool_id}"'
         if identifier:
-            mutation_parameters += f'\nidentifier: "{identifier}"'
+            mutation_parameters += f', identifier: "{identifier}"'
 
         return """
             mutation {
-                %s(data: {
+                IPAddressPoolGetResource(data: {
                     %s
                 }) {
                     ok
@@ -236,7 +234,38 @@ class BaseClient:
                     }
                 }
             }
-        """ % (resource_pool_mutation, mutation_parameters)
+        """ % (mutation_parameters)
+
+    def _build_ip_prefix_allocation_query(
+        self,
+        resource_pool_id: str,
+        identifier: Optional[str] = None,
+        size: Optional[int] = None,
+        member_type: Optional[str] = None,
+    ) -> str:
+        mutation_parameters = f'id: "{resource_pool_id}"'
+        if identifier:
+            mutation_parameters += f', identifier: "{identifier}"'
+        if size:
+            mutation_parameters += f", size: {size}"
+        if member_type:
+            mutation_parameters += f', member_type: "{member_type}"'
+
+        return """
+            mutation {
+                IPPrefixPoolGetResource(data: {
+                    %s
+                }) {
+                    ok
+                    node {
+                        id
+                        kind
+                        identifier
+                        display_label
+                    }
+                }
+            }
+        """ % (mutation_parameters)
 
 
 class InfrahubClient(BaseClient):
@@ -853,9 +882,7 @@ class InfrahubClient(BaseClient):
         branch = branch or self.default_branch
         mutation_name = "IPAddressPoolGetResource"
 
-        query = self._build_resource_allocation_query(
-            resource_pool_mutation=mutation_name, resource_pool_id=resource_pool.id, identifier=identifier
-        )
+        query = self._build_ip_address_allocation_query(resource_pool_id=resource_pool.id, identifier=identifier)
         response = await self.execute_graphql(
             query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
         )
@@ -869,6 +896,8 @@ class InfrahubClient(BaseClient):
         self,
         resource_pool: InfrahubNode,
         identifier: Optional[str] = None,
+        size: Optional[int] = None,
+        member_type: Optional[str] = None,
         branch: Optional[str] = None,
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
@@ -879,6 +908,8 @@ class InfrahubClient(BaseClient):
         Args:
             resource_pool (InfrahubNode): Node corresponding to the pool to allocate resources from.
             identifier (str, optional): Value to perform idempotent allocation, the same resource will be returned for a given identifier.
+            size (int, optional): Length of the prefix to allocate.
+            member_type (str, optional): Member type of the prefix to allocate.
             branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
             timeout (int, optional): Flag to indicate whether to populate the store with the retrieved nodes.
             tracker (str, optional): The offset for pagination.
@@ -892,8 +923,8 @@ class InfrahubClient(BaseClient):
         branch = branch or self.default_branch
         mutation_name = "IPPrefixPoolGetResource"
 
-        query = self._build_resource_allocation_query(
-            resource_pool_mutation=mutation_name, resource_pool_id=resource_pool.id, identifier=identifier
+        query = self._build_ip_prefix_allocation_query(
+            resource_pool_id=resource_pool.id, identifier=identifier, size=size, member_type=member_type
         )
         response = await self.execute_graphql(
             query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
@@ -1446,9 +1477,7 @@ class InfrahubClientSync(BaseClient):
         branch = branch or self.default_branch
         mutation_name = "IPAddressPoolGetResource"
 
-        query = self._build_resource_allocation_query(
-            resource_pool_mutation=mutation_name, resource_pool_id=resource_pool.id, identifier=identifier
-        )
+        query = self._build_ip_address_allocation_query(resource_pool_id=resource_pool.id, identifier=identifier)
         response = self.execute_graphql(
             query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
         )
@@ -1462,6 +1491,8 @@ class InfrahubClientSync(BaseClient):
         self,
         resource_pool: InfrahubNodeSync,
         identifier: Optional[str] = None,
+        size: Optional[int] = None,
+        member_type: Optional[str] = None,
         branch: Optional[str] = None,
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
@@ -1472,6 +1503,8 @@ class InfrahubClientSync(BaseClient):
         Args:
             resource_pool (InfrahubNodeSync): Node corresponding to the pool to allocate resources from.
             identifier (str, optional): Value to perform idempotent allocation, the same resource will be returned for a given identifier.
+            size (int, optional): Length of the prefix to allocate.
+            member_type (str, optional): Member type of the prefix to allocate.
             branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
             timeout (int, optional): Flag to indicate whether to populate the store with the retrieved nodes.
             tracker (str, optional): The offset for pagination.
@@ -1485,8 +1518,8 @@ class InfrahubClientSync(BaseClient):
         branch = branch or self.default_branch
         mutation_name = "IPPrefixPoolGetResource"
 
-        query = self._build_resource_allocation_query(
-            resource_pool_mutation=mutation_name, resource_pool_id=resource_pool.id, identifier=identifier
+        query = self._build_ip_prefix_allocation_query(
+            resource_pool_id=resource_pool.id, identifier=identifier, size=size, member_type=member_type
         )
         response = self.execute_graphql(
             query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
