@@ -24,7 +24,7 @@ title: Release 0.13
 
 # Release 0.14.0
 
-We're excited to announced the latest release of Infrahub (0.14) and the beginning of the open beta.
+We're excited to announce the latest release of Infrahub (0.14) and the beginning of the open beta.
 The main focus for this release was to prepare for the open beta with a lot of cleanup and improvement of the documentation as well as the introduction of some key features like the Resource Manager.
 
 ## Main changes
@@ -33,13 +33,13 @@ The main focus for this release was to prepare for the open beta with a lot of c
 
 #### Resource Manager
 
-The Resource Manager provide an easy way to manage and allocate resources.
+The Resource Manager provides an easy way to manage and allocate resources.
 This first implementation supports IP Prefix and IP Address and more type of resources will be supported in the future (vlan, ids, interfaces etc.. )
 
 What makes the resource manager special are
 - **Inline Allocation** : Resources can be allocated from a pool directly when creating an object
 - **Branch Agnostic** : the allocation of resources work across branches. A resource allocated in a branch won't be allocated to any other branch.
-- **Idempotent** : If the same consumer is requesting a resource multiple times, the resource manager will always return the same value. This capability greatly help to reduce the complexity required to manage resource allocation on the client side in an idempotent way.
+- **Idempotent** : If the same consumer is requesting a resource multiple times, the resource manager will always return the same value. This capability greatly helps to reduce the complexity required to manage resource allocation on the client side in an idempotent way.
 
 ![Resource Pool](../media/release_notes/infrahub_0_14_0/resource_manager_overview.png)
 ![Resource Pool](../media/release_notes/infrahub_0_14_0/resource_manager_form.png)
@@ -49,11 +49,11 @@ What makes the resource manager special are
 
 #### Human Friendly Identifier (hfid)
 
-In addition to the internal id automatically generated for each object (UUID), Infrahub provide a way to define a set of fields that will constitue a human friendly identifier (hfid).
+In addition to the internal id automatically generated for each object (UUID), Infrahub provides a way to define a set of fields that will constitute a human friendly identifier (hfid).
 
 The `hfid` is meant to be used to reference objects uniquely across systems, or even before an object has been created in Infrahub.
 
-This feature will be mostly invible for users while using the frontend but having a human friendly way to identify an object is very important to build robust data synchronization between systems and to provide true idempotent scripts.
+This feature will be mostly invisible for users while using the frontend but having a human friendly way to identify an object is very important to build robust data synchronization between systems and to provide true idempotent scripts.
 
 Applied to the  network industry:
 - the `hfid` of a device could be its name : `atl1-edge01`
@@ -118,4 +118,4 @@ invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra
 ```
 > All data will be lost, please make sure to backup everything you need before running this command.
 
-The repository https://github.com/opsmill/infrahub-demo-edge has also been updated, it's recommend to pull the latest changes into your fork.
+The repository https://github.com/opsmill/infrahub-demo-edge has also been updated, it's recommended to pull the latest changes into your fork.
