@@ -823,6 +823,10 @@ class InfrahubNodeBase:
             if not rel_schema:
                 continue
 
+            # Ignore managed relationship for IP nodes
+            if (self.is_ip_prefix() and item_name == "parent") or (self.is_ip_address() and item_name == "ip_prefix"):
+                continue
+
             rel: Union[RelatedNodeBase, RelationshipManagerBase] = getattr(self, item_name)
 
             # BLOCKED by https://github.com/opsmill/infrahub/issues/330
