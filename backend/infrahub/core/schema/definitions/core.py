@@ -1370,7 +1370,13 @@ core_models: dict[str, Any] = {
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
                 {"name": "query", "kind": "TextArea"},
-                {"name": "variables", "kind": "JSON", "description": "variables in use in the query", "optional": True},
+                {
+                    "name": "variables",
+                    "kind": "JSON",
+                    "description": "variables in use in the query",
+                    "optional": True,
+                    "read_only": True,
+                },
                 {
                     "name": "operations",
                     "kind": "List",
