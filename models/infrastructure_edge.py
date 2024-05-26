@@ -445,7 +445,7 @@ async def generate_site(
         )
         await intf.save()
         management_ip = await client.allocate_next_ip_address(
-            resource_pool=management_pool, identifier=device_name, branch=branch
+            resource_pool=management_pool, identifier=device_name, data={"interface": intf.id}, branch=branch
         )
 
         # set the IP address of the device to the management interface IP address
