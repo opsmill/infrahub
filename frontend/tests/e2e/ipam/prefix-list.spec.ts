@@ -4,7 +4,7 @@ test.describe("/ipam/prefixes - Prefix list", () => {
   test("view the prefix list, use the pagination and view prefix summary", async ({ page }) => {
     await page.goto("/ipam/prefixes");
     await page.getByTestId("ipam-main-content").getByTestId("select-open-option-button").click();
-    await page.getByRole("option", { name: "20" }).click();
+    await page.getByRole("option", { name: "50" }).click();
     await page
       .getByTestId("ipam-main-content")
       .getByRole("row", { name: "203.0.113.0/24 - prefix" }) // prefix need pagination to be visible
