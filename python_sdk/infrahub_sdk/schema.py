@@ -314,6 +314,7 @@ class RelationshipSchema(pydantic.BaseModel):
     cardinality: str = "many"
     branch: Optional[BranchSupportType] = None
     optional: bool = True
+    read_only: bool = False
     filters: List[FilterSchema] = pydantic.Field(default_factory=list)
 
 

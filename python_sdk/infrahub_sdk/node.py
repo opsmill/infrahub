@@ -820,11 +820,7 @@ class InfrahubNodeBase:
 
         for item_name in self._relationships:
             rel_schema = self._schema.get_relationship(name=item_name)
-            if not rel_schema:
-                continue
-
-            # Ignore managed relationship for IP nodes
-            if (self.is_ip_prefix() and item_name == "parent") or (self.is_ip_address() and item_name == "ip_prefix"):
+            if not rel_schema or rel_schema.read_only:
                 continue
 
             rel: Union[RelatedNodeBase, RelationshipManagerBase] = getattr(self, item_name)
