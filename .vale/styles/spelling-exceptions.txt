@@ -39,6 +39,7 @@ graphene
 graphiql
 graphql
 greymatter
+hfid
 idempotency
 include_in_menu
 Infrahub

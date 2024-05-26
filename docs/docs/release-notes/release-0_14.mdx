@@ -24,8 +24,8 @@ title: Release 0.13
 
 # Release 0.14.0
 
-We're excited to announce the latest release of Infrahub (0.14) and the beginning of the open beta.
-The main focus for this release was to prepare for the open beta with a lot of cleanup and improvement of the documentation as well as the introduction of some key features like the Resource Manager.
+We are thrilled to announce the latest release of Infrahub (0.14), marking the start of our open beta.
+This release focuses on preparing for the open beta by cleaning up and improving documentation and introducing key features like the Resource Manager.
 
 ## Main changes
 
@@ -33,37 +33,39 @@ The main focus for this release was to prepare for the open beta with a lot of c
 
 #### Resource Manager
 
-The Resource Manager provides an easy way to manage and allocate resources.
-This first implementation supports IP Prefix and IP Address and more type of resources will be supported in the future (vlan, ids, interfaces etc.. )
+The resource manager simplifies resource management and allocation.
+This initial implementation supports IP Prefix and IP Address, with future support for additional resources like VLAN, IDs, and interfaces.
 
-What makes the resource manager special are
-- **Inline Allocation** : Resources can be allocated from a pool directly when creating an object
-- **Branch Agnostic** : the allocation of resources work across branches. A resource allocated in a branch won't be allocated to any other branch.
-- **Idempotent** : If the same consumer is requesting a resource multiple times, the resource manager will always return the same value. This capability greatly helps to reduce the complexity required to manage resource allocation on the client side in an idempotent way.
+Key features of the Resource Manager include:
+
+- **Inline Allocation**: Allocate resources from a pool directly when creating an object.
+- **Branch Agnostic**: Resource allocation works across branches. A resource allocated in one branch won’t be allocated in another.
+- **Idempotent**: If the same consumer requests a resource multiple times, the Resource Manager will always return the same value. This reduces the complexity of managing resource allocation on the client side in an idempotent way.
 
 ![Resource Pool](../media/release_notes/infrahub_0_14_0/resource_manager_overview.png)
 ![Resource Pool](../media/release_notes/infrahub_0_14_0/resource_manager_form.png)
-
 
 ### Schema
 
 #### Human Friendly Identifier (hfid)
 
-In addition to the internal id automatically generated for each object (UUID), Infrahub provides a way to define a set of fields that will constitute a human friendly identifier (hfid).
+In addition to the automatically generated internal ID (UUID) for each object, Infrahub now allows defining fields that form a human-friendly identifier (`hfid`).
 
-The `hfid` is meant to be used to reference objects uniquely across systems, or even before an object has been created in Infrahub.
+The hfid can uniquely reference objects across systems, even before an object is created in Infrahub.
 
-This feature will be mostly invisible for users while using the frontend but having a human friendly way to identify an object is very important to build robust data synchronization between systems and to provide true idempotent scripts.
+While mostly invisible in the frontend, `hfid` is crucial for building robust data synchronization between systems and creating truly idempotent scripts.
 
-Applied to the  network industry:
-- the `hfid` of a device could be its name : `atl1-edge01`
+Applied to the network industry:
+
+- the `hfid` of a device could be its name: `atl1-edge01`
 - the `hfid` of an interface will be the combination of the name of the device and the name of the interface: `["atl1-edge01", "Ethernet1"]
 
 The fields that will compose the `human_friendly_id` must be defined in the schema
 
 ##### hfid support in GraphQL
 
-`hfid` can be used as a alternative to id in most places in GraphQL, including :
+`hfid` can be used as an alternative to the ID in most GraphQL operations, including:
+
 - Update Mutation
 - Upsert Mutation
 - Delete Mutation
@@ -73,12 +75,12 @@ The fields that will compose the `human_friendly_id` must be defined in the sche
 
 #### Documentation update
 
-The documentation has seen a lot of improvement and additional content including a new FAQ
+We have significantly improved and added new content to the documentation, including a new FAQ section.
 
 #### New GraphQL Query detail page (need to confirm if this is part of this release)
 
-The page to access the detailed view of a GraphQL query has been redesigned to improve its usability and the readability of the query.
-It's now possible to directly load the query in the GraphQL sandbox to execute it.
+The page for viewing detailed GraphQL queries has been redesigned for better usability and readability.
+You can now directly load and execute queries in the GraphQL sandbox.
 
 <add screenshot>
 
@@ -86,26 +88,29 @@ It's now possible to directly load the query in the GraphQL sandbox to execute i
 
 ### Remove support for non-isolated branch
 
-The support for branches in non-isolated mode has been removed.
-While this feature would have been very useful it presented some challenges when it comes to operations that depends on the other nodes in the graph like : schema management, constraints validation, IPAM
+Support for branches in non-isolated mode has been removed. 
+Although useful, it posed challenges for operations dependent on other nodes in the graph, such as schema management, constraints validation, and IPAM.
 
-All branches are now operating by default in isolated mode, similar to how branches are working in Git.
-
+All branches now operate in isolated mode by default, similar to Git branches.
 
 ## Migration Guide
 
-To migrate your instance of Infrahub to the latest version, please run the following commands and restart all instances of infrahub.
+To migrate your instance of Infrahub to the latest version, please run the following commands and restart all instances of Infrahub.
 
-```
+<!-- vale off -->
+```shell
 infrahub db migrate
 infrahub db update-core-schema
 ```
-> if you are running in docker these commands need to run from the container where infrahub is installed
+<!-- vale on -->
+
+> if you are running in docker these commands need to run from the container where Infrahub is installed
 
 ### Migration of the demo instance
 
 If you are using the demo environment, you can migrate to the latest version with the following commands
-```
+
+```shell
 invoke demo.stop
 invoke demo.build
 invoke demo.migrate
@@ -113,9 +118,11 @@ invoke demo.start
 ```
 
 If you don't want to converse your data, you can start a clean instance with the following command
-```
+
+```shell
 invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
 ```
+
 > All data will be lost, please make sure to backup everything you need before running this command.
 
 The repository https://github.com/opsmill/infrahub-demo-edge has also been updated, it's recommended to pull the latest changes into your fork.
