@@ -137,7 +137,6 @@ export default function ObjectItems({
     filters: filtersString,
   });
 
-  console.log("queryString: ", queryString);
   const query = gql`
     ${queryString}
   `;
