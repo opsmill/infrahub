@@ -7,11 +7,13 @@ title: Inheritance Between Generics and Nodes
 ## Overview of generics and nodes
 
 ### Definition of generics
+
 A Generic in the context of our schema is a template that defines a set of common properties and behaviors.
 Generics are used to standardize configurations and ensure consistency across different Nodes that inherit from them.
 They serve as blueprints from which Nodes can derive attributes and functionality.
 
 ### Definition of Nodes
+
 A Node is an instance that inherits properties from a Generic.
 Nodes represent specific entities in the schema that leverage the predefined configurations of Generics while allowing for additional customization.
 Nodes can have unique attributes but will inherit common properties from their Generics.
@@ -19,10 +21,12 @@ Nodes can have unique attributes but will inherit common properties from their G
 ## Inheritance mechanism
 
 ### Basic inheritance structure
+
 Inheritance allows Nodes to derive properties from Generics.
 This ensures that Nodes maintain a consistent set of attributes defined at the Generic level, reducing redundancy and simplifying updates.
 
 ### Single generic inheritance
+
 When a Node is derived from a single Generic, it inherits all properties defined in that Generic unless overridden at the Node level.
 
 ```yaml
@@ -83,9 +87,11 @@ nodes:
 ## Multiple generics inheritance
 
 ### Complex inheritance structures
+
 When multiple Generics are involved, determining which properties to inherit can be challenging. The implemented solution prioritizes the first Generic listed in the `inherited_from` array.
 
 :::info First generic preference
+
 Properties will be inherited from the first Generic in the `inherited_from` list if not explicitly defined at the Node level.
 This approach simplifies conflict resolution.
 :::
@@ -123,15 +129,7 @@ nodes:
 ## Inherited properties
 
 ### List of inheritable properties
-- `human_friendly_id`
-- `display_labels`
-- `default_filter`
-- `menu_placement`
-- `uniqueness_constraints`
-- `icon`
-- `order_by`
 
-### Behavior of each property
 - **`human_friendly_id`**: A user-friendly identifier for the entity.
 - **`display_labels`**: Labels used for display purposes.
 - **`default_filter`**: The default filter applied to the entity.
