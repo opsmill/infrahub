@@ -82,7 +82,6 @@ export default function AddObjectToGroup(props: Props) {
   const formStructure = getFormStructureForAddObjectToGroup(groups, objectGroups);
 
   async function onSubmit(data: any) {
-    console.log("data: ", data);
     // TODO: use object update mutation to provide the whole list
 
     const { groupids } = data;
