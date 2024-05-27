@@ -854,6 +854,44 @@ async def test_validate_uniqueness_constraints_success(schema_all_in_one, unique
     schema.validate_uniqueness_constraints()
 
 
+async def test_validate_exception_ipam_ip_namespace(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+):
+    SCHEMA: dict = {
+        "nodes": [
+            {
+                "name": "IPPrefix",
+                "namespace": "Ipam",
+                "default_filter": "prefix__value",
+                "order_by": ["prefix__value"],
+                "display_labels": ["prefix__value"],
+                "human_friendly_id": ["ip_namespace__name__value", "prefix__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPPREFIX],
+            },
+            {
+                "name": "IPAddress",
+                "namespace": "Ipam",
+                "default_filter": "address__value",
+                "order_by": ["address__value"],
+                "display_labels": ["address__value"],
+                "uniqueness_constraints": [["ip_namespace", "address__value"]],
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPADDRESS],
+            },
+        ],
+    }
+
+    ipam_schema = SchemaRoot(**SCHEMA)
+
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema.load_schema(schema=ipam_schema)
+    schema.process()
+
+    ip_prefix_schema = schema.get(name="IpamIPPrefix")
+    assert ip_prefix_schema.uniqueness_constraints
+
+
 @pytest.mark.parametrize(
     "uniqueness_constraints,expected_error",
     [
