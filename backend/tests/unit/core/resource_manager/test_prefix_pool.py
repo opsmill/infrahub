@@ -29,16 +29,16 @@ async def test_get_next(
 
     assert pool
 
-    next_subnet = await pool.get_next(db=db, size=17)
+    next_subnet = await pool.get_next(db=db, prefixlen=17)
     assert str(next_subnet) == "10.10.128.0/17"
 
     next_prefix = await pool.get_resource(
-        db=db, size=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
+        db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
     )
     assert next_prefix
 
     next_prefix2 = await pool.get_resource(
-        db=db, size=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
+        db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
     )
     assert next_prefix.id == next_prefix2.id
 
@@ -63,17 +63,22 @@ async def test_get_one(
     assert pool
 
     next_prefix = await pool.get_resource(
-        db=db, size=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
+        db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
     )
     assert next_prefix
 
     next_prefix2 = await pool.get_resource(
-        db=db, size=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
+        db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
     )
     assert next_prefix.id == next_prefix2.id
 
     next_prefix3 = await pool.get_resource(
-        db=db, size=24, prefix_type="IpamIPPrefix", member_type="address", identifier="item2", branch=default_branch
+        db=db,
+        prefixlen=24,
+        prefix_type="IpamIPPrefix",
+        member_type="address",
+        identifier="item2",
+        branch=default_branch,
     )
     assert next_prefix3.member_type.value == "address"
 
@@ -81,7 +86,7 @@ async def test_get_one(
         await pool.get_resource(db=db, prefix_type="IpamIPPrefix", member_type="prefix", branch=default_branch)
 
     with pytest.raises(ValueError):
-        await pool.get_resource(db=db, size=17, member_type="prefix", branch=default_branch)
+        await pool.get_resource(db=db, prefixlen=17, member_type="prefix", branch=default_branch)
 
 
 async def test_get_all_resources(
@@ -104,23 +109,25 @@ async def test_get_all_resources(
     assert pool
 
     prefix1 = await pool.get_resource(
-        db=db, size=17, prefix_type="IpamIPPrefix", member_type="prefix", branch=default_branch
+        db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", branch=default_branch
     )
     prefix2 = await pool.get_resource(
-        db=db, size=17, prefix_type="IpamIPPrefix", member_type="prefix", branch=default_branch
+        db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", branch=default_branch
     )
     another_branch = await create_branch(branch_name="another_branch", db=db)
     prefix3 = await pool.get_resource(
-        db=db, size=17, prefix_type="IpamIPPrefix", member_type="prefix", branch=another_branch
+        db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", branch=another_branch
     )
     with pytest.raises(IndexError):
-        await pool.get_resource(db=db, size=17, prefix_type="IpamIPPrefix", member_type="prefix", branch=default_branch)
+        await pool.get_resource(
+            db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", branch=default_branch
+        )
 
     prefix4 = await pool.get_resource(
-        db=db, size=24, prefix_type="IpamIPPrefix", member_type="prefix", branch=default_branch
+        db=db, prefixlen=24, prefix_type="IpamIPPrefix", member_type="prefix", branch=default_branch
     )
     prefix5 = await pool.get_resource(
-        db=db, size=24, prefix_type="IpamIPPrefix", member_type="prefix", branch=default_branch
+        db=db, prefixlen=24, prefix_type="IpamIPPrefix", member_type="prefix", branch=default_branch
     )
 
     all_prefixes = [

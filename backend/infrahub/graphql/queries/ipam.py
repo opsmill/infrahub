@@ -73,7 +73,7 @@ class IPPrefixGetNextAvailable(ObjectType):
         root: dict,  # pylint: disable=unused-argument
         info: GraphQLResolveInfo,
         prefix_id: str,
-        size: int,
+        prefix_length: int,
     ) -> dict[str, str]:
         context: GraphqlContext = info.context
 
@@ -96,7 +96,7 @@ class IPPrefixGetNextAvailable(ObjectType):
         for subnet in subnets:
             pool.reserve(subnet=str(subnet.prefix))
 
-        next_available = pool.get(size=size)
+        next_available = pool.get(prefixlen=prefix_length)
         return {"prefix": str(next_available)}
 
 
@@ -111,6 +111,6 @@ InfrahubIPAddressGetNextAvailable = Field(
 InfrahubIPPrefixGetNextAvailable = Field(
     IPPrefixGetNextAvailable,
     prefix_id=String(required=True),
-    size=Int(required=False),
+    prefix_length=Int(required=False),
     resolver=IPPrefixGetNextAvailable.resolve,
 )

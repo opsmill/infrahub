@@ -82,44 +82,44 @@ def test_split_supernet_end():
 def test_get_subnet_v4_no_owner():
     sub = PrefixPool("192.168.0.0/16")
 
-    assert str(sub.get(size=24)) == "192.168.0.0/24"
-    assert str(sub.get(size=25)) == "192.168.1.0/25"
-    assert str(sub.get(size=17)) == "192.168.128.0/17"
-    assert str(sub.get(size=24)) == "192.168.2.0/24"
-    assert str(sub.get(size=25)) == "192.168.1.128/25"
+    assert str(sub.get(prefixlen=24)) == "192.168.0.0/24"
+    assert str(sub.get(prefixlen=25)) == "192.168.1.0/25"
+    assert str(sub.get(prefixlen=17)) == "192.168.128.0/17"
+    assert str(sub.get(prefixlen=24)) == "192.168.2.0/24"
+    assert str(sub.get(prefixlen=25)) == "192.168.1.128/25"
 
 
 def test_get_subnet_v4_with_owner():
     sub = PrefixPool("192.168.0.0/16")
 
-    assert str(sub.get(size=24, identifier="first")) == "192.168.0.0/24"
-    assert str(sub.get(size=25, identifier="second")) == "192.168.1.0/25"
-    assert str(sub.get(size=17, identifier="third")) == "192.168.128.0/17"
-    assert str(sub.get(size=25, identifier="second")) == "192.168.1.0/25"
-    assert str(sub.get(size=17, identifier="third")) == "192.168.128.0/17"
+    assert str(sub.get(prefixlen=24, identifier="first")) == "192.168.0.0/24"
+    assert str(sub.get(prefixlen=25, identifier="second")) == "192.168.1.0/25"
+    assert str(sub.get(prefixlen=17, identifier="third")) == "192.168.128.0/17"
+    assert str(sub.get(prefixlen=25, identifier="second")) == "192.168.1.0/25"
+    assert str(sub.get(prefixlen=17, identifier="third")) == "192.168.128.0/17"
 
 
 def test_get_subnet_no_more_subnet():
     sub = PrefixPool("192.0.0.0/22")
 
-    assert str(sub.get(size=24)) == "192.0.0.0/24"
-    assert str(sub.get(size=24)) == "192.0.1.0/24"
-    assert str(sub.get(size=24)) == "192.0.2.0/24"
-    assert str(sub.get(size=24)) == "192.0.3.0/24"
+    assert str(sub.get(prefixlen=24)) == "192.0.0.0/24"
+    assert str(sub.get(prefixlen=24)) == "192.0.1.0/24"
+    assert str(sub.get(prefixlen=24)) == "192.0.2.0/24"
+    assert str(sub.get(prefixlen=24)) == "192.0.3.0/24"
     with pytest.raises(IndexError):
-        assert sub.get(size=24) is False
+        assert sub.get(prefixlen=24) is False
 
 
 def test_get_subnet_v6_no_owner():
     sub = PrefixPool("2620:135:6000:fffe::/64")
-    assert str(sub.get(size=127)), "2620:135:6000:fffe::/127"
+    assert str(sub.get(prefixlen=127)), "2620:135:6000:fffe::/127"
 
 
 def test_already_allocated_v4_no_owner():
     sub = PrefixPool("192.168.0.0/16")
 
-    assert str(sub.get(size=24, identifier="first")) == "192.168.0.0/24"
-    assert str(sub.get(size=24, identifier="second")) == "192.168.1.0/24"
+    assert str(sub.get(prefixlen=24, identifier="first")) == "192.168.0.0/24"
+    assert str(sub.get(prefixlen=24, identifier="second")) == "192.168.1.0/24"
 
     assert sub.check_if_already_allocated(identifier="second") is True
     assert sub.check_if_already_allocated(identifier="third") is False
@@ -129,7 +129,7 @@ def test_reserve_no_owner():
     sub = PrefixPool("192.168.0.0/16")
 
     assert sub.reserve("192.168.0.0/24") is True
-    assert str(sub.get(size=24)) == "192.168.1.0/24"
+    assert str(sub.get(prefixlen=24)) == "192.168.1.0/24"
 
 
 def test_reserve_wrong_input():
@@ -145,4 +145,4 @@ def test_reserve_with_owner():
     assert sub.reserve("192.192.0.0/24", identifier="first") is True
     assert sub.reserve("192.192.1.0/24", identifier="second") is True
 
-    assert str(sub.get(size=24)) == "192.192.2.0/24"
+    assert str(sub.get(prefixlen=24)) == "192.192.2.0/24"

@@ -105,7 +105,7 @@ async def ip_dataset_02(
 
 
 @pytest.mark.parametrize(
-    "prefix,size,response",
+    "prefix,prefix_length,response",
     [
         ("net146", 16, "10.11.0.0/16"),
         ("net146", 24, "10.11.0.0/24"),
@@ -120,7 +120,7 @@ async def test_ipprefix_nextavailable(
     register_ipam_schema: SchemaBranch,
     ip_dataset_01,
     prefix,
-    size,
+    prefix_length,
     response,
 ):
     obj = ip_dataset_01[prefix]
@@ -128,8 +128,8 @@ async def test_ipprefix_nextavailable(
     gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     query = """
-    query($prefix: String!, $size: Int!) {
-        IPPrefixGetNextAvailable(prefix_id: $prefix, size: $size) {
+    query($prefix: String!, $prefix_length: Int!) {
+        IPPrefixGetNextAvailable(prefix_id: $prefix, prefix_length: $prefix_length) {
             prefix
         }
     }
@@ -139,7 +139,7 @@ async def test_ipprefix_nextavailable(
         schema=gql_params.schema,
         source=query,
         context_value=gql_params.context,
-        variable_values={"prefix": obj.id, "size": size},
+        variable_values={"prefix": obj.id, "prefix_length": prefix_length},
     )
 
     assert not result.errors
