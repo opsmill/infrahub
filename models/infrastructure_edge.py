@@ -376,10 +376,6 @@ async def generate_site(
     ]
     peer_network_hosts = {0: peer_networks[0].prefix.value.hosts(), 1: peer_networks[1].prefix.value.hosts()}
 
-    for net in peer_networks:
-        prefix = await client.create(branch=branch, kind="IpamIPPrefix", prefix=str(net))
-        await prefix.save()
-
     for idx, device in enumerate(DEVICES):
         device_name = f"{site_name}-{device[0]}"
         device_status = device[1]
@@ -488,9 +484,6 @@ async def generate_site(
                 subnet_hosts = subnet.prefix.value.hosts()
                 address = f"{str(next(subnet_hosts))}/29"
                 peer_address = f"{str(next(subnet_hosts))}/29"
-
-            if not subnet:
-                continue
 
             if address:
                 ip = await client.create(
