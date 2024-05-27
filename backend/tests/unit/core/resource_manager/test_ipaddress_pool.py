@@ -28,7 +28,7 @@ async def test_get_next(
 
     assert pool
 
-    next_address = await pool.get_next(db=db, size=30)
+    next_address = await pool.get_next(db=db, prefixlen=30)
     assert str(next_address) == "10.10.3.2/30"
 
     next_prefix = await pool.get_resource(
@@ -61,4 +61,4 @@ async def test_get_next_full(
     assert pool
 
     with pytest.raises(PoolExhaustedError, match="There are no more addresses available in this pool"):
-        await pool.get_next(db=db, size=30)
+        await pool.get_next(db=db, prefixlen=30)

@@ -33,7 +33,7 @@ async def prefix_pools_02(
     await ipv6_prefix_pool.new(
         db=db,
         name="ipv6_prefix",
-        default_prefix_size=56,
+        default_prefix_length=56,
         default_prefix_type="IpamIPPrefix",
         resources=[ipv6_prefix_resource],
         ip_namespace=ns1,
@@ -44,7 +44,7 @@ async def prefix_pools_02(
     await ipv4_prefix_pool.new(
         db=db,
         name="ipv4_prefix",
-        default_prefix_size=26,
+        default_prefix_length=26,
         default_prefix_type="IpamIPPrefix",
         resources=[ipv4_prefix_resource],
         ip_namespace=ns1,

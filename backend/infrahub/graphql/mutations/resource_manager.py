@@ -68,7 +68,7 @@ class IPPrefixPoolGetResource(Mutation):
             db=context.db,
             branch=context.branch,
             identifier=data.get("identifier", None),
-            size=data.get("size", None),
+            prefixlen=data.get("prefixlen", None),
             member_type=data.get("member_type", None),
             prefix_type=data.get("prefix_type", None),
             data=data.get("data", None),

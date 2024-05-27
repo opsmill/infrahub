@@ -83,29 +83,29 @@ class PrefixPool:
 
         return False
 
-    def get(self, size: int, identifier: Optional[str] = None) -> Union[IPv4Network, IPv6Network]:
+    def get(self, prefixlen: int, identifier: Optional[str] = None) -> Union[IPv4Network, IPv6Network]:
         """Return the next available Subnet."""
 
-        clean_size = int(size)
+        clean_prefixlen = int(prefixlen)
 
         if identifier and identifier in self.sub_by_id.keys():
             net = ipaddress.ip_network(self.sub_by_id[identifier])
-            if net.prefixlen == clean_size:
+            if net.prefixlen == clean_prefixlen:
                 return net
             raise ValueError()
 
-        if len(self.available_subnets[clean_size]) != 0:
-            sub = self.available_subnets[clean_size][0]
+        if len(self.available_subnets[clean_prefixlen]) != 0:
+            sub = self.available_subnets[clean_prefixlen][0]
             self.reserve(subnet=sub, identifier=identifier)
             return ipaddress.ip_network(sub)
 
         # if a subnet of this size is not available
         # we need to find the closest subnet available and split it
-        for i in range(clean_size - 1, self.mask_biggest - 1, -1):
+        for i in range(clean_prefixlen - 1, self.mask_biggest - 1, -1):
             if len(self.available_subnets[i]) != 0:
                 supernet = ipaddress.ip_network(self.available_subnets[i][0])
                 # supernet available, will split it
-                subs = supernet.subnets(new_prefix=clean_size)
+                subs = supernet.subnets(new_prefix=clean_prefixlen)
                 next_sub: Union[IPv4Network, IPv6Network] = next(subs)  # type: ignore[assignment]
                 self.split_supernet(supernet=supernet, subnet=next_sub)
                 self.reserve(subnet=str(next_sub), identifier=identifier)

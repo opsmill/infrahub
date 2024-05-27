@@ -1679,7 +1679,7 @@ core_models: dict[str, Any] = {
             "inherit_from": [InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE],
             "attributes": [
                 {
-                    "name": "default_prefix_size",
+                    "name": "default_prefix_length",
                     "kind": "Number",
                     "optional": True,
                     "order_weight": 5000,

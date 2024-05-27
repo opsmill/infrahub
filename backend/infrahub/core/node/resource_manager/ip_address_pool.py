@@ -60,7 +60,7 @@ class CoreIPAddressPool(Node):
 
         prefixlen = prefixlen or data.get("prefixlen") or self.default_prefix_length.value  # type: ignore[attr-defined]
 
-        next_prefix = await self.get_next(db=db, size=prefixlen)
+        next_prefix = await self.get_next(db=db, prefixlen=prefixlen)
 
         target_schema = registry.get_node_schema(name=address_type, branch=branch)
         node = await Node.init(db=db, schema=target_schema, branch=branch)
@@ -77,14 +77,14 @@ class CoreIPAddressPool(Node):
 
         return node
 
-    async def get_next(self, db: InfrahubDatabase, size: Optional[int] = None) -> IPAddressType:
+    async def get_next(self, db: InfrahubDatabase, prefixlen: Optional[int] = None) -> IPAddressType:
         # Measure utilization of all prefixes identified as resources
         resources = await self.resources.get_peers(db=db)  # type: ignore[attr-defined]
         ip_namespace = await self.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
 
         for resource in resources.values():
             ip_prefix = ipaddress.ip_network(resource.prefix.value)  # type: ignore[attr-defined]
-            prefix_length = size or ip_prefix.prefixlen
+            prefix_length = prefixlen or ip_prefix.prefixlen
 
             if not ip_prefix.prefixlen <= prefix_length <= ip_prefix.max_prefixlen:
                 raise ValidationError(input_value="Invalid prefix length for current selected prefix")
