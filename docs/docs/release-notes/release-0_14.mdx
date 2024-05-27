@@ -34,7 +34,7 @@ This release focuses on preparing for the open beta by cleaning up and improving
 #### Resource Manager
 
 The resource manager simplifies resource management and allocation.
-This initial implementation supports IP Prefix and IP Address, with future support for additional resources like VLAN, IDs, and interfaces.
+This initial implementation supports IP Prefixes and IP Addresses, with future support for additional resources like VLAN, IDs, and interfaces.
 
 Key features of the Resource Manager include:
 
@@ -77,13 +77,6 @@ The fields that will compose the `human_friendly_id` must be defined in the sche
 
 We have significantly improved and added new content to the documentation, including a new FAQ section.
 
-#### New GraphQL Query detail page (need to confirm if this is part of this release)
-
-The page for viewing detailed GraphQL queries has been redesigned for better usability and readability.
-You can now directly load and execute queries in the GraphQL sandbox.
-
-PLACEHOLDER SCREENSHOT
-
 ## Breaking Changes
 
 ### Remove support for non-isolated branch
@@ -91,7 +84,7 @@ PLACEHOLDER SCREENSHOT
 Support for branches in non-isolated mode has been removed.
 Although useful, it posed challenges for operations dependent on other nodes in the graph, such as schema management, constraints validation, and IPAM.
 
-All branches now operate in isolated mode by default, similar to Git branches.
+All branches now operate in isolated mode by default, similar to branches in Git. A branch need to be rebased to stay in sync with main.
 
 ## Migration Guide
 
