@@ -13,7 +13,6 @@ import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { getFormStructureForAddObjectToGroup } from "../../utils/formStructureForAddObjectToGroup";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "../errors/error-screen";
@@ -79,26 +78,45 @@ export default function AddObjectToGroup(props: Props) {
     (edge: any) => edge.node
   );
 
-  const formStructure = getFormStructureForAddObjectToGroup(groups, objectGroups);
+  const values = objectGroups.map((group) => ({ id: group.id }));
+
+  const options = groups.map((group) => ({
+    id: group.id,
+    name: group?.label?.value,
+  }));
+
+  const formStructure = [
+    {
+      label: "Group",
+      name: "groupids",
+      value: values,
+      type: "multiselect",
+      options,
+    },
+  ];
 
   async function onSubmit(data: any) {
     // TODO: use object update mutation to provide the whole list
-    setIsLoading(true);
 
     const { groupids } = data;
 
     const previousIds = objectGroups.map((group: any) => group.id);
 
-    const newGroups = groupids.list.filter((id: string) => !previousIds.includes(id));
-    const removedGroups = previousIds.filter((id: string) => !groupids.list.includes(id));
+    const newGroups = groupids.filter((id: string) => !previousIds.includes(id));
+
+    const removedGroups = previousIds.filter(
+      (id: string) => !groupids.map((group) => group.id).includes(id)
+    );
 
     try {
       if (newGroups.length) {
+        setIsLoading(true);
+
         const mutationString = addRelationship({
           data: stringifyWithoutQuotes({
             id: objectid,
             name: "member_of_groups",
-            nodes: newGroups.map((id: string) => ({ id })),
+            nodes: newGroups,
           }),
         });
 

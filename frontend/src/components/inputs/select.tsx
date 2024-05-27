@@ -112,7 +112,9 @@ export const Select = (props: SelectProps) => {
   const [localOptions, setLocalOptions] = useState(options);
   const [selectedOption, setSelectedOption] = useState(
     multiple
-      ? localOptions.filter((option) => value?.list?.includes(option.id))
+      ? localOptions.filter(
+          (option) => Array.isArray(value) && value.map((v) => v.id)?.includes(option.id)
+        )
       : localOptions?.find((option) => option?.id === value || option.name === value)
   );
 
@@ -189,8 +191,11 @@ export const Select = (props: SelectProps) => {
   const handleChange = (newValue: any) => {
     // Fetch if we are changing the option without opening the select
     // (for ex: when removing an item in the multiple input)
-
-    handleFocus();
+    if (hasPoolsBeenOpened) {
+      handleFocusPools();
+    } else {
+      handleFocus();
+    }
 
     if (newValue.id === addOption.id) {
       setOpen(true);
@@ -213,8 +218,13 @@ export const Select = (props: SelectProps) => {
 
       setOpen(false);
       setSelectedOption(newValue);
-      onChange({ list: newValue.map((item) => item.id) });
 
+      if (hasPoolsBeenOpened) {
+        onChange(newValue.map((item) => ({ from_pool: { id: item.id } })));
+        return;
+      }
+
+      onChange(newValue.map((item) => ({ id: item.id })));
       return;
     }
 
@@ -267,6 +277,9 @@ export const Select = (props: SelectProps) => {
     // Do not fetch if there is no peer
     if (!peer || hasBeenOpened) return;
 
+    // Do not fetch regular options if pool was used
+    if (hasPoolsBeenOpened && selectedOption?.length) return;
+
     setHasPoolsBeenOpened(false);
     setHasBeenOpened(true);
     fetchOptions();
@@ -275,6 +288,9 @@ export const Select = (props: SelectProps) => {
   const handleFocusPools = () => {
     // Do not fetch if there is no peer
     if (!poolPeer || hasPoolsBeenOpened) return;
+
+    // Do not fetch pool options if a regular option was used
+    if (hasBeenOpened && selectedOption?.length) return;
 
     setHasPoolsBeenOpened(true);
     setHasBeenOpened(false);

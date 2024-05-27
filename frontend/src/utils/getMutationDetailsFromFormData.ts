@@ -74,10 +74,10 @@ const getMutationDetailsFromFormData = (
     const isOneToMany = relationship.cardinality === "many";
 
     if (mode === "update" && existingObject) {
+      const updatedValue = updatedObject[relationship.name];
+
       if (isOneToOne) {
         const existingValue = existingObject[relationship.name]?.node?.id;
-
-        const updatedValue = updatedObject[relationship.name];
 
         if (updatedValue === existingValue) {
           delete updatedObject[relationship.name];
@@ -92,9 +92,7 @@ const getMutationDetailsFromFormData = (
         const existingValue =
           existingObject[relationship.name]?.edges.map((r: any) => r.node?.id).sort() ?? [];
 
-        const updatedIds = updatedObject[relationship.name]?.list?.sort() ?? [];
-
-        if (JSON.stringify(updatedIds) === JSON.stringify(existingValue)) {
+        if (JSON.stringify(updatedValue) === JSON.stringify(existingValue)) {
           delete updatedObject[relationship.name];
           return;
         }
@@ -109,7 +107,7 @@ const getMutationDetailsFromFormData = (
       }
 
       if (isOneToMany) {
-        if (!updatedObject[relationship.name]?.list?.length) {
+        if (!updatedObject[relationship.name]?.length) {
           delete updatedObject[relationship.name];
         }
       }
@@ -123,24 +121,6 @@ const getMutationDetailsFromFormData = (
       // Set to null to remove the relationship
       updatedObject[relationship.name] = null;
       return;
-    }
-
-    if (isOneToMany && updatedObject[relationship.name] && updatedObject[relationship.name].list) {
-      const fieldKeys = Object.keys(updatedObject[relationship.name]).filter(
-        (key) => key !== "list"
-      );
-
-      updatedObject[relationship.name] = updatedObject[relationship.name].list.map((id: string) => {
-        const objWithMetaFields: any = {
-          id,
-        };
-
-        fieldKeys.forEach((key) => {
-          objWithMetaFields[key] = updatedObject[relationship.name][key];
-        });
-
-        return objWithMetaFields;
-      });
     }
   });
 

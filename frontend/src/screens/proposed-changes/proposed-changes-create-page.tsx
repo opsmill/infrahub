@@ -16,9 +16,9 @@ import { branchesState } from "../../state/atoms/branches.atom";
 import { branchesToSelectOptions } from "../../utils/branches";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
+import { resolve } from "../../utils/objects";
 import { DynamicControl } from "../edit-form-hook/dynamic-control";
 import Content from "../layout/content";
-import { resolve } from "../../utils/objects";
 
 const ProposedChangesCreatePage = () => {
   const permission = usePermission();
@@ -65,7 +65,7 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
                 destination_branch,
                 name,
                 description,
-                reviewers: reviewers?.list?.map((id: string) => ({ id })) || [],
+                reviewers: reviewers || [],
                 created_by: {
                   id: user?.id,
                 },

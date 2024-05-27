@@ -112,7 +112,7 @@ export default function ObjectItems({
       }
 
       if (Array.isArray(row.value)) {
-        return `${row.name}: ${JSON.stringify(row.value)}`;
+        return `${row.name}: ${JSON.stringify(row.value.map((v) => v.id))}`;
       }
 
       return `${row.name}: ${row.value}`;

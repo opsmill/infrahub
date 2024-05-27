@@ -25,10 +25,10 @@ const computeFilter = (data: [key: string, value: any]) => {
     };
   }
 
-  if (value.list?.length) {
+  if (Array.isArray(value)) {
     return {
       name: `${key}__ids`,
-      value: value.list,
+      value: value,
     };
   }
 
