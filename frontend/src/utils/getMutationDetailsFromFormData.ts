@@ -122,24 +122,6 @@ const getMutationDetailsFromFormData = (
       updatedObject[relationship.name] = null;
       return;
     }
-
-    if (isOneToMany && updatedObject[relationship.name] && updatedObject[relationship.name].list) {
-      const fieldKeys = Object.keys(updatedObject[relationship.name]).filter(
-        (key) => key !== "list"
-      );
-
-      updatedObject[relationship.name] = updatedObject[relationship.name].list.map((id: string) => {
-        const objWithMetaFields: any = {
-          id,
-        };
-
-        fieldKeys.forEach((key) => {
-          objWithMetaFields[key] = updatedObject[relationship.name][key];
-        });
-
-        return objWithMetaFields;
-      });
-    }
   });
 
   return updatedObject;
