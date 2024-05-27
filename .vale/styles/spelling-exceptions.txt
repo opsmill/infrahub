@@ -39,6 +39,8 @@ graphene
 graphiql
 graphql
 greymatter
+hfid
+Human Friendly Identifier
 idempotency
 include_in_menu
 Infrahub
