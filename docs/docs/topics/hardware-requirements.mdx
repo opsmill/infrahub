@@ -10,3 +10,37 @@ The system on which you want to run Infrahub, has to meet the following hardware
 | Recommended | 8         | 16GB | SSD and/or >= 5000 IOPS    |
 
 If you only want to give Infrahub a try, or follow the [getting started tutorial](/tutorials/getting-started/), then you can use [GitHub Codespaces](/guides/installation#github-codespaces) as an alternative.
+
+## Performance benchmark utility
+
+To evaluate the performance of your system, we provide a small utility that will run some performance benchmark of your system's CPU, Memory and disk IOP.
+
+:::note
+
+Even with the right amount of CPU core and memory, there are some other factors that could impact the performance of Infrahub like the speed of your CPU.
+
+:::
+
+The tool can run on any system using docker with the follow command `docker run --pull always registry.opsmill.io/opsmill/bench`
+
+```bash title="❯ docker run --pull always registry.opsmill.io/opsmill/bench"
+
+latest: Pulling from opsmill/bench
+09f376ebb190: Already exists
+6008598ecd4d: Already exists
+b70c7f4d3f19: Pull complete
+84e80b988953: Pull complete
+Digest: sha256:6f0031a0f61823cca7d319033087f80524eadffa87b1981b2e82d841ada12895
+Status: Downloaded newer image for registry.opsmill.io/opsmill/bench:latest
+Running Disk IOPS benchmark... hold on
+Running CPU/Memory benchmark... hold on
+
+Benchmark results:
+
+Memory: 15611 MB - Required: 8000 MB : OK
+CPU Perf: 2337 - Required: 1500 : OK
+Disk Read IOPS: 47742 - Required: 5000 : OK
+Disk Write IOPS: 15885 - Required: 5000 : OK
+
+Benchmark completed...
+```
