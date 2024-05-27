@@ -24,9 +24,7 @@ const ResourceAllocationPage = () => {
   const getResourcePoolAllocatedData = data[RESOURCE_POOL_ALLOCATED_KIND];
   const resourcesAllocated = getResourcePoolAllocatedData.edges.map(({ node }: any) => ({
     values: { ...node },
-    link: constructPath(getObjectDetailsUrl2(node.kind, node.id), [
-      { name: QSP.BRANCH, value: node.branch },
-    ]),
+    link: getObjectDetailsUrl2(node.kind, node.id, [{ name: QSP.BRANCH, value: node.branch }]),
   }));
   const totalOfResourcesAllocated = getResourcePoolAllocatedData.count;
 
