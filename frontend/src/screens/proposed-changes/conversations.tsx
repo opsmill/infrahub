@@ -54,7 +54,7 @@ export const getFormStructure = (
   data?: any
 ): DynamicFieldData[] => [
   {
-    name: "name.value",
+    name: "name",
     kind: "Text",
     type: "text",
     label: "Name",
@@ -66,7 +66,7 @@ export const getFormStructure = (
     isProtected: false,
   },
   {
-    name: "description.value",
+    name: "description",
     kind: "Text",
     type: "text",
     label: "Description",
@@ -77,7 +77,7 @@ export const getFormStructure = (
     isOptional: true,
   },
   {
-    name: "source_branch.value",
+    name: "source_branch",
     kind: "String",
     type: "select",
     label: "Source Branch",
@@ -89,7 +89,7 @@ export const getFormStructure = (
     isProtected: !!data?.source_branch?.value,
   },
   {
-    name: "destination_branch.value",
+    name: "destination_branch",
     kind: "Text",
     type: "text",
     label: "Destination Branch",
@@ -99,11 +99,12 @@ export const getFormStructure = (
     isProtected: true,
   },
   {
-    name: "reviewers.list",
+    name: "reviewers",
     kind: "String",
     type: "multiselect",
     label: "Reviewers",
-    value: data?.reviewers?.edges.map((edge: any) => edge?.node?.id).filter(Boolean) ?? "",
+    value:
+      data?.reviewers?.edges.map((edge: any) => ({ id: edge?.node?.id })).filter(Boolean) ?? "",
     options: reviewers,
     config: {},
     isProtected: false,
