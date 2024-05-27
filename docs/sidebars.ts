@@ -64,6 +64,7 @@ const sidebars: SidebarsConfig = {
         'guides/profiles',
         'guides/object-storage',
 	'guides/check',
+	'guides/resource-manager',
       ],
     },
     {
