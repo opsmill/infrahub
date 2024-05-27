@@ -362,8 +362,8 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
             for changed_model in message.branch_diff.modified_kinds(branch=message.source_branch):
                 condition = False
                 if (changed_model in artifact_definition.query_models) or (
-                    "Profile" in changed_model
-                    and changed_model.replace("Profile", "") in artifact_definition.query_models
+                    changed_model.startswith("Profile")
+                    and changed_model.replace("Profile", "", 1) in artifact_definition.query_models
                 ):
                     condition = True
 
