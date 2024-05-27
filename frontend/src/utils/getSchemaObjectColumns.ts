@@ -179,7 +179,9 @@ export const getObjectRelationshipsForForm = (
     .filter(
       (relationship) =>
         relationship.cardinality === "one" ||
-        (isUpdate ? peersKindForForm.includes(relationship?.kind ?? "") : !relationship.optional)
+        (isUpdate
+          ? peersKindForForm.includes(relationship?.kind ?? "")
+          : peersKindForForm.includes(relationship?.kind ?? "") || !relationship.optional)
     )
     .filter(Boolean);
 
