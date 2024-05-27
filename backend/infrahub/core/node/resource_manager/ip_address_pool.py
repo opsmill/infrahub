@@ -58,7 +58,7 @@ class CoreIPAddressPool(Node):
 
         ip_namespace = await self.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
 
-        prefixlen = prefixlen or data.get("prefixlen") or self.default_prefix_size.value  # type: ignore[attr-defined]
+        prefixlen = prefixlen or data.get("prefixlen") or self.default_prefix_length.value  # type: ignore[attr-defined]
 
         next_prefix = await self.get_next(db=db, size=prefixlen)
 

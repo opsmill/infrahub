@@ -55,7 +55,7 @@ async def prefix_pools_02(
     await ipv4_address_pool.new(
         db=db,
         name="ipv4_address",
-        default_prefix_size=27,
+        default_prefix_length=27,
         default_address_type="IpamIPAddress",
         resources=[ipv4_address_resource],
         ip_namespace=ns1,

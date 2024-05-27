@@ -356,7 +356,7 @@ class TestInfrahubNode:
             kind="CoreIPAddressPool",
             name="Core loopbacks",
             default_address_type="IpamIPAddress",
-            default_prefix_size=32,
+            default_prefix_length=32,
             ip_namespace=default_ipam_namespace,
             resources=[ip_prefix],
         )
@@ -388,7 +388,7 @@ class TestInfrahubNode:
             kind="CoreIPAddressPool",
             name="Core loopbacks",
             default_address_type="IpamIPAddress",
-            default_prefix_size=32,
+            default_prefix_length=32,
             ip_namespace=default_ipam_namespace,
             resources=[ip_prefix],
         )
