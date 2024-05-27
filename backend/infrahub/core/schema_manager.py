@@ -631,8 +631,12 @@ class SchemaBranch:
                         allowed_path_types=SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_NO_ATTR,
                         element_name="uniqueness_constraints",
                     )
-                    if schema_path.is_type_relationship:
-                        if schema_path.relationship_schema.optional:
+                    if schema_path.is_type_relationship and schema_path.relationship_schema:
+                        if schema_path.relationship_schema.optional and not (
+                            schema_path.relationship_schema.name == "ip_namespace"
+                            and isinstance(node_schema, NodeSchema)
+                            and (node_schema.is_ip_address() or node_schema.is_ip_prefix)
+                        ):
                             raise ValueError(
                                 f"Only mandatory relation of cardinality one can be used in uniqueness_constraints,"
                                 f" {schema_path.relationship_schema.name} is not mandatory. ({constraint_path})"
@@ -711,8 +715,12 @@ class SchemaBranch:
                 if schema_path.attribute_schema.unique:
                     has_unique_item = True
 
-                if schema_path.is_type_relationship:
-                    if schema_path.relationship_schema.optional:
+                if schema_path.is_type_relationship and schema_path.relationship_schema:
+                    if schema_path.relationship_schema.optional and not (
+                        schema_path.relationship_schema.name == "ip_namespace"
+                        and isinstance(node_schema, NodeSchema)
+                        and (node_schema.is_ip_address() or node_schema.is_ip_prefix)
+                    ):
                         raise ValueError(
                             f"Only mandatory relationship of cardinality one can be used in human_friendly_id, "
                             f"{schema_path.relationship_schema.name} is not mandatory on {schema_path.relationship_schema.kind} for "
