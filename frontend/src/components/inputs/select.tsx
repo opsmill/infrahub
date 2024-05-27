@@ -191,8 +191,11 @@ export const Select = (props: SelectProps) => {
   const handleChange = (newValue: any) => {
     // Fetch if we are changing the option without opening the select
     // (for ex: when removing an item in the multiple input)
-
-    handleFocus();
+    if (hasPoolsBeenOpened) {
+      handleFocusPools();
+    } else {
+      handleFocus();
+    }
 
     if (newValue.id === addOption.id) {
       setOpen(true);
@@ -271,6 +274,7 @@ export const Select = (props: SelectProps) => {
   };
 
   const handleFocus = () => {
+    console.log("FOCUS");
     // Do not fetch if there is no peer
     if (!peer || hasBeenOpened) return;
 
