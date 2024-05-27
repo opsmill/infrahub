@@ -820,7 +820,7 @@ class InfrahubNodeBase:
 
         for item_name in self._relationships:
             rel_schema = self._schema.get_relationship(name=item_name)
-            if not rel_schema:
+            if not rel_schema or rel_schema.read_only:
                 continue
 
             rel: Union[RelatedNodeBase, RelationshipManagerBase] = getattr(self, item_name)
