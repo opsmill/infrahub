@@ -274,9 +274,11 @@ export const Select = (props: SelectProps) => {
   };
 
   const handleFocus = () => {
-    console.log("FOCUS");
     // Do not fetch if there is no peer
     if (!peer || hasBeenOpened) return;
+
+    // Do not fetch regular options if pool was used
+    if (hasPoolsBeenOpened && selectedOption?.length) return;
 
     setHasPoolsBeenOpened(false);
     setHasBeenOpened(true);
@@ -286,6 +288,9 @@ export const Select = (props: SelectProps) => {
   const handleFocusPools = () => {
     // Do not fetch if there is no peer
     if (!poolPeer || hasPoolsBeenOpened) return;
+
+    // Do not fetch pool options if a regular option was used
+    if (hasBeenOpened && selectedOption?.length) return;
 
     setHasPoolsBeenOpened(true);
     setHasBeenOpened(false);
