@@ -3,7 +3,6 @@ global:
   kubernetesClusterDomain: cluster.local
   imageRegistry: registry.opsmill.io
   infrahubRepository: opsmill/infrahub
-  infrahubTag: "0.10.1"
   imagePullPolicy: IfNotPresent
 
 # ----------- Cache -----------
