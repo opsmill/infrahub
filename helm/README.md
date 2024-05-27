@@ -58,7 +58,7 @@ The following table lists the configurable parameters in the `values.yaml` file 
 | `global.kubernetesClusterDomain` | Kubernetes cluster domain | `cluster.local`  |
 | `global.imageRegistry` | Image registry for pulling images | `registry.opsmill.io`  |
 | `global.infrahubRepository` | Repository for Infrahub images | `opsmill/infrahub-py3.11`  |
-| `global.infrahubTag` | Tag for Infrahub images | `"0.8.2-helm"`  |
+| `global.infrahubTag` | Tag for Infrahub images | `0.14.0`  |
 | `global.imagePullPolicy` | Default image pull policy | `IfNotPresent`  |
 | `cache.type` | Service type for cache | `ClusterIP`  |
 | `cache.cache.image.repository` | The Redis image repository | `redis` |
