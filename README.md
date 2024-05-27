@@ -40,4 +40,4 @@ If you need help, support for the open-source Infrahub project is provided on [!
 
 ## Security
 
-[View our SECURITY](./SECURITY.md) policy to find the latest information.
+[View our SECURITY](https://github.com/opsmill/infrahub?tab=security-ov-file) policy to find the latest information.
