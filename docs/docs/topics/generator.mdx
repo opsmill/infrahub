@@ -29,3 +29,7 @@ The targets point to a group that will consist of objects that are impacted by t
 The [GraphQL query](graphql) defines the data that will be collected when running the generator. Any object identified in this step is added as a member to a GraphQL query group. The membership in these groups are then used to determine which generators need to be executed as part of a proposed change during the pipeline run.
 
 The Generator itself is a Python class that is based on the `InfrahubGenerator` class from the SDK. Just like [transforms](transformation) and [checks](check), the Generators are user defined.
+
+## Known limitations
+
+- [3289](https://github.com/opsmill/infrahub/issues/3289) deleting a generator target object should delete the created objects of that target

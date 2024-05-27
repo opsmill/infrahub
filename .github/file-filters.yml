@@ -3,6 +3,9 @@ ci_config: &ci_config
   - ".github/workflows/ci.yml"
   - ".github/file-filters.yml"
 
+github_workflows: &github_workflows
+  - ".github/workflows/*.yml"
+
 development_files: &development_files
   - "development/**"
   - "tasks/**"
@@ -30,6 +33,9 @@ sync_poetry_files: &sync_poetry_files
 
 frontend_files: &frontend_files
   - "frontend/**"
+
+e2e_test_files:
+  - "frontend/tests/e2e/**"
 
 demo_files: &demo_files
   - "models/**"

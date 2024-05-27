@@ -11,6 +11,7 @@ import { usePermission } from "../hooks/usePermission";
 import { DynamicFieldData } from "../screens/edit-form-hook/dynamic-control-types";
 import { Form } from "../screens/edit-form-hook/form";
 import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
+import { branchesToSelectOptions } from "../utils/branches";
 import { classNames } from "../utils/common";
 import { BUTTON_TYPES } from "./buttons/button";
 import { ButtonWithTooltip } from "./buttons/button-with-tooltip";
@@ -18,18 +19,10 @@ import { SelectButton } from "./buttons/select-button";
 import { DateDisplay } from "./display/date-display";
 import { POPOVER_SIZE, PopOver } from "./display/popover";
 import { SelectOption } from "./inputs/select";
-import { branchesToSelectOptions } from "../utils/branches";
 
 const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
   branch && (
     <>
-      {branch.is_isolated && (
-        <Icon
-          icon={"mdi:alpha-i-box"}
-          className={classNames(active ? "text-custom-white" : "text-gray-500")}
-        />
-      )}
-
       {branch.has_schema_changes && (
         <Icon
           icon={"mdi:file-alert"}
@@ -180,13 +173,6 @@ export default function BranchSelector() {
     {
       name: "sync_with_git",
       label: "Sync with Git",
-      type: "checkbox",
-      value: false,
-      isOptional: true,
-    },
-    {
-      name: "is_isolated",
-      label: "Isolated mode",
       type: "checkbox",
       value: false,
       isOptional: true,

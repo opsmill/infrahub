@@ -109,11 +109,6 @@ async def test_node_schema_generate_fields_for_display_label():
     schema = NodeSchema(**SCHEMA)
     assert schema.generate_fields_for_display_label() == {"level": {"value": None}, "name": {"value": None}}
 
-    SCHEMA["display_labels"] = ["name__value__third"]
-    schema = NodeSchema(**SCHEMA)
-    with pytest.raises(ValueError):
-        schema.generate_fields_for_display_label()
-
 
 async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car_person_schema):
     person = registry.schema.get(name="TestPerson")

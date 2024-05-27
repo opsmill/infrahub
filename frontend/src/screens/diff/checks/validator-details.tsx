@@ -3,9 +3,9 @@ import { Pagination } from "../../../components/utils/pagination";
 import { getValidatorDetails } from "../../../graphql/queries/diff/getValidatorDetails";
 import usePagination from "../../../hooks/usePagination";
 import useQuery from "../../../hooks/useQuery";
-import ErrorScreen from "../../error-screen/error-screen";
+import ErrorScreen from "../../errors/error-screen";
+import NoDataFound from "../../errors/no-data-found";
 import LoadingScreen from "../../loading-screen/loading-screen";
-import NoDataFound from "../../no-data-found/no-data-found";
 import { Check } from "./check";
 
 type tValidatorDetails = {

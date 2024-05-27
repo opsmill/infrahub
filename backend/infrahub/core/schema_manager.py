@@ -3,10 +3,11 @@ from __future__ import annotations
 import copy
 import hashlib
 from collections import defaultdict
+from itertools import chain
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
-from infrahub_sdk.utils import compare_lists, duplicates, intersection
+from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from pydantic import BaseModel
 
 from infrahub import lock
@@ -22,6 +23,7 @@ from infrahub.core.constants import (
     RelationshipDeleteBehavior,
     RelationshipDirection,
     RelationshipKind,
+    SchemaElementPathType,
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations import MIGRATION_MAP
@@ -422,6 +424,22 @@ class SchemaBranch:
                 nodes.append(self.get(name=node_name, duplicate=True))
         return nodes
 
+    def generate_fields_for_display_label(self, name: str) -> Optional[dict]:
+        node = self.get(name=name, duplicate=False)
+        if isinstance(node, (NodeSchema, ProfileSchema)):
+            return node.generate_fields_for_display_label()
+
+        fields: dict[str, Union[str, None, dict[str, None]]] = {}
+        if isinstance(node, GenericSchema):
+            for child_node_name in node.used_by:
+                child_node = self.get(name=child_node_name, duplicate=False)
+                resp = child_node.generate_fields_for_display_label()
+                if not resp:
+                    continue
+                fields = deep_merge_dict(dicta=fields, dictb=resp)
+
+        return fields or None
+
     def load_schema(self, schema: SchemaRoot) -> None:
         """Load a SchemaRoot object and store all NodeSchema or GenericSchema.
 
@@ -470,6 +488,7 @@ class SchemaBranch:
         self.validate_order_by()
         self.validate_default_filters()
         self.validate_parent_component()
+        self.validate_human_friendly_id()
 
     def process_post_validation(self) -> None:
         self.add_groups()
@@ -480,6 +499,7 @@ class SchemaBranch:
         self.process_labels()
         self.process_dropdowns()
         self.process_relationships()
+        self.process_human_friendly_id()
 
     def generate_identifiers(self) -> None:
         """Generate the identifier for all relationships if it's not already present."""
@@ -550,48 +570,53 @@ class SchemaBranch:
                             f" {rels[0].direction.value} <> {peer_direction.value}"
                         ) from None
 
-    def _validate_attribute_path(
+    def validate_schema_path(
         self,
         node_schema: BaseNodeSchema,
         path: str,
-        schema_map_override: Dict[str, Union[NodeSchema, GenericSchema]],
-        relationship_allowed: bool = False,
-        relationship_attribute_allowed: bool = False,
-        schema_attribute_name: Optional[str] = None,
+        allowed_path_types: SchemaElementPathType,
+        element_name: Optional[str] = None,
     ) -> SchemaAttributePath:
         error_header = f"{node_schema.kind}"
-        error_header += f".{schema_attribute_name}" if schema_attribute_name else ""
-        allowed_leaf_properties = ["value", "version", "binary_address"]
+        error_header += f".{element_name}" if element_name else ""
+
         try:
-            schema_attribute_path = node_schema.parse_attribute_path(path, schema_map_override=schema_map_override)
+            schema_attribute_path = node_schema.parse_schema_path(path=path, schema=self)
         except AttributePathParsingError as exc:
             raise ValueError(f"{error_header}: {exc}") from exc
 
-        if schema_attribute_path.relationship_schema:
-            if not relationship_allowed:
-                raise ValueError(f"{error_header}: this property only supports attributes, not relationships")
-            if schema_attribute_path.relationship_schema.cardinality != RelationshipCardinality.ONE:
+        if not (SchemaElementPathType.ATTR & allowed_path_types) and schema_attribute_path.is_type_attribute:
+            raise ValueError(f"{error_header}: this property only supports relationships not attributes")
+
+        if not (SchemaElementPathType.ALL_RELS & allowed_path_types) and schema_attribute_path.is_type_relationship:
+            raise ValueError(f"{error_header}: this property only supports attributes, not relationships")
+
+        if schema_attribute_path.is_type_relationship and schema_attribute_path.relationship_schema:
+            if (
+                schema_attribute_path.relationship_schema.cardinality == RelationshipCardinality.ONE
+                and not SchemaElementPathType.REL_ONE & allowed_path_types
+            ):
+                raise ValueError(
+                    f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
+                    " relationship must be of cardinality many"
+                )
+            if (
+                schema_attribute_path.relationship_schema.cardinality == RelationshipCardinality.MANY
+                and not SchemaElementPathType.REL_MANY & allowed_path_types
+            ):
                 raise ValueError(
                     f"{error_header}: cannot use {schema_attribute_path.relationship_schema.name} relationship,"
                     " relationship must be of cardinality one"
                 )
-            if not relationship_attribute_allowed and schema_attribute_path.attribute_schema:
-                raise ValueError(
-                    f"{error_header}: cannot use attributes of related node in constraint, only the relationship"
-                )
 
-        if (
-            schema_attribute_path.attribute_property_name
-            and schema_attribute_path.attribute_property_name not in allowed_leaf_properties
-        ):
-            raise ValueError(
-                f"{error_header}: attribute property must be one of {allowed_leaf_properties}, not {schema_attribute_path.attribute_property_name}"
-            )
+            if schema_attribute_path.has_property and not SchemaElementPathType.RELS_ATTR & allowed_path_types:
+                raise ValueError(f"{error_header}: cannot use attributes of related node, only the relationship")
+            if not schema_attribute_path.has_property and not SchemaElementPathType.RELS_NO_ATTR & allowed_path_types:
+                raise ValueError(f"{error_header}: Must use attributes of related node")
+
         return schema_attribute_path
 
     def validate_uniqueness_constraints(self) -> None:
-        full_schema_objects = self.to_dict_schema_object()
-        schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
@@ -600,24 +625,34 @@ class SchemaBranch:
 
             for constraint_paths in node_schema.uniqueness_constraints:
                 for constraint_path in constraint_paths:
-                    self._validate_attribute_path(
-                        node_schema,
-                        constraint_path,
-                        schema_map,
-                        schema_attribute_name="uniqueness_constraints",
-                        relationship_allowed=True,
+                    schema_path = self.validate_schema_path(
+                        node_schema=node_schema,
+                        path=constraint_path,
+                        allowed_path_types=SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_NO_ATTR,
+                        element_name="uniqueness_constraints",
                     )
+                    if schema_path.is_type_relationship and schema_path.relationship_schema:
+                        if schema_path.relationship_schema.optional and not (
+                            schema_path.relationship_schema.name == "ip_namespace"
+                            and isinstance(node_schema, NodeSchema)
+                            and (node_schema.is_ip_address() or node_schema.is_ip_prefix)
+                        ):
+                            raise ValueError(
+                                f"Only mandatory relation of cardinality one can be used in uniqueness_constraints,"
+                                f" {schema_path.relationship_schema.name} is not mandatory. ({constraint_path})"
+                            )
 
     def validate_display_labels(self) -> None:
-        full_schema_objects = self.to_dict_schema_object()
-        schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if node_schema.display_labels:
-                for display_label_path in node_schema.display_labels:
-                    self._validate_attribute_path(
-                        node_schema, display_label_path, schema_map, schema_attribute_name="display_labels"
+                for path in node_schema.display_labels:
+                    self.validate_schema_path(
+                        node_schema=node_schema,
+                        path=path,
+                        allowed_path_types=SchemaElementPathType.ATTR,
+                        element_name="display_labels",
                     )
             elif isinstance(node_schema, NodeSchema):
                 generic_display_labels = []
@@ -631,36 +666,87 @@ class SchemaBranch:
                     node_schema.display_labels = generic_display_labels[0]
 
     def validate_order_by(self) -> None:
-        full_schema_objects = self.to_dict_schema_object()
-        schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.order_by:
                 continue
 
+            allowed_types = SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE
             for order_by_path in node_schema.order_by:
-                self._validate_attribute_path(
-                    node_schema,
-                    order_by_path,
-                    schema_map,
-                    relationship_allowed=True,
-                    relationship_attribute_allowed=True,
-                    schema_attribute_name="order_by",
+                self.validate_schema_path(
+                    node_schema=node_schema,
+                    path=order_by_path,
+                    allowed_path_types=allowed_types,
+                    element_name="order_by",
                 )
 
     def validate_default_filters(self) -> None:
-        full_schema_objects = self.to_dict_schema_object()
-        schema_map = full_schema_objects["nodes"] | full_schema_objects["generics"]
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.default_filter:
                 continue
 
-            self._validate_attribute_path(
-                node_schema, node_schema.default_filter, schema_map, schema_attribute_name="default_filter"
+            self.validate_schema_path(
+                node_schema=node_schema,
+                path=node_schema.default_filter,
+                allowed_path_types=SchemaElementPathType.ATTR,
+                element_name="default_filter",
             )
+
+    def validate_human_friendly_id(self):
+        for name in self.generic_names + self.node_names:
+            node_schema = self.get(name=name, duplicate=False)
+
+            if not node_schema.human_friendly_id:
+                continue
+
+            has_unique_item = False
+            allowed_types = SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_ATTR
+            for item in node_schema.human_friendly_id:
+                schema_path = self.validate_schema_path(
+                    node_schema=node_schema,
+                    path=item,
+                    allowed_path_types=allowed_types,
+                    element_name="human_friendly_id",
+                )
+
+                if schema_path.attribute_schema.unique:
+                    has_unique_item = True
+
+                if schema_path.is_type_relationship and schema_path.relationship_schema:
+                    if schema_path.relationship_schema.optional and not (
+                        schema_path.relationship_schema.name == "ip_namespace"
+                        and isinstance(node_schema, NodeSchema)
+                        and (node_schema.is_ip_address() or node_schema.is_ip_prefix)
+                    ):
+                        raise ValueError(
+                            f"Only mandatory relationship of cardinality one can be used in human_friendly_id, "
+                            f"{schema_path.relationship_schema.name} is not mandatory on {schema_path.relationship_schema.kind} for "
+                            f"{node_schema.kind}. ({item})"
+                        )
+                #     if not schema_path.attribute_schema.unique:
+                #         raise ValueError(
+                #             f"Only unique attribute on related node can be used used in human_friendly_id, "
+                #             f"{schema_path.attribute_schema.name} is not unique on {schema_path.relationship_schema.kind} for "
+                #             f"{node_schema.kind}. ({item})"
+                #         )
+
+                # if (
+                #     schema_path.is_type_attribute
+                #     and len(node_schema.human_friendly_id) == 1
+                #     and not schema_path.attribute_schema.unique
+                # ):
+                #     raise ValueError(
+                #         f"Only unique attribute can be used on their own in human_friendly_id, "
+                #         f"{schema_path.attribute_schema.name} is not unique for {node_schema.kind}. ({item})"
+                #     )
+
+            if not has_unique_item:
+                raise ValueError(
+                    f"At least one attribute must be unique in the human_friendly_id for {node_schema.kind}."
+                )
 
     def validate_parent_component(self) -> None:
         # {parent_kind: {component_kind_1, component_kind_2, ...}}
@@ -890,6 +976,34 @@ class SchemaBranch:
 
             if schema_to_update:
                 self.set(name=schema_to_update.kind, schema=schema_to_update)
+
+    def process_human_friendly_id(self) -> None:
+        for name in self.generic_names + self.node_names:
+            node = self.get(name=name, duplicate=False)
+
+            # If human_friendly_id IS NOT defined
+            #   but some the model has some unique attribute, we generate a human_friendly_id
+            # If human_friendly_id IS defined
+            #   but no unique attributes and no uniquess constraints, we add a uniqueness_constraint
+            if not node.human_friendly_id and node.unique_attributes:
+                for attr in node.unique_attributes:
+                    node = self.get(name=name, duplicate=True)
+                    node.human_friendly_id = [f"{attr.name}__value"]
+                    self.set(name=node.kind, schema=node)
+                    break
+                continue
+
+            if node.human_friendly_id and not node.unique_attributes and not node.uniqueness_constraints:
+                uniqueness_constraints: list[str] = []
+                for item in node.human_friendly_id:
+                    schema_attribute_path = node.parse_schema_path(path=item, schema=self)
+                    if schema_attribute_path.is_type_attribute:
+                        uniqueness_constraints.append(item)
+                    elif schema_attribute_path.is_type_relationship:
+                        uniqueness_constraints.append(schema_attribute_path.relationship_schema.name)
+
+                node.uniqueness_constraints = [uniqueness_constraints]
+                self.set(name=node.kind, schema=node)
 
     def process_hierarchy(self) -> None:
         for name in self.nodes.keys():
@@ -1270,6 +1384,7 @@ class SchemaBranch:
             self.set(name=core_profile_schema.kind, schema=core_profile_schema)
         else:
             core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
+
         profile_schema_kinds = set()
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
@@ -1281,14 +1396,27 @@ class SchemaBranch:
             profile_schema_kinds.add(profile.kind)
         if not profile_schema_kinds:
             return
+
+        # Update used_by list for CoreProfile and CoreNode
         core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
-        current_used_by = set(core_profile_schema.used_by)
-        new_used_by = profile_schema_kinds - current_used_by
-        if not new_used_by:
-            return
-        core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=True)
-        core_profile_schema.used_by = sorted(list(profile_schema_kinds))
-        self.set(name=core_profile_schema.kind, schema=core_profile_schema)
+        current_used_by_profile = set(core_profile_schema.used_by)
+        new_used_by_profile = profile_schema_kinds - current_used_by_profile
+
+        if new_used_by_profile:
+            core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=True)
+            core_profile_schema.used_by = sorted(list(profile_schema_kinds))
+            self.set(name=InfrahubKind.PROFILE, schema=core_profile_schema)
+
+        if self.has(name=InfrahubKind.NODE):
+            core_node_schema = self.get(name=InfrahubKind.NODE, duplicate=False)
+            current_used_by_node = set(core_node_schema.used_by)
+            new_used_by_node = profile_schema_kinds - current_used_by_node
+
+            if new_used_by_node:
+                core_node_schema = self.get(name=InfrahubKind.NODE, duplicate=True)
+                updated_used_by_node = set(chain(profile_schema_kinds, set(core_node_schema.used_by)))
+                core_node_schema.used_by = sorted(list(updated_used_by_node))
+                self.set(name=InfrahubKind.NODE, schema=core_node_schema)
 
     def add_profile_relationships(self):
         for node_name in self.nodes.keys():
@@ -1335,7 +1463,7 @@ class SchemaBranch:
             branch=node.branch,
             include_in_menu=False,
             display_labels=["profile_name__value"],
-            inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE],
+            inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE, InfrahubKind.NODE],
             default_filter="profile_name__value",
             attributes=[profile_name_attr, profile_priority_attr],
             relationships=[

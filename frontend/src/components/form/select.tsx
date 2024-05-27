@@ -1,9 +1,11 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { FormFieldError } from "../../screens/edit-form-hook/form";
+import { QuestionMark } from "../display/question-mark";
 import { Select, SelectOption } from "../inputs/select";
 
 type SelectProps = {
   label: string;
+  description?: string;
   value?: string | number | null;
   options?: Array<SelectOption>;
   onChange: (value: string | number) => void;
@@ -12,10 +14,11 @@ type SelectProps = {
   isOptional?: boolean;
   dropdown?: boolean;
   enum?: boolean;
+  multiple?: boolean;
 };
 
 export const OpsSelect = (props: SelectProps) => {
-  const { label, isProtected, isOptional, ...propsToPass } = props;
+  const { label, description, isProtected, isOptional, ...propsToPass } = props;
 
   const getLabel = () => {
     if (label && isOptional) {
@@ -40,6 +43,7 @@ export const OpsSelect = (props: SelectProps) => {
             <div className="ml-2">
               {isProtected ? <LockClosedIcon className="w-4 h-4" /> : null}{" "}
             </div>
+            <QuestionMark message={description} />
           </>
         )}
       </div>

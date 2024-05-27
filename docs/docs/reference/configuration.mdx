@@ -3,21 +3,112 @@ title: Configuration file
 ---
 
 import CodeBlock from "@theme/CodeBlock";
-import infrahubConfigPy from '!!raw-loader!../../../backend/infrahub/config.py';
 
 # Configuration file
 
-:::warning Under Construction
+The Infrahub containers have a number of environmental variables available at runtime to affect their behavior.
 
-This page is still under construction and is not available yet.<br />
-Please reach out in Slack if you have some questions about the **Configuration file**
+## Usage
+
+Here are a few common methods of setting environmental variables:
+
+- Exporting in a shell, e.g.: `export INFRAHUB_ADDRESS="http://localhost:8000"`
+- Using a [`.env` file](https://docs.docker.com/compose/environment-variables/set-environment-variables/#substitute-with-an-env-file)
+- Using [direnv](https://direnv.net/)
+
+:::note
+
+`infrahubctl` has it's own environmental variables. See the [infrahubctl documentation](../infrahubctl#environment-variables) for more information.
 
 :::
 
-Until a better documentation is available, the best reference to understand what options are available in the configuration file is the code itself.
-The configuration file format is defined in Pydantic models in `infrahub/config.py`
+## Infrahub environmental variables
+<!-- vale off -->
 
-<details>
-  <summary>Explore the Source Code for the configuration File</summary>
-  <CodeBlock language="python">{infrahubConfigPy}</CodeBlock>
-</details>
+| Name | Description | Example | Alias |  |
+|---|---|---|---|---|
+| AWS_ACCESS_KEY_ID |  |  |  |  |
+| AWS_SECRET_ACCESS_KEY |  |  |  |  |
+| DB_TYPE |  |  |  |  |
+| INFRAHUB_ADDRESS | "HTTP endpoint of the API Server, used by the git agent for internal communication" | http://infrahub-server:8000 |  |  |
+| INFRAHUB_ALLOW_ANONYMOUS_ACCESS | Indicates if the system allows anonymous read access | TRUE |  |  |
+| INFRAHUB_ANALYTICS_ADDRESS |  |  |  |  |
+| INFRAHUB_ANALYTICS_API_KEY |  |  |  |  |
+| INFRAHUB_ANALYTICS_ENABLE |  |  |  |  |
+| INFRAHUB_API_CORS_ALLOW_CREDENTIALS | "If True, cookies will be allowed to be included in cross-site HTTP requests" |  |  |  |
+| INFRAHUB_API_CORS_ALLOW_HEADERS | The list of non-standard HTTP headers allowed in requests from the browser |  |  |  |
+| INFRAHUB_API_CORS_ALLOW_METHODS | A list of HTTP verbs that are allowed for the actual request |  |  |  |
+| INFRAHUB_API_CORS_ALLOW_ORIGINS | A list of origins that are authorized to make cross-site HTTP requests |  |  |  |
+| INFRAHUB_BROKER_ADDRESS |  | message-queue |  |  |
+| INFRAHUB_BROKER_DRIVER |  |  |  |  |
+| INFRAHUB_BROKER_ENABLE |  |  |  |  |
+| INFRAHUB_BROKER_MAXIMUM_CONCURRENT_MESSAGES | The maximum number of concurrent messages fetched by each worker |  |  |  |
+| INFRAHUB_BROKER_MAXIMUM_MESSAGE_RETRIES | The maximum number of retries that are attempted for failed messages |  |  |  |
+| INFRAHUB_BROKER_NAMESPACE |  |  |  |  |
+| INFRAHUB_BROKER_PASSWORD |  | infrahub |  |  |
+| INFRAHUB_BROKER_PORT | Specified if running on a non default port. |  |  |  |
+| INFRAHUB_BROKER_TLS_CA_FILE | File path to CA cert or bundle in PEM format |  |  |  |
+| INFRAHUB_BROKER_TLS_ENABLED | Indicates if TLS is enabled for the connection |  |  |  |
+| INFRAHUB_BROKER_TLS_INSECURE | Indicates if TLS certificates are verified |  |  |  |
+| INFRAHUB_BROKER_USERNAME |  |  |  |  |
+| INFRAHUB_BROKER_VIRTUALHOST | The virtual host to connect to |  |  |  |
+| INFRAHUB_CACHE_ADDRESS |  | cache |  |  |
+| INFRAHUB_CACHE_DATABASE | Id of the database to use |  |  |  |
+| INFRAHUB_CACHE_DRIVER |  |  |  |  |
+| INFRAHUB_CACHE_ENABLE |  |  |  |  |
+| INFRAHUB_CACHE_PASSWORD |  |  |  |  |
+| INFRAHUB_CACHE_PORT | Specified if running on a non default port (6379) | 6379 |  |  |
+| INFRAHUB_CACHE_TLS_CA_FILE | File path to CA cert or bundle in PEM format |  |  |  |
+| INFRAHUB_CACHE_TLS_ENABLED | Indicates if TLS is enabled for the connection |  |  |  |
+| INFRAHUB_CACHE_TLS_INSECURE | Indicates if TLS certificates are verified |  |  |  |
+| INFRAHUB_CACHE_USERNAME |  |  |  |  |
+| INFRAHUB_CONFIG | Location of the configuration file for Infrahub | infrahub.toml |  |  |
+| INFRAHUB_DB_ADDRESS |  | database |  |  |
+| INFRAHUB_DB_DATABASE | Name of the database |  |  |  |
+| INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY | Maximum number of level to search in a hierarchy. |  |  |  |
+| INFRAHUB_DB_PASSWORD |  |  |  |  |
+| INFRAHUB_DB_PORT |  |  |  |  |
+| INFRAHUB_DB_PROTOCOL |  |  |  |  |
+| INFRAHUB_DB_QUERY_SIZE_LIMIT | The max number of records to fetch in a single query before performing internal pagination. |  |  |  |
+| INFRAHUB_DB_RETRY_LIMIT | Maximum number of times a transient issue in a transaction should be retried. |  |  |  |
+| INFRAHUB_DB_TLS_CA_FILE | File path to CA cert or bundle in PEM format |  |  |  |
+| INFRAHUB_DB_TLS_ENABLED | Indicates if TLS is enabled for the connection |  |  |  |
+| INFRAHUB_DB_TLS_INSECURE | Indicates if TLS certificates are verified |  |  |  |
+| INFRAHUB_DB_TYPE |  | neo4j |  |  |
+| INFRAHUB_DB_USERNAME |  |  |  |  |
+| INFRAHUB_DOCS_INDEX_PATH | Full path of saved json containing pre-indexed documentation |  |  |  |
+| INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS |  |  |  |  |
+| INFRAHUB_EXPERIMENTAL_PULL_REQUEST |  |  |  |  |
+| INFRAHUB_INITIAL_ADMIN_PASSWORD | The initial password for the admin user |  |  |  |
+| INFRAHUB_INITIAL_ADMIN_TOKEN | The initial password for the admin user |  |  |  |
+| INFRAHUB_INITIAL_AGENT_PASSWORD | The initial password for the agent user |  |  |  |
+| INFRAHUB_INITIAL_AGENT_TOKEN | The initial password for the agent user |  |  |  |
+| INFRAHUB_INITIAL_DEFAULT_BRANCH | "Defines the name of the default branch within Infrahub, can only be set once during initialization of the system." |  |  |  |
+| INFRAHUB_INTERNAL_ADDRESS |  | http://infrahub-server:8000 |  |  |
+| INFRAHUB_LOG_LEVEL | "Set the level of the log to print in the console: info, debug, warning" | INFO |  |  |
+| INFRAHUB_LOGGING_REMOTE_API_SERVER_DSN |  |  |  |  |
+| INFRAHUB_LOGGING_REMOTE_ENABLE |  |  |  |  |
+| INFRAHUB_LOGGING_REMOTE_FRONTEND_DSN |  |  |  |  |
+| INFRAHUB_LOGGING_REMOTE_GIT_AGENT_DSN |  |  |  |  |
+| INFRAHUB_MISC_MAXIMUM_VALIDATOR_EXECUTION_TIME | The maximum allowed time (in seconds) for a validator to run. |  |  |  |
+| INFRAHUB_MISC_PRINT_QUERY_DETAILS |  |  |  |  |
+| INFRAHUB_MISC_START_BACKGROUND_RUNNER |  |  |  |  |
+| INFRAHUB_PRODUCTION | "Enable or disable the production mode, in production mode the logs are generated in JSON format" | FALSE |  |  |
+| INFRAHUB_SECURITY_ACCESS_TOKEN_LIFETIME | Lifetime of access token in seconds |  |  |  |
+| INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME | Lifetime of refresh token in seconds |  |  |  |
+| INFRAHUB_STORAGE_BUCKET_NAME |  | infrahub-data | AWS_S3_BUCKET_NAME |  |
+| INFRAHUB_STORAGE_CUSTOM_DOMAIN |  |  | AWS_S3_CUSTOM_DOMAIN |  |
+| INFRAHUB_STORAGE_DEFAULT_ACL |  |  | AWS_DEFAULT_ACL |  |
+| INFRAHUB_STORAGE_ENDPOINT_URL |  |  | AWS_S3_ENDPOINT_URL |  |
+| INFRAHUB_STORAGE_LOCAL_PATH |  | /opt/infrahub/storage |  |  |
+| INFRAHUB_STORAGE_QUERYTSTRING_AUTH |  |  | AWS_QUERYSTRING_AUTH |  |
+| INFRAHUB_STORAGE_USE_SSL |  |  | AWS_S3_USE_SSL |  |
+| INFRAHUB_STORAGE_DRIVER |  | local |  |  |
+| INFRAHUB_TRACE_ENABLE |  | FALSE |  |  |
+| INFRAHUB_TRACE_EXPORTER_ENDPOINT | OTLP endpoint for exporting traces |  |  |  |
+| INFRAHUB_TRACE_EXPORTER_PROTOCOL | Protocol to be used for exporting traces |  |  |  |
+| INFRAHUB_TRACE_EXPORTER_TYPE | Type of exporter to be used for tracing |  |  |  |
+| INFRAHUB_TRACE_INSECURE | "Use insecure connection (HTTP) if True, otherwise use secure connection (HTTPS)" |  |  |  |
+| REPOSITORIES_DIRECTORY |  |  |  |  |
+| SYNC_INTERVAL | Time (in seconds) between git repositories synchronizations |  |  |  |
+<!-- vale on -->

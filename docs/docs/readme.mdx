@@ -4,41 +4,19 @@ title: Introduction
 
 # Welcome to Infrahub
 
-Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run.
+Infrahub from [OpsMill](https://opsmill.com) is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run. Infrahub offers a central hub to manage the data, templates and playbooks that power your infrastructure by combining the version control and branch management capabilities of Git with the flexible data model and UI of a graph database.
 
-At its heart, Infrahub is built on 3 fundamental pillars:
+## Learn about Infrahub
 
-- **Powerful Schema**: that's easily extensible
-- **Unified Version Control**: for data and files
-- **Data Synchronization**: with traceability and ownership
+- **[Overview](./overview/)** explains Infrahub's architecture and concepts.
+- **[Tutorials](./tutorials/getting-started/)** walk you through learning Infrahub's basic features.
+- **[Guides](./guides/)** comprise a comprehensive set of "how-to" topics, covering the key features of Infrahub.
+- **[Topics](./topics/)** provide a more in-depth technical explanation of various features, implementation, and deployment details.
+- **[Reference](./reference/)** documents technical implementation details such as available options for features and commands.
+- **[FAQ](./faq)** covers project status and how to get involved.
 
-## Getting started
+## Deploy Infrahub
 
 - Choose your Infrahub deployment method:
   - [Deploy an instance of Infrahub in the Cloud via GitHub Codespaces](https://github.com/opsmill/infrahub?tab=readme-ov-file#quick-start)
-  - [Deploy the demo environment on your laptop](/tutorials/getting-started/#prepare-the-demo-environment)
-- Explore the Python SDK to easily interact with Infrahub
-- Explore the capabilities of the schema
-- Check the architecture document to understand how the application is built
-
-## Project status
-
-The project is currently in a Tech Preview phase, which means that not all features we are targeting for the first major release have been implemented yet and the project is still evolving at a very rapid pace with the (un)stability that you would expect in an early project.
-
-Having said that there are several features already available and you should be able already to:
-
-- Manage branches and query any branches
-- Integrate a Git repository within Infrahub
-- Integrate and render Jinja2 templates
-- Expose new data Transformation endpoints
-- Validate data within the CI/CD pipeline
-- Extend the current schema
-- Query and modify data via the GraphQL interface
-- Access the previous state of the data and the extensions
-- Branch diff
-
-Missing features we are actively working on.
-
-- Object Profile and Inheritance
-- Pull requests
-- Branches support for the schema and schema migration
+  - [Deploy the demo environment on your infrastructure](./guides/installation)

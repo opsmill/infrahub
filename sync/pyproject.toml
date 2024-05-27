@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "infrahub-sync"
-version = "0.4.0"
-description = ""
-authors = ["OpsMill <contact@opsmill.com>"]
+version = "0.4.1"
+description = "Infrahub-Sync is a versatile Python package that synchronizes data between a source and a destination system"
+authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
 license = "Apache-2.0"
-homepage = "https://opsmill.io"
-repository = "https://opsmill.io"
-documentation = "https://opsmill.io"
+homepage = "https://opsmill.com"
+repository = "https://github.com/opsmill/infrahub"
+documentation = "https://docs.infrahub.app/integrations/sync/"
 packages = [
     { include = "infrahub_sync", from = "infrahub-sync"},
     { include = "potenda", from = "potenda"},
@@ -43,7 +43,7 @@ types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
-ruff = "0.4.1"
+ruff = "0.4.3"
 pytest-xdist = "^3.3.1"
 types-python-slugify = "^8.0.0.3"
 
@@ -169,6 +169,7 @@ select = [
     "N",     # pep8-naming
     "PIE",   # flake8-pie
     "PL",    # pylint
+    "PTH",   # flake8-use-pathlib
     "PYI",   # flake8-pyi
     "Q",     # flake8-quotes
     "RET",   # flake8-return

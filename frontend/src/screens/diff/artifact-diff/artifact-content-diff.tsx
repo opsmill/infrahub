@@ -20,18 +20,18 @@ import {
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "../../../config/constants";
-import { useAuth } from "../../../hooks/useAuth";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { createObject } from "../../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
 import { getProposedChangesArtifactsThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesArtifactsThreads";
+import { useAuth } from "../../../hooks/useAuth";
 import useQuery from "../../../hooks/useQuery";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
 import { schemaState } from "../../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
 import { fetchStream } from "../../../utils/fetch";
 import { stringifyWithoutQuotes } from "../../../utils/string";
-import ErrorScreen from "../../error-screen/error-screen";
+import ErrorScreen from "../../errors/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 
 const fakeIndex = () => {

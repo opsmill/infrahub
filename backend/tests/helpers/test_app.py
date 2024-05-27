@@ -105,7 +105,7 @@ class TestInfrahubApp:
         await create_account(
             db=db,
             name="admin",
-            password=config.SETTINGS.security.initial_admin_password,
+            password=config.SETTINGS.initial.admin_password,
             token_value=api_token,
         )
 

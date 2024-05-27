@@ -28,20 +28,20 @@ const getMutationMetaDetailsFromFormData = (
   attributeOrRelationshipToEdit: any
 ) => {
   const cleanedData = Object.entries(data).reduce((acc, [key, value]: [string, any]) => {
-    if (!isValueValid(value)) {
+    if (!isValueValid(value?.id || value)) {
       return acc;
     }
 
     if (metadataFields.includes(key) && type === "relationship") {
       return {
         ...acc,
-        [`_relation__${key}`]: value,
+        [`_relation__${key}`]: value?.id || value,
       };
     }
 
     return {
       ...acc,
-      [key]: value,
+      [key]: value?.id || value,
     };
   }, {});
 

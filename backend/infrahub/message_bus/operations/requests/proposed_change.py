@@ -360,10 +360,17 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
             )
 
             for changed_model in message.branch_diff.modified_kinds(branch=message.source_branch):
+                condition = False
+                if (changed_model in artifact_definition.query_models) or (
+                    changed_model.startswith("Profile")
+                    and changed_model.replace("Profile", "", 1) in artifact_definition.query_models
+                ):
+                    condition = True
+
                 select = select.add_flag(
                     current=select,
                     flag=DefinitionSelect.MODIFIED_KINDS,
-                    condition=changed_model in artifact_definition.query_models,
+                    condition=condition,
                 )
 
             await task_report.info(f"{artifact_definition.definition_name}: {select.log_line}")

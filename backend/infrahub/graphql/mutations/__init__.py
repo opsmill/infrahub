@@ -1,4 +1,4 @@
-from .account import CoreAccountSelfUpdate, CoreAccountTokenCreate
+from .account import CoreAccountSelfUpdate, CoreAccountTokenCreate, CoreAccountTokenDelete
 from .artifact_definition import InfrahubArtifactDefinitionMutation
 from .attribute import (
     AnyAttributeCreate,
@@ -36,6 +36,7 @@ from .proposed_change import (
 )
 from .relationship import RelationshipAdd, RelationshipRemove
 from .repository import InfrahubRepositoryMutation
+from .resource_manager import IPAddressPoolGetResource, IPPrefixPoolGetResource
 from .schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
 from .task import TaskCreate, TaskUpdate
 
@@ -56,6 +57,9 @@ __all__ = [
     "CheckboxAttributeUpdate",
     "CoreAccountSelfUpdate",
     "CoreAccountTokenCreate",
+    "CoreAccountTokenDelete",
+    "IPPrefixPoolGetResource",
+    "IPAddressPoolGetResource",
     "InfrahubArtifactDefinitionMutation",
     "InfrahubIPAddressMutation",
     "InfrahubIPNamespaceMutation",

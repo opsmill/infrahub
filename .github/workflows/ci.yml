@@ -26,6 +26,7 @@ env:
   INFRAHUB_TEST_IN_DOCKER: 1
   VALE_VERSION: "3.0.7"
   GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
+  METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
 
 jobs:
    # ------------------------------------------ Check Files Changes  ------------------------------------------
@@ -44,9 +45,11 @@ jobs:
       python: ${{ steps.changes.outputs.python_all }}
       javascript: ${{ steps.changes.outputs.javascript_all }}
       yaml: ${{ steps.changes.outputs.yaml_all }}
-      infrahub_poetry_files: ${{ steps.changes.ouputs.infrahub_poetry_files }}
-      python_sdk_poetry_files: ${{ steps.changes.ouputs.python_sdk_poetry_files }}
-      sync_poetry_files: ${{ steps.changes.ouputs.sync_poetry_files }}
+      infrahub_poetry_files: ${{ steps.changes.outputs.infrahub_poetry_files }}
+      python_sdk_poetry_files: ${{ steps.changes.outputs.python_sdk_poetry_files }}
+      sync_poetry_files: ${{ steps.changes.outputs.sync_poetry_files }}
+      github_workflows: ${{ steps.changes.outputs.github_workflows }}
+      e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -114,7 +117,7 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
       - name: "Setup environment"
-        run: "pip install ruff==0.4.1"
+        run: "pip install ruff==0.4.3"
       - name: "Linting: ruff check"
         run: "ruff check --diff ."
       - name: "Linting: ruff format"
@@ -133,6 +136,22 @@ jobs:
         with:
           config: .markdownlint.yaml
           globs: '**/*.{md,mdx}'
+
+  action-lint:
+    if: needs.files-changed.outputs.github_workflows == 'true'
+    needs: ["files-changed"]
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: Check workflow files
+        run: |
+          bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
+        shell: bash
+        env:
+          SHELLCHECK_OPTS: --exclude=SC2086 --exclude=SC2046 --exclude=SC2004
 
   infrahub-poetry-check:
     if: |
@@ -402,8 +421,24 @@ jobs:
     runs-on:
       group: huge-runners
     timeout-minutes: 45
-    env:
-      INFRAHUB_DB_TYPE: neo4j
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend-tests-neo4j
+            env:
+              INFRAHUB_DB_TYPE: neo4j
+          - name: backend-tests-nats
+            env:
+              INFRAHUB_DB_TYPE: memgraph
+              INFRAHUB_USE_NATS: 1
+              INFRAHUB_BROKER_DRIVER: nats
+              INFRAHUB_BROKER_PORT: 4222
+              INFRAHUB_CACHE_DRIVER: nats
+              INFRAHUB_CACHE_ADDRESS: message-queue
+              INFRAHUB_CACHE_PORT: 4222
+    name: ${{ matrix.name }}
+    env: ${{ matrix.env }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -427,7 +462,8 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
+      (needs.files-changed.outputs.backend == 'true' ||
+      needs.files-changed.outputs.documentation == 'true')
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: ubuntu-latest
     steps:
@@ -586,9 +622,24 @@ jobs:
     runs-on:
       group: huge-runners
     timeout-minutes: 40
-    env:
-      INFRAHUB_DB_TYPE: neo4j
-      METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: E2E-testing-playwright
+            env:
+              INFRAHUB_DB_TYPE: neo4j
+          - name: E2E-testing-playwright-nats
+            env:
+              INFRAHUB_DB_TYPE: neo4j
+              INFRAHUB_USE_NATS: 1
+              INFRAHUB_BROKER_DRIVER: nats
+              INFRAHUB_BROKER_PORT: 4222
+              INFRAHUB_CACHE_DRIVER: nats
+              INFRAHUB_CACHE_ADDRESS: message-queue
+              INFRAHUB_CACHE_PORT: 4222
+    name: ${{ matrix.name }}
+    env: ${{ matrix.env }}
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -669,6 +720,16 @@ jobs:
       - name: Patch chromium
         run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
 
+      - name: Wait for artifacts to be generated before restarting infrahub
+        if: needs.files-changed.outputs.e2e_tests == 'true'
+        run: npx playwright test artifact
+
+      - name: Add response delay if required
+        if: needs.files-changed.outputs.e2e_tests == 'true'
+        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=2" >> $GITHUB_ENV && invoke dev.start
+        env:
+          INFRAHUB_MISC_RESPONSE_DELAY: 2
+
       - name: Run Playwright tests
         run: npm run ci:test:e2e
 
@@ -686,7 +747,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: ${{ matrix.name }}
           path: frontend/playwright-report/
 
       - name: Containers after tests
@@ -708,6 +769,10 @@ jobs:
       - name: Display database logs
         if: always()
         run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
+
+      - name: Display message-queue logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-message-queue-1"
 
       - name: Display server status
         if: always()
@@ -731,11 +796,11 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
-    if: false  # |
-      # always() && !cancelled() &&
-      # !contains(needs.*.result, 'failure') &&
-      # !contains(needs.*.result, 'cancelled') &&
-      # needs.files-changed.outputs.backend == 'true'
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
     runs-on:
       group: huge-runners
     env:

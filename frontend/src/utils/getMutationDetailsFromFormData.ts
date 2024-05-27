@@ -17,10 +17,7 @@ const getMutationDetailsFromFormData = (
   const updatedObject = R.clone(formData);
 
   schema.attributes?.forEach((attribute) => {
-    const updatedValue =
-      updatedObject[attribute.name]?.value?.id ??
-      updatedObject[attribute.name]?.value ??
-      attribute?.default_value;
+    const updatedValue = updatedObject[attribute.name] ?? attribute?.default_value;
 
     const profileValue =
       profile && (profile[attribute.name]?.value?.id ?? profile[attribute.name]?.value);
@@ -29,6 +26,9 @@ const getMutationDetailsFromFormData = (
       // Delete the attribute if it's read-only
       delete updatedObject[attribute.name];
     }
+
+    // Set value property for mutation
+    updatedObject[attribute.name] = { value: updatedValue };
 
     if (mode === "update" && existingObject) {
       const existingValue = existingObject[attribute.name]?.value;
@@ -74,10 +74,10 @@ const getMutationDetailsFromFormData = (
     const isOneToMany = relationship.cardinality === "many";
 
     if (mode === "update" && existingObject) {
+      const updatedValue = updatedObject[relationship.name];
+
       if (isOneToOne) {
         const existingValue = existingObject[relationship.name]?.node?.id;
-
-        const updatedValue = updatedObject[relationship.name]?.id;
 
         if (updatedValue === existingValue) {
           delete updatedObject[relationship.name];
@@ -89,13 +89,10 @@ const getMutationDetailsFromFormData = (
           return;
         }
       } else {
-        const existingValue = existingObject[relationship.name]?.edges
-          .map((r: any) => r.node?.id)
-          .sort();
+        const existingValue =
+          existingObject[relationship.name]?.edges.map((r: any) => r.node?.id).sort() ?? [];
 
-        const updatedIds = updatedObject[relationship.name]?.list?.sort() ?? [];
-
-        if (JSON.stringify(updatedIds) === JSON.stringify(existingValue)) {
+        if (JSON.stringify(updatedValue) === JSON.stringify(existingValue)) {
           delete updatedObject[relationship.name];
           return;
         }
@@ -110,34 +107,20 @@ const getMutationDetailsFromFormData = (
       }
 
       if (isOneToMany) {
-        if (!updatedObject[relationship.name]?.list?.length) {
+        if (!updatedObject[relationship.name]?.length) {
           delete updatedObject[relationship.name];
         }
       }
     }
 
-    if (isOneToOne && updatedObject[relationship.name] && !updatedObject[relationship.name].id) {
+    if (
+      isOneToOne &&
+      updatedObject[relationship.name] &&
+      !(updatedObject[relationship.name].id || updatedObject[relationship.name].from_pool)
+    ) {
       // Set to null to remove the relationship
       updatedObject[relationship.name] = null;
       return;
-    }
-
-    if (isOneToMany && updatedObject[relationship.name] && updatedObject[relationship.name].list) {
-      const fieldKeys = Object.keys(updatedObject[relationship.name]).filter(
-        (key) => key !== "list"
-      );
-
-      updatedObject[relationship.name] = updatedObject[relationship.name].list.map((id: string) => {
-        const objWithMetaFields: any = {
-          id,
-        };
-
-        fieldKeys.forEach((key) => {
-          objWithMetaFields[key] = updatedObject[relationship.name][key];
-        });
-
-        return objWithMetaFields;
-      });
     }
   });
 

@@ -21,7 +21,7 @@ async def test_generate_interface_object(db: InfrahubDatabase, default_branch: B
     assert inspect.isclass(result)
     assert issubclass(result, graphene.Interface)
     assert result._meta.name == "TestVehicule"
-    assert sorted(list(result._meta.fields.keys())) == ["description", "display_label", "id", "name"]
+    assert sorted(list(result._meta.fields.keys())) == ["description", "display_label", "hfid", "id", "name"]
 
 
 async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
@@ -37,6 +37,7 @@ async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Bra
         "color",
         "description",
         "display_label",
+        "hfid",
         "id",
         "is_false",
         "is_true",
@@ -65,6 +66,7 @@ async def test_generate_graphql_object_with_interface(
         "_updated_at",
         "description",
         "display_label",
+        "hfid",
         "id",
         "name",
         "nbr_doors",
@@ -117,6 +119,7 @@ async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branc
         "_updated_at",
         "color",
         "display_label",
+        "hfid",
         "id",
         "is_electric",
         "member_of_groups",
@@ -139,6 +142,7 @@ async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branc
         "cars",
         "display_label",
         "height",
+        "hfid",
         "id",
         "member_of_groups",
         "name",

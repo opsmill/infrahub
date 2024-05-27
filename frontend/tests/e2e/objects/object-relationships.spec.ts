@@ -55,7 +55,7 @@ test.describe("/objects/:objectname/:objectid - relationship tab", () => {
       });
     });
 
-    test("should be add a new relationship", async ({ page }) => {
+    test("should add a new relationship", async ({ page }) => {
       await test.step("Navigate to relationship tab of an object", async () => {
         await page.goto("/objects/InfraPlatform");
         await page.getByRole("link", { name: "Juniper JunOS" }).click();
@@ -76,6 +76,27 @@ test.describe("/objects/:objectname/:objectid - relationship tab", () => {
         await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 10 results");
         await expect(page.getByLabel("Tabs")).toContainText("Devices10");
         await expect(page.getByRole("cell", { name: "dfw1-core1" })).toBeVisible();
+      });
+    });
+
+    test("should access relationships of cardinality many with hierarchical children", async ({
+      page,
+    }) => {
+      await test.step("Navigates to North America and checks the children", async () => {
+        await page.goto("/objects/LocationContinent");
+        await page.getByRole("link", { name: "North America" }).first().click();
+        await page.getByText("Children2").click();
+        await expect(page.getByRole("link", { name: "Canada" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "United States of America" })).toBeVisible();
+      });
+
+      await test.step("Navigates to the USA and checks the children", async () => {
+        await page.getByRole("link", { name: "United States of America" }).click();
+        await page.getByText("Children5").click();
+        await expect(page.getByRole("link", { name: "Atlanta" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "Denver" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "Bailey Li" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "Francesca Wilcox" })).toBeVisible();
       });
     });
   });

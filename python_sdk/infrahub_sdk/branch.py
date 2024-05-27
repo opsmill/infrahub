@@ -9,6 +9,7 @@ except ImportError:
 
 from infrahub_sdk.exceptions import BranchNotFoundError
 from infrahub_sdk.graphql import Mutation, Query
+from infrahub_sdk.utils import decode_json
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
@@ -20,7 +21,6 @@ class BranchData(pydantic.BaseModel):
     description: Optional[str] = None
     sync_with_git: bool
     is_default: bool
-    is_isolated: bool
     has_schema_changes: bool
     origin_branch: Optional[str] = None
     branched_from: str
@@ -34,7 +34,6 @@ BRANCH_DATA = {
     "branched_from": None,
     "is_default": None,
     "sync_with_git": None,
-    "is_isolated": None,
     "has_schema_changes": None,
 }
 
@@ -77,7 +76,6 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
         self,
         branch_name: str,
         sync_with_git: bool = True,
-        is_isolated: bool = False,
         description: str = "",
         background_execution: bool = False,
     ) -> BranchData:
@@ -87,7 +85,6 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
                 "name": branch_name,
                 "description": description,
                 "sync_with_git": sync_with_git,
-                "is_isolated": is_isolated,
             },
         }
 
@@ -185,7 +182,7 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
             time_to=time_to,
         )
         response = await self.client._get(url=url, headers=self.client.headers)
-        return response.json()
+        return decode_json(response=response, url=url)
 
 
 class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
@@ -216,7 +213,6 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
         self,
         branch_name: str,
         sync_with_git: bool = True,
-        is_isolated: bool = False,
         description: str = "",
         background_execution: bool = False,
     ) -> BranchData:
@@ -226,7 +222,6 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
                 "name": branch_name,
                 "description": description,
                 "sync_with_git": sync_with_git,
-                "is_isolated": is_isolated,
             },
         }
 
@@ -260,7 +255,7 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
             time_to=time_to,
         )
         response = self.client._get(url=url, headers=self.client.headers)
-        return response.json()
+        return decode_json(response=response, url=url)
 
     def merge(self, branch_name: str) -> BranchData:
         input_data = {

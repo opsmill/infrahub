@@ -314,6 +314,7 @@ class RelationshipSchema(pydantic.BaseModel):
     cardinality: str = "many"
     branch: Optional[BranchSupportType] = None
     optional: bool = True
+    read_only: bool = False
     filters: List[FilterSchema] = pydantic.Field(default_factory=list)
 
 
@@ -421,6 +422,7 @@ class NodeSchema(BaseNodeSchema):
     inherit_from: List[str] = pydantic.Field(default_factory=list)
     branch: Optional[BranchSupportType] = None
     default_filter: Optional[str] = None
+    human_friendly_id: Optional[List[str]] = None
 
 
 class ProfileSchema(BaseNodeSchema):

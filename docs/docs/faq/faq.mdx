@@ -1,0 +1,174 @@
+---
+title: FAQ
+---
+# Frequently asked questions
+
+Here are the key details about Infrahub:
+
+## About Infrahub
+
+### What is Infrahub?
+
+Infrahub is an open-source platform that enables infrastructure as code by providing a unified system to model, store, version, validate, and generate infrastructure data and configurations. It acts as a centralized source of truth for all infrastructure resources across an organization.
+
+### What are the main features and capabilities?
+
+- User-Defined Schema: Build and update data models to support business requirements for infrastructure resources.
+- Unified Storage: Version control for data and files
+- Versioning: Track current state and future intended state of the infrastructure with built-in peer review and a CI pipeline for validation.
+- Immutable Database: Go back in time to view the state of infrastructure at any point.
+- Artifact Generation: Transform infrastructure data into any format (text configurations, XML, JSON, etc.) using generators and templates.
+- Data Lineage: View the source and owner for each piece of infrastructure data.
+- Multiple interfaces for each team and need:
+  - Web UI: View and manage all infrastructure data, configurations, and CI/CD pipelines through a user interface.
+  - Query Engine: Powerful API and support for GraphQL and REST to query and retrieve infrastructure data.
+- Git Integration: File storage for code and templates
+- Integrations: Integrations with tools like NetBox, Nautobot, Ansible, and Nornir. Ability to build custom integrations.
+- Python SDK: Programmatically interact with Infrahub using a Python SDK.
+
+For more information, see our [Infrahub overview](../overview/).
+
+### I’m just getting started with infrastructure automation. Do I need Infrahub?
+
+If you're new to infrastructure automation, Infrahub can be a valuable tool to help you manage and automate your infrastructure resources without having to learn and assemble multiple automation tools into a workable system.
+
+It provides a centralized platform to define, version, and generate your infrastructure configurations, making it easier to achieve the goals of automation without the significant up-front effort.
+
+Please see our [Getting Started](../tutorials/getting-started/) tutorial to learn how to use Infrahub.
+
+### Where can I deploy Infrahub?
+
+You can test out Infrahub via [GitHub Codespaces](https://github.com/opsmill/infrahub#quick-start)
+
+Infrahub is a platform-agnostic solution that can be deployed in various environments, including:
+
+- Cloud platforms such as AWS, Azure, or GCP
+- On-premises data centers
+- Kubernetes clusters (via Helm charts)
+- Docker containers (using Docker Compose)
+
+The specific system requirements may vary depending on the deployment environment and the scale of your infrastructure.
+
+In the future, we plan to offer a managed Cloud SaaS offering of Infrahub. Please [subscribe to our mailing list](https://opsmill.com) to stay updated.
+
+### Installation and deployment
+
+To install and set up Infrahub:
+
+1. Download the latest version of Infrahub from the [GitHub repository](https://github.com/opsmill/infrahub)
+2. [Deploy](../guides/installation): Deploy Infrahub using the appropriate method for your environment such as Docker Compose, Helm charts
+
+Detailed installation guides and tutorials are available in [Installing Infrahub](../guides/installation) guide.
+
+### I deployed Infrahub, now what?
+
+After deploying Infrahub, you can start using it to manage your infrastructure resources. Here are some common initial steps:
+
+- [Load Schema](../topics/schema): Define your infrastructure data model by loading a schema into Infrahub. This schema will define the structure and relationships of your infrastructure resources.
+- [Load Data](../overview/data.mdx): Populate Infrahub with your existing infrastructure data, either manually or by importing from other sources.
+- Inventory: Use Infrahub's inventory capabilities to view and manage your infrastructure resources based on the loaded data.
+
+### How do I load my own schema into Infrahub?
+
+Infrahub allows you to load custom schemas to define your infrastructure data model. Currently, you can load schemas using the following methods:
+
+- [CLI and SDK](../topics/schema): Use the Infrahub command-line interface (CLI) or the Python SDK to load and manage schemas programmatically.
+- Frontend (Coming Soon): A user-friendly web interface for managing schemas is planned for future releases.
+
+### What is the status of the project?
+
+Infrahub is currently in beta, and the team is actively working towards reaching version 1.0 by the end of the year. The project is committed to ensuring data safety and providing a migration path for future releases.
+
+Upcoming features and improvements include:
+
+- Scale and Performance: Enhancements to handle larger volumes of data and improve overall performance.
+- Proposed Changes & CI Pipeline
+- Resource Manager: A dedicated resource management module for better visibility and control over infrastructure resources.
+- Profiles: Support for defining and managing different profiles or environments within Infrahub.
+
+### How much data can Infrahub handle right now?
+
+The current data handling capabilities of Infrahub are still being actively developed and tested. If you have specific requirements or want to assess Infrahub's performance and scalability in your environment, please reach out to the team at contact@opsmill.com or through the [Discord](https://discord.gg/jXMRp9hXSX) server.
+
+### Can I deploy Infrahub in production?
+
+Yes, Infrahub can be deployed in production but keep in mind we are still in beta so please ensure to have the right backup and safeguard in place.
+
+If you are planning to deploy Infrahub in a critical environment we recommend reaching out to our customer success team via [Discord](https://discord.gg/jXMRp9hXSX) or contact@opsmill.com
+
+### How can I get involved?
+
+We develop Infrahub for customers and with the community. There are a few different ways to get involved with Infrahub:
+
+- As you use Infrahub, please submit bugs and feature requests.
+- Reach out to OpsMill on [Discord](https://discord.gg/jXMRp9hXSX) and set up a user feedback session to share your thoughts with us.
+- If you are a developer, we are open to pull requests. Please first discuss your intentions via [GitHub Discussions](https://github.com/opsmill/infrahub/discussions) and send a pull request our way to fix it.
+
+Please see our [development docs](https://docs.infrahub.app/development/) for a guide to getting started developing for Infrahub.
+
+We maintain a [list of issues that are appropriate to newcomers](https://github.com/opsmill/infrahub/issues?q=is:open+is:issue+label:type/newcomers) to the Infrahub development community. This is a great place to get started!
+
+### How do I get help with Infrahub?
+
+If you need assistance with Infrahub, you can reach out to the community and the development team through the following channels:
+
+- Discord: Join the Infrahub [Discord](https://discord.gg/jXMRp9hXSX) server to ask questions, get support, and engage with other users.
+- GitHub Issues: Submit issues or questions on the Infrahub GitHub repository (https://github.com/opsmill/infrahub/issues).
+
+### Will there be paid support or an Enterprise version of Infrahub?
+
+While Infrahub is currently an open-source project, the team is developing a plan for paid support and an enterprise version with additional features and services in the future. More information about these plans will be shared as the project progresses.
+
+### I have generated my configurations with Infrahub, how can I deploy them to my devices?
+
+Infrahub is designed to be the source of truth for your infrastructure data and configurations. It does not directly connect to or deploy configurations to your infrastructure devices. Instead, Infrahub integrates with tools like Nornir and Ansible, which can be used to deploy the generated configurations to your infrastructure.
+
+Please see the documentation on [integrations](../integrations) for more information.
+
+### Does Infrahub send telemetry? And how can I disable it?
+
+Infrahub collects anonymous usage metrics and sends them to OpsMill servers for analysis and improvement purposes. No personally identifiable information is collected. If you prefer to opt-out of telemetry collection, you can do so by setting the `INFRAHUB_TELEMETRY_OPTOUT` environment variable to `true`:
+
+```bash
+export INFRAHUB_TELEMETRY_OPTOUT=true
+```
+
+### What telemetry does Infrahub send?
+
+The following information is included in telemetry:
+
+- Infrahub version
+- Platform information
+- Anonymous counters about the graph and the schema
+
+This information is used as aggregated analysis to better understand what and how to improve the project. All information collected are anonymous and the implementation is open source on Github.
+
+## About OpsMill
+
+### Who is behind this project?
+
+Infrahub is sponsored and developed by OpsMill, a startup focused on infrastructure management. The OpsMill team is distributed across Europe and the United States, with members who have extensive experience in managing infrastructure and building automation solutions.
+
+You can learn more about the OpsMill team and the company on our website: https://www.opsmill.com/about-us
+
+### Why is OpsMill’s mascot an Otter?
+
+Otters are really cool, and they are considered a keystone species, meaning they have a disproportionately large impact on their natural environment relative to their representation.
+
+Similarly, Infrahub aims to be a keystone platform for managing and automating infrastructure, providing a central and influential role in shaping and maintaining your infrastructure ecosystem.
+
+### What is the name of the otter?
+
+![otto](../media/otto.png)
+
+The OpsMill’s mascot is an otter named Otto.
+
+You can send fan mail to Otto at otto@opsmill.com!
+
+### Can Infrahub make me as cool as Tony Stark?
+
+Almost! You’ll definitely feel like a tech genius managing your infrastructure with Infrahub!
+
+### Made it this far? We'd love to hear from you
+
+If you've made it this far, please feel free to reach out on the [Discord](https://discord.gg/jXMRp9hXSX) server to share your thoughts or schedule a customer interview session. The Infrahub team is always eager to receive feedback and engage with the community.

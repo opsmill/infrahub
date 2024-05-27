@@ -10,8 +10,9 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import toml
 from infrahub_sdk import generate_uuid
-from pydantic import AliasChoices, Field, ValidationError
+from pydantic import AliasChoices, Field, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing_extensions import Self
 
 from infrahub.database.constants import DatabaseType
 from infrahub.exceptions import InitializationError
@@ -51,6 +52,16 @@ class TraceTransportProtocol(str, Enum):
     # HTTP_JSON = "http/json"
 
 
+class BrokerDriver(str, Enum):
+    RabbitMQ = "rabbitmq"
+    NATS = "nats"
+
+
+class CacheDriver(str, Enum):
+    Redis = "redis"
+    NATS = "nats"
+
+
 class MainSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_")
     docs_index_path: str = Field(
@@ -60,6 +71,11 @@ class MainSettings(BaseSettings):
     internal_address: str = "http://localhost:8000"
     allow_anonymous_access: bool = Field(
         default=True, description="Indicates if the system allows anonymous read access"
+    )
+    telemetry_optout: bool = Field(default=False, description="Disable anonymous usage reporting")
+    telemetry_endpoint: str = "https://telemetry.opsmill.cloud/infrahub"
+    telemetry_interval: int = Field(
+        default=3600 * 24, ge=60, description="Time (in seconds) between telemetry usage push"
     )
 
 
@@ -99,7 +115,7 @@ class S3StorageSettings(BaseSettings):
     querystring_auth: bool = Field(
         default=False,
         alias="AWS_QUERYSTRING_AUTH",
-        validation_alias=AliasChoices("INFRAHUB_STORAGE_QUERYTSTRING_AUTH", "AWS_QUERYSTRING_AUTH"),
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_QUERYSTRING_AUTH", "AWS_QUERYSTRING_AUTH"),
     )
     custom_domain: str = Field(
         default="",
@@ -109,7 +125,7 @@ class S3StorageSettings(BaseSettings):
 
 
 class StorageSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_STORAGE")
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_STORAGE_")
     driver: StorageDriver = StorageDriver.FileSystemStorage
     local: FileSystemStorageSettings = FileSystemStorageSettings()
     s3: S3StorageSettings = S3StorageSettings()
@@ -126,6 +142,9 @@ class DatabaseSettings(BaseSettings):
     address: str = "localhost"
     port: int = 7687
     database: Optional[str] = Field(default=None, pattern=VALID_DATABASE_NAME_REGEX, description="Name of the database")
+    tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
+    tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
+    tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
     query_size_limit: int = Field(
         default=5000,
         ge=1,
@@ -138,7 +157,7 @@ class DatabaseSettings(BaseSettings):
         description="Maximum number of level to search in a hierarchy.",
     )
     retry_limit: int = Field(
-        default=3, description="Maximumm number of time a transient issue in a transaction should be retried."
+        default=3, description="Maximum number of times a transient issue in a transaction should be retried."
     )
 
     @property
@@ -150,6 +169,8 @@ class BrokerSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
     enable: bool = True
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
+    tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
+    tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
     username: str = "infrahub"
     password: str = "infrahub"
     address: str = "localhost"
@@ -162,10 +183,13 @@ class BrokerSettings(BaseSettings):
         default=2, description="The maximum number of concurrent messages fetched by each worker", ge=1
     )
     virtualhost: str = Field(default="/", description="The virtual host to connect to")
+    driver: BrokerDriver = BrokerDriver.RabbitMQ
 
     @property
     def service_port(self) -> int:
         default_ports: Dict[bool, int] = {True: 5671, False: 5672}
+        if self.driver == BrokerDriver.NATS:
+            return self.port or 4222
         return self.port or default_ports[self.tls_enabled]
 
 
@@ -177,10 +201,18 @@ class CacheSettings(BaseSettings):
         default=None, ge=1, le=65535, description="Specified if running on a non default port (6379)"
     )
     database: int = Field(default=0, ge=0, le=15, description="Id of the database to use")
+    driver: CacheDriver = CacheDriver.Redis
+    username: str = "infrahub"
+    password: str = "infrahub"
+    tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
+    tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
+    tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
 
     @property
     def service_port(self) -> int:
         default_ports: int = 6379
+        if self.driver == CacheDriver.NATS:
+            return self.port or 4222
         return self.port or default_ports
 
 
@@ -203,6 +235,7 @@ class ApiSettings(BaseSettings):
 
 
 class GitSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_GIT_")
     repositories_directory: str = "repositories"
     sync_interval: int = Field(
         default=10, ge=0, description="Time (in seconds) between git repositories synchronizations"
@@ -215,6 +248,24 @@ class InitialSettings(BaseSettings):
         default="main",
         description="Defines the name of the default branch within Infrahub, can only be set once during initialization of the system.",
     )
+    admin_token: Optional[str] = Field(default=None, description="An optional initial token for the admin account.")
+    admin_password: str = Field(default="infrahub", description="The initial password for the admin user")
+    agent_token: Optional[str] = Field(default=None, description="An optional initial token for a git-agent account.")
+    agent_password: Optional[str] = Field(
+        default=None, description="An optional initial password for a git-agent account."
+    )
+
+    @property
+    def create_agent_user(self) -> bool:
+        if self.agent_token or self.agent_password:
+            return True
+        return False
+
+    @model_validator(mode="after")
+    def check_tokens_match(self) -> Self:
+        if self.admin_token is not None and self.agent_token is not None and self.admin_token == self.agent_token:
+            raise ValueError("Initial user tokens can't have the same values")
+        return self
 
 
 class MiscellaneousSettings(BaseSettings):
@@ -224,6 +275,7 @@ class MiscellaneousSettings(BaseSettings):
     maximum_validator_execution_time: int = Field(
         default=1800, description="The maximum allowed time (in seconds) for a validator to run."
     )
+    response_delay: int = Field(default=0, description="Arbitrary delay to add when processing API requests.")
 
 
 class RemoteLoggingSettings(BaseSettings):
@@ -259,10 +311,6 @@ class SecuritySettings(BaseSettings):
     )
     secret_key: str = Field(
         default_factory=generate_uuid, description="The secret key used to validate authentication tokens"
-    )
-    initial_admin_password: str = Field(default="infrahub", description="The initial password for the admin user")
-    initial_admin_token: Optional[str] = Field(
-        default=None, description="An optional initial token for the admin account."
     )
 
 

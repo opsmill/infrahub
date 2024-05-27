@@ -18,6 +18,9 @@ from .mutations import (
     BranchValidate,
     CoreAccountSelfUpdate,
     CoreAccountTokenCreate,
+    CoreAccountTokenDelete,
+    IPAddressPoolGetResource,
+    IPPrefixPoolGetResource,
     ProposedChangeRequestRunCheck,
     RelationshipAdd,
     RelationshipRemove,
@@ -29,7 +32,20 @@ from .mutations import (
     TaskUpdate,
 )
 from .parser import extract_selection
-from .queries import BranchQueryList, DiffSummary, DiffSummaryOld, InfrahubInfo, InfrahubStatus, Relationship, Task
+from .queries import (
+    AccountToken,
+    BranchQueryList,
+    DiffSummary,
+    DiffSummaryOld,
+    InfrahubInfo,
+    InfrahubIPAddressGetNextAvailable,
+    InfrahubIPPrefixGetNextAvailable,
+    InfrahubResourcePoolAllocated,
+    InfrahubResourcePoolUtilization,
+    InfrahubStatus,
+    Relationship,
+    Task,
+)
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -66,6 +82,7 @@ async def account_resolver(root, info: GraphQLResolveInfo):
 
 class InfrahubBaseQuery(ObjectType):
     Branch = BranchQueryList
+    CoreAccountToken = AccountToken
 
     DiffSummary = DiffSummary
     DiffSummaryOld = DiffSummaryOld
@@ -77,11 +94,20 @@ class InfrahubBaseQuery(ObjectType):
 
     InfrahubTask = Task
 
+    IPAddressGetNextAvailable = InfrahubIPAddressGetNextAvailable
+    IPPrefixGetNextAvailable = InfrahubIPPrefixGetNextAvailable
+    InfrahubResourcePoolAllocated = InfrahubResourcePoolAllocated
+    InfrahubResourcePoolUtilization = InfrahubResourcePoolUtilization
+
 
 class InfrahubBaseMutation(ObjectType):
     CoreAccountTokenCreate = CoreAccountTokenCreate.Field()
     CoreAccountSelfUpdate = CoreAccountSelfUpdate.Field()
+    CoreAccountTokenDelete = CoreAccountTokenDelete.Field()
     CoreProposedChangeRunCheck = ProposedChangeRequestRunCheck.Field()
+
+    IPPrefixPoolGetResource = IPPrefixPoolGetResource.Field()
+    IPAddressPoolGetResource = IPAddressPoolGetResource.Field()
 
     BranchCreate = BranchCreate.Field()
     BranchDelete = BranchDelete.Field()

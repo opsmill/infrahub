@@ -1,6 +1,5 @@
-import os
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import jinja2
 from infrahub_sdk import (
@@ -131,7 +130,7 @@ def has_children(node: NodeSchema, config: SyncConfig) -> bool:
     return False
 
 
-def render_template(template_file: str, output_dir: str, output_file: str, context):
+def render_template(template_file: Path, output_dir: Path, output_file: Path, context: Dict[str, Any]):
     template_loader = jinja2.PackageLoader("infrahub_sync", "generator/templates")
     template_env = jinja2.Environment(
         loader=template_loader,
@@ -146,8 +145,8 @@ def render_template(template_file: str, output_dir: str, output_file: str, conte
     template_env.filters["has_children"] = has_children
     template_env.filters["get_kind"] = get_kind
 
-    template = template_env.get_template(template_file)
+    template = template_env.get_template(str(template_file))
 
     rendered_tpl = template.render(**context)  # type: ignore[arg-type]
-    output_filename = Path(os.path.join(output_dir, output_file))
+    output_filename = output_dir / output_file
     output_filename.write_text(rendered_tpl, encoding="utf-8")

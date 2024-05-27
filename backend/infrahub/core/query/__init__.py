@@ -307,9 +307,12 @@ class Query(ABC):
         limit: Optional[int] = None,
         offset: Optional[int] = None,
         order_by: Optional[List[str]] = None,
+        branch_agnostic: bool = False,
     ):
         if branch:
             self.branch = branch
+
+        self.branch_agnostic = branch_agnostic
 
         if not hasattr(self, "at"):
             self.at = Timestamp(at)

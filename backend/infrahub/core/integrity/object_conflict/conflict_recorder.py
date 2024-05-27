@@ -18,7 +18,7 @@ class ObjectConflictValidatorRecorder:
 
     async def record_conflicts(self, proposed_change_id: str, conflicts: List[ObjectConflict]) -> None:
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=proposed_change_id, schema_name=InfrahubKind.PROPOSEDCHANGE, db=self.db
+            id=proposed_change_id, kind=InfrahubKind.PROPOSEDCHANGE, db=self.db
         )
         validator = await self.get_or_create_validator(proposed_change)
         await self.initialize_validator(validator)

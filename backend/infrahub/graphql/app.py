@@ -5,6 +5,7 @@ This code has been forked from https://github.com/ciscorn/starlette-graphene3 in
 from __future__ import annotations
 
 import asyncio
+import time
 from inspect import isawaitable
 from typing import (
     TYPE_CHECKING,
@@ -184,6 +185,10 @@ class InfrahubGraphQLApp:
     async def _handle_http_request(
         self, request: Request, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
     ) -> JSONResponse:
+        if request.app.state.response_delay:
+            self.logger.info(f"Adding response delay of {request.app.state.response_delay} seconds")
+            time.sleep(request.app.state.response_delay)
+
         try:
             operations = await _get_operation_from_request(request)
         except ValueError as exc:
@@ -208,6 +213,9 @@ class InfrahubGraphQLApp:
         # if the query contains some mutation, it's not currently supported to set AT manually
         if analyzed_query.contains_mutation:
             graphql_params.context.at = Timestamp()
+        elif at and branch.schema_changed_at and Timestamp(branch.schema_changed_at) > Timestamp(at):
+            schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch, at=Timestamp(at))
+            db.add_schema(name=branch.name, schema=schema_branch)
 
         if operation_name == "IntrospectionQuery":
             nbr_object_in_schema = len(graphql_params.schema.type_map)

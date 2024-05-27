@@ -59,7 +59,7 @@ class SchemaDropdownAdd(Mutation):
     ):
         context: GraphqlContext = info.context
 
-        kind = registry.schema.get(name=str(data.kind), branch=context.branch.name)
+        kind = context.db.schema.get(name=str(data.kind), branch=context.branch.name)
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
         dropdown = str(data.dropdown)
@@ -75,7 +75,7 @@ class SchemaDropdownAdd(Mutation):
 
         await update_registry(kind=kind, branch=context.branch, db=context.db)
 
-        kind = registry.schema.get(name=str(data.kind), branch=context.branch.name)
+        kind = context.db.schema.get(name=str(data.kind), branch=context.branch.name)
         attrib = kind.get_attribute(attribute)
         dropdown_entry = {}
         success = False
@@ -109,7 +109,7 @@ class SchemaDropdownRemove(Mutation):
     ) -> Dict[str, bool]:
         context: GraphqlContext = info.context
 
-        kind = registry.schema.get(name=str(data.kind), branch=context.branch.name)
+        kind = context.db.schema.get(name=str(data.kind), branch=context.branch.name)
 
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
@@ -151,7 +151,7 @@ class SchemaEnumAdd(Mutation):
     ) -> Dict[str, bool]:
         context: GraphqlContext = info.context
 
-        kind = registry.schema.get(name=str(data.kind), branch=context.branch.name)
+        kind = context.db.schema.get(name=str(data.kind), branch=context.branch.name)
 
         attribute = str(data.attribute)
         enum = str(data.enum)
@@ -187,7 +187,7 @@ class SchemaEnumRemove(Mutation):
         context: GraphqlContext = info.context
         db = context.db
         branch = context.branch
-        kind = registry.schema.get(name=str(data.kind), branch=branch.name)
+        kind = db.schema.get(name=str(data.kind), branch=branch.name)
 
         attribute = str(data.attribute)
         enum = str(data.enum)

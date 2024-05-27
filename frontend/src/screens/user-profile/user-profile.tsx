@@ -10,12 +10,12 @@ import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { parseJwt } from "../../utils/common";
-import ErrorScreen from "../error-screen/error-screen";
+import ErrorScreen from "../errors/error-screen";
+import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import TabPassword from "./tab-account";
 import TabPreferences from "./tab-preferences";
 import TabProfile from "./tab-profile";
-import Content from "../layout/content";
 
 const PROFILE_TABS = {
   PREFERENCES: "preferences",

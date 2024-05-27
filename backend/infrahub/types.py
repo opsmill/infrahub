@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import importlib
 import typing
+from datetime import datetime
 from typing import TYPE_CHECKING, Dict, Type
+from typing import List as TypingList
 
 import graphene
 from graphene.types.generic import GenericScalar
+from pydantic import EmailStr, HttpUrl, IPvAnyAddress, Json
 
 from infrahub.core import registry
 
@@ -27,6 +30,7 @@ class InfrahubDataType:
     graphql_filter: type
     graphql: type
     infrahub: str
+    pydantic: type
 
     @classmethod
     def __init_subclass__(cls, **kwargs):
@@ -155,6 +159,7 @@ class Password(InfrahubDataType):
     graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
     infrahub = "String"
+    pydantic = str
 
 
 class HashedPassword(InfrahubDataType):
@@ -329,6 +334,30 @@ ATTRIBUTE_TYPES: Dict[str, Type[InfrahubDataType]] = {
     "List": List,
     "JSON": JSON,
     "Any": Any,
+}
+
+ATTRIBUTE_PYTHON_TYPES: Dict[str, Type] = {
+    "ID": int,  # Assuming IDs are integers
+    "Dropdown": str,  # Dropdowns can be represented as strings
+    "Text": str,
+    "TextArea": str,
+    "DateTime": datetime,
+    "Email": EmailStr,
+    "Password": str,  # Passwords can be any string
+    "HashedPassword": str,  # Hashed passwords are also strings
+    "URL": HttpUrl,
+    "File": str,  # File paths or identifiers as strings
+    "MacAddress": str,  # MAC addresses can be straightforward strings
+    "Color": str,  # Colors often represented as hex strings
+    "Number": float,  # Numbers can be floats for general use
+    "Bandwidth": float,  # Bandwidth in some units, represented as a float
+    "IPHost": IPvAnyAddress,
+    "IPNetwork": str,
+    "Boolean": bool,
+    "Checkbox": bool,  # Checkboxes represent boolean values
+    "List": TypingList[Any],  # Lists can contain any type of items
+    "JSON": Json,  # Pydantic's Json type handles arbitrary JSON objects
+    "Any": Any,  # Any type allowed
 }
 
 ATTRIBUTE_KIND_LABELS = list(ATTRIBUTE_TYPES.keys())

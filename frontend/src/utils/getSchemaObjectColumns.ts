@@ -170,11 +170,18 @@ export const getObjectTabs = (tabs: any[], data: any) => {
 };
 
 // Used by the form to display the fields
-export const getObjectRelationshipsForForm = (schema?: iNodeSchema | iGenericSchema) => {
+export const getObjectRelationshipsForForm = (
+  schema?: iNodeSchema | iGenericSchema,
+  isUpdate?: boolean
+) => {
   const relationships = (schema?.relationships || [])
+    // Create form includes cardinality many but only if required, edit form doesn't include it at all
     .filter(
       (relationship) =>
-        peersKindForForm.includes(relationship?.kind ?? "") || relationship.cardinality === "one"
+        relationship.cardinality === "one" ||
+        (isUpdate
+          ? peersKindForForm.includes(relationship?.kind ?? "")
+          : peersKindForForm.includes(relationship?.kind ?? "") || !relationship.optional)
     )
     .filter(Boolean);
 
@@ -268,7 +275,7 @@ export const getRelationshipValue = ({ row, field, isFilters }: tgetRelationship
   }
 
   if (value.edges) {
-    return value.edges.map((edge: any) => edge.node.id);
+    return value.edges.map((edge: any) => ({ id: edge.node.id }));
   }
 
   return "";
@@ -323,7 +330,7 @@ export const getSelectParent = (row: any, field: any) => {
 
 export const getOptionsFromAttribute = (attribute: any, value: any) => {
   if (attribute.kind === "List") {
-    return value?.map((option: any) => ({
+    return (value || [])?.map((option: any) => ({
       name: option,
       id: option,
     }));
@@ -347,7 +354,17 @@ export const getOptionsFromAttribute = (attribute: any, value: any) => {
   return [];
 };
 
-export const getOptionsFromRelationship = (options: any[] = [], schemas?: any, generic?: any) => {
+type tgetOptionsFromRelationship = {
+  options: any[];
+  schemas?: any;
+  generic?: any;
+};
+
+export const getOptionsFromRelationship = ({
+  options,
+  schemas,
+  generic,
+}: tgetOptionsFromRelationship) => {
   if (!generic) {
     return options.map((option: any) => ({
       name: option.display_label,

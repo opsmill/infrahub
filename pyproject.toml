@@ -1,8 +1,21 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.13.0"
-description = ""
+version = "0.14.0"
+description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
+readme = "README.md"
+license = "AGPL-3.0-only"
+homepage = "https://opsmill.com"
+repository = "https://github.com/opsmill/infrahub"
+documentation = "https://docs.infrahub.app/"
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
 
 packages = [
     { include = "infrahub", from = "backend" }
@@ -14,7 +27,8 @@ optional = true
 
 [tool.poetry.dependencies]
 python = "^3.9, < 3.13"
-neo4j = "~5.18"
+neo4j = "~5.20"
+neo4j-rust-ext = "^5.20.0.0"
 infrahub-sdk = {path = "python_sdk", extras = ["ctl","tests"], develop=true}
 pydantic = "~2.6"
 pydantic-settings = "~2.2"
@@ -42,6 +56,8 @@ opentelemetry-instrumentation-aio-pika = "^0.45b0"
 opentelemetry-instrumentation-fastapi = "^0.45b0"
 opentelemetry-exporter-otlp-proto-grpc = "^1.24.0"
 opentelemetry-exporter-otlp-proto-http = "^1.24.0"
+nats-py = "^2.7.2"
+netaddr = "1.2.1"
 
 [tool.poetry.group.dev.dependencies]
 yamllint = "*"
@@ -62,7 +78,7 @@ types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
-ruff = "0.4.1"
+ruff = "0.4.3"
 invoke = "2.2.0"
 pytest-benchmark = "^4.0.0"
 pytest-codspeed = "^2.2.0"
@@ -430,6 +446,7 @@ select = [
     "N",     # pep8-naming
     "PIE",   # flake8-pie
     "PL",    # pylint
+    "PTH",   # flake8-use-pathlib
     "PYI",   # flake8-pyi
     "Q",     # flake8-quotes
     "RET",   # flake8-return
@@ -479,6 +496,22 @@ ignore = [
     "PLW0603",  # Using the global statement to update `SETTINGS` is discouraged
     "PLW1508",  # Invalid type for environment variable default; expected `str` or `None`
     "PLW3201",  # Bad or misspelled dunder method name `__init_subclass_with_meta__`
+    "PTH100",   # `os.path.abspath()` should be replaced by `Path.resolve()`
+    "PTH102",   # `os.mkdir()` should be replaced by `Path.mkdir()`
+    "PTH103",   # `os.makedirs()` should be replaced by `Path.mkdir(parents=True)`
+    "PTH107",   # `os.remove()` should be replaced by `Path.unlink()`
+    "PTH108",   # `os.unlink()` should be replaced by `Path.unlink()`
+    "PTH109",   # `os.getcwd()` should be replaced by `Path.cwd()`
+    "PTH110",   # `os.path.exists()` should be replaced by `Path.exists()`
+    "PTH112",   # `os.path.isdir()` should be replaced by `Path.is_dir()`
+    "PTH113",   # `os.path.isfile()` should be replaced by `Path.is_file()`
+    "PTH117",   # `os.path.isabs()` should be replaced by `Path.is_absolute()`
+    "PTH118",   # `os.path.join()` should be replaced by `Path` with `/` operator
+    "PTH119",   # `os.path.basename()` should be replaced by `Path.name`
+    "PTH120",   # `os.path.dirname()` should be replaced by `Path.parent`
+    "PTH122",   # `os.path.splitext()` should be replaced by `Path.suffix`, `Path.stem`, and `Path.parent`
+    "PTH123",   # `open()` should be replaced by `Path.open()`
+    "PTH207",   # Replace `glob` with `Path.glob` or `Path.rglob`
     "RET503",   # Missing explicit `return` at the end of function able to return non-`None` value
     "RET504",   # Unnecessary assignment before `return` statement
 ]

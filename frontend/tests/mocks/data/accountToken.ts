@@ -215,6 +215,22 @@ export const accountTokenDetailsMocksSchema: iNodeSchema[] = [
         ],
         order_weight: 6000,
       },
+      {
+        name: "related_nodes",
+        label: "Related nodes",
+        cardinality: "many",
+        peer: "TestNode2",
+        optional: false,
+        kind: "Generic",
+      },
+      {
+        name: "related_nodes_2",
+        label: "Related nodes",
+        cardinality: "many",
+        peer: "TestNode2",
+        optional: false,
+        kind: "Component",
+      },
     ],
     label: "Account Token",
     inherit_from: [],
@@ -818,7 +834,7 @@ export const accountTokenDetailsMocksDataWithDateBis = {
 
 export const accountTokenFormStructure = [
   {
-    name: "name.value",
+    name: "name",
     kind: "Text",
     type: "text",
     label: "Name",
@@ -831,7 +847,7 @@ export const accountTokenFormStructure = [
     isUnique: false,
   },
   {
-    name: "token.value",
+    name: "token",
     kind: "Text",
     type: "text",
     label: "Token",
@@ -844,7 +860,7 @@ export const accountTokenFormStructure = [
     isUnique: true,
   },
   {
-    name: "expiration.value",
+    name: "expiration",
     kind: "DateTime",
     type: "datepicker",
     label: "Expiration",
@@ -857,7 +873,7 @@ export const accountTokenFormStructure = [
     isUnique: false,
   },
   {
-    name: "account.id",
+    name: "account",
     kind: "String",
     peer: "CoreAccount",
     type: "select",
@@ -868,12 +884,40 @@ export const accountTokenFormStructure = [
     isOptional: true,
     isProtected: false,
   },
+  {
+    name: "related_nodes",
+    kind: "String",
+    peer: "TestNode2",
+    type: "multiselect",
+    label: "Related nodes",
+    value: "",
+    options: [],
+    config: {},
+    isOptional: false,
+    isProtected: false,
+    isInherited: false,
+    parent: false,
+  },
+  {
+    name: "related_nodes_2",
+    kind: "String",
+    peer: "TestNode2",
+    type: "multiselect",
+    label: "Related nodes",
+    value: "",
+    options: [],
+    config: {},
+    isOptional: false,
+    isProtected: false,
+    isInherited: false,
+    parent: false,
+  },
 ];
 
 export const accountTokenDetailsUpdateDataMocksData = {
-  name: { value: "New name" },
-  token: { value: "06438eb2-8019-4776-878c-0941b1f1d1ec" },
-  expiration: { value: "2023-07-15T22:00:00.000Z" },
+  name: "New name",
+  token: "06438eb2-8019-4776-878c-0941b1f1d1ec",
+  expiration: "2023-07-15T22:00:00.000Z",
   account: { id: "95b04b43-91de-4e29-844d-5655abe696b5" },
 };
 

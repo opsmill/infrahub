@@ -11,7 +11,7 @@ In order start developing on Infrahub backend, it is recommended to have a decen
 * [Poetry](https://python-poetry.org/) to manage our Python virtual environment
 * [Docker](https://www.docker.com/) and its Compose extension to run dependencies such as the database, cache and queueing system
 
-To fetch Infrahub's code, we will use git and we will use the `develop` branch.
+To fetch Infrahub's code, we will use Git and we will use the `develop` branch.
 
 ```bash
 git clone git@github.com:opsmill/infrahub.git
@@ -26,12 +26,12 @@ Most of Infrahub and tools around it rely on some settings. These settings are i
 ```bash
 export INFRAHUB_PRODUCTION=false
 export INFRAHUB_SECURITY_SECRET_KEY=super-secret
-export INFRAHUB_SDK_USERNAME=admin
-export INFRAHUB_SDK_PASSWORD=infrahub
-export INFRAHUB_SDK_TIMEOUT=20
+export INFRAHUB_USERNAME=admin
+export INFRAHUB_PASSWORD=infrahub
+export INFRAHUB_TIMEOUT=20
 export INFRAHUB_METRICS_PORT=8001
 export INFRAHUB_DB_TYPE=neo4j # Accepts neo4j or memgraph
-export INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN="${ADMIN_TOKEN}" # Random string which can be generated using: openssl rand -hex 16
+export INFRAHUB_INITIAL_ADMIN_TOKEN="${ADMIN_TOKEN}" # Random string which can be generated using: openssl rand -hex 16
 export INFRAHUB_STORAGE_LOCAL_PATH="${HOME}/Development/infrahub-storage"
 export INFRAHUB_API_CORS_ALLOW_ORIGINS='["http://localhost:8080"]' # Allow frontend/backend communications without CORS issues
 export INFRAHUB_IMAGE_VER=local # Force building a local image instead of pulling one from the registry

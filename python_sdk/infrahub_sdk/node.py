@@ -35,11 +35,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
-    from infrahub_sdk.schema import (
-        AttributeSchema,
-        MainSchemaTypes,
-        RelationshipSchema,
-    )
+    from infrahub_sdk.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
 
 # pylint: disable=too-many-lines
 
@@ -47,12 +43,7 @@ PROPERTIES_FLAG = ["is_visible", "is_protected"]
 PROPERTIES_OBJECT = ["source", "owner"]
 SAFE_VALUE = re.compile(r"(^[\. /:a-zA-Z0-9_-]+$)|(^$)")
 
-IP_TYPES = Union[
-    ipaddress.IPv4Interface,
-    ipaddress.IPv6Interface,
-    ipaddress.IPv4Network,
-    ipaddress.IPv6Network,
-]
+IP_TYPES = Union[ipaddress.IPv4Interface, ipaddress.IPv6Interface, ipaddress.IPv4Network, ipaddress.IPv6Network]
 
 ARTIFACT_FETCH_FEATURE_NOT_SUPPORTED_MESSAGE = (
     "calling artifact_fetch is only supported for nodes that are Artifact Definition target"
@@ -157,13 +148,7 @@ class Attribute:
 class RelatedNodeBase:
     """Base class for representing a related node in a relationship."""
 
-    def __init__(
-        self,
-        branch: str,
-        schema: RelationshipSchema,
-        data: Union[Any, dict],
-        name: Optional[str] = None,
-    ):
+    def __init__(self, branch: str, schema: RelationshipSchema, data: Union[Any, dict], name: Optional[str] = None):
         """
         Args:
             branch (str): The branch where the related node resides.
@@ -187,10 +172,8 @@ class RelatedNodeBase:
 
         if isinstance(data, (InfrahubNode, InfrahubNodeSync)):
             self._peer = data
-
             for prop in self._properties:
                 setattr(self, prop, None)
-
         elif not isinstance(data, dict):
             data = {"id": data}
 
@@ -221,16 +204,32 @@ class RelatedNodeBase:
                     setattr(self, prop, None)
 
     @property
-    def initialized(self) -> bool:
-        if self.id:
-            return True
-        return False
-
-    @property
     def id(self) -> Optional[str]:
         if self._peer:
             return self._peer.id
         return self._id
+
+    @property
+    def hfid(self) -> Optional[List[Any]]:
+        if self._peer:
+            return self._peer.hfid
+        return None
+
+    @property
+    def hfid_str(self) -> Optional[str]:
+        if self._peer and self.hfid:
+            return self._peer.get_human_friendly_id_as_string(include_kind=True)
+        return None
+
+    @property
+    def is_resource_pool(self) -> bool:
+        if self._peer:
+            return self._peer.is_resource_pool()
+        return False
+
+    @property
+    def initialized(self) -> bool:
+        return bool(self.id)
 
     @property
     def display_label(self) -> Optional[str]:
@@ -247,6 +246,9 @@ class RelatedNodeBase:
     def _generate_input_data(self) -> Dict[str, Any]:
         data = {}
 
+        if self.is_resource_pool:
+            return {"from_pool": {"id": self.id}}
+
         if self.id is not None:
             data["id"] = self.id
 
@@ -255,6 +257,12 @@ class RelatedNodeBase:
                 data[f"_relation__{prop_name}"] = getattr(self, prop_name)
 
         return data
+
+    def _generate_mutation_query(self) -> Dict[str, Any]:
+        if self.name and self.is_resource_pool:
+            # If a related node points to a pool, ask for the ID of the pool allocated resource
+            return {self.name: {"node": {"id": None, "display_label": None, "__typename": None}}}
+        return {}
 
     @classmethod
     def _generate_query_data(cls, peer_data: Optional[Dict[str, Any]] = None) -> Dict:
@@ -274,11 +282,7 @@ class RelatedNodeBase:
         for prop_name in PROPERTIES_FLAG:
             properties[prop_name] = None
         for prop_name in PROPERTIES_OBJECT:
-            properties[prop_name] = {
-                "id": None,
-                "display_label": None,
-                "__typename": None,
-            }
+            properties[prop_name] = {"id": None, "display_label": None, "__typename": None}
 
         if properties:
             data["properties"] = properties
@@ -314,7 +318,7 @@ class RelatedNode(RelatedNodeBase):
         if not self.id or not self.typename:
             raise Error("Unable to fetch the peer, id and/or typename are not defined")
 
-        self._peer = await self._client.get(ids=[self.id], kind=self.typename, populate_store=True, branch=self._branch)
+        self._peer = await self._client.get(kind=self.typename, id=self.id, populate_store=True, branch=self._branch)
 
     @property
     def peer(self) -> InfrahubNode:
@@ -324,17 +328,13 @@ class RelatedNode(RelatedNodeBase):
         if self._peer:
             return self._peer  # type: ignore[return-value]
 
-        if not self.id:
-            raise ValueError("Node id must be defined to query it.")
-
         if self.id and self.typename:
             return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
 
-        raise NodeNotFoundError(
-            branch_name=self._branch,
-            node_type=self.schema.peer,
-            identifier={"key": [self.id]},
-        )
+        if self.hfid_str:
+            return self._client.store.get_by_hfid(key=self.hfid_str)  # type: ignore[return-value]
+
+        raise ValueError("Node must have at least one identifier (ID or HFID) to query it.")
 
 
 class RelatedNodeSync(RelatedNodeBase):
@@ -363,7 +363,7 @@ class RelatedNodeSync(RelatedNodeBase):
         if not self.id or not self.typename:
             raise Error("Unable to fetch the peer, id and/or typename are not defined")
 
-        self._peer = self._client.get(ids=[self.id], kind=self.typename, populate_store=True, branch=self._branch)
+        self._peer = self._client.get(kind=self.typename, id=self.id, populate_store=True, branch=self._branch)
 
     @property
     def peer(self) -> InfrahubNodeSync:
@@ -373,17 +373,13 @@ class RelatedNodeSync(RelatedNodeBase):
         if self._peer:
             return self._peer  # type: ignore[return-value]
 
-        if not self.id:
-            raise ValueError("Node id must be defined to query it.")
-
         if self.id and self.typename:
             return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
 
-        raise NodeNotFoundError(
-            branch_name=self._branch,
-            node_type=self.schema.peer,
-            identifier={"key": [self.id]},
-        )
+        if self.hfid_str:
+            return self._client.store.get_by_hfid(key=self.hfid_str)  # type: ignore[return-value]
+
+        raise ValueError("Node must have at least one identifier (ID or HFID) to query it.")
 
 
 class RelationshipManagerBase:
@@ -413,11 +409,23 @@ class RelationshipManagerBase:
         return [peer.id for peer in self.peers if peer.id]
 
     @property
+    def peer_hfids(self) -> List[List[Any]]:
+        return [peer.hfid for peer in self.peers if peer.hfid]
+
+    @property
+    def peer_hfids_str(self) -> List[str]:
+        return [peer.hfid_str for peer in self.peers if peer.hfid_str]
+
+    @property
     def has_update(self) -> bool:
         return self._has_update
 
     def _generate_input_data(self) -> List[Dict]:
         return [peer._generate_input_data() for peer in self.peers]
+
+    def _generate_mutation_query(self) -> Dict[str, Any]:
+        # Does nothing for now
+        return {}
 
     @classmethod
     def _generate_query_data(cls, peer_data: Optional[Dict[str, Any]] = None) -> Dict:
@@ -441,11 +449,7 @@ class RelationshipManagerBase:
         for prop_name in PROPERTIES_FLAG:
             properties[prop_name] = None
         for prop_name in PROPERTIES_OBJECT:
-            properties[prop_name] = {
-                "id": None,
-                "display_label": None,
-                "__typename": None,
-            }
+            properties[prop_name] = {"id": None, "display_label": None, "__typename": None}
 
         if properties:
             data["edges"]["properties"] = properties
@@ -490,27 +494,13 @@ class RelationshipManager(RelationshipManagerBase):
         if isinstance(data, list):
             for item in data:
                 self.peers.append(
-                    RelatedNode(
-                        name=name,
-                        client=self.client,
-                        branch=self.branch,
-                        schema=schema,
-                        data=item,
-                    )
+                    RelatedNode(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
                 )
-
         elif isinstance(data, dict) and "edges" in data:
             for item in data["edges"]:
                 self.peers.append(
-                    RelatedNode(
-                        name=name,
-                        client=self.client,
-                        branch=self.branch,
-                        schema=schema,
-                        data=item,
-                    )
+                    RelatedNode(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
                 )
-
         else:
             raise ValueError(f"Unexpected format for {name} found a {type(data)}, {data}")
 
@@ -599,27 +589,13 @@ class RelationshipManagerSync(RelationshipManagerBase):
         if isinstance(data, list):
             for item in data:
                 self.peers.append(
-                    RelatedNodeSync(
-                        name=name,
-                        client=self.client,
-                        branch=self.branch,
-                        schema=schema,
-                        data=item,
-                    )
+                    RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
                 )
-
         elif isinstance(data, dict) and "edges" in data:
             for item in data["edges"]:
                 self.peers.append(
-                    RelatedNodeSync(
-                        name=name,
-                        client=self.client,
-                        branch=self.branch,
-                        schema=schema,
-                        data=item,
-                    )
+                    RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
                 )
-
         else:
             raise ValueError(f"Unexpected format for {name} found a {type(data)}, {data}")
 
@@ -676,12 +652,7 @@ class RelationshipManagerSync(RelationshipManagerBase):
 class InfrahubNodeBase:
     """Base class for InfrahubNode and InfrahubNodeSync"""
 
-    def __init__(
-        self,
-        schema: MainSchemaTypes,
-        branch: str,
-        data: Optional[dict] = None,
-    ) -> None:
+    def __init__(self, schema: MainSchemaTypes, branch: str, data: Optional[dict] = None) -> None:
         """
         Args:
             schema (MainSchemaTypes): The schema of the node.
@@ -693,8 +664,7 @@ class InfrahubNodeBase:
         self._branch = branch
         self._existing: bool = True
 
-        extracted_uuid = data.get("id", None) if isinstance(data, dict) else None
-        self.id = extracted_uuid or str(UUIDT())
+        self.id = data.get("id", None) if isinstance(data, dict) else None
         self.display_label: Optional[str] = data.get("display_label", None) if isinstance(data, dict) else None
         self.typename: Optional[str] = data.get("__typename", schema.kind) if isinstance(data, dict) else schema.kind
 
@@ -704,11 +674,73 @@ class InfrahubNodeBase:
         self._artifact_support = hasattr(schema, "inherit_from") and "CoreArtifactTarget" in schema.inherit_from
         self._artifact_definition_support = schema.kind == "CoreArtifactDefinition"
 
-        if not extracted_uuid:
+        if not self.id:
             self._existing = False
 
         self._init_attributes(data)
         self._init_relationships(data)
+
+    def get_path_value(self, path: str) -> Any:
+        path_parts = path.split("__")
+        return_value = None
+
+        # Manage relationship value lookup
+        if path_parts[0] in self._schema.relationship_names:
+            related_node = getattr(self, path_parts[0], None)
+            if not related_node:
+                return None
+
+            try:
+                peer = related_node.get()
+            except (NodeNotFoundError, ValueError):
+                # This can happen while batch creating nodes, the lookup won't work as the store is not populated
+                # If so we cannot complete the HFID computation as we cannot access the related node attribute value
+                return None
+
+            if attribute_piece := path_parts[1] if len(path_parts) > 1 else None:
+                related_node_attribute = getattr(peer, attribute_piece, None)
+            else:
+                return peer.hfid or peer.id
+
+            if property_piece := path_parts[2] if len(path_parts) > 2 else None:
+                return_value = getattr(related_node_attribute, property_piece, None)
+            else:
+                return_value = related_node_attribute
+
+        # Manage attribute value lookup
+        if path_parts[0] in self._schema.attribute_names:
+            attribute = getattr(self, path_parts[0], None)
+            if property_piece := path_parts[1] if len(path_parts) > 1 else None:
+                return_value = getattr(attribute, property_piece, None)
+            else:
+                return_value = attribute
+
+        return return_value
+
+    def get_human_friendly_id(self) -> Optional[List[str]]:
+        if not hasattr(self._schema, "human_friendly_id"):
+            return None
+
+        if not self._schema.human_friendly_id:
+            return None
+
+        return [str(self.get_path_value(path=item)) for item in self._schema.human_friendly_id]
+
+    def get_human_friendly_id_as_string(self, include_kind: bool = False) -> Optional[str]:
+        hfid = self.get_human_friendly_id()
+        if not hfid:
+            return None
+        if include_kind:
+            hfid = [self.get_kind()] + hfid
+        return "__".join(hfid)
+
+    @property
+    def hfid(self) -> Optional[List[str]]:
+        return self.get_human_friendly_id()
+
+    @property
+    def hfid_str(self) -> Optional[str]:
+        return self.get_human_friendly_id_as_string(include_kind=True)
 
     def _init_attributes(self, data: Optional[dict] = None) -> None:
         for attr_name in self._attributes:
@@ -743,10 +775,21 @@ class InfrahubNodeBase:
     def get_kind(self) -> str:
         return self._schema.kind
 
+    def is_ip_prefix(self) -> bool:
+        builtin_ipprefix_kind = "BuiltinIPPrefix"
+        return self.get_kind() == builtin_ipprefix_kind or builtin_ipprefix_kind in self._schema.inherit_from  # type: ignore[union-attr]
+
+    def is_ip_address(self) -> bool:
+        builtin_ipaddress_kind = "BuiltinIPAddress"
+        return self.get_kind() == builtin_ipaddress_kind or builtin_ipaddress_kind in self._schema.inherit_from  # type: ignore[union-attr]
+
+    def is_resource_pool(self) -> bool:
+        return hasattr(self._schema, "inherit_from") and "CoreResourcePool" in self._schema.inherit_from  # type: ignore[union-attr]
+
     def get_raw_graphql_data(self) -> Optional[Dict]:
         return self._data
 
-    def _generate_input_data(self, exclude_unmodified: bool = False) -> Dict[str, Dict]:
+    def _generate_input_data(self, exclude_unmodified: bool = False, exclude_hfid: bool = False) -> Dict[str, Dict]:  # noqa: C901
         """Generate a dictionary that represent the input data required by a mutation.
 
         Returns:
@@ -777,7 +820,7 @@ class InfrahubNodeBase:
 
         for item_name in self._relationships:
             rel_schema = self._schema.get_relationship(name=item_name)
-            if not rel_schema:
+            if not rel_schema or rel_schema.read_only:
                 continue
 
             rel: Union[RelatedNodeBase, RelationshipManagerBase] = getattr(self, item_name)
@@ -803,7 +846,6 @@ class InfrahubNodeBase:
                     data[item_name] = rel_data
                 if variable_names := rel_data.get("variables"):
                     variables.update(variable_names)
-
             elif isinstance(rel_data, list):
                 data[item_name] = rel_data
             elif rel_schema.cardinality == RelationshipCardinality.MANY:
@@ -816,12 +858,10 @@ class InfrahubNodeBase:
 
         if self.id is not None:
             data["id"] = self.id
+        elif self.hfid is not None and not exclude_hfid:
+            data["hfid"] = self.hfid
 
-        return {
-            "data": {"data": data},
-            "variables": variables,
-            "mutation_variables": mutation_variables,
-        }
+        return {"data": {"data": data}, "variables": variables, "mutation_variables": mutation_variables}
 
     @staticmethod
     def _strip_unmodified_dict(data: dict, original_data: dict, variables: dict, item: str) -> None:
@@ -936,10 +976,11 @@ class InfrahubNodeBase:
         limit: Optional[int] = None,
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
+        partial_match: bool = False,
     ) -> Dict[str, Union[Any, Dict]]:
         data: Dict[str, Any] = {
             "count": None,
-            "edges": {"node": {"id": None, "display_label": None, "__typename": None}},
+            "edges": {"node": {"id": None, "hfid": None, "display_label": None, "__typename": None}},
         }
 
         data["@filters"] = filters or {}
@@ -954,6 +995,9 @@ class InfrahubNodeBase:
             in_both, _, _ = compare_lists(include, exclude)
             if in_both:
                 raise ValueError(f"{in_both} are part of both include and exclude")
+
+        if partial_match:
+            data["@filters"]["partial_match"] = True
 
         return data
 
@@ -1151,13 +1195,10 @@ class InfrahubNode(InfrahubNodeBase):
         exclude: Optional[List[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
+        partial_match: bool = False,
     ) -> Dict[str, Union[Any, Dict]]:
         data = self.generate_query_data_init(
-            filters=filters,
-            offset=offset,
-            limit=limit,
-            include=include,
-            exclude=exclude,
+            filters=filters, offset=offset, limit=limit, include=include, exclude=exclude, partial_match=partial_match
         )
         data["edges"]["node"].update(
             await self.generate_query_data_node(
@@ -1285,10 +1326,42 @@ class InfrahubNode(InfrahubNodeBase):
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipremove-{relation_to_update}"
         await self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
+    def _generate_mutation_query(self) -> Dict[str, Any]:
+        query_result = {"ok": None, "object": {"id": None}}
+
+        for rel_name in self._relationships:
+            rel = getattr(self, rel_name)
+            if not isinstance(rel, RelatedNode):
+                continue
+
+            query_result["object"].update(rel._generate_mutation_query())  # type: ignore[union-attr]
+
+        return query_result
+
+    async def _process_mutation_result(self, mutation_name: str, response: Dict[str, Any]) -> None:
+        object_response: Dict[str, Any] = response[mutation_name]["object"]
+        self.id = object_response["id"]
+        self._existing = True
+
+        for rel_name in self._relationships:
+            rel = getattr(self, rel_name)
+            if rel_name not in object_response or not isinstance(rel, RelatedNode) or not rel.is_resource_pool:
+                continue
+
+            # Process allocated resource from a pool and update related node
+            allocated_resource = object_response[rel_name]
+            related_node = RelatedNode(
+                client=self._client, branch=self._branch, schema=rel.schema, data=allocated_resource
+            )
+            await related_node.fetch()
+            setattr(self, rel_name, related_node)
+
     async def create(self, at: Optional[Timestamp] = None, allow_upsert: bool = False) -> None:
         self._deprecated_parameter(at=at)
-        input_data = self._generate_input_data()
-        mutation_query = {"ok": None, "object": {"id": None}}
+
+        input_data = self._generate_input_data(exclude_hfid=True)
+        mutation_query = self._generate_mutation_query()
+
         if allow_upsert:
             mutation_name = f"{self._schema.kind}Upsert"
             tracker = f"mutation-{str(self._schema.kind).lower()}-upsert"
@@ -1304,28 +1377,28 @@ class InfrahubNode(InfrahubNodeBase):
         response = await self._client.execute_graphql(
             query=query.render(), branch_name=self._branch, tracker=tracker, variables=input_data["variables"]
         )
-        self._existing = True
-
-        # If Upsert was use we need to read back the ID from the response in case the node already existed
-        if allow_upsert:
-            self.id = response[mutation_name]["object"]["id"]
+        await self._process_mutation_result(mutation_name=mutation_name, response=response)
 
     async def update(self, at: Optional[Timestamp] = None, do_full_update: bool = False) -> None:
         self._deprecated_parameter(at=at)
+
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
-        mutation_query = {"ok": None, "object": {"id": None}}
+        mutation_query = self._generate_mutation_query()
+        mutation_name = f"{self._schema.kind}Update"
+
         query = Mutation(
-            mutation=f"{self._schema.kind}Update",
+            mutation=mutation_name,
             input_data=input_data["data"],
             query=mutation_query,
             variables=input_data["mutation_variables"],
         )
-        await self._client.execute_graphql(
+        response = await self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
             variables=input_data["variables"],
         )
+        await self._process_mutation_result(mutation_name=mutation_name, response=response)
 
     async def _process_relationships(
         self, node_data: Dict[str, Any], branch: str, related_nodes: List[InfrahubNode]
@@ -1485,13 +1558,10 @@ class InfrahubNodeSync(InfrahubNodeBase):
         exclude: Optional[List[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
+        partial_match: bool = False,
     ) -> Dict[str, Union[Any, Dict]]:
         data = self.generate_query_data_init(
-            filters=filters,
-            offset=offset,
-            limit=limit,
-            include=include,
-            exclude=exclude,
+            filters=filters, offset=offset, limit=limit, include=include, exclude=exclude, partial_match=partial_match
         )
         data["edges"]["node"].update(
             self.generate_query_data_node(
@@ -1622,10 +1692,42 @@ class InfrahubNodeSync(InfrahubNodeBase):
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipremove-{relation_to_update}"
         self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
+    def _generate_mutation_query(self) -> Dict[str, Any]:
+        query_result = {"ok": None, "object": {"id": None}}
+
+        for rel_name in self._relationships:
+            rel = getattr(self, rel_name)
+            if not isinstance(rel, RelatedNodeSync):
+                continue
+
+            query_result["object"].update(rel._generate_mutation_query())  # type: ignore[union-attr]
+
+        return query_result
+
+    def _process_mutation_result(self, mutation_name: str, response: Dict[str, Any]) -> None:
+        object_response: Dict[str, Any] = response[mutation_name]["object"]
+        self.id = object_response["id"]
+        self._existing = True
+
+        for rel_name in self._relationships:
+            rel = getattr(self, rel_name)
+            if rel_name not in object_response or not isinstance(rel, RelatedNodeSync) or not rel.is_resource_pool:
+                continue
+
+            # Process allocated resource from a pool and update related node
+            allocated_resource = object_response[rel_name]
+            related_node = RelatedNodeSync(
+                client=self._client, branch=self._branch, schema=rel.schema, data=allocated_resource
+            )
+            related_node.fetch()
+            setattr(self, rel_name, related_node)
+
     def create(self, at: Optional[Timestamp] = None, allow_upsert: bool = False) -> None:
         self._deprecated_parameter(at=at)
-        input_data = self._generate_input_data()
-        mutation_query = {"ok": None, "object": {"id": None}}
+
+        input_data = self._generate_input_data(exclude_hfid=True)
+        mutation_query = self._generate_mutation_query()
+
         if allow_upsert:
             mutation_name = f"{self._schema.kind}Upsert"
             tracker = f"mutation-{str(self._schema.kind).lower()}-upsert"
@@ -1642,30 +1744,30 @@ class InfrahubNodeSync(InfrahubNodeBase):
         response = self._client.execute_graphql(
             query=query.render(), branch_name=self._branch, at=at, tracker=tracker, variables=input_data["variables"]
         )
-        self._existing = True
-
-        # If Upsert was use we need to read back the ID from the response in case the node already existed
-        if allow_upsert:
-            self.id = response[mutation_name]["object"]["id"]
+        self._process_mutation_result(mutation_name=mutation_name, response=response)
 
     def update(self, at: Optional[Timestamp] = None, do_full_update: bool = False) -> None:
         self._deprecated_parameter(at=at)
+
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
-        mutation_query = {"ok": None, "object": {"id": None}}
+        mutation_query = self._generate_mutation_query()
+        mutation_name = f"{self._schema.kind}Update"
+
         query = Mutation(
-            mutation=f"{self._schema.kind}Update",
+            mutation=mutation_name,
             input_data=input_data["data"],
             query=mutation_query,
             variables=input_data["mutation_variables"],
         )
 
-        self._client.execute_graphql(
+        response = self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
             variables=input_data["variables"],
         )
+        self._process_mutation_result(mutation_name=mutation_name, response=response)
 
     def _process_relationships(
         self, node_data: Dict[str, Any], branch: str, related_nodes: List[InfrahubNodeSync]

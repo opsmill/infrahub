@@ -113,6 +113,46 @@ async def test_schema_branch_process_inheritance(schema_all_in_one):
     }
 
 
+async def test_schema_branch_process_inheritance_node_level(animal_person_schema_dict):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
+
+    schema.process_inheritance()
+
+    animal = schema.get(name="TestAnimal")
+    assert sorted(animal.used_by) == ["TestCat", "TestDog"]
+
+    dog = schema.get(name="TestDog")
+    cat = schema.get(name="TestCat")
+    assert dog.human_friendly_id == animal.human_friendly_id
+    assert cat.human_friendly_id != animal.human_friendly_id
+
+    assert dog.display_labels == animal.display_labels
+    assert cat.display_labels != animal.display_labels
+
+    assert dog.order_by == animal.order_by
+    assert cat.order_by != animal.order_by
+
+    assert dog.icon == animal.icon
+
+
+async def test_schema_branch_process_humain_friendly_id(animal_person_schema_dict):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
+
+    schema.process_inheritance()
+    schema.process_human_friendly_id()
+
+    animal = schema.get(name="TestAnimal")
+    assert sorted(animal.used_by) == ["TestCat", "TestDog"]
+
+    dog = schema.get(name="TestDog")
+    person = schema.get(name="TestPerson")
+
+    assert person.human_friendly_id == ["name__value"]
+    assert dog.uniqueness_constraints == [["owner", "name__value"]]
+
+
 async def test_schema_branch_process_branch_support(schema_all_in_one):
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
@@ -300,6 +340,7 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    schema.process_inheritance()
     schema.add_profile_schemas()
 
     profile = schema.get(name="ProfileBuiltinCriticality")
@@ -307,7 +348,23 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
     assert profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
     assert set(profile.attribute_names) == {"profile_name", "profile_priority", "description"}
     core_profile_schema = schema.get("CoreProfile")
+    core_node_schema = schema.get("CoreNode")
     assert set(core_profile_schema.used_by) == {
+        "ProfileBuiltinCriticality",
+        "ProfileBuiltinTag",
+        "ProfileBuiltinStatus",
+        "ProfileBuiltinBadge",
+        "ProfileCoreStandardGroup",
+        "ProfileInfraTinySchema",
+    }
+
+    assert set(core_node_schema.used_by) == {
+        "BuiltinBadge",
+        "BuiltinCriticality",
+        "BuiltinStatus",
+        "BuiltinTag",
+        "CoreStandardGroup",
+        "InfraTinySchema",
         "ProfileBuiltinCriticality",
         "ProfileBuiltinTag",
         "ProfileBuiltinStatus",
@@ -797,6 +854,44 @@ async def test_validate_uniqueness_constraints_success(schema_all_in_one, unique
     schema.validate_uniqueness_constraints()
 
 
+async def test_validate_exception_ipam_ip_namespace(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+):
+    SCHEMA: dict = {
+        "nodes": [
+            {
+                "name": "IPPrefix",
+                "namespace": "Ipam",
+                "default_filter": "prefix__value",
+                "order_by": ["prefix__value"],
+                "display_labels": ["prefix__value"],
+                "human_friendly_id": ["ip_namespace__name__value", "prefix__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPPREFIX],
+            },
+            {
+                "name": "IPAddress",
+                "namespace": "Ipam",
+                "default_filter": "address__value",
+                "order_by": ["address__value"],
+                "display_labels": ["address__value"],
+                "uniqueness_constraints": [["ip_namespace", "address__value"]],
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPADDRESS],
+            },
+        ],
+    }
+
+    ipam_schema = SchemaRoot(**SCHEMA)
+
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema.load_schema(schema=ipam_schema)
+    schema.process()
+
+    ip_prefix_schema = schema.get(name="IpamIPPrefix")
+    assert ip_prefix_schema.uniqueness_constraints
+
+
 @pytest.mark.parametrize(
     "uniqueness_constraints,expected_error",
     [
@@ -822,11 +917,11 @@ async def test_validate_uniqueness_constraints_success(schema_all_in_one, unique
         ),
         (
             [["primary_tag__name__value"]],
-            "InfraGenericInterface.uniqueness_constraints: cannot use attributes of related node in constraint, only the relationship",
+            "InfraGenericInterface.uniqueness_constraints: cannot use attributes of related node, only the relationship",
         ),
         (
             [["mybool__value", "status__name__value"]],
-            "InfraGenericInterface.uniqueness_constraints: cannot use attributes of related node in constraint, only the relationship",
+            "InfraGenericInterface.uniqueness_constraints: cannot use attributes of related node, only the relationship",
         ),
     ],
 )

@@ -1,5 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Button } from "../../components/buttons/button-primitive";
 import { Tooltip } from "../../components/ui/tooltip";
 import {
   CONFIG,
@@ -9,29 +11,6 @@ import {
 } from "../../config/config";
 import { components } from "../../infraops";
 import { constructPath, fetchUrl } from "../../utils/fetch";
-
-const ICONS = [
-  {
-    component: <Icon icon="mdi:git" className="text-xl text-custom-blue-50" />,
-    link: INFRAHUB_GITHUB_URL,
-    message: "Git repository",
-  },
-  {
-    component: <Icon icon="mdi:file-document" className="text-xl text-custom-blue-50" />,
-    link: INFRAHUB_DOC_LOCAL,
-    message: "Infrahub documentation",
-  },
-  {
-    component: <Icon icon="mdi:graphql" className="text-xl text-custom-blue-50" />,
-    link: constructPath("/graphql"),
-    message: "GraphQL sandbox",
-  },
-  {
-    component: <Icon icon="mdi:code-json" className="text-xl text-custom-blue-50" />,
-    link: `${INFRAHUB_API_SERVER_URL}/api/docs`,
-    message: "Swagger documentation",
-  },
-];
 
 const AppVersionInfo = () => {
   const [info, setInfo] = useState<components["schemas"]["InfoAPI"] | null>(null);
@@ -53,18 +32,38 @@ const AppVersionInfo = () => {
 export const Footer = () => {
   return (
     <div className="bg-custom-white flex items-center p-3">
-      <div className="flex space-x-2">
-        {ICONS.map((item: any, index: number) => (
-          <Tooltip key={index} content={item.message} side="top" enabled>
-            <a
-              href={item.link}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center cursor-pointer">
-              {item.component}
-            </a>
-          </Tooltip>
-        ))}
+      <div className="flex space-x-2 text-custom-blue-50">
+        <Tooltip content="Git repository" side="top" enabled>
+          <a href={INFRAHUB_GITHUB_URL} target="_blank" rel="noreferrer">
+            <Button variant="ghost" size="icon">
+              <Icon icon="mdi:git" className="text-xl" />
+            </Button>
+          </a>
+        </Tooltip>
+
+        <Tooltip content="Infrahub documentation" side="top" enabled>
+          <a href={INFRAHUB_DOC_LOCAL} target="_blank" rel="noreferrer">
+            <Button variant="ghost" size="icon">
+              <Icon icon="mdi:file-document" className="text-xl" />
+            </Button>
+          </a>
+        </Tooltip>
+
+        <Tooltip content="GraphQL sandbox" side="top" enabled>
+          <Link to={constructPath("/graphql")}>
+            <Button variant="ghost" size="icon">
+              <Icon icon="mdi:graphql" className="text-xl" />
+            </Button>
+          </Link>
+        </Tooltip>
+
+        <Tooltip content="Swagger documentation" side="top" enabled>
+          <a href={`${INFRAHUB_API_SERVER_URL}/api/docs`} target="_blank" rel="noreferrer">
+            <Button variant="ghost" size="icon">
+              <Icon icon="mdi:code-json" className="text-xl" />
+            </Button>
+          </a>
+        </Tooltip>
       </div>
 
       <AppVersionInfo />

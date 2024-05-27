@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
-import { CodeEditor } from "../../components/editor/code-editor";
+import { OpsCodeEditor } from "../../components/form/code-editor";
 import OpsCheckbox from "../../components/form/checkbox";
 import { OpsColorPicker } from "../../components/form/color-picker";
 import { OpsDatePicker } from "../../components/form/date-picker";
 import { OpsInput } from "../../components/form/input";
 import OpsList from "../../components/form/list";
-import OpsMultiSelect from "../../components/form/multi-select";
 import { OpsSelect } from "../../components/form/select";
 import { OpsSelect2Step } from "../../components/form/select-2-step";
 import OpsSwitch from "../../components/form/switch";
@@ -86,7 +85,10 @@ export const DynamicControl = (props: DynamicFieldData) => {
             parent,
             child: value,
           }
-        : ""; // Initial value msut be empty if not defined
+        : {
+            parent: null,
+            child: null,
+          }; // Initial value msut be empty if not defined
 
       return (
         <OpsSelect2Step
@@ -101,10 +103,7 @@ export const DynamicControl = (props: DynamicFieldData) => {
       );
     }
     case "multiselect": {
-      return <OpsMultiSelect {...props} value={localValue} onChange={handleChange} />;
-      // If user does not change anything in the multi-select dropdown, the field value in the form data remains undefined
-      // Not a problem currently, as if nothing get's changed, we are not sending out that field in the update mutation
-      // but something that we can look into later on
+      return <OpsSelect {...props} value={localValue} onChange={handleChange} multiple />;
     }
     case "list": {
       return <OpsList {...props} value={localValue} onChange={handleChange} />;
@@ -114,7 +113,7 @@ export const DynamicControl = (props: DynamicFieldData) => {
     }
     case "json": {
       return (
-        <CodeEditor
+        <OpsCodeEditor
           {...props}
           value={localValue}
           onChange={(value: string) => {

@@ -7,7 +7,7 @@ from ipaddress import IPv4Network, IPv6Network
 from typing import Dict, List
 
 from infrahub_sdk import UUIDT, InfrahubClient, InfrahubNode, NodeStore
-from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk.exceptions import GraphQLError, NodeNotFoundError
 from infrahub_sdk.graphql import Mutation
 
 # flake8: noqa
@@ -47,19 +47,15 @@ DEVICES = (
     ("edge2", "active", "ASR1002-HX", "profile1", "edge", ["red", "blue", "green"], "Cisco IOS"),
     ("core1", "drained", "MX204", "profile1", "core", ["blue"], "Juniper JunOS"),
     ("core2", "provisioning", "MX204", "profile1", "core", ["red"], "Juniper JunOS"),
+    ("leaf1", "active", "7010TX-48", "profile1", "leaf", ["red", "green"], "Arista EOS"),
+    ("leaf2", "active", "7010TX-48", "profile1", "leaf", ["red", "green"], "Arista EOS"),
 )
 
 
 NETWORKS_SUPERNET = IPv4Network("10.0.0.0/8")
 NETWORKS_SUPERNET_IPV6 = IPv6Network("2001:DB8::/112")
-NETWORKS_POOL_INTERNAL = list(NETWORKS_SUPERNET.subnets(new_prefix=16))
-NETWORKS_POOL_INTERNAL_IPV6 = list(islice(NETWORKS_SUPERNET_IPV6.subnets(new_prefix=120), 6))
-LOOPBACK_POOL = NETWORKS_POOL_INTERNAL[0].hosts()
-P2P_NETWORK_POOL = NETWORKS_POOL_INTERNAL[1].subnets(new_prefix=31)
 NETWORKS_POOL_EXTERNAL_SUPERNET = IPv4Network("203.0.113.0/24")
-NETWORKS_POOL_EXTERNAL = NETWORKS_POOL_EXTERNAL_SUPERNET.subnets(new_prefix=29)
 MANAGEMENT_NETWORKS = IPv4Network("172.20.20.0/27")
-MANAGEMENT_IPS = MANAGEMENT_NETWORKS.hosts()
 
 ACTIVE_STATUS = "active"
 BACKBONE_ROLE = "backbone"
@@ -92,15 +88,6 @@ def site_generator(nbr_site=2) -> List[Dict[str, str]]:
     return sites
 
 
-P2P_NETWORKS_POOL = {
-    ("atl1", "edge1", "ord1", "edge1"): next(P2P_NETWORK_POOL).hosts(),
-    ("atl1", "edge1", "jfk1", "edge1"): next(P2P_NETWORK_POOL).hosts(),
-    ("jfk1", "edge1", "ord1", "edge1"): next(P2P_NETWORK_POOL).hosts(),
-    ("atl1", "edge2", "ord1", "edge2"): next(P2P_NETWORK_POOL).hosts(),
-    ("atl1", "edge2", "jfk1", "edge2"): next(P2P_NETWORK_POOL).hosts(),
-    ("jfk1", "edge2", "ord1", "edge2"): next(P2P_NETWORK_POOL).hosts(),
-}
-
 BACKBONE_CIRCUIT_IDS = [
     "DUFF-1543451",
     "DUFF-6535773",
@@ -113,6 +100,7 @@ BACKBONE_CIRCUIT_IDS = [
 
 INTERFACE_MGMT_NAME = {
     "7280R3": "Management0",
+    "7010TX-48": "Management0",
     "ASR1002-HX": "Management0",
     "MX204": "MGMT",
 }
@@ -142,15 +130,35 @@ INTERFACE_L3_NAMES = {
         "Ethernet9",
         "Ethernet10",
     ],
+    "7010TX-48": [],
     "MX204": ["et-0/0/0", "et-0/0/1", "et-0/0/2"],
 }
 INTERFACE_L2_NAMES = {
     "7280R3": ["Ethernet11", "Ethernet12"],
     "ASR1002-HX": ["Ethernet11", "Ethernet12"],
     "MX204": ["et-0/0/3"],
+    "7010TX-48": [f"Ethernet{idx}" for idx in range(1, 49)],
 }
 
-INTERFACE_ROLES_MAPPING = {
+LAG_INTERFACE_L2 = {
+    "7280R3": [{"name": "port-channel1", "lacp": "Active", "members": ["Ethernet11", "Ethernet12"]}],
+    "7010TX-48": [
+        {
+            "name": "port-channel1",
+            "description": "MLAG peer link",
+            "lacp": "Active",
+            "members": ["Ethernet1", "Ethernet2"],
+        },
+        {
+            "name": "port-channel2",
+            "description": "MLAG to Server",
+            "lacp": "Active",
+            "members": ["Ethernet5", "Ethernet6"],
+        },
+    ],
+}
+
+INTERFACE_L3_ROLES_MAPPING = {
     "edge": [
         "peer",
         "peer",
@@ -171,6 +179,30 @@ INTERFACE_ROLES_MAPPING = {
         "backbone",
         "spare",
     ],
+    "leaf": [],
+}
+
+INTERFACE_L2_ROLES_MAPPING = {
+    "leaf": [
+        "peer",
+        "peer",
+    ],
+}
+
+LAG_INTERFACE_L2_ROLES_MAPPING = {"leaf": {"port-channel1": "peer", "port-channel2": "server"}}
+
+INTERFACE_L2_MODE_MAPPING = {"peer": "Trunk (ALL)"}
+
+MLAG_DOMAINS = {"leaf": {"domain_id": 1, "peer_interfaces": ["port-channel1", "port-channel1"]}}
+
+MLAG_INTERFACE_L2 = {
+    "leaf": [
+        {
+            "mlag_id": 2,
+            "mlag_domain": 1,
+            "members": ["port-channel2", "port-channel2"],
+        }
+    ]
 }
 
 TAGS = ["blue", "green", "red"]
@@ -271,7 +303,16 @@ VLANS = (
 store = NodeStore()
 
 
-async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str, site: Dict[str, str]) -> str:
+async def generate_site(
+    client: InfrahubClient,
+    log: logging.Logger,
+    branch: str,
+    site: Dict[str, str],
+    interconnection_pool: InfrahubNode,
+    loopback_pool: InfrahubNode,
+    management_pool: InfrahubNode,
+    external_pool: InfrahubNode,
+) -> str:
     group_eng = store.get("Engineering Team")
     group_ops = store.get("Operation Team")
     account_pop = store.get("pop-builder")
@@ -308,9 +349,6 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
     site_name = site.name.value
 
-    peer_networks = [next(P2P_NETWORK_POOL), next(P2P_NETWORK_POOL)]
-    peer_network_hosts = {0: peer_networks[0].hosts(), 1: peer_networks[1].hosts()}
-
     # --------------------------------------------------
     # Create the site specific VLAN
     # --------------------------------------------------
@@ -332,9 +370,11 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
     # --------------------------------------------------
     # Create the site specific IP prefixes
     # --------------------------------------------------
-    for net in peer_networks:
-        prefix = await client.create(branch=branch, kind="IpamIPPrefix", prefix=str(net))
-        await prefix.save()
+    peer_networks = [
+        await client.allocate_next_ip_prefix(resource_pool=interconnection_pool, branch=branch),
+        await client.allocate_next_ip_prefix(resource_pool=interconnection_pool, branch=branch),
+    ]
+    peer_network_hosts = {0: peer_networks[0].prefix.value.hosts(), 1: peer_networks[1].prefix.value.hosts()}
 
     for idx, device in enumerate(DEVICES):
         device_name = f"{site_name}-{device[0]}"
@@ -383,13 +423,9 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         )
         await intf.save()
 
-        ip = await client.create(
-            branch=branch,
-            kind="IpamIPAddress",
-            interface={"id": intf.id, "source": account_pop.id},
-            address={"value": f"{str(next(LOOPBACK_POOL))}/32", "source": account_pop.id},
+        ip = await client.allocate_next_ip_address(
+            resource_pool=loopback_pool, identifier=device_name, data={"interface": intf.id}, branch=branch
         )
-        await ip.save()
         store.set(key=f"{device_name}-loopback", node=ip)
 
         # Management Interface
@@ -400,26 +436,21 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             name={"value": INTERFACE_MGMT_NAME[device_type], "source": account_pop.id},
             enabled={"value": True, "owner": group_eng.id},
             status={"value": ACTIVE_STATUS, "owner": group_eng.id},
-            role={
-                "value": "management",
-                "source": account_pop.id,
-                "is_protected": True,
-            },
+            role={"value": "management", "source": account_pop.id, "is_protected": True},
             speed=1000,
         )
         await intf.save()
-        ip = await client.create(
-            branch=branch, kind="IpamIPAddress", interface=intf.id, address=f"{str(next(MANAGEMENT_IPS))}/24"
+        management_ip = await client.allocate_next_ip_address(
+            resource_pool=management_pool, identifier=device_name, data={"interface": intf.id}, branch=branch
         )
-        await ip.save()
 
         # set the IP address of the device to the management interface IP address
-        obj.primary_address = ip
+        obj.primary_address = management_ip
         await obj.save()
 
         # L3 Interfaces
         for intf_idx, intf_name in enumerate(INTERFACE_L3_NAMES[device_type]):
-            intf_role = INTERFACE_ROLES_MAPPING[device[4]][intf_idx]
+            intf_role = INTERFACE_L3_ROLES_MAPPING[device[4]][intf_idx]
 
             intf = await client.create(
                 branch=branch,
@@ -447,16 +478,12 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                 group_upstream_interfaces.members.add(intf)
 
             if intf_role in ["upstream", "peering"] and "edge" in device_role:
-                subnet = next(NETWORKS_POOL_EXTERNAL)
-                subnet_hosts = subnet.hosts()
+                subnet = await client.allocate_next_ip_prefix(
+                    resource_pool=external_pool, identifier=f"{device_name}__{intf_role}__{intf_idx}", branch=branch
+                )
+                subnet_hosts = subnet.prefix.value.hosts()
                 address = f"{str(next(subnet_hosts))}/29"
                 peer_address = f"{str(next(subnet_hosts))}/29"
-
-            if not subnet:
-                continue
-
-            ip_prefix = await client.create(branch=branch, kind="IpamIPPrefix", prefix=str(subnet))
-            await ip_prefix.save()
 
             if address:
                 ip = await client.create(
@@ -487,11 +514,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                     vendor_id=f"{provider_name.upper()}-{UUIDT().short()}",
                     provider=provider.id,
                     status={"value": ACTIVE_STATUS, "owner": group_ops.id},
-                    role={
-                        "value": intf_role,
-                        "source": account_pop.id,
-                        "owner": group_eng.id,
-                    },
+                    role={"value": intf_role, "source": account_pop.id, "owner": group_eng.id},
                 )
                 await circuit.save()
                 log.info(f" - Created {circuit._schema.kind} - {provider_name} [{circuit.vendor_id.value}]")
@@ -544,7 +567,16 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 
         # L2 Interfaces
         for intf_idx, intf_name in enumerate(INTERFACE_L2_NAMES[device_type]):
-            intf_role = "server"
+            try:
+                intf_role = INTERFACE_L2_ROLES_MAPPING.get(device[4], [])[intf_idx]
+            except IndexError:
+                intf_role = "server"
+
+            l2_mode = INTERFACE_L2_MODE_MAPPING.get(intf_role, "Access")
+
+            untagged_vlan = None
+            if l2_mode == "Access":
+                untagged_vlan = store.get(kind="InfraVLAN", key=f"{site_name}_server")
 
             intf = await client.create(
                 branch=branch,
@@ -555,10 +587,97 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                 enabled=True,
                 status={"value": ACTIVE_STATUS, "owner": group_ops.id},
                 role={"value": intf_role, "source": account_pop.id},
-                l2_mode="Access",
-                untagged_vlan={"id": store.get(kind="InfraVLAN", key=f"{site_name}_server").id},
+                l2_mode=l2_mode,
+                untagged_vlan=untagged_vlan,
             )
             await intf.save()
+            store.set(key=f"{device_name}-l2-{intf_name}", node=intf)
+
+        for lag_intf in LAG_INTERFACE_L2.get(device_type, []):
+            try:
+                intf_role = LAG_INTERFACE_L2_ROLES_MAPPING[device[4]][lag_intf["name"]]
+            except KeyError:
+                intf_role = "server"
+
+            l2_mode = INTERFACE_L2_MODE_MAPPING.get(intf_role, "Access")
+
+            description = lag_intf.get("description", "")
+
+            untagged_vlan = None
+            if l2_mode == "Access":
+                untagged_vlan = store.get(kind="InfraVLAN", key=f"{site_name}_server")
+
+            lag = await client.create(
+                branch=branch,
+                kind="InfraLagInterfaceL2",
+                device={"id": obj.id, "is_protected": True},
+                name=lag_intf["name"],
+                description=description,
+                speed=10000,
+                enabled=True,
+                l2_mode=l2_mode,
+                untagged_vlan=untagged_vlan,
+                status={"value": ACTIVE_STATUS, "owner": group_ops.id},
+                role={"value": intf_role, "source": account_pop.id},
+                lacp=lag_intf["lacp"],
+            )
+
+            await lag.save()
+            await lag.members.fetch()
+
+            store.set(key=f"{device_name}-lagl2-{lag_intf['name']}", node=lag)
+
+            members = [store.get(key=f"{device_name}-l2-{member}") for member in lag_intf["members"]]
+            lag.members.extend(members)
+            await lag.save()
+
+    # --------------------------------------------------
+    # Set up MLAG domains
+    # --------------------------------------------------
+    for role, domain in MLAG_DOMAINS.items():
+        devices = [
+            store.get(kind="InfraDevice", key=f"{site_name}-{role}1"),
+            store.get(kind="InfraDevice", key=f"{site_name}-{role}2"),
+        ]
+        name = f"{site_name}-{role}-12"
+
+        peer_interfaces = [
+            store.get(kind="InfraLagInterfaceL2", key=f"{device.name.value}-lagl2-{domain['peer_interfaces'][idx]}")
+            for idx, device in enumerate(devices)
+        ]
+
+        mlag_domain = await client.create(
+            kind="InfraMlagDomain",
+            name=name,
+            domain_id=domain["domain_id"],
+            devices=devices,
+            peer_interfaces=peer_interfaces,
+        )
+
+        await mlag_domain.save()
+        store.set(key=f"mlag-domain-{name}", node=mlag_domain)
+
+    # --------------------------------------------------
+    # Set up MLAG Interfaces
+    # --------------------------------------------------
+    for role, mlags in MLAG_INTERFACE_L2.items():
+        devices = [
+            store.get(kind="InfraDevice", key=f"{site_name}-{role}1"),
+            store.get(kind="InfraDevice", key=f"{site_name}-{role}2"),
+        ]
+
+        for mlag in mlags:
+            members = [
+                store.get(kind="InfraLagInterfaceL2", key=f"{device.name.value}-lagl2-{mlag['members'][idx]}")
+                for idx, device in enumerate(devices)
+            ]
+            mlag_domain = store.get(kind="InfraMlagDomain", key=f"mlag-domain-{site_name}-{role}-12")
+
+            mlag_interface = await client.create(
+                kind="InfraMlagInterfaceL2", mlag_domain=mlag_domain, mlag_id=mlag["mlag_id"], members=members
+            )
+
+            await mlag_interface.save()
 
     # --------------------------------------------------
     # Connect both devices within the Site together with 2 interfaces
@@ -575,6 +694,22 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         await intf2.save()
 
         log.info(f" - Connected '{site_name}-edge1::{intf1.name.value}' <> '{site_name}-edge2::{intf2.name.value}'")
+
+    # --------------------------------------------------
+    # Connect both leaf devices within a Site together with the 2 peer interfaces
+    # --------------------------------------------------
+    for idx in range(0, 2):
+        intf1 = store.get(kind="InfraInterfaceL2", key=f"{site_name}-leaf1-l2-Ethernet{idx+1}")
+        intf2 = store.get(kind="InfraInterfaceL2", key=f"{site_name}-leaf2-l2-Ethernet{idx+1}")
+
+        intf1.description.value = f"Connected to {site_name}-leaf2 {intf2.name.value}"
+        intf1.connected_endpoint = intf2
+        await intf1.save()
+
+        intf2.description.value = f"Connected to {site_name}-leaf1 {intf1.name.value}"
+        await intf2.save()
+
+        log.info(f" - Connected '{site_name}-leaf1::{intf1.name.value}' <> '{site_name}-leaf2::{intf2.name.value}'")
 
     # --------------------------------------------------
     # Update all the group we may have touch during the site creation
@@ -624,7 +759,9 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
     return site_name
 
 
-async def branch_scenario_add_upstream(client: InfrahubClient, log: logging.Logger, site_name: str):
+async def branch_scenario_add_upstream(
+    client: InfrahubClient, log: logging.Logger, site_name: str, external_pool: InfrahubNode
+):
     """
     Create a new branch and Add a new upstream link with GTT on the edge1 device of the given site.
     """
@@ -652,9 +789,12 @@ async def branch_scenario_add_upstream(client: InfrahubClient, log: logging.Logg
     log.info(f" - Adding new Upstream on '{device_name}::{intf.name.value}'")
 
     # Allocate a new subnet and calculate new IP Addresses
-    subnet = next(NETWORKS_POOL_EXTERNAL).hosts()
-    address = f"{str(next(subnet))}/29"
-    peer_address = f"{str(next(subnet))}/29"
+    subnet = await client.allocate_next_ip_prefix(
+        resource_pool=external_pool, identifier=device_name, branch=new_branch_name
+    )
+    subnet_hosts = subnet.prefix.value.hosts()
+    address = f"{str(next(subnet_hosts))}/29"
+    peer_address = f"{str(next(subnet_hosts))}/29"
 
     peer_ip = await client.create(
         branch=new_branch_name,
@@ -728,7 +868,9 @@ async def branch_scenario_add_upstream(client: InfrahubClient, log: logging.Logg
     #     )
 
 
-async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logging.Logger, site_name: str):
+async def branch_scenario_replace_ip_addresses(
+    client: InfrahubClient, log: logging.Logger, site_name: str, interconnection_pool: InfrahubNode
+):
     """
     Create a new Branch and Change the IP addresses between edge1 and edge2 on the selected site
     """
@@ -744,7 +886,10 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
     log.info("Create a new Branch and Change the IP addresses between edge1 and edge2 on the selected site")
     log.info(f"- Creating branch: {new_branch_name!r}")
 
-    new_peer_network = next(P2P_NETWORK_POOL).hosts()
+    new_peer_network = await client.allocate_next_ip_prefix(
+        resource_pool=interconnection_pool, identifier=f"{device1_name}__{device2_name}", branch=new_branch_name
+    )
+    new_peer_network_hosts = new_peer_network.prefix.value.hosts()
 
     device1 = await client.get(branch=new_branch_name, kind="InfraDevice", name__value=device1_name)
     device2 = await client.get(branch=new_branch_name, kind="InfraDevice", name__value=device2_name)
@@ -768,7 +913,7 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
         branch=new_branch_name,
         kind="IpamIPAddress",
         interface={"id": peer_intfs_dev1[0].id},
-        address=f"{str(next(new_peer_network))}/31",
+        address=f"{str(next(new_peer_network_hosts))}/31",
     )
     await peer_ip.save()
     log.info(f" - Replaced {device1_name}-{peer_intfs_dev1[0].name.value} IP to {peer_ip.address.value}")
@@ -777,7 +922,7 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
         branch=new_branch_name,
         kind="IpamIPAddress",
         interface={"id": peer_intfs_dev2[0].id},  # , "source": account_pop.id},
-        address={"value": f"{str(next(new_peer_network))}/31"},  # , "source": account_pop.id},
+        address={"value": f"{str(next(new_peer_network_hosts))}/31"},  # , "source": account_pop.id},
     )
     await ip.save()
     log.info(f" - Replaced {device2_name}-{peer_intfs_dev2[0].name.value} IP to {ip.address.value}")
@@ -1088,50 +1233,156 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # ------------------------------------------
     # Create IP prefixes
     # ------------------------------------------
+    default_ip_namespace = await client.get(kind="IpamNamespace", name__value="default")
+
     log.info("Creating IP Prefixes")
-    for network in [
-        NETWORKS_SUPERNET,
-        MANAGEMENT_NETWORKS,
-        NETWORKS_POOL_INTERNAL[0],
-        NETWORKS_POOL_INTERNAL[1],
-        NETWORKS_POOL_INTERNAL[2],
-        NETWORKS_POOL_EXTERNAL_SUPERNET,
-        NETWORKS_SUPERNET_IPV6,
-        NETWORKS_POOL_INTERNAL_IPV6[4],
-        NETWORKS_POOL_INTERNAL_IPV6[5],
-    ]:
-        obj = await client.create(branch=branch, kind="IpamIPPrefix", prefix=str(network), member_type="prefix")
-        await obj.save()
+
+    log.info("Creating IP Core Supernet and Pool")
+    supernet_prefix = await client.create(
+        branch=branch, kind="IpamIPPrefix", prefix=str(NETWORKS_SUPERNET), member_type="prefix"
+    )
+    await supernet_prefix.save()
+    supernet_pool = await client.create(
+        kind="CoreIPPrefixPool",
+        name="Internal networks pool",
+        default_prefix_type="IpamIPPrefix",
+        default_prefix_length=16,
+        ip_namespace=default_ip_namespace,
+        resources=[supernet_prefix],
+        branch=branch,
+    )
+    await supernet_pool.save()
+
+    log.info("Creating IP Loopback Prefix and Pool")
+    loopback_prefix = await client.allocate_next_ip_prefix(
+        resource_pool=supernet_pool, member_type="address", branch=branch
+    )
+    loopback_pool = await client.create(
+        kind="CoreIPAddressPool",
+        name="Loopbacks pool",
+        default_address_type="IpamIPAddress",
+        default_prefix_length=32,
+        ip_namespace=default_ip_namespace,
+        resources=[loopback_prefix],
+        branch=branch,
+    )
+    await loopback_pool.save()
+
+    log.info("Creating IP Interconnection Prefix and Pool")
+    interconnection_prefix = await client.allocate_next_ip_prefix(resource_pool=supernet_pool, branch=branch)
+    interconnection_pool = await client.create(
+        kind="CoreIPPrefixPool",
+        name="Interconnections pool",
+        default_prefix_type="IpamIPPrefix",
+        default_prefix_length=31,
+        default_member_type="address",
+        ip_namespace=default_ip_namespace,
+        resources=[interconnection_prefix],
+        branch=branch,
+    )
+    await interconnection_pool.save()
+    # Allocate an empty prefix
+    await client.allocate_next_ip_prefix(resource_pool=supernet_pool, branch=branch)
+
+    log.info("Creating IP Management Prefix and Pool")
+    management_prefix = await client.create(
+        branch=branch, kind="IpamIPPrefix", prefix=str(MANAGEMENT_NETWORKS), member_type="address"
+    )
+    await management_prefix.save()
+    management_pool = await client.create(
+        kind="CoreIPAddressPool",
+        name="Management addresses pool",
+        default_address_type="IpamIPAddress",
+        default_prefix_length=28,
+        ip_namespace=default_ip_namespace,
+        resources=[management_prefix],
+        branch=branch,
+    )
+    await management_pool.save()
+
+    log.info("Creating IP External Supernet and Pool")
+    external_supernet = await client.create(
+        branch=branch, kind="IpamIPPrefix", prefix=str(NETWORKS_POOL_EXTERNAL_SUPERNET), member_type="prefix"
+    )
+    await external_supernet.save()
+    external_pool = await client.create(
+        kind="CoreIPPrefixPool",
+        name="External prefixes pool",
+        default_prefix_type="IpamIPPrefix",
+        default_prefix_length=29,
+        default_member_type="address",
+        ip_namespace=default_ip_namespace,
+        resources=[external_supernet],
+        branch=branch,
+    )
+    await external_pool.save()
+
+    p2p_networks = {
+        ("atl1", "edge1", "ord1", "edge1"): await client.allocate_next_ip_prefix(
+            resource_pool=interconnection_pool, branch=branch, identifier="atl1-edge1__ord1-edge1"
+        ),
+        ("atl1", "edge1", "jfk1", "edge1"): await client.allocate_next_ip_prefix(
+            resource_pool=interconnection_pool, branch=branch, identifier="atl1-edge1__jfk1-edge1"
+        ),
+        ("jfk1", "edge1", "ord1", "edge1"): await client.allocate_next_ip_prefix(
+            resource_pool=interconnection_pool, branch=branch, identifier="jfk1-edge1__ord1-edge1"
+        ),
+        ("atl1", "edge2", "ord1", "edge2"): await client.allocate_next_ip_prefix(
+            resource_pool=interconnection_pool, branch=branch, identifier="atl1-edge2__ord1-edge2"
+        ),
+        ("atl1", "edge2", "jfk1", "edge2"): await client.allocate_next_ip_prefix(
+            resource_pool=interconnection_pool, branch=branch, identifier="atl1-edge2__jfk1-edge2"
+        ),
+        ("jfk1", "edge2", "ord1", "edge2"): await client.allocate_next_ip_prefix(
+            resource_pool=interconnection_pool, branch=branch, identifier="jfk1-edge2__ord1-edge2"
+        ),
+    }
+
+    log.info("Creating IPv6 Core Supernet and Pool")
+    ipv6_supernet_prefix = await client.create(
+        branch=branch, kind="IpamIPPrefix", prefix=str(NETWORKS_SUPERNET_IPV6), member_type="prefix"
+    )
+    await ipv6_supernet_prefix.save()
+    ipv6_supernet_pool = await client.create(
+        kind="CoreIPPrefixPool",
+        name="Internal networks pool (IPv6)",
+        default_prefix_type="IpamIPPrefix",
+        default_prefix_length=120,
+        default_member_type="address",
+        ip_namespace=default_ip_namespace,
+        resources=[ipv6_supernet_prefix],
+        branch=branch,
+    )
+    await ipv6_supernet_pool.save()
+
     # ------------------------------------------
     # Create Pool IPv6 prefixes
     # ------------------------------------------
     log.info("Creating pool IPv6 Prefixes and IPs")
-    for network in [
-        NETWORKS_POOL_INTERNAL_IPV6[0],
-        NETWORKS_POOL_INTERNAL_IPV6[1],
-        NETWORKS_POOL_INTERNAL_IPV6[2],
-        NETWORKS_POOL_INTERNAL_IPV6[3],
-    ]:
-        obj = await client.create(
-            branch=branch, kind="IpamIPPrefix", is_pool=True, prefix=str(network), member_type="address"
-        )
-        await obj.save()
+    ipv6_internal_networks = [
+        await client.allocate_next_ip_prefix(resource_pool=ipv6_supernet_pool, branch=branch),
+        await client.allocate_next_ip_prefix(resource_pool=ipv6_supernet_pool, branch=branch),
+        await client.allocate_next_ip_prefix(resource_pool=ipv6_supernet_pool, branch=branch),
+        await client.allocate_next_ip_prefix(resource_pool=ipv6_supernet_pool, branch=branch),
+        await client.allocate_next_ip_prefix(resource_pool=ipv6_supernet_pool, branch=branch),
+        await client.allocate_next_ip_prefix(resource_pool=ipv6_supernet_pool, branch=branch),
+    ]
+
     log.debug(f"IP Prefixes Creation Completed")
+
     # ------------------------------------------
     # Create IPv6 IP from IPv6 Prefix pool
     # ------------------------------------------
     ipv6_addresses = []
-    for network in NETWORKS_POOL_INTERNAL_IPV6[:4]:
-        host_list = list(network.hosts())
+    for network in ipv6_internal_networks[:4]:
+        host_list = list(network.prefix.value.hosts())
         random_size = random.randint(0, len(host_list))
         ipv6_addresses.extend(host_list[:random_size])
 
     batch = await client.create_batch()
     for ipv6_addr in ipv6_addresses:
         obj = await client.create(
-            branch=branch,
-            kind="IpamIPAddress",
-            address={"value": ipv6_addr, "source": account_pop.id},
+            branch=branch, kind="IpamIPAddress", address={"value": ipv6_addr, "source": account_pop.id}
         )
         batch.add(task=obj.save, node=obj)
 
@@ -1156,7 +1407,16 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     log.info("Creating Site and associated objects (Device, Circuit, BGP Sessions)")
     sites = site_generator(nbr_site=5)
     for site in sites:
-        response = await generate_site(client=client, log=log, branch=branch, site=site)
+        response = await generate_site(
+            client=client,
+            log=log,
+            branch=branch,
+            site=site,
+            interconnection_pool=interconnection_pool,
+            loopback_pool=loopback_pool,
+            management_pool=management_pool,
+            external_pool=external_pool,
+        )
         log.debug(f"{response} - Creation Completed")
 
     # ------------------------------------------
@@ -1222,7 +1482,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # CREATE Backbone Links & Circuits
     # --------------------------------------------------
     log.info("Creating Backbone Links & Circuits")
-    for idx, backbone_link in enumerate(P2P_NETWORKS_POOL.keys()):
+    for idx, backbone_link in enumerate(p2p_networks.keys()):
         site1 = backbone_link[0]
         site2 = backbone_link[2]
         device = backbone_link[1]
@@ -1231,6 +1491,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         intf2 = INTERFACE_OBJS[f"{site2}-{device}"].pop(0)
 
         circuit_id = BACKBONE_CIRCUIT_IDS[idx]
+
+        backbone_link_ips = p2p_networks[backbone_link].prefix.value.hosts()
 
         if idx <= 2:
             provider_name = "Lumen"
@@ -1274,8 +1536,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         await endpoint2.save()
 
         # Create IP Address
-        intf11_address = f"{str(next(P2P_NETWORKS_POOL[backbone_link]))}/31"
-        intf21_address = f"{str(next(P2P_NETWORKS_POOL[backbone_link]))}/31"
+        intf11_address = f"{str(next(backbone_link_ips))}/31"
+        intf21_address = f"{str(next(backbone_link_ips))}/31"
         intf11_ip = await client.create(
             branch=branch,
             kind="IpamIPAddress",
@@ -1312,11 +1574,11 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # --------------------------------------------------
     if branch == "main":
         await branch_scenario_add_upstream(
-            site_name=sites[1]["name"],
-            client=client,
-            log=log,
+            site_name=sites[1]["name"], client=client, log=log, external_pool=external_pool
         )
-        await branch_scenario_replace_ip_addresses(site_name=sites[2]["name"], client=client, log=log)
+        await branch_scenario_replace_ip_addresses(
+            site_name=sites[2]["name"], client=client, log=log, interconnection_pool=interconnection_pool
+        )
         await branch_scenario_remove_colt(site_name=sites[0]["name"], client=client, log=log)
         await branch_scenario_conflict_device(site_name=sites[3]["name"], client=client, log=log)
         await branch_scenario_conflict_platform(client=client, log=log)

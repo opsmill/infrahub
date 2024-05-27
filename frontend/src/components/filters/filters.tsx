@@ -18,12 +18,6 @@ type tFilters = {
 const computeFilter = (data: [key: string, value: any]) => {
   const [key, value] = data;
 
-  if (value.value)
-    return {
-      name: `${key}__value`,
-      value: value.value,
-    };
-
   if (value.id) {
     return {
       name: `${key}__ids`,
@@ -31,10 +25,17 @@ const computeFilter = (data: [key: string, value: any]) => {
     };
   }
 
-  if (value.list?.length) {
+  if (Array.isArray(value)) {
     return {
       name: `${key}__ids`,
-      value: value.list,
+      value: value,
+    };
+  }
+
+  if (value) {
+    return {
+      name: `${key}__value`,
+      value,
     };
   }
 };

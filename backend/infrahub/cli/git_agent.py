@@ -1,29 +1,34 @@
 import asyncio
 import logging
 import signal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import typer
 from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.async_typer import AsyncTyper
+from infrahub_sdk.exceptions import Error as SdkError
 from prometheus_client import start_http_server
 from rich.logging import RichHandler
 
 from infrahub import __version__, config
 from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
-from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import initialize_repositories_directory
 from infrahub.git.actions import sync_remote_repositories
 from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
 from infrahub.services import InfrahubServices
+from infrahub.services.adapters.cache.nats import NATSCache
 from infrahub.services.adapters.cache.redis import RedisCache
+from infrahub.services.adapters.message_bus.nats import NATSMessageBus
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.trace import configure_trace
 
-app = typer.Typer()
+if TYPE_CHECKING:
+    from infrahub.cli.context import CliContext
 
+app = AsyncTyper()
 log = get_logger()
 
 shutdown_event = asyncio.Event()
@@ -51,68 +56,9 @@ async def initialize_git_agent(service: InfrahubServices) -> None:
     await sync_remote_repositories(service=service)
 
 
-async def _start(debug: bool, port: int) -> None:
-    """Start Infrahub Git Agent."""
-
-    log_level = "DEBUG" if debug else "INFO"
-
-    FORMAT = "%(name)s | %(message)s" if debug else "%(message)s"
-    logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-
-    # Start the metrics endpoint
-    start_http_server(port)
-
-    # initialize the Infrahub Client and query the list of branches to validate that the API is reacheable and the auth is working
-    log.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
-    client = InfrahubClient(
-        config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=log)
-    )
-    await client.branch.all()
-
-    # Initialize trace
-    if config.SETTINGS.trace.enable:
-        configure_trace(
-            service="infrahub-git-agent",
-            version=__version__,
-            exporter_type=config.SETTINGS.trace.exporter_type,
-            exporter_endpoint=config.SETTINGS.trace.exporter_endpoint,
-            exporter_protocol=config.SETTINGS.trace.exporter_protocol,
-        )
-
-    # Initialize the lock
-    initialize_lock()
-
-    driver = await get_db()
-    database = InfrahubDatabase(driver=driver)
-    service = InfrahubServices(
-        cache=RedisCache(),
-        client=client,
-        database=database,
-        message_bus=RabbitMQMessageBus(),
-        component_type=ComponentType.GIT_AGENT,
-    )
-    await service.initialize()
-
-    async with service.database.start_session() as db:
-        await initialization(db=db)
-
-    await service.component.refresh_schema_hash()
-
-    await initialize_git_agent(service=service)
-
-    build_component_registry()
-
-    while not shutdown_event.is_set():
-        await asyncio.sleep(1)
-
-    log.info("Shutdown of Git agent requested")
-
-    await service.shutdown()
-    log.info("All services stopped")
-
-
 @app.command()
-def start(
+async def start(
+    ctx: typer.Context,
     debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
     config_file: str = typer.Option(
         "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
@@ -129,6 +75,75 @@ def start(
 
     log.debug(f"Config file : {config_file}")
 
+    context: CliContext = ctx.obj
+
     config.load_and_exit(config_file_name=config_file)
 
-    asyncio.run(_start(debug=debug, port=port))
+    log_level = "DEBUG" if debug else "INFO"
+
+    FORMAT = "%(name)s | %(message)s" if debug else "%(message)s"
+    logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
+
+    # Start the metrics endpoint
+    start_http_server(port)
+
+    # initialize the Infrahub Client and query the list of branches to validate that the API is reacheable and the auth is working
+    log.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
+    client = InfrahubClient(
+        config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=log)
+    )
+    try:
+        await client.branch.all()
+    except SdkError as exc:
+        log.error(f"Error in communication with Infrahub: {exc.message}")
+        raise typer.Exit(1)
+
+    # Initialize trace
+    if config.SETTINGS.trace.enable:
+        configure_trace(
+            service="infrahub-git-agent",
+            version=__version__,
+            exporter_type=config.SETTINGS.trace.exporter_type,
+            exporter_endpoint=config.SETTINGS.trace.exporter_endpoint,
+            exporter_protocol=config.SETTINGS.trace.exporter_protocol,
+        )
+
+    database = await context.get_db(retry=1)
+
+    message_bus = config.OVERRIDE.message_bus or (
+        NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
+    )
+    cache = config.OVERRIDE.cache or (
+        NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
+    )
+
+    service = InfrahubServices(
+        cache=cache,
+        client=client,
+        database=database,
+        message_bus=message_bus,
+        component_type=ComponentType.GIT_AGENT,
+    )
+    await service.initialize()
+
+    # Initialize the lock
+    initialize_lock(service=service)
+
+    async with service.database.start_session() as db:
+        await initialization(db=db)
+
+    await service.component.refresh_schema_hash()
+
+    await initialize_git_agent(service=service)
+
+    build_component_registry()
+
+    log.info("Initialized Git Agent ...")
+
+    while not shutdown_event.is_set():
+        await asyncio.sleep(1)
+
+    log.info("Shutdown of Git agent requested")
+
+    await service.shutdown()
+    log.info("All services stopped")

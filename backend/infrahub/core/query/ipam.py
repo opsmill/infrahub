@@ -20,6 +20,10 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+PREFIX_ATTRIBUTE_LABEL = "AttributeIPNetwork"
+ADDRESS_ATTRIBUTE_LABEL = "AttributeIPHost"
+
+
 @dataclass
 class IPPrefixData:
     id: UUID
@@ -65,7 +69,9 @@ class IPPrefixSubnetFetch(Query):
         self.params["maxprefixlen"] = self.obj.prefixlen
         self.params["ip_version"] = self.obj.version
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
         self.params.update(branch_params)
 
         # ruff: noqa: E501
@@ -132,94 +138,6 @@ class IPPrefixSubnetFetch(Query):
         return subnets
 
 
-class IPPrefixContainerFetch(Query):
-    name: str = "ipprefix_container_fetch"
-
-    def __init__(
-        self,
-        obj: Union[ipaddress.IPv6Network, ipaddress.IPv4Network, ipaddress.IPv4Interface, ipaddress.IPv6Interface],
-        namespace: Optional[Union[Node, str]] = None,
-        *args,
-        **kwargs,
-    ):
-        self.obj = obj
-        self.namespace_id = _get_namespace_id(namespace)
-
-        if isinstance(obj, (ipaddress.IPv6Network, ipaddress.IPv4Network)):
-            self.prefixlen = obj.prefixlen
-            self.minprefixlen = obj.prefixlen
-        elif isinstance(obj, (ipaddress.IPv4Interface, ipaddress.IPv6Interface)):
-            self.prefixlen = obj.network.prefixlen
-            self.minprefixlen = self.prefixlen + 1
-
-        super().__init__(*args, **kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
-        self.params["ns_id"] = self.namespace_id
-        prefix_bin = convert_ip_to_binary_str(self.obj)[: self.prefixlen]
-
-        self.params["minprefixlen"] = self.minprefixlen
-        self.params["ip_version"] = self.obj.version
-
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
-        self.params.update(branch_params)
-
-        possible_prefixes = set()
-        for idx in range(1, self.prefixlen):
-            tmp_prefix = prefix_bin[: self.prefixlen - idx]
-            padding = "0" * (self.obj.max_prefixlen - len(tmp_prefix))
-            possible_prefixes.add(f"{tmp_prefix}{padding}")
-
-        self.params["possible_prefixes"] = list(possible_prefixes)
-
-        # ruff: noqa: E501
-        query = """
-        // First match on IPNAMESPACE
-        MATCH (ns:%(ns_label)s)
-        WHERE ns.uuid = $ns_id
-        CALL {
-            WITH ns
-            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
-            WHERE %(branch_filter)s
-            RETURN ns as ns1, r as r1
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH ns, r1 as r
-        WHERE r.status = "active"
-        WITH ns
-        // MATCH all prefixes that are IN SCOPE
-        MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(pfx:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "prefix"})-[:HAS_VALUE]-(av:AttributeIPNetwork)
-        WHERE ns_rel.name = "ip_namespace__ip_prefix"
-            AND av.binary_address IN $possible_prefixes
-            AND av.prefixlen < $minprefixlen
-            AND av.version = $ip_version
-            AND all(r IN relationships(path2) WHERE (%(branch_filter)s))
-        """ % {
-            "ns_label": InfrahubKind.IPNAMESPACE,
-            "node_label": InfrahubKind.IPPREFIX,
-            "branch_filter": branch_filter,
-        }
-
-        self.add_to_query(query)
-        self.return_labels = ["pfx", "av"]
-        self.order_by = ["av.prefixlen"]
-
-    def get_container(self) -> Optional[IPPrefixData]:
-        """Return the more specific prefix that contains this one."""
-        candidates: List[IPPrefixData] = []
-
-        if not self.num_of_results:
-            return None
-
-        for result in self.get_results():
-            candidate = IPPrefixData(
-                id=result.get("pfx").get("uuid"), prefix=ipaddress.ip_network(result.get("av").get("value"))
-            )
-            candidates.append(candidate)
-        return candidates[-1]
-
-
 class IPPrefixIPAddressFetch(Query):
     name: str = "ipprefix_ipaddress_fetch"
 
@@ -243,7 +161,9 @@ class IPPrefixIPAddressFetch(Query):
         self.params["maxprefixlen"] = self.obj.prefixlen
         self.params["ip_version"] = self.obj.version
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
         self.params.update(branch_params)
 
         # ruff: noqa: E501
@@ -292,28 +212,18 @@ class IPPrefixIPAddressFetch(Query):
         return addresses
 
 
-async def get_container(
-    db: InfrahubDatabase,
-    ip_prefix: IPNetworkType,
-    namespace: Optional[Union[Node, str]] = None,
-    branch: Optional[Union[Branch, str]] = None,
-    at: Optional[Union[Timestamp, str]] = None,
-) -> Optional[IPPrefixData]:
-    branch = await registry.get_branch(db=db, branch=branch)
-    query = await IPPrefixContainerFetch.init(db=db, branch=branch, obj=ip_prefix, namespace=namespace, at=at)
-    await query.execute(db=db)
-    return query.get_container()
-
-
 async def get_subnets(
     db: InfrahubDatabase,
     ip_prefix: IPNetworkType,
     namespace: Optional[Union[Node, str]] = None,
     branch: Optional[Union[Branch, str]] = None,
     at: Optional[Union[Timestamp, str]] = None,
+    branch_agnostic: bool = False,
 ) -> Iterable[IPPrefixData]:
     branch = await registry.get_branch(db=db, branch=branch)
-    query = await IPPrefixSubnetFetch.init(db=db, branch=branch, obj=ip_prefix, namespace=namespace, at=at)
+    query = await IPPrefixSubnetFetch.init(
+        db=db, branch=branch, obj=ip_prefix, namespace=namespace, at=at, branch_agnostic=branch_agnostic
+    )
     await query.execute(db=db)
     return query.get_subnets()
 
@@ -324,143 +234,78 @@ async def get_ip_addresses(
     namespace: Optional[Union[Node, str]] = None,
     branch: Optional[Union[Branch, str]] = None,
     at=None,
+    branch_agnostic: bool = False,
 ) -> Iterable[IPAddressData]:
     branch = await registry.get_branch(db=db, branch=branch)
-    query = await IPPrefixIPAddressFetch.init(db=db, branch=branch, obj=ip_prefix, namespace=namespace, at=at)
+    query = await IPPrefixIPAddressFetch.init(
+        db=db, branch=branch, obj=ip_prefix, namespace=namespace, at=at, branch_agnostic=branch_agnostic
+    )
     await query.execute(db=db)
     return query.get_addresses()
 
 
-async def get_ip_prefix_for_ip_address(
-    db: InfrahubDatabase,
-    ip_address: IPAddressType,
-    namespace: Optional[str] = None,
-    branch: Optional[Union[Branch, str]] = None,
-    at: Optional[Union[Timestamp, str]] = None,
-) -> Optional[IPPrefixData]:
-    branch = await registry.get_branch(db=db, branch=branch)
-    query = await IPPrefixContainerFetch.init(db=db, branch=branch, obj=ip_address, namespace=namespace, at=at)
-    await query.execute(db=db)
-    return query.get_container()
-
-
-class IPPrefixUtilizationPrefix(Query):
+class IPPrefixUtilization(Query):
     name: str = "ipprefix_utilization_prefix"
 
-    def __init__(self, ip_prefix: Node, *args, **kwargs):
-        self.ip_prefix = ip_prefix
+    def __init__(self, ip_prefixes: list[str], *args, **kwargs):
+        self.ip_prefixes = ip_prefixes
         super().__init__(*args, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
-        self.params.update(branch_params)
+        self.params["ids"] = [p.get_id() for p in self.ip_prefixes]
+        self.params["time_at"] = self.at.to_string()
 
-        self.params["id"] = self.ip_prefix.id
+        def rel_filter(rel_name: str) -> str:
+            return f"{rel_name}.from <= $time_at AND ({rel_name}.to IS NULL OR {rel_name}.to >= $time_at)"
 
-        query = """
-        MATCH path = (pfx:Node)<-[:IS_RELATED]-(rl:Relationship)<-[:IS_RELATED]-(children:%(label)s)
-        WHERE pfx.uuid = $id
-          AND all(r IN relationships(path) WHERE (%(branch_filter)s))
-          AND rl.name = "parent__child"
-        CALL {
-            WITH pfx, children
-            MATCH path = (pfx)<-[r1:IS_RELATED]-(rl:Relationship)<-[r2:IS_RELATED]-(children:%(label)s)
-            WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
-                AND rl.name = "parent__child"
-            RETURN r1 as r11, r2 as r21
-            ORDER BY r1.branch_level DESC, r1.from DESC, r2.branch_level DESC, r2.from DESC
-            LIMIT 1
-        }
-        WITH pfx, children, r11, r21
-        WHERE r11.status = "active" AND r21.status = "active"
-        CALL {
-            WITH children
-            MATCH path = (children)-[r1:HAS_ATTRIBUTE]-(:Attribute {name: "prefix"})-[r2:HAS_VALUE]-(av:AttributeIPNetwork)
-            WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
-            RETURN r1 as r12, r2 as r22, av
-            ORDER BY r1.branch_level DESC, r1.from DESC, r2.branch_level DESC, r2.from DESC
-            LIMIT 1
-        }
-        WITH pfx, children, r12, r22, av
-        WHERE r12.status = "active" AND r22.status = "active"
-        """ % {"label": InfrahubKind.IPPREFIX, "branch_filter": branch_filter}  # noqa: E501
-
-        self.return_labels = ["av.prefixlen as prefixlen"]
-
+        query = f"""
+        MATCH (pfx:Node)
+        WHERE pfx.uuid IN $ids
+        CALL {{
+            WITH pfx
+            MATCH (pfx)-[r_rel1:IS_RELATED]-(rl:Relationship)<-[r_rel2:IS_RELATED]-(child:Node)
+            WHERE rl.name IN ["parent__child", "ip_prefix__ip_address"]
+            AND any(l IN labels(child) WHERE l in ["{InfrahubKind.IPPREFIX}", "{InfrahubKind.IPADDRESS}"])
+            AND ({rel_filter("r_rel1")})
+            AND ({rel_filter("r_rel2")})
+            RETURN r_rel1, rl, r_rel2, child
+        }}
+        WITH pfx, r_rel1, rl, r_rel2, child
+        MATCH path = (
+            (pfx)-[r_1:IS_RELATED]-(rl:Relationship)-[r_2:IS_RELATED]-(child:Node)
+            -[r_attr:HAS_ATTRIBUTE]->(attr:Attribute)
+            -[r_attr_val:HAS_VALUE]->(av:AttributeValue)
+        )
+        WHERE ID(r_1) = ID(r_rel1)
+        AND ID(r_2) = ID(r_rel2)
+        AND ({rel_filter("r_attr")})
+        AND ({rel_filter("r_attr_val")})
+        AND attr.name IN ["prefix", "address"]
+        AND any(l in labels(av) WHERE l in ["{PREFIX_ATTRIBUTE_LABEL}", "{ADDRESS_ATTRIBUTE_LABEL}"])
+        WITH
+            path,
+            pfx,
+            child,
+            av,
+            reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS sum_branch_level,
+            all(r in relationships(path) WHERE r.status = "active") AS is_active,
+            [r_attr_val.from, r_attr.from, r_2.from, r_1.from] AS from_times,
+            reduce(
+                b_details = [0, null], r in relationships(path) |
+                CASE WHEN r.branch_level > b_details[0] THEN [r.branch_level, r.branch] ELSE b_details END
+            ) as deepest_branch_details
+        ORDER BY pfx.uuid, child.uuid, av.uuid, sum_branch_level DESC, from_times[3] DESC, from_times[2] DESC, from_times[1] DESC, from_times[0] DESC
+        WITH
+            pfx,
+            child,
+            av,
+            deepest_branch_details[0] AS branch_level,
+            deepest_branch_details[1] AS branch,
+            head(collect(is_active)) AS is_latest_active
+        WHERE is_latest_active = TRUE
+        """
+        self.return_labels = ["pfx", "child", "av", "branch_level", "branch"]
         self.add_to_query(query)
-
-    def get_percentage(self):
-        prefix_space = self.ip_prefix.prefix.num_addresses
-        max_prefixlen = self.ip_prefix.prefix.obj.max_prefixlen
-        used_space = 0
-        for result in self.get_results():
-            used_space += 2 ** (max_prefixlen - int(result.get("prefixlen")))
-
-        return (used_space / prefix_space) * 100
-
-
-class IPPrefixUtilizationAddress(Query):
-    name: str = "ipprefix_utilization_address"
-
-    def __init__(self, ip_prefix: Node, *args, **kwargs):
-        self.ip_prefix = ip_prefix
-        super().__init__(*args, **kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
-        self.params.update(branch_params)
-
-        self.params["id"] = self.ip_prefix.id
-
-        query = """
-        MATCH path = (pfx:Node)-[:IS_RELATED]->(rl:Relationship)<-[:IS_RELATED]-(children:%(label)s)
-        WHERE pfx.uuid = $id
-          AND all(r IN relationships(path) WHERE (%(branch_filter)s))
-          AND rl.name = "ip_prefix__ip_address"
-        CALL {
-            WITH pfx, children
-            MATCH path = (pfx)-[r1:IS_RELATED]->(rl:Relationship)<-[r2:IS_RELATED]-(children:%(label)s)
-            WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
-                AND rl.name = "ip_prefix__ip_address"
-            RETURN r1, r2
-            ORDER BY r1.branch_level DESC, r1.from DESC, r2.branch_level DESC, r2.from DESC
-            LIMIT 1
-        }
-        WITH pfx, children, r1, r2
-        WHERE r1.status = "active" AND r2.status = "active"
-        """ % {"label": InfrahubKind.IPADDRESS, "branch_filter": branch_filter}  # noqa: E501
-
-        self.return_labels = ["count(children) as nbr_children"]
-
-        self.add_to_query(query)
-
-    def get_percentage(self):
-        prefix_space = self.ip_prefix.prefix.num_addresses
-
-        # Non-RFC3021 subnet
-        if (
-            self.ip_prefix.prefix.version == 4
-            and self.ip_prefix.prefix.prefixlen < 31
-            and not self.ip_prefix.is_pool.value
-        ):
-            prefix_space -= 2
-
-        return (self.get_result().get("nbr_children") / prefix_space) * 100
-
-
-async def get_utilization(
-    ip_prefix: Node,
-    db: InfrahubDatabase,
-    branch: Optional[Branch] = None,
-    at: Optional[Union[Timestamp, str]] = None,
-) -> float:
-    if ip_prefix.member_type.value == "address":
-        query = await IPPrefixUtilizationAddress.init(db, branch=branch, at=at, ip_prefix=ip_prefix)
-    else:
-        query = await IPPrefixUtilizationPrefix.init(db, branch=branch, at=at, ip_prefix=ip_prefix)
-
-    await query.execute(db=db)
-    return query.get_percentage()
 
 
 class IPPrefixReconcileQuery(Query):
@@ -482,32 +327,42 @@ class IPPrefixReconcileQuery(Query):
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
-        self.params["ip_prefix_kind"] = InfrahubKind.IPPREFIX
-        self.params["ip_address_kind"] = InfrahubKind.IPADDRESS
-        self.params["ip_prefix_attribute_kind"] = "AttributeIPNetwork"
-        self.params["ip_address_attribute_kind"] = "AttributeIPHost"
         self.params["namespace_kind"] = InfrahubKind.IPNAMESPACE
         self.params["namespace_id"] = self.namespace_id
-        prefix_bin = convert_ip_to_binary_str(self.ip_value)
-        self.params["prefix_binary"] = prefix_bin
+        self.params["ip_prefix_kind"] = InfrahubKind.IPPREFIX
+        self.params["ip_address_kind"] = InfrahubKind.IPADDRESS
+        self.params["ip_prefix_attribute_kind"] = PREFIX_ATTRIBUTE_LABEL
+        self.params["ip_address_attribute_kind"] = ADDRESS_ATTRIBUTE_LABEL
+
         if isinstance(self.ip_value, IPAddressType):
-            prefixlen = self.ip_value.max_prefixlen
+            is_address = True
+            prefixlen = self.ip_value.network.prefixlen
         else:
+            is_address = False
             prefixlen = self.ip_value.prefixlen
+        self.params["is_prefix"] = not is_address
         self.params["prefixlen"] = prefixlen
+        prefix_bin = convert_ip_to_binary_str(self.ip_value)
+        prefix_bin_host = prefix_bin[:prefixlen]
+        self.params["prefix_binary_full"] = prefix_bin
+        self.params["prefix_binary_host"] = prefix_bin_host
         self.params["ip_version"] = self.ip_value.version
-        possible_prefixes = set()
-        for idx in range(1, prefixlen):
-            tmp_prefix = prefix_bin[: prefixlen - idx]
-            padding = "0" * (self.ip_value.max_prefixlen - len(tmp_prefix))
-            possible_prefixes.add(f"{tmp_prefix}{padding}")
-        self.params["possible_prefixes"] = list(possible_prefixes)
+        # possible prefix: highest possible prefix length for a match
+        possible_prefix_map: dict[str, int] = {}
+        start_prefixlen = prefixlen if is_address else prefixlen - 1
+        for max_prefix_len in range(start_prefixlen, 0, -1):
+            tmp_prefix = prefix_bin_host[:max_prefix_len]
+            possible_prefix = tmp_prefix.ljust(self.ip_value.max_prefixlen, "0")
+            if possible_prefix not in possible_prefix_map:
+                possible_prefix_map[possible_prefix] = max_prefix_len
+        self.params["possible_prefix_and_length_list"] = [
+            [possible_prefix, max_length] for possible_prefix, max_length in possible_prefix_map.items()
+        ]
 
         namespace_query = """
         // Get IP Namespace
-        MATCH (ip_namespace:%(namespace_kind)s)-[r:IS_PART_OF]->(root:Root)
-        WHERE ip_namespace.uuid = $namespace_id
-        AND %(branch_filter)s
+        MATCH (ip_namespace:%(namespace_kind)s {uuid: $namespace_id})-[r:IS_PART_OF]->(root:Root)
+        WHERE %(branch_filter)s
         """ % {"branch_filter": branch_filter, "namespace_kind": self.params["namespace_kind"]}
         self.add_to_query(namespace_query)
 
@@ -522,16 +377,23 @@ class IPPrefixReconcileQuery(Query):
         else:
             get_node_by_prefix_query = """
             // Get IP Prefix node by prefix value
-            OPTIONAL MATCH ip_node_path = (:Root)<-[:IS_PART_OF]-(ip_node:Node)-[:HAS_ATTRIBUTE]->(a:Attribute)-[:HAS_VALUE]->(aipn), (ip_namespace)-[:IS_RELATED]-(nsr:Relationship)-[:IS_RELATED]-(ip_node)
-            WHERE any(label IN LABELS(ip_node) WHERE label IN [$ip_prefix_kind, $ip_address_kind])
-            AND nsr.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
-            AND any(label IN LABELS(aipn) WHERE label IN [$ip_prefix_attribute_kind, $ip_address_attribute_kind])
-            AND aipn.binary_address = $prefix_binary
+            OPTIONAL MATCH ip_node_path = (:Root)<-[:IS_PART_OF]-(ip_node:%(ip_kind)s)
+            -[:HAS_ATTRIBUTE]->(a:Attribute)-[:HAS_VALUE]->(aipn:%(ip_attribute_kind)s),
+            (ip_namespace)-[:IS_RELATED]-(nsr:Relationship)
+            -[:IS_RELATED]-(ip_node)
+            WHERE nsr.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
+            AND aipn.binary_address = $prefix_binary_full
             AND aipn.prefixlen = $prefixlen
             AND aipn.version = $ip_version
             AND all(r IN relationships(ip_node_path) WHERE (%(branch_filter)s) and r.status = "active")
             """ % {
                 "branch_filter": branch_filter,
+                "ip_kind": InfrahubKind.IPADDRESS
+                if isinstance(self.ip_value, IPAddressType)
+                else InfrahubKind.IPPREFIX,
+                "ip_attribute_kind": ADDRESS_ATTRIBUTE_LABEL
+                if isinstance(self.ip_value, IPAddressType)
+                else PREFIX_ATTRIBUTE_LABEL,
             }
             self.add_to_query(get_node_by_prefix_query)
 
@@ -541,7 +403,7 @@ class IPPrefixReconcileQuery(Query):
         WHERE all(r IN relationships(parent_prefix_path) WHERE (%(branch_filter)s) and r.status = "active")
         """ % {
             "branch_filter": branch_filter,
-            "ip_prefix_kind": self.params["ip_prefix_kind"],
+            "ip_prefix_kind": InfrahubKind.IPPREFIX,
         }
         self.add_to_query(get_current_parent_query)
 
@@ -557,8 +419,8 @@ class IPPrefixReconcileQuery(Query):
         WITH ip_namespace, ip_node, current_parent, current_prefix_children + current_address_children AS current_children
         """ % {
             "branch_filter": branch_filter,
-            "ip_prefix_kind": self.params["ip_prefix_kind"],
-            "ip_address_kind": self.params["ip_address_kind"],
+            "ip_prefix_kind": InfrahubKind.IPPREFIX,
+            "ip_address_kind": InfrahubKind.IPADDRESS,
         }
         self.add_to_query(get_current_children_query)
 
@@ -566,14 +428,13 @@ class IPPrefixReconcileQuery(Query):
         // Identify the correct parent, if any, for the prefix node
         CALL {
             WITH ip_namespace
-            OPTIONAL MATCH parent_path = (ip_namespace)-[pr1:IS_RELATED]-(ns_rel:Relationship)-[pr2:IS_RELATED]-(maybe_new_parent:%(ip_prefix_kind)s)-[har:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})-[hvr:HAS_VALUE]->(av:%(ip_prefix_attribute_kind)s)
-            WHERE ns_rel.name = "ip_namespace__ip_prefix"
-            AND all(r IN relationships(parent_path) WHERE (%(branch_filter)s))
-            AND pr1.status = "active"
-            AND pr2.status = "active"
-            AND av.binary_address IN $possible_prefixes
-            AND av.prefixlen < $prefixlen
+            OPTIONAL MATCH parent_path = (ip_namespace)-[pr1:IS_RELATED {status: "active"}]-(ns_rel:Relationship {name: "ip_namespace__ip_prefix"})
+            -[pr2:IS_RELATED {status: "active"}]-(maybe_new_parent:%(ip_prefix_kind)s)
+            -[har:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})
+            -[hvr:HAS_VALUE]->(av:%(ip_prefix_attribute_kind)s)
+            WHERE all(r IN relationships(parent_path) WHERE (%(branch_filter)s))
             AND av.version = $ip_version
+            AND any(prefix_and_length IN $possible_prefix_and_length_list WHERE av.binary_address = prefix_and_length[0] AND av.prefixlen <= prefix_and_length[1])
             WITH
                 maybe_new_parent,
                 har,
@@ -592,8 +453,8 @@ class IPPrefixReconcileQuery(Query):
         WITH ip_namespace, ip_node, current_parent, current_children, head(collect(maybe_new_parent)) as new_parent
         """ % {
             "branch_filter": branch_filter,
-            "ip_prefix_kind": self.params["ip_prefix_kind"],
-            "ip_prefix_attribute_kind": self.params["ip_prefix_attribute_kind"],
+            "ip_prefix_kind": InfrahubKind.IPPREFIX,
+            "ip_prefix_attribute_kind": PREFIX_ATTRIBUTE_LABEL,
         }
         self.add_to_query(get_new_parent_query)
 
@@ -602,18 +463,25 @@ class IPPrefixReconcileQuery(Query):
         CALL {
             // Get ALL possible children for the prefix node
             WITH ip_namespace, ip_node
-            OPTIONAL MATCH child_path = (ip_namespace)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(maybe_new_child)-[har:HAS_ATTRIBUTE]->(a:Attribute)-[hvr:HAS_VALUE]->(av:AttributeValue)
-            WHERE (ip_node IS NULL OR maybe_new_child.uuid <> ip_node.uuid)
+            OPTIONAL MATCH child_path = (
+                 (ip_namespace)-[:IS_RELATED]
+                 -(ns_rel:Relationship)-[:IS_RELATED]
+                 -(maybe_new_child:Node)-[har:HAS_ATTRIBUTE]
+                 ->(a:Attribute)-[hvr:HAS_VALUE]
+                 ->(av:AttributeValue)
+            )
+            WHERE $is_prefix  // only prefix nodes can have children
             AND ns_rel.name IN ["ip_namespace__ip_prefix", "ip_namespace__ip_address"]
+            AND any(child_kind IN [$ip_prefix_kind, $ip_address_kind] WHERE child_kind IN labels(maybe_new_child))
             AND a.name in ["prefix", "address"]
-            AND any(label IN LABELS(maybe_new_child) WHERE label IN [$ip_prefix_kind, $ip_address_kind])
-            AND any(label IN LABELS(av) WHERE label IN [$ip_prefix_attribute_kind, $ip_address_attribute_kind])
+            AND any(attr_kind IN [$ip_prefix_attribute_kind, $ip_address_attribute_kind] WHERE attr_kind IN labels(av))
+            AND (ip_node IS NULL OR maybe_new_child.uuid <> ip_node.uuid)
             AND (
-                ($ip_prefix_kind IN LABELS(maybe_new_child) AND av.prefixlen > $prefixlen)
-                OR ($ip_address_kind IN LABELS(maybe_new_child) AND av.prefixlen >= $prefixlen)
+                ($ip_prefix_kind IN labels(maybe_new_child) AND av.prefixlen > $prefixlen)
+                OR ($ip_address_kind IN labels(maybe_new_child) AND av.prefixlen >= $prefixlen)
             )
             AND av.version = $ip_version
-            AND av.binary_address STARTS WITH SUBSTRING($prefix_binary, 0, $prefixlen)
+            AND av.binary_address STARTS WITH $prefix_binary_host
             AND all(r IN relationships(child_path) WHERE (%(branch_filter)s) AND r.status = "active")
             WITH
                 maybe_new_child,
@@ -642,9 +510,9 @@ class IPPrefixReconcileQuery(Query):
                     WHEN has_more_specific_parent THEN has_more_specific_parent  // keep it True once set
                     WHEN potential_parent IS NULL OR ips[ind][0] IS NULL THEN has_more_specific_parent
                     WHEN potential_parent[0] = ips[ind][0] THEN has_more_specific_parent  // skip comparison to self
-                    WHEN $ip_address_kind in LABELS(potential_parent[0]) THEN has_more_specific_parent  // address cannot be a parent
-                    WHEN $ip_prefix_attribute_kind IN LABELS(ips[ind][1]) AND (potential_parent[1]).prefixlen >= (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with same or greater prefixlen for prefix cannot be parent
-                    WHEN $ip_address_attribute_kind IN LABELS(ips[ind][1]) AND (potential_parent[1]).prefixlen > (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with greater prefixlen for address cannot be parent
+                    WHEN $ip_address_kind in labels(potential_parent[0]) THEN has_more_specific_parent  // address cannot be a parent
+                    WHEN $ip_prefix_attribute_kind IN labels(ips[ind][1]) AND (potential_parent[1]).prefixlen >= (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with same or greater prefixlen for prefix cannot be parent
+                    WHEN $ip_address_attribute_kind IN labels(ips[ind][1]) AND (potential_parent[1]).prefixlen > (ips[ind][1]).prefixlen THEN has_more_specific_parent  // prefix with greater prefixlen for address cannot be parent
                     WHEN (ips[ind][1]).binary_address STARTS WITH SUBSTRING((potential_parent[1]).binary_address, 0, (potential_parent[1]).prefixlen) THEN TRUE  // we found a parent
                     ELSE has_more_specific_parent
                 END
@@ -659,7 +527,9 @@ class IPPrefixReconcileQuery(Query):
             current_children,
             new_parent,
             collect(new_child) as new_children
-        """ % {"branch_filter": branch_filter}
+        """ % {
+            "branch_filter": branch_filter,
+        }
         self.add_to_query(get_new_children_query)
         self.return_labels = ["ip_node", "current_parent", "current_children", "new_parent", "new_children"]
 

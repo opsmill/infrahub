@@ -6,7 +6,7 @@ test.describe("/ipam/addresses - IP Address list", () => {
   }) => {
     await page.goto("/ipam/addresses?ipam-tab=ip-details");
     await expect(page.getByText("Showing 1 to ")).toBeVisible();
-    await page.getByTestId("select-open-option-button").click();
+    await page.getByTestId("ipam-main-content").getByTestId("select-open-option-button").click();
     await page.getByRole("option", { name: "20" }).click();
     await expect(page.getByText("Showing 1 to 20 of ")).toBeVisible();
 
@@ -36,7 +36,7 @@ test.describe("/ipam/addresses - IP Address list", () => {
     });
 
     await test.step("click on any ip address row to view summary", async () => {
-      await page.getByRole("link", { name: "172.20.20.1/24" }).click();
+      await page.getByRole("link", { name: "172.20.20.1/28" }).click();
       await expect(page.getByText("Ipam IP Address summary")).toBeVisible();
       await expect(page.url()).toContain("ipam-tab=ip-details");
     });
@@ -44,6 +44,7 @@ test.describe("/ipam/addresses - IP Address list", () => {
     await test.step("use breadcrumb to go back to parent prefix", async () => {
       await page.getByRole("link", { name: "All IP Addresses" }).click();
       await expect(page.getByText("Showing 1 to ")).toBeVisible();
+      await expect(page.locator("[aria-selected=true]")).toContainText("172.20.20.0/27");
       await expect(page.url()).toContain("/prefixes/");
     });
   });

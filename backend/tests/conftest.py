@@ -150,6 +150,8 @@ def execute_before_any_test(worker_id, tmpdir_factory):
             db_id = 1
 
         config.SETTINGS.cache.address = f"{BUILD_NAME}-cache-{db_id}"
+        if config.SETTINGS.cache.driver == config.CacheDriver.NATS:
+            config.SETTINGS.cache.address = f"{BUILD_NAME}-message-queue-{db_id}"
         config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
         config.SETTINGS.broker.address = f"{BUILD_NAME}-message-queue-{db_id}"
         config.SETTINGS.storage.local = config.FileSystemStorageSettings(path="/opt/infrahub/storage")
@@ -276,8 +278,90 @@ async def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema
 
 
 @pytest.fixture
-async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered) -> None:
-    registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
+async def car_person_schema(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered
+) -> SchemaBranch:
+    return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
+
+
+@pytest.fixture
+async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_schema, data_schema) -> SchemaRoot:
+    schema: dict[str, Any] = {
+        "generics": [
+            {
+                "name": "Animal",
+                "namespace": "Test",
+                "human_friendly_id": ["owner__name__value", "name__value"],
+                "uniqueness_constraints": [
+                    ["owner", "name__value"],
+                ],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text"},
+                ],
+                "relationships": [
+                    {
+                        "name": "owner",
+                        "peer": "TestPerson",
+                        "optional": False,
+                        "identifier": "person__animal",
+                        "cardinality": "one",
+                        "direction": "outbound",
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Dog",
+                "namespace": "Test",
+                "inherit_from": ["TestAnimal"],
+                "display_labels": ["name__value", "breed__value"],
+                "attributes": [
+                    {"name": "breed", "kind": "Text", "optional": False},
+                    {"name": "color", "kind": "Color", "default_value": "#444444", "optional": True},
+                ],
+            },
+            {
+                "name": "Cat",
+                "namespace": "Test",
+                "inherit_from": ["TestAnimal"],
+                "display_labels": ["name__value", "breed__value", "color__value"],
+                "attributes": [
+                    {"name": "breed", "kind": "Text", "optional": False},
+                    {"name": "color", "kind": "Color", "default_value": "#444444", "optional": True},
+                ],
+            },
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "display_labels": ["name__value"],
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "height", "kind": "Number", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "animals",
+                        "peer": "TestAnimal",
+                        "identifier": "person__animal",
+                        "cardinality": "many",
+                        "direction": "inbound",
+                    }
+                ],
+            },
+        ],
+    }
+
+    return SchemaRoot(**schema)
+
+
+@pytest.fixture
+async def animal_person_schema(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema_unregistered
+) -> SchemaBranch:
+    return registry.schema.register_schema(schema=animal_person_schema_unregistered, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -367,7 +451,9 @@ class BusRPCMock(InfrahubMessageBus):
         self.response: List[InfrahubResponse] = []
         self.messages: List[InfrahubMessage] = []
 
-    async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
+    async def publish(
+        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+    ) -> None:
         self.messages.append(message)
 
     def add_mock_reply(self, response: InfrahubResponse):

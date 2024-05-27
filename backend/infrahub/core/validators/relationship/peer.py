@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from infrahub.core import registry
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import GenericSchema
@@ -23,7 +22,7 @@ class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
     name = "relationship_constraints_peer_validator"
 
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
-        peer_schema = registry.schema.get(name=self.relationship_schema.peer, branch=self.branch)
+        peer_schema = db.schema.get(name=self.relationship_schema.peer, branch=self.branch)
         allowed_peer_kinds = [peer_schema.kind]
         if isinstance(peer_schema, GenericSchema):
             allowed_peer_kinds += peer_schema.used_by

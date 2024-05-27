@@ -19,9 +19,9 @@ from .relationship_schema import RelationshipSchema  # noqa: TCH001
 if TYPE_CHECKING:
     from typing_extensions import Self
 
-    from infrahub.core.branch import Branch
     from infrahub.core.constants import RelationshipKind
     from infrahub.core.schema import GenericSchema, NodeSchema
+    from infrahub.core.schema_manager import SchemaBranch
 
 # pylint: disable=redefined-builtin
 
@@ -32,6 +32,18 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-public-methods
     _exclude_from_hash: List[str] = ["attributes", "relationships", "filters"]
     _sort_by: List[str] = ["namespace", "name"]
+
+    @property
+    def is_node_schema(self) -> bool:
+        return False
+
+    @property
+    def is_generic_schema(self) -> bool:
+        return False
+
+    @property
+    def is_profile_schema(self) -> bool:
+        return False
 
     @property
     def kind(self) -> str:
@@ -103,7 +115,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         get_func: Callable,
         get_map_func: Callable,
         obj_type: Union[Type[AttributeSchema], Type[RelationshipSchema], Type[FilterSchema]],
-    ):
+    ) -> HashableModelDiff:
         """The goal of this function is to reduce the amount of code duplicated between Attribute and Relationship to calculate a diff
         The logic is the same for both, except that the functions we are using to access these objects are differents
 
@@ -212,7 +224,13 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         raise ValueError(f"Unable to find the relationship with the ID: {id}")
 
-    def get_filter(self, name, raise_on_error: bool = True) -> FilterSchema:
+    @overload
+    def get_filter(self, name: str, raise_on_error: Literal[True] = True) -> FilterSchema: ...
+
+    @overload
+    def get_filter(self, name: str, raise_on_error: Literal[False] = False) -> Optional[FilterSchema]: ...
+
+    def get_filter(self, name: str, raise_on_error: bool = True) -> Optional[FilterSchema]:
         for item in self.filters:
             if item.name == name:
                 return item
@@ -228,7 +246,15 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
                 return item
         return None
 
-    def get_relationship_by_identifier(self, id: str, raise_on_error: bool = True) -> RelationshipSchema:
+    @overload
+    def get_relationship_by_identifier(self, id: str, raise_on_error: Literal[True] = True) -> RelationshipSchema: ...
+
+    @overload
+    def get_relationship_by_identifier(
+        self, id: str, raise_on_error: Literal[False] = False
+    ) -> Optional[RelationshipSchema]: ...
+
+    def get_relationship_by_identifier(self, id: str, raise_on_error: bool = True) -> Optional[RelationshipSchema]:
         for item in self.relationships:
             if item.identifier == id:
                 return item
@@ -308,26 +334,44 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
     def unique_attributes(self) -> List[AttributeSchema]:
         return [item for item in self.attributes if item.unique]
 
-    def generate_fields_for_display_label(self) -> Dict:
+    @classmethod
+    def convert_path_to_graphql_fields(cls, path: str) -> dict:
+        subpaths = path.split("__", maxsplit=1)
+        fields = {}
+        if len(subpaths) == 1:
+            fields[subpaths[0]] = None
+        elif len(subpaths) == 2:
+            fields[subpaths[0]] = cls.convert_path_to_graphql_fields(path=subpaths[1])
+        return fields
+
+    def generate_fields_for_display_label(self) -> Optional[dict]:
         """Generate a Dictionary containing the list of fields that are required
         to generate the display_label.
 
         If display_labels is not defined, we return None which equal to everything.
         """
 
-        if not hasattr(self, "display_labels") or not isinstance(self.display_labels, list):
+        if not self.display_labels:
             return None
 
         fields: dict[str, Union[str, None, dict[str, None]]] = {}
         for item in self.display_labels:
-            elements = item.split("__")
-            if len(elements) == 1:
-                fields[elements[0]] = None
-            elif len(elements) == 2:
-                fields[elements[0]] = {elements[1]: None}
-            else:
-                raise ValueError(f"Unexpected value for display_labels, {item} is not valid.")
+            fields.update(self.convert_path_to_graphql_fields(path=item))
+        return fields
 
+    def generate_fields_for_hfid(self) -> Optional[dict]:
+        """Generate a Dictionary containing the list of fields that are required
+        to generate the hfid.
+
+        If display_labels is not defined, we return None which equal to everything.
+        """
+
+        if not self.human_friendly_id:
+            return None
+
+        fields: dict[str, Union[str, None, dict[str, None]]] = {}
+        for item in self.human_friendly_id:
+            fields.update(self.convert_path_to_graphql_fields(path=item))
         return fields
 
     @field_validator("name")
@@ -338,18 +382,13 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
 
         return value
 
-    def parse_attribute_path(
-        self,
-        attribute_path: str,
-        branch: Optional[Union[Branch, str]] = None,
-        schema_map_override: Optional[Dict[str, Union[NodeSchema, GenericSchema]]] = None,
-    ) -> SchemaAttributePath:
-        allowed_leaf_properties = ["value", "version", "binary_address"]
+    def parse_schema_path(self, path: str, schema: Optional[SchemaBranch] = None) -> SchemaAttributePath:
         schema_path = SchemaAttributePath()
         relationship_piece: Optional[str] = None
         attribute_piece: Optional[str] = None
         property_piece: Optional[str] = None
-        path_parts = attribute_path.split("__")
+
+        path_parts = path.split("__")
         if path_parts[0] in self.relationship_names:
             relationship_piece = path_parts[0]
             attribute_piece = path_parts[1] if len(path_parts) > 1 else None
@@ -358,34 +397,36 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
             attribute_piece = path_parts[0]
             property_piece = path_parts[1] if len(path_parts) > 1 else None
         else:
-            raise AttributePathParsingError(f"{attribute_path} is invalid on schema {self.kind}")
+            raise AttributePathParsingError(f"{path} is invalid on schema {self.kind}")
+
+        if relationship_piece and not schema:
+            raise AttributePathParsingError("schema must be provided in order to check a path with a relationship")
+
         if relationship_piece:
-            if relationship_piece not in self.relationship_names:
-                raise AttributePathParsingError(f"{relationship_piece} is not a relationship of schema {self.kind}")
-            relationship_schema = self.get_relationship(path_parts[0])
+            relationship_schema = self.get_relationship(name=path_parts[0])
             schema_path.relationship_schema = relationship_schema
-            if schema_map_override:
-                try:
-                    schema_path.related_schema = schema_map_override.get(relationship_schema.peer)
-                except KeyError as exc:
-                    raise AttributePathParsingError(f"No schema {relationship_schema.peer} in map") from exc
-            else:
-                schema_path.related_schema = relationship_schema.get_peer_schema(branch=branch)
+            schema_path.related_schema = schema.get(name=relationship_schema.peer, duplicate=True)
+
         if attribute_piece:
             schema_to_check = schema_path.related_schema or self
             if attribute_piece not in schema_to_check.attribute_names:
                 raise AttributePathParsingError(f"{attribute_piece} is not a valid attribute of {schema_to_check.kind}")
-            schema_path.attribute_schema = schema_to_check.get_attribute(attribute_piece)
-        if property_piece:
-            if property_piece not in allowed_leaf_properties:
-                raise AttributePathParsingError(
-                    f"{property_piece} is not a valid property of {schema_path.attribute_schema.name}"
-                )
-            schema_path.attribute_property_name = property_piece
+            schema_path.attribute_schema = schema_to_check.get_attribute(name=attribute_piece)
+
+            if property_piece:
+                attr_class = schema_path.attribute_schema.get_class()
+                if property_piece not in attr_class.get_allowed_property_in_path():
+                    raise AttributePathParsingError(
+                        f"{property_piece} is not a valid property of {schema_path.attribute_schema.name}"
+                    )
+                schema_path.attribute_property_name = property_piece
+
         return schema_path
 
     def get_unique_constraint_schema_attribute_paths(
-        self, include_unique_attributes: bool = False, branch: Optional[Branch] = None
+        self,
+        schema_branch: SchemaBranch,
+        include_unique_attributes: bool = False,
     ) -> List[List[SchemaAttributePath]]:
         constraint_paths_groups = []
         if include_unique_attributes:
@@ -400,7 +441,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         for uniqueness_path_group in self.uniqueness_constraints:
             constraint_paths_groups.append(
                 [
-                    self.parse_attribute_path(attribute_path=uniqueness_path_part, branch=branch)
+                    self.parse_schema_path(path=uniqueness_path_part, schema=schema_branch)
                     for uniqueness_path_part in uniqueness_path_group
                 ]
             )
@@ -413,6 +454,18 @@ class SchemaAttributePath:
     related_schema: Optional[Union[NodeSchema, GenericSchema]] = None
     attribute_schema: Optional[AttributeSchema] = None
     attribute_property_name: Optional[str] = None
+
+    @property
+    def is_type_attribute(self) -> bool:
+        return bool(self.attribute_schema and not self.related_schema and not self.relationship_schema)
+
+    @property
+    def is_type_relationship(self) -> bool:
+        return bool(self.relationship_schema and self.related_schema)
+
+    @property
+    def has_property(self) -> bool:
+        return bool(self.attribute_property_name)
 
 
 @dataclass

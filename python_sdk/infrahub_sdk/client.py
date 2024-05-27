@@ -3,8 +3,9 @@ from __future__ import annotations
 import asyncio
 import copy
 import logging
+from functools import wraps
 from time import sleep
-from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
 
 import httpx
 import ujson
@@ -40,7 +41,7 @@ from infrahub_sdk.schema import InfrahubSchema, InfrahubSchemaSync, NodeSchema
 from infrahub_sdk.store import NodeStore, NodeStoreSync
 from infrahub_sdk.timestamp import Timestamp
 from infrahub_sdk.types import AsyncRequester, HTTPMethod, SyncRequester
-from infrahub_sdk.utils import is_valid_uuid
+from infrahub_sdk.utils import decode_json, is_valid_uuid
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -84,6 +85,34 @@ class ProcessRelationsNode(TypedDict):
 class ProcessRelationsNodeSync(TypedDict):
     nodes: List[InfrahubNodeSync]
     related_nodes: List[InfrahubNodeSync]
+
+
+def handle_relogin(func: Callable[..., Coroutine[Any, Any, httpx.Response]]):  # type: ignore[no-untyped-def]
+    @wraps(func)
+    async def wrapper(client: InfrahubClient, *args: Any, **kwargs: Any) -> httpx.Response:
+        response = await func(client, *args, **kwargs)
+        if response.status_code == 401:
+            errors = response.json().get("errors", [])
+            if "Expired Signature" in [error.get("message") for error in errors]:
+                await client.login(refresh=True)
+                return await func(client, *args, **kwargs)
+        return response
+
+    return wrapper
+
+
+def handle_relogin_sync(func: Callable[..., httpx.Response]):  # type: ignore[no-untyped-def]
+    @wraps(func)
+    def wrapper(client: InfrahubClientSync, *args: Any, **kwargs: Any) -> httpx.Response:
+        response = func(client, *args, **kwargs)
+        if response.status_code == 401:
+            errors = response.json().get("errors", [])
+            if "Expired Signature" in [error.get("message") for error in errors]:
+                client.login(refresh=True)
+                return func(client, *args, **kwargs)
+        return response
+
+    return wrapper
 
 
 class BaseClient:
@@ -185,6 +214,69 @@ class BaseClient:
             url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
         return url
+
+    def _build_ip_address_allocation_query(
+        self, resource_pool_id: str, identifier: Optional[str] = None, data: Optional[Dict[str, Any]] = None
+    ) -> str:
+        mutation_definition = "mutation AllocateIPAddress"
+        mutation_parameters = f'id: "{resource_pool_id}"'
+        if identifier:
+            mutation_parameters += f', identifier: "{identifier}"'
+        if data:
+            mutation_definition += "($data: GenericScalar)"
+            mutation_parameters += ", data: $data"
+
+        return """
+            %s {
+                IPAddressPoolGetResource(data: {
+                    %s
+                }) {
+                    ok
+                    node {
+                        id
+                        kind
+                        identifier
+                        display_label
+                    }
+                }
+            }
+        """ % (mutation_definition, mutation_parameters)
+
+    def _build_ip_prefix_allocation_query(
+        self,
+        resource_pool_id: str,
+        identifier: Optional[str] = None,
+        prefix_length: Optional[int] = None,
+        member_type: Optional[str] = None,
+        data: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        mutation_definition = "mutation AllocateIPPrefix"
+        mutation_parameters = f'id: "{resource_pool_id}"'
+        if identifier:
+            mutation_parameters += f', identifier: "{identifier}"'
+        if prefix_length:
+            mutation_parameters += f", prefix_length: {prefix_length}"
+        if member_type:
+            mutation_parameters += f', member_type: "{member_type}"'
+        if data:
+            mutation_definition += "($data: GenericScalar)"
+            mutation_parameters += ", data: $data"
+
+        return """
+            %s {
+                IPPrefixPoolGetResource(data: {
+                    %s
+                }) {
+                    ok
+                    node {
+                        id
+                        kind
+                        identifier
+                        display_label
+                    }
+                }
+            }
+        """ % (mutation_definition, mutation_parameters)
 
 
 class InfrahubClient(BaseClient):
@@ -362,6 +454,7 @@ class InfrahubClient(BaseClient):
         exclude: Optional[List[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
+        partial_match: bool = False,
         **kwargs: Any,
     ) -> List[InfrahubNode]:
         """Retrieve nodes of a given kind based on provided filters.
@@ -377,6 +470,7 @@ class InfrahubClient(BaseClient):
             exclude (List[str], optional): List of attributes or relationships to exclude from the query.
             fragment (bool, optional): Flag to use GraphQL fragments for generic schemas.
             prefetch_relationships (bool, optional): Flag to indicate whether to prefetch related node data.
+            partial_match (bool, optional): Allow partial match of filter criteria for the query.
             **kwargs (Any): Additional filter criteria for the query.
 
         Returns:
@@ -411,6 +505,7 @@ class InfrahubClient(BaseClient):
                 exclude=exclude,
                 fragment=fragment,
                 prefetch_relationships=prefetch_relationships,
+                partial_match=partial_match,
             )
             query = Query(query=query_data)
             response = await self.execute_graphql(
@@ -508,15 +603,15 @@ class InfrahubClient(BaseClient):
                     raise
             except httpx.HTTPStatusError as exc:
                 if exc.response.status_code in [401, 403]:
-                    response = exc.response.json()
-                    errors = response.get("errors")
+                    response = decode_json(response=exc.response, url=url)
+                    errors = response.get("errors", [])
                     messages = [error.get("message") for error in errors]
                     raise AuthenticationError(" | ".join(messages)) from exc
 
         if not resp:
             raise Error("Unexpected situation, resp hasn't been initialized.")
 
-        response = resp.json()
+        response = decode_json(response=resp, url=url)
 
         if "errors" in response:
             raise GraphQLError(errors=response["errors"], query=query, variables=variables)
@@ -525,6 +620,7 @@ class InfrahubClient(BaseClient):
 
         # TODO add a special method to execute mutation that will check if the method returned OK
 
+    @handle_relogin
     async def _post(
         self,
         url: str,
@@ -539,17 +635,16 @@ class InfrahubClient(BaseClient):
             ServerNotResponsiveError if the server didn't respond before the timeout expired
         """
         await self.login()
+
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
+
         return await self._request(
-            url=url,
-            method=HTTPMethod.POST,
-            headers=headers,
-            timeout=timeout or self.default_timeout,
-            payload=payload,
+            url=url, method=HTTPMethod.POST, headers=headers, timeout=timeout or self.default_timeout, payload=payload
         )
 
+    @handle_relogin
     async def _get(self, url: str, headers: Optional[dict] = None, timeout: Optional[int] = None) -> httpx.Response:
         """Execute a HTTP GET with HTTPX.
 
@@ -558,14 +653,13 @@ class InfrahubClient(BaseClient):
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         await self.login()
+
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
+
         return await self._request(
-            url=url,
-            method=HTTPMethod.GET,
-            headers=headers,
-            timeout=timeout or self.default_timeout,
+            url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout
         )
 
     async def _request(
@@ -601,7 +695,10 @@ class InfrahubClient(BaseClient):
                 for key, value in self.config.proxy_mounts.dict(by_alias=True).items()
             }
 
-        async with httpx.AsyncClient(**proxy_config) as client:  # type: ignore[arg-type]
+        async with httpx.AsyncClient(
+            **proxy_config,  # type: ignore[arg-type]
+            verify=self.config.tls_ca_file if self.config.tls_ca_file else not self.config.tls_insecure,
+        ) as client:
             try:
                 response = await client.request(
                     method=method.value,
@@ -617,6 +714,23 @@ class InfrahubClient(BaseClient):
 
         return response
 
+    async def refresh_login(self) -> None:
+        if not self.refresh_token:
+            return
+
+        url = f"{self.address}/api/auth/refresh"
+        response = await self._request(
+            url=url,
+            method=HTTPMethod.POST,
+            headers={"content-type": "application/json", "Authorization": f"Bearer {self.refresh_token}"},
+            timeout=self.default_timeout,
+        )
+
+        response.raise_for_status()
+        data = decode_json(response=response, url=url)
+        self.access_token = data["access_token"]
+        self.headers["Authorization"] = f"Bearer {self.access_token}"
+
     async def login(self, refresh: bool = False) -> None:
         if not self.config.password_authentication:
             return
@@ -624,21 +738,32 @@ class InfrahubClient(BaseClient):
         if self.access_token and not refresh:
             return
 
+        if self.refresh_token and refresh:
+            try:
+                await self.refresh_login()
+                return
+            except httpx.HTTPStatusError as exc:
+                # If we got a 401 while trying to refresh a token we must restart the authentication process
+                # Other status codes indicate other errors
+                if exc.response.status_code != 401:
+                    response = exc.response.json()
+                    errors = response.get("errors")
+                    messages = [error.get("message") for error in errors]
+                    raise AuthenticationError(" | ".join(messages)) from exc
+
         url = f"{self.address}/api/auth/login"
         response = await self._request(
             url=url,
             method=HTTPMethod.POST,
-            payload={
-                "username": self.config.username,
-                "password": self.config.password,
-            },
+            payload={"username": self.config.username, "password": self.config.password},
             headers={"content-type": "application/json"},
             timeout=self.default_timeout,
         )
 
         response.raise_for_status()
-        self.access_token = response.json()["access_token"]
-        self.refresh_token = response.json()["refresh_token"]
+        data = decode_json(response=response, url=url)
+        self.access_token = data["access_token"]
+        self.refresh_token = data["refresh_token"]
         self.headers["Authorization"] = f"Bearer {self.access_token}"
 
     async def query_gql_query(
@@ -696,7 +821,7 @@ class InfrahubClient(BaseClient):
         if raise_for_error:
             resp.raise_for_status()
 
-        return resp.json()
+        return decode_json(response=resp, url=url)
 
     async def get_diff_summary(
         self,
@@ -740,6 +865,106 @@ class InfrahubClient(BaseClient):
             query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
         )
         return response["DiffSummary"]
+
+    async def allocate_next_ip_address(
+        self,
+        resource_pool: InfrahubNode,
+        identifier: Optional[str] = None,
+        data: Optional[Dict[str, Any]] = None,
+        branch: Optional[str] = None,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> Optional[InfrahubNode]:
+        """Allocate a new IP address by using the provided resource pool.
+
+        Args:
+            resource_pool (InfrahubNode): Node corresponding to the pool to allocate resources from.
+            identifier (str, optional): Value to perform idempotent allocation, the same resource will be returned for a given identifier.
+            data (dict, optional): A key/value map to use to set attributes values on the allocated address.
+            branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
+            timeout (int, optional): Flag to indicate whether to populate the store with the retrieved nodes.
+            tracker (str, optional): The offset for pagination.
+            raise_for_error (bool, optional): The limit for pagination.
+        Returns:
+            InfrahubNode: Node corresponding to the allocated resource.
+        """
+        if resource_pool.get_kind() != "CoreIPAddressPool":
+            raise ValueError("resource_pool is not an IP address pool")
+
+        branch = branch or self.default_branch
+        mutation_name = "IPAddressPoolGetResource"
+
+        query = self._build_ip_address_allocation_query(
+            resource_pool_id=resource_pool.id, identifier=identifier, data=data
+        )
+        response = await self.execute_graphql(
+            query=query,
+            branch_name=branch,
+            timeout=timeout,
+            tracker=tracker,
+            raise_for_error=raise_for_error,
+            variables={"data": data},
+        )
+
+        if response[mutation_name]["ok"]:
+            resource_details = response[mutation_name]["node"]
+            return await self.get(kind=resource_details["kind"], id=resource_details["id"], branch=branch)
+        return None
+
+    async def allocate_next_ip_prefix(
+        self,
+        resource_pool: InfrahubNode,
+        identifier: Optional[str] = None,
+        prefix_length: Optional[int] = None,
+        member_type: Optional[str] = None,
+        data: Optional[Dict[str, Any]] = None,
+        branch: Optional[str] = None,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> Optional[InfrahubNode]:
+        """Allocate a new IP prefix by using the provided resource pool.
+
+        Args:
+            resource_pool (InfrahubNode): Node corresponding to the pool to allocate resources from.
+            identifier (str, optional): Value to perform idempotent allocation, the same resource will be returned for a given identifier.
+            prefix_length (int, optional): Length of the prefix to allocate.
+            member_type (str, optional): Member type of the prefix to allocate.
+            data (dict, optional): A key/value map to use to set attributes values on the allocated prefix.
+            branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
+            timeout (int, optional): Flag to indicate whether to populate the store with the retrieved nodes.
+            tracker (str, optional): The offset for pagination.
+            raise_for_error (bool, optional): The limit for pagination.
+        Returns:
+            InfrahubNode: Node corresponding to the allocated resource.
+        """
+        if resource_pool.get_kind() != "CoreIPPrefixPool":
+            raise ValueError("resource_pool is not an IP prefix pool")
+
+        branch = branch or self.default_branch
+        mutation_name = "IPPrefixPoolGetResource"
+
+        query = self._build_ip_prefix_allocation_query(
+            resource_pool_id=resource_pool.id,
+            identifier=identifier,
+            prefix_length=prefix_length,
+            member_type=member_type,
+            data=data,
+        )
+        response = await self.execute_graphql(
+            query=query,
+            branch_name=branch,
+            timeout=timeout,
+            tracker=tracker,
+            raise_for_error=raise_for_error,
+            variables={"data": data},
+        )
+
+        if response[mutation_name]["ok"]:
+            resource_details = response[mutation_name]["node"]
+            return await self.get(kind=resource_details["kind"], id=resource_details["id"], branch=branch)
+        return None
 
     async def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:
         return InfrahubBatch(semaphore=self.concurrent_execution_limit, return_exceptions=return_exceptions)
@@ -871,17 +1096,17 @@ class InfrahubClientSync(BaseClient):
         If retry_on_failure is True, the query will retry until the server becomes reacheable.
 
         Args:
-            query (_type_): GraphQL Query to execute, can be a query or a mutation
+            query (str): GraphQL Query to execute, can be a query or a mutation
             variables (dict, optional): Variables to pass along with the GraphQL query. Defaults to None.
             branch_name (str, optional): Name of the branch on which the query will be executed. Defaults to None.
             at (str, optional): Time when the query should be executed. Defaults to None.
             timeout (int, optional): Timeout in second for the query. Defaults to None.
             raise_for_error (bool, optional): Flag to indicate that we need to raise an exception if the response has some errors. Defaults to True.
         Raises:
-            GraphQLError: _description_
+            GraphQLError: When an error occurs during the execution of the GraphQL query or mutation.
 
         Returns:
-            _type_: _description_
+            dict: The result of the GraphQL query or mutation.
         """
 
         url = self._graphql_url(branch_name=branch_name, at=at)
@@ -918,15 +1143,15 @@ class InfrahubClientSync(BaseClient):
                     raise
             except httpx.HTTPStatusError as exc:
                 if exc.response.status_code in [401, 403]:
-                    response = exc.response.json()
-                    errors = response.get("errors")
+                    response = decode_json(response=exc.response, url=url)
+                    errors = response.get("errors", [])
                     messages = [error.get("message") for error in errors]
                     raise AuthenticationError(" | ".join(messages)) from exc
 
         if not resp:
             raise Error("Unexpected situation, resp hasn't been initialized.")
 
-        response = resp.json()
+        response = decode_json(response=resp, url=url)
 
         if "errors" in response:
             raise GraphQLError(errors=response["errors"], query=query, variables=variables)
@@ -1019,6 +1244,7 @@ class InfrahubClientSync(BaseClient):
         exclude: Optional[List[str]] = None,
         fragment: bool = False,
         prefetch_relationships: bool = False,
+        partial_match: bool = False,
         **kwargs: Any,
     ) -> List[InfrahubNodeSync]:
         """Retrieve nodes of a given kind based on provided filters.
@@ -1034,6 +1260,7 @@ class InfrahubClientSync(BaseClient):
             exclude (List[str], optional): List of attributes or relationships to exclude from the query.
             fragment (bool, optional): Flag to use GraphQL fragments for generic schemas.
             prefetch_relationships (bool, optional): Flag to indicate whether to prefetch related node data.
+            partial_match (bool, optional): Allow partial match of filter criteria for the query.
             **kwargs (Any): Additional filter criteria for the query.
 
         Returns:
@@ -1068,6 +1295,7 @@ class InfrahubClientSync(BaseClient):
                 exclude=exclude,
                 fragment=fragment,
                 prefetch_relationships=prefetch_relationships,
+                partial_match=partial_match,
             )
             query = Query(query=query_data)
             response = self.execute_graphql(
@@ -1208,7 +1436,7 @@ class InfrahubClientSync(BaseClient):
         if raise_for_error:
             resp.raise_for_status()
 
-        return resp.json()
+        return decode_json(response=resp, url=url)
 
     def get_diff_summary(
         self,
@@ -1253,6 +1481,106 @@ class InfrahubClientSync(BaseClient):
         )
         return response["DiffSummary"]
 
+    def allocate_next_ip_address(
+        self,
+        resource_pool: InfrahubNodeSync,
+        identifier: Optional[str] = None,
+        data: Optional[Dict[str, Any]] = None,
+        branch: Optional[str] = None,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> Optional[InfrahubNodeSync]:
+        """Allocate a new IP address by using the provided resource pool.
+
+        Args:
+            resource_pool (InfrahubNodeSync): Node corresponding to the pool to allocate resources from.
+            identifier (str, optional): Value to perform idempotent allocation, the same resource will be returned for a given identifier.
+            data (dict, optional): A key/value map to use to set attributes values on the allocated address.
+            branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
+            timeout (int, optional): Flag to indicate whether to populate the store with the retrieved nodes.
+            tracker (str, optional): The offset for pagination.
+            raise_for_error (bool, optional): The limit for pagination.
+        Returns:
+            InfrahubNodeSync: Node corresponding to the allocated resource.
+        """
+        if resource_pool.get_kind() != "CoreIPAddressPool":
+            raise ValueError("resource_pool is not an IP address pool")
+
+        branch = branch or self.default_branch
+        mutation_name = "IPAddressPoolGetResource"
+
+        query = self._build_ip_address_allocation_query(
+            resource_pool_id=resource_pool.id, identifier=identifier, data=data
+        )
+        response = self.execute_graphql(
+            query=query,
+            branch_name=branch,
+            timeout=timeout,
+            tracker=tracker,
+            raise_for_error=raise_for_error,
+            variables={"data": data},
+        )
+
+        if response[mutation_name]["ok"]:
+            resource_details = response[mutation_name]["node"]
+            return self.get(kind=resource_details["kind"], id=resource_details["id"], branch=branch)
+        return None
+
+    def allocate_next_ip_prefix(
+        self,
+        resource_pool: InfrahubNodeSync,
+        identifier: Optional[str] = None,
+        prefix_length: Optional[int] = None,
+        member_type: Optional[str] = None,
+        data: Optional[Dict[str, Any]] = None,
+        branch: Optional[str] = None,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> Optional[InfrahubNodeSync]:
+        """Allocate a new IP prefix by using the provided resource pool.
+
+        Args:
+            resource_pool (InfrahubNodeSync): Node corresponding to the pool to allocate resources from.
+            identifier (str, optional): Value to perform idempotent allocation, the same resource will be returned for a given identifier.
+            prefix_length (int, optional): Length of the prefix to allocate.
+            member_type (str, optional): Member type of the prefix to allocate.
+            data (dict, optional): A key/value map to use to set attributes values on the allocated prefix.
+            branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
+            timeout (int, optional): Flag to indicate whether to populate the store with the retrieved nodes.
+            tracker (str, optional): The offset for pagination.
+            raise_for_error (bool, optional): The limit for pagination.
+        Returns:
+            InfrahubNodeSync: Node corresponding to the allocated resource.
+        """
+        if resource_pool.get_kind() != "CoreIPPrefixPool":
+            raise ValueError("resource_pool is not an IP prefix pool")
+
+        branch = branch or self.default_branch
+        mutation_name = "IPPrefixPoolGetResource"
+
+        query = self._build_ip_prefix_allocation_query(
+            resource_pool_id=resource_pool.id,
+            identifier=identifier,
+            prefix_length=prefix_length,
+            member_type=member_type,
+            data=data,
+        )
+        response = self.execute_graphql(
+            query=query,
+            branch_name=branch,
+            timeout=timeout,
+            tracker=tracker,
+            raise_for_error=raise_for_error,
+            variables={"data": data},
+        )
+
+        if response[mutation_name]["ok"]:
+            resource_details = response[mutation_name]["node"]
+            return self.get(kind=resource_details["kind"], id=resource_details["id"], branch=branch)
+        return None
+
     def repository_update_commit(
         self, branch_name: str, repository_id: str, commit: str, is_read_only: bool = False
     ) -> bool:
@@ -1260,6 +1588,7 @@ class InfrahubClientSync(BaseClient):
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )
 
+    @handle_relogin_sync
     def _get(self, url: str, headers: Optional[dict] = None, timeout: Optional[int] = None) -> httpx.Response:
         """Execute a HTTP GET with HTTPX.
 
@@ -1268,16 +1597,14 @@ class InfrahubClientSync(BaseClient):
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         self.login()
+
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
-        return self._request(
-            url=url,
-            method=HTTPMethod.GET,
-            headers=headers,
-            timeout=timeout or self.default_timeout,
-        )
 
+        return self._request(url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout)
+
+    @handle_relogin_sync
     def _post(
         self,
         url: str,
@@ -1292,16 +1619,13 @@ class InfrahubClientSync(BaseClient):
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
         self.login()
+
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
 
         return self._request(
-            url=url,
-            method=HTTPMethod.POST,
-            payload=payload,
-            headers=headers,
-            timeout=timeout or self.default_timeout,
+            url=url, method=HTTPMethod.POST, payload=payload, headers=headers, timeout=timeout or self.default_timeout
         )
 
     def _request(
@@ -1337,7 +1661,10 @@ class InfrahubClientSync(BaseClient):
                 for key, value in self.config.proxy_mounts.dict(by_alias=True).items()
             }
 
-        with httpx.Client(**proxy_config) as client:  # type: ignore[arg-type]
+        with httpx.Client(
+            **proxy_config,  # type: ignore[arg-type]
+            verify=self.config.tls_ca_file if self.config.tls_ca_file else not self.config.tls_insecure,
+        ) as client:
             try:
                 response = client.request(
                     method=method.value,
@@ -1353,6 +1680,23 @@ class InfrahubClientSync(BaseClient):
 
         return response
 
+    def refresh_login(self) -> None:
+        if not self.refresh_token:
+            return
+
+        url = f"{self.address}/api/auth/refresh"
+        response = self._request(
+            url=url,
+            method=HTTPMethod.POST,
+            headers={"content-type": "application/json", "Authorization": f"Bearer {self.refresh_token}"},
+            timeout=self.default_timeout,
+        )
+
+        response.raise_for_status()
+        data = decode_json(response=response, url=url)
+        self.access_token = data["access_token"]
+        self.headers["Authorization"] = f"Bearer {self.access_token}"
+
     def login(self, refresh: bool = False) -> None:
         if not self.config.password_authentication:
             return
@@ -1360,21 +1704,32 @@ class InfrahubClientSync(BaseClient):
         if self.access_token and not refresh:
             return
 
+        if self.refresh_token and refresh:
+            try:
+                self.refresh_login()
+                return
+            except httpx.HTTPStatusError as exc:
+                # If we got a 401 while trying to refresh a token we must restart the authentication process
+                # Other status codes indicate other errors
+                if exc.response.status_code != 401:
+                    response = exc.response.json()
+                    errors = response.get("errors")
+                    messages = [error.get("message") for error in errors]
+                    raise AuthenticationError(" | ".join(messages)) from exc
+
         url = f"{self.address}/api/auth/login"
         response = self._request(
             url=url,
             method=HTTPMethod.POST,
-            payload={
-                "username": self.config.username,
-                "password": self.config.password,
-            },
+            payload={"username": self.config.username, "password": self.config.password},
             headers={"content-type": "application/json"},
             timeout=self.default_timeout,
         )
 
         response.raise_for_status()
-        self.access_token = response.json()["access_token"]
-        self.refresh_token = response.json()["refresh_token"]
+        data = decode_json(response=response, url=url)
+        self.access_token = data["access_token"]
+        self.refresh_token = data["refresh_token"]
         self.headers["Authorization"] = f"Bearer {self.access_token}"
 
     def __enter__(self) -> Self:

@@ -35,16 +35,20 @@ export const kbdKeysLabelMap: Record<KbdKey, string> = {
 
 export interface KbdProps extends HTMLAttributes<HTMLElement> {
   keys?: KbdKey | KbdKey[];
+  keyClassName?: string;
 }
 
 const Kbd = forwardRef<HTMLElement, KbdProps>((props, ref) => {
-  const { children, keys, className } = props;
+  const { children, keys, keyClassName, className } = props;
 
   const keysToRender = typeof keys === "string" ? [keys] : Array.isArray(keys) ? keys : [];
 
   const keysContent = useMemo(() => {
     return keysToRender.map((key) => (
-      <abbr key={key} title={kbdKeysLabelMap[key]} className="no-underline">
+      <abbr
+        key={key}
+        title={kbdKeysLabelMap[key]}
+        className={classNames("no-underline", keyClassName)}>
         {kbdKeysMap[key]}
       </abbr>
     ));

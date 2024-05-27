@@ -33,11 +33,11 @@ import {
   getSchemaObjectColumns,
   getTabs,
 } from "../../utils/getSchemaObjectColumns";
-import ErrorScreen from "../error-screen/error-screen";
+import ErrorScreen from "../errors/error-screen";
+import NoDataFound from "../errors/no-data-found";
 import AddObjectToGroup from "../groups/add-object-to-group";
 import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
-import NoDataFound from "../no-data-found/no-data-found";
 import RelationshipDetails from "../object-item-details/relationship-details-paginated";
 import { RelationshipsDetails } from "../object-item-details/relationships-details-paginated";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";

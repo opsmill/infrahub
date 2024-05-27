@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import pydantic
-from graphene import Boolean, Field, InputObjectType, List, Mutation, String
+from graphene import Boolean, Field, InputField, InputObjectType, List, Mutation, String
 from infrahub_sdk.utils import extract_fields, extract_fields_first_node
 from opentelemetry import trace
 from typing_extensions import Self
@@ -44,7 +44,7 @@ class BranchCreateInput(InputObjectType):
     origin_branch = String(required=False)
     branched_from = String(required=False)
     sync_with_git = Boolean(required=False)
-    is_isolated = Boolean(required=False)
+    is_isolated = InputField(Boolean(required=False), deprecation_reason="Non isolated mode is not supported anymore")
 
 
 class BranchCreate(Mutation):
@@ -71,8 +71,12 @@ class BranchCreate(Mutation):
             except BranchNotFoundError:
                 pass
 
+            data_dict: dict[str, Any] = dict(data)
+            if "is_isolated" in data_dict:
+                del data_dict["is_isolated"]
+
             try:
-                obj = Branch(**data)
+                obj = Branch(**data_dict)
             except pydantic.ValidationError as exc:
                 error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
                 raise ValueError("\n".join(error_msgs)) from exc
@@ -115,7 +119,7 @@ class BranchNameInput(InputObjectType):
 class BranchUpdateInput(InputObjectType):
     name = String(required=True)
     description = String(required=False)
-    is_isolated = Boolean(required=False)
+    is_isolated = InputField(Boolean(required=False), deprecation_reason="Non isolated mode is not supported anymore")
 
 
 class BranchDelete(Mutation):
@@ -160,17 +164,7 @@ class BranchUpdate(Mutation):
 
         obj = await Branch.get_by_name(db=context.db, name=data["name"])
 
-        if (
-            obj.is_isolated is True
-            and "is_isolated" in data
-            and data["is_isolated"] is False
-            and obj.has_schema_changes
-        ):
-            raise ValueError(
-                f"Unsupported: Can't convert {obj.name} to non-isolated mode because it currently has some schema changes."
-            )
-
-        to_extract = ["description", "is_isolated"]
+        to_extract = ["description"]
         for field_name in to_extract:
             if field_name in data and data.get(field_name) is not None:
                 setattr(obj, field_name, data[field_name])

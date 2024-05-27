@@ -60,7 +60,6 @@ async def list_branch(
     table.add_column("Origin Branch")
     table.add_column("Branched From")
     table.add_column("Sync with Git")
-    table.add_column("Is Isolated")
     table.add_column("Has Schema Changes")
     table.add_column("Is Default")
 
@@ -72,7 +71,6 @@ async def list_branch(
         default_branch.origin_branch,
         f"{default_branch.branched_from} ({calculate_time_diff(default_branch.branched_from)})",
         "[green]True" if default_branch.sync_with_git else "[#FF7F50]False",
-        "[green]True" if default_branch.is_isolated else "[#FF7F50]False",
         "[green]True" if default_branch.has_schema_changes else "[#FF7F50]False",
         "[green]True" if default_branch.is_default else "[#FF7F50]False",
     )
@@ -87,7 +85,6 @@ async def list_branch(
             branch.origin_branch,
             f"{branch.branched_from} ({calculate_time_diff(branch.branched_from)})",
             "[green]True" if branch.sync_with_git else "[#FF7F50]False",
-            "[green]True" if default_branch.is_isolated else "[#FF7F50]False",
             "[green]True" if default_branch.has_schema_changes else "[#FF7F50]False",
             "[green]True" if branch.is_default else "[#FF7F50]False",
         )
@@ -102,7 +99,7 @@ async def create(
     sync_with_git: bool = typer.Option(
         False, help="Extend the branch to Git and have Infrahub create the branch in connected repositories."
     ),
-    isolated: bool = typer.Option(False, help="Set the branch to isolated mode"),
+    isolated: bool = typer.Option(True, hidden=True, help="Set the branch to isolated mode (deprecated)"),  # pylint: disable=unused-argument
     _: str = CONFIG_PARAM,
 ) -> None:
     """Create a new branch."""
@@ -115,7 +112,7 @@ async def create(
 
     try:
         branch = await client.branch.create(
-            branch_name=branch_name, description=description, sync_with_git=sync_with_git, is_isolated=isolated
+            branch_name=branch_name, description=description, sync_with_git=sync_with_git
         )
     except GraphQLError as exc:
         print_graphql_errors(console, exc.errors)

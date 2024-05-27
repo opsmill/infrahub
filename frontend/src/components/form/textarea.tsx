@@ -1,6 +1,7 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { FormFieldError } from "../../screens/edit-form-hook/form";
 import { classNames } from "../../utils/common";
+import { QuestionMark } from "../display/question-mark";
 import { TextareaWithEditor } from "../inputs/textarea-with-editor";
 
 type OpsInputProps = {
@@ -9,6 +10,7 @@ type OpsInputProps = {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  description?: string;
   error?: FormFieldError;
   isProtected?: boolean;
   isOptional?: boolean;
@@ -22,6 +24,7 @@ export const OpsTextarea = (props: OpsInputProps) => {
     placeholder,
     value,
     label,
+    description,
     error,
     isProtected,
     isOptional,
@@ -35,11 +38,12 @@ export const OpsTextarea = (props: OpsInputProps) => {
           {label} {isOptional ? "" : "*"}
         </label>
         <div className="ml-2"> {isProtected ? <LockClosedIcon className="w-4 h-4" /> : null} </div>
+        <QuestionMark message={description} />
       </div>
 
       <TextareaWithEditor
         onChange={onChange}
-        value={value ?? ""}
+        defaultValue={value ?? ""}
         placeholder={placeholder}
         className={classNames(className ?? "")}
         error={error}

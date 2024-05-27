@@ -11,11 +11,16 @@ scope:
   - heading.h6
 match: $sentence
 exceptions:
+  - Alpha
+  - Ansible
   - API
   - Attributes
+  - Beta
+  - BGP
   - CI
   - Codespaces
   - CoreArtifactTarget
+  - CoreRepository
   - Docker Compose
   - E2E
   - Generics
@@ -32,15 +37,20 @@ exceptions:
   - IP
   - IPAM
   - JavaScript
+  - JetStream
   - Jinja
   - Jinja2
   - Namespace
+  - NATS
   - Node
   - Python
+  - RabbitMQ
   - REST
   - RFile
   - SDK
+  - TLS
   - TransformPython
   - Vale
   - VS Code
   - VS Code extensions
+  - WebUI

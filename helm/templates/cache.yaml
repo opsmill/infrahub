@@ -22,6 +22,11 @@ spec:
         - env:
             - name: KUBERNETES_CLUSTER_DOMAIN
               value: {{ .Values.global.kubernetesClusterDomain }}
+          {{- with .Values.cache.cache.envFromExistingSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ . }}
+          {{- end }}
           image: {{ .Values.cache.cache.image.repository }}:{{ .Values.cache.cache.image.tag }}
           imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.cache.cache.imagePullPolicy }}
           livenessProbe:

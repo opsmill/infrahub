@@ -1,8 +1,8 @@
 ---
-title: Immutability and Version Control
+title: Immutability and version control
 ---
 
-# Immutability and Version Control
+# Immutability and version control
 
 Infrahub integrate an immutable database with native support for version control that was designed with Infrastructure Management in mind.
 
@@ -24,40 +24,24 @@ Infrahub guarantee the immutability of the default branch by default (`main`)
 
 It's possible to query a previous version of the database by providing a specific timestamp either via the UI, via GraphQL or via the REST API
 
-## Version Control
+## Version control
 
-The implementation of Version Control in Infrahub is inspired by Git but also different in several ways
+The implementation of version control in Infrahub is inspired by Git but also different in several ways
 
 A branch provide a safe environment to prepare and validate a change before integrating it into the default branch by opening a [Proposed Change](/topics/proposed-change).
 
 Branches are meant to be short lived, from a few seconds to a few weeks, and are hierarchical by nature which means that a branch can only be merged into the branch it was created from.
 
 > Currently only a single level of hierarchy is supported, meaning that all branches must be created from the default branch and be merged into the default branch.
-<!-- vale off -->
-### Sync and Isolated mode
-<!-- vale on -->
-Unlike Git, by default, a branch in Infrahub will automatically stay in sync with the default branch, unless the branch is currently in isolated mode.
-A branch in isolated mode will have a similar behavior as branches in Git and a rebase will be required to integrate the latest changes from the default branch.
 
-:::info Branch Isolation & Git Rebase
-
-In Git, Branches are isolated by default and a rebase is required for a branch to stay in sync with the main branch.
-This behavior works well when we need to prepare a big change and we want to have full control about the changes that gets in but in most cases
-it present a risk of having the working branch out-of-sync with the main branches.
-
-:::
-
-### Create a Branch
+### Create a branch
 
 Branches in Infrahub are designed to be lightweight, while the recommendation is to keep the lifespan of a branch short, it's possible to have 10s of branches open at the same time.
-When creating a branch it's possible to provide a description as well as these options:
-
-- **Data Only**: When a branch is flagged as **Data Only** it won't be extended to the Read-Write Repositories. By opposition, if a branch isn't **Data Only** it will be automatically created in all the Read-Write repositories.
-- **Isolated Mode**: When operating in isolated mode, the branch won't automatically keep in sync with the main branch.
+When creating a branch it's possible to provide a description and define if the branch should be **Data Only** or not. When a branch is flagged as **Data Only** it won't be extended to the Read-Write Repositories. By opposition, if a branch isn't **Data Only** it will be automatically created in all the Read-Write repositories.
 
 Branch names are fairly permissive, but must conform to git ref format. For example, slashes (/) are allowed, tildes (~) are not.
 
-A branch can be created via the UI, via GraphQL, via `infrahubctl` or simply by pushing a new branch to a managed Git repository.
+A branch can be created via the UI, via GraphQL, via `infrahubctl` or by pushing a new branch to a managed Git repository.
 
 :::info
 
@@ -104,7 +88,7 @@ Creating a branch won't create a copy of the database, only the changes applied 
 
 </details>
 
-### Changes between Branches
+### Changes between branches
 
 To view all the changes in a branch
 
@@ -124,7 +108,7 @@ Check the [Branch Support section in the Schema documentation](/topics/schema#br
 
 :::
 
-### Merge a Branch
+### Merge a branch
 
 During a merge operation, only the latest modified values in the branch will be applied to the destination branch and the history of the branch won't be carried over to the main branch.
 This behavior is required to guarantee the immutability of the default branch.
@@ -140,17 +124,17 @@ Using a Proposed Change to merge a branch is recommended to guarantee that all c
 
 :::
 
-### Rebase a Branch
+### Rebase a branch
 
-If a branch operates in isolated mode or if it has some conflicts with the default branch, it's possible to rebase it with the latest version of the default branch.
-Similar to the merge operation, during a rebase only the latest modified values in the branch will be conversed and the history of the branch won't be carried over.
+If a branch is out of sync with the default branch or if it has some conflicts, it's possible to rebase it with the latest version of the default branch.
+Similar to the merge operation, during a rebase only the latest modified values in the branch will be conserved and the history of the branch won't be carried over.
 
 The diagram below present how various changes to 2 objects in the Branch A will be updated during a rebase.
 
 ![](../media/branch_rebase_no_conflict.excalidraw.svg)
 
-#### Conflicts between Branches
+#### Conflicts between branches
 
 If the same attribute or the same relationship has been modified both in a branch and in main, the conflict will need to be resolved manually before the branch can be merged.
 
-Conflicts in a branch can be resolved as part of a Proposed Change
+Conflicts in a branch can be resolved as part of a Proposed Change.

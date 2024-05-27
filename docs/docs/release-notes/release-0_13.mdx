@@ -9,26 +9,26 @@ title: Release 0.13
     </tr>
     <tr>
       <th>Release Date</th>
-      <td>May XX, 2024</td>
+      <td>May 7, 2024</td>
     </tr>
     <tr>
       <th>Release Codename</th>
-      <td> - </td>
+      <td>Beta #2</td>
     </tr>
     <tr>
       <th>Tag</th>
-      <td> - </td>
+      <td>[infrahub-v0.13.0](https://github.com/opsmill/infrahub/releases/tag/infrahub-v0.13.0)</td>
     </tr>
   </tbody>
 </table>
 
 # Release 0.13.0
 
-## Main Changes
+## Main changes
 
-### Unified Storage
+### Unified storage
 
-#### IP Address Management
+#### IP address management
 
 Infrahub now includes builtin support for IP Prefixes and IP Addresses, both for IPv4 and IPv6.
 
@@ -57,7 +57,7 @@ The attribute values of a node that were inherited from a profile can be overrid
 
 More information about Profiles is available in the [Documentation](/topics/profiles).
 
-#### Leverage Database Indexes to improve performance
+#### Leverage database indexes to improve performance
 
 Infrahub is now leveraging database indexes to improve the overall performance of the database.
 Indexes will be automatically applied during startup.
@@ -81,7 +81,7 @@ infrahub db index --help
 ```
 <!-- vale on -->
 
-### CI Pipeline
+### CI pipeline
 
 #### Generators
 
@@ -105,7 +105,7 @@ The form to create a proposed change has been redesigned to expand the descripti
 
 ### Schema
 
-#### Relationship of type Parent can't be optional
+#### Relationship of type parent can't be optional
 
 The constraints around the relationships of kind `Parent` have been tightened and these relationships can't be optional anymore.
 All existing relationships will be automatically migrated when upgrading to this release and your schema will need to be updated.
@@ -171,7 +171,7 @@ A new namespace `dev` has been introduced and some commands have been renamed in
 
 A new `demo.migrate` command has been introduced to apply the database & schema migrations.
 
-#### Update GraphiQL Application
+#### Update GraphiQL application
 
 The Graph sandbox (GraphiQL) has been integrated into Infrahub directly to provide a better experience
 and remove the dependencies to an external CDN.
@@ -181,7 +181,7 @@ and its possible to directly select the active branch with the standard dropdown
 
 ![Search in Schema](../media/release_notes/infrahub_0_13_0/graphiql.png)
 
-#### Help Panel in the list view
+#### Help panel in the list view
 
 A new help popup is now available in the top right corner of a list view for all objects.
 The help popup will include a link to the schema for this object and if defined in the schema, a link to the external documentation.

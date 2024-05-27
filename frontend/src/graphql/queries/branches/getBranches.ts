@@ -16,7 +16,6 @@ const GET_BRANCHES = gql`
       created_at
       sync_with_git
       is_default
-      is_isolated
       has_schema_changes
     }
   }

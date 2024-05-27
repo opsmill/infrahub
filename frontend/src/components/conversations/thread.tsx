@@ -6,12 +6,13 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import {
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
+  PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "../../config/constants";
-import { useAuth } from "../../hooks/useAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
+import { useAuth } from "../../hooks/useAuth";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
@@ -28,7 +29,7 @@ import { Comment } from "./comment";
 type tThread = {
   thread: any;
   refetch?: Function;
-  displayContext?: boolean;
+  displayContext?: boolean; // For conversation view only
 };
 
 // Sort by date desc
@@ -117,7 +118,9 @@ export const Thread = (props: tThread) => {
     }
 
     const mutationString = updateObjectWithId({
-      kind: PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
+      kind: displayContext
+        ? PROPOSED_CHANGES_CHANGE_THREAD_OBJECT // for conversations view
+        : PROPOSED_CHANGES_OBJECT_THREAD_OBJECT, // for object views
       data: stringifyWithoutQuotes({
         id: thread.id,
         resolved: {
@@ -135,7 +138,9 @@ export const Thread = (props: tThread) => {
       context: { branch: branch?.name, date },
     });
 
-    refetch();
+    if (refetch) {
+      refetch();
+    }
 
     if (confirmModal) {
       setConfirmModal(false);

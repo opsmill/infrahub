@@ -225,6 +225,49 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     assert await obj.render_display_label(db=db) == f"TestDisplay(ID: {obj.id})[NEW]"
 
 
+async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_schema):
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+
+    dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
+    await dog1.save(db=db)
+
+    assert await dog1.get_hfid(db=db) == ["Jack", "Rocky"]
+    assert await dog1.get_hfid(db=db, include_kind=True) == ["TestDog", "Jack", "Rocky"]
+
+    assert await dog1.get_hfid_as_string(db=db) == "Jack__Rocky"
+    assert await dog1.get_hfid_as_string(db=db, include_kind=True) == "TestDog__Jack__Rocky"
+
+
+async def test_get_path_value(db: InfrahubDatabase, default_branch, animal_person_schema):
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+
+    dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
+    await dog1.save(db=db)
+
+    assert await dog1.get_path_value(db=db, path="name__value") == "Rocky"
+    assert await dog1.get_path_value(db=db, path="owner__name__value") == "Jack"
+
+    with pytest.raises(ValueError) as exc:
+        assert await person1.get_path_value(db=db, path="animals__name__value")
+    assert "path on a relationship of cardinality many" in str(exc.value)
+
+    with pytest.raises(ValueError) as exc:
+        assert await dog1.get_path_value(db=db, path="name")
+    assert "value of a path without property" in str(exc.value)
+
+
 async def test_node_init_with_single_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")

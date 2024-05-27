@@ -15,11 +15,12 @@ Below is the list of all available options to define a Generic in the schema
 | Name | Type | Description | Mandatory |
 | ---- | ---- | ---- | --------- |
 | [**branch**](#branch) | Attribute | Type of branch support for the model. | False |
-| [**default_filter**](#default_filter) | Attribute | Default filter used to search for a node in addition to its ID. | False |
+| [**default_filter**](#default_filter) | Attribute | Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead) | False |
 | [**description**](#description) | Attribute | Short description of the model, will be visible in the frontend. | False |
 | [**display_labels**](#display_labels) | Attribute | List of attributes to use to generate the display label | False |
 | [**documentation**](#documentation) | Attribute | Link to a documentation associated with this object, can be internal or external. | False |
 | [**hierarchical**](#hierarchical) | Attribute | Defines if the Generic support the hierarchical mode. | False |
+| [**human_friendly_id**](#human_friendly_id) | Attribute | Human friendly and unique identifier for the object. | False |
 | [**icon**](#icon) | Attribute | Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/ | False |
 | [**include_in_menu**](#include_in_menu) | Attribute | Defines if objects of this kind should be included in the menu. | False |
 | [**label**](#label) | Attribute | Human friendly representation of the name/kind | False |
@@ -53,7 +54,7 @@ Below is the list of all available options to define a Generic in the schema
 | ---- | --------------- |
 | **Name** | default_filter |
 | **Kind** | `Text` |
-| **Description** | Default filter used to search for a node in addition to its ID. |
+| **Description** | Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead) |
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[a-z0-9\_]+$` |
@@ -100,6 +101,17 @@ Below is the list of all available options to define a Generic in the schema
 | **Description** | Defines if the Generic support the hierarchical mode. |
 | **Optional** | True |
 | **Default Value** | False |
+| **Constraints** |  |
+
+### human_friendly_id
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | human_friendly_id |
+| **Kind** | `List` |
+| **Description** | Human friendly and unique identifier for the object. |
+| **Optional** | True |
+| **Default Value** |  |
 | **Constraints** |  |
 
 ### icon

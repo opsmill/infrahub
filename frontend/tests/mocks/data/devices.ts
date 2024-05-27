@@ -35,7 +35,7 @@ export const interfacesArray = [
         __typename: "Dropdown",
       },
       tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
-      __typename: "InterfaceL2",
+      __typename: "InfraInterface",
     },
     properties: {
       updated_at: "2023-06-01T11:58:22.313265+00:00",
@@ -71,7 +71,7 @@ export const interfacesArray = [
         __typename: "Dropdown",
       },
       tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
-      __typename: "InterfaceL2",
+      __typename: "InfraInterface",
     },
     properties: {
       updated_at: "2023-06-01T11:58:22.313265+00:00",
@@ -107,7 +107,7 @@ export const interfacesArray = [
         __typename: "Dropdown",
       },
       tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
-      __typename: "InterfaceL2",
+      __typename: "InfraInterface",
     },
     properties: {
       updated_at: "2023-06-01T11:58:22.313265+00:00",
@@ -143,7 +143,7 @@ export const interfacesArray = [
         __typename: "Dropdown",
       },
       tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
-      __typename: "InterfaceL2",
+      __typename: "InfraInterface",
     },
     properties: {
       updated_at: "2023-06-01T11:58:22.313265+00:00",
@@ -179,7 +179,7 @@ export const interfacesArray = [
         __typename: "Dropdown",
       },
       tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
-      __typename: "InterfaceL2",
+      __typename: "InfraInterface",
     },
     properties: {
       updated_at: "2023-06-01T11:58:22.313265+00:00",
@@ -215,7 +215,7 @@ export const interfacesArray = [
         __typename: "Dropdown",
       },
       tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
-      __typename: "InterfaceL2",
+      __typename: "InfraInterface",
     },
     properties: {
       updated_at: "2023-06-01T11:58:22.313265+00:00",
@@ -251,7 +251,7 @@ export const interfacesArray = [
         __typename: "Dropdown",
       },
       tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
-      __typename: "InterfaceL2",
+      __typename: "InfraInterface",
     },
     properties: {
       updated_at: "2023-06-01T11:58:22.313265+00:00",
@@ -287,7 +287,7 @@ export const interfacesArray = [
         __typename: "Dropdown",
       },
       tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
-      __typename: "InterfaceL2",
+      __typename: "InfraInterface",
     },
     properties: {
       updated_at: "2023-06-01T11:58:22.313265+00:00",
@@ -323,7 +323,7 @@ export const interfacesArray = [
         __typename: "Dropdown",
       },
       tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
-      __typename: "InterfaceL2",
+      __typename: "InfraInterface",
     },
     properties: {
       updated_at: "2023-06-01T11:58:22.313265+00:00",
@@ -359,7 +359,7 @@ export const interfacesArray = [
         __typename: "Dropdown",
       },
       tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
-      __typename: "InterfaceL2",
+      __typename: "InfraInterface",
     },
     properties: {
       updated_at: "2023-06-01T11:58:22.313265+00:00",
@@ -395,7 +395,7 @@ export const interfacesArray = [
         __typename: "Dropdown",
       },
       tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
-      __typename: "InterfaceL2",
+      __typename: "InfraInterface",
     },
     properties: {
       updated_at: "2023-06-01T11:58:22.313265+00:00",
@@ -431,7 +431,7 @@ export const interfacesArray = [
         __typename: "Dropdown",
       },
       tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
-      __typename: "InterfaceL2",
+      __typename: "InfraInterface",
     },
     properties: {
       updated_at: "2023-06-01T11:58:22.313265+00:00",
@@ -467,7 +467,7 @@ export const interfacesArray = [
         __typename: "Dropdown",
       },
       tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
-      __typename: "InterfaceL2",
+      __typename: "InfraInterface",
     },
     properties: {
       updated_at: "2023-06-01T11:58:22.313265+00:00",
@@ -503,7 +503,7 @@ export const interfacesArray = [
         __typename: "Dropdown",
       },
       tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
-      __typename: "InterfaceL2",
+      __typename: "InfraInterface",
     },
     properties: {
       updated_at: "2023-06-01T11:58:22.313265+00:00",
@@ -4053,49 +4053,66 @@ export const deviceDetailsUpdateMocksData = {
 };
 
 export const deviceDetailsInterfacesMocksQuery = `
-query GetObjectRelationships_InfraDevice {
+query GetObjectRelationships_InfraDevice($offset: Int, $limit: Int) {
   InfraDevice(ids: ["${deviceDetailsMocksId}"]) {
     count
     edges {
       node {
-        interfaces(offset: 0, limit: 10) {
+        interfaces(offset: $offset, limit: $limit) {
           count
           edges {
             node {
               id
               display_label
               __typename
-              name {
-                value
-              }
-              description {
-                value
-              }
-              speed {
-                value
-              }
-              mtu {
-                value
-              }
-              enabled {
-                value
-              }
-              status {
-                node {
-                  display_label
+              ... on InfraInterface {
+                name {
+                  value
                 }
-              }
-              role {
-                node {
-                  display_label
+                description {
+                  value
                 }
-              }
-              tags {
-                edges {
+                speed {
+                  value
+                }
+                mtu {
+                  value
+                }
+                enabled {
+                  value
+                }
+                status {
                   node {
                     display_label
                   }
                 }
+                role {
+                  node {
+                    display_label
+                  }
+                }
+                tags {
+                  edges {
+                    node {
+                      display_label
+                    }
+                  }
+                }
+              }
+            }
+            properties {
+              updated_at
+              is_protected
+              is_visible
+              source {
+                id
+                display_label
+                __typename
+              }
+              owner {
+                id
+                display_label
+                __typename
               }
             }
             properties {

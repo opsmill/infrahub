@@ -29,7 +29,7 @@ class NodeAttributeUniquenessConstraint(NodeConstraintInterface):
             attr = getattr(node, unique_attr.name)
             if unique_attr.inherited:
                 for generic_parent_schema_name in node_schema.inherit_from:
-                    generic_parent_schema = registry.schema.get(generic_parent_schema_name, branch=self.branch)
+                    generic_parent_schema = self.db.schema.get(generic_parent_schema_name, branch=self.branch)
                     parent_attr = generic_parent_schema.get_attribute_or_none(unique_attr.name)
                     if parent_attr is None:
                         continue

@@ -169,6 +169,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if self.is_enum and self.value:
             self.value = self.schema.convert_value_to_enum(self.value)
 
+    @staticmethod
+    def get_allowed_property_in_path() -> list[str]:
+        return ["value"]
+
     @classmethod
     def validate(cls, value: Any, name: str, schema: AttributeSchema) -> bool:
         if value is None and schema.optional is False:
@@ -486,6 +490,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             elif isinstance(field, (int, bool, dict, list)):
                 response[field_name] = field
 
+            if related_node_ids and self.is_from_profile and getattr(self, "source_id"):
+                related_node_ids.add(getattr(self, "source_id"))
+
         return response
 
     def _filter_sensitive(self, value: str, filter_sensitive: bool) -> str:
@@ -648,6 +655,10 @@ class URL(BaseAttribute):
 class IPNetwork(BaseAttribute):
     type = str
 
+    @staticmethod
+    def get_allowed_property_in_path() -> list[str]:
+        return ["value", "version", "binary_address"]
+
     @property
     def obj(self) -> Union[ipaddress.IPv4Network, ipaddress.IPv6Network]:
         """Return an ipaddress interface object."""
@@ -771,6 +782,10 @@ class IPNetwork(BaseAttribute):
 
 class IPHost(BaseAttribute):
     type = str
+
+    @staticmethod
+    def get_allowed_property_in_path() -> list[str]:
+        return ["value", "version", "binary_address"]
 
     @property
     def obj(self) -> Union[ipaddress.IPv4Interface, ipaddress.IPv6Interface]:

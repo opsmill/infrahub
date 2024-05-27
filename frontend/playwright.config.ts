@@ -16,15 +16,23 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 1 : 0,
   /* 30s timeout for both assertions and tests (2min in CI) */
-  timeout: process.env.CI ? 2 * 60 * 1000 : 30 * 1000,
+  timeout: process.env.CI
+    ? process.env.INFRAHUB_MISC_RESPONSE_DELAY
+      ? 6 * 60 * 1000
+      : 2 * 60 * 1000
+    : 30 * 1000,
   expect: {
-    timeout: process.env.CI ? 2 * 60 * 1000 : 30 * 1000,
+    timeout: process.env.CI
+      ? process.env.INFRAHUB_MISC_RESPONSE_DELAY
+        ? 6 * 60 * 1000
+        : 2 * 60 * 1000
+      : 30 * 1000,
     toHaveScreenshot: { maxDiffPixels: 5000 },
   },
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 3 : undefined,
+  workers: process.env.CI ? 4 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ["list"],

@@ -265,6 +265,98 @@ async def test_display_label_default_value(db: InfrahubDatabase, default_branch:
     assert result.data["TestCriticality"]["edges"][0]["node"]["display_label"] == f"TestCriticality(ID: {obj1.id})"
 
 
+async def test_display_hfid(db: InfrahubDatabase, default_branch, animal_person_schema):
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+
+    dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
+    await dog1.save(db=db)
+
+    query = """
+    query {
+        TestDog {
+            edges {
+                node {
+                    id
+                    hfid
+                    display_label
+                }
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["TestDog"]["edges"]) == 1
+    assert result.data["TestDog"]["edges"][0] == {
+        "node": {
+            "display_label": await dog1.render_display_label(db=db),
+            "hfid": ["Jack", "Rocky"],
+            "id": dog1.id,
+        },
+    }
+
+
+async def test_display_label_generic(db: InfrahubDatabase, default_branch, animal_person_schema):
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+    cat_schema = animal_person_schema.get(name="TestCat")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+
+    dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
+    await dog1.save(db=db)
+
+    cat1 = await Node.init(db=db, schema=cat_schema, branch=default_branch)
+    await cat1.new(db=db, name="Kitty", breed="Persian", owner=person1)
+    await cat1.save(db=db)
+
+    query = """
+    query {
+        TestAnimal {
+            edges {
+                node {
+                    display_label
+                }
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["TestAnimal"]["edges"]) == 2
+    expected_results = ["Kitty Persian #444444", "Rocky Labrador"]
+    assert sorted([item["node"]["display_label"] for item in result.data["TestAnimal"]["edges"]]) == expected_results
+
+
 async def test_all_attributes(db: InfrahubDatabase, default_branch: Branch, data_schema, all_attribute_types_schema):
     obj1 = await Node.init(db=db, schema="TestAllAttributeTypes")
     await obj1.new(
@@ -623,7 +715,7 @@ async def test_query_diffsummary_old(db: InfrahubDatabase, default_branch: Branc
     branch2 = await create_branch(branch_name="branch2", db=db)
     await c1_main.delete(db=db)
     p1_branch2 = await NodeManager.get_one_by_id_or_default_filter(
-        id=p1_main.id, db=db, schema_name="TestPerson", branch=branch2
+        id=p1_main.id, db=db, kind="TestPerson", branch=branch2
     )
     p1_branch2.name.value = "Jonathan"
     await p1_branch2.save(db=db)
@@ -631,9 +723,7 @@ async def test_query_diffsummary_old(db: InfrahubDatabase, default_branch: Branc
     await p2_main.save(db=db)
     c2_main.name.value = "bolting"
     await c2_main.save(db=db)
-    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(
-        id=c3_main.id, db=db, schema_name="TestCar", branch=branch2
-    )
+    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(id=c3_main.id, db=db, kind="TestCar", branch=branch2)
     await c3_branch2.owner.update(data=p1_branch2.id, db=db)
     await c3_branch2.save(db=db)
 
@@ -691,7 +781,7 @@ async def test_query_diffsummaryold(db: InfrahubDatabase, default_branch: Branch
     branch2 = await create_branch(branch_name="branch2", db=db)
     await c1_main.delete(db=db)
     p1_branch2 = await NodeManager.get_one_by_id_or_default_filter(
-        id=p1_main.id, db=db, schema_name="TestPerson", branch=branch2
+        id=p1_main.id, db=db, kind="TestPerson", branch=branch2
     )
     p1_branch2.name.value = "Jonathan"
     await p1_branch2.save(db=db)
@@ -699,9 +789,7 @@ async def test_query_diffsummaryold(db: InfrahubDatabase, default_branch: Branch
     await p2_main.save(db=db)
     c2_main.name.value = "bolting"
     await c2_main.save(db=db)
-    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(
-        id=c3_main.id, db=db, schema_name="TestCar", branch=branch2
-    )
+    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(id=c3_main.id, db=db, kind="TestCar", branch=branch2)
     await c3_branch2.owner.update(data=p1_branch2.id, db=db)
     await c3_branch2.save(db=db)
 
@@ -759,7 +847,7 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
     branch2 = await create_branch(branch_name="branch2", db=db)
     await c1_main.delete(db=db)
     p1_branch2 = await NodeManager.get_one_by_id_or_default_filter(
-        id=p1_main.id, db=db, schema_name="TestPerson", branch=branch2
+        id=p1_main.id, db=db, kind="TestPerson", branch=branch2
     )
     p1_branch2.name.value = "Jonathan"
     await p1_branch2.save(db=db)
@@ -767,9 +855,7 @@ async def test_query_diffsummary(db: InfrahubDatabase, default_branch: Branch, c
     await p2_main.save(db=db)
     c2_main.name.value = "bolting"
     await c2_main.save(db=db)
-    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(
-        id=c3_main.id, db=db, schema_name="TestCar", branch=branch2
-    )
+    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(id=c3_main.id, db=db, kind="TestCar", branch=branch2)
     await c3_branch2.owner.update(data=p1_branch2.id, db=db)
     await c3_branch2.save(db=db)
 

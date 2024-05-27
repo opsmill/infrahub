@@ -6,6 +6,7 @@ from infrahub.core.constants import InfrahubKind, ValidatorConclusion, Validator
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
+from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
 
 log = get_logger()
@@ -115,7 +116,9 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
 
         checks_in_execution = ",".join(check_execution_ids)
         await service.cache.set(
-            key=f"validator_execution_id:{validator_execution_id}:checks", value=checks_in_execution, expires=7200
+            key=f"validator_execution_id:{validator_execution_id}:checks",
+            value=checks_in_execution,
+            expires=KVTTL.TWO_HOURS,
         )
         events.append(
             messages.FinalizeValidatorExecution(
@@ -215,7 +218,7 @@ def _render_artifact(artifact_id: Optional[str], managed_branch: bool, impacted_
     Will return true if:
         * The artifact_id wasn't set which could be that it's a new object that doesn't have a previous artifact
         * The source brance is not data only which would indicate that it could contain updates in git to the transform
-        * The artifact_id exists in the impaced_artifacts list
+        * The artifact_id exists in the impacted_artifacts list
     Will return false if:
         * The source branch is a data only branch and the artifact_id exists and is not in the impacted list
     """

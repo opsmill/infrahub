@@ -217,7 +217,11 @@ async def test_rabbitmq_initial_setup(rabbitmq_api: RabbitMQManager) -> None:
     )
     assert (
         Queue(
-            name="infrahub.rpcs", arguments={"x-max-priority": 5}, durable=True, exclusive=False, queue_type="classic"
+            name="infrahub.rpcs",
+            arguments={"x-max-priority": 5, "x-consumer-timeout": 30000},
+            durable=True,
+            exclusive=False,
+            queue_type="classic",
         )
         in api_queues
     )

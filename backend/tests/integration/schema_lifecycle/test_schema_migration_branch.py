@@ -127,7 +127,7 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
 
     async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, branch=self.branch1)
-        assert len(persons) == 3
+        assert len(persons) == 2
 
     async def test_step02_check_attr_add_rename(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
@@ -181,12 +181,11 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
 
         # Check if the branch has been properly updated
         branches = await client.branch.all()
-        assert branches[self.branch1.name].is_isolated is True
         assert branches[self.branch1.name].has_schema_changes is True
 
         # Ensure that we can query the nodes with the new schema in BRANCH1
         persons = await registry.manager.query(
-            db=db, schema=PERSON_KIND, filters={"firstname__value": "John"}, branch=self.branch1
+            db=db, schema=PERSON_KIND, filters={"firstname__value": "John"}, branch=self.branch1.name
         )
         assert len(persons) == 1
         john = persons[0]
@@ -268,14 +267,14 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         # Ensure that we can query the existing node with the new schema
         # person_schema = registry.schema.get(name=PERSON_KIND)
         persons = await registry.manager.query(
-            db=db, schema=PERSON_KIND, filters={"firstname__value": "John"}, branch=self.branch1
+            db=db, schema=PERSON_KIND, filters={"firstname__value": "John"}, branch=self.branch1.name
         )
         assert len(persons) == 1
         john = persons[0]
         assert not hasattr(john, "height")
 
         manufacturers = await registry.manager.query(
-            db=db, schema=MANUFACTURER_KIND_03, filters={"name__value": "renault"}, branch=self.branch1
+            db=db, schema=MANUFACTURER_KIND_03, filters={"name__value": "renault"}, branch=self.branch1.name
         )
         assert len(manufacturers) == 1
         renault = manufacturers[0]
@@ -289,14 +288,14 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
 
         # Validate that all data added to main after the creation of the branch has been migrated properly
         persons = await registry.manager.query(
-            db=db, schema=PERSON_KIND, filters={"firstname__value": "Jane"}, branch=self.branch1
+            db=db, schema=PERSON_KIND, filters={"firstname__value": "Jane"}, branch=self.branch1.name
         )
         assert len(persons) == 1
         jane = persons[0]
         assert not hasattr(jane, "height")
 
         manufacturers = await registry.manager.query(
-            db=db, schema=MANUFACTURER_KIND_03, filters={"name__value": "honda"}, branch=self.branch1
+            db=db, schema=MANUFACTURER_KIND_03, filters={"name__value": "honda"}, branch=self.branch1.name
         )
         assert len(manufacturers) == 1
         honda = manufacturers[0]

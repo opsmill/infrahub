@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, String
+from graphene import Boolean, Field, String
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
@@ -22,7 +22,7 @@ class BranchType(InfrahubObjectType):
     created_at = String(required=False)
     sync_with_git = Boolean(required=False)
     is_default = Boolean(required=False)
-    is_isolated = Boolean(required=False)
+    is_isolated = Field(Boolean(required=False), deprecation_reason="non isolated mode is not supported anymore")
     has_schema_changes = Boolean(required=False)
 
     class Meta:

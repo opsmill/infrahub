@@ -8,7 +8,14 @@ import graphene
 from infrahub import config
 from infrahub.core.attribute import String
 from infrahub.core.constants import InfrahubKind, RelationshipKind
-from infrahub.core.schema import AttributeSchema, GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema
+from infrahub.core.schema import (
+    AttributeSchema,
+    GenericSchema,
+    MainSchemaTypes,
+    NodeSchema,
+    ProfileSchema,
+    RelationshipSchema,
+)
 from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
@@ -39,7 +46,13 @@ from .resolver import (
 )
 from .schema import InfrahubBaseMutation, InfrahubBaseQuery, account_resolver, default_paginated_list_resolver
 from .subscription import InfrahubBaseSubscription
-from .types import InfrahubInterface, InfrahubObject, RelatedNodeInput
+from .types import (
+    InfrahubInterface,
+    InfrahubObject,
+    RelatedIPAddressNodeInput,
+    RelatedNodeInput,
+    RelatedPrefixNodeInput,
+)
 from .types.attribute import BaseAttribute as BaseAttributeType
 from .types.attribute import TextAttributeType
 
@@ -50,7 +63,8 @@ if TYPE_CHECKING:
 
 
 class DeleteInput(graphene.InputObjectType):
-    id = graphene.String(required=True)
+    id = graphene.String(required=False)
+    hfid = graphene.List(of_type=graphene.String, required=False)
 
 
 GraphQLTypes = Union[
@@ -216,6 +230,20 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 graphql_type=data_type_class.get_graphql_type(),
             )
             ATTRIBUTE_TYPES[base_enum_name] = data_type_class
+
+    def _get_related_input_type(self, relationship: RelationshipSchema) -> type[RelatedNodeInput]:
+        peer_schema = self.schema.get(name=relationship.peer, duplicate=False)
+        if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_prefix()) or (
+            isinstance(peer_schema, GenericSchema) and InfrahubKind.IPPREFIX == relationship.peer
+        ):
+            return RelatedPrefixNodeInput
+
+        if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_address()) or (
+            isinstance(peer_schema, GenericSchema) and InfrahubKind.IPADDRESS == relationship.peer
+        ):
+            return RelatedIPAddressNodeInput
+
+        return RelatedNodeInput
 
     def generate_object_types(self) -> None:  # pylint: disable=too-many-branches,too-many-statements
         """Generate all GraphQL objects for the schema and store them in the internal registry."""
@@ -429,7 +457,10 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         }
 
         main_attrs = {
-            "id": graphene.String(required=True),
+            "id": graphene.Field(graphene.String, required=True, description="Unique identifier"),
+            "hfid": graphene.Field(
+                graphene.List(of_type=graphene.String), required=False, description="Human friendly identifier"
+            ),
             "_updated_at": graphene.DateTime(required=False),
             "display_label": graphene.String(required=False),
             "Meta": type("Meta", (object,), meta_attrs),
@@ -456,6 +487,10 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         }
 
         main_attrs = {
+            "id": graphene.Field(graphene.String, required=False, description="Unique identifier"),
+            "hfid": graphene.Field(
+                graphene.List(of_type=graphene.String), required=False, description="Human friendly identifier"
+            ),
             "display_label": graphene.String(required=False),
             "Meta": type("Meta", (object,), meta_attrs),
         }
@@ -464,8 +499,6 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             attr_kind = get_attr_kind(node_schema=schema, attr_schema=attr)
             attr_type = self.get_type(name=get_attribute_type(kind=attr_kind).get_graphql_type_name())
             main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
-
-        main_attrs["id"] = graphene.Field(graphene.String, required=False, description="Unique identifier")
 
         interface_object = type(schema.kind, (InfrahubInterface,), main_attrs)
 
@@ -523,8 +556,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         return GraphqlMutations(create=create, update=update, upsert=upsert, delete=delete)
 
-    @staticmethod
     def generate_graphql_mutation_create_input(
+        self,
         schema: Union[NodeSchema, ProfileSchema],
     ) -> Type[graphene.InputObjectType]:
         """Generate an InputObjectType Object from a Infrahub NodeSchema
@@ -553,31 +586,38 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         for rel in schema.relationships:
             if rel.internal_peer or rel.read_only:
                 continue
+
+            input_type = self._get_related_input_type(relationship=rel)
+
             required = not rel.optional
             if rel.cardinality == "one":
-                attrs[rel.name] = graphene.InputField(RelatedNodeInput, required=required, description=rel.description)
+                attrs[rel.name] = graphene.InputField(input_type, required=required, description=rel.description)
 
             elif rel.cardinality == "many":
                 attrs[rel.name] = graphene.InputField(
-                    graphene.List(RelatedNodeInput), required=required, description=rel.description
+                    graphene.List(input_type), required=required, description=rel.description
                 )
 
         return type(f"{schema.kind}CreateInput", (graphene.InputObjectType,), attrs)
 
-    @staticmethod
     def generate_graphql_mutation_update_input(
+        self,
         schema: Union[NodeSchema, ProfileSchema],
     ) -> Type[graphene.InputObjectType]:
         """Generate an InputObjectType Object from a Infrahub NodeSchema
 
         Example of Object Generated by this function:
             class StatusUpdateInput(InputObjectType):
-                id = String(required=True)
+                id = String(required=False)
+                hfid = InputField(List(of_type=String), required=False)
                 label = InputField(StringAttributeUpdate, required=False)
                 slug = InputField(StringAttributeUpdate, required=False)
                 description = InputField(StringAttributeUpdate, required=False)
         """
-        attrs: Dict[str, Union[graphene.String, graphene.InputField]] = {"id": graphene.String(required=True)}
+        attrs: Dict[str, Union[graphene.String, graphene.InputField]] = {
+            "id": graphene.String(required=False),
+            "hfid": graphene.List(of_type=graphene.String, required=False),
+        }
 
         for attr in schema.attributes:
             if attr.read_only:
@@ -589,18 +629,21 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         for rel in schema.relationships:
             if rel.internal_peer or rel.read_only:
                 continue
+
+            input_type = self._get_related_input_type(relationship=rel)
+
             if rel.cardinality == "one":
-                attrs[rel.name] = graphene.InputField(RelatedNodeInput, required=False, description=rel.description)
+                attrs[rel.name] = graphene.InputField(input_type, required=False, description=rel.description)
 
             elif rel.cardinality == "many":
                 attrs[rel.name] = graphene.InputField(
-                    graphene.List(RelatedNodeInput), required=False, description=rel.description
+                    graphene.List(input_type), required=False, description=rel.description
                 )
 
         return type(f"{schema.kind}UpdateInput", (graphene.InputObjectType,), attrs)
 
-    @staticmethod
     def generate_graphql_mutation_upsert_input(
+        self,
         schema: Union[NodeSchema, ProfileSchema],
     ) -> Type[graphene.InputObjectType]:
         """Generate an InputObjectType Object from a Infrahub NodeSchema
@@ -608,11 +651,15 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         Example of Object Generated by this function:
             class StatusUpsertInput(InputObjectType):
                 id = String(required=False)
+                hfid = InputField(List(of_type=String), required=False)
                 label = InputField(StringAttributeUpdate, required=True)
                 slug = InputField(StringAttributeUpdate, required=True)
                 description = InputField(StringAttributeUpdate, required=False)
         """
-        attrs: Dict[str, Union[graphene.String, graphene.InputField]] = {"id": graphene.String(required=False)}
+        attrs: Dict[str, Union[graphene.String, graphene.InputField]] = {
+            "id": graphene.String(required=False),
+            "hfid": graphene.List(of_type=graphene.String, required=False),
+        }
 
         for attr in schema.attributes:
             if attr.read_only:
@@ -629,13 +676,16 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         for rel in schema.relationships:
             if rel.internal_peer or rel.read_only:
                 continue
+
+            input_type = self._get_related_input_type(relationship=rel)
+
             required = not rel.optional
             if rel.cardinality == "one":
-                attrs[rel.name] = graphene.InputField(RelatedNodeInput, required=required, description=rel.description)
+                attrs[rel.name] = graphene.InputField(input_type, required=required, description=rel.description)
 
             elif rel.cardinality == "many":
                 attrs[rel.name] = graphene.InputField(
-                    graphene.List(RelatedNodeInput), required=required, description=rel.description
+                    graphene.List(input_type), required=required, description=rel.description
                 )
 
         return type(f"{schema.kind}UpsertInput", (graphene.InputObjectType,), attrs)

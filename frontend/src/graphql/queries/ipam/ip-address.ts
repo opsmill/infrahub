@@ -15,10 +15,17 @@ export const GET_IP_ADDRESS_KIND = gql`
 `;
 
 export const GET_IP_ADDRESSES = gql`
-  query GET_IP_ADDRESSES($prefixIds: [ID], $ipaddress: String, $offset: Int, $limit: Int) {
+  query GET_IP_ADDRESSES(
+    $prefixIds: [ID]
+    $ipaddress: String
+    $namespaces: [ID]
+    $offset: Int
+    $limit: Int
+  ) {
     BuiltinIPAddress(
       ip_prefix__ids: $prefixIds
       address__value: $ipaddress
+      ip_namespace__ids: $namespaces
       offset: $offset
       limit: $limit
     ) {

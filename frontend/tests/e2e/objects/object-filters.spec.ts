@@ -13,7 +13,7 @@ test.describe("Object filters", () => {
     await test.step("access objects list and verify initial state", async () => {
       await page.goto("/objects/InfraDevice");
       await expect(page.getByRole("main")).toContainText("Filters: 0");
-      await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 20 results");
+      await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 30 results");
     });
 
     await test.step("start filtering objects", async () => {
@@ -25,20 +25,19 @@ test.describe("Object filters", () => {
         .getByTestId("select-open-option-button")
         .click();
       await page.getByRole("option", { name: "Provisioning In the process" }).click();
-      await page
+
+      const tagsMultiSelectOpenButton = page
         .getByTestId("side-panel-container")
         .getByText("Tags")
-        .locator("..")
-        .getByTestId("select-open-option-button")
-        .click();
+        .locator("../..")
+        .getByTestId("select-open-option-button");
+      await tagsMultiSelectOpenButton.click();
+
       await page.getByTestId("side-panel-container").getByText("red").click();
+
       // Closes the multiselect
-      await page
-        .getByTestId("side-panel-container")
-        .getByText("Tags")
-        .locator("..")
-        .getByTestId("select-open-option-button")
-        .click();
+      await tagsMultiSelectOpenButton.click();
+
       await page.getByRole("button", { name: "Apply filters" }).scrollIntoViewIfNeeded();
       await page.getByRole("button", { name: "Apply filters" }).click();
     });
@@ -51,7 +50,7 @@ test.describe("Object filters", () => {
     await test.step("remove filters and verify initial state", async () => {
       await page.getByTestId("remove-filters").click();
       await expect(page.getByRole("main")).toContainText("Filters: 0");
-      await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 20 results");
+      await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 30 results");
     });
   });
 });

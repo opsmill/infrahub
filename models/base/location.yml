@@ -8,6 +8,7 @@ generics:
     label: "Location"
     hierarchical: true
     icon: "mingcute:location-line"
+    human_friendly_id: ["name__value"]
     include_in_menu: true
     attributes:
       - name: name
@@ -73,14 +74,17 @@ nodes:
         optional: true
     relationships:
       - name: devices
+        identifier: "site__devices"
         cardinality: many
         peer: InfraDevice
         kind: Component
       - name: vlans
+        identifier: "site__vlans"
         cardinality: many
         kind: Component
         peer: InfraVLAN
       - name: circuit_endpoints
+        identifier: "site__circuit_endpoints"
         cardinality: many
         kind: Component
         peer: InfraCircuitEndpoint
@@ -105,6 +109,7 @@ nodes:
     children: ""
     uniqueness_constraints:
       - ["site", "name__value"]
+    human_friendly_id: ["site__name__value", "name__value"]
     attributes:
       - name: name
         kind: Text

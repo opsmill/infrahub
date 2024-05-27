@@ -424,7 +424,9 @@ class NodeListGetAttributeQuery(Query):
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic
+        )
         self.params.update(branch_params)
 
         query = """
@@ -566,7 +568,7 @@ class NodeListGetRelationshipsQuery(Query):
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
 
-        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
+        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at, branch_agnostic=self.branch_agnostic)
         self.params.update(rels_params)
 
         query = (
@@ -604,7 +606,9 @@ class NodeListGetInfoQuery(Query):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic
+        )
         self.params.update(branch_params)
 
         query = """
@@ -631,11 +635,11 @@ class NodeListGetInfoQuery(Query):
 
         self.return_labels = ["collect(profile.uuid) as profile_uuids", "n", "rb"]
 
-    async def get_nodes(self, duplicate: bool = True) -> AsyncIterator[NodeToProcess]:
+    async def get_nodes(self, db: InfrahubDatabase, duplicate: bool = False) -> AsyncIterator[NodeToProcess]:
         """Return all the node objects as NodeToProcess."""
 
         for result in self.get_results_group_by(("n", "uuid")):
-            schema = find_node_schema(node=result.get_node("n"), branch=self.branch, duplicate=duplicate)
+            schema = find_node_schema(db=db, node=result.get_node("n"), branch=self.branch, duplicate=duplicate)
             yield NodeToProcess(
                 schema=schema,
                 node_id=result.get_node("n").element_id,
@@ -1105,9 +1109,8 @@ class NodeGetHierarchyQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-        self.hierarchy_schema = node_schema.get_hierarchy_schema(self.branch)
-
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:  # pylint: disable=too-many-statements
+        hierarchy_schema = self.node_schema.get_hierarchy_schema(db=db, branch=self.branch)
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
         self.order_by = []
@@ -1116,7 +1119,7 @@ class NodeGetHierarchyQuery(Query):
         filter_str = "[:IS_RELATED*2..%s { hierarchy: $hierarchy }]" % (
             config.SETTINGS.database.max_depth_search_hierarchy * 2,
         )
-        self.params["hierarchy"] = self.hierarchy_schema.kind
+        self.params["hierarchy"] = hierarchy_schema.kind
 
         if self.direction == RelationshipHierarchyDirection.ANCESTORS:
             filter_str = f"-{filter_str}->"
@@ -1177,10 +1180,10 @@ class NodeGetHierarchyQuery(Query):
 
             filter_field_name, filter_next_name = peer_filter_name.split("__", maxsplit=1)
 
-            if filter_field_name not in self.hierarchy_schema.valid_input_names:
+            if filter_field_name not in hierarchy_schema.valid_input_names:
                 continue
 
-            field = self.hierarchy_schema.get_field(filter_field_name)
+            field = hierarchy_schema.get_field(filter_field_name)
 
             subquery, subquery_params, subquery_result_name = await build_subquery_filter(
                 db=db,
@@ -1204,13 +1207,13 @@ class NodeGetHierarchyQuery(Query):
         # ----------------------------------------------------------------------------
         # ORDER Results
         # ----------------------------------------------------------------------------
-        if hasattr(self.hierarchy_schema, "order_by") and self.hierarchy_schema.order_by:
+        if hasattr(hierarchy_schema, "order_by") and hierarchy_schema.order_by:
             order_cnt = 1
 
-            for order_by_value in self.hierarchy_schema.order_by:
+            for order_by_value in hierarchy_schema.order_by:
                 order_by_field_name, order_by_next_name = order_by_value.split("__", maxsplit=1)
 
-                field = self.hierarchy_schema.get_field(order_by_field_name)
+                field = hierarchy_schema.get_field(order_by_field_name)
 
                 subquery, subquery_params, subquery_result_name = await build_subquery_order(
                     db=db,

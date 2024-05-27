@@ -520,11 +520,13 @@ class RelationshipGetPeerQuery(Query):
         super().__init__(*args, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):  # pylint: disable=too-many-statements
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic
+        )
         self.params.update(branch_params)
         self.order_by = []
 
-        peer_schema = self.schema.get_peer_schema(branch=self.branch)
+        peer_schema = self.schema.get_peer_schema(db=db, branch=self.branch)
 
         self.params["source_ids"] = self.source_ids
         self.params["rel_identifier"] = self.schema.identifier

@@ -16,7 +16,7 @@ import { genericsMocks } from "../../mocks/data/generics";
 
 describe("Form structure and object update", () => {
   it("should return a correct form structure", () => {
-    const calculatedAttributes = getFormStructureForCreateEdit({
+    const calculatedFields = getFormStructureForCreateEdit({
       schema: accountTokenDetailsMocksSchema[0],
       schemas: accountTokenDetailsMocksSchema,
       generics: genericsMocks,
@@ -24,7 +24,7 @@ describe("Form structure and object update", () => {
     });
 
     // For each attribute, check from the mock data
-    calculatedAttributes.map((attribute, index) => {
+    calculatedFields.map((attribute, index) => {
       // Slices last character to remove the closing bracket
       const mockString = JSON.stringify(accountTokenFormStructure[index]);
       const mockData = mockString.substring(0, mockString.length - 1);

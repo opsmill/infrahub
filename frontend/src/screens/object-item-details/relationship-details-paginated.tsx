@@ -33,7 +33,7 @@ import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
-import NoDataFound from "../no-data-found/no-data-found";
+import NoDataFound from "../errors/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import { ObjectAttributeRow } from "./object-attribute-row";
 
@@ -108,7 +108,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     {
       kind: "Text",
       label: relationshipSchema.label,
-      name: "id",
+      name: "relation",
       options,
       type: "select2step",
       value: {},
@@ -175,15 +175,15 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     );
   };
 
-  const handleSubmit = async (data: any) => {
-    if (data?.id) {
+  const handleSubmit = async ({ relation }: any) => {
+    if (relation?.id) {
       setIsLoading(true);
 
       const mutationString = addRelationship({
         data: stringifyWithoutQuotes({
           id: objectid,
           name: relationshipSchema.name,
-          nodes: [data],
+          nodes: [relation],
         }),
       });
 

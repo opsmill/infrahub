@@ -60,14 +60,20 @@ export function DesktopMenu({ className = "" }: MenuProps) {
       const filteredChildren = filterDataByString(item.children || [], searchString);
 
       if (filteredChildren.length > 0 || lowercaseTitle.includes(lowercaseSearch)) {
-        acc.push({ ...item, children: filteredChildren });
+        acc.push({
+          ...item,
+          children: filteredChildren.length > 0 ? filteredChildren : item.children,
+        });
       }
 
       return acc;
     }, [] as MenuItem[]);
   }
 
-  const menuFiltered = useMemo(() => filterDataByString(menu, query), [currentSchemaHash, query]);
+  const menuFiltered = useMemo(
+    () => filterDataByString(menu, query),
+    [currentSchemaHash, query, menu.length]
+  );
 
   return (
     <div className={classNames("flex flex-col", className)}>
