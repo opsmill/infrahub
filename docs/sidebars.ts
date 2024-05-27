@@ -36,6 +36,7 @@ const sidebars: SidebarsConfig = {
             'tutorials/getting-started/branches',
             'tutorials/getting-started/historical-data',
             'tutorials/getting-started/lineage-information',
+	    'tutorials/getting-started/resource-manager',
             'tutorials/getting-started/git-integration',
             'tutorials/getting-started/jinja2-integration',
             'tutorials/getting-started/custom-api-endpoint',
