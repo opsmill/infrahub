@@ -1155,11 +1155,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 schemas_data.append(schema_file)
             elif full_schema.is_dir():
                 files = await self.find_files(
-                    extension=["yaml", "yml", "json"],
-                    branch_name=branch_name,
-                    commit=commit,
-                    directory=full_schema,
-                    recursive=True,
+                    extension=["yaml", "yml", "json"], branch_name=branch_name, commit=commit, directory=full_schema
                 )
                 for item in files:
                     identifier = item.replace(branch_wt.directory, "")
