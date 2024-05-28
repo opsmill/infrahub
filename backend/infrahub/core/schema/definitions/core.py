@@ -499,7 +499,7 @@ core_models: dict[str, Any] = {
             "description": "IPv6 or IPv4 prefix also referred as network",
             "include_in_menu": False,
             "default_filter": "prefix__value",
-            "order_by": ["prefix__version", "prefix__binary_address"],
+            "order_by": ["prefix__version", "prefix__binary_address", "prefix__prefixlen"],
             "display_labels": ["prefix__value"],
             "icon": "mdi:ip-network",
             "branch": BranchSupportType.AWARE.value,

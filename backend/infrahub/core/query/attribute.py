@@ -224,7 +224,7 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,too
         query_filter.append(QueryNode(name="i", labels=["Attribute"], params={"name": f"${param_prefix}_name"}))
         query_params[f"{param_prefix}_name"] = name
 
-    if filter_name in ("value", "binary_address"):
+    if filter_name in ("value", "binary_address", "prefixlen"):
         query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]))
 
         if filter_value is None:
