@@ -191,6 +191,13 @@ export const relationshipsForTabs = {
   many: ["Generic", "Component", "Hierarchy"],
 };
 
+export const RELATIONSHIP_VIEW_BLACKLIST = [
+  "member_of_groups",
+  "subscriber_of_groups",
+  "children",
+  "profiles",
+];
+
 export const peersKindForForm = ["Attribute", "Parent"];
 
 export const PROPOSED_CHANGES_EDITABLE_STATE = ["open", "closed"];
