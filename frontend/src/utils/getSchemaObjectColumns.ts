@@ -295,16 +295,18 @@ export const getRelationshipOptions = (row: any, field: any, schemas: any[], gen
   const generic = generics.find((generic: any) => generic.kind === field.peer);
 
   if (generic) {
-    const options = (generic.used_by || []).map((name: string) => {
-      const relatedSchema = schemas.find((s: any) => s.kind === name);
+    const options = (generic.used_by || [])
+      .map((name: string) => {
+        const relatedSchema = schemas.find((s: any) => s.kind === name);
 
-      if (relatedSchema) {
-        return {
-          id: name,
-          name: relatedSchema.name,
-        };
-      }
-    });
+        if (relatedSchema) {
+          return {
+            id: name,
+            name: relatedSchema.name,
+          };
+        }
+      })
+      .filter(Boolean);
 
     return options;
   }
