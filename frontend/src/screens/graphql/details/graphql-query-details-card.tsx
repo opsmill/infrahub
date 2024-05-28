@@ -5,7 +5,6 @@ import { Badge } from "../../../components/ui/badge";
 import { Property, PropertyList } from "../../../components/table/property-list";
 import { CopyToClipboard } from "../../../components/buttons/copy-to-clipboard";
 import { AttributeType, ObjectAttributeValue } from "../../../utils/getObjectItemDisplayValue";
-import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { constructPath } from "../../../utils/fetch";
 import { getObjectDetailsUrl, getObjectDetailsUrl2 } from "../../../utils/objects";
 import { RELATIONSHIP_VIEW_BLACKLIST } from "../../../config/constants";
@@ -13,6 +12,7 @@ import { Link } from "../../../components/utils/link";
 import { Tooltip } from "../../../components/ui/tooltip";
 import ObjectEditSlideOverTrigger from "../../../components/form/object-edit-slide-over-trigger";
 import PropertiesPopover from "../../../components/display/properties-popover";
+import { Icon } from "@iconify-icon/react";
 
 type GraphqlQueryDetailsCardProps = {
   data: CoreGraphQlQuery;
@@ -160,7 +160,7 @@ const GraphqlQueryPropertyList = ({ data, schema, refetch }: GraphqlQueryDetails
 
 const ProtectedIcon = () => (
   <Tooltip content="protected" enabled>
-    <LockClosedIcon className="w-4 h-4" />
+    <Icon icon="mdi:lock-outline" className="text-gray-500" />
   </Tooltip>
 );
 
