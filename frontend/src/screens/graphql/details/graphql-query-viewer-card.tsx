@@ -11,7 +11,7 @@ const GraphqlQueryViewerCard = ({ query }: { query: string }) => {
     <CardWithBorder className="flex-grow relative">
       <GraphqlViewer value={query} />
       <div className="flex gap-2 absolute top-6 right-6">
-        <CopyToClipboard text={query} />
+        <CopyToClipboard variant="outline" text={query} />
 
         <Link to={constructPath("/graphql", [{ name: "query", value: query }])}>
           <Button variant="outline" size="sm">

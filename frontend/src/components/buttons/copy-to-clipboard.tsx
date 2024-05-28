@@ -21,7 +21,7 @@ export const CopyToClipboard = ({ text, ...props }: CopyToClipboardProps) => {
   };
 
   return (
-    <Button size="icon" variant="outline" onClick={handleCopy} {...props}>
+    <Button size="icon" variant="ghost" onClick={handleCopy} {...props}>
       <Icon
         icon={
           copied ? "mdi:checkbox-multiple-marked-outline" : "mdi:checkbox-multiple-blank-outline"

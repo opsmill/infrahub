@@ -52,7 +52,7 @@ const GraphqlQueryPropertyList = ({ data, schema, refetch }: GraphqlQueryDetails
       name: "ID",
       value: (
         <div className="inline-flex items-center gap-1">
-          {data.id} <CopyToClipboard text={data.id} />
+          {data.id} <CopyToClipboard className="text-gray-500" text={data.id} />
         </div>
       ),
     },

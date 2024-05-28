@@ -16,7 +16,9 @@ export const ObjectAttributeRow = ({
       <dt className="font-medium text-gray-500 flex items-center h-8">{name}</dt>
       <dd className="flex items-center gap-2">
         {value}
-        {enableCopyToClipboard && <CopyToClipboard text={value.toString()} />}
+        {enableCopyToClipboard && (
+          <CopyToClipboard className="text-gray-500" text={value.toString()} />
+        )}
       </dd>
     </div>
   );
