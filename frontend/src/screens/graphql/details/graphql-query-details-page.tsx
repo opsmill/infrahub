@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useTitle } from "../../../hooks/useTitle";
 import useQuery from "../../../hooks/useQuery";
 import { CoreGraphQlQuery } from "../../../generated/graphql";
@@ -9,6 +9,10 @@ import GraphQLQueryDetailsPageSkeleton from "./graphql-query-details-page-skelet
 import { getSchemaObjectColumns } from "../../../utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { getObjectDetailsPaginated } from "../../../graphql/queries/objects/getObjectDetails";
+import Content from "../../layout/content";
+import { constructPath } from "../../../utils/fetch";
+import { Icon } from "@iconify-icon/react";
+import { ObjectHelpButton } from "../../../components/menu/object-help-button";
 
 const GraphqlQueryDetailsPage = () => {
   useTitle("GraphQL Query details");
@@ -28,7 +32,7 @@ const GraphqlQueryDetailsPage = () => {
     })
   );
 
-  const { loading, data } = useQuery(query, {
+  const { loading, data, refetch } = useQuery(query, {
     skip: !graphqlQuerySchema,
   });
 
@@ -36,7 +40,40 @@ const GraphqlQueryDetailsPage = () => {
 
   const graphqlQuery: CoreGraphQlQuery = data && data.CoreGraphQLQuery.edges[0].node;
 
-  return JSON.stringify(graphqlQuery);
+  return (
+    <Content>
+      <Content.Title
+        title={
+          <div className="flex items-center gap-1">
+            <Link
+              to={constructPath(`/objects/${graphqlQuerySchema.kind}`)}
+              className="hover:underline">
+              {graphqlQuerySchema.label}
+            </Link>
+
+            <Icon icon="mdi:chevron-right" className="text-2xl shrink-0 text-gray-400" />
+
+            {loading ? (
+              <span>...</span>
+            ) : (
+              <p className="max-w-2xl text-sm text-gray-500 font-normal">
+                {graphqlQuery.display_label}
+              </p>
+            )}
+          </div>
+        }
+        reload={() => refetch()}
+        isReloadLoading={loading}>
+        <ObjectHelpButton
+          className="ml-auto"
+          documentationUrl={graphqlQuerySchema.documentation}
+          kind={graphqlQuerySchema.kind}
+        />
+      </Content.Title>
+
+      {graphqlQuery && JSON.stringify(graphqlQuery)}
+    </Content>
+  );
 };
 
 export default GraphqlQueryDetailsPage;
