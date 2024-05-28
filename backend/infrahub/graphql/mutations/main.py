@@ -66,12 +66,12 @@ class InfrahubMutationMixin:
 
         if "Create" in cls.__name__:
             obj, mutation = await cls.mutate_create(
-                root=root, info=info, branch=context.branch, at=context.at, *args, **kwargs
+                root=root, info=info, branch=context.branch, at=context.at, **kwargs
             )
             action = MutationAction.ADDED
         elif "Update" in cls.__name__:
             obj, mutation = await cls.mutate_update(
-                root=root, info=info, branch=context.branch, at=context.at, *args, **kwargs
+                root=root, info=info, branch=context.branch, at=context.at, **kwargs
             )
             action = MutationAction.UPDATED
         elif "Upsert" in cls.__name__:
@@ -82,7 +82,7 @@ class InfrahubMutationMixin:
                 MutationNodeGetterByDefaultFilter(db=context.db, node_manager=node_manager),
             ]
             obj, mutation, created = await cls.mutate_upsert(
-                root=root, info=info, branch=context.branch, at=context.at, node_getters=node_getters, *args, **kwargs
+                root=root, info=info, branch=context.branch, at=context.at, node_getters=node_getters, **kwargs
             )
             if created:
                 action = MutationAction.ADDED
@@ -90,7 +90,7 @@ class InfrahubMutationMixin:
                 action = MutationAction.UPDATED
         elif "Delete" in cls.__name__:
             obj, mutation = await cls.mutate_delete(
-                root=root, info=info, branch=context.branch, at=context.at, *args, **kwargs
+                root=root, info=info, branch=context.branch, at=context.at, **kwargs
             )
             action = MutationAction.REMOVED
         else:

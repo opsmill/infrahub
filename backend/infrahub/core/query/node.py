@@ -410,7 +410,7 @@ class NodeListGetAttributeQuery(Query):
         include_source: bool = False,
         include_owner: bool = False,
         account=None,
-        *args,
+        *args,  # pylint: disable=unused-argument
         **kwargs,
     ):
         self.account = account
@@ -419,7 +419,7 @@ class NodeListGetAttributeQuery(Query):
         self.include_source = include_source
         self.include_owner = include_owner
 
-        super().__init__(order_by=["n.uuid", "a.name"], *args, **kwargs)
+        super().__init__(order_by=["n.uuid", "a.name"], **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
