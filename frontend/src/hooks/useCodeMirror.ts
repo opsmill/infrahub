@@ -1,9 +1,18 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { markdown, markdownKeymap, markdownLanguage } from "@codemirror/lang-markdown";
 import { EditorState } from "@codemirror/state";
-import { EditorView, ViewUpdate, keymap, placeholder as placeholderView } from "@codemirror/view";
+import {
+  EditorView,
+  ViewUpdate,
+  keymap,
+  lineNumbers,
+  placeholder as placeholderView,
+} from "@codemirror/view";
 import { basicLight } from "cm6-theme-basic-light";
 import { useEffect, useState } from "react";
+import { syntaxHighlighting } from "@codemirror/language";
+import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
+import { graphql } from "cm6-graphql";
 
 export type UseCodeMirror = {
   editor?: HTMLDivElement | null;
@@ -30,39 +39,54 @@ const theme = EditorView.baseTheme({
 type CodeMirrorProps = {
   value?: string;
   placeholder?: string;
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
+  lang?: "markdown" | "graphql";
+  readOnly?: boolean;
 };
 
 export function useCodeMirror(
   container: HTMLDivElement | null,
-  { value, onChange, placeholder = "" }: CodeMirrorProps
+  { value, onChange, placeholder = "", lang = "markdown", readOnly = false }: CodeMirrorProps
 ) {
   const [containerElement, setContainerElement] = useState<HTMLDivElement>();
   const [view, setView] = useState<EditorView>();
   const [state, setState] = useState<EditorState>();
 
   const updateListener = EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
-    if (viewUpdate.docChanged) {
+    if (viewUpdate.docChanged && onChange) {
       onChange(viewUpdate.state.doc.toString());
     }
   });
 
   useEffect(() => {
     if (containerElement && !state) {
+      const langExtensions =
+        lang === "markdown"
+          ? [
+              keymap.of([...defaultKeymap, indentWithTab, ...markdownKeymap, ...historyKeymap]),
+              basicLight,
+              markdown({ base: markdownLanguage }),
+            ]
+          : [
+              keymap.of([...defaultKeymap, indentWithTab, ...historyKeymap]),
+              syntaxHighlighting(oneDarkHighlightStyle),
+              lineNumbers(),
+              graphql(),
+            ];
+
       const stateCurrent = EditorState.create({
         doc: value,
         extensions: [
           updateListener,
           theme,
           history(),
-          keymap.of([...defaultKeymap, indentWithTab, ...markdownKeymap, ...historyKeymap]),
-          markdown({ base: markdownLanguage }),
+          ...langExtensions,
           updateListener,
           placeholderView(placeholder),
-          theme,
-          basicLight,
+          EditorState.readOnly.of(readOnly),
         ],
       });
+
       setState(stateCurrent);
 
       if (!view) {

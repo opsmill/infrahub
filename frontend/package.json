@@ -34,6 +34,7 @@
     "@codemirror/commands": "^6.3.3",
     "@codemirror/lang-markdown": "^6.2.4",
     "@codemirror/state": "^6.4.1",
+    "@codemirror/theme-one-dark": "^6.1.2",
     "@codemirror/view": "^6.26.1",
     "@graphiql/plugin-explorer": "^1.0.4",
     "@headlessui/react": "^1.7.18",
@@ -54,6 +55,7 @@
     "autoprefixer": "^10.4.19",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
+    "cm6-graphql": "^0.0.14",
     "cm6-theme-basic-light": "^0.2.0",
     "cross-fetch": "^4.0.0",
     "date-fns": "^3.6.0",
@@ -133,6 +135,10 @@
       "graphql": "^16.8.1",
       "react": "^18.2.0",
       "react-dom": "^18.2.0"
+    },
+    "cm6-graphql": {
+      "@codemirror/state": "^6.4.1",
+      "@codemirror/view": "^6.26.1"
     }
   },
   "browserslist": {
