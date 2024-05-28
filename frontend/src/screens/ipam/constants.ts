@@ -1,3 +1,5 @@
+import { RELATIONSHIP_VIEW_BLACKLIST } from "../../config/constants";
+
 export const NAMESPACE_GENERIC = "BuiltinIPNamespace";
 export const IP_ADDRESS_GENERIC = "BuiltinIPAddress";
 export const IP_PREFIX_GENERIC = "BuiltinIPPrefix";
@@ -28,10 +30,4 @@ export const IPAM_QSP = {
   NAMESPACE: "namespace",
 };
 
-export const IP_SUMMARY_RELATIONSHIPS_BLACKLIST = [
-  "ip_addresses",
-  "member_of_groups",
-  "subscriber_of_groups",
-  "children",
-  "profiles",
-];
+export const IP_SUMMARY_RELATIONSHIPS_BLACKLIST = [...RELATIONSHIP_VIEW_BLACKLIST, "ip_addresses"];
