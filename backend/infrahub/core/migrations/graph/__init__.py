@@ -10,6 +10,7 @@ from .m005_add_rel_read_only import Migration005
 from .m006_add_rel_on_delete import Migration006
 from .m007_add_rel_allow_override import Migration007
 from .m008_add_human_friendly_id import Migration008
+from .m009_add_generate_profile_attr import Migration009
 
 if TYPE_CHECKING:
     from infrahub.core.root import Root
@@ -25,6 +26,7 @@ MIGRATIONS: List[type[Union[GraphMigration, InternalSchemaMigration]]] = [
     Migration006,
     Migration007,
     Migration008,
+    Migration009,
 ]
 
 
