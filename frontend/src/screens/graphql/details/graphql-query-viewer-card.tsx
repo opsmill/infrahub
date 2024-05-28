@@ -15,8 +15,7 @@ const GraphqlQueryViewerCard = ({ query }: { query: string }) => {
 
         <Link to={constructPath("/graphql", [{ name: "query", value: query }])}>
           <Button variant="outline" size="sm">
-            <Icon icon="mdi:play" className="text-lg mr-1" />
-            Execute query
+            GraphQL sandbox <Icon icon="mdi:arrow-top-right" className="ml-1" />
           </Button>
         </Link>
       </div>
