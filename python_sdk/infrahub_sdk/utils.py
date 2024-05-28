@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import glob
 import hashlib
 import json
 from itertools import groupby
@@ -227,21 +226,19 @@ def is_valid_url(url: str) -> bool:
         return False
 
 
-def find_files(
-    extension: Union[str, List[str]],
-    directory: Union[str, Path] = ".",
-    recursive: bool = True,
-) -> List[Path]:
-    files = []
+def find_files(extension: Union[str, List[str]], directory: Union[str, Path] = ".") -> List[Path]:
+    files: List[Path] = []
 
     if isinstance(extension, str):
         extension = [extension]
+    if isinstance(directory, str):
+        directory = Path(directory)
 
     for ext in extension:
-        files.extend(glob.glob(f"{directory}/**/*.{ext}", recursive=recursive))
-        files.extend(glob.glob(f"{directory}/**/.*.{ext}", recursive=recursive))
+        files.extend(list(directory.glob(f"**/*.{ext}")))
+        files.extend(list(directory.glob(f"**/.*.{ext}")))
 
-    return [Path(item) for item in files]
+    return files
 
 
 def get_branch(branch: Optional[str] = None, directory: Union[str, Path] = ".") -> str:

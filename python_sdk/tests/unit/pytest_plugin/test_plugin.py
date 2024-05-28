@@ -139,8 +139,9 @@ def test_jinja2_transform_no_expected_output(pytester):
     )
 
     pytester.mkdir("bgp_config")
-    pytester.mkdir("bgp_config/base")
-    pytester.makefile(".json", input='{"data": {}}')
+    test_dir = pytester.mkdir("bgp_config/base")
+    test_input = pytester.makefile(".json", input='{"data": {}}')
+    pytester.run("mv", test_input, test_dir)
 
     template_dir = pytester.mkdir("templates")
     template = pytester.makefile(
@@ -195,9 +196,9 @@ def test_jinja2_transform_unexpected_output(pytester):
     )
 
     pytester.mkdir("bgp_config")
-    pytester.mkdir("bgp_config/base")
-    pytester.makefile(".json", input='{"data": {}}')
-    pytester.makefile(
+    test_dir = pytester.mkdir("bgp_config/base")
+    test_input = pytester.makefile(".json", input='{"data": {}}')
+    test_output = pytester.makefile(
         ".txt",
         output="""
     protocols {
@@ -211,6 +212,8 @@ def test_jinja2_transform_unexpected_output(pytester):
     }
     """,
     )
+    pytester.run("mv", test_input, test_dir)
+    pytester.run("mv", test_output, test_dir)
 
     template_dir = pytester.mkdir("templates")
     template = pytester.makefile(

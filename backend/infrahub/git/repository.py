@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import glob
 import hashlib
 import importlib
 import os
@@ -1798,25 +1797,24 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         branch_name: Optional[str] = None,
         commit: Optional[str] = None,
         directory: Optional[str] = None,
-        recursive: bool = True,
-    ) -> List[str]:
-        """Return the absolute path of all files matching a specific extension in a given Branch or Commit."""
+    ) -> List[Path]:
+        """Return the path of all files matching a specific extension in a given Branch or Commit."""
         if not branch_name and not commit:
             raise ValueError("Either branch_name or commit must be provided.")
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
-        search_dir = branch_wt.directory
+        search_dir = Path(branch_wt.directory)
         if directory:
-            search_dir = os.path.join(search_dir, directory)
+            search_dir /= directory
 
-        files = []
+        files: List[Path] = []
         if isinstance(extension, str):
-            files.extend(glob.glob(f"{search_dir}/**/*.{extension}", recursive=recursive))
-            files.extend(glob.glob(f"{search_dir}/**/.*.{extension}", recursive=recursive))
+            files.extend(list(search_dir.glob(f"**/*.{extension}")))
+            files.extend(list(search_dir.glob(f"**/.*.{extension}")))
         elif isinstance(extension, list):
             for ext in extension:
-                files.extend(glob.glob(f"{search_dir}/**/*.{ext}", recursive=recursive))
-                files.extend(glob.glob(f"{search_dir}/**/.*.{ext}", recursive=recursive))
+                files.extend(list(search_dir.glob(f"**/*.{ext}")))
+                files.extend(list(search_dir.glob(f"**/.*.{ext}")))
         return files
 
     async def find_graphql_queries(self, commit: str) -> List[GraphQLQueryInformation]:
@@ -1825,14 +1823,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         query_files = await self.find_files(extension=["gql"], commit=commit)
 
         for query_file in query_files:
-            filename = os.path.basename(query_file)
-            name = os.path.splitext(filename)[0]
-
             queries.append(
                 GraphQLQueryInformation(
-                    name=name,
-                    filename=filename,
-                    query=Path(query_file).read_text(encoding="UTF-8"),
+                    name=query_file.stem, filename=query_file.name, query=query_file.read_text(encoding="UTF-8")
                 )
             )
         return queries

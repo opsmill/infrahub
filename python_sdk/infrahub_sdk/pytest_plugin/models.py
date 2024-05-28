@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import glob
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union
@@ -73,27 +72,28 @@ class InfrahubInputOutputTest(InfrahubBaseTest):
         else:
             self.directory = base_dir
 
-        if (self.input and not self.input.is_file()) or not self.input:
-            search_input = self.input or "input.*"
-            results = glob.glob(str(self.directory / search_input))
+        if not self.input or not self.input.is_file():
+            search_input: Union[Path, str] = self.input or "input.*"
+            results = list(self.directory.rglob(str(search_input)))
+
             if not results:
                 raise FileNotFoundError(self.input)
             if len(results) != 1:
                 raise FileNotFoundError(
                     f"Too many files are matching: {self.input}, please set the 'input' test key to the file to use."
                 )
-            self.input = Path(results[0])
+            self.input = results[0]
 
-        if (self.output and not self.output.is_file()) or not self.output:
-            search_input = self.output or "output.*"
+        if not self.output or not self.output.is_file():
+            search_output: Union[Path, str] = self.output or "output.*"
+            results = list(self.directory.rglob(str(search_output)))
 
-            results = glob.glob(str(self.directory / search_input))
             if results and len(results) != 1:
                 raise FileNotFoundError(
                     f"Too many files are matching: {self.output}, please set the 'output' test key to the file to use."
                 )
             if results:
-                self.output = Path(results[0])
+                self.output = results[0]
 
     def get_input_data(self) -> Any:
         return self.parse_user_provided_data(self.input)
@@ -111,15 +111,16 @@ class InfrahubIntegrationTest(InfrahubInputOutputTest):
         super().update_paths(base_dir)
 
         if self.variables and not isinstance(self.variables, dict) and not self.variables.is_file():
-            search_variables = self.variables or "variables.*"
-            results = glob.glob(str(self.directory / search_variables))  # type: ignore[operator]
+            search_variables: Union[Path, str] = self.variables or "variables.*"
+            results = list(self.directory.rglob(str(search_variables)))  # type: ignore[union-attr]
+
             if not results:
                 raise FileNotFoundError(self.variables)
             if len(results) != 1:
                 raise FileNotFoundError(
                     f"Too many files are matching: {self.variables}, please set the 'variables' test key to the file to use."
                 )
-            self.variables = Path(results[0])
+            self.variables = results[0]
 
     def get_variables_data(self) -> Dict[str, Any]:
         if isinstance(self.variables, dict):

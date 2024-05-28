@@ -413,7 +413,7 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
 
 
 @pytest.fixture(scope="module")
-def tmp_path_module_scope() -> Generator[str, None, None]:
+def tmp_path_module_scope() -> Generator[Path, None, None]:
     """Fixture similar to tmp_path but with scope=module"""
     with TemporaryDirectory() as tmpdir:
         directory = tmpdir
@@ -423,16 +423,16 @@ def tmp_path_module_scope() -> Generator[str, None, None]:
             # /prefix/var and InfrahubRepository fails to initialize the repository as the
             # relative path of the repository isn't handled correctly
             directory = f"/private{tmpdir}"
-        yield directory
+        yield Path(directory)
 
 
 @pytest.fixture(scope="module")
-def git_repos_dir_module_scope(tmp_path_module_scope: str) -> Generator[str, None, None]:
-    repos_dir = os.path.join(str(tmp_path_module_scope), "repositories")
+def git_repos_dir_module_scope(tmp_path_module_scope: Path) -> Generator[Path, None, None]:
+    repos_dir = tmp_path_module_scope / "repositories"
+    repos_dir.mkdir()
 
-    os.mkdir(repos_dir)
     old_repos_dir = config.SETTINGS.git.repositories_directory
-    config.SETTINGS.git.repositories_directory = repos_dir
+    config.SETTINGS.git.repositories_directory = str(repos_dir)
 
     yield repos_dir
 
@@ -440,9 +440,9 @@ def git_repos_dir_module_scope(tmp_path_module_scope: str) -> Generator[str, Non
 
 
 @pytest.fixture(scope="module")
-def git_repos_source_dir_module_scope(tmp_path_module_scope: str) -> str:
-    repos_dir = os.path.join(str(tmp_path_module_scope), "source")
-    os.mkdir(repos_dir)
+def git_repos_source_dir_module_scope(tmp_path_module_scope: Path) -> Path:
+    repos_dir = tmp_path_module_scope / "source"
+    repos_dir.mkdir()
     return repos_dir
 
 
@@ -472,7 +472,9 @@ class TestHelper:
     @staticmethod
     def schema_file(file_name: str) -> dict:
         """Return the contents of a schema file as a dictionary"""
-        file_content = Path(os.path.join(TestHelper.get_fixtures_dir(), f"schemas/{file_name}")).read_text()
+        file_content = Path(os.path.join(TestHelper.get_fixtures_dir(), f"schemas/{file_name}")).read_text(
+            encoding="utf-8"
+        )
 
         return ujson.loads(file_content)
 

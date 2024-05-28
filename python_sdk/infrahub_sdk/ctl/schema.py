@@ -42,7 +42,7 @@ def load_schemas_from_disk(schemas: List[Path]) -> List[SchemaFile]:
             schema_file.load_content()
             schemas_data.append(schema_file)
         elif schema.is_dir():
-            files = find_files(extension=["yaml", "yml", "json"], directory=schema, recursive=True)
+            files = find_files(extension=["yaml", "yml", "json"], directory=schema)
             for item in files:
                 schema_file = SchemaFile(location=item)
                 schema_file.load_content()
