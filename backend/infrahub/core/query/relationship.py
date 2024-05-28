@@ -205,7 +205,7 @@ class RelationshipCreateQuery(RelationshipQuery):
         if not destination and not destination_id:
             raise ValueError("Either destination or destination_id must be provided.")
 
-        super().__init__(destination=destination, destination_id=destination_id, *args, **kwargs)
+        super().__init__(destination=destination, destination_id=destination_id, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["source_id"] = self.source_id

@@ -351,10 +351,10 @@ class Query(ABC):
         at: Optional[Union[Timestamp, str]] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-        *args,
+        *args,  # pylint: disable=unused-argument
         **kwargs,
     ) -> Self:
-        query = cls(branch=branch, at=at, limit=limit, offset=offset, *args, **kwargs)
+        query = cls(branch=branch, at=at, limit=limit, offset=offset, **kwargs)
 
         await query.query_init(db=db, **kwargs)
 

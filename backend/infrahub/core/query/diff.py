@@ -309,7 +309,7 @@ class DiffNodePropertiesByIDSRangeQuery(Query):
         diff_from: str,
         diff_to: str,
         account=None,
-        *args,
+        *args,  # pylint: disable=unused-argument
         **kwargs,
     ):
         self.account = account
@@ -317,7 +317,7 @@ class DiffNodePropertiesByIDSRangeQuery(Query):
         self.time_from = Timestamp(diff_from)
         self.time_to = Timestamp(diff_to)
 
-        super().__init__(order_by=["a.name"], *args, **kwargs)
+        super().__init__(order_by=["a.name"], **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
