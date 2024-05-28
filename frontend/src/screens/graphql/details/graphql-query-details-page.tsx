@@ -15,6 +15,7 @@ import { Icon } from "@iconify-icon/react";
 import { ObjectHelpButton } from "../../../components/menu/object-help-button";
 import GraphqlQueryDetailsCard from "./graphql-query-details-card";
 import GraphqlQueryViewerCard from "./graphql-query-viewer-card";
+import NoDataFound from "../../errors/no-data-found";
 
 const GraphqlQueryDetailsPage = () => {
   useTitle("GraphQL Query details");
@@ -40,7 +41,10 @@ const GraphqlQueryDetailsPage = () => {
 
   if (!graphqlQuerySchema || loading) return <GraphQLQueryDetailsPageSkeleton />;
 
-  const graphqlQuery: CoreGraphQlQuery = data && data.CoreGraphQLQuery.edges[0].node;
+  const graphqlQueries = data && data.CoreGraphQLQuery.edges;
+  if (graphqlQueries.length === 0) return <NoDataFound />;
+
+  const graphqlQuery: CoreGraphQlQuery = graphqlQueries[0].node;
 
   return (
     <Content>
