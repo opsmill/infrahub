@@ -12,6 +12,7 @@ import { RELATIONSHIP_VIEW_BLACKLIST } from "../../../config/constants";
 import { Link } from "../../../components/utils/link";
 import { Tooltip } from "../../../components/ui/tooltip";
 import ObjectEditSlideOverTrigger from "../../../components/form/object-edit-slide-over-trigger";
+import PropertiesPopover from "../../../components/display/properties-popover";
 
 type GraphqlQueryDetailsCardProps = {
   data: CoreGraphQlQuery;
@@ -81,7 +82,7 @@ const GraphqlQueryPropertyList = ({ data, schema, refetch }: GraphqlQueryDetails
             <div className="flex items-center">
               {graphqlQueryAttribute.is_protected && <ProtectedIcon />}
 
-              <FieldPropertiesPopover
+              <PropertiesPopover
                 type="attribute"
                 attributeSchema={attributeSchema}
                 properties={graphqlQueryAttribute}
@@ -110,8 +111,9 @@ const GraphqlQueryPropertyList = ({ data, schema, refetch }: GraphqlQueryDetails
 
                 {properties.is_protected && <ProtectedIcon />}
 
-                <FieldPropertiesPopover
+                <PropertiesPopover
                   type="relationship"
+                  hideHeader
                   attributeSchema={relationshipSchema}
                   properties={properties}
                   refetch={refetch}
@@ -138,7 +140,7 @@ const GraphqlQueryPropertyList = ({ data, schema, refetch }: GraphqlQueryDetails
               <div className="flex items-center">
                 {relationshipProperties.is_protected && <ProtectedIcon />}
 
-                <FieldPropertiesPopover
+                <PropertiesPopover
                   type="relationship"
                   attributeSchema={relationshipSchema}
                   properties={relationshipProperties}
@@ -161,7 +163,5 @@ const ProtectedIcon = () => (
     <LockClosedIcon className="w-4 h-4" />
   </Tooltip>
 );
-
-const FieldPropertiesPopover = () => <button>i</button>;
 
 export default GraphqlQueryDetailsCard;
