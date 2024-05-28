@@ -3,7 +3,7 @@ import { useTitle } from "../../../hooks/useTitle";
 import useQuery from "../../../hooks/useQuery";
 import { CoreGraphQlQuery } from "../../../generated/graphql";
 import { useAtomValue } from "jotai/index";
-import { schemaState } from "../../../state/atoms/schema.atom";
+import { iNodeSchema, schemaState } from "../../../state/atoms/schema.atom";
 import { GRAPHQL_QUERY_OBJECT } from "../../../config/constants";
 import GraphQLQueryDetailsPageSkeleton from "./graphql-query-details-page-skeleton";
 import { getSchemaObjectColumns } from "../../../utils/getSchemaObjectColumns";
@@ -13,6 +13,8 @@ import Content from "../../layout/content";
 import { constructPath } from "../../../utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { ObjectHelpButton } from "../../../components/menu/object-help-button";
+import GraphqlQueryDetailsCard from "./graphql-query-details-card";
+import GraphqlQueryViewerCard from "./graphql-query-viewer-card";
 
 const GraphqlQueryDetailsPage = () => {
   useTitle("GraphQL Query details");
@@ -71,8 +73,32 @@ const GraphqlQueryDetailsPage = () => {
         />
       </Content.Title>
 
-      {graphqlQuery && JSON.stringify(graphqlQuery)}
+      {graphqlQuery && (
+        <GraphqlQueryDetailsContent
+          graphqlQuerySchema={graphqlQuerySchema}
+          graphqlQuery={graphqlQuery}
+          refetch={refetch}
+        />
+      )}
     </Content>
+  );
+};
+
+const GraphqlQueryDetailsContent = ({
+  graphqlQuery,
+  graphqlQuerySchema,
+  refetch,
+}: {
+  graphqlQuery: CoreGraphQlQuery;
+  graphqlQuerySchema: iNodeSchema;
+  refetch: () => Promise<unknown>;
+}) => {
+  return (
+    <section className="flex flex-wrap lg:flex-nowrap items-start gap-2 p-2">
+      <GraphqlQueryDetailsCard data={graphqlQuery} schema={graphqlQuerySchema} refetch={refetch} />
+
+      <GraphqlQueryViewerCard query={graphqlQuery.query.value ?? ""} />
+    </section>
   );
 };
 
