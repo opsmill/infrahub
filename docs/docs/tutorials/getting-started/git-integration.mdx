@@ -1,6 +1,8 @@
 ---
 title: Integration with Git
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # Connect a Git repository to Infrahub
 
@@ -8,44 +10,47 @@ One of the three pillars Infrahub is built on is the idea of having unified stor
 
 When integrating a Git repository with Infrahub, the Git agent will ensure that both systems stay in sync at any time. Changes to branches or files in a Git repository will be synced to Infrahub automatically.
 
-## Fork & Clone the repository for the demo
+Infrahub also has the capability to integrate with a Git repository in read-only mode. This allows you to track a specific commit or branch in the repository. Infrahub will not be able to make changes to the repository and you have to manually update the tracked commit, when you make changes to the repository.
 
-Create a fork of the repository:
-
-[infrahub-demo-edge](https://github.com/opsmill/infrahub-demo-edge)
+More information can be found in the [repository topic](/topics/repository).
 
 :::info
 
-The goal is to have a copy of this repository under your name. This way your testing won't affect other users.
+In this tutorial we will use a Read-only Repository. If you want to be able to make changes to the contents of the repository then you will have to fork it and set it up as CoreRepository. More information can be found in the [external repositories guide](/guides/repository).
 
 :::
 
-Once you have created a fork in GitHub, you'll need a Personal Access Token to authorize Infrahub to access this repository.
+## Integrate the Git repository with Infrahub as a Read-only Repository
 
-[How to create a Personal Access Token in GitHub](/guides/repository#personal-access-token)
+Currently the easiest way to add a read-only repository is to use the web interface.
 
-:::note
+1. Log in to the Infrahub UI
+2. Go to `Unified Storage` > `Read-only Repository`
+3. Click on the `+` plus sign
+4. Complete the required information:
 
-If you already cloned the repository in the past, ensure only the main branch is present in GitHub. If other branches are present, we recommend deleting them before continuing.
+<Tabs>
+  <TabItem value="Name" default>
+    The name you want to give the repository in Infrahub for identification purposes, `infrahub-demo-edge`
+  </TabItem>
+  <TabItem value="Location">
+    The URL of the external repository, `https://github.com/opsmill/infrahub-demo-edge.git`.
+  </TabItem>
+  <TabItem value="Username">
+    We can leave this empty, this repository is public for read operations
+  </TabItem>
+  <TabItem value="Password">
+    We can leave this empty, this repository is public for read operations
+  </TabItem>
+  <TabItem value="Ref">
+    The branch, commit or label that we want to track in the repository, we will be tracking the current `HEAD` of `main`
+  </TabItem>
+  <TabItem value="Commit">
+    Infrahub will automatically populate this to the current `HEAD` of the `main` branch, in this case we don't need to provide a value
+  </TabItem>
+</Tabs>
 
-:::
-
-<details>
-  <summary>How to Delete a branch in GitHub</summary>
-
-  1. Select the name of the active branch in the top left corner (usually main)
-  2. Select `View All Branches` at the bottom of the popup
-  3. Delete all branches but the branch `main`, with the trash icon on the right of the screen
-
-  ![View all Branches](../../media/github_view_all_branches.png)
-
-</details>
-
-## Integrate the Git repository with Infrahub
-
-Currently the easiest way to add a repository is to use the web interface.
-
-Refer to [Adding a repository guide](/guides/repository).
+5. Click the `Create` button
 
 After adding the `infrahub-demo-edge` repository you will be able to see several new [Transformations](/topics/transformation) and related objects:
 
