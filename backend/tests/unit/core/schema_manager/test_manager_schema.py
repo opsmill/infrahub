@@ -413,6 +413,9 @@ async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one)
 
     with pytest.raises(SchemaNotFoundError):
         schema.get(name="ProfileBuiltinTag")
+    builtin_tag_schema = schema.get_node(name="BuiltinTag", duplicate=False)
+    with pytest.raises(ValueError):
+        builtin_tag_schema.get_attribute("profiles")
     core_profile_schema = schema.get("CoreProfile")
     assert set(core_profile_schema.used_by) == {
         "ProfileBuiltinCriticality",

@@ -476,6 +476,7 @@ class SchemaBranch:
         self.process_hierarchy()
         self.process_branch_support()
         self.add_profile_schemas()
+        self.add_profile_relationships()
 
     def process_validate(self) -> None:
         self.validate_names()
@@ -493,7 +494,6 @@ class SchemaBranch:
     def process_post_validation(self) -> None:
         self.add_groups()
         self.add_hierarchy()
-        self.add_profile_relationships()
         self.process_filters()
         self.generate_weight()
         self.process_labels()
@@ -1423,26 +1423,30 @@ class SchemaBranch:
     def add_profile_relationships(self) -> None:
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
-            if node.namespace in RESTRICTED_NAMESPACES:
-                continue
-            if not node.generate_profile:
-                continue
-            if "profiles" in node.relationship_names:
+            has_profile_relationship = "profiles" in node.relationship_names
+            needs_profile_relationship = True
+            if node.namespace in RESTRICTED_NAMESPACES or not node.generate_profile:
+                needs_profile_relationship = False
+
+            if has_profile_relationship is needs_profile_relationship:
                 continue
 
-            # Add relationship between node and profile
-            node.relationships.append(
-                RelationshipSchema(
-                    name="profiles",
-                    identifier="node__profile",
-                    peer=self._get_profile_kind(node_kind=node.kind),
-                    kind=RelationshipKind.PROFILE,
-                    cardinality=RelationshipCardinality.MANY,
-                    branch=BranchSupportType.AWARE,
+            if needs_profile_relationship:
+                # Add relationship between node and profile
+                node.relationships.append(
+                    RelationshipSchema(
+                        name="profiles",
+                        identifier="node__profile",
+                        peer=self._get_profile_kind(node_kind=node.kind),
+                        kind=RelationshipKind.PROFILE,
+                        cardinality=RelationshipCardinality.MANY,
+                        branch=BranchSupportType.AWARE,
+                    )
                 )
-            )
-
-        # Add relationship between group and profile
+                # Add relationship between group and profile
+            elif has_profile_relationship:
+                without_profile_rels = [rel for rel in node.relationships if rel.name != "profiles"]
+                node.relationships = without_profile_rels
 
     def _get_profile_kind(self, node_kind: str) -> str:
         return f"Profile{node_kind}"
