@@ -26,7 +26,8 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
         }),
 
         page.goto(
-          "/objects/CoreArtifact?filters=[{\"name\":\"name__value\",\"value\":\"Startup Config for Edge devices\"}]"
+          // eslint-disable-next-line quotes
+          '/objects/CoreArtifact?filters=[{"name":"name__value","value":"Startup Config for Edge devices"}]'
         ),
       ]);
 
