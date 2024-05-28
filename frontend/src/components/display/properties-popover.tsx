@@ -62,7 +62,7 @@ const PropertiesPopover = ({
                 disabled={!permission.write.allow}
                 tooltipEnabled={!permission.write.allow}
                 tooltipContent={permission.write.message ?? undefined}
-                data-testid="metadata-edit-button">
+                data-testid="properties-edit-button">
                 <Icon icon="mdi:pencil" className="text-custom-blue-500" />
               </ButtonWithTooltip>
             </div>
