@@ -360,7 +360,7 @@ jobs:
           flag-name: backend-unit
           parallel: true
       - name: Generate tracing spans
-        if: always()
+        if: always() && github.event.pull_request.head.repo.fork == false
         uses: inception-health/otel-upload-test-artifact-action@v1
         with:
           jobName: "backend-tests-unit"
@@ -664,6 +664,7 @@ jobs:
         run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
 
       - name: Enable tracing
+        if: github.event.pull_request.head.repo.fork == false
         run: echo "INFRAHUB_TRACE_ENABLE=true" >> $GITHUB_ENV
       - name: Set tracing configuration
         run: echo "INFRAHUB_TRACE_INSECURE=false" >> $GITHUB_ENV
@@ -734,7 +735,7 @@ jobs:
         run: npm run ci:test:e2e
 
       - name: Generate tracing spans
-        if: always()
+        if: always() && github.event.pull_request.head.repo.fork == false
         uses: inception-health/otel-upload-test-artifact-action@v1
         with:
           jobName: "E2E-testing-playwright"
