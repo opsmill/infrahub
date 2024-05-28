@@ -27,6 +27,7 @@ env:
   VALE_VERSION: "3.0.7"
   GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
   METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
+  TEST: hello
 
 jobs:
    # ------------------------------------------ Check Files Changes  ------------------------------------------
