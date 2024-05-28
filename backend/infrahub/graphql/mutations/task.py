@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import uuid
 from typing import TYPE_CHECKING, Any, Dict
-from uuid import UUID, uuid4
 
 from graphene import Boolean, Enum, Field, InputObjectType, List, Mutation, ObjectType, String
-from graphene.types.uuid import UUID as GrapheneUUID
+from graphene.types.uuid import UUID
 from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.core.constants import TaskConclusion as PyTaskConclusion
@@ -24,7 +24,7 @@ TaskConclusion = Enum.from_enum(PyTaskConclusion)
 
 
 class TaskCreateInput(InputObjectType):
-    id = GrapheneUUID(required=False)
+    id = UUID(required=False)
     title = String(required=True)
     created_by = String(required=False)
     conclusion = TaskConclusion(required=True)
@@ -33,7 +33,7 @@ class TaskCreateInput(InputObjectType):
 
 
 class TaskUpdateInput(InputObjectType):
-    id = GrapheneUUID(required=True)
+    id = UUID(required=True)
     title = String(required=False)
     conclusion = TaskConclusion(required=False)
     logs = List(RelatedTaskLogCreateInput, required=False)
@@ -73,10 +73,10 @@ class TaskCreate(Mutation):
                 message="The indicated related node was not found in the database",
             )
         fields = await extract_fields_first_node(info)
-        task_id = uuid4()
+        task_id = uuid.uuid4()
 
         if data.id:
-            task_id = UUID(str(data.id))
+            task_id = uuid.UUID(str(data.id))
 
         async with context.db.start_transaction() as db:
             task = Task(

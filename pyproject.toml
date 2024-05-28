@@ -473,7 +473,7 @@ ignore = [
     "N802",     # Function name should be lowercase
     "N805",     # First argument of a method should be named self
     "N806",     # Variable in function should be lowercase
-    "N811",     # Constant imported as non-constant
+    #"N811",     # Constant imported as non-constant
     "N812",     # Lowercase imported as non-lowercase
     "PLC0415",  # `import` should be at the top-level of a file
     "PLC2701",  # Private name import from external module
