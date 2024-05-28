@@ -22,10 +22,10 @@ class Relationships(ObjectType):
     async def resolve(
         root: dict,  # pylint: disable=unused-argument
         info: GraphQLResolveInfo,
-        ids: List[str],
+        ids: list[str],
         limit: int = 10,
         offset: int = 0,
-        excluded_namespaces: Optional[List[str]] = None,
+        excluded_namespaces: Optional[list[str]] = None,
     ) -> Dict[str, Any]:
         context: GraphqlContext = info.context
 
