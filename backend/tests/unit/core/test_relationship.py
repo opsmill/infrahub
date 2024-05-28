@@ -425,7 +425,7 @@ async def test_relationship_assign_from_pool(
     await pool.new(
         db=db,
         name="pool1",
-        default_prefix_size=24,
+        default_prefix_length=24,
         default_prefix_type="IpamIPPrefix",
         resources=[net140],
         ip_namespace=ns1,

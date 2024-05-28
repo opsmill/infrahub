@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 from collections import defaultdict
+from itertools import chain
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
@@ -630,8 +631,12 @@ class SchemaBranch:
                         allowed_path_types=SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_NO_ATTR,
                         element_name="uniqueness_constraints",
                     )
-                    if schema_path.is_type_relationship:
-                        if schema_path.relationship_schema.optional:
+                    if schema_path.is_type_relationship and schema_path.relationship_schema:
+                        if schema_path.relationship_schema.optional and not (
+                            schema_path.relationship_schema.name == "ip_namespace"
+                            and isinstance(node_schema, NodeSchema)
+                            and (node_schema.is_ip_address() or node_schema.is_ip_prefix)
+                        ):
                             raise ValueError(
                                 f"Only mandatory relation of cardinality one can be used in uniqueness_constraints,"
                                 f" {schema_path.relationship_schema.name} is not mandatory. ({constraint_path})"
@@ -710,8 +715,12 @@ class SchemaBranch:
                 if schema_path.attribute_schema.unique:
                     has_unique_item = True
 
-                if schema_path.is_type_relationship:
-                    if schema_path.relationship_schema.optional:
+                if schema_path.is_type_relationship and schema_path.relationship_schema:
+                    if schema_path.relationship_schema.optional and not (
+                        schema_path.relationship_schema.name == "ip_namespace"
+                        and isinstance(node_schema, NodeSchema)
+                        and (node_schema.is_ip_address() or node_schema.is_ip_prefix)
+                    ):
                         raise ValueError(
                             f"Only mandatory relationship of cardinality one can be used in human_friendly_id, "
                             f"{schema_path.relationship_schema.name} is not mandatory on {schema_path.relationship_schema.kind} for "
@@ -1375,6 +1384,7 @@ class SchemaBranch:
             self.set(name=core_profile_schema.kind, schema=core_profile_schema)
         else:
             core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
+
         profile_schema_kinds = set()
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
@@ -1386,14 +1396,27 @@ class SchemaBranch:
             profile_schema_kinds.add(profile.kind)
         if not profile_schema_kinds:
             return
+
+        # Update used_by list for CoreProfile and CoreNode
         core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
-        current_used_by = set(core_profile_schema.used_by)
-        new_used_by = profile_schema_kinds - current_used_by
-        if not new_used_by:
-            return
-        core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=True)
-        core_profile_schema.used_by = sorted(list(profile_schema_kinds))
-        self.set(name=core_profile_schema.kind, schema=core_profile_schema)
+        current_used_by_profile = set(core_profile_schema.used_by)
+        new_used_by_profile = profile_schema_kinds - current_used_by_profile
+
+        if new_used_by_profile:
+            core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=True)
+            core_profile_schema.used_by = sorted(list(profile_schema_kinds))
+            self.set(name=InfrahubKind.PROFILE, schema=core_profile_schema)
+
+        if self.has(name=InfrahubKind.NODE):
+            core_node_schema = self.get(name=InfrahubKind.NODE, duplicate=False)
+            current_used_by_node = set(core_node_schema.used_by)
+            new_used_by_node = profile_schema_kinds - current_used_by_node
+
+            if new_used_by_node:
+                core_node_schema = self.get(name=InfrahubKind.NODE, duplicate=True)
+                updated_used_by_node = set(chain(profile_schema_kinds, set(core_node_schema.used_by)))
+                core_node_schema.used_by = sorted(list(updated_used_by_node))
+                self.set(name=InfrahubKind.NODE, schema=core_node_schema)
 
     def add_profile_relationships(self):
         for node_name in self.nodes.keys():
@@ -1440,7 +1463,7 @@ class SchemaBranch:
             branch=node.branch,
             include_in_menu=False,
             display_labels=["profile_name__value"],
-            inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE],
+            inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE, InfrahubKind.NODE],
             default_filter="profile_name__value",
             attributes=[profile_name_attr, profile_priority_attr],
             relationships=[

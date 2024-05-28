@@ -349,11 +349,12 @@ class IPPrefixReconcileQuery(Query):
         self.params["ip_version"] = self.ip_value.version
         # possible prefix: highest possible prefix length for a match
         possible_prefix_map: dict[str, int] = {}
-        for max_prefix_len in range(prefixlen - 1, 0, -1):
+        start_prefixlen = prefixlen if is_address else prefixlen - 1
+        for max_prefix_len in range(start_prefixlen, 0, -1):
             tmp_prefix = prefix_bin_host[:max_prefix_len]
             possible_prefix = tmp_prefix.ljust(self.ip_value.max_prefixlen, "0")
             if possible_prefix not in possible_prefix_map:
-                possible_prefix_map[possible_prefix] = max_prefix_len + 1 if is_address else max_prefix_len
+                possible_prefix_map[possible_prefix] = max_prefix_len
         self.params["possible_prefix_and_length_list"] = [
             [possible_prefix, max_length] for possible_prefix, max_length in possible_prefix_map.items()
         ]

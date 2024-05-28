@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.14.0-dev"
+version = "0.14.0"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -206,10 +206,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.api.diff.diff"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.api.storage"
 ignore_errors = true
 
 [[tool.mypy.overrides]]

@@ -1,7 +1,12 @@
 import { store } from "../state";
 import { schemaState } from "../state/atoms/schema.atom";
-import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC, IPAM_ROUTE } from "../screens/ipam/constants";
-import { constructPath } from "./fetch";
+import {
+  IP_ADDRESS_GENERIC,
+  IP_PREFIX_GENERIC,
+  IPAM_QSP,
+  IPAM_ROUTE,
+} from "../screens/ipam/constants";
+import { constructPath, overrideQueryParams } from "./fetch";
 import { constructPathForIpam } from "../screens/ipam/common/utils";
 
 const regex = /^Related/; // starts with Related
@@ -18,20 +23,27 @@ export const resolve = (path: string, object: any, separator: string = ".") => {
   return properties.reduce((prev: any, curr: any) => prev?.[curr], object);
 };
 
-export const getObjectDetailsUrl2 = (objectKind: string, objectId: string) => {
+export const getObjectDetailsUrl2 = (
+  objectKind: string,
+  objectId: string,
+  overrideParams?: overrideQueryParams[]
+) => {
   const nodes = store.get(schemaState);
   const schema = nodes.find(({ kind }) => kind === objectKind);
-  if (!schema) return constructPath("/");
+  if (!schema) return constructPath("/", overrideParams);
 
   const inheritFrom = schema.inherit_from;
 
   if (inheritFrom?.includes(IP_PREFIX_GENERIC)) {
-    return constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${objectId}`);
+    return constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${objectId}`, overrideParams);
   }
 
   if (inheritFrom?.includes(IP_ADDRESS_GENERIC)) {
-    return constructPathForIpam(`${IPAM_ROUTE.ADDRESSES}/${objectId}`);
+    return constructPathForIpam(`${IPAM_ROUTE.ADDRESSES}/${objectId}`, [
+      { name: IPAM_QSP.TAB, value: "ip-details" },
+      ...(overrideParams ?? []),
+    ]);
   }
 
-  return constructPath(`/objects/${objectKind}/${objectId}`);
+  return constructPath(`/objects/${objectKind}/${objectId}`, overrideParams);
 };

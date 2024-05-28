@@ -340,6 +340,7 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    schema.process_inheritance()
     schema.add_profile_schemas()
 
     profile = schema.get(name="ProfileBuiltinCriticality")
@@ -347,7 +348,23 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
     assert profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
     assert set(profile.attribute_names) == {"profile_name", "profile_priority", "description"}
     core_profile_schema = schema.get("CoreProfile")
+    core_node_schema = schema.get("CoreNode")
     assert set(core_profile_schema.used_by) == {
+        "ProfileBuiltinCriticality",
+        "ProfileBuiltinTag",
+        "ProfileBuiltinStatus",
+        "ProfileBuiltinBadge",
+        "ProfileCoreStandardGroup",
+        "ProfileInfraTinySchema",
+    }
+
+    assert set(core_node_schema.used_by) == {
+        "BuiltinBadge",
+        "BuiltinCriticality",
+        "BuiltinStatus",
+        "BuiltinTag",
+        "CoreStandardGroup",
+        "InfraTinySchema",
         "ProfileBuiltinCriticality",
         "ProfileBuiltinTag",
         "ProfileBuiltinStatus",
@@ -835,6 +852,44 @@ async def test_validate_uniqueness_constraints_success(schema_all_in_one, unique
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     schema.validate_uniqueness_constraints()
+
+
+async def test_validate_exception_ipam_ip_namespace(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+):
+    SCHEMA: dict = {
+        "nodes": [
+            {
+                "name": "IPPrefix",
+                "namespace": "Ipam",
+                "default_filter": "prefix__value",
+                "order_by": ["prefix__value"],
+                "display_labels": ["prefix__value"],
+                "human_friendly_id": ["ip_namespace__name__value", "prefix__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPPREFIX],
+            },
+            {
+                "name": "IPAddress",
+                "namespace": "Ipam",
+                "default_filter": "address__value",
+                "order_by": ["address__value"],
+                "display_labels": ["address__value"],
+                "uniqueness_constraints": [["ip_namespace", "address__value"]],
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPADDRESS],
+            },
+        ],
+    }
+
+    ipam_schema = SchemaRoot(**SCHEMA)
+
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema.load_schema(schema=ipam_schema)
+    schema.process()
+
+    ip_prefix_schema = schema.get(name="IpamIPPrefix")
+    assert ip_prefix_schema.uniqueness_constraints
 
 
 @pytest.mark.parametrize(

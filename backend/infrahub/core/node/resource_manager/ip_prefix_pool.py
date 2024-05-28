@@ -27,7 +27,7 @@ class CoreIPPrefixPool(Node):
         branch: Branch,
         identifier: Optional[str] = None,
         data: Optional[dict[str, Any]] = None,
-        size: Optional[int] = None,
+        prefixlen: Optional[int] = None,
         member_type: Optional[str] = None,
         prefix_type: Optional[str] = None,
     ) -> Node:
@@ -48,14 +48,14 @@ class CoreIPPrefixPool(Node):
 
         data = data or {}
 
-        size = size or data.get("size", None) or self.default_prefix_size.value  # type: ignore[attr-defined]
-        if not size:
+        prefixlen = prefixlen or data.get("prefixlen", None) or self.default_prefix_length.value  # type: ignore[attr-defined]
+        if not prefixlen:
             raise ValueError(
                 f"PrefixPool: {self.name.value} | "  # type: ignore[attr-defined]
-                "A size or a default_value must be provided to allocate a new prefix"
+                "A prefixlen or a default_value must be provided to allocate a new prefix"
             )
 
-        next_prefix = await self.get_next(db=db, size=size)
+        next_prefix = await self.get_next(db=db, prefixlen=prefixlen)
 
         prefix_type = prefix_type or data.get("prefix_type", None) or self.default_prefix_type.value  # type: ignore[attr-defined]
         if not prefix_type:
@@ -81,7 +81,7 @@ class CoreIPPrefixPool(Node):
 
         return node
 
-    async def get_next(self, db: InfrahubDatabase, size: int) -> IPNetworkType:
+    async def get_next(self, db: InfrahubDatabase, prefixlen: int) -> IPNetworkType:
         # Measure utilization of all prefixes identified as resources
         resources = await self.resources.get_peers(db=db)  # type: ignore[attr-defined]
         ip_namespace = await self.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
@@ -100,7 +100,7 @@ class CoreIPPrefixPool(Node):
                 pool.reserve(subnet=str(subnet.prefix))
 
             try:
-                next_available = pool.get(size=size)
+                next_available = pool.get(prefixlen=prefixlen)
                 return next_available
             except IndexError:
                 continue

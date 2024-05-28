@@ -900,7 +900,7 @@ async def ipaddress_pool_schema() -> NodeSchema:
                 "description": "The object type to create when reserving a resource in the pool",
             },
             {
-                "name": "default_prefix_size",
+                "name": "default_prefix_length",
                 "kind": "Number",
                 "optional": True,
             },

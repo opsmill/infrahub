@@ -354,9 +354,9 @@ class TestInfrahubNode:
 
         ip_pool = await client.create(
             kind="CoreIPAddressPool",
-            name="Core loopbacks",
+            name="Core loopbacks 1",
             default_address_type="IpamIPAddress",
-            default_prefix_size=32,
+            default_prefix_length=32,
             ip_namespace=default_ipam_namespace,
             resources=[ip_prefix],
         )
@@ -386,9 +386,9 @@ class TestInfrahubNode:
 
         ip_pool = await client.create(
             kind="CoreIPAddressPool",
-            name="Core loopbacks",
+            name="Core loopbacks 2",
             default_address_type="IpamIPAddress",
-            default_prefix_size=32,
+            default_prefix_length=32,
             ip_namespace=default_ipam_namespace,
             resources=[ip_prefix],
         )
