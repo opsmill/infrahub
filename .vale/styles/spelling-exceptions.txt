@@ -55,6 +55,7 @@ isort
 jinja
 Jotai
 kbps
+Loopbacks
 markdownlint
 memgraph
 menu_placement
