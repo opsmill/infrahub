@@ -34,6 +34,8 @@ export const PROPOSED_CHANGES_FILE_THREAD_OBJECT = "CoreFileThread";
 
 export const ARTIFACT_OBJECT = "CoreArtifact";
 
+export const GRAPHQL_QUERY_OBJECT = "CoreGraphQLQuery";
+
 export const PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT = "CoreArtifactThread";
 
 export const PROPOSED_CHANGES_COMMENT_OBJECT = "CoreChangeComment";
@@ -188,6 +190,13 @@ export const relationshipsForTabs = {
   one: [],
   many: ["Generic", "Component", "Hierarchy"],
 };
+
+export const RELATIONSHIP_VIEW_BLACKLIST = [
+  "member_of_groups",
+  "subscriber_of_groups",
+  "children",
+  "profiles",
+];
 
 export const peersKindForForm = ["Attribute", "Parent"];
 

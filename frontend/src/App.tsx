@@ -3,7 +3,7 @@ import mdiIcons from "@iconify-json/mdi/icons.json";
 import loadable from "@loadable/component";
 import { Navigate, Route, Routes } from "react-router-dom";
 
-import { ARTIFACT_OBJECT } from "./config/constants";
+import { ARTIFACT_OBJECT, GRAPHQL_QUERY_OBJECT } from "./config/constants";
 import { AuthProvider, RequireAuth } from "./hooks/useAuth";
 
 import "react-toastify/dist/ReactToastify.css";
@@ -17,6 +17,9 @@ const GraphiQLPage = loadable(() => import("./screens/graphql/graphiql"));
 const RedirectToGraphiQLPage = loadable(() => import("./screens/graphql/RedirectToGraphiQLPage"));
 const ArtifactsObjectItemDetailsPaginated = loadable(
   () => import("./screens/artifacts/object-item-details-paginated")
+);
+const GraphqlQueryDetailsPage = loadable(
+  () => import("./screens/graphql/details/graphql-query-details-page")
 );
 const BranchItemDetails = loadable(() => import("./screens/branches/branch-item-details"));
 const BranchesItems = loadable(() => import("./screens/branches/branches-items"));
@@ -62,6 +65,10 @@ const App = () => {
           <Route
             path={`/objects/${ARTIFACT_OBJECT}/:objectid`}
             element={<ArtifactsObjectItemDetailsPaginated />}
+          />
+          <Route
+            path={`/objects/${GRAPHQL_QUERY_OBJECT}/:graphqlQueryId`}
+            element={<GraphqlQueryDetailsPage />}
           />
           <Route path="/objects/:objectname/:objectid" element={<ObjectItemDetailsPaginated />} />
           <Route path="/objects/:objectname" element={<ObjectItemsPaginated />} />

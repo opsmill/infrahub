@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { Icon } from "@iconify-icon/react";
 import { classNames } from "../../utils/common";
+import { Button, ButtonProps } from "./button-primitive";
 
-type CopyToClipboardProps = {
+interface CopyToClipboardProps extends ButtonProps {
   text: string;
-};
+}
 
-export const CopyToClipboard = ({ text }: CopyToClipboardProps) => {
+export const CopyToClipboard = ({ text, ...props }: CopyToClipboardProps) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -20,16 +21,13 @@ export const CopyToClipboard = ({ text }: CopyToClipboardProps) => {
   };
 
   return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="text-gray-600 flex p-1.5 hover:bg-gray-100 rounded-full">
+    <Button size="icon" variant="ghost" onClick={handleCopy} {...props}>
       <Icon
         icon={
           copied ? "mdi:checkbox-multiple-marked-outline" : "mdi:checkbox-multiple-blank-outline"
         }
         className={classNames("text-base", copied && "text-green-700")}
       />
-    </button>
+    </Button>
   );
 };
