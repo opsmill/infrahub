@@ -611,7 +611,7 @@ describe("Object list", () => {
     cy.get("[data-cy='field-error-message']").should("have.text", "Required");
   });
 
-  it.only("should open the add panel, and display the description", function () {
+  it("should open the add panel, and display the description", function () {
     cy.viewport(1920, 1080);
 
     cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
