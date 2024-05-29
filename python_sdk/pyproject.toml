@@ -262,7 +262,6 @@ ignore = [
     "PTH119",  # `os.path.basename()` should be replaced by `Path.name`
     "PTH120",  # `os.path.dirname()` should be replaced by `Path.parent`
     "PTH122",  # `os.path.splitext()` should be replaced by `Path.suffix`, `Path.stem`, and `Path.parent`
-    "PTH123",  # `open()` should be replaced by `Path.open()`
     "RET504",  # Unnecessary assignment to `data` before `return` statement
 ]
 

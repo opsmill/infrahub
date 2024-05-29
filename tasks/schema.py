@@ -44,6 +44,6 @@ def generate_sdk_repository_config():
 
 
 def write(filename: str, content: str) -> None:
-    with open(filename, "w", encoding="utf-8") as fobj:
+    with Path(filename).open(encoding="utf-8") as fobj:
         fobj.write(content)
     print(f"Wrote to {filename}")

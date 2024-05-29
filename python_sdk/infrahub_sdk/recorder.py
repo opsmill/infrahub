@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import enum
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 import httpx
@@ -47,11 +48,11 @@ class JSONRecorder(pydantic.BaseSettings):
             "method": response.request.method,
             "url": str(response.request.url),
             "headers": dict(response.request.headers),
-            "response_content": response.content.decode("UTF-8"),
-            "request_content": response.request.content.decode("UTF-8"),
+            "response_content": response.content.decode("utf-8"),
+            "request_content": response.request.content.decode("utf-8"),
         }
 
-        with open(f"{self.directory}/{filename}.json", "w", encoding="UTF-8") as fobj:
+        with Path(f"{self.directory}/{filename}.json").open(mode="w", encoding="utf-8") as fobj:
             ujson.dump(data, fobj, indent=4, sort_keys=True)
 
     def _set_url_host(self, response: httpx.Response) -> None:
