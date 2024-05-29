@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class AttributeChoicesUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_choices_validator"
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Dict[str, Any]) -> None:
         if self.attribute_schema.choices is None:
             return
 

@@ -351,7 +351,6 @@ class Query(ABC):
         at: Optional[Union[Timestamp, str]] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-        *args,  # pylint: disable=unused-argument
         **kwargs,
     ) -> Self:
         query = cls(branch=branch, at=at, limit=limit, offset=offset, **kwargs)
@@ -361,7 +360,7 @@ class Query(ABC):
         return query
 
     @abstractmethod
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         raise NotImplementedError
 
     def add_to_query(self, query: Union[str, List[str]]) -> None:

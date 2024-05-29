@@ -54,7 +54,7 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery):
         sub_query_in = "\nUNION\n".join(sub_queries_in)
         return sub_query_in
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Dict[str, Any]) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 

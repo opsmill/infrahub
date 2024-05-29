@@ -16,7 +16,7 @@ class Migration001Query01(Query):
     name = "migration_001_01"
     type: QueryType = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Dict[str, Any]) -> None:
         query = """
         MATCH (root:Root)
         SET root.graph_version = 1
