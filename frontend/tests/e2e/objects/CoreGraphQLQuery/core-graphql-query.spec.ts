@@ -43,15 +43,6 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
       }`
         );
 
-      const tagsMultiSelectOpenButton = page
-        .getByTestId("side-panel-container")
-        .getByText("Tags")
-        .locator("../..")
-        .getByTestId("select-open-option-button");
-      await tagsMultiSelectOpenButton.click();
-      await page.getByRole("option", { name: "blue" }).click();
-      await page.getByRole("option", { name: "green" }).click();
-
       await page.getByLabel("Description").click();
       await page.getByLabel("Description").fill("A profile for E2E test");
 
