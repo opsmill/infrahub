@@ -1,5 +1,6 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
+import { components } from "../../infraops";
 import { FormFieldError } from "../../screens/edit-form-hook/form";
 import { QuestionMark } from "../display/question-mark";
 import { Checkbox } from "../inputs/checkbox";
@@ -11,7 +12,9 @@ interface Props {
   error?: FormFieldError;
   isProtected?: boolean;
   isOptional?: boolean;
-  field: any;
+  field:
+    | components["schemas"]["AttributeSchema-Output"]
+    | components["schemas"]["RelationshipSchema-Output"];
 }
 
 export default function OpsCheckbox(props: Props) {
@@ -25,7 +28,7 @@ export default function OpsCheckbox(props: Props) {
           {label} {isOptional ? "" : "*"}
         </label>
         <div className="ml-2"> {isProtected ? <LockClosedIcon className="w-4 h-4" /> : null} </div>
-        <QuestionMark message={field.description} />
+        <QuestionMark message={field?.description} />
       </div>
       <div className="relative flex items-center">
         <Checkbox

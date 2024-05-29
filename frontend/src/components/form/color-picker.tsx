@@ -1,4 +1,5 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
+import { components } from "../../infraops";
 import { FormFieldError } from "../../screens/edit-form-hook/form";
 import { classNames } from "../../utils/common";
 import { QuestionMark } from "../display/question-mark";
@@ -14,7 +15,9 @@ type OpsColorPickerProps = {
   isOptional?: boolean;
   isUnique?: boolean;
   disabled?: boolean;
-  field: any;
+  field:
+    | components["schemas"]["AttributeSchema-Output"]
+    | components["schemas"]["RelationshipSchema-Output"];
 };
 
 export const OpsColorPicker = (props: OpsColorPickerProps) => {
@@ -28,7 +31,7 @@ export const OpsColorPicker = (props: OpsColorPickerProps) => {
           {label} {!isOptional && "*"}
         </label>
         {isProtected && <LockClosedIcon className="w-4 h-4" />}
-        <QuestionMark message={field.description} />
+        <QuestionMark message={field?.description} />
       </div>
       <ColorPicker
         onChange={onChange}

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { getDropdownOptions } from "../../graphql/queries/objects/dropdownOptions";
+import { components } from "../../infraops";
 import { FormFieldError } from "../../screens/edit-form-hook/form";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
@@ -27,7 +28,9 @@ interface Props {
   isOptional?: boolean;
   isInherited?: boolean;
   peer?: string;
-  field: any;
+  field:
+    | components["schemas"]["AttributeSchema-Output"]
+    | components["schemas"]["RelationshipSchema-Output"];
 }
 
 export const OpsSelect2Step = (props: Props) => {
@@ -100,7 +103,7 @@ export const OpsSelect2Step = (props: Props) => {
           {label} {!isOptional && "*"}
         </label>
         {isProtected && <LockClosedIcon className="w-4 h-4" />}
-        <QuestionMark message={field.description} />
+        <QuestionMark message={field?.description} />
       </div>
       <div className="flex">
         <div className="sm:col-span-3 mr-2 mt-1">

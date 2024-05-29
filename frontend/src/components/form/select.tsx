@@ -1,4 +1,5 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
+import { components } from "../../infraops";
 import { FormFieldError } from "../../screens/edit-form-hook/form";
 import { QuestionMark } from "../display/question-mark";
 import { Select, SelectOption } from "../inputs/select";
@@ -14,7 +15,9 @@ type SelectProps = {
   dropdown?: boolean;
   enum?: boolean;
   multiple?: boolean;
-  field: any;
+  field:
+    | components["schemas"]["AttributeSchema-Output"]
+    | components["schemas"]["RelationshipSchema-Output"];
 };
 
 export const OpsSelect = (props: SelectProps) => {
@@ -43,7 +46,7 @@ export const OpsSelect = (props: SelectProps) => {
             <div className="ml-2">
               {isProtected ? <LockClosedIcon className="w-4 h-4" /> : null}{" "}
             </div>
-            <QuestionMark message={props.field.description} />
+            <QuestionMark message={props.field?.description} />
           </>
         )}
       </div>

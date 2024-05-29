@@ -1,4 +1,5 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
+import { components } from "../../infraops";
 import { FormFieldError } from "../../screens/edit-form-hook/form";
 import { classNames } from "../../utils/common";
 import { QuestionMark } from "../display/question-mark";
@@ -15,7 +16,9 @@ type OpsInputProps = {
   isOptional?: boolean;
   isUnique?: boolean;
   disabled?: boolean;
-  field: any;
+  field:
+    | components["schemas"]["AttributeSchema-Output"]
+    | components["schemas"]["RelationshipSchema-Output"];
 };
 
 const InputUniqueTips = () => <span className="text-xs text-gray-600 italic">must be unique</span>;
@@ -42,7 +45,7 @@ export const OpsInput = (props: OpsInputProps) => {
         </label>
         {isProtected && <LockClosedIcon className="w-4 h-4" />}
         {isUnique && <InputUniqueTips />}
-        <QuestionMark message={field.description} />
+        <QuestionMark message={field?.description} />
       </div>
       <Input
         id={label}
