@@ -113,6 +113,32 @@ async def test_schema_branch_process_inheritance(schema_all_in_one):
     }
 
 
+async def test_schema_process_inheritance_different_generic_attribute_types(schema_diff_attr_inheritance_types):
+    """Test that we raise an exception if a node is inheriting from two generics with different attribute types for a specific attribute."""
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_diff_attr_inheritance_types))
+
+    with pytest.raises(ValueError) as exc:
+        schema.process_inheritance()
+
+    assert exc.value.args[0] == "TestWidget's attribute choice inherited from TestStatus must have the same kind"
+
+
+async def test_schema_process_inheritance_different_generic_attribute_types_on_node(schema_diff_attr_inheritance_types):
+    """Test that we raise an exception if a node is inheriting an attribute with different attribute type that already exists on node."""
+    schema = SchemaBranch(cache={}, name="test")
+    schema_new = copy.deepcopy(schema_diff_attr_inheritance_types)
+    schema_new["generics"].pop()
+    schema_new["nodes"][0]["inherit_from"].pop()
+    schema_new["nodes"][0]["attributes"].append({"name": "choice", "kind": "List"})
+    schema.load_schema(schema=SchemaRoot(**schema_new))
+
+    with pytest.raises(ValueError) as exc:
+        schema.process_inheritance()
+
+    assert exc.value.args[0] == "TestWidget's attribute choice inherited from TestAdapter must have the same kind"
+
+
 async def test_schema_branch_process_inheritance_node_level(animal_person_schema_dict):
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))

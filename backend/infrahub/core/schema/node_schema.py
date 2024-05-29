@@ -26,16 +26,26 @@ class NodeSchema(GeneratedNodeSchema):
         return False
 
     def validate_inheritance(self, interface: GenericSchema) -> None:
-        """Check that protected attributes and relationships are not overriden before inheriting them from interface."""
+        """Perform checks specific to inheritance from Generics.
+
+        Checks:
+            - Check that protected attributes and relationships are not overridden before inheriting them from interface.
+            - Check that the attribute types to be inherited are same kind.
+        """
         for attribute in self.attributes:
-            if (
-                attribute.name in interface.attribute_names
-                and not attribute.inherited
-                and interface.get_attribute(attribute.name).allow_override == AllowOverrideType.NONE
-            ):
-                raise ValueError(
-                    f"{self.kind}'s attribute {attribute.name} inherited from {interface.kind} cannot be overriden"
-                )
+            if attribute.name in interface.attribute_names:
+                if (
+                    not attribute.inherited
+                    and interface.get_attribute(attribute.name).allow_override == AllowOverrideType.NONE
+                ):
+                    raise ValueError(
+                        f"{self.kind}'s attribute {attribute.name} inherited from {interface.kind} cannot be overriden"
+                    )
+                # Check existing inherited attribute kind is the same as the incoming inherited attribute
+                if attribute.kind != interface.get_attribute(attribute.name).kind:
+                    raise ValueError(
+                        f"{self.kind}'s attribute {attribute.name} inherited from {interface.kind} must have the same kind"
+                    )
 
         for relationship in self.relationships:
             if (
