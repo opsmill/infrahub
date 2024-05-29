@@ -21,8 +21,8 @@ def generate_jsonschema(context: Context):
 def generate_infrahub_node_schema():
     from infrahub.api.schema import SchemaLoadAPI
 
-    schema_dir = f"{INFRAHUB_DIRECTORY}/schema"
-    Path(schema_dir).mkdir(parents=True, exist_ok=True)
+    schema_dir = Path(f"{INFRAHUB_DIRECTORY}/schema")
+    schema_dir.mkdir(parents=True, exist_ok=True)
 
     schema = SchemaLoadAPI.model_json_schema()
 
@@ -30,20 +30,19 @@ def generate_infrahub_node_schema():
 
     content = json.dumps(schema, indent=4)
 
-    write(filename=f"{schema_dir}/develop.json", content=content)
+    write(file_path=schema_dir / "develop.json", content=content)
 
 
 def generate_sdk_repository_config():
     from infrahub_sdk.schema import InfrahubRepositoryConfig
 
-    repository_dir = f"{SDK_DIRECTORY}/repository-config"
-    Path(repository_dir).mkdir(parents=True, exist_ok=True)
+    repository_dir = Path(f"{SDK_DIRECTORY}/repository-config")
+    repository_dir.mkdir(parents=True, exist_ok=True)
     schema = InfrahubRepositoryConfig.schema_json(indent=4)
 
-    write(filename=f"{repository_dir}/develop.json", content=schema)
+    write(file_path=repository_dir / "develop.json", content=schema)
 
 
-def write(filename: str, content: str) -> None:
-    with open(filename, "w", encoding="utf-8") as fobj:
-        fobj.write(content)
-    print(f"Wrote to {filename}")
+def write(file_path: Path, content: str) -> None:
+    file_path.write_text(content, encoding="utf-8")
+    print(f"Wrote to {file_path}")

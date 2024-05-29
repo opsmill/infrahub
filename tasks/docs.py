@@ -251,9 +251,7 @@ def _generate_infrahub_schema_documentation() -> None:
         template = environment.from_string(template_text)
         rendered_file = template.render(schema=schema)
 
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write(rendered_file)
-
+        Path(output_file).write_text(rendered_file, encoding="utf-8")
         print(f"Docs saved to: {output_label}")
 
 
@@ -298,9 +296,7 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
     template = environment.from_string(template_text)
     rendered_file = template.render(properties=properties)
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write(rendered_file)
-
+    Path(output_file).write_text(rendered_file, encoding="utf-8")
     print(f"Docs saved to: {output_label}")
 
 
@@ -349,8 +345,7 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
     template = environment.from_string(template_text)
     rendered_file = template.render(properties=properties, definitions=definitions)
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write(rendered_file)
+    Path(output_file).write_text(rendered_file, encoding="utf-8")
 
 
 def _generate_infrahub_events_documentation() -> None:
@@ -418,7 +413,5 @@ def _generate_infrahub_events_documentation() -> None:
     rendered_doc = template.render(message_classes=message_classes, response_classes=response_classes)
 
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write(rendered_doc)
-
+    Path(output_file).write_text(rendered_doc, encoding="utf-8")
     print(f"Docs saved to: {output_label}")

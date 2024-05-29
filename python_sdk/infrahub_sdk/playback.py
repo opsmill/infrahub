@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import httpx
@@ -45,18 +46,14 @@ class JSONPlayback(pydantic.BaseSettings):
     ) -> httpx.Response:
         content: Optional[bytes] = None
         if payload:
-            content = str(ujson.dumps(payload)).encode("UTF-8")
+            content = str(ujson.dumps(payload)).encode("utf-8")
         request = httpx.Request(method=method.value, url=url, headers=headers, content=content)
 
         filename = generate_request_filename(request)
-        with open(f"{self.directory}/{filename}.json", "r", encoding="UTF-8") as fobj:
+        with Path(f"{self.directory}/{filename}.json").open(encoding="utf-8") as fobj:
             data = ujson.load(fobj)
 
-        response = httpx.Response(
-            status_code=data["status_code"],
-            content=data["response_content"],
-            request=request,
-        )
+        response = httpx.Response(status_code=data["status_code"], content=data["response_content"], request=request)
         return response
 
     class Config:
