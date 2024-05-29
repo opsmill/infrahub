@@ -21,7 +21,7 @@ from infrahub.core.constants import (
 
 # pylint: disable=too-many-lines
 
-core_profile_schema_definition = {
+core_profile_schema_definition: dict[str, Any] = {
     "name": "Profile",
     "namespace": "Core",
     "include_in_menu": False,

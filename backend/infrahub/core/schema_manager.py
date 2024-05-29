@@ -695,7 +695,7 @@ class SchemaBranch:
                 element_name="default_filter",
             )
 
-    def validate_human_friendly_id(self):
+    def validate_human_friendly_id(self) -> None:
         for name in self.generic_names + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
 
@@ -854,7 +854,7 @@ class SchemaBranch:
 
     def validate_kinds(self) -> None:
         for name in list(self.nodes.keys()):
-            node = self.get(name=name, duplicate=False)
+            node = self.get_node(name=name, duplicate=False)
 
             for generic_kind in node.inherit_from:
                 if self.has(name=generic_kind):
@@ -1007,7 +1007,7 @@ class SchemaBranch:
 
     def process_hierarchy(self) -> None:
         for name in self.nodes.keys():
-            node = self.get(name=name, duplicate=False)
+            node = self.get_node(name=name, duplicate=False)
 
             if not node.hierarchy and not node.parent and not node.children:
                 continue
@@ -1050,7 +1050,7 @@ class SchemaBranch:
 
         # For all node_schema, add the attributes & relationships from the generic / interface
         for name in self.nodes.keys():
-            node = self.get(name=name, duplicate=False)
+            node = self.get_node(name=name, duplicate=False)
 
             if node.inherit_from or node.namespace not in RESTRICTED_NAMESPACES:
                 generics_used_by[InfrahubKind.NODE].append(node.kind)
@@ -1071,7 +1071,7 @@ class SchemaBranch:
                     # TODO add a proper exception for all schema related issue
                     raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
 
-                generic_kind_schema = self.get(generic_kind, duplicate=False)
+                generic_kind_schema = self.get_generic(generic_kind, duplicate=False)
                 if generic_kind_schema.hierarchical:
                     generic_with_hierarchical_support.append(generic_kind)
 
@@ -1227,7 +1227,7 @@ class SchemaBranch:
 
             self.set(name=name, schema=node)
 
-    def generate_weight(self):
+    def generate_weight(self) -> None:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
             items_to_update = [item for item in node.attributes + node.relationships if not item.order_weight]
@@ -1244,7 +1244,7 @@ class SchemaBranch:
 
             self.set(name=name, schema=node)
 
-    def add_groups(self):
+    def add_groups(self) -> None:
         if not self.has(name=InfrahubKind.GENERICGROUP):
             return
 
@@ -1294,7 +1294,7 @@ class SchemaBranch:
             if changed:
                 self.set(name=node_name, schema=schema)
 
-    def add_hierarchy(self):
+    def add_hierarchy(self) -> None:
         for generic_name in self.generics.keys():
             generic = self.get_generic(name=generic_name, duplicate=False)
 
@@ -1378,7 +1378,7 @@ class SchemaBranch:
 
             self.set(name=node_name, schema=node)
 
-    def add_profile_schemas(self):
+    def add_profile_schemas(self) -> None:
         if not self.has(name=InfrahubKind.PROFILE):
             core_profile_schema = GenericSchema(**core_profile_schema_definition)
             self.set(name=core_profile_schema.kind, schema=core_profile_schema)
@@ -1418,7 +1418,7 @@ class SchemaBranch:
                 core_node_schema.used_by = sorted(list(updated_used_by_node))
                 self.set(name=InfrahubKind.NODE, schema=core_node_schema)
 
-    def add_profile_relationships(self):
+    def add_profile_relationships(self) -> None:
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
             if node.namespace in RESTRICTED_NAMESPACES:
@@ -1561,11 +1561,11 @@ class SchemaBranch:
 
 # pylint: disable=too-many-public-methods
 class SchemaManager(NodeManager):
-    def __init__(self):
+    def __init__(self) -> None:
         self._cache: Dict[int, Any] = {}
         self._branches: Dict[str, SchemaBranch] = {}
 
-    def _get_from_cache(self, key):
+    def _get_from_cache(self, key: int) -> Any:
         return self._cache[key]
 
     def set(self, name: str, schema: Union[NodeSchema, GenericSchema], branch: Optional[str] = None) -> int:
@@ -1638,7 +1638,7 @@ class SchemaManager(NodeManager):
         schema.name = name
         self._branches[name] = schema
 
-    def process_schema_branch(self, name: str):
+    def process_schema_branch(self, name: str) -> None:
         schema_branch = self.get_schema_branch(name=name)
         schema_branch.process()
 
@@ -1650,7 +1650,7 @@ class SchemaManager(NodeManager):
         diff: Optional[SchemaDiff] = None,
         limit: Optional[List[str]] = None,
         update_db: bool = True,
-    ):
+    ) -> None:
         branch = await registry.get_branch(branch=branch, db=db)
 
         updated_schema = None
