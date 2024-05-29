@@ -446,6 +446,7 @@ select = [
     "PYI",   # flake8-pyi
     "Q",     # flake8-quotes
     "RET",   # flake8-return
+    "S",     # flake8-bandit
     "TCH",   # flake8-type-checking
     "TRIO",  # flake8-trio
     "T10",   # flake8-debugger
@@ -473,7 +474,6 @@ ignore = [
     "N802",     # Function name should be lowercase
     "N805",     # First argument of a method should be named self
     "N806",     # Variable in function should be lowercase
-    #"N811",     # Constant imported as non-constant
     "N812",     # Lowercase imported as non-lowercase
     "PLC0415",  # `import` should be at the top-level of a file
     "PLC2701",  # Private name import from external module
@@ -507,6 +507,13 @@ ignore = [
     "PTH122",   # `os.path.splitext()` should be replaced by `Path.suffix`, `Path.stem`, and `Path.parent`
     "RET503",   # Missing explicit `return` at the end of function able to return non-`None` value
     "RET504",   # Unnecessary assignment before `return` statement
+    "S101",     # Use of `assert` detected
+    "S105",     # Possible hardcoded password assigned to: "REGEX_PASSWORD"
+    "S108",     # Probable insecure usage of temporary file or directory
+    "S202",     # Uses of `tarfile.extractall()`
+    "S311",     # Standard pseudo-random generators are not suitable for cryptographic purposes
+    "S324",     # Probable use of insecure hash functions in `hashlib`: `md5`
+    "S701",     # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/
@@ -531,6 +538,13 @@ max-complexity = 33
 "backend/infrahub/git/repository.py" = [
     "TCH003", # Pydantic needs UUID import to not only be available under TYPE_CHECKING clause
 ]
+
+"backend/tests/**.py" = [
+    "S101", # Use of assert detected
+    "S105", #  Possible hardcoded password assigned to variable
+    "S106", #  Possible hardcoded password assigned to argument
+]
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

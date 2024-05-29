@@ -173,6 +173,7 @@ select = [
     "PYI",   # flake8-pyi
     "Q",     # flake8-quotes
     "RET",   # flake8-return
+    "S",     # flake8-bandit
     "TCH",   # flake8-type-checking
     "TRIO",  # flake8-trio
     "T10",   # flake8-debugger
@@ -196,6 +197,7 @@ ignore = [
     "PLR1702", # Too many nested blocks
     "PLR6301", # Method could be a function, class method, or static method
     "RET504",  # Unnecessary assignment to `ptd` before `return` statement
+    "S701",    # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/
