@@ -142,7 +142,7 @@ class SchemaBranch:
 
         Since the object themselves are considered immuable we just need to use the hash from each object to calculate the global hash.
         """
-        md5hash = hashlib.md5()
+        md5hash = hashlib.md5(usedforsecurity=False)
         for key, value in sorted(tuple(self.nodes.items()) + tuple(self.generics.items())):
             md5hash.update(str(key).encode())
             md5hash.update(str(value).encode())

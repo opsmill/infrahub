@@ -68,7 +68,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
     def get_hash(self, display_values: bool = False) -> str:
         """Extend the Hash Calculation to account for attributes and relationships."""
 
-        md5hash = hashlib.md5()
+        md5hash = hashlib.md5(usedforsecurity=False)
         md5hash.update(super().get_hash(display_values=display_values).encode())
 
         for attr_name in sorted(self.attribute_names):

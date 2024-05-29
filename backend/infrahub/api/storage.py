@@ -42,7 +42,7 @@ def upload_content(
     file_content = bytes(item.content, encoding="utf-8")
     identifier = str(UUIDT())
 
-    checksum = hashlib.md5(file_content).hexdigest()
+    checksum = hashlib.md5(file_content, usedforsecurity=False).hexdigest()
     registry.storage.store(identifier=identifier, content=file_content)
     return UploadResponse(identifier=identifier, checksum=checksum)
 
@@ -59,6 +59,6 @@ def upload_file(
     file_content = file.file.read()
     identifier = str(UUIDT())
 
-    checksum = hashlib.md5(file_content).hexdigest()
+    checksum = hashlib.md5(file_content, usedforsecurity=False).hexdigest()
     registry.storage.store(identifier=identifier, content=file_content)
     return UploadResponse(identifier=identifier, checksum=checksum)

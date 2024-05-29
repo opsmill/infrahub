@@ -327,7 +327,7 @@ class HashableModel(BaseModel):
         """
 
         values = []
-        md5hash = hashlib.md5()
+        md5hash = hashlib.md5(usedforsecurity=False)
         for field_name in sorted(self.model_fields.keys()):
             if field_name.startswith("_") or field_name in self._exclude_from_hash:
                 continue
