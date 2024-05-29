@@ -9,13 +9,13 @@ type OpsInputProps = {
   value: string;
   onChange: (value: string) => void;
   className?: string;
-  description?: string;
   error?: FormFieldError;
   type: string;
   isProtected?: boolean;
   isOptional?: boolean;
   isUnique?: boolean;
   disabled?: boolean;
+  field: any;
 };
 
 const InputUniqueTips = () => <span className="text-xs text-gray-600 italic">must be unique</span>;
@@ -26,12 +26,12 @@ export const OpsInput = (props: OpsInputProps) => {
     onChange,
     value,
     label,
-    description,
     error,
     isProtected,
     isOptional,
     isUnique,
     disabled,
+    field,
   } = props;
 
   return (
@@ -42,7 +42,7 @@ export const OpsInput = (props: OpsInputProps) => {
         </label>
         {isProtected && <LockClosedIcon className="w-4 h-4" />}
         {isUnique && <InputUniqueTips />}
-        <QuestionMark message={description} />
+        <QuestionMark message={field.description} />
       </div>
       <Input
         id={label}

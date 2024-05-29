@@ -19,7 +19,6 @@ export interface iTwoStepDropdownData {
 
 interface Props {
   label: string;
-  description?: string;
   options: SelectOption[];
   value: iTwoStepDropdownData;
   onChange: (value: iTwoStepDropdownData) => void;
@@ -28,12 +27,13 @@ interface Props {
   isOptional?: boolean;
   isInherited?: boolean;
   peer?: string;
+  field: any;
 }
 
 export const OpsSelect2Step = (props: Props) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, react/prop-types, no-unused-vars
-  const { label, description, options, value, onChange, isOptional, peer, ...propsToPass } = props;
-  const { isProtected } = props;
+  const { label, options, value, onChange, isOptional, peer, ...propsToPass } = props;
+  const { isProtected, field } = props;
 
   const { objectid } = useParams();
   const branch = useAtomValue(currentBranchAtom);
@@ -100,7 +100,7 @@ export const OpsSelect2Step = (props: Props) => {
           {label} {!isOptional && "*"}
         </label>
         {isProtected && <LockClosedIcon className="w-4 h-4" />}
-        <QuestionMark message={description} />
+        <QuestionMark message={field.description} />
       </div>
       <div className="flex">
         <div className="sm:col-span-3 mr-2 mt-1">

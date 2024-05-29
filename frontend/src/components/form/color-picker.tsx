@@ -6,7 +6,6 @@ import { ColorPicker } from "../inputs/color-picker";
 
 type OpsColorPickerProps = {
   label: string;
-  description?: string;
   value: string;
   onChange: (value: string) => void;
   className?: string;
@@ -15,20 +14,12 @@ type OpsColorPickerProps = {
   isOptional?: boolean;
   isUnique?: boolean;
   disabled?: boolean;
+  field: any;
 };
 
 export const OpsColorPicker = (props: OpsColorPickerProps) => {
-  const {
-    className,
-    onChange,
-    value,
-    label,
-    description,
-    error,
-    isProtected,
-    isOptional,
-    disabled,
-  } = props;
+  const { className, onChange, value, label, error, isProtected, isOptional, disabled, field } =
+    props;
 
   return (
     <>
@@ -37,7 +28,7 @@ export const OpsColorPicker = (props: OpsColorPickerProps) => {
           {label} {!isOptional && "*"}
         </label>
         {isProtected && <LockClosedIcon className="w-4 h-4" />}
-        <QuestionMark message={description} />
+        <QuestionMark message={field.description} />
       </div>
       <ColorPicker
         onChange={onChange}
