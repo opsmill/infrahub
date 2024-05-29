@@ -208,7 +208,6 @@ task-tags = [
     "XXX",
 ]
 
-
 select = [
     "ASYNC", # flake8-async
     "B",     # flake8-bugbear
@@ -264,7 +263,6 @@ ignore = [
     "PTH120",  # `os.path.dirname()` should be replaced by `Path.parent`
     "PTH122",  # `os.path.splitext()` should be replaced by `Path.suffix`, `Path.stem`, and `Path.parent`
     "PTH123",  # `open()` should be replaced by `Path.open()`
-    "PTH207",  # Replace `glob` with `Path.glob` or `Path.rglob`
     "RET504",  # Unnecessary assignment to `data` before `return` statement
 ]
 

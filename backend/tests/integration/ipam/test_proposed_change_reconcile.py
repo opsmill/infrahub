@@ -15,6 +15,8 @@ from infrahub.services.adapters.cache.redis import RedisCache
 from .base import TestIpamReconcileBase
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from infrahub_sdk import InfrahubClient
 
     from infrahub.database import InfrahubDatabase
@@ -30,7 +32,7 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
         bus_simulator.service.cache = RedisCache()
 
     @pytest.fixture(scope="class", autouse=True)
-    def git_repos_dir(self, git_repos_source_dir_module_scope): ...
+    def git_repos_dir(self, git_repos_source_dir_module_scope: Path): ...
 
     @pytest.fixture(scope="class")
     async def branch_1(self, db: InfrahubDatabase):

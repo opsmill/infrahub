@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING, AsyncGenerator
 
 import pytest
@@ -18,6 +17,8 @@ from tests.helpers.test_client import InfrahubTestClient
 from tests.integration.conftest import IntegrationHelper
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from infrahub.database import InfrahubDatabase
 
 
@@ -52,13 +53,13 @@ async def test_client(init_db_base) -> AsyncGenerator[InfrahubTestClient, None]:
 @pytest.fixture(scope="module")
 async def prepare_proposed_change(
     db: InfrahubDatabase,
-    tmp_path_module_scope,
-    git_repos_dir_module_scope: str,
+    tmp_path_module_scope: Path,
+    git_repos_dir_module_scope: Path,
     init_db_base,
     test_client: InfrahubTestClient,
 ) -> str:
-    source_dir = os.path.join(str(tmp_path_module_scope), "sources")
-    os.mkdir(source_dir)
+    source_dir = tmp_path_module_scope / "sources"
+    source_dir.mkdir()
     file_repo = FileRepo(name="conflict-01", sources_directory=source_dir)
 
     obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)

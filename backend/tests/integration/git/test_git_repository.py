@@ -33,7 +33,7 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
         file_path = os.path.join(base_dir, file_name)
 
         if file_path.endswith((".yml", ".yaml")):
-            schema_txt = Path(file_path).read_text()
+            schema_txt = Path(file_path).read_text(encoding="utf-8")
             loaded_schema = yaml.safe_load(schema_txt)
             tmp_schema.load_schema(schema=SchemaRoot(**loaded_schema))
     tmp_schema.process()

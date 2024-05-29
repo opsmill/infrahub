@@ -35,7 +35,7 @@ class InfrahubItem(pytest.Item):
 
         # Smoke tests do not need this, hence this clause
         if isinstance(self.test.spec, InfrahubInputOutputTest):
-            self.test.spec.update_paths(base_dir=self.fspath.dirpath())
+            self.test.spec.update_paths(base_dir=self.path.parent)
 
     def validate_resource_config(self) -> None:
         """Make sure that a test resource config is properly defined."""

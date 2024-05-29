@@ -1,6 +1,7 @@
 import os
 import shutil
 from itertools import islice
+from pathlib import Path
 from typing import Any, Dict
 
 import pendulum
@@ -67,27 +68,24 @@ def neo4j_factory():
 
 
 @pytest.fixture
-def git_sources_dir(default_branch, tmp_path) -> str:
-    source_dir = os.path.join(str(tmp_path), "sources")
-
-    os.mkdir(source_dir)
-
+def git_sources_dir(default_branch, tmp_path: Path) -> Path:
+    source_dir = tmp_path / "sources"
+    source_dir.mkdir()
     return source_dir
 
 
 @pytest.fixture
-def git_repos_dir(tmp_path) -> str:
-    repos_dir = os.path.join(str(tmp_path), "repositories")
+def git_repos_dir(tmp_path: Path) -> Path:
+    repos_dir = tmp_path / "repositories"
+    repos_dir.mkdir()
 
-    os.mkdir(repos_dir)
-
-    config.SETTINGS.git.repositories_directory = repos_dir
+    config.SETTINGS.git.repositories_directory = str(repos_dir)
 
     return repos_dir
 
 
 @pytest.fixture
-async def git_fixture_repo(git_sources_dir, git_repos_dir) -> InfrahubRepository:
+async def git_fixture_repo(git_sources_dir: Path, git_repos_dir: Path) -> InfrahubRepository:
     FileRepo(name="test_base", sources_directory=git_sources_dir)
 
     repo = await InfrahubRepository.new(

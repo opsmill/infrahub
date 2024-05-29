@@ -1,6 +1,4 @@
-import glob
 import logging
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -80,16 +78,13 @@ def calculate_time_diff(value: str) -> Optional[str]:
 
 
 def find_graphql_query(name: str, directory: Union[str, Path] = ".") -> str:
-    for query_file in glob.glob(f"{directory}/**/*.gql", recursive=True):
-        filename = os.path.basename(query_file)
-        query_name = os.path.splitext(filename)[0]
+    if isinstance(directory, str):
+        directory = Path(directory)
 
-        if query_name != name:
+    for query_file in directory.glob("**/*.gql"):
+        if query_file.stem != name:
             continue
-        with open(query_file, "r", encoding="UTF-8") as file_data:
-            query_string = file_data.read()
-
-        return query_string
+        return query_file.read_text(encoding="utf-8")
 
     raise QueryNotFoundError(name=name)
 

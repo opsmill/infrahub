@@ -13,6 +13,8 @@ from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from infrahub_sdk import InfrahubClient
 
     from infrahub.database import InfrahubDatabase
@@ -24,8 +26,8 @@ class TestCreateRepository(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         initialize_registry: None,
-        git_repos_dir_module_scope: str,
-        git_repos_source_dir_module_scope: str,
+        git_repos_dir_module_scope: Path,
+        git_repos_source_dir_module_scope: Path,
     ) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
         FileRepo(name="car-dealership", sources_directory=git_repos_source_dir_module_scope)
@@ -40,7 +42,7 @@ class TestCreateRepository(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         initial_dataset: None,
-        git_repos_source_dir_module_scope: str,
+        git_repos_source_dir_module_scope: Path,
         client: InfrahubClient,
     ) -> None:
         """Validate that we can create a repository, that it gets updated with the commit id and that objects are created."""

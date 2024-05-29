@@ -14,6 +14,8 @@ from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from infrahub_sdk import InfrahubClient
 
     from infrahub.database import InfrahubDatabase
@@ -26,7 +28,7 @@ class TestProposedChangePipelineProfile(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         initialize_registry: None,
-        git_repos_source_dir_module_scope: str,
+        git_repos_source_dir_module_scope: Path,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
     ) -> None:
