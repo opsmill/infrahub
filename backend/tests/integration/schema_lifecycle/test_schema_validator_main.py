@@ -388,5 +388,8 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert response["diff"]["changed"]["TestingCar"] == {
             "added": {},
             "removed": {},
-            "changed": {"generate_profile": None},
+            "changed": {
+                "generate_profile": None,
+                "relationships": {"added": {}, "changed": {}, "removed": {"profiles": None}},
+            },
         }
