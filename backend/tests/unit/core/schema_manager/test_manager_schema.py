@@ -121,7 +121,7 @@ async def test_schema_process_inheritance_different_generic_attribute_types(sche
     with pytest.raises(ValueError) as exc:
         schema.process_inheritance()
 
-    assert exc.value.args[0] == "TestWidget's attribute choice inherited from TestStatus must have the same kind"
+    assert exc.value.args[0] == 'TestWidget.choice inherited from TestStatus must be the same kind ["Number", "Text"]'
 
 
 async def test_schema_process_inheritance_different_generic_attribute_types_on_node(schema_diff_attr_inheritance_types):
@@ -136,7 +136,7 @@ async def test_schema_process_inheritance_different_generic_attribute_types_on_n
     with pytest.raises(ValueError) as exc:
         schema.process_inheritance()
 
-    assert exc.value.args[0] == "TestWidget's attribute choice inherited from TestAdapter must have the same kind"
+    assert exc.value.args[0] == 'TestWidget.choice inherited from TestAdapter must be the same kind ["Text", "List"]'
 
 
 async def test_schema_branch_process_inheritance_node_level(animal_person_schema_dict):
