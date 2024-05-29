@@ -210,34 +210,31 @@ def extract_repo_file_information(
     Returns:
         RepoFileInformation: Pydantic object to store all information about this file
     """
-    abs_directory_name = os.path.dirname(full_filename)
-    filename = os.path.basename(full_filename)
-    filename_wo_ext, extension = os.path.splitext(filename)
+    full_path = Path(full_filename)
+    abs_directory = full_path.parent.absolute()
 
-    relative_repo_path_dir = abs_directory_name.replace(repo_directory, "")
-    if relative_repo_path_dir.startswith("/"):
-        relative_repo_path_dir = relative_repo_path_dir[1:]
+    filename = full_path.name
+    filename_wo_ext = full_path.stem
 
-    if worktree_directory and worktree_directory in abs_directory_name:
-        path_in_repo = abs_directory_name.replace(worktree_directory, "")
-        if path_in_repo.startswith("/"):
-            path_in_repo = path_in_repo[1:]
+    relative_repo_path_dir = abs_directory.relative_to(repo_directory)
+
+    if worktree_directory and abs_directory.is_relative_to(worktree_directory):
+        path_in_repo = abs_directory.relative_to(worktree_directory)
     else:
-        path_in_repo = abs_directory_name
+        path_in_repo = abs_directory
 
-    file_path = os.path.join(path_in_repo, filename)
-
-    module_name = relative_repo_path_dir.replace("/", ".") + f".{filename_wo_ext}"
+    file_path = path_in_repo / filename
+    module_name = str(relative_repo_path_dir).replace("/", ".") + f".{filename_wo_ext}"
 
     return RepoFileInformation(
         filename=filename,
         filename_wo_ext=filename_wo_ext,
         module_name=module_name,
-        absolute_path_dir=abs_directory_name,
-        relative_path_dir=path_in_repo,
-        relative_repo_path_dir=relative_repo_path_dir,
-        extension=extension,
-        relative_path_file=file_path,
+        absolute_path_dir=str(abs_directory),
+        relative_path_dir=str(path_in_repo),
+        relative_repo_path_dir=str(relative_repo_path_dir),
+        extension=full_path.suffix,
+        relative_path_file=str(file_path),
     )
 
 

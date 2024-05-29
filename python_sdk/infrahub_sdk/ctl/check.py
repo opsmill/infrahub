@@ -1,6 +1,5 @@
 import importlib
 import logging
-import os
 import sys
 from asyncio import run as aiorun
 from dataclasses import dataclass
@@ -211,9 +210,8 @@ def get_modules(check_definitions: List[InfrahubCheckDefinitionConfig]) -> List[
     log = logging.getLogger("infrahub")
     modules = []
     for check_definition in check_definitions:
-        directory_name = os.path.dirname(check_definition.file_path)
-        filename = os.path.basename(check_definition.file_path)
-        module_name = os.path.splitext(filename)[0]
+        directory_name = str(check_definition.file_path.parent)
+        module_name = check_definition.file_path.stem
 
         if directory_name not in sys.path:
             sys.path.append(directory_name)
