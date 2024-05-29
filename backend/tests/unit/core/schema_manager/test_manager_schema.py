@@ -368,7 +368,7 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
     schema.process_inheritance()
-    schema.add_profile_schemas()
+    schema.manage_profile_schemas()
 
     profile = schema.get(name="ProfileBuiltinCriticality", duplicate=False)
     assert profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
@@ -409,13 +409,13 @@ async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one)
 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
-    schema.add_profile_schemas()
+    schema.manage_profile_schemas()
 
     with pytest.raises(SchemaNotFoundError):
         schema.get(name="ProfileBuiltinTag")
     builtin_tag_schema = schema.get_node(name="BuiltinTag", duplicate=False)
     with pytest.raises(ValueError):
-        builtin_tag_schema.get_attribute("profiles")
+        builtin_tag_schema.get_relationship("profiles")
     core_profile_schema = schema.get("CoreProfile")
     assert set(core_profile_schema.used_by) == {
         "ProfileBuiltinCriticality",

@@ -10,7 +10,7 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import InitializationError
+from infrahub.exceptions import InitializationError, SchemaNotFoundError
 
 from ..shared import load_schema
 from .shared import (
@@ -222,7 +222,6 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         john = persons[0]
         assert john.name.value == "John"  # type: ignore[attr-defined]
 
-    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_step03_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
         manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01, branch=self.branch1)
 
@@ -254,7 +253,21 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
                     },
                     "TestingCarMaker": {
                         "added": {},
-                        "changed": {"label": None, "name": None},
+                        "changed": {
+                            "label": None,
+                            "name": None,
+                            "relationships": {
+                                "added": {},
+                                "changed": {
+                                    "profiles": {
+                                        "added": {},
+                                        "changed": {"peer": None},
+                                        "removed": {},
+                                    },
+                                },
+                                "removed": {},
+                            },
+                        },
                         "removed": {},
                     },
                     "TestingPerson": {
@@ -274,7 +287,6 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         }
         assert success
 
-    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_step03_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
         manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01, branch=self.branch1)
 
@@ -302,7 +314,6 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         renault_cars = await renault.cars.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(renault_cars) == 2
 
-    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_rebase(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset):
         branch = await client.branch.rebase(branch_name=self.branch1.name)
         assert branch
@@ -323,7 +334,6 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         honda_cars = await honda.cars.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(honda_cars) == 2
 
-    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_step04_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
         tag_schema = registry.schema.get_node_schema(name=TAG_KIND, branch=self.branch1)
 
@@ -336,7 +346,6 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         assert response == {"diff": {"added": {}, "changed": {}, "removed": {"TestingTag": None}}}
         assert success
 
-    @pytest.mark.xfail(reason="migrations need updates for profiles (issue #2841)")
     async def test_step04_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
         tag_schema = registry.schema.get_node_schema(name=TAG_KIND, branch=self.branch1)
 
@@ -353,3 +362,38 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
 
         tags = await registry.manager.query(db=db, schema=TAG_KIND)
         assert len(tags) == 2
+
+    async def test_step05_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step05):
+        success, response = await client.schema.check(schemas=[schema_step05], branch=self.branch1.name)
+
+        assert response == {
+            "diff": {
+                "added": {},
+                "removed": {},
+                "changed": {
+                    "TestingCar": {
+                        "added": {},
+                        "changed": {
+                            "generate_profile": None,
+                            "relationships": {
+                                "added": {},
+                                "changed": {},
+                                "removed": {"profiles": None},
+                            },
+                        },
+                        "removed": {},
+                    },
+                },
+            }
+        }
+        assert success
+
+    async def test_step05_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step05):
+        response = await client.schema.load(schemas=[schema_step05], branch=self.branch1.name)
+        assert not response.errors
+
+        with pytest.raises(SchemaNotFoundError):
+            registry.schema.get(name=f"Profile{CAR_KIND}", branch=self.branch1, check_branch_only=True)
+        car_schema = registry.schema.get(name=CAR_KIND, branch=self.branch1, duplicate=False)
+        with pytest.raises(ValueError):
+            car_schema.get_relationship(name="profiles")
