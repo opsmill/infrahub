@@ -34,8 +34,8 @@ from infrahub_sdk.schema import (
 from infrahub_sdk.task_report import InfrahubTaskReportLogger  # noqa: TCH002
 from infrahub_sdk.utils import compare_lists
 from infrahub_sdk.yaml import SchemaFile
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
-from pydantic.v1 import BaseModel, Field
 
 from infrahub import config
 from infrahub.core.branch import Branch
@@ -332,9 +332,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     )
     is_read_only: bool = Field(False, description="If true, changes will not be synced to remote")
     task_report: Optional[InfrahubTaskReportLogger] = Field(default=None)
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @property
     def default_branch(self) -> str:
