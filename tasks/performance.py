@@ -13,7 +13,7 @@ def run(context: Context, directory: str = "utilities", dataset: str = "dataset0
     NOW = datetime.now(tz=timezone.utc)
     date_format = NOW.strftime("%Y-%m-%d-%H-%M-%S")
 
-    local_dir = Path(__file__).parent.absolute()
+    local_dir = Path(__file__).parent.resolve()
     test_files = (local_dir / directory).glob(f"{PERFORMANCE_FILE_PREFIX}{dataset}*.py")
 
     branch_name, git_hash = git_info(context)

@@ -13,8 +13,8 @@ from .shared import (
 )
 from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
-CURRENT_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
-DOCUMENTATION_DIRECTORY = os.path.join(CURRENT_DIRECTORY, "../docs")
+CURRENT_DIRECTORY = Path(__file__).parent.resolve()
+DOCUMENTATION_DIRECTORY = CURRENT_DIRECTORY.parent / "docs"
 
 
 @task
@@ -389,9 +389,8 @@ def _generate_infrahub_events_documentation() -> None:
             grouped[primary][secondary].append(event_info)
         return grouped
 
-    template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/message-bus-events.j2"
-    output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/message-bus-events.mdx"
-    output_label = "docs/docs/reference/message-bus-events.mdx"
+    template_file = DOCUMENTATION_DIRECTORY / "_templates" / "message-bus-events.j2"
+    output_file = DOCUMENTATION_DIRECTORY / "docs" / "reference" / "message-bus-events.mdx"
 
     print(" - Generate Infrahub Bus Events documentation")
 
@@ -403,7 +402,7 @@ def _generate_infrahub_events_documentation() -> None:
 
     from infrahub.message_bus.messages import MESSAGE_MAP, PRIORITY_MAP, RESPONSE_MAP
 
-    template_text = Path(template_file).read_text(encoding="utf-8")
+    template_text = template_file.read_text(encoding="utf-8")
     environment = jinja2.Environment()
     template = environment.from_string(template_text)
 
@@ -412,6 +411,6 @@ def _generate_infrahub_events_documentation() -> None:
 
     rendered_doc = template.render(message_classes=message_classes, response_classes=response_classes)
 
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-    Path(output_file).write_text(rendered_doc, encoding="utf-8")
-    print(f"Docs saved to: {output_label}")
+    output_file.parent.mkdir(exist_ok=True)
+    output_file.write_text(rendered_doc, encoding="utf-8")
+    print(f"Docs saved to: {output_file}")
