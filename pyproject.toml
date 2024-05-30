@@ -502,8 +502,6 @@ ignore = [
     "PTH113",   # `os.path.isfile()` should be replaced by `Path.is_file()`
     "PTH117",   # `os.path.isabs()` should be replaced by `Path.is_absolute()`
     "PTH118",   # `os.path.join()` should be replaced by `Path` with `/` operator
-    "PTH119",   # `os.path.basename()` should be replaced by `Path.name`
-    "PTH120",   # `os.path.dirname()` should be replaced by `Path.parent`
     "RET503",   # Missing explicit `return` at the end of function able to return non-`None` value
     "RET504",   # Unnecessary assignment before `return` statement
     "S101",     # Use of `assert` detected

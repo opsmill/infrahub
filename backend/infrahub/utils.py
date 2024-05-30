@@ -1,25 +1,22 @@
 import hashlib
 import os
 from enum import Enum, EnumMeta
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 KWARGS_TO_DROP = ["session"]
 
 
-def get_fixtures_dir() -> str:
+def get_fixtures_dir() -> Path:
     """Get the directory which stores fixtures that are common to multiple unit/integration tests."""
-    here = os.path.abspath(os.path.dirname(__file__))
-    fixtures_dir = os.path.join(here, "..", "tests", "fixtures")
-
-    return os.path.abspath(fixtures_dir)
+    here = Path(__file__).parent.resolve()
+    return here.parent / "tests" / "fixtures"
 
 
-def get_models_dir() -> str:
+def get_models_dir() -> Path:
     """Get the directory which stores additional models."""
-    here = os.path.abspath(os.path.dirname(__file__))
-    models_dir = os.path.join(here, "..", "..", "models")
-
-    return os.path.abspath(models_dir)
+    here = Path(__file__).parent.resolve()
+    return here.parent.parent / "models"
 
 
 def find_first_file_in_directory(directory: str) -> Optional[str]:

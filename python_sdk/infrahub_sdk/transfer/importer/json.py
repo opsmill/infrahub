@@ -53,9 +53,9 @@ class LineDelimitedJSONImporter(ImporterInterface):
         relationship_file = import_directory / "relationships.json"
         for f in (node_file, relationship_file):
             if not f.exists():
-                raise TransferFileNotFoundError(f"{f.absolute()} does not exist")
+                raise TransferFileNotFoundError(f"{f.resolve()} does not exist")
         with self.wrapped_task_output("Reading import directory"):
-            table = pa_json.read_json(node_file.absolute())
+            table = pa_json.read_json(node_file.resolve())
 
         with self.wrapped_task_output("Analyzing import"):
             import_nodes_by_kind = defaultdict(list)

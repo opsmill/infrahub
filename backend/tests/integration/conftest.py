@@ -42,7 +42,7 @@ async def db() -> AsyncGenerator[InfrahubDatabase, None]:
 
 
 async def load_infrastructure_schema(db: InfrahubDatabase):
-    base_dir = get_models_dir() + "/base"
+    base_dir = get_models_dir() / "base"
 
     default_branch_name = registry.default_branch
     branch_schema = registry.schema.get_schema_branch(name=default_branch_name)

@@ -104,7 +104,7 @@ class LineDelimitedJSONExporter(ExporterInterface):
 
         for f in (node_file, relationship_file):
             if f.exists():
-                raise FileAlreadyExistsError(f"{f.absolute()} already exists")
+                raise FileAlreadyExistsError(f"{f.resolve()} already exists")
         if set(namespaces) & illegal_namespaces:
             raise InvalidNamespaceError(f"namespaces cannot include {illegal_namespaces}")
 

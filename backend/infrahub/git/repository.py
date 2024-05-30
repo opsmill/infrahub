@@ -211,7 +211,7 @@ def extract_repo_file_information(
         RepoFileInformation: Pydantic object to store all information about this file
     """
     full_path = Path(full_filename)
-    abs_directory = full_path.parent.absolute()
+    abs_directory = full_path.parent.resolve()
 
     filename = full_path.name
     filename_wo_ext = full_path.stem

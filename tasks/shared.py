@@ -3,6 +3,7 @@ import platform
 import re
 import sys
 from enum import Enum
+from pathlib import Path
 from typing import Optional, Union
 
 from invoke import Context, UnexpectedExit
@@ -33,9 +34,9 @@ MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
 )
 CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine")
 
-here = os.path.abspath(os.path.dirname(__file__))
-TOP_DIRECTORY_NAME = os.path.basename(os.path.abspath(os.path.join(here, "..")))
-BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", re.sub(r"[^a-zA-Z0-9_/.]", "", TOP_DIRECTORY_NAME))
+here = Path(__file__).parent.resolve()
+TOP_DIRECTORY_NAME = here.parent.name
+BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", re.sub(r"[^a-zA-Z0-9_/.]", "", str(TOP_DIRECTORY_NAME)))
 PYTHON_VER = os.getenv("PYTHON_VER", "3.12")
 
 PWD = os.getcwd()

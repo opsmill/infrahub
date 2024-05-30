@@ -201,7 +201,7 @@ class Neo4jBackupRestoreBase:
             pass
 
         volumes = {
-            local_backup_directory.absolute(): {"bind": self.container_backup_dir, "mode": "rw"},
+            local_backup_directory.resolve(): {"bind": self.container_backup_dir, "mode": "rw"},
         }
         if volumes_from_container_names:
             for c in self.docker_client.containers.list(filters={"status": "running"}):
@@ -298,7 +298,7 @@ class Neo4jBackupRunner(Neo4jBackupRestoreBase):
         self._run_backup(
             backup_helper_container, database_url, database_backup_port, do_aggregate_backup=do_aggregate_backups
         )
-        self._print_message(f"Updated backup files are in {local_backup_directory.absolute()}")
+        self._print_message(f"Updated backup files are in {local_backup_directory.resolve()}")
         if not self.keep_helper_container:
             with self._print_task_status("Removing helper container...", "done"):
                 backup_helper_container.stop()

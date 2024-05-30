@@ -70,16 +70,16 @@ def git_upstream_repo_01(git_sources_dir) -> Dict[str, str]:
     There is conflict between branch01 and branch02."""
 
     name = "infrahub-test-fixture-01"
-    here = os.path.abspath(os.path.dirname(__file__))
-    fixtures_dir = os.path.join(here, "..", "..", "fixtures")
-    fixture_repo = os.path.join(fixtures_dir, "infrahub-test-fixture-01-0b341c0.tar.gz")
+    here = Path(__file__).parent.resolve()
+    fixtures_dir = here.parent.parent / "fixtures"
+    fixture_repo = fixtures_dir / "infrahub-test-fixture-01-0b341c0.tar.gz"
 
     # Extract the fixture package in the source directory
     file = tarfile.open(fixture_repo)
     file.extractall(git_sources_dir)
     file.close()
 
-    return {"name": name, "path": str(os.path.join(git_sources_dir, name))}
+    return {"name": name, "path": str(git_sources_dir / name)}
 
 
 @pytest.fixture

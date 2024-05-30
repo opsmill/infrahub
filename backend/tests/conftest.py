@@ -479,18 +479,16 @@ class TestHelper:
         return ujson.loads(file_content)
 
     @staticmethod
-    def get_fixtures_dir():
+    def get_fixtures_dir() -> Path:
         """Get the directory which stores fixtures that are common to multiple unit/integration tests."""
-        here = os.path.abspath(os.path.dirname(__file__))
-        fixtures_dir = os.path.join(here, "fixtures")
-
-        return os.path.abspath(fixtures_dir)
+        here = Path(__file__).parent.resolve()
+        return here / "fixtures"
 
     @staticmethod
     def import_module_in_fixtures(module: str) -> Any:
         """Import a python module from the fixtures directory."""
 
-        sys.path.append(TestHelper.get_fixtures_dir())
+        sys.path.append(str(TestHelper.get_fixtures_dir()))
         module_name = module.replace("/", ".")
         return importlib.import_module(module_name)
 
