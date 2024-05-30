@@ -260,7 +260,6 @@ ignore = [
     "PLW1641", # Object does not implement `__hash__` method
     "PTH100",  # `os.path.abspath()` should be replaced by `Path.resolve()`
     "PTH109",  # `os.getcwd()` should be replaced by `Path.cwd()`
-    "PTH119",  # `os.path.basename()` should be replaced by `Path.name`
     "RET504",  # Unnecessary assignment to `data` before `return` statement
     "S105",    # Possible hardcoded password assigned to: "PASS"
     "S108",     # Probable insecure usage of temporary file or directory
