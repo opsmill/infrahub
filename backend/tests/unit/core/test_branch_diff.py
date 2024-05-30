@@ -3,7 +3,7 @@ from typing import Dict
 import pendulum
 import pytest
 from deepdiff import DeepDiff
-from pydantic.v1 import Field
+from pydantic import Field
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, InfrahubKind
