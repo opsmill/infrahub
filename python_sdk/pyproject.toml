@@ -262,7 +262,6 @@ ignore = [
     "PTH109",  # `os.getcwd()` should be replaced by `Path.cwd()`
     "PTH119",  # `os.path.basename()` should be replaced by `Path.name`
     "PTH120",  # `os.path.dirname()` should be replaced by `Path.parent`
-    "PTH122",  # `os.path.splitext()` should be replaced by `Path.suffix`, `Path.stem`, and `Path.parent`
     "RET504",  # Unnecessary assignment to `data` before `return` statement
     "S105",    # Possible hardcoded password assigned to: "PASS"
     "S108",     # Probable insecure usage of temporary file or directory

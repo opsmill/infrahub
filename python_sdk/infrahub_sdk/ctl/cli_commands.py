@@ -2,7 +2,6 @@ import asyncio
 import functools
 import importlib
 import logging
-import os
 import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
@@ -135,9 +134,8 @@ async def run(
 
     variables_dict = parse_cli_vars(variables)
 
-    directory_name = os.path.dirname(script)
-    filename = os.path.basename(script)
-    module_name = os.path.splitext(filename)[0]
+    directory_name = str(script.parent)
+    module_name = script.stem
 
     if directory_name not in sys.path:
         sys.path.append(directory_name)
