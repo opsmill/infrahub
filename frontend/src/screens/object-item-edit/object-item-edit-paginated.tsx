@@ -59,7 +59,9 @@ export default function ObjectItemEditComponent(props: Props) {
   const columns = getSchemaObjectColumns({ schema: schema, forQuery: true });
 
   const displayProfile =
-    schema && !profileGeneric?.used_by?.includes(schema?.kind) && schema.kind !== PROFILE_KIND;
+    schema?.generate_profile &&
+    !profileGeneric?.used_by?.includes(schema?.kind) &&
+    schema.kind !== PROFILE_KIND;
   const profileName = profileSchema ? objectname : `Profile${objectname}`;
 
   const queryString = schema

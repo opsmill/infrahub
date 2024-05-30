@@ -113,7 +113,9 @@ export default function ObjectItemDetails(props: any) {
         objectid,
         // Do not query profiles on profiles objects
         queryProfiles:
-          !profileGeneric?.used_by?.includes(schemaData.kind) && schemaData.kind !== PROFILE_KIND,
+          !profileGeneric?.used_by?.includes(schemaData.kind) &&
+          schemaData.kind !== PROFILE_KIND &&
+          schema?.generate_profile,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema
