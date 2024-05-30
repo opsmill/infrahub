@@ -255,7 +255,7 @@ def dict_hash(dictionary: Dict[str, Any]) -> str:
     # We need to sort arguments so {'a': 1, 'b': 2} is
     # the same as {'b': 2, 'a': 1}
     encoded = ujson.dumps(dictionary, sort_keys=True).encode()
-    dhash = hashlib.md5(encoded)
+    dhash = hashlib.md5(encoded, usedforsecurity=False)
     return dhash.hexdigest()
 
 

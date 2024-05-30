@@ -2017,7 +2017,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         elif definition.content_type.value == "text/plain":
             artifact_content_str = artifact_content
 
-        checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8")).hexdigest()
+        checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
 
         if artifact.checksum.value == checksum:
             return ArtifactGenerateResult(
@@ -2065,7 +2065,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         elif message.content_type == "text/plain":
             artifact_content_str = artifact_content
 
-        checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8")).hexdigest()
+        checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
 
         if artifact.checksum.value == checksum:
             return ArtifactGenerateResult(

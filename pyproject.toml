@@ -512,7 +512,6 @@ ignore = [
     "S108",     # Probable insecure usage of temporary file or directory
     "S202",     # Uses of `tarfile.extractall()`
     "S311",     # Standard pseudo-random generators are not suitable for cryptographic purposes
-    "S324",     # Probable use of insecure hash functions in `hashlib`: `md5`
     "S701",     # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
 ]
 

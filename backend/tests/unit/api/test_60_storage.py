@@ -23,7 +23,7 @@ async def test_file_upload(
     file_path = Path(os.path.join(files_dir, filenames[0]))
 
     file_content = file_path.read_bytes()
-    file_checksum = hashlib.md5(file_content).hexdigest()
+    file_checksum = hashlib.md5(file_content, usedforsecurity=False).hexdigest()
 
     file = {"file": file_path.open(mode="rb")}
 
@@ -53,7 +53,7 @@ async def test_content_upload(
     filenames = [item.name for item in os.scandir(files_dir) if item.is_file()]
 
     file_content = Path(os.path.join(files_dir, filenames[0])).read_bytes()
-    file_checksum = hashlib.md5(file_content).hexdigest()
+    file_checksum = hashlib.md5(file_content, usedforsecurity=False).hexdigest()
 
     with client:
         resp = client.post(
