@@ -137,7 +137,6 @@ class RelationshipQuery(Query):
         schema: RelationshipSchema = None,
         branch: Branch = None,
         at: Union[Timestamp, str] = None,
-        *args,
         **kwargs,
     ):
         if not source and not source_id:
@@ -175,7 +174,7 @@ class RelationshipQuery(Query):
         else:
             self.at = Timestamp()
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
     def get_relationship_properties_dict(self, status: RelationshipStatus) -> dict[str, Optional[str]]:
         rel_prop_dict = {
@@ -199,7 +198,6 @@ class RelationshipCreateQuery(RelationshipQuery):
         self,
         destination: Node = None,
         destination_id: UUID = None,
-        *args,
         **kwargs,
     ):
         if not destination and not destination_id:
@@ -207,7 +205,7 @@ class RelationshipCreateQuery(RelationshipQuery):
 
         super().__init__(destination=destination, destination_id=destination_id, **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
@@ -286,15 +284,14 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
         self,
         properties_to_update: List[str],
         data: RelationshipPeerData,
-        *args,
         **kwargs,
     ):
         self.properties_to_update = properties_to_update
         self.data = data
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["rel_node_id"] = self.data.rel_node_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -368,13 +365,12 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
     def __init__(
         self,
         data: RelationshipPeerData,
-        *args,
         **kwargs,
     ):
         self.data = data
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.data.peer_id
         self.params["rel_node_id"] = self.data.rel_node_id
@@ -432,15 +428,14 @@ class RelationshipDeleteQuery(RelationshipQuery):
 
     def __init__(
         self,
-        *args,
         **kwargs,
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
         if inspect.isclass(self.rel):
             raise TypeError("An instance of Relationship must be provided to RelationshipDeleteQuery")
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["rel_id"] = self.rel.id
@@ -483,7 +478,6 @@ class RelationshipGetPeerQuery(Query):
         schema: RelationshipSchema = None,
         branch: Branch = None,
         at: Union[Timestamp, str] = None,
-        *args,
         **kwargs,
     ):
         if not source and not source_ids:
@@ -517,9 +511,9 @@ class RelationshipGetPeerQuery(Query):
         else:
             self.at = Timestamp(at)
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):  # pylint: disable=too-many-statements
+    async def query_init(self, db: InfrahubDatabase, **kwargs):  # pylint: disable=too-many-statements
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
         )
@@ -719,7 +713,7 @@ class RelationshipGetQuery(RelationshipQuery):
 
     type: QueryType = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
@@ -762,7 +756,6 @@ class RelationshipGetByIdentifierQuery(Query):
         identifiers: Optional[List[str]] = None,
         full_identifiers: Optional[List[FullRelationshipIdentifier]] = None,
         excluded_namespaces: Optional[List[str]] = None,
-        *args,
         **kwargs,
     ) -> None:
         if (not identifiers and not full_identifiers) or (identifiers and full_identifiers):
@@ -780,9 +773,9 @@ class RelationshipGetByIdentifierQuery(Query):
         if "Internal" not in self.excluded_namespaces:
             self.excluded_namespaces.append("Internal")
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["identifiers"] = self.identifiers
         self.params["full_identifiers"] = [
             [full_id.source_kind, full_id.identifier, full_id.destination_kind] for full_id in self.full_identifiers
@@ -839,16 +832,15 @@ class RelationshipCountPerNodeQuery(Query):
         node_ids: List[str],
         identifier: str,
         direction: RelationshipDirection,
-        *args,
         **kwargs,
     ):
         self.node_ids = node_ids
         self.identifier = identifier
         self.direction = direction
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 

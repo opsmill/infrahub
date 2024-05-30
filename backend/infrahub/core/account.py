@@ -15,11 +15,11 @@ if TYPE_CHECKING:
 class AccountTokenValidateQuery(Query):
     name: str = "account_token_validate"
 
-    def __init__(self, token, *args, **kwargs):
+    def __init__(self, token, **kwargs):
         self.token = token
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         token_filter_perms, token_params = self.branch.get_query_filter_relationships(
             rel_labels=["r1", "r2"], at=self.at, include_outside_parentheses=True
         )

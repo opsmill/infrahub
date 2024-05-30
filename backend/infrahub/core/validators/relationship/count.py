@@ -22,16 +22,15 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
 
     def __init__(
         self,
-        *args: Any,
         min_count_override: Optional[int] = None,
         max_count_override: Optional[int] = None,
         **kwargs: Any,
     ):
         self.min_count_override = min_count_override
         self.max_count_override = max_count_override
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Dict[str, Any]) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 

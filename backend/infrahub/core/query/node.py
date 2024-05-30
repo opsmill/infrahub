@@ -90,7 +90,6 @@ class NodeQuery(Query):
         node_db_id: Optional[int] = None,
         id: Optional[str] = None,
         branch: Optional[Branch] = None,
-        *args,
         **kwargs,
     ) -> None:
         # TODO Validate that Node is a valid node
@@ -107,7 +106,7 @@ class NodeQuery(Query):
 
         self.branch = branch or self.node.get_branch_based_on_support_type()
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
 
 class NodeCreateAllQuery(NodeQuery):
@@ -117,7 +116,7 @@ class NodeCreateAllQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         at = self.at or self.node._at
         self.params["uuid"] = self.node.id
         self.params["branch"] = self.branch.name
@@ -350,7 +349,7 @@ class NodeDeleteQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["uuid"] = self.node_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -375,13 +374,12 @@ class NodeCheckIDQuery(Query):
     def __init__(
         self,
         node_id: str,
-        *args,
         **kwargs,
     ):
         self.node_id = node_id
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["uuid"] = self.node_id
 
         query = """
@@ -410,7 +408,6 @@ class NodeListGetAttributeQuery(Query):
         include_source: bool = False,
         include_owner: bool = False,
         account=None,
-        *args,  # pylint: disable=unused-argument
         **kwargs,
     ):
         self.account = account
@@ -421,7 +418,7 @@ class NodeListGetAttributeQuery(Query):
 
         super().__init__(order_by=["n.uuid", "a.name"], **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["ids"] = self.ids
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -558,14 +555,13 @@ class NodeListGetRelationshipsQuery(Query):
     def __init__(
         self,
         ids: List[str],
-        *args,
         **kwargs,
     ):
         self.ids = ids
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at, branch_agnostic=self.branch_agnostic)
@@ -600,12 +596,12 @@ class NodeListGetRelationshipsQuery(Query):
 class NodeListGetInfoQuery(Query):
     name: str = "node_list_get_info"
 
-    def __init__(self, ids: List[str], account=None, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, ids: List[str], account=None, **kwargs: Any) -> None:
         self.account = account
         self.ids = ids
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
         )
@@ -714,14 +710,14 @@ class NodeGetListQuery(Query):
     name = "node_get_list"
 
     def __init__(
-        self, schema: NodeSchema, filters: Optional[dict] = None, partial_match: bool = False, *args: Any, **kwargs: Any
+        self, schema: NodeSchema, filters: Optional[dict] = None, partial_match: bool = False, **kwargs: Any
     ) -> None:
         self.schema = schema
         self.filters = filters
         self.partial_match = partial_match
         self._variables_to_track = ["n", "rb"]
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
     def _track_variable(self, variable: str) -> None:
         if variable not in self._variables_to_track:
@@ -736,7 +732,7 @@ class NodeGetListQuery(Query):
     def _get_tracked_variables(self) -> list[str]:
         return self._variables_to_track
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         self.order_by = []
         self.params["node_kind"] = self.schema.kind
 
@@ -1099,7 +1095,6 @@ class NodeGetHierarchyQuery(Query):
         direction: RelationshipHierarchyDirection,
         node_schema: Union[NodeSchema, GenericSchema],
         filters: Optional[dict] = None,
-        *args: Any,
         **kwargs: Any,
     ) -> None:
         self.filters = filters or {}
@@ -1107,9 +1102,9 @@ class NodeGetHierarchyQuery(Query):
         self.node_id = node_id
         self.node_schema = node_schema
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:  # pylint: disable=too-many-statements
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # pylint: disable=too-many-statements
         hierarchy_schema = self.node_schema.get_hierarchy_schema(db=db, branch=self.branch)
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
