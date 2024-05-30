@@ -9,7 +9,7 @@ import ujson
 from infrahub_sdk import UUIDT
 from infrahub_sdk.timestamp import TimestampFormatError
 from infrahub_sdk.utils import is_valid_url
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from infrahub import config
 from infrahub.core import registry
