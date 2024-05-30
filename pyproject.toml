@@ -30,7 +30,7 @@ python = "^3.9, < 3.13"
 neo4j = "~5.20"
 neo4j-rust-ext = "^5.20.0.0"
 infrahub-sdk = {path = "python_sdk", extras = ["ctl","tests"], develop=true}
-pydantic = "~2.6"
+pydantic = "2.7.2"
 pydantic-settings = "~2.2"
 pytest = "~7.4"
 aio-pika = "~9.4"
