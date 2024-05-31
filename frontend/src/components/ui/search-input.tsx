@@ -15,7 +15,7 @@ export const SearchInput = ({ loading, ...props }: SearchInputProps) => {
         aria-hidden="true"
       />
 
-      <Input {...props} className={classNames("pl-8 leading-6", props.className)} />
+      <Input {...props} className={classNames("pl-8 leading-6 h-auto", props.className)} />
 
       {loading && <Spinner className="absolute inset-y-0 right-0 pr-2 flex items-center" />}
     </div>
