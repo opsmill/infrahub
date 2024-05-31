@@ -254,7 +254,11 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Development',
-      link: {type: 'doc', id: 'development/readme'},
+      link: {
+        type: 'generated-index',
+        slug: 'development'
+      },
+
       items: [
         'development/editor',
         'development/backend',
