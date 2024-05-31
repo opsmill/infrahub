@@ -1,0 +1,48 @@
+---
+title: Infrahub Configuration
+---
+
+# Infrahub configuration
+
+The Infrahub containers have a number of environmental variables available at runtime to affect their behavior.
+
+## Usage
+
+Here are a few common methods of setting environmental variables:
+
+- Exporting in a shell, e.g.: `export INFRAHUB_ADDRESS="http://localhost:8000"`
+- Using a [`.env` file](https://docs.docker.com/compose/environment-variables/set-environment-variables/#substitute-with-an-env-file)
+- Using [direnv](https://direnv.net/)
+
+:::note
+
+`infrahubctl` has it's own environmental variables. See the [infrahubctl documentation](../infrahubctl#environment-variables) for more information.
+
+:::
+
+<!-- vale off -->
+
+{% for section in sections %}
+## Section: {{ section.name }}
+
+Description: {{ section.description }}
+
+
+
+{% for parameter in section.parameters %}
+
+###  {{ parameter.name }}
+
+Description: {{ parameter.description }}
+
+**Default setting:** {{ parameter.default }}
+
+**Type:** {{ parameter.type }}
+
+**Environment variable:** {{ parameter.env }}
+
+{% endfor %}
+
+{% endfor %}
+
+<!-- vale on -->
