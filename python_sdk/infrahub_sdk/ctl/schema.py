@@ -95,6 +95,7 @@ def display_schema_load_errors(console: Console, response: Dict[str, Any], schem
         if not valid_error_path(loc_path=loc_path):
             continue
 
+        loc_type = loc_path[-2]
         schema_index = int(loc_path[2])
         node_index = int(loc_path[4])
         node = get_node(schemas_data=schemas_data, schema_index=schema_index, node_index=node_index)
@@ -103,13 +104,11 @@ def display_schema_load_errors(console: Console, response: Dict[str, Any], schem
             console.print("Node data not found.")
             continue
 
-        input_label = loc_path[-1]
-        element_label = loc_path[-3][0:-1].title()
-
+        input_label = node[loc_type][loc_path[-1]].get("name", None)
         input_str = error.get("input", None)
-        error_message = f"{element_label} {input_label}: {input_str} | {error['msg']} ({error['type']})"
+        error_message = f"{loc_type[:-1].title()}: {input_label} ({input_str}) | {error['msg']} ({error['type']})"
 
-        console.print(f"  Node: {node.get('namespace', None)}.{node.get('name', None)} | {error_message}")
+        console.print(f"  Node: {node.get('namespace', None)}{node.get('name', None)} | {error_message}")
 
 
 def handle_non_detail_errors(console: Console, response: Dict[str, Any]) -> None:

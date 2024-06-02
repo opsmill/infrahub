@@ -1,8 +1,12 @@
 import inspect
+from io import StringIO
+from unittest import mock
 
 import pytest
+from rich.console import Console
 
 from infrahub_sdk import Config, InfrahubClient, InfrahubClientSync, ValidationError
+from infrahub_sdk.ctl.schema import display_schema_load_errors
 from infrahub_sdk.exceptions import SchemaNotFoundError
 from infrahub_sdk.schema import (
     InfrahubCheckDefinitionConfig,
@@ -19,6 +23,11 @@ async_schema_methods = [method for method in dir(InfrahubSchema) if not method.s
 sync_schema_methods = [method for method in dir(InfrahubSchemaSync) if not method.startswith("_")]
 
 client_types = ["standard", "sync"]
+
+
+@pytest.fixture
+async def console_output():
+    return Console(file=StringIO())
 
 
 async def test_method_sanity():
@@ -242,3 +251,32 @@ async def test_infrahub_repository_config_dups():
         )
 
     assert "Found multiples element with the same names: ['check01', 'check02']" in str(exc.value)
+
+
+@mock.patch(
+    "infrahub_sdk.ctl.schema.get_node",
+    return_value={
+        "name": "Instance",
+        "namespace": "Cloud",
+        "attributes": [{"name": "name", "kind": "Text"}, {"name": "status", "kind": "Dropdown"}],
+    },
+)
+async def test_display_schema_load_errors_details(mock_get_node, console_output):
+    """Validate error message with details when loading schema."""
+    error = {
+        "detail": [
+            {
+                "loc": ["body", "schemas", 0, "nodes", 0, "attributes", 1],
+                "msg": "Value error, The property 'choices' is required for kind=Dropdown",
+                "type": "value_error",
+                "input": {"name": "status", "kind": "Dropdown"},
+            }
+        ]
+    }
+    display_schema_load_errors(console=console_output, response=error, schemas_data=[])
+    mock_get_node.assert_called_once()
+    output = console_output.file.getvalue()
+    expected_console = """Unable to load the schema:
+  Node: CloudInstance | Attribute: status ({'name': 'status', 'kind': 'Dropdown'}) | Value error, The property 'choices' is required for kind=Dropdown (value_error)
+"""
+    assert output == expected_console
