@@ -27,7 +27,7 @@ client_types = ["standard", "sync"]
 
 @pytest.fixture
 async def console_output():
-    return Console(file=StringIO())
+    return Console(file=StringIO(), width=1000)
 
 
 async def test_method_sanity():
