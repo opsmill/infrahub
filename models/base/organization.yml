@@ -44,6 +44,7 @@ nodes:
     icon: mdi:domain
     inherit_from:
       - OrganizationGeneric
+    generate_profile: False
     include_in_menu: true
     menu_placement: OrganizationGeneric
     relationships:
