@@ -344,7 +344,7 @@ nodes:
     display_labels:
       - name__value
     uniqueness_constraints:
-      - ["name__value", "rack", "location", "organization"]
+      - ["name__value", "location"]
     attributes:
       - name: name
         kind: Text
@@ -566,7 +566,7 @@ nodes:
     display_labels:
       - address__value
     uniqueness_constraints:
-      - ["prefix", "address__value"]
+      - ["address__value"]
     attributes:
       - name: address
         kind: IPHost
@@ -685,7 +685,7 @@ nodes:
     display_labels:
       - prefix__value
     uniqueness_constraints:
-      - ["vrf", "prefix__value"]
+      - ["prefix__value"]
     attributes:
       - name: prefix
         kind: IPNetwork
@@ -831,7 +831,7 @@ nodes:
       - name__value
       - vlan_id__value
     uniqueness_constraints:
-      - ["location", "vlan_group", "vlan_id__value"]
+      - ["name__value", "vlan_id__value"]
     attributes:
       - name: name
         kind: Text
