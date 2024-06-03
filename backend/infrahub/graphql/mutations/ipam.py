@@ -12,7 +12,7 @@ from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
-from infrahub.database import InfrahubDatabase
+from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.graphql.mutations.node_getter.interface import MutationNodeGetterInterface
 from infrahub.log import get_logger
@@ -95,6 +95,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
     @classmethod
+    @retry_db_transaction(name="ipaddress_create")
     async def mutate_create(
         cls,
         root: dict,
@@ -121,6 +122,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         return reconciled_address, result
 
     @classmethod
+    @retry_db_transaction(name="ipaddress_update")
     async def mutate_update(
         cls,
         root: dict,
@@ -212,6 +214,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
     @classmethod
+    @retry_db_transaction(name="ipprefix_create")
     async def mutate_create(
         cls,
         root: dict,
@@ -238,6 +241,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         return reconciled_prefix, result
 
     @classmethod
+    @retry_db_transaction(name="ipprefix_update")
     async def mutate_update(
         cls,
         root: dict,
@@ -299,6 +303,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         return prefix, result, created
 
     @classmethod
+    @retry_db_transaction(name="ipprefix_delete")
     async def mutate_delete(
         cls,
         root,
