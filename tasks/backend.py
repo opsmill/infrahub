@@ -209,20 +209,26 @@ def format_and_lint(context: Context):
 @task
 def generate(context: Context):
     """Generate internal backend models."""
-    _generate(context=context)
+    _generate_schemas(context=context)
+    _generate_protocols(context=context)
 
 
 @task
 def validate_generated(context: Context, docker: bool = False):
     """Validate that the generated documentation is committed to Git."""
 
-    _generate(context=context)
+    _generate_schemas(context=context)
     exec_cmd = "git diff --exit-code backend/infrahub/core/schema/generated"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
+    _generate_protocols(context=context)
+    exec_cmd = "git diff --exit-code backend/infrahub/core/protocols.py"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
 
-def _generate(context: Context):
+
+def _generate_schemas(context: Context):
     from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
     from infrahub.core.schema.definitions.internal import (
@@ -263,3 +269,23 @@ def _generate(context: Context):
 
     execute_command(context=context, command=f"ruff format {generated}")
     execute_command(context=context, command=f"ruff check --fix {generated}")
+
+
+def _generate_protocols(context: Context):
+    from jinja2 import Environment, FileSystemLoader, StrictUndefined
+
+    from infrahub.core.schema.definitions.core import core_models
+    from infrahub.types import ATTRIBUTE_TYPES
+
+    env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"), undefined=StrictUndefined)
+    generated = f"{ESCAPED_REPO_PATH}/backend/infrahub/core"
+    template = env.get_template("generate_protocols.j2")
+
+    protocols_rendered = template.render(
+        generics=core_models["generics"], models=core_models["nodes"], attributes_map=ATTRIBUTE_TYPES
+    )
+    protocols_output = f"{generated}/protocols.py"
+    Path(protocols_output).write_text(protocols_rendered, encoding="utf-8")
+
+    execute_command(context=context, command=f"ruff format {protocols_output}")
+    execute_command(context=context, command=f"ruff check --fix {protocols_output}")
