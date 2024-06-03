@@ -285,10 +285,6 @@ module = "infrahub.database"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.exceptions"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.git.repository"
 ignore_errors = true
 
