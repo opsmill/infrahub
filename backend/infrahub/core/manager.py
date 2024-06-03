@@ -124,7 +124,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         partial_match: bool = False,
-    ) -> List[Node]:  # pylint: disable=unused-argument
+    ) -> List[Any]:
         """Query one or multiple nodes of a given type based on filter arguments.
 
         Args:
@@ -338,7 +338,7 @@ class NodeManager:
         limit: Optional[int] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
-    ) -> Dict[str, Node]:
+    ) -> Dict[str, Any]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -382,7 +382,7 @@ class NodeManager:
         branch: Optional[Union[Branch, str]] = None,
         id: Optional[str] = None,  # pylint: disable=redefined-builtin
         hfid: Optional[list[str]] = None,
-    ) -> Node:
+    ) -> Any:
         if not id and not hfid:
             raise ProcessingError(message="either id or hfid must be provided.")
 
@@ -434,7 +434,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         raise_on_error: Literal[False] = False,
-    ) -> Optional[Node]: ...
+    ) -> Optional[Any]: ...
 
     @overload
     @classmethod
@@ -451,7 +451,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         raise_on_error: Literal[True] = True,
-    ) -> Node: ...
+    ) -> Any: ...
 
     @classmethod
     async def get_one_by_default_filter(
@@ -467,7 +467,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         raise_on_error: bool = False,
-    ) -> Optional[Node]:
+    ) -> Optional[Any]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -521,7 +521,7 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
-    ) -> Node:
+    ) -> Any:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -570,7 +570,7 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
-    ) -> Node:
+    ) -> Any:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -617,7 +617,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         kind: Optional[str] = None,
-    ) -> Optional[Node]:
+    ) -> Optional[Any]:
         """Return one node based on its ID."""
         branch = await registry.get_branch(branch=branch, db=db)
 
@@ -671,7 +671,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
-    ) -> Dict[str, Node]:
+    ) -> Dict[str, Any]:
         """Return a list of nodes based on their IDs."""
 
         branch = await registry.get_branch(branch=branch, db=db)
@@ -801,7 +801,7 @@ class NodeManager:
         nodes: List[Node],
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
-    ) -> list[Node]:
+    ) -> list[Any]:
         """Returns list of deleted nodes because of cascading deletes"""
         branch = await registry.get_branch(branch=branch, db=db)
         component_registry = get_component_registry()
