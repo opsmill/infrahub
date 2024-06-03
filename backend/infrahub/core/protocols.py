@@ -21,29 +21,33 @@ if TYPE_CHECKING:
 
 
 class CoreNode(Protocol):
+    id: str
+
+    def get_id(self) -> str: ...
+    def get_kind(self) -> str: ...
+    async def save(self) -> None: ...
+
+
+class LineageOwner(CoreNode):
     pass
 
 
-class LineageOwner(Protocol):
-    pass
-
-
-class CoreProfile(Protocol):
+class CoreProfile(CoreNode):
     profile_name: String
     profile_priority: Integer
 
 
-class LineageSource(Protocol):
+class LineageSource(CoreNode):
     pass
 
 
-class CoreComment(Protocol):
+class CoreComment(CoreNode):
     text: String
     created_at: String
     created_by: RelationshipManager
 
 
-class CoreThread(Protocol):
+class CoreThread(CoreNode):
     label: String
     resolved: Boolean
     created_at: String
@@ -52,7 +56,7 @@ class CoreThread(Protocol):
     created_by: RelationshipManager
 
 
-class CoreGroup(Protocol):
+class CoreGroup(CoreNode):
     name: String
     label: String
     description: String
@@ -60,7 +64,7 @@ class CoreGroup(Protocol):
     subscribers: RelationshipManager
 
 
-class CoreValidator(Protocol):
+class CoreValidator(CoreNode):
     label: String
     state: String
     conclusion: String
@@ -70,7 +74,7 @@ class CoreValidator(Protocol):
     checks: RelationshipManager
 
 
-class CoreCheck(Protocol):
+class CoreCheck(CoreNode):
     name: String
     label: String
     origin: String
@@ -82,7 +86,7 @@ class CoreCheck(Protocol):
     validator: RelationshipManager
 
 
-class CoreTransformation(Protocol):
+class CoreTransformation(CoreNode):
     name: String
     label: String
     description: String
@@ -92,22 +96,22 @@ class CoreTransformation(Protocol):
     tags: RelationshipManager
 
 
-class CoreArtifactTarget(Protocol):
+class CoreArtifactTarget(CoreNode):
     artifacts: RelationshipManager
 
 
-class CoreTaskTarget(Protocol):
+class CoreTaskTarget(CoreNode):
     pass
 
 
-class CoreWebhook(Protocol):
+class CoreWebhook(CoreNode):
     name: String
     description: String
     url: URL
     validate_certificates: Boolean
 
 
-class CoreGenericRepository(Protocol):
+class CoreGenericRepository(CoreNode):
     name: String
     description: String
     location: String
@@ -120,14 +124,14 @@ class CoreGenericRepository(Protocol):
     generators: RelationshipManager
 
 
-class BuiltinIPNamespace(Protocol):
+class BuiltinIPNamespace(CoreNode):
     name: String
     description: String
     ip_prefixes: RelationshipManager
     ip_addresses: RelationshipManager
 
 
-class BuiltinIPPrefix(Protocol):
+class BuiltinIPPrefix(CoreNode):
     prefix: IPNetwork
     description: String
     member_type: Dropdown
@@ -142,14 +146,14 @@ class BuiltinIPPrefix(Protocol):
     ip_addresses: RelationshipManager
 
 
-class BuiltinIPAddress(Protocol):
+class BuiltinIPAddress(CoreNode):
     address: IPHost
     description: String
     ip_namespace: RelationshipManager
     ip_prefix: RelationshipManager
 
 
-class CoreResourcePool(Protocol):
+class CoreResourcePool(CoreNode):
     name: String
     description: String
 
@@ -167,7 +171,7 @@ class CoreGraphQLQueryGroup(CoreGroup):
     query: RelationshipManager
 
 
-class BuiltinTag(Protocol):
+class BuiltinTag(CoreNode):
     name: String
     description: String
 
@@ -182,14 +186,14 @@ class CoreAccount(LineageOwner, LineageSource):
     tokens: RelationshipManager
 
 
-class InternalAccountToken(Protocol):
+class InternalAccountToken(CoreNode):
     name: String
     token: String
     expiration: String
     account: RelationshipManager
 
 
-class InternalRefreshToken(Protocol):
+class InternalRefreshToken(CoreNode):
     expiration: String
     account: RelationshipManager
 
@@ -324,7 +328,7 @@ class CoreTransformPython(CoreTransformation):
     class_name: String
 
 
-class CoreGraphQLQuery(Protocol):
+class CoreGraphQLQuery(CoreNode):
     name: String
     description: String
     query: String

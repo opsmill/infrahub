@@ -10,7 +10,15 @@ if TYPE_CHECKING:
 
 
 {% for generic in generics %}
-class {{ generic.namespace }}{{ generic.name }}(Protocol):
+{%- if generic.namespace == 'Core' and generic.name == 'Node' %}
+class CoreNode(Protocol):
+    id: str
+
+    def get_id(self) -> str: ...
+    def get_kind(self) -> str: ...
+    async def save(self) -> None: ...
+{%- else %}
+class {{ generic.namespace }}{{ generic.name }}(CoreNode):
     {%- if not generic.attributes|default([]) and not generic.relationships|default([]) %}
     pass
     {%- endif %}
@@ -20,13 +28,14 @@ class {{ generic.namespace }}{{ generic.name }}(Protocol):
     {%- for relationship in generic.relationships|default([]) %}
     {{ relationship.name }}: RelationshipManager
     {%- endfor %}
+{%- endif %}
 {% endfor %}
 
 {% for model in models %}
     {%- if model.inherit_from|default %}
 class {{ model.namespace }}{{ model.name }}({{ model.inherit_from|join(', ') }}):
     {%- else %}
-class {{ model.namespace }}{{ model.name }}(Protocol):
+class {{ model.namespace }}{{ model.name }}(CoreNode):
     {%- endif %}
     {%- if not model.attributes|default([]) and not model.relationships|default([]) %}
     pass
