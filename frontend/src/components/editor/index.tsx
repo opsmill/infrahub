@@ -48,7 +48,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = forwardRef<
           id={id}
           ref={ref}
           type="button"
-          onClick={() => codeMirror.view?.focus()}
+          onClick={() => codeMirror.view?.focus()} // for E2E
           onFocus={() => codeMirror.view?.focus()}
           className="w-0 h-0"
         />

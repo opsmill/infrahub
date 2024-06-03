@@ -41,19 +41,12 @@ export const FormField = (props: ControllerProps) => {
 };
 
 export const FormLabel = ({ className, ...props }: LabelPrimitive.LabelProps) => {
-  const { id, name } = useContext(FormFieldContext);
-  const { getFieldState, formState } = useFormContext();
-
-  const { error } = getFieldState(name, formState);
+  const { id } = useContext(FormFieldContext);
 
   return (
     <LabelPrimitive.Label
       htmlFor={id}
-      className={classNames(
-        "text-sm font-medium leading-6 text-gray-900",
-        error && "text-red-600",
-        className
-      )}
+      className={classNames("text-sm font-medium text-gray-900", className)}
       {...props}
     />
   );
@@ -82,7 +75,13 @@ export const FormMessage = ({
   if (!message) return null;
 
   return (
-    <p className={classNames("ml-1 text-sm", error && "text-red-600", className)} {...props}>
+    <p
+      className={classNames(
+        "text-xs mt-1 italic text-gray-600",
+        error && "text-red-600",
+        className
+      )}
+      {...props}>
       {message}
     </p>
   );
