@@ -16,7 +16,7 @@ The default client class `InfrahubClient` provides the asynchronous version.
 
 ```python
 from infrahub_sdk import InfrahubClient
-client = await InfrahubClient.init(address="http://localhost:8000")
+client = InfrahubClient(address="http://localhost:8000")
 ```
 
 ## Synchronous Python
@@ -25,7 +25,7 @@ The `InfrahubClientSync` class provides the synchronous version.
 
 ```python
 from infrahub_sdk import InfrahubClientSync
-client = InfrahubClientSync.init(address="http://localhost:8000")
+client = InfrahubClientSync(address="http://localhost:8000")
 ```
 
 ## Authentication
@@ -37,8 +37,8 @@ The SDK is using a token-based authentication method to authenticate with the AP
 
   ```python
   from infrahub_sdk import InfrahubClient
-  client = await InfrahubClient.init(config=Config(api_token="token"))
-  client = await InfrahubClient.init() # token is read from the INFRAHUB_API_TOKEN environment variable
+  client = await InfrahubClient(config=Config(api_token="token"))
+  client = await InfrahubClient() # token is read from the INFRAHUB_API_TOKEN environment variable
   ```
 
   </TabItem>
@@ -46,8 +46,8 @@ The SDK is using a token-based authentication method to authenticate with the AP
 
   ```python
   from infrahub_sdk import InfrahubClientSync
-  client = InfrahubClientSync.init(config=Config(api_token="token"))
-  client = InfrahubClientSync.init() # token is read from the INFRAHUB_API_TOKEN environment variable
+  client = InfrahubClientSync(config=Config(api_token="token"))
+  client = InfrahubClientSync() # token is read from the INFRAHUB_API_TOKEN environment variable
   ```
 
   </TabItem>
@@ -63,7 +63,7 @@ The client object can be configured by providing a Config object. Here we will s
   ```python
   from infrahub_sdk import InfrahubClient, Config
   config = Config(echo_graphql_queries=True)
-  client = await InfrahubClient.init(config=config)
+  client = await InfrahubClient(config=config)
   ```
 
   </TabItem>
@@ -72,7 +72,7 @@ The client object can be configured by providing a Config object. Here we will s
   ```python
   from infrahub_sdk import InfrahubClientSync, Config
   config = Config(echo_graphql_queries=True)
-  client = InfrahubClientSync.init(config=config)
+  client = InfrahubClientSync(config=config)
   ```
 
   </TabItem>
@@ -90,7 +90,7 @@ The client object can be configured to use a specific branch in Infrahub. By def
   ```python
   from infrahub_sdk import InfrahubClient, Config
   config = Config(default_branch="other-branch")
-  client_other_branch = await InfrahubClient.init(config=config)
+  client_other_branch = InfrahubClient(config=config)
 
   tag_other_branch = await client_other_branch.get(kind="BuiltinTag", name__value="RED")
   tag_main_branch = await client_other_branch.get(kind="BuiltinTag", name__value="RED", branch="main")
@@ -102,7 +102,7 @@ The client object can be configured to use a specific branch in Infrahub. By def
   ```python
   from infrahub_sdk import InfrahubClientSync, Config
   config = Config(default_branch="other-branch")
-  client_other_branch = InfrahubClientSync.init(config=config)
+  client_other_branch = InfrahubClientSync(config=config)
 
   tag_other_branch = client_other_branch.get(kind="BuiltinTag", name__value="RED")
   tag_main_branch = client_other_branch.get(kind="BuiltinTag", name__value="RED", branch="main")

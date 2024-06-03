@@ -42,21 +42,9 @@ async def test_validate_method_signature(
     assert replace_async_return_annotation(async_sig.return_annotation) == sync_sig.return_annotation
 
 
-async def test_init_client():
-    await InfrahubClient.init()
-
-    assert True
-
-
-async def test_init_client_sync():
-    InfrahubClientSync.init()
-
-    assert True
-
-
-async def test_init_with_invalid_address():
+def test_init_with_invalid_address():
     with pytest.raises(ValueError) as exc:
-        await InfrahubClient.init(address="missing-schema")
+        InfrahubClient(address="missing-schema")
 
     assert "The configured address is not a valid url" in str(exc.value)
 

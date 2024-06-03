@@ -17,7 +17,7 @@ class TestInfrahubSchema:
 
     async def test_schema_all(self, client, init_db_base):
         config = Config(requester=client.async_request)
-        ifc = await InfrahubClient.init(config=config)
+        ifc = InfrahubClient(config=config)
         schema_nodes = await ifc.schema.all()
 
         nodes = [node for node in core_models["nodes"] if node["namespace"] != "Internal"]
@@ -32,7 +32,7 @@ class TestInfrahubSchema:
 
     async def test_schema_get(self, client, init_db_base):
         config = Config(username="admin", password="infrahub", requester=client.async_request)
-        ifc = await InfrahubClient.init(config=config)
+        ifc = InfrahubClient(config=config)
         schema_node = await ifc.schema.get(kind="BuiltinTag")
 
         assert isinstance(schema_node, NodeSchema)
@@ -47,7 +47,7 @@ class TestInfrahubSchema:
 
     async def test_schema_load_many(self, client, init_db_base, schema_extension_01, schema_extension_02):
         config = Config(username="admin", password="infrahub", requester=client.async_request)
-        ifc = await InfrahubClient.init(config=config)
+        ifc = InfrahubClient(config=config)
         response = await ifc.schema.load(schemas=[schema_extension_01, schema_extension_02])
 
         assert response.schema_updated

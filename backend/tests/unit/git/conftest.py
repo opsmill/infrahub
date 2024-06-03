@@ -21,8 +21,8 @@ from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
 
 
 @pytest.fixture
-async def client() -> InfrahubClient:
-    return await InfrahubClient.init(config=Config(address="http://mock", insert_tracker=True))
+def client() -> InfrahubClient:
+    return InfrahubClient(config=Config(address="http://mock", insert_tracker=True))
 
 
 @pytest.fixture

@@ -37,7 +37,7 @@ def askpass(
     if not request_type:
         raise typer.Exit(f"Unable to identify the request type in '{text}'")
 
-    client = InfrahubClientSync.init(config=Config(address=config.SETTINGS.main.internal_address, insert_tracker=True))
+    client = InfrahubClientSync(config=Config(address=config.SETTINGS.main.internal_address, insert_tracker=True))
     repo = client.get(kind=InfrahubKind.GENERICREPOSITORY, location__value=location)
 
     attr = getattr(repo, request_type)
