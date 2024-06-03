@@ -116,9 +116,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     def get_labels(self) -> List[str]:
         """Return the labels for this object, composed of the kind
         and the list of Generic this object is inheriting from."""
-
+        labels: List[str] = []
         if isinstance(self._schema, NodeSchema):
-            labels: List[str] = [self.get_kind()] + self._schema.inherit_from
+            labels = [self.get_kind()] + self._schema.inherit_from
             if (
                 self._schema.namespace not in ["Schema", "Internal"]
                 and InfrahubKind.GENERICGROUP not in self._schema.inherit_from
@@ -127,7 +127,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return labels
 
         if isinstance(self._schema, ProfileSchema):
-            labels: List[str] = [self.get_kind()] + self._schema.inherit_from
+            labels = [self.get_kind()] + self._schema.inherit_from
             return labels
 
         return [self.get_kind()]
@@ -143,7 +143,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return registry.get_global_branch()
         return self._branch
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if not self._existing:
             return f"{self.get_kind()}(ID: {str(self.id)})[NEW]"
 
@@ -164,8 +164,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self.id: str = None
         self.db_id: str = None
 
-        self._source: Node = None
-        self._owner: Node = None
+        self._source: Optional[Node] = None
+        self._owner: Optional[Node] = None
         self._is_protected: bool = None
 
         # Lists of attributes and relationships names
@@ -180,7 +180,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
     ) -> Self:
-        attrs = {}
+        attrs: dict[str, Any] = {}
 
         branch = await registry.get_branch(branch=branch, db=db)
 
@@ -197,7 +197,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return cls(**attrs)
 
-    async def _process_fields(self, fields: dict, db: InfrahubDatabase):
+    async def _process_fields(self, fields: dict, db: InfrahubDatabase) -> None:
         errors = []
 
         if "_source" in fields.keys():
@@ -327,7 +327,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         )
         return attr
 
-    async def process_label(self, db: Optional[InfrahubDatabase] = None):  # pylint: disable=unused-argument
+    async def process_label(self, db: Optional[InfrahubDatabase] = None) -> None:  # pylint: disable=unused-argument
         # If there label and name are both defined for this node
         #  if label is not define, we'll automatically populate it with a human friendy vesion of name
         # pylint: disable=no-member
@@ -336,7 +336,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
                 self.label.is_default = False
 
-    async def new(self, db: InfrahubDatabase, id: Optional[str] = None, **kwargs) -> Self:
+    async def new(self, db: InfrahubDatabase, id: Optional[str] = None, **kwargs: Any) -> Self:
         if id and not is_valid_uuid(id):
             raise ValidationError({"id": f"{id} is not a valid UUID"})
         if id:
@@ -361,7 +361,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         id: Optional[str] = None,
         db_id: Optional[str] = None,
         updated_at: Optional[Union[Timestamp, str]] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Self:
         self.id = id
         self.db_id = db_id
@@ -373,7 +373,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         await self._process_fields(db=db, fields=kwargs)
         return self
 
-    async def _create(self, db: InfrahubDatabase, at: Optional[Timestamp] = None):
+    async def _create(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
         create_at = Timestamp(at)
 
         query = await NodeCreateAllQuery.init(db=db, node=self, at=create_at)
@@ -399,13 +399,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 identifier = f"{rel.schema.identifier}::{rel.peer_id}"
                 rel.id, rel.db_id = new_ids[identifier]
 
-        return True
-
     async def _update(
         self,
         db: InfrahubDatabase,
         at: Optional[Timestamp] = None,
-    ):
+    ) -> None:
         """Update the node in the database if needed."""
 
         update_at = Timestamp(at)
@@ -436,7 +434,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         await self._create(at=save_at, db=db)
         return self
 
-    async def delete(self, db: InfrahubDatabase, at: Optional[Timestamp] = None):
+    async def delete(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
         """Delete the Node in the database."""
 
         delete_at = Timestamp(at)
