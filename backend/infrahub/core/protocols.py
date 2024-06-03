@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
+    from enum import Enum
+
     from infrahub.core.attribute import (
         URL,
         Boolean,
@@ -66,8 +68,8 @@ class CoreGroup(CoreNode):
 
 class CoreValidator(CoreNode):
     label: String
-    state: String
-    conclusion: String
+    state: Enum
+    conclusion: Enum
     completed_at: String
     started_at: String
     proposed_change: RelationshipManager
@@ -80,8 +82,8 @@ class CoreCheck(CoreNode):
     origin: String
     kind: String
     message: String
-    conclusion: String
-    severity: String
+    conclusion: Enum
+    severity: Enum
     created_at: String
     validator: RelationshipManager
 
@@ -181,8 +183,8 @@ class CoreAccount(LineageOwner, LineageSource):
     password: HashedPassword
     label: String
     description: String
-    type: String
-    role: String
+    type: Enum
+    role: Enum
     tokens: RelationshipManager
 
 
@@ -203,7 +205,7 @@ class CoreProposedChange(CoreTaskTarget):
     description: String
     source_branch: String
     destination_branch: String
-    state: String
+    state: Enum
     approved_by: RelationshipManager
     reviewers: RelationshipManager
     created_by: RelationshipManager
@@ -257,7 +259,7 @@ class CoreTransformJinja2(CoreTransformation):
 
 class CoreDataCheck(CoreCheck):
     conflicts: JSONAttribute
-    keep_branch: String
+    keep_branch: Enum
 
 
 class CoreStandardCheck(CoreCheck):
@@ -343,8 +345,8 @@ class CoreGraphQLQuery(CoreNode):
 
 class CoreArtifact(CoreTaskTarget):
     name: String
-    status: String
-    content_type: String
+    status: Enum
+    content_type: Enum
     checksum: String
     storage_id: String
     parameters: JSONAttribute
@@ -357,7 +359,7 @@ class CoreArtifactDefinition(CoreTaskTarget):
     artifact_name: String
     description: String
     parameters: JSONAttribute
-    content_type: String
+    content_type: Enum
     targets: RelationshipManager
     transformation: RelationshipManager
 
@@ -376,7 +378,7 @@ class CoreGeneratorDefinition(CoreTaskTarget):
 
 class CoreGeneratorInstance(CoreTaskTarget):
     name: String
-    status: String
+    status: Enum
     object: RelationshipManager
     definition: RelationshipManager
 
@@ -395,7 +397,7 @@ class IpamNamespace(BuiltinIPNamespace):
 
 class CoreIPPrefixPool(CoreResourcePool, LineageSource):
     default_prefix_length: Integer
-    default_member_type: String
+    default_member_type: Enum
     default_prefix_type: String
     resources: RelationshipManager
     ip_namespace: RelationshipManager

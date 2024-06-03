@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    from enum import Enum
     from infrahub.core.attribute import Boolean, Dropdown, HashedPassword, Integer, IPHost, IPNetwork, JSONAttribute, ListAttribute, String, URL
     from infrahub.core.relationship import RelationshipManager
 
@@ -23,7 +24,11 @@ class {{ generic.namespace }}{{ generic.name }}(CoreNode):
     pass
     {%- endif %}
     {%- for attribute in generic.attributes|default([]) %}
+    {%- if attribute.enum is defined %}
+    {{ attribute.name }}: Enum
+    {%- else %}
     {{ attribute.name }}: {{ attributes_map[attribute.kind].infrahub }}
+    {%- endif %}
     {%- endfor %}
     {%- for relationship in generic.relationships|default([]) %}
     {{ relationship.name }}: RelationshipManager
@@ -41,7 +46,11 @@ class {{ model.namespace }}{{ model.name }}(CoreNode):
     pass
     {%- endif %}
     {%- for attribute in model.attributes|default([]) %}
+    {%- if attribute.enum is defined %}
+    {{ attribute.name }}: Enum
+    {%- else %}
     {{ attribute.name }}: {{ attributes_map[attribute.kind].infrahub }}
+    {%- endif %}
     {%- endfor %}
     {%- for relationship in model.relationships|default([]) %}
     {{ relationship.name }}: RelationshipManager
