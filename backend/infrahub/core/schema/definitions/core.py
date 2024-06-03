@@ -1681,6 +1681,7 @@ core_models: dict[str, Any] = {
                 {
                     "name": "default_prefix_length",
                     "kind": "Number",
+                    "description": "The default prefix length as an integer for prefixes allocated from this pool.",
                     "optional": True,
                     "order_weight": 5000,
                 },
@@ -1741,6 +1742,7 @@ core_models: dict[str, Any] = {
                 {
                     "name": "default_prefix_length",
                     "kind": "Number",
+                    "description": "The default prefix length as an integer for addresses allocated from this pool.",
                     "optional": True,
                     "order_weight": 4000,
                 },
