@@ -62,7 +62,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_GIT_REPOSITORIES_DIRECTORY:
   INFRAHUB_GIT_SYNC_INTERVAL:
   INFRAHUB_INITIAL_ADMIN_PASSWORD:
-  INFRAHUB_INITIAL_ADMIN_TOKEN: "06438eb2-8019-4776-878c-0941b1f1d1ec"
+  INFRAHUB_INITIAL_ADMIN_TOKEN: &admin_token "06438eb2-8019-4776-878c-0941b1f1d1ec"
   INFRAHUB_INITIAL_AGENT_PASSWORD:
   INFRAHUB_INITIAL_AGENT_TOKEN: &agent_token "06438eb2-8019-4776-878c-0941b1f1d1ec"
   INFRAHUB_INITIAL_DEFAULT_BRANCH:
@@ -181,7 +181,7 @@ services:
       - infrahub-server
     environment:
       <<: *infrahub_config
-      INFRAHUB_API_TOKEN: *agent_token
+      INFRAHUB_API_TOKEN: *admin_token
       INFRAHUB_TIMEOUT: 20
     volumes:
       - "git_data:/opt/infrahub/git"
