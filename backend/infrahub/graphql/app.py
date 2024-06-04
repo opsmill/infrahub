@@ -100,7 +100,7 @@ class InfrahubGraphQLApp:
     def __init__(
         self,
         permission_checker: GraphQLQueryPermissionChecker,
-        schema: graphene.Schema = None,
+        schema: Optional[graphene.Schema] = None,
         *,
         on_get: Optional[Callable[[Request], Union[Response, Awaitable[Response]]]] = None,
         root_value: RootValue = None,
@@ -118,6 +118,7 @@ class InfrahubGraphQLApp:
         self.permission_checker = permission_checker
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        db: InfrahubDatabase
         if scope["type"] == "http":
             request = Request(scope=scope, receive=receive)
             response: Optional[Response] = None
@@ -125,7 +126,7 @@ class InfrahubGraphQLApp:
             api_key = await api_key_scheme(request)
             cookie_auth = await cookie_auth_scheme(request)
 
-            db: InfrahubDatabase = request.app.state.db
+            db = request.app.state.db
 
             async with db.start_session() as db:
                 jwt_token = None
@@ -159,7 +160,7 @@ class InfrahubGraphQLApp:
         elif scope["type"] == "websocket":
             websocket = WebSocket(scope=scope, receive=receive, send=send)
 
-            db: InfrahubDatabase = websocket.app.state.db
+            db = websocket.app.state.db
 
             async with db.start_session() as db:
                 branch_name = websocket.path_params.get("branch_name", registry.default_branch)
@@ -465,14 +466,18 @@ async def _get_operation_from_multipart(
         raise ValueError("Request body is not a valid multipart/form-data")
 
     try:
-        operations = ujson.loads(request_body.get("operations"))
+        operations_value = request_body.get("operations")
+        operations_data = operations_value if isinstance(operations_value, str) else ""
+        operations = ujson.loads(operations_data)
     except (TypeError, ValueError):
         raise ValueError("'operations' must be a valid JSON")
     if not isinstance(operations, (dict, list)):
         raise ValueError("'operations' field must be an Object or an Array")
 
     try:
-        name_path_map = ujson.loads(request_body.get("map"))
+        map_value = request_body.get("map")
+        map_data = map_value if isinstance(map_value, str) else ""
+        name_path_map = ujson.loads(map_data)
     except (TypeError, ValueError):
         raise ValueError("'map' field must be a valid JSON")
     if not isinstance(name_path_map, dict):

@@ -301,10 +301,6 @@ module = "infrahub.graphql.api.endpoints"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.app"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.attribute"
 ignore_errors = true
 
