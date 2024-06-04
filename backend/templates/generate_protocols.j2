@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 {% for generic in generics %}
 {%- if generic.namespace == 'Core' and generic.name == 'Node' %}
+@runtime_checkable
 class CoreNode(Protocol):
     id: str
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from enum import Enum
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from infrahub.core.relationship import RelationshipManager
 
 
+@runtime_checkable
 class CoreNode(Protocol):
     id: str
 
