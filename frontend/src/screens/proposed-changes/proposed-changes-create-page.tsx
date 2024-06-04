@@ -1,7 +1,6 @@
 import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { FormProvider, useForm } from "react-hook-form";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Button } from "../../components/buttons/button-primitive";
@@ -14,11 +13,13 @@ import { usePermission } from "../../hooks/usePermission";
 import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { branchesToSelectOptions } from "../../utils/branches";
-import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
-import { resolve } from "../../utils/objects";
-import { DynamicControl } from "../edit-form-hook/dynamic-control";
 import Content from "../layout/content";
+import { Form, FormField, FormInput, FormLabel, FormMessage } from "../../components/ui/form";
+import { Input } from "../../components/ui/input";
+import { MarkdownEditor } from "../../components/editor";
+import { Select } from "../../components/inputs/select";
+import { Combobox } from "../../components/ui/combobox";
 
 const ProposedChangesCreatePage = () => {
   const permission = usePermission();
@@ -42,12 +43,11 @@ const ProposedChangesCreatePage = () => {
   );
 };
 
-export const ProposedChangeCreateForm = ({ className }: { className?: string }) => {
+export const ProposedChangeCreateForm = () => {
   const { user } = useAuth();
   const branches = useAtomValue(branchesState);
   const defaultBranch = branches.filter((branch) => branch.is_default);
   const sourceBranches = branches.filter((branch) => !branch.is_default);
-  const form = useForm();
   const navigate = useNavigate();
 
   const { data: getAllAccountsData } = useQuery(GET_ALL_ACCOUNTS);
@@ -55,132 +55,142 @@ export const ProposedChangeCreateForm = ({ className }: { className?: string }) 
   const [createProposedChange, { loading, error }] = useMutation(CREATE_PROPOSED_CHANGE);
 
   return (
-    <FormProvider {...form}>
-      <form
-        onSubmit={form.handleSubmit(
-          async ({ source_branch, destination_branch, name, description, reviewers }) => {
-            const { data } = await createProposedChange({
-              variables: {
-                source_branch: source_branch.id,
-                destination_branch,
-                name,
-                description,
-                reviewers: reviewers || [],
-                created_by: {
-                  id: user?.id,
-                },
+    <Form
+      className="space-y-4"
+      onSubmit={async ({ source_branch, destination_branch, name, description, reviewers }) => {
+        const { data } = await createProposedChange({
+          variables: {
+            source_branch,
+            destination_branch,
+            name,
+            description,
+            reviewers: reviewers || [],
+            created_by: {
+              id: user?.id,
+            },
+          },
+        });
+
+        toast(() => <Alert type={ALERT_TYPES.SUCCESS} message="Proposed change created" />, {
+          toastId: "alert-success-CoreProposedChange-created",
+        });
+
+        const url = constructPath(`/proposed-changes/${data.CoreProposedChangeCreate.object.id}`);
+        navigate(url);
+      }}>
+      <Card className="flex flex-wrap md:flex-nowrap items-start gap-4 justify-center w-full shadow-sm border-gray-300">
+        <FormField
+          name="source_branch"
+          defaultValue=""
+          rules={{
+            required: true,
+            validate: {
+              branchExists: (value: string) => {
+                const branchesName = sourceBranches.map(({ name }) => name);
+                return branchesName.includes(value) || "Branch does not exist";
               },
-            });
+            },
+          }}
+          render={({ field }) => (
+            <div className="w-full">
+              <FormLabel>Source Branch</FormLabel>
+              <FormInput>
+                <Combobox
+                  {...field}
+                  placeholder="Select a branch..."
+                  items={branchesToSelectOptions(sourceBranches).map(({ name }) => name)}
+                />
+              </FormInput>
+              <FormMessage />
+            </div>
+          )}
+        />
 
-            toast(<Alert type={ALERT_TYPES.SUCCESS} message="Proposed change created" />, {
-              toastId: "alert-success-CoreProposedChange-created",
-            });
+        <Icon
+          icon="mdi:arrow-bottom"
+          className="text-xl md:mt-8 shrink-0 md:-rotate-90 text-gray-500"
+        />
 
-            const url = constructPath(
-              `/proposed-changes/${data.CoreProposedChangeCreate.object.id}`
-            );
-            navigate(url);
-          }
-        )}
-        className={classNames("flex flex-col items-stretch gap-4", className)}>
-        <Card className="flex flex-wrap md:flex-nowrap items-center gap-4 justify-center w-full shadow-sm border-gray-300">
-          <div className="w-full">
-            <DynamicControl
-              name="source_branch"
-              kind="String"
-              type="select"
-              label="Source Branch"
-              value=""
-              options={branchesToSelectOptions(sourceBranches)}
-              error={resolve("source_branch", form.formState.errors)}
-              config={{
-                validate: (value) => {
-                  if (!value) return "Required";
+        <FormField
+          name="destination_branch"
+          defaultValue={defaultBranch[0].name}
+          rules={{ required: true }}
+          render={({ field }) => (
+            <div className="w-full">
+              <FormLabel>Destination Branch</FormLabel>
+              <FormInput>
+                <Combobox disabled {...field} />
+              </FormInput>
+              <FormMessage />
+            </div>
+          )}
+        />
+      </Card>
 
-                  const branchesName = sourceBranches.map(({ name }) => name);
-                  if (!branchesName.includes(value.id)) return "Branch does not exist";
+      <FormField
+        name="name"
+        defaultValue=""
+        rules={{ required: true }}
+        render={({ field }) => {
+          return (
+            <div>
+              <FormLabel>Name *</FormLabel>
+              <FormInput>
+                <Input {...field} />
+              </FormInput>
+              <FormMessage />
+            </div>
+          );
+        }}
+      />
 
-                  return true;
-                },
-              }}
-            />
+      <FormField
+        name="description"
+        render={({ field }) => (
+          <div>
+            <FormLabel>Description</FormLabel>
+            <FormInput>
+              <MarkdownEditor {...field} onChange={(value: string) => field.onChange(value)} />
+            </FormInput>
           </div>
-
-          <Icon icon="mdi:arrow-bottom" className="text-xl shrink-0 md:-rotate-90 text-gray-500" />
-
-          <div className="w-full">
-            <DynamicControl
-              name="destination_branch"
-              kind="String"
-              type="select"
-              label="Destination Branch"
-              value={defaultBranch[0].name}
-              options={branchesToSelectOptions(defaultBranch)}
-              config={{
-                validate: (value) => !!value || "Required",
-              }}
-              error={resolve("destination_branch", form.formState.errors)}
-              isProtected
-            />
-          </div>
-        </Card>
-
-        <div>
-          <DynamicControl
-            name="name"
-            kind="Text"
-            type="text"
-            label="Name"
-            value=""
-            error={resolve("name", form.formState.errors)}
-            config={{ validate: (value) => !!value || "Required" }}
-          />
-        </div>
-
-        <div>
-          <DynamicControl
-            name="description"
-            kind="TextArea"
-            type="textarea"
-            label="Description"
-            value=""
-            error={resolve("description", form.formState.errors)}
-            isOptional
-          />
-        </div>
-
-        <div>
-          <DynamicControl
-            name="reviewers"
-            kind="String"
-            type="multiselect"
-            label="Reviewers"
-            options={
-              getAllAccountsData?.CoreAccount?.edges.map((edge: any) => ({
-                id: edge?.node.id,
-                name: edge?.node?.display_label,
-              })) ?? []
-            }
-            value={[]}
-            error={resolve("reviewers", form.formState.errors)}
-            isOptional
-          />
-        </div>
-
-        <div className="self-end align-middle">
-          <Link to={constructPath("/proposed-changes")} className="mr-2">
-            <Button variant="outline">Cancel</Button>
-          </Link>
-          <Button type="submit" disabled={loading}>
-            Create proposed change
-          </Button>
-        </div>
-
-        {error && (
-          <div className="bg-red-100 p-4 text-red-800 rounded-md text-sm">{error.message}</div>
         )}
-      </form>
-    </FormProvider>
+      />
+
+      <FormField
+        name="reviewers"
+        render={({ field }) => (
+          <div>
+            <FormLabel>Reviewers</FormLabel>
+            <FormInput>
+              <Select
+                multiple
+                options={
+                  getAllAccountsData?.CoreAccount?.edges.map((edge: any) => ({
+                    id: edge?.node.id,
+                    name: edge?.node?.display_label,
+                  })) ?? []
+                }
+                {...field}
+              />
+            </FormInput>
+          </div>
+        )}
+      />
+
+      <div className="text-right">
+        <Link to={constructPath("/proposed-changes")} className="mr-2">
+          <Button variant="outline">Cancel</Button>
+        </Link>
+
+        <Button type="submit" disabled={loading}>
+          Create proposed change
+        </Button>
+      </div>
+
+      {error && (
+        <div className="bg-red-100 p-4 text-red-800 rounded-md text-sm">{error.message}</div>
+      )}
+    </Form>
   );
 };
 

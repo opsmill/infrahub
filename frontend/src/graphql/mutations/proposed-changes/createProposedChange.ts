@@ -3,10 +3,10 @@ import { gql } from "@apollo/client";
 export const CREATE_PROPOSED_CHANGE = gql`
   mutation CoreProposedChangeCreate(
     $name: String!
-    $description: String!
+    $description: String
     $source_branch: String!
     $destination_branch: String!
-    $reviewers: [RelatedNodeInput!]!
+    $reviewers: [RelatedNodeInput!]
     $created_by: RelatedNodeInput!
   ) {
     CoreProposedChangeCreate(
