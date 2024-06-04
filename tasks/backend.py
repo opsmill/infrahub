@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from invoke import Context, task
 
@@ -272,6 +272,14 @@ def _generate_schemas(context: Context):
     execute_command(context=context, command=f"ruff check --fix {generated}")
 
 
+def _jinja2_filter_inheritance(value: dict[str, Any]) -> str:
+    inherit_from: list[str] = value.get("inherit_from", [])
+
+    if not inherit_from:
+        return "CoreNode"
+    return ", ".join(inherit_from)
+
+
 def _jinja2_filter_render_attribute(value: dict[str, Any]) -> str:
     from infrahub.types import ATTRIBUTE_TYPES
 
@@ -283,18 +291,37 @@ def _jinja2_filter_render_attribute(value: dict[str, Any]) -> str:
     return f"{attr_name}: {ATTRIBUTE_TYPES[attr_kind].infrahub}"
 
 
+def _sort_and_filter_models(
+    models: list[dict[str, Any]], filters: Optional[list[tuple[str, str]]] = None
+) -> list[dict[str, Any]]:
+    if filters is None:
+        filters = [("Core", "Node")]
+
+    filtered: list[dict[str, Any]] = []
+
+    for model in models:
+        if (model["namespace"], model["name"]) in filters:
+            continue
+        filtered.append(model)
+
+    return sorted(filtered, key=lambda k: (k["namespace"].lower(), k["name"].lower()))
+
+
 def _generate_protocols(context: Context):
     from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
     from infrahub.core.schema.definitions.core import core_models
 
     env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"), undefined=StrictUndefined)
+    env.filters["inheritance"] = _jinja2_filter_inheritance
     env.filters["render_attribute"] = _jinja2_filter_render_attribute
 
     generated = f"{ESCAPED_REPO_PATH}/backend/infrahub/core"
     template = env.get_template("generate_protocols.j2")
 
-    protocols_rendered = template.render(generics=core_models["generics"], models=core_models["nodes"])
+    protocols_rendered = template.render(
+        generics=_sort_and_filter_models(core_models["generics"]), models=_sort_and_filter_models(core_models["nodes"])
+    )
     protocols_output = f"{generated}/protocols.py"
     Path(protocols_output).write_text(protocols_rendered, encoding="utf-8")
 

@@ -10,8 +10,6 @@ if TYPE_CHECKING:
     from infrahub.core.relationship import RelationshipManager
 
 
-{% for generic in generics %}
-{%- if generic.namespace == 'Core' and generic.name == 'Node' %}
 @runtime_checkable
 class CoreNode(Protocol):
     id: str
@@ -19,7 +17,8 @@ class CoreNode(Protocol):
     def get_id(self) -> str: ...
     def get_kind(self) -> str: ...
     async def save(self) -> None: ...
-{%- else %}
+
+{% for generic in generics %}
 class {{ generic.namespace }}{{ generic.name }}(CoreNode):
     {%- if not generic.attributes|default([]) and not generic.relationships|default([]) %}
     pass
@@ -34,15 +33,10 @@ class {{ generic.namespace }}{{ generic.name }}(CoreNode):
     parent: RelationshipManager
     children: RelationshipManager
     {%- endif %}
-{%- endif %}
 {% endfor %}
 
 {% for model in models %}
-    {%- if model.inherit_from|default %}
-class {{ model.namespace }}{{ model.name }}({{ model.inherit_from|join(', ') }}):
-    {%- else %}
-class {{ model.namespace }}{{ model.name }}(CoreNode):
-    {%- endif %}
+class {{ model.namespace }}{{ model.name }}({{ model | inheritance }}):
     {%- if not model.attributes|default([]) and not model.relationships|default([]) %}
     pass
     {%- endif %}
