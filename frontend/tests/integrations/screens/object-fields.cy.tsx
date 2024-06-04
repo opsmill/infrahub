@@ -21,6 +21,7 @@ import {
   taskMocksQuery as taskMocksQuery1,
   taskMocksSchema as taskMocksSchema1,
   taskMocksSchemaOptional as taskMocksSchemaOptionnal1,
+  taskMocksSchemaWithProfile,
 } from "../../mocks/data/task_1";
 import {
   taskMocksData as taskMocksData2,
@@ -173,6 +174,48 @@ describe("Object list", () => {
       return (
         <TestProvider
           initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema1]]]}>
+          <AuthenticatedObjectItems />
+        </TestProvider>
+      );
+    };
+
+    // Mount the view with the default route and the mocked data
+    cy.mount(
+      <MockedProvider mocks={mocks} addTypename={false}>
+        <Routes>
+          <Route element={<ObjectItemsProvider />} path={mockedPath} />
+        </Routes>
+      </MockedProvider>,
+      {
+        // Add iniital route for the app router, to display the current items view
+        routerProps: {
+          initialEntries: [mockedUrl],
+        },
+      }
+    );
+
+    // Open edit panel
+    cy.get("[data-cy='create']").click();
+
+    // Save
+    cy.get(".bg-custom-blue-700").click();
+
+    // The required message should appear
+    cy.get("[data-cy='field-error-message']").should("have.text", "Required");
+  });
+
+  it("should open the add panel, submit without filling the text field (with profile) and display a required message", function () {
+    cy.viewport(1920, 1080);
+
+    cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
+
+    // Provide the initial value for jotai
+    const ObjectItemsProvider = () => {
+      return (
+        <TestProvider
+          initialValues={[
+            [schemaState, [...accountDetailsMocksSchema, ...taskMocksSchemaWithProfile]],
+          ]}>
           <AuthenticatedObjectItems />
         </TestProvider>
       );
