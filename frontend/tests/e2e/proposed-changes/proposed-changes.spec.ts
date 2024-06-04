@@ -58,19 +58,15 @@ test.describe("/proposed-changes", () => {
         await deleteBranch(page, pcBranchName);
       });
 
-      test.fixme("create new proposed change", async () => {
-        await page.getByTestId("add-proposed-changes-button").click();
-        await expect(page.getByText("Create Proposed Change")).toBeVisible();
-        await page.getByLabel("Name *").fill(pcName);
-        await page
-          .locator("div:below(#Name)")
-          .first()
-          .getByTestId("select-open-option-button")
-          .click();
-        await expect(page.getByRole("option").nth(1)).toContainText(pcName); // last created branch should appear first
+      test("create new proposed change", async ({ page }) => {
+        await page.goto("/proposed-changes/new");
+        await expect(page.getByText("Create a proposed Change")).toBeVisible();
+        await page.getByLabel("Source Branch *").click();
         await page.getByRole("option", { name: pcBranchName }).click();
+
+        await page.getByLabel("Name *").fill(pcName);
         await page.getByRole("button", { name: "Create" }).click();
-        await expect(page.getByText("ProposedChange created")).toBeVisible();
+        await expect(page.getByText("Proposed change created")).toBeVisible();
       });
 
       test.fixme("display and edit proposed change", async () => {
@@ -109,8 +105,8 @@ test.describe("/proposed-changes", () => {
         });
       });
 
-      test.fixme("delete proposed change", async () => {
-        await page.getByRole("link", { name: "Proposed Changes" }).click();
+      test("delete proposed change", async ({ page }) => {
+        await page.goto("/proposed-changes");
         await page.getByRole("list").getByText(pcName).first().hover();
         await page.locator("[data-testid='delete-proposed-change-button']:visible").click();
         await expect(page.getByTestId("modal-delete")).toBeVisible();
