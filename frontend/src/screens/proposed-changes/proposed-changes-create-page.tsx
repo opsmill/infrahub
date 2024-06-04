@@ -93,7 +93,7 @@ export const ProposedChangeCreateForm = () => {
           }}
           render={({ field }) => (
             <div className="w-full">
-              <FormLabel>Source Branch</FormLabel>
+              <FormLabel>Source Branch *</FormLabel>
               <FormInput>
                 <Combobox
                   {...field}
@@ -117,7 +117,7 @@ export const ProposedChangeCreateForm = () => {
           rules={{ required: true }}
           render={({ field }) => (
             <div className="w-full">
-              <FormLabel>Destination Branch</FormLabel>
+              <FormLabel>Destination Branch *</FormLabel>
               <FormInput>
                 <Combobox disabled {...field} />
               </FormInput>

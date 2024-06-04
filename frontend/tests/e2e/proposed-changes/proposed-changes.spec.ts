@@ -33,15 +33,12 @@ test.describe("/proposed-changes", () => {
     });
 
     test("display validation errors when form is submitted with wrong value", async ({ page }) => {
-      await page.goto("/proposed-changes");
+      await page.goto("/proposed-changes/new");
 
-      await expect(page.getByRole("main")).toContainText("Proposed changes");
-      await expect(page.getByTestId("add-proposed-changes-button")).toBeEnabled();
-      await page.getByTestId("add-proposed-changes-button").click();
       await expect(page.getByRole("main")).toContainText("Create a proposed change");
       await page.getByRole("button", { name: "Create proposed change" }).click();
       await expect(page.getByLabel("Name *").locator("..")).toContainText("Required");
-      await expect(page.getByText("Source Branch *").locator("../..")).toContainText("Required");
+      await expect(page.getByText("Source Branch *").locator("..")).toContainText("Required");
     });
 
     test.describe("Create, edit and merge proposed change", async () => {
