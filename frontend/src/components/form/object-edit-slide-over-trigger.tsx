@@ -13,11 +13,11 @@ import { IModelSchema } from "../../state/atoms/schema.atom";
 const ObjectEditSlideOverTrigger = ({
   data,
   schema,
-  refetch,
+  onUpdateComplete,
 }: {
   data: any;
   schema: IModelSchema;
-  refetch?: () => Promise<unknown>;
+  onUpdateComplete?: () => void;
 }) => {
   const permission = usePermission();
   const currentBranch = useAtomValue(currentBranchAtom);
@@ -81,7 +81,7 @@ const ObjectEditSlideOverTrigger = ({
         setOpen={setIsEditDrawerOpen}>
         <ObjectItemEditComponent
           closeDrawer={() => setIsEditDrawerOpen(false)}
-          onUpdateComplete={() => refetch && refetch()}
+          onUpdateComplete={onUpdateComplete}
           objectid={data.id}
           objectname={schema.kind!}
         />

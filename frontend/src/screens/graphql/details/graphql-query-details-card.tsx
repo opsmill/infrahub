@@ -40,7 +40,7 @@ const GraphqlQueryDetailsTitle = ({ data, schema, refetch }: GraphqlQueryDetails
           {schema.name} - {data.display_label}
         </span>
 
-        <ObjectEditSlideOverTrigger data={data} schema={schema} refetch={refetch} />
+        <ObjectEditSlideOverTrigger data={data} schema={schema} onUpdateComplete={refetch} />
       </CardWithBorder.Title>
     </>
   );

@@ -27,7 +27,7 @@ interface Props {
   objectname: string;
   objectid: string;
   closeDrawer: Function;
-  onUpdateComplete: Function;
+  onUpdateComplete?: Function;
   formStructure?: DynamicFieldData[];
 }
 
@@ -171,7 +171,7 @@ export default function ObjectItemEditComponent(props: Props) {
 
         closeDrawer();
 
-        onUpdateComplete();
+        if (onUpdateComplete) onUpdateComplete();
       } catch (e) {
         console.error("Something went wrong while updating the object:", e);
       }
