@@ -126,8 +126,6 @@ export default function ObjectItemCreate(props: iProps) {
   };
 
   async function onSubmit(data: any) {
-    setIsLoading(true);
-
     try {
       const newObject = getMutationDetailsFromFormData(
         schema,
@@ -140,6 +138,8 @@ export default function ObjectItemCreate(props: iProps) {
       if (!Object.keys(newObject).length) {
         return;
       }
+
+      setIsLoading(true);
 
       const mutationString = createObject({
         kind: schema?.kind,
