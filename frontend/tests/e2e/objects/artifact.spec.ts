@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("/objects/CoreArtifact - Artifact page", () => {
   test.beforeEach(async function ({ page }) {
@@ -8,6 +9,7 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
       }
     });
   });
+
   test("should generate artifacts successfully", async ({ page }) => {
     let artifactCount = 0;
     while (artifactCount == 0) {
@@ -35,5 +37,16 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
     }
     await page.getByRole("link", { name: "startup Config for Edge devices" }).first().click();
     await expect(page.getByText("no aaa root").first()).toBeVisible();
+  });
+
+  test.describe("when logged in", async () => {
+    test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+
+    test("should be able to create a new artifact", async ({ page }) => {
+      page.goto("/objects/CoreArtifact");
+      await expect(page.getByRole("heading", { name: "Artifact" })).toBeVisible();
+      await page.getByTestId("create-object-button").click();
+      await expect(page.getByText("Create Artifact")).toBeVisible();
+    });
   });
 });
