@@ -161,7 +161,7 @@ services:
     ports:
       - 8000:8000
     volumes:
-      - "storage_data:/opt/infrahub/storage}"
+      - "storage_data:${INFRAHUB_STORAGE_LOCAL_PATH:-/opt/infrahub/storage}"
     tty: true
     healthcheck:
       test: curl -s -f -o /dev/null http://localhost:8000/api/schema/summary || exit 1
