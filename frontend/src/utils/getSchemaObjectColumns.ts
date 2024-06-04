@@ -8,8 +8,9 @@ import {
   relationshipsForListView,
   relationshipsForTabs,
 } from "../config/constants";
-import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
+import { iGenericSchema, iNodeSchema, profilesAtom } from "../state/atoms/schema.atom";
 import { isGeneric, sortByOrderWeight } from "./common";
+import { store } from "../state";
 
 type tgetObjectAttributes = {
   schema: iNodeSchema | iGenericSchema | undefined;
@@ -296,7 +297,9 @@ export const getRelationshipOptions = (row: any, field: any, schemas: any[], gen
 
   if (generic) {
     const options = (generic.used_by || []).map((name: string) => {
-      const relatedSchema = schemas.find((s: any) => s.kind === name);
+      const profiles = store.get(profilesAtom);
+
+      const relatedSchema = [...schemas, ...profiles].find((s: any) => s.kind === name);
 
       if (relatedSchema) {
         return {
