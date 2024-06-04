@@ -5,6 +5,7 @@ import re
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
+import pendulum
 import ujson
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import is_valid_url
@@ -597,6 +598,28 @@ class Integer(BaseAttribute):
 
 class Boolean(BaseAttribute):
     type = bool
+
+
+# TODO: Add properties for different datetime format outputs to mimic IP property types for GraphQL
+class DateTime(BaseAttribute):
+    type = str
+
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        super().validate_format(value=value, name=name, schema=schema)
+
+        # If DateTime attribute is an empty string and is not required do not complete any further validation of format.
+        # This was added due to infrahub.core.integrity.object_conflict.conflict_recorder.py initialize_validator sets completed_at to a blank string
+        if not value and not schema.optional:
+            return
+
+        try:
+            time = pendulum.parse(value, exact=True)
+        except pendulum.exceptions.ParserError as exc:
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
+
+        if not isinstance(time, pendulum.DateTime):
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
 
 
 class Dropdown(BaseAttribute):

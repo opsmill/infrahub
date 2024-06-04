@@ -138,7 +138,7 @@ class DateTime(InfrahubDataType):
     graphql_create = "TextAttributeCreate"
     graphql_update = "TextAttributeUpdate"
     graphql_filter = graphene.String
-    infrahub = "String"
+    infrahub = "DateTime"
 
 
 class Email(InfrahubDataType):

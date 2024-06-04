@@ -4,13 +4,13 @@ import pytest
 from infrahub_sdk import UUIDT
 
 from infrahub import config
-from infrahub.core.attribute import URL, Dropdown, Integer, IPHost, IPNetwork, String
+from infrahub.core.attribute import URL, DateTime, Dropdown, Integer, IPHost, IPNetwork, String
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema
-from infrahub.core.timestamp import Timestamp
+from infrahub.core.timestamp import Timestamp, current_timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 
@@ -97,6 +97,40 @@ async def test_validate_validate_url(db: InfrahubDatabase, default_branch: Branc
     assert URL(
         name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="ftp://api.example.com"
     )
+
+
+async def test_validate_format_datetime_valid(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+):
+    schema = criticality_schema.get_attribute("time")
+
+    assert DateTime(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data=current_timestamp()
+    )
+    assert DateTime(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2024-06-04T03:13:03.386270"
+    )
+
+
+async def test_validate_format_datetime_invalid(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+):
+    schema = criticality_schema.get_attribute("time")
+
+    with pytest.raises(ValidationError) as error:
+        DateTime(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="invalid-datetime")
+    assert error.value.args[0] == "invalid-datetime is not a valid DateTime"
+
+    with pytest.raises(ValidationError) as error:
+        DateTime(
+            name="test",
+            schema=schema,
+            branch=default_branch,
+            at=Timestamp(),
+            node=None,
+            data="10:10:10",
+        )
+    assert error.value.args[0] == "10:10:10 is not a valid DateTime"
 
 
 async def test_validate_iphost_returns(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):

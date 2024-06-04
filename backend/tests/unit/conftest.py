@@ -1708,6 +1708,7 @@ async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group
             {"name": "json_no_default", "kind": "JSON", "optional": True},
             {"name": "json_default", "kind": "JSON", "default_value": {"value": "bob"}},
             {"name": "description", "kind": "Text", "optional": True},
+            {"name": "time", "kind": "DateTime", "optional": True},
             {
                 "name": "status",
                 "kind": "Dropdown",
