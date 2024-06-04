@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 from invoke import Context, task
 
@@ -271,19 +272,29 @@ def _generate_schemas(context: Context):
     execute_command(context=context, command=f"ruff check --fix {generated}")
 
 
+def _jinja2_filter_render_attribute(value: dict[str, Any]) -> str:
+    from infrahub.types import ATTRIBUTE_TYPES
+
+    attr_name = value["name"]
+    attr_kind = value["kind"]
+
+    if "enum" in value:
+        return f"{attr_name}: Enum"
+    return f"{attr_name}: {ATTRIBUTE_TYPES[attr_kind].infrahub}"
+
+
 def _generate_protocols(context: Context):
     from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
     from infrahub.core.schema.definitions.core import core_models
-    from infrahub.types import ATTRIBUTE_TYPES
 
     env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"), undefined=StrictUndefined)
+    env.filters["render_attribute"] = _jinja2_filter_render_attribute
+
     generated = f"{ESCAPED_REPO_PATH}/backend/infrahub/core"
     template = env.get_template("generate_protocols.j2")
 
-    protocols_rendered = template.render(
-        generics=core_models["generics"], models=core_models["nodes"], attributes_map=ATTRIBUTE_TYPES
-    )
+    protocols_rendered = template.render(generics=core_models["generics"], models=core_models["nodes"])
     protocols_output = f"{generated}/protocols.py"
     Path(protocols_output).write_text(protocols_rendered, encoding="utf-8")
 

@@ -24,11 +24,7 @@ class {{ generic.namespace }}{{ generic.name }}(CoreNode):
     pass
     {%- endif %}
     {%- for attribute in generic.attributes|default([]) %}
-    {%- if attribute.enum is defined %}
-    {{ attribute.name }}: Enum
-    {%- else %}
-    {{ attribute.name }}: {{ attributes_map[attribute.kind].infrahub }}
-    {%- endif %}
+    {{ attribute | render_attribute }}
     {%- endfor %}
     {%- for relationship in generic.relationships|default([]) %}
     {{ relationship.name }}: RelationshipManager
@@ -46,11 +42,7 @@ class {{ model.namespace }}{{ model.name }}(CoreNode):
     pass
     {%- endif %}
     {%- for attribute in model.attributes|default([]) %}
-    {%- if attribute.enum is defined %}
-    {{ attribute.name }}: Enum
-    {%- else %}
-    {{ attribute.name }}: {{ attributes_map[attribute.kind].infrahub }}
-    {%- endif %}
+    {{ attribute | render_attribute }}
     {%- endfor %}
     {%- for relationship in model.relationships|default([]) %}
     {{ relationship.name }}: RelationshipManager
