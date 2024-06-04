@@ -3,7 +3,7 @@ import { Combobox } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/20/solid";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
-import { useContext, useEffect, useState } from "react";
+import { forwardRef, useContext, useEffect, useState } from "react";
 import {
   DEFAULT_BRANCH_NAME,
   SCHEMA_DROPDOWN_ADD,
@@ -49,12 +49,13 @@ export enum SelectDirection {
 }
 
 type SelectProps = {
+  id?: string;
   value?: string | string[] | number | number[];
   kind?: string;
   name?: string;
   peer?: string;
   options: SelectOption[];
-  onChange: (value: any) => void;
+  onChange?: (value: any) => void;
   disabled?: boolean;
   error?: FormFieldError;
   direction?: SelectDirection;
@@ -71,8 +72,9 @@ type SelectProps = {
   isInherited?: boolean;
 };
 
-export const Select = (props: SelectProps) => {
+export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const {
+    id,
     options,
     value,
     onChange,
@@ -864,6 +866,8 @@ export const Select = (props: SelectProps) => {
               data-testid="select-input"
             />
             <Combobox.Button
+              ref={ref}
+              id={id}
               className={classNames(
                 "absolute inset-y-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed",
                 canRequestPools ? "right-10" : "right-0"
@@ -953,4 +957,4 @@ export const Select = (props: SelectProps) => {
       {getOptionContent()}
     </div>
   );
-};
+});
