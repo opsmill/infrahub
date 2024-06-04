@@ -29,6 +29,10 @@ class {{ generic.namespace }}{{ generic.name }}(CoreNode):
     {%- for relationship in generic.relationships|default([]) %}
     {{ relationship.name }}: RelationshipManager
     {%- endfor %}
+    {%- if generic.hierarchical | default(false) %}
+    parent: RelationshipManager
+    children: RelationshipManager
+    {%- endif %}
 {%- endif %}
 {% endfor %}
 
@@ -47,4 +51,8 @@ class {{ model.namespace }}{{ model.name }}(CoreNode):
     {%- for relationship in model.relationships|default([]) %}
     {{ relationship.name }}: RelationshipManager
     {%- endfor %}
+    {%- if model.hierarchical | default(false) %}
+    parent:  RelationshipManager
+    children: RelationshipManager
+    {%- endif %}
 {% endfor %}

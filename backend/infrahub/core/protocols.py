@@ -64,6 +64,8 @@ class CoreGroup(CoreNode):
     description: String
     members: RelationshipManager
     subscribers: RelationshipManager
+    parent: RelationshipManager
+    children: RelationshipManager
 
 
 class CoreValidator(CoreNode):
@@ -146,6 +148,8 @@ class BuiltinIPPrefix(CoreNode):
     broadcast_address: String
     ip_namespace: RelationshipManager
     ip_addresses: RelationshipManager
+    parent: RelationshipManager
+    children: RelationshipManager
 
 
 class BuiltinIPAddress(CoreNode):
