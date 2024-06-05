@@ -7,6 +7,13 @@ from fastapi import FastAPI
 from infrahub_sdk.types import HTTPMethod
 
 
+async def dummy_async_request(
+    url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+) -> httpx.Response:
+    """Return an empty response and to pretend that the git commit was updated successfully"""
+    return httpx.Response(status_code=200, json={"data": {}}, request=httpx.Request(method="POST", url="http://mock"))
+
+
 class InfrahubTestClient(httpx.AsyncClient):
     def __init__(self, app: FastAPI, base_url: str = ""):
         self.loop = asyncio.get_event_loop()

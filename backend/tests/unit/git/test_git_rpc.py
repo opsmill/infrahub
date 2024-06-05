@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, Optional, Type
 from unittest.mock import AsyncMock, patch
 
-import httpx
 from infrahub_sdk import UUIDT, Config, InfrahubClient
 
 from infrahub.core.constants import InfrahubKind
@@ -14,6 +13,7 @@ from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.operations import git
 from infrahub.services import InfrahubServices
+from tests.helpers.test_client import dummy_async_request
 
 # pylint: disable=redefined-outer-name
 
@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from infrahub_sdk.branch import BranchData
-    from infrahub_sdk.types import HTTPMethod
 
     from tests.conftest import TestHelper
 
@@ -41,13 +40,6 @@ class AsyncContextManagerMock:
 
     def __call__(self, *args: Any, **kwargs: Any):
         return self
-
-
-async def dummy_async_request(
-    url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
-) -> httpx.Response:
-    """Return an empty response and to pretend that the git commit was updated successfully"""
-    return httpx.Response(status_code=200, json={"data": {}}, request=httpx.Request(method="POST", url="http://mock"))
 
 
 class TestAddRepository:
