@@ -64,7 +64,7 @@ yamllint = "*"
 pylint = "*"
 mypy = "*"
 ipython = "~8"
-pytest-asyncio = "^0.21.1"
+pytest-asyncio = "^0.21.2"
 pytest-httpx = [
     { version = "~0.21", python = "<3.9"},
     { version = ">=0.30", python = ">=3.9"},
