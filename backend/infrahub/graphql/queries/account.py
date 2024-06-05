@@ -13,6 +13,7 @@ from infrahub.exceptions import PermissionDeniedError
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
+    from infrahub.core.protocols import InternalAccountToken
     from infrahub.graphql import GraphqlContext
 
 
@@ -51,30 +52,15 @@ async def resolve_account_tokens(
     filters = {"account__ids": [context.account_session.account_id]}
     response: dict[str, Any] = {}
     if "count" in fields:
-        response["count"] = await NodeManager.count(
-            db=context.db,
-            schema=node_schema,
-            filters=filters,
-        )
+        response["count"] = await NodeManager.count(db=context.db, schema=node_schema, filters=filters)
     if "edges" in fields:
-        objs = await NodeManager.query(
-            db=context.db,
-            schema=node_schema,
-            filters=filters,
-            limit=limit,
-            offset=offset,
+        objs: List[InternalAccountToken] = await NodeManager.query(
+            db=context.db, schema=node_schema, filters=filters, limit=limit, offset=offset
         )
 
         if objs:
             objects = [
-                {
-                    "node": {
-                        "id": obj.id,
-                        "name": obj.name.value,  # type: ignore[attr-defined]
-                        "expiration": obj.expiration.value,  # type: ignore[attr-defined]
-                    }
-                }
-                for obj in objs
+                {"node": {"id": obj.id, "name": obj.name.value, "expiration": obj.expiration.value}} for obj in objs
             ]
             response["edges"] = objects
 
@@ -82,8 +68,5 @@ async def resolve_account_tokens(
 
 
 AccountToken = Field(
-    AccountTokenEdges,
-    resolver=resolve_account_tokens,
-    limit=Int(required=False),
-    offset=Int(required=False),
+    AccountTokenEdges, resolver=resolve_account_tokens, limit=Int(required=False), offset=Int(required=False)
 )

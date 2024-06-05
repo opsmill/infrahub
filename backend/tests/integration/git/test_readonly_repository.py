@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
     from infrahub_sdk import InfrahubClient
 
+    from infrahub.core.protocols import CoreCheckDefinition, CoreReadOnlyRepository
     from infrahub.database import InfrahubDatabase
     from tests.conftest import TestHelper
 
@@ -71,7 +72,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         )
         await client_repository.save()
 
-        repository = await NodeManager.get_one_by_id_or_default_filter(
+        repository: CoreReadOnlyRepository = await NodeManager.get_one_by_id_or_default_filter(
             db=db, id=client_repository.id, kind=InfrahubKind.READONLYREPOSITORY, branch=branch.name
         )
 
@@ -79,8 +80,8 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
             db=db, id="car_description_check", kind=InfrahubKind.CHECKDEFINITION, branch=branch.name
         )
 
-        assert repository.commit.value  # type: ignore[attr-defined]
-        assert check_definition.file_path.value == "checks/car_overview.py"  # type: ignore[attr-defined]
+        assert repository.commit.value
+        assert check_definition.file_path.value == "checks/car_overview.py"
 
     async def test_step02_validate_generated_artifacts(self, db: InfrahubDatabase, client: InfrahubClient):
         artifacts = await client.all(kind=InfrahubKind.ARTIFACT, branch="ro_repository")
@@ -90,10 +91,10 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
     async def test_step03_merge_branch(self, db: InfrahubDatabase, client: InfrahubClient, helper: TestHelper):
         await client.branch.merge(branch_name="ro_repository")
 
-        check_definition = await NodeManager.get_one_by_id_or_default_filter(
+        check_definition: CoreCheckDefinition = await NodeManager.get_one_by_id_or_default_filter(
             db=db, id="car_description_check", kind=InfrahubKind.CHECKDEFINITION
         )
-        assert check_definition.file_path.value == "checks/car_overview.py"  # type: ignore[attr-defined]
+        assert check_definition.file_path.value == "checks/car_overview.py"
 
         bus_simulator = helper.get_message_bus_simulator()
         service = InfrahubServices(client=client, message_bus=bus_simulator)

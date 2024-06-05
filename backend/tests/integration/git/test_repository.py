@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
     from infrahub_sdk import InfrahubClient
 
+    from infrahub.core.protocols import CoreCheckDefinition, CoreRepository
     from infrahub.database import InfrahubDatabase
 
 
@@ -52,13 +53,13 @@ class TestCreateRepository(TestInfrahubApp):
         )
         await client_repository.save()
 
-        repository = await NodeManager.get_one_by_id_or_default_filter(
+        repository: CoreRepository = await NodeManager.get_one_by_id_or_default_filter(
             db=db, id=client_repository.id, kind=InfrahubKind.REPOSITORY
         )
 
-        check_definition = await NodeManager.get_one_by_id_or_default_filter(
+        check_definition: CoreCheckDefinition = await NodeManager.get_one_by_id_or_default_filter(
             db=db, id="car_description_check", kind=InfrahubKind.CHECKDEFINITION
         )
 
-        assert repository.commit.value  # type: ignore[attr-defined]
-        assert check_definition.file_path.value == "checks/car_overview.py"  # type: ignore[attr-defined]
+        assert repository.commit.value
+        assert check_definition.file_path.value == "checks/car_overview.py"
