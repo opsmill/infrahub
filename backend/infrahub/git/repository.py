@@ -650,13 +650,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             False if they already had the same value
         """
 
-        if not self.client:
-            log.warning(
-                "Unable to update the value of the commit because a valid client hasn't been provided.",
-                repository=self.name,
-            )
-            return False
-
         log.debug(
             f"Updating commit value to {commit} for branch {branch_name}", repository=self.name, branch=branch_name
         )
@@ -862,13 +855,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         return conflict_files
 
     async def import_objects_from_files(self, branch_name: str, commit: Optional[str] = None):
-        if not self.client:
-            log.warning(
-                "Unable to import the objects from the files because a valid client hasn't been provided.",
-                repository=self.name,
-            )
-            return
-
         if not commit:
             commit = self.get_commit_value(branch_name=branch_name)
 

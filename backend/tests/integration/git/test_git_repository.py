@@ -95,9 +95,8 @@ class TestInfrahubClient:
             name=git_repo_infrahub_demo_edge.name,
             location=git_repo_infrahub_demo_edge.path,
             task_report=FakeTaskReportLogger(),
+            client=client,
         )
-
-        repo.client = client
 
         return repo
 
