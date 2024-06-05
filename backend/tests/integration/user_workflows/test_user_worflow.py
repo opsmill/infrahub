@@ -132,6 +132,14 @@ INTERFACE_CREATE = """
 """
 
 
+class State:
+    def __init__(self) -> None:
+        self.data: dict = {}
+
+
+state = State()
+
+
 class TestUserWorkflow01:
     @pytest.fixture(scope="class")
     async def client(self):
@@ -143,10 +151,8 @@ class TestUserWorkflow01:
         await ds01.load_data(db=db, nbr_devices=2)
 
     async def test_initialize_state(self):
-        pytest.state = {
-            "spine1_lo0_id": None,
-            "time_start": None,
-        }
+        state.data["spine1_lo0_id"] = None
+        state.data["time_start"] = None
 
     async def test_query_all_devices(self, client, init_db_infra, dataset01):
         """
@@ -166,7 +172,7 @@ class TestUserWorkflow01:
         assert len(result["InfraDevice"]["edges"]) == 2
 
         # Initialize the start time
-        pytest.state["time_start"] = pendulum.now(tz="UTC")
+        state.data["time_start"] = pendulum.now(tz="UTC")
 
     async def test_query_spine1_loobpack0(self, client, init_db_infra, dataset01):
         """
@@ -191,8 +197,8 @@ class TestUserWorkflow01:
         intfs = [intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name]
         assert len(intfs) == 1
 
-        pytest.state["spine1_lo0_id"] = intfs[0]["node"]["id"]
-        pytest.state["spine1_lo0_description_start"] = intfs[0]["node"]["description"]["value"]
+        state.data["spine1_lo0_id"] = intfs[0]["node"]["id"]
+        state.data["spine1_lo0_description_start"] = intfs[0]["node"]["description"]["value"]
 
     async def test_query_spine1_ethernet1(self, client, init_db_infra, dataset01):
         """
@@ -218,8 +224,8 @@ class TestUserWorkflow01:
         ]
         assert len(intfs) == 1
 
-        pytest.state["spine1_eth1_id"] = intfs[0]["node"]["id"]
-        pytest.state["spine1_eth1_description_start"] = intfs[0]["node"]["description"]["value"]
+        state.data["spine1_eth1_id"] = intfs[0]["node"]["id"]
+        state.data["spine1_eth1_description_start"] = intfs[0]["node"]["description"]["value"]
 
     async def test_create_first_branch(self, client, integration_helper, init_db_infra, dataset01):
         """
@@ -255,12 +261,12 @@ class TestUserWorkflow01:
 
         new_description = f"New description in {branch1}"
 
-        assert pytest.state["spine1_lo0_id"]
+        assert state.data["spine1_lo0_id"]
 
         intf_name = "Loopback0"
         with client:
             # Update the description in BRANCH1
-            variables = {"interface_id": pytest.state["spine1_lo0_id"], "description": new_description}
+            variables = {"interface_id": state.data["spine1_lo0_id"], "description": new_description}
             response = client.post(
                 f"/graphql/{branch1}", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers
             )
@@ -288,7 +294,7 @@ class TestUserWorkflow01:
 
         assert intfs[0]["node"]["description"]["value"] == new_description
 
-        pytest.state["time_after_intf_update_branch1"] = pendulum.now("UTC").to_iso8601_string()
+        state.data["time_after_intf_update_branch1"] = pendulum.now("UTC").to_iso8601_string()
 
     async def test_update_intf_description_main(self, client, init_db_infra, dataset01, integration_helper):
         """
@@ -297,12 +303,12 @@ class TestUserWorkflow01:
         headers = await integration_helper.admin_headers()
         new_description = f"New description in {main_branch}"
 
-        assert pytest.state["spine1_eth1_id"]
+        assert state.data["spine1_eth1_id"]
 
         intf_name = "Ethernet1"
         with client:
             # Update the description in MAIN
-            variables = {"interface_id": pytest.state["spine1_eth1_id"], "description": new_description}
+            variables = {"interface_id": state.data["spine1_eth1_id"], "description": new_description}
             response = client.post(
                 "/graphql", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers
             )
@@ -443,12 +449,12 @@ class TestUserWorkflow01:
 
         new_description = f"New New description in {branch1}"
 
-        assert pytest.state["spine1_lo0_id"]
+        assert state.data["spine1_lo0_id"]
 
         intf_name = "Loopback0"
         with client:
             # Update the description in BRANCH1
-            variables = {"interface_id": pytest.state["spine1_lo0_id"], "description": new_description}
+            variables = {"interface_id": state.data["spine1_lo0_id"], "description": new_description}
             response = client.post(
                 f"/graphql/{branch1}", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers
             )
@@ -478,7 +484,7 @@ class TestUserWorkflow01:
     @pytest.mark.xfail(reason="FIXME: Need to investigate, Previous value is not correct")
     def test_validate_diff_again_after_description_update(self, client, dataset01):
         with client:
-            time_from = pytest.state["time_after_intf_update_branch1"]
+            time_from = state.data["time_after_intf_update_branch1"]
             time_to = pendulum.now("UTC").to_iso8601_string()
             response = client.get(
                 f"/api/diff/data?branch={branch1}&branch_only=true&time_from={time_from}&time_to={time_to}",
@@ -546,7 +552,7 @@ class TestUserWorkflow01:
         assert result["BranchCreate"]["ok"]
 
     async def test_update_intf_description_main_after_branch2(self, client, dataset01, integration_helper):
-        assert pytest.state["spine1_eth1_id"]
+        assert state.data["spine1_eth1_id"]
         headers = await integration_helper.admin_headers()
 
         new_description = f"New description in {main_branch} after creating {branch2}"
@@ -575,7 +581,7 @@ class TestUserWorkflow01:
             # Update the description in MAIN
             variables = {
                 "branch": main_branch,
-                "interface_id": pytest.state["spine1_eth1_id"],
+                "interface_id": state.data["spine1_eth1_id"],
                 "description": new_description,
             }
             response = client.post(
@@ -683,7 +689,7 @@ class TestUserWorkflow01:
                         "intf_name": intf_name,
                     },
                 },
-                params={"at": pytest.state["time_start"].to_iso8601_string()},
+                params={"at": state.data["time_start"].to_iso8601_string()},
                 headers=headers,
             )
             assert response.status_code == 200
@@ -697,7 +703,7 @@ class TestUserWorkflow01:
             assert len(intfs) == 1
             assert intfs[0]["node"]["name"]["value"] == "Loopback0"
 
-            pytest.state["spine1_lo0_description_start"] = intfs[0]["node"]["description"]["value"]
+            state.data["spine1_lo0_description_start"] = intfs[0]["node"]["description"]["value"]
 
     async def test_add_new_interface_in_first_branch(self, client, dataset01, integration_helper):
         headers = await integration_helper.admin_headers()

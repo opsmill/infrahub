@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import pytest
 from infrahub_sdk import InfrahubClient
@@ -10,6 +10,7 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import InitializationError
 
 from ..shared import load_schema
 from .shared import (
@@ -23,10 +24,28 @@ from .shared import (
 # pylint: disable=unused-argument
 
 
+class BranchState:
+    def __init__(self) -> None:
+        self._branch: Optional[Branch] = None
+
+    @property
+    def branch(self) -> Branch:
+        if self._branch:
+            return self._branch
+        raise InitializationError
+
+    @branch.setter
+    def branch(self, value: Branch) -> None:
+        self._branch = value
+
+
+state = BranchState()
+
+
 class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     @property
     def branch1(self) -> Branch:
-        return pytest.state["branch1"]  # type: ignore[index]
+        return state.branch
 
     @pytest.fixture(scope="class")
     async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step01):
@@ -61,7 +80,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
         # Create Branch1
         branch1 = await create_branch(db=db, branch_name="branch1")
-        pytest.state = {"branch1": branch1}
+        state.branch = branch1
 
         # Load data in BRANCH1
         richard = await Node.init(schema=PERSON_KIND, db=db, branch=branch1)
