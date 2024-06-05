@@ -696,6 +696,7 @@ export const deviceDetailsMocksSchema = [
     default_filter: "name__value",
     order_by: ["name__value"],
     display_labels: ["name__value"],
+    generate_profile: true,
     attributes: [
       {
         id: "e9268a46-073b-4f15-9f01-b3b0cc909264",

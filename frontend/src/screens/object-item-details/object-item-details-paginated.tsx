@@ -94,7 +94,7 @@ export default function ObjectItemDetails(props: any) {
     return null;
   }
 
-  if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind)) {
+  if (schemaData && MENU_EXCLUDELIST.includes(schemaData?.kind)) {
     navigate("/");
     return null;
   }
@@ -106,14 +106,16 @@ export default function ObjectItemDetails(props: any) {
 
   const queryString = schemaData
     ? getObjectDetailsPaginated({
-        kind: schemaData.kind,
+        kind: schemaData?.kind,
         taskKind: TASK_OBJECT,
         columns,
         relationshipsTabs,
         objectid,
         // Do not query profiles on profiles objects
         queryProfiles:
-          !profileGeneric?.used_by?.includes(schemaData.kind) && schemaData.kind !== PROFILE_KIND,
+          !profileGeneric?.used_by?.includes(schemaData?.kind) &&
+          schemaData?.kind !== PROFILE_KIND &&
+          schemaData?.generate_profile,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema

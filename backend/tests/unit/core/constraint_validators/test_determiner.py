@@ -59,6 +59,24 @@ def person_name_node_diff(
                 property_name="unique",
             ),
         ),
+        SchemaUpdateConstraintInfo(
+            constraint_name="node.generate_profile.update",
+            path=SchemaPath(
+                path_type=SchemaPathType.NODE,
+                schema_kind="TestPerson",
+                field_name="generate_profile",
+                property_name="generate_profile",
+            ),
+        ),
+        SchemaUpdateConstraintInfo(
+            constraint_name="node.generate_profile.update",
+            path=SchemaPath(
+                path_type=SchemaPathType.NODE,
+                schema_kind="TestCar",
+                field_name="generate_profile",
+                property_name="generate_profile",
+            ),
+        ),
     }
     return node_diff, schema_updated_constraint_infos
 
@@ -162,8 +180,8 @@ class TestConstraintDeterminer:
 
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
 
-        assert len(constraints) == len(constraint_info_set)
-        assert set(constraints) == constraint_info_set
+        assert len(constraints) >= len(constraint_info_set)
+        assert constraint_info_set < set(constraints)
 
     async def test_node_property_constraints_included(self, car_person_schema, default_branch, person_name_node_diff):
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)

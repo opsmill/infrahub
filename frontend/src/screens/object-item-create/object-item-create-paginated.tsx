@@ -67,7 +67,9 @@ export default function ObjectItemCreate(props: iProps) {
   const profileName = `Profile${isGeneric && kind?.id ? kind?.id : objectname}`;
 
   const displayProfile =
-    schema && !profileGeneric?.used_by?.includes(schema.kind) && schema.kind !== PROFILE_KIND;
+    schema?.generate_profile &&
+    !profileGeneric?.used_by?.includes(schema.kind) &&
+    schema.kind !== PROFILE_KIND;
 
   // Get object's attributes to get them from the profile data
   const attributes = getObjectAttributes({ schema, forQuery: true, forProfiles: true });
@@ -82,7 +84,8 @@ export default function ObjectItemCreate(props: iProps) {
   `;
 
   const { data } = useQuery(query, {
-    skip: !(!!generic || !!schema) || (isGeneric && !kind?.id) || isEditingProfile,
+    skip:
+      !(!!generic || !!schema) || (isGeneric && !kind?.id) || isEditingProfile || !displayProfile,
   });
 
   const profiles = data && data[profileName]?.edges?.map((edge) => edge.node);
@@ -123,8 +126,6 @@ export default function ObjectItemCreate(props: iProps) {
   };
 
   async function onSubmit(data: any) {
-    setIsLoading(true);
-
     try {
       const newObject = getMutationDetailsFromFormData(
         schema,
@@ -137,6 +138,8 @@ export default function ObjectItemCreate(props: iProps) {
       if (!Object.keys(newObject).length) {
         return;
       }
+
+      setIsLoading(true);
 
       const mutationString = createObject({
         kind: schema?.kind,

@@ -47,13 +47,15 @@ class AggregatedConstraintChecker:
             for path in chain(*[gp.get_all_data_paths() for gp in grouped_paths]):
                 node = nodes.get(path.node_id)
                 node_display_label = None
+                display_label = None
                 if node:
-                    node_display_label = await node.render_display_label()
-                    if request.node_schema.display_labels:
+                    node_display_label = await node.render_display_label(db=self.db)
+                if node_display_label:
+                    if request.node_schema.display_labels and node:
                         display_label = f"Node {node_display_label} ({node.get_kind()}: {path.node_id})"
                     else:
                         display_label = f"Node {node_display_label}"
-                else:
+                if not display_label:
                     display_label = f"Node ({path.kind}: {path.node_id})"
 
                 violation = SchemaViolation(
