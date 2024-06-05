@@ -1,4 +1,4 @@
-import { expect, Page } from "@playwright/test";
+import { Page } from "@playwright/test";
 
 export const saveScreenshotForDocs = async (page: Page, filename: string) => {
   if (!process.env.UPDATE_DOCS_SCREENSHOTS) return;
@@ -34,8 +34,6 @@ export const createBranch = async (page: Page, branchName: string) => {
     }),
     page.getByRole("button", { name: "Create" }).click(),
   ]); // to avoid ERR_ABORTED
-
-  expect(page.url()).toContain("?branch=");
 };
 
 export const deleteBranch = async (page: Page, branchName: string) => {

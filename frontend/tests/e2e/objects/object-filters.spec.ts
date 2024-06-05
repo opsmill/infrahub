@@ -61,6 +61,6 @@ test.describe("Object filters", () => {
     await page.getByTestId("apply-filters").click();
     await expect(page.getByTestId("side-panel-container").getByText("Object")).toBeVisible();
     await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
-    await expect(page.getByRole("option", { name: "Tag" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "Tag", exact: true })).toBeVisible();
   });
 });
