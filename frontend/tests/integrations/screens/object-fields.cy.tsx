@@ -55,6 +55,11 @@ import {
   taskMocksQuery as taskMocksQuery6,
   taskMocksSchema as taskMocksSchema6,
 } from "../../mocks/data/task_6";
+import {
+  taskMocksData as taskMocksData7,
+  taskMocksQuery as taskMocksQuery7,
+  taskMocksSchema as taskMocksSchema7,
+} from "../../mocks/data/task_7";
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
@@ -140,6 +145,17 @@ const mocks: any[] = [
     },
     result: {
       data: taskMocksData6,
+    },
+  },
+  {
+    request: {
+      query: gql`
+        ${taskMocksQuery7}
+      `,
+      variables: { offset: 0, limit: 10 },
+    },
+    result: {
+      data: taskMocksData7,
     },
   },
 ];
@@ -704,5 +720,39 @@ describe("Object list", () => {
 
     // eslint-disable-next-line quotes
     cy.get('[data-testid="select-open-pool-option-button"]').should("be.visible");
+  });
+
+  it("should open the add panel, and display the description", function () {
+    cy.viewport(1920, 1080);
+
+    cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
+    // Provide the initial value for jotai
+    const ObjectItemsProvider = () => {
+      return (
+        <TestProvider
+          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema7]]]}>
+          <AuthenticatedObjectItems />
+        </TestProvider>
+      );
+    };
+    // Mount the view with the default route and the mocked data
+    cy.mount(
+      <MockedProvider mocks={mocks} addTypename={false}>
+        <Routes>
+          <Route element={<ObjectItemsProvider />} path={mockedPath} />
+        </Routes>
+      </MockedProvider>,
+      {
+        // Add iniital route for the app router, to display the current items view
+        routerProps: {
+          initialEntries: [mockedUrl],
+        },
+      }
+    );
+    // Open edit panel
+    cy.get("[data-cy='create']").click();
+
+    // Check description question mark
+    cy.get("[data-cy='question-mark']").should("be.visible");
   });
 });
