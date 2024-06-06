@@ -114,9 +114,13 @@ class RelationshipMixin:
         async with context.db.start_transaction() as db:
             if cls.__name__ == "RelationshipAdd":
                 for node_data in data.get("nodes"):
-                    if node_data.get("id") not in existing_peers.keys():
-                        rel = Relationship(schema=rel_schema, branch=context.branch, at=context.at, node=source)
-                        await rel.new(db=db, data=node_data)
+                    # Instantiate and resolve a relationship
+                    # This will take care of allocating a node from a pool if needed
+                    rel = Relationship(schema=rel_schema, branch=context.branch, at=context.at, node=source)
+                    await rel.new(db=db, data=node_data)
+                    await rel.resolve(db=db)
+                    # Save it only if it does not exist
+                    if rel.get_peer_id() not in existing_peers.keys():
                         await rel.save(db=db)
 
             elif cls.__name__ == "RelationshipRemove":
