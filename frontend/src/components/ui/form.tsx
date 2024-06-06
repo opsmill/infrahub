@@ -10,8 +10,8 @@ import * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
 import { classNames } from "../../utils/common";
 
-interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
-  onSubmit?: (v: Record<string, any>) => void;
+export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
+  onSubmit?: (v: Record<string, unknown>) => void;
 }
 
 export const Form = ({ className, children, onSubmit, ...props }: FormProps) => {
