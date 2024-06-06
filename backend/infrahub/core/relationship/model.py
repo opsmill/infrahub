@@ -10,7 +10,7 @@ from infrahub_sdk.utils import intersection, is_valid_uuid
 from pydantic.v1 import BaseModel, Field
 
 from infrahub.core import registry
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import BranchSupportType, InfrahubKind
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,
@@ -399,7 +399,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
             if not pool:
                 raise NodeNotFoundError(
-                    node_type="CoreResourcePool",
+                    node_type=InfrahubKind.RESOURCEPOOL,
                     identifier=pool_id,
                     branch_name=self.branch.name,
                     message=f"Unable to find the pool to generate a node for the relationship {self.name!r} on {self.node_id!r}",

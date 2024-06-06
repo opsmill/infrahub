@@ -8,29 +8,30 @@ from infrahub.core import registry
 from .interface import InfrahubInterface
 
 
+class GenericPoolInput(InputObjectType):
+    id = String(required=True)
+    identifier = String(required=False)
+    data = GenericScalar(required=False)
+
+
 class RelatedNodeInput(InputObjectType):
     id = String(required=False)
     hfid = Field(List(of_type=String), required=False)
+    from_pool = Field(GenericPoolInput, required=False)
     _relation__is_visible = Boolean(required=False)
     _relation__is_protected = Boolean(required=False)
     _relation__owner = String(required=False)
     _relation__source = String(required=False)
 
 
-class IPAddressPoolInput(InputObjectType):
-    id = String(required=True)
+class IPAddressPoolInput(GenericPoolInput):
     prefixlen = Int(required=False)
-    identifier = String(required=False)
-    data = GenericScalar(required=False)
 
 
-class PrefixPoolInput(InputObjectType):
-    id = String(required=True)
+class PrefixPoolInput(GenericPoolInput):
     size = Int(required=False)
-    identifier = String(required=False)
     member_type = String(required=False)
     prefix_type = String(required=False)
-    data = GenericScalar(required=False)
 
 
 class RelatedIPAddressNodeInput(InputObjectType):
