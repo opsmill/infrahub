@@ -56,7 +56,6 @@ export const ProposedChangeCreateForm = () => {
 
   return (
     <Form
-      className="space-y-4"
       onSubmit={async ({ source_branch, destination_branch, name, description, reviewers }) => {
         const { data } = await createProposedChange({
           variables: {
