@@ -3,6 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { classNames } from "../../utils/common";
 import { Tooltip, TooltipProps } from "../ui/tooltip";
 import { focusStyle } from "../ui/style";
+import { Link, LinkProps } from "react-router-dom";
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium disabled:opacity-60",
@@ -55,4 +56,18 @@ export const ButtonWithTooltip = forwardRef<HTMLButtonElement, ButtonWithTooltip
       <Button ref={ref} {...props} />
     </Tooltip>
   )
+);
+
+export interface LinkButtonProps extends LinkProps, VariantProps<typeof buttonVariants> {}
+
+export const LinkButton = forwardRef<HTMLAnchorElement, LinkButtonProps>(
+  ({ className, variant, size, ...props }, ref) => {
+    return (
+      <Link
+        ref={ref}
+        className={classNames(focusStyle, buttonVariants({ variant, size, className }))}
+        {...props}
+      />
+    );
+  }
 );
