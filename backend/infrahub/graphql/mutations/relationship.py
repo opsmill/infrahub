@@ -72,7 +72,7 @@ class RelationshipMixin:
             raise ValidationError({"name": f"'{data.get('name')}' must be a relationship of cardinality Many"})
 
         # Query the node in the database and validate that all of them exist and are if the correct kind
-        node_ids: list[str] = [node_data.get("id") for node_data in data.get("nodes")]
+        node_ids: list[str] = [node_data["id"] for node_data in data.get("nodes") if "id" in node_data]
         nodes = await NodeManager.get_many(
             db=context.db, ids=node_ids, fields={"display_label": None}, branch=context.branch, at=context.at
         )
