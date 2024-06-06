@@ -54,6 +54,25 @@ test.describe("Object filters", () => {
     });
   });
 
+  test("should filter using a relationship of cardinality one", async ({ page }) => {
+    await page.goto("/objects/InfraInterface");
+
+    await expect(page.getByRole("link", { name: "Connected to jfk1-edge2" })).toBeVisible();
+
+    await page.getByTestId("apply-filters").click();
+    await page
+      .getByTestId("side-panel-container")
+      .getByText("Device")
+      .locator("../..")
+      .getByTestId("select-open-option-button")
+      .click();
+    await page.getByRole("option", { name: "atl1-core1" }).click();
+    await page.getByRole("button", { name: "Apply filters" }).click();
+
+    await expect(page.getByRole("row", { name: "InfraInterfaceL3 Loopback0" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Connected to jfk1-edge2" })).toBeHidden();
+  });
+
   test("should correctly display the filters with select 2 steps pointing to any objects", async ({
     page,
   }) => {
