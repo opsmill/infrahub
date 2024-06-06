@@ -9,6 +9,8 @@ import {
 import * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
 import { classNames } from "../../utils/common";
+import { Button, ButtonProps } from "../buttons/button-primitive";
+import { Spinner } from "./spinner";
 
 export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
   onSubmit?: (v: Record<string, unknown>) => void;
@@ -89,3 +91,18 @@ export const FormMessage = ({
     </p>
   );
 };
+
+export const FormSubmit = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ children, ...props }, ref) => {
+    const { formState } = useFormContext();
+
+    const isLoading = formState.isSubmitting || formState.isValidating;
+
+    return (
+      <Button ref={ref} disabled={isLoading} {...props} type="submit">
+        <span className={classNames(isLoading && "invisible")}>{children}</span>
+        {isLoading && <Spinner className="absolute" />}
+      </Button>
+    );
+  }
+);

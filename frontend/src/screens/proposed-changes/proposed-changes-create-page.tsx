@@ -15,7 +15,14 @@ import { branchesState } from "../../state/atoms/branches.atom";
 import { branchesToSelectOptions } from "../../utils/branches";
 import { constructPath } from "../../utils/fetch";
 import Content from "../layout/content";
-import { Form, FormField, FormInput, FormLabel, FormMessage } from "../../components/ui/form";
+import {
+  Form,
+  FormField,
+  FormInput,
+  FormLabel,
+  FormMessage,
+  FormSubmit,
+} from "../../components/ui/form";
 import { Input } from "../../components/ui/input";
 import { MarkdownEditor } from "../../components/editor";
 import { Select } from "../../components/inputs/select";
@@ -52,7 +59,7 @@ export const ProposedChangeCreateForm = () => {
 
   const { data: getAllAccountsData } = useQuery(GET_ALL_ACCOUNTS);
 
-  const [createProposedChange, { loading, error }] = useMutation(CREATE_PROPOSED_CHANGE);
+  const [createProposedChange, { error }] = useMutation(CREATE_PROPOSED_CHANGE);
 
   return (
     <Form
@@ -181,9 +188,7 @@ export const ProposedChangeCreateForm = () => {
           <Button variant="outline">Cancel</Button>
         </Link>
 
-        <Button type="submit" disabled={loading}>
-          Create proposed change
-        </Button>
+        <FormSubmit>Create proposed change</FormSubmit>
       </div>
 
       {error && (
