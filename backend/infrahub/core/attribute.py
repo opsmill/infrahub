@@ -610,7 +610,7 @@ class DateTime(BaseAttribute):
 
         # If DateTime attribute is an empty string and is not required do not complete any further validation of format.
         # This was added due to infrahub.core.integrity.object_conflict.conflict_recorder.py initialize_validator sets completed_at to a blank string
-        if not value and not schema.optional:
+        if not value and schema.optional:
             return
 
         try:
