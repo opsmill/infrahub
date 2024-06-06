@@ -2,9 +2,10 @@ import { ButtonHTMLAttributes, forwardRef } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { classNames } from "../../utils/common";
 import { Tooltip, TooltipProps } from "../ui/tooltip";
+import { focusStyle } from "../ui/style";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-blue-500 focus-visible:ring-offset-2 disabled:opacity-60",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium disabled:opacity-60",
   {
     variants: {
       variant: {
@@ -34,7 +35,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, ...props }, ref) => {
     return (
       <button
-        className={classNames(buttonVariants({ variant, size, className }))}
+        className={classNames(focusStyle, buttonVariants({ variant, size, className }))}
         ref={ref}
         {...props}
       />
