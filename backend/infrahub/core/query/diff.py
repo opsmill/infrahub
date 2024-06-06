@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Union
 
+from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.query import Query, QueryResult, QueryType, sort_results_by_time
 from infrahub.core.timestamp import Timestamp
@@ -447,6 +448,7 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
 
         return sort_results_by_time(results, rel_label="r")
 
+
 class DiffAllPathsQuery(DiffQuery):
     name: str = "diff_node"
 
@@ -470,24 +472,32 @@ class DiffAllPathsQuery(DiffQuery):
 
     def _get_node_where_clause(self, node_variable_name: str) -> str:
         where_clause_parts = []
-        where_clause_parts.append(f"($namespaces_include IS NULL OR {node_variable_name}.namespace IN $namespaces_include)")
-        where_clause_parts.append(f"($namespaces_exclude IS NULL OR NOT({node_variable_name}.namespace IN $namespaces_exclude))")
+        where_clause_parts.append(
+            f"($namespaces_include IS NULL OR {node_variable_name}.namespace IN $namespaces_include)"
+        )
+        where_clause_parts.append(
+            f"($namespaces_exclude IS NULL OR NOT({node_variable_name}.namespace IN $namespaces_exclude))"
+        )
         where_clause_parts.append(f"($kinds_include IS NULL OR {node_variable_name}.kind IN $kinds_include)")
         where_clause_parts.append(f"($kinds_exclude IS NULL OR NOT({node_variable_name}.kind IN $kinds_exclude))")
         where_clause = " AND ".join(where_clause_parts)
-        return f"""("Node" IN LABELS({node_variable_name}) AND ({where_clause}))"""
+        return f"({where_clause})"
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
-        self.params.update({
-            "namespaces_include":self.namespaces_include,
-            "namespaces_exclude":self.namespaces_exclude,
-            "kinds_include":self.kinds_include,
-            "kinds_exclude":self.kinds_exclude,
-        })
+        self.params.update(
+            {
+                "namespaces_include": self.namespaces_include,
+                "namespaces_exclude": self.namespaces_exclude,
+                "kinds_include": self.kinds_include,
+                "kinds_exclude": self.kinds_exclude,
+                "source_branch": registry.default_branch,
+                "dest_branch": self.branch.name,
+                "branch_names": [registry.default_branch, self.branch.name],
+                "to_time": self.diff_to.to_string(),
+            }
+        )
         p_node_where = self._get_node_where_clause(node_variable_name="p")
         n_node_where = self._get_node_where_clause(node_variable_name="n")
-        self.params["branch_names"] = self.branch_names
-        self.params["to_time"] = self.diff_to.to_string()
 
         diff_rel_filter_parts, br_params = self.branch.get_query_filter_range(
             rel_label="diff_rel",
@@ -498,7 +508,7 @@ class DiffAllPathsQuery(DiffQuery):
 
         self.params.update(br_params)
         self.params["branch_support"] = [item.value for item in self.branch_support]
-    
+
         query = """
             // all updated edges
             MATCH (p:Node|Attribute|Relationship)-[diff_rel]->(q)
@@ -517,16 +527,33 @@ class DiffAllPathsQuery(DiffQuery):
                     WHERE r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
                     AND r.branch IN $branch_names
                 )
-                RETURN path AS diff_rel_path
+                WITH path AS diff_rel_path, diff_rel, r_root, n, r_node, p
                 ORDER BY
                     r_node.branch = diff_rel.branch DESC,
                     r_root.branch = diff_rel.branch DESC,
                     r_node.from DESC,
                     r_root.from DESC
                 LIMIT 1
+                // get source branch version of the diff path, if it exists
+                WITH diff_rel_path, diff_rel, r_root, n, r_node, p
+                OPTIONAL MATCH latest_source_path = (:Root)<-[r_root]-(n)-[r_node]-(p)-[source_diff_rel]->(source_prop)
+                WHERE any(r in relationships(diff_rel_path) WHERE r.branch = $dest_branch)
+                AND type(source_diff_rel) = type(diff_rel)
+                AND all(
+                    r in relationships(latest_source_path)
+                    WHERE r.branch = $source_branch
+                    AND r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
+                )
+                WITH diff_rel_path, latest_source_path, r_node, r_root
+                ORDER BY source_diff_rel.from DESC, r_node.from DESC, r_root.from DESC
+                LIMIT 1
+                RETURN reduce(
+                    diff_rel_paths = [], item IN [diff_rel_path, latest_source_path] |
+                    CASE WHEN item IS NULL THEN diff_rel_paths ELSE diff_rel_paths + [item] END
+                ) AS diff_rel_paths
             }
             // middle-level edges, HAS_ATTRIBUTE, IS_RELATED
-            WITH p, q, diff_rel, CASE WHEN diff_rel_path IS NOT NULL THEN [diff_rel_path] ELSE [] END AS full_diff_paths
+            WITH p, q, diff_rel, diff_rel_paths AS full_diff_paths
             CALL {
                 WITH p, q, diff_rel
                 OPTIONAL MATCH path = (
