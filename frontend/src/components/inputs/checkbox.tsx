@@ -1,4 +1,6 @@
 import { ChangeEventHandler, forwardRef } from "react";
+import { classNames } from "../../utils/common";
+import { focusStyle } from "../ui/style";
 
 type CheckboxProps = {
   enabled?: boolean;
@@ -17,9 +19,11 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>((props, ref)
       checked={enabled ?? false}
       disabled={disabled}
       onChange={onChange}
-      className={
-        "w-4 h-4 text-custom-blue-800 disabled:text-gray-300 bg-gray-100 border-gray-300 rounded focus:ring-custom-blue-500 focus:ring-2 cursor-pointer disabled:cursor-not-allowed"
-      }
+      className={classNames(
+        "focus:ring-0 focus:ring-offset-0",
+        focusStyle,
+        "w-4 h-4 text-custom-blue-800 disabled:text-gray-300 bg-gray-100 border-gray-300 rounded cursor-pointer disabled:cursor-not-allowed"
+      )}
       data-cy="checkbox"
       {...propsToPass}
     />
