@@ -16,7 +16,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>((props, ref)
     <input
       ref={ref}
       type="checkbox"
-      checked={enabled ?? false}
+      checked={enabled}
       disabled={disabled}
       onChange={onChange}
       className={classNames(
