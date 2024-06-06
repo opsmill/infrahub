@@ -14,7 +14,7 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 1.0.2
+version: 1.1.0
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
@@ -26,3 +26,7 @@ dependencies:
     version: "1.8.0"
     repository: "https://kubernetes-sigs.github.io/nfs-ganesha-server-and-external-provisioner/"
     condition: nfs-server-provisioner.enabled
+  - name: nats
+    version: "1.1.12"
+    repository: "https://nats-io.github.io/k8s/helm/charts/"
+    condition: nats.enabled

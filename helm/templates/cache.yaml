@@ -1,3 +1,4 @@
+{{- if .Values.cache.enabled }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -61,3 +62,4 @@ spec:
   {{- include "infrahub-helm.selectorLabels" . | nindent 4 }}
   ports:
 	  {{- .Values.cache.ports | toYaml | nindent 4 }}
+{{- end }}

@@ -1,3 +1,4 @@
+{{- if .Values.database.enabled }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -132,4 +133,5 @@ spec:
   {{- with .Values.database.persistence.logs.storageClassName }}
   storageClassName: {{ . }}
   {{- end }}
+{{- end }}
 {{- end }}

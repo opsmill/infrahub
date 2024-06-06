@@ -7,6 +7,7 @@ global:
 
 # ----------- Cache -----------
 cache:
+  enabled: true
   type: ClusterIP
   cache:
     image:
@@ -22,6 +23,7 @@ cache:
 
 # ----------- Databse -----------
 database:
+  enabled: true
   type: ClusterIP
   persistence:
     data:
@@ -147,6 +149,7 @@ infrahubDemoData:
 
 # ----------- Mesage Queue (Rabbit MQ) -----------
 messageQueue:
+  enabled: true
   type: ClusterIP
   messageQueue:
     image:
@@ -194,3 +197,10 @@ nfs-server-provisioner:
   storageClass:
     create: true
     name: nfs
+
+# ----------- NATS Server -----------
+nats:
+  enabled: false
+  config:
+    jetstream:
+      enabled: true
