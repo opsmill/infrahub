@@ -14,12 +14,15 @@ interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"
   onSubmit?: (v: Record<string, any>) => void;
 }
 
-export const Form = ({ onSubmit, children, ...props }: FormProps) => {
+export const Form = ({ className, children, onSubmit, ...props }: FormProps) => {
   const form = useForm();
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSubmit && form.handleSubmit(onSubmit)} {...props}>
+      <form
+        onSubmit={onSubmit && form.handleSubmit(onSubmit)}
+        className={classNames("space-y-4", className)}
+        {...props}>
         {children}
       </form>
     </FormProvider>
