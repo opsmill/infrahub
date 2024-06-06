@@ -46,7 +46,7 @@ export const FormLabel = ({ className, ...props }: LabelPrimitive.LabelProps) =>
   return (
     <LabelPrimitive.Label
       htmlFor={id}
-      className={classNames("text-sm font-medium text-gray-900", className)}
+      className={classNames("text-sm font-medium text-gray-900 cursor-pointer", className)}
       {...props}
     />
   );
