@@ -48,12 +48,10 @@ interface ButtonWithTooltipProps extends ButtonProps {
   tooltipEnabled?: TooltipProps["enabled"];
 }
 
-export const ButtonWithTooltip = ({
-  tooltipContent,
-  tooltipEnabled,
-  ...props
-}: ButtonWithTooltipProps) => (
-  <Tooltip enabled={tooltipEnabled} content={tooltipContent}>
-    <Button {...props} />
-  </Tooltip>
+export const ButtonWithTooltip = forwardRef<HTMLButtonElement, ButtonWithTooltipProps>(
+  ({ tooltipContent, tooltipEnabled, ...props }, ref) => (
+    <Tooltip enabled={tooltipEnabled} content={tooltipContent}>
+      <Button ref={ref} {...props} />
+    </Tooltip>
+  )
 );

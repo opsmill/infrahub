@@ -1,4 +1,4 @@
-import { ChangeEventHandler } from "react";
+import { ChangeEventHandler, forwardRef } from "react";
 
 type CheckboxProps = {
   enabled?: boolean;
@@ -7,11 +7,12 @@ type CheckboxProps = {
   id?: string;
 };
 
-export const Checkbox = (props: CheckboxProps) => {
+export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>((props, ref) => {
   const { enabled, onChange, disabled, ...propsToPass } = props;
 
   return (
     <input
+      ref={ref}
       type="checkbox"
       checked={enabled ?? false}
       disabled={disabled}
@@ -23,4 +24,4 @@ export const Checkbox = (props: CheckboxProps) => {
       {...propsToPass}
     />
   );
-};
+});
