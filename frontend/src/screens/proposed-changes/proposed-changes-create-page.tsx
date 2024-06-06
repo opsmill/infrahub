@@ -1,9 +1,9 @@
 import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Button } from "../../components/buttons/button-primitive";
+import { LinkButton } from "../../components/buttons/button-primitive";
 import { Card } from "../../components/ui/card";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { CREATE_PROPOSED_CHANGE } from "../../graphql/mutations/proposed-changes/createProposedChange";
@@ -184,9 +184,9 @@ export const ProposedChangeCreateForm = () => {
       />
 
       <div className="text-right">
-        <Link to={constructPath("/proposed-changes")} className="mr-2">
-          <Button variant="outline">Cancel</Button>
-        </Link>
+        <LinkButton variant="outline" to={constructPath("/proposed-changes")} className="mr-2">
+          Cancel
+        </LinkButton>
 
         <FormSubmit>Create proposed change</FormSubmit>
       </div>
