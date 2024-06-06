@@ -3,22 +3,24 @@ import { Icon } from "@iconify-icon/react";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import ObjectItemEditComponent from "../../screens/object-item-edit/object-item-edit-paginated";
 import SlideOver from "../display/slide-over";
-import { ButtonWithTooltip } from "../buttons/button-primitive";
+import { ButtonProps, ButtonWithTooltip } from "../buttons/button-primitive";
 import { usePermission } from "../../hooks/usePermission";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { useState } from "react";
 import { IModelSchema } from "../../state/atoms/schema.atom";
 
+interface ObjectEditSlideOverTriggerProps extends ButtonProps {
+  data: any;
+  schema: IModelSchema;
+  onUpdateComplete?: () => void;
+}
 const ObjectEditSlideOverTrigger = ({
   data,
   schema,
   onUpdateComplete,
-}: {
-  data: any;
-  schema: IModelSchema;
-  onUpdateComplete?: () => void;
-}) => {
+  ...props
+}: ObjectEditSlideOverTriggerProps) => {
   const permission = usePermission();
   const currentBranch = useAtomValue(currentBranchAtom);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
@@ -33,7 +35,8 @@ const ObjectEditSlideOverTrigger = ({
         disabled={!permission.write.allow}
         tooltipEnabled={!permission.write.allow}
         tooltipContent={permission.write.message ?? undefined}
-        data-testid="edit-button">
+        data-testid="edit-button"
+        {...props}>
         <Icon icon="mdi:pencil" />
       </ButtonWithTooltip>
 
