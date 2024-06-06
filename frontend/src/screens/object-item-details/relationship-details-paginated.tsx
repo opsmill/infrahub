@@ -175,8 +175,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     );
   };
 
-  const handleSubmit = async ({ relation }: any) => {
-    if (relation?.id) {
+  const handleSubmit = async (data: any) => {
+    const { relation } = data;
+
+    if (relation?.id || relation?.from_pool) {
       setIsLoading(true);
 
       const mutationString = addRelationship({

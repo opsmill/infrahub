@@ -131,6 +131,7 @@ export const OpsSelect2Step = (props: Props) => {
                   child: value,
                 });
               }}
+              peer={selectedLeft?.id}
               data-cy="select2step-2"
               data-testid="select2step-2"
             />
