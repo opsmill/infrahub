@@ -421,6 +421,7 @@ select = [
     "TCH",   # flake8-type-checking
     "TRIO",  # flake8-trio
     "T10",   # flake8-debugger
+    "UP",    # pyupgrade
     "W",     # pycodestyle warnings
     "YTT",   # flake8-2020
 ]
@@ -481,6 +482,14 @@ ignore = [
     "S202",     # Uses of `tarfile.extractall()`
     "S311",     # Standard pseudo-random generators are not suitable for cryptographic purposes
     "S701",     # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
+    "UP006",    # Use {to} instead of {from} for type annotation
+    "UP007",    # Use X | Y for type annotations
+    "UP008",    # Use super() instead of super(__class__, self)
+    "UP012",    # Unnecessary call to encode as UTF-8
+    "UP018",    # Unnecessary {literal_type} call (rewrite as a literal)
+    "UP031",    # Use format specifiers instead of percent format
+    "UP034",    # Avoid extraneous parentheses
+    "UP037",    # Remove quotes from type annotation
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/

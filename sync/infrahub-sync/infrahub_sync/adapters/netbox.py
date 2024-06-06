@@ -2,7 +2,7 @@ from __future__ import annotations
 
 # pylint: disable=R0801
 import os
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 import pynetbox
 
@@ -74,7 +74,7 @@ class NetboxAdapter(DiffSyncMixin, DiffSync):
                 self.add(item)
 
     def netbox_obj_to_diffsync(self, obj: NetboxRecord, mapping: SchemaMappingModel, model: NetboxModel) -> dict:  # pylint: disable=too-many-branches
-        data: Dict[str, Any] = {"local_id": str(obj.id)}
+        data: dict[str, Any] = {"local_id": str(obj.id)}
 
         for field in mapping.fields:  # pylint: disable=too-many-nested-blocks
             field_is_list = model.is_list(name=field.name)
