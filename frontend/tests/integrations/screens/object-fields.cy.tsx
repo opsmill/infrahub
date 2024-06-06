@@ -214,7 +214,7 @@ describe("Object list", () => {
     cy.get("[data-cy='create']").click();
 
     // Save
-    cy.get(".bg-custom-blue-700").click();
+    cy.get("[data-cy='submit-form']").click();
 
     // The required message should appear
     cy.get("[data-cy='field-error-message']").should("have.text", "Required");
@@ -256,7 +256,7 @@ describe("Object list", () => {
     cy.get("[data-cy='create']").click();
 
     // Save
-    cy.get(".bg-custom-blue-700").click();
+    cy.get("[data-cy='submit-form']").click();
 
     // The required message should appear
     cy.get("[data-cy='field-error-message']").should("have.text", "Required");
@@ -298,7 +298,7 @@ describe("Object list", () => {
     cy.get("[data-cy='create']").click();
 
     // Save
-    cy.get(".bg-custom-blue-700").click();
+    cy.get("[data-cy='submit-form']").click();
 
     // The required message should appear
     cy.get("[data-cy='field-error-message']").should("not.exist");
@@ -338,7 +338,7 @@ describe("Object list", () => {
     cy.get("[data-cy='create']").click();
 
     // Save
-    cy.get(".bg-custom-blue-700").click();
+    cy.get("[data-cy='submit-form']").click();
 
     // The required message should appear
     cy.get("[data-cy='field-error-message']").should("have.text", "Required");
@@ -380,7 +380,7 @@ describe("Object list", () => {
     cy.get("[data-cy='create']").click();
 
     // Save
-    cy.get(".bg-custom-blue-700").click();
+    cy.get("[data-cy='submit-form']").click();
 
     // The required message should appear
     cy.get("[data-cy='field-error-message']").should("not.exist");
@@ -422,7 +422,7 @@ describe("Object list", () => {
     cy.get("[data-cy='create']").click();
 
     // Save
-    cy.get(".bg-custom-blue-700").click();
+    cy.get("[data-cy='submit-form']").click();
 
     // The required message should appear
     cy.get("[data-cy='field-error-message']").should("not.exist");
@@ -462,7 +462,7 @@ describe("Object list", () => {
     cy.get("[data-cy='create']").click();
 
     // Save
-    cy.get(".bg-custom-blue-700").click();
+    cy.get("[data-cy='submit-form']").click();
 
     // The required message should appear
     cy.get("[data-cy='field-error-message']").should("have.text", "Required");
@@ -505,7 +505,7 @@ describe("Object list", () => {
     cy.get("#Counter").type("0", { delay: 0, force: true });
 
     // Save
-    cy.get(".bg-custom-blue-700").click();
+    cy.get("[data-cy='submit-form']").click();
 
     // The required message should not appear
     cy.get("[data-cy='field-error-message']").should("not.exist");
@@ -547,7 +547,7 @@ describe("Object list", () => {
     cy.get("[data-cy='create']").click();
 
     // Save
-    cy.get(".bg-custom-blue-700").click();
+    cy.get("[data-cy='submit-form']").click();
 
     // The required message should not appear
     cy.get("[data-cy='field-error-message']").should("not.exist");
@@ -589,7 +589,7 @@ describe("Object list", () => {
     cy.get("[data-cy='create']").click();
 
     // Save
-    cy.get(".bg-custom-blue-700").click();
+    cy.get("[data-cy='submit-form']").click();
 
     // The required message should not appear
     cy.get("[data-cy='field-error-message']").should("not.exist");
@@ -629,7 +629,7 @@ describe("Object list", () => {
     cy.get("[data-cy='create']").click();
 
     // Save
-    cy.get(".bg-custom-blue-700").click();
+    cy.get("[data-cy='submit-form']").click();
 
     // The required message should appear
     cy.get("[data-cy='field-error-message']").should("have.text", "Required");
@@ -669,7 +669,7 @@ describe("Object list", () => {
     cy.get("[data-cy='create']").click();
 
     // Save
-    cy.get(".bg-custom-blue-700").click();
+    cy.get("[data-cy='submit-form']").click();
 
     // The required message should appear
     cy.get("[data-cy='field-error-message']").should("have.text", "Required");
