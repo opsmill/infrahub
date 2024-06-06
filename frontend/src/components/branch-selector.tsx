@@ -1,24 +1,19 @@
-import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
 import { Branch } from "../generated/graphql";
-import { BRANCH_CREATE } from "../graphql/mutations/branches/createBranch";
-import { useAuth } from "../hooks/useAuth";
-import { usePermission } from "../hooks/usePermission";
-import { DynamicFieldData } from "../screens/edit-form-hook/dynamic-control-types";
-import { Form } from "../screens/edit-form-hook/form";
 import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
 import { branchesToSelectOptions } from "../utils/branches";
 import { classNames } from "../utils/common";
-import { BUTTON_TYPES } from "./buttons/button";
-import { ButtonWithTooltip } from "./buttons/button-with-tooltip";
 import { SelectButton } from "./buttons/select-button";
 import { DateDisplay } from "./display/date-display";
-import { POPOVER_SIZE, PopOver } from "./display/popover";
 import { SelectOption } from "./inputs/select";
+import BranchCreateForm from "./form/branch-create-form";
+import { usePermission } from "../hooks/usePermission";
+import React from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { ButtonWithTooltip } from "./buttons/button-primitive";
 
 const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
   branch && (
@@ -47,13 +42,9 @@ const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
   );
 
 export default function BranchSelector() {
-  const [branches, setBranches] = useAtom(branchesState);
-  const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
+  const branches = useAtomValue(branchesState);
   const branch = useAtomValue(currentBranchAtom);
-  const auth = useAuth();
-  const permission = usePermission();
-
-  const [createBranch, { loading }] = useMutation(BRANCH_CREATE);
+  const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
 
   const valueLabel = (
     <div className="flex items-center fill-custom-white">
@@ -63,23 +54,7 @@ export default function BranchSelector() {
     </div>
   );
 
-  const PopOverButton = (
-    <ButtonWithTooltip
-      disabled={!permission.write.allow}
-      tooltipEnabled={!permission.write.allow}
-      tooltipContent={permission.write.message ?? undefined}
-      buttonType={BUTTON_TYPES.MAIN}
-      className="h-full rounded-r-md border border-transparent"
-      type="submit"
-      data-cy="create-branch-button"
-      data-testid="create-branch-button">
-      <Icon icon={"mdi:plus"} className="text-custom-white" />
-    </ButtonWithTooltip>
-  );
-
   const branchesOptions: SelectOption[] = branchesToSelectOptions(branches);
-
-  const defaultBranch = branches?.filter((b) => b.is_default)[0]?.id;
 
   const onBranchChange = (branch: Branch) => {
     if (branch?.is_default) {
@@ -107,77 +82,12 @@ export default function BranchSelector() {
     </div>
   );
 
-  const handleSubmit = async (data: any, close: Function) => {
-    try {
-      const { data: response } = await createBranch({
-        variables: {
-          ...data,
-        },
-      });
-
-      const branchCreated = response?.BranchCreate?.object;
-
-      if (branchCreated) {
-        setBranches([...branches, branchCreated]);
-        onBranchChange(branchCreated);
-      }
-      close();
-    } catch (error) {
-      console.error("Error while creating the branch: ", error);
-    }
-  };
-
   /**
    * There's always a main branch present at least.
    */
   if (!branches.length) {
     return null;
   }
-
-  const fields: DynamicFieldData[] = [
-    {
-      name: "name",
-      label: "New branch name",
-      placeholder: "New branch",
-      type: "text",
-      value: "",
-      config: {
-        required: "Required",
-      },
-    },
-    {
-      name: "description",
-      label: "New branch description",
-      placeholder: "Description",
-      type: "text",
-      value: "",
-      isOptional: true,
-    },
-    {
-      name: "from",
-      label: "Branched from",
-      type: "select",
-      value: defaultBranch,
-      options: branchesOptions,
-      isProtected: true,
-      isOptional: true,
-    },
-    {
-      name: "at",
-      label: "Branched at",
-      type: "datepicker",
-      value: new Date(),
-      isProtected: true,
-      isOptional: true,
-    },
-    {
-      name: "sync_with_git",
-      label: "Sync with Git",
-      type: "checkbox",
-      value: false,
-      isOptional: true,
-    },
-  ];
 
   return (
     <div className="flex h-12 w-full" data-cy="branch-select-menu" data-testid="branch-select-menu">
@@ -188,22 +98,34 @@ export default function BranchSelector() {
         options={branchesOptions}
         renderOption={renderOption}
       />
-      <PopOver
-        disabled={!auth?.permissions?.write}
-        buttonComponent={PopOverButton}
-        title={"Create a new branch"}
-        width={POPOVER_SIZE.SMALL}>
-        {({ close }: any) => (
-          <Form
-            onSubmit={(data) => handleSubmit(data, close)}
-            fields={fields}
-            submitLabel="Create branch"
-            isLoading={loading}
-            onCancel={close}
-            resetAfterSubmit
-          />
-        )}
-      </PopOver>
+
+      <BranchFormTrigger />
     </div>
   );
 }
+
+export const BranchFormTrigger = () => {
+  const permission = usePermission();
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <ButtonWithTooltip
+          disabled={!permission.write.allow}
+          tooltipEnabled={!permission.write.allow}
+          tooltipContent={permission.write.message ?? undefined}
+          className="h-full shadow-none rounded-none rounded-r-md px-2.5"
+          data-testid="create-branch-button">
+          <Icon icon="mdi:plus" />
+        </ButtonWithTooltip>
+      </PopoverTrigger>
+
+      <PopoverContent>
+        <header className="font-semibold text-base text-center pb-2">Create a branch</header>
+        <div className="border-b flex" />
+        <BranchCreateForm onCancel={() => setOpen(false)} onSuccess={() => setOpen(false)} />
+      </PopoverContent>
+    </Popover>
+  );
+};
