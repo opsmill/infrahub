@@ -177,6 +177,7 @@ select = [
     "TCH",   # flake8-type-checking
     "TRIO",  # flake8-trio
     "T10",   # flake8-debugger
+    "UP",    # pyupgrade
     "W",     # pycodestyle warnings
     "YTT",   # flake8-2020
 ]

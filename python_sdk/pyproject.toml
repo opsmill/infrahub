@@ -232,6 +232,7 @@ select = [
     "TCH",   # flake8-type-checking
     "TRIO",  # flake8-trio
     "T10",   # flake8-debugger
+    "UP",    # pyupgrade
     "W",     # pycodestyle warnings
     "YTT",   # flake8-2020
 ]
@@ -262,9 +263,13 @@ ignore = [
     "PTH109",  # `os.getcwd()` should be replaced by `Path.cwd()`
     "RET504",  # Unnecessary assignment to `data` before `return` statement
     "S105",    # Possible hardcoded password assigned to: "PASS"
-    "S108",     # Probable insecure usage of temporary file or directory
+    "S108",    # Probable insecure usage of temporary file or directory
     "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
     "S701",    # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
+    "UP006",   # Use {to} instead of {from} for type annotation
+    "UP007",   # Use X | Y for type annotations
+    "UP031",   # Use format specifiers instead of percent format
+    "UP034",   # Avoid extraneous parentheses
 ]
 
 
