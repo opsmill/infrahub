@@ -22,19 +22,15 @@ class UploadContentPayload(BaseModel):
 
 
 @router.get("/object/{identifier:str}")
-def get_file(
-    identifier: str,
-    _: str = Depends(get_current_user),
-) -> Response:
+def get_file(identifier: str, _: str = Depends(get_current_user)) -> Response:
     content = registry.storage.retrieve(identifier=identifier)
-    return Response(content=content)
+    # FIXME: maybe guess with `mimetypes` package
+    content_type = "text/javascript" if identifier.endswith(".js") else "text/plain"
+    return Response(content=content, media_type=content_type)
 
 
 @router.post("/upload/content")
-def upload_content(
-    item: UploadContentPayload,
-    _: str = Depends(get_current_user),
-) -> UploadResponse:
+def upload_content(item: UploadContentPayload, _: str = Depends(get_current_user)) -> UploadResponse:
     # TODO need to optimized how we read the content of the file, especially if the file is really large
     # Check this discussion for more details
     # https://stackoverflow.com/questions/63048825/how-to-upload-file-using-fastapi
@@ -48,16 +44,14 @@ def upload_content(
 
 
 @router.post("/upload/file")
-def upload_file(
-    file: UploadFile = File(...),
-    _: str = Depends(get_current_user),
-) -> UploadResponse:
+def upload_file(file: UploadFile = File(...), _: str = Depends(get_current_user)) -> UploadResponse:
     # TODO need to optimized how we read the content of the file, especially if the file is really large
     # Check this discussion for more details
     # https://stackoverflow.com/questions/63048825/how-to-upload-file-using-fastapi
 
     file_content = file.file.read()
-    identifier = str(UUIDT())
+    # FIXME: use filename and not a random UUID to be able to guess mime type when serving file
+    identifier = file.filename  # str(UUIDT())
 
     checksum = hashlib.md5(file_content, usedforsecurity=False).hexdigest()
     registry.storage.store(identifier=identifier, content=file_content)
