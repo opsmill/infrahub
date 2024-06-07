@@ -29,9 +29,9 @@ test.describe("Branches creation and deletion", () => {
 
       // Form
       await expect(page.getByText("Create a new branch")).toBeVisible();
-      await page.locator("[id='New branch name']").fill("test123");
-      await page.locator("[id='New branch description']").fill("branch creation test");
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByLabel("New branch name *").fill("test123");
+      await page.getByText("New branch description").fill("branch creation test");
+      await page.getByRole("button", { name: "Create a new branch" }).click();
 
       // After submit
       await expect(page.getByTestId("branch-select-menu")).toContainText("test123");

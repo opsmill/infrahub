@@ -12,7 +12,7 @@ export const saveScreenshotForDocs = async (page: Page, filename: string) => {
 
 export const createBranch = async (page: Page, branchName: string) => {
   await page.getByTestId("create-branch-button").click();
-  await page.locator("[id='New branch name']").fill(branchName);
+  await page.getByLabel("New branch name *").fill(branchName);
 
   await Promise.all([
     page.waitForResponse((response) => {
@@ -32,7 +32,7 @@ export const createBranch = async (page: Page, branchName: string) => {
         status === 200
       );
     }),
-    page.getByRole("button", { name: "Create" }).click(),
+    page.getByRole("button", { name: "Create a new branch" }).click(),
   ]); // to avoid ERR_ABORTED
 };
 
