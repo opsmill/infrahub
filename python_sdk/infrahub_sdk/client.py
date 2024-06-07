@@ -219,7 +219,7 @@ class BaseClient:
     def _build_ip_address_allocation_query(
         self, resource_pool_id: str, identifier: Optional[str] = None, data: Optional[Dict[str, Any]] = None
     ) -> Mutation:
-        input_data = {"id": resource_pool_id}
+        input_data: dict[str, Any] = {"id": resource_pool_id}
 
         if identifier:
             input_data["identifier"] = identifier
@@ -241,7 +241,7 @@ class BaseClient:
         member_type: Optional[str] = None,
         data: Optional[Dict[str, Any]] = None,
     ) -> Mutation:
-        input_data = {"id": resource_pool_id}
+        input_data: dict[str, Any] = {"id": resource_pool_id}
 
         if identifier:
             input_data["identifier"] = identifier
