@@ -5,6 +5,7 @@ import { SCHEMA_ATTRIBUTE_KIND } from "../../config/constants";
 import { useAuth } from "../../hooks/useAuth";
 import { LinkButton } from "../buttons/button-primitive";
 import { constructPath } from "../../utils/fetch";
+import { useLocation } from "react-router-dom";
 
 type tAddComment = {
   onSubmit: ({ comment }: { comment: string }) => void;
@@ -27,6 +28,7 @@ const fields: Array<DynamicFieldProps> = [
 ];
 
 export const AddComment = ({ onSubmit, onCancel }: tAddComment) => {
+  const location = useLocation();
   const { isAuthenticated } = useAuth();
 
   if (isAuthenticated) {
@@ -37,7 +39,11 @@ export const AddComment = ({ onSubmit, onCancel }: tAddComment) => {
 
   return (
     <div>
-      <LinkButton size="sm" variant="primary" to={constructPath("/signin")}>
+      <LinkButton
+        size="sm"
+        variant="primary"
+        to={constructPath("/signin")}
+        state={{ from: location }}>
         Sign in
       </LinkButton>{" "}
       to be able to add a comment.
