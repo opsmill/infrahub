@@ -1,46 +1,46 @@
 import { ReactElement } from "react";
-import { FieldValues, SubmitHandler } from "react-hook-form";
-import { DynamicFieldData } from "../../screens/edit-form-hook/dynamic-control-types";
-import { Form } from "../../screens/edit-form-hook/form";
+import DynamicForm from "../form/dynamic-form";
+import { DynamicFieldProps } from "../form/fields/common";
+import { SCHEMA_ATTRIBUTE_KIND } from "../../config/constants";
+import { useAuth } from "../../hooks/useAuth";
+import { LinkButton } from "../buttons/button-primitive";
+import { constructPath } from "../../utils/fetch";
 
 type tAddComment = {
-  onSubmit: SubmitHandler<FieldValues>;
+  onSubmit: ({ comment }: { comment: string }) => void;
   isLoading?: boolean;
-  onCancel?: Function;
+  onCancel?: () => void;
   disabled?: boolean;
   additionalButtons?: ReactElement;
 };
 
-const fields: DynamicFieldData[] = [
+const fields: Array<DynamicFieldProps> = [
   {
     name: "comment",
     label: "Add a comment",
     placeholder: "Add your comment here...",
-    type: "textarea",
-    value: "",
-    config: {
-      required: "Required",
+    type: SCHEMA_ATTRIBUTE_KIND.TEXTAREA,
+    rules: {
+      required: true,
     },
   },
 ];
 
-export const AddComment = ({
-  onSubmit,
-  isLoading,
-  onCancel,
-  disabled,
-  additionalButtons,
-}: tAddComment) => {
+export const AddComment = ({ onSubmit, onCancel }: tAddComment) => {
+  const { isAuthenticated } = useAuth();
+
+  if (isAuthenticated) {
+    return (
+      <DynamicForm fields={fields} onCancel={onCancel} onSubmit={onSubmit} submitLabel="Comment" />
+    );
+  }
+
   return (
-    <Form
-      onSubmit={onSubmit}
-      fields={fields}
-      submitLabel="Comment"
-      isLoading={isLoading}
-      onCancel={onCancel}
-      disabled={disabled}
-      additionalButtons={additionalButtons}
-      resetAfterSubmit
-    />
+    <div>
+      <LinkButton size="sm" variant="primary" to={constructPath("/signin")}>
+        Sign in
+      </LinkButton>{" "}
+      to be able to add a comment.
+    </div>
   );
 };
