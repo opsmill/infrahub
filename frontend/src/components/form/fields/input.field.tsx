@@ -2,7 +2,7 @@ import { FormField, FormInput, FormLabel, FormMessage } from "../../ui/form";
 import { Input } from "../../ui/input";
 import { FormFieldProps } from "./common";
 
-const InputField = ({ defaultValue, label, name, rules }: FormFieldProps) => {
+const InputField = ({ defaultValue, label, name, rules, ...props }: FormFieldProps) => {
   return (
     <FormField
       key={name}
@@ -20,7 +20,7 @@ const InputField = ({ defaultValue, label, name, rules }: FormFieldProps) => {
             </FormLabel>
 
             <FormInput>
-              <Input {...fieldMethodsWithoutValue} />
+              <Input {...fieldMethodsWithoutValue} {...props} />
             </FormInput>
             <FormMessage />
           </div>
