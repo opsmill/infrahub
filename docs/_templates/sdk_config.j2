@@ -11,14 +11,14 @@ The Python SDK (Async or Sync) client can be configured using an instance of the
   ```python
   from infrahub_sdk import Config, InfrahubClient
   config = Config(address="http://infrahub:8080", api_token="123-xyz-invalid-token")
-  client = await InfrahubClient.init(config=config)
+  client = InfrahubClient(config=config)
   ```
   </TabItem>
   <TabItem value="Sync">
   ```python
   from infrahub_sdk import Config, InfrahubClientSync
   config = Config(address="http://infrahub:8080", api_token="123-xyz-invalid-token")
-  client = InfrahubClientSync.init(config=config)
+  client = InfrahubClientSync(config=config)
   ```
   </TabItem>
 </Tabs>

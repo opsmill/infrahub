@@ -62,7 +62,7 @@ class TestInfrahubClient:
         admin_token = await integration_helper.create_token()
         config = Config(api_token=admin_token, requester=test_client.async_request)
 
-        return await InfrahubClient.init(config=config)
+        return InfrahubClient(config=config)
 
     @pytest.fixture(scope="class")
     async def query_99(self, db: InfrahubDatabase, test_client):

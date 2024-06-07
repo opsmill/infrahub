@@ -22,8 +22,8 @@ from tests.helpers.test_client import dummy_async_request
 
 
 @pytest.fixture
-async def client() -> InfrahubClient:
-    return await InfrahubClient.init(config=Config(address="http://mock", insert_tracker=True))
+def client() -> InfrahubClient:
+    return InfrahubClient(config=Config(address="http://mock", insert_tracker=True))
 
 
 @pytest.fixture

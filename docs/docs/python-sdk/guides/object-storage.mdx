@@ -14,7 +14,7 @@ import json
 from infrahub_sdk import InfrahubClientSync
 
 
-client = InfrahubClientSync.init()
+client = InfrahubClientSync()
 
 data = {
     "key": "value",
@@ -39,7 +39,7 @@ import json
 from infrahub_sdk import InfrahubClientSync
 
 
-client = InfrahubClientSync.init()
+client = InfrahubClientSync()
 identifier = "17d19a20-70f6-3e44-3341-c5124065cda9"
 
 response = client.object_store.get(identifier="17d19a20-70f6-3e44-3341-c5124065cda9")
@@ -68,7 +68,7 @@ data = {
 json_file = Path("/tmp/file.json")
 json_file.write_text(json.dumps(data))
 
-client = InfrahubClientSync.init()
+client = InfrahubClientSync()
 identifier = "17d19a20-70f6-3e44-3341-c5124065cda9"
 
 response = client.object_store.upload(content=json_file.read_text())
