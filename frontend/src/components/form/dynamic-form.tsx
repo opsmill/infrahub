@@ -5,6 +5,7 @@ import { DynamicFieldProps } from "./fields/common";
 import CheckboxField from "./fields/checkbox.field";
 import InputField from "./fields/input.field";
 import TextareaField from "./fields/textarea.field";
+import PasswordInputField from "./fields/password-input.field";
 
 interface DynamicFormProps extends FormProps {
   fields: Array<DynamicFieldProps>;
@@ -34,10 +35,12 @@ const DynamicForm = ({ fields, onCancel, submitLabel, ...props }: DynamicFormPro
 
 const DynamicInput = ({ type, ...props }: DynamicFieldProps) => {
   switch (type) {
-    case SCHEMA_ATTRIBUTE_KIND.TEXT:
-      return <InputField {...props} />;
     case SCHEMA_ATTRIBUTE_KIND.CHECKBOX:
       return <CheckboxField {...props} />;
+    case SCHEMA_ATTRIBUTE_KIND.PASSWORD:
+      return <PasswordInputField {...props} />;
+    case SCHEMA_ATTRIBUTE_KIND.TEXT:
+      return <InputField {...props} />;
     case SCHEMA_ATTRIBUTE_KIND.TEXTAREA:
       return <TextareaField {...props} />;
     default:
