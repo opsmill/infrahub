@@ -2,7 +2,7 @@ import { FormField, FormInput, FormLabel, FormMessage } from "../../ui/form";
 import { FormFieldProps } from "./common";
 import { Checkbox } from "../../inputs/checkbox";
 
-const CheckboxField = ({ defaultValue, label, name, rules }: FormFieldProps) => {
+const CheckboxField = ({ defaultValue, label, name, rules, ...props }: FormFieldProps) => {
   return (
     <FormField
       key={name}
@@ -13,7 +13,7 @@ const CheckboxField = ({ defaultValue, label, name, rules }: FormFieldProps) => 
         <div className="flex flex-col items-start">
           <div className="flex items-center">
             <FormInput>
-              <Checkbox {...field} />
+              <Checkbox {...field} {...props} />
             </FormInput>
 
             <FormLabel className="ml-1">

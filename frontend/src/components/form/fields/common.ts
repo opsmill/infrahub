@@ -6,6 +6,7 @@ export type FormFieldProps = {
   defaultValue?: string | number | boolean;
   label: string;
   name: string;
+  placeholder?: string;
   rules?: ComponentProps<typeof FormField>["rules"];
 };
 

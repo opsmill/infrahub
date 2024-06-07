@@ -2,7 +2,7 @@ import { FormField, FormInput, FormLabel, FormMessage } from "../../ui/form";
 import { FormFieldProps } from "./common";
 import { MarkdownEditor } from "../../editor";
 
-const TextareaField = ({ defaultValue, label, name, rules }: FormFieldProps) => {
+const TextareaField = ({ defaultValue, label, name, rules, ...props }: FormFieldProps) => {
   return (
     <FormField
       key={name}
@@ -18,6 +18,7 @@ const TextareaField = ({ defaultValue, label, name, rules }: FormFieldProps) => 
           <FormInput>
             <MarkdownEditor
               {...field}
+              {...props}
               onChange={(value: string) => field.onChange(value)}
               className="w-full"
             />
