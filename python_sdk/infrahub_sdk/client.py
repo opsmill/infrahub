@@ -890,7 +890,6 @@ class InfrahubClient(BaseClient):
             timeout=timeout,
             tracker=tracker,
             raise_for_error=raise_for_error,
-            variables={"identifier": identifier, "data": data},
         )
 
         if response[mutation_name]["ok"]:
@@ -939,17 +938,7 @@ class InfrahubClient(BaseClient):
             data=data,
         )
         response = await self.execute_graphql(
-            query=query.render(),
-            branch_name=branch,
-            timeout=timeout,
-            tracker=tracker,
-            raise_for_error=raise_for_error,
-            variables={
-                "identifier": identifier,
-                "prefix_length": prefix_length,
-                "member_type": member_type,
-                "data": data,
-            },
+            query=query.render(), branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
         )
 
         if response[mutation_name]["ok"]:
@@ -1510,12 +1499,7 @@ class InfrahubClientSync(BaseClient):
             resource_pool_id=resource_pool.id, identifier=identifier, data=data
         )
         response = self.execute_graphql(
-            query=query.render(),
-            branch_name=branch,
-            timeout=timeout,
-            tracker=tracker,
-            raise_for_error=raise_for_error,
-            variables={"identifier": identifier, "data": data},
+            query=query.render(), branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
         )
 
         if response[mutation_name]["ok"]:
@@ -1564,17 +1548,7 @@ class InfrahubClientSync(BaseClient):
             data=data,
         )
         response = self.execute_graphql(
-            query=query.render(),
-            branch_name=branch,
-            timeout=timeout,
-            tracker=tracker,
-            raise_for_error=raise_for_error,
-            variables={
-                "identifier": identifier,
-                "prefix_length": prefix_length,
-                "member_type": member_type,
-                "data": data,
-            },
+            query=query.render(), branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
         )
 
         if response[mutation_name]["ok"]:
