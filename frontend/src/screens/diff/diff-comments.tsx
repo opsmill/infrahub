@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
+import { useContext } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { AddComment } from "../../components/conversations/add-comment";
@@ -38,7 +38,6 @@ export const DataDiffComments = (props: tDataDiffComments) => {
   const auth = useAuth();
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const [isLoading, setIsLoading] = useState(false);
   const { refetch: contextRefetch, node, currentBranch } = useContext(DiffContext);
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
@@ -157,8 +156,6 @@ export const DataDiffComments = (props: tDataDiffComments) => {
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
 
       handleRefetch();
-
-      setIsLoading(false);
     } catch (error: any) {
       if (threadId) {
         const mutationString = deleteObject({
@@ -180,8 +177,6 @@ export const DataDiffComments = (props: tDataDiffComments) => {
       }
 
       console.error("An error occurred while creating the comment: ", error);
-
-      setIsLoading(false);
     }
   };
 
@@ -195,13 +190,7 @@ export const DataDiffComments = (props: tDataDiffComments) => {
     <div className="flex-1 p-4 overflow-auto">
       {thread?.id && <Thread thread={thread} refetch={handleRefetch} />}
 
-      {!thread?.id && (
-        <AddComment
-          onSubmit={handleSubmit}
-          isLoading={isLoading}
-          disabled={!auth?.permissions?.write}
-        />
-      )}
+      {!thread?.id && <AddComment onSubmit={handleSubmit} />}
     </div>
   );
 };

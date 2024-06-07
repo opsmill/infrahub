@@ -7,14 +7,6 @@ import { LinkButton } from "../buttons/button-primitive";
 import { constructPath } from "../../utils/fetch";
 import { useLocation } from "react-router-dom";
 
-type tAddComment = {
-  onSubmit: ({ comment }: { comment: string }) => void;
-  isLoading?: boolean;
-  onCancel?: () => void;
-  disabled?: boolean;
-  additionalButtons?: ReactElement;
-};
-
 const fields: Array<DynamicFieldProps> = [
   {
     name: "comment",
@@ -27,13 +19,30 @@ const fields: Array<DynamicFieldProps> = [
   },
 ];
 
+type CommentFormData = {
+  comment: string;
+};
+
+type tAddComment = {
+  onSubmit: ({ comment }: CommentFormData) => Promise<void>;
+  onCancel?: () => void;
+  additionalButtons?: ReactElement;
+};
+
 export const AddComment = ({ onSubmit, onCancel }: tAddComment) => {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
 
   if (isAuthenticated) {
     return (
-      <DynamicForm fields={fields} onCancel={onCancel} onSubmit={onSubmit} submitLabel="Comment" />
+      <DynamicForm
+        fields={fields}
+        onCancel={onCancel}
+        onSubmit={async (data) => {
+          await onSubmit(data as CommentFormData);
+        }}
+        submitLabel="Comment"
+      />
     );
   }
 
