@@ -8,6 +8,7 @@ import { AuthProvider, RequireAuth } from "./hooks/useAuth";
 
 import "react-toastify/dist/ReactToastify.css";
 import { IPAM_ROUTE } from "./screens/ipam/constants";
+import { Plugins } from "./screens/plugins";
 
 addCollection(mdiIcons);
 
@@ -96,6 +97,7 @@ const App = () => {
             <Route path={`${IPAM_ROUTE.INDEX}/*`} index element={<IpamRouter />} />
           </Route>
           <Route path="/" element={<Homepage />} />
+          <Route path="/plugins" element={<Plugins />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Route>
         <Route path="/signin" element={<SignIn />} />
