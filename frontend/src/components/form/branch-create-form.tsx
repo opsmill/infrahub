@@ -63,7 +63,7 @@ const BranchCreateForm = ({ onCancel, onSuccess }: BranchCreateFormProps) => {
         {
           name: "description",
           label: "New branch description",
-          type: "TextArea",
+          type: "Text",
         },
         {
           name: "sync_with_git",
