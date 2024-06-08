@@ -1100,6 +1100,9 @@ async def test_create_valid_datetime_success(db: InfrahubDatabase, default_branc
     mutation {
         TestCriticalityCreate(data: {name: { value: "HIGH"}, level: {value: 1}, time: {value: "2021-01-01T00:00:00Z"}}) {
             ok
+            object {
+                id
+            }
         }
     }
     """
@@ -1113,6 +1116,11 @@ async def test_create_valid_datetime_success(db: InfrahubDatabase, default_branc
     )
     assert result.errors is None
     assert result.data["TestCriticalityCreate"]["ok"] is True
+    crit = await NodeManager.get_one(db=db, id=result.data["TestCriticalityCreate"]["id"])
+    assert crit.time.value == "2021-01-01T00:00:00Z"
+    assert crit.time.is_default is False
+    assert crit.name.value == "HIGH"
+    assert crit.level.value == 1
 
 
 async def test_create_valid_datetime_failure(db: InfrahubDatabase, default_branch, criticality_schema):

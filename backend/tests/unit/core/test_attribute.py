@@ -117,11 +117,10 @@ async def test_validate_format_datetime_invalid(
 ):
     schema = criticality_schema.get_attribute("time")
 
-    with pytest.raises(ValidationError) as error:
+    with pytest.raises(ValidationError, match=r"invalid-datetime is not a valid DateTime"):
         DateTime(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="invalid-datetime")
-    assert error.value.args[0] == "invalid-datetime is not a valid DateTime"
 
-    with pytest.raises(ValidationError) as error:
+    with pytest.raises(ValidationError, match=r"10:10:10 is not a valid DateTime"):
         DateTime(
             name="test",
             schema=schema,
@@ -130,7 +129,6 @@ async def test_validate_format_datetime_invalid(
             node=None,
             data="10:10:10",
         )
-    assert error.value.args[0] == "10:10:10 is not a valid DateTime"
 
 
 async def test_validate_iphost_returns(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
