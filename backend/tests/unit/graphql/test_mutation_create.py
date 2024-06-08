@@ -1116,7 +1116,7 @@ async def test_create_valid_datetime_success(db: InfrahubDatabase, default_branc
     )
     assert result.errors is None
     assert result.data["TestCriticalityCreate"]["ok"] is True
-    crit = await NodeManager.get_one(db=db, id=result.data["TestCriticalityCreate"]["id"])
+    crit = await NodeManager.get_one(db=db, id=result.data["TestCriticalityCreate"]["object"]["id"])
     assert crit.time.value == "2021-01-01T00:00:00Z"
     assert crit.time.is_default is False
     assert crit.name.value == "HIGH"
