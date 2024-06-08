@@ -8,7 +8,7 @@ import viteTsconfigPaths from "vite-tsconfig-paths";
 const URL =
   // "http://localhost:8000/api/file/17d61cf7-829d-1688-3b64-c51a49b197e2/dist/assets/remoteEntry.js?content_type=text/javascript";
   // "http://localhost:4173/assets/remoteEntry.js";
-  "http://localhost:8000/api/storage/object/17d66b08-8f31-53d0-3b6a-c51efe883302";
+  "http://localhost:8000/api/storage/object/remoteEntry.js";
 
 // https://vitejs.dev/config/
 export default defineConfig({
