@@ -74,6 +74,24 @@ class NodeAttributeDiffElement(BaseDiffElement):
     properties: dict[str, PropertyDiffElement]
 
 
+# class NodeRelationshipDiffElement(BaseDiffElement):
+#     labels: List[str]
+#     kind: str
+#     branch: str
+#     id: str
+#     db_id: str = Field(exclude=True)
+#     name: str
+#     action: DiffAction
+#     properties: Dict[str, PropertyDiffElement]
+#     changed_at: Optional[Timestamp] = None
+#     path: str
+#     # conflict_paths: List[str]
+
+
+class RootDiffElement(BaseDiffElement):
+    nodes: dict[str, NodeDiffElement] = Field(default_factory=list, description="map node IDs to NodeDiffElements")
+
+
 class NodeDiffElement(BaseDiffElement):
     branch: Optional[str] = None
     labels: list[str]
@@ -84,7 +102,7 @@ class NodeDiffElement(BaseDiffElement):
     db_id: str = Field(exclude=True)
     rel_id: Optional[str] = Field(None, exclude=True)
     changed_at: Optional[Timestamp] = None
-    attributes: dict[str, NodeAttributeDiffElement]
+    attributes: dict[str, NodeAttributeDiffElement] = Field(default_factory=dict)
 
 
 class RelationshipEdgeNodeDiffElement(BaseDiffElement):
@@ -157,7 +175,7 @@ class EnrichedDiffSummaryElement(BaseModel):
 
 
 class ModifiedPath(BaseModel):
-    type: str
+    type: ModifiedPathType
     node_id: str
     path_type: PathType
     kind: str
@@ -193,7 +211,7 @@ class ModifiedPath(BaseModel):
         return hash((type(self),) + tuple(self.__dict__.values()))
 
     def _path(self, with_peer: bool = True) -> str:
-        identifier = f"{self.type}/{self.node_id}"
+        identifier = f"{self.type.value}/{self.node_id}"
         if self.element_name:
             identifier += f"/{self.element_name}"
 
@@ -237,6 +255,9 @@ class BranchChanges(ValueElement):
     branch: str
     action: DiffAction
 
+    def __hash__(self) -> int:
+        return hash(str(self.previous) + str(self.new) + str(self.branch) + str(self.action.value))
+
 
 class ObjectConflict(BaseModel):
     name: str
@@ -275,6 +296,10 @@ class DiffElementType(str, Enum):
     ATTRIBUTE = "Attribute"
     RELATIONSHIP_ONE = "RelationshipOne"
     RELATIONSHIP_MANY = "RelationshipMany"
+
+
+class ModifiedPathType(Enum):
+    DATA = "data"
 
 
 class DiffSummary(BaseModel):

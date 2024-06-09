@@ -28,12 +28,13 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import DiffFromRequiredOnDefaultBranchError, DiffRangeValidationError
 from infrahub.message_bus.messages import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 
-from .model import (
+from .model.diff import (
     BranchChanges,
     DataConflict,
     DiffSummaryElement,
     FileDiffElement,
     ModifiedPath,
+    ModifiedPathType,
     NodeAttributeDiffElement,
     NodeDiffElement,
     PropertyDiffElement,
@@ -268,7 +269,7 @@ class BranchDiffer:
         for conflict in conflicts:
             response = DataConflict(
                 name=conflict.element_name or "",
-                type=conflict.type,
+                type=conflict.type.value,
                 id=conflict.node_id,
                 kind=conflict.kind,
                 path=str(conflict),
@@ -312,13 +313,17 @@ class BranchDiffer:
 
             for node_id, node_diff in node_data.items():
                 modified_path = ModifiedPath(
-                    type="data", kind=node_diff.kind, node_id=node_id, action=node_diff.action, path_type=PathType.NODE
+                    type=ModifiedPathType.DATA,
+                    kind=node_diff.kind,
+                    node_id=node_id,
+                    action=node_diff.action,
+                    path_type=PathType.NODE,
                 )
                 paths[branch_name].add(modified_path)
                 for attr_name, attr in node_diff.attributes.items():
                     for prop_type, prop_value in attr.properties.items():
                         modified_path = ModifiedPath(
-                            type="data",
+                            type=ModifiedPathType.DATA,
                             kind=node_diff.kind,
                             node_id=node_id,
                             action=attr.action,
@@ -361,7 +366,7 @@ class BranchDiffer:
                             relationship_key = f"{node_id}/{matching_relationship[0].name}"
                             if relationship_key not in cardinality_one_relationships:
                                 cardinality_one_relationships[relationship_key] = ModifiedPath(
-                                    type="data",
+                                    type=ModifiedPathType.DATA,
                                     node_id=node_id,
                                     action=DiffAction.UNCHANGED,
                                     kind=schema.kind,
@@ -390,7 +395,7 @@ class BranchDiffer:
                         for prop_type, prop_value in rel.properties.items():
                             if matching_relationship:
                                 modified_path = ModifiedPath(
-                                    type="data",
+                                    type=ModifiedPathType.DATA,
                                     node_id=node_id,
                                     kind=schema.kind,
                                     action=rel.action,
@@ -1092,7 +1097,7 @@ class BranchDifferNew:
             raise ValueError("BranchDiffer object was not initialized with InfrahubDatabase")
         return self._db
 
-    async def get_diff_paths(self) -> None:
+    async def _get_diff_paths(self) -> list[QueryResult]:
         query_paths = await DiffAllPathsQuery.init(
             db=self.db,
             branch=self.branch,

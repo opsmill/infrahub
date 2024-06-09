@@ -450,10 +450,13 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
 
 
 class DiffAllPathsQuery(DiffQuery):
+    """Gets the required Cypher paths for a diff"""
+
     name: str = "diff_node"
 
     def __init__(
         self,
+        base_branch: Branch,
         namespaces_include: Optional[List[str]] = None,
         namespaces_exclude: Optional[List[str]] = None,
         kinds_include: Optional[List[str]] = None,
@@ -462,6 +465,7 @@ class DiffAllPathsQuery(DiffQuery):
         *args,
         **kwargs,
     ):
+        self.base_branch = base_branch
         self.namespaces_include = namespaces_include
         self.namespaces_exclude = namespaces_exclude
         self.kinds_include = kinds_include
@@ -483,15 +487,15 @@ class DiffAllPathsQuery(DiffQuery):
         where_clause = " AND ".join(where_clause_parts)
         return f"({where_clause})"
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs):
         self.params.update(
             {
                 "namespaces_include": self.namespaces_include,
                 "namespaces_exclude": self.namespaces_exclude,
                 "kinds_include": self.kinds_include,
                 "kinds_exclude": self.kinds_exclude,
-                "source_branch": registry.default_branch,
-                "dest_branch": self.branch.name,
+                "base_branch_name": self.base_branch.name,
+                "branch_name": self.branch.name,
                 "branch_names": [registry.default_branch, self.branch.name],
                 "to_time": self.diff_to.to_string(),
             }
@@ -534,21 +538,21 @@ class DiffAllPathsQuery(DiffQuery):
                     r_node.from DESC,
                     r_root.from DESC
                 LIMIT 1
-                // get source branch version of the diff path, if it exists
+                // get base branch version of the diff path, if it exists
                 WITH diff_rel_path, diff_rel, r_root, n, r_node, p
-                OPTIONAL MATCH latest_source_path = (:Root)<-[r_root]-(n)-[r_node]-(p)-[source_diff_rel]->(source_prop)
-                WHERE any(r in relationships(diff_rel_path) WHERE r.branch = $dest_branch)
-                AND type(source_diff_rel) = type(diff_rel)
+                OPTIONAL MATCH latest_base_path = (:Root)<-[r_root]-(n)-[r_node]-(p)-[base_diff_rel]->(base_prop)
+                WHERE any(r in relationships(diff_rel_path) WHERE r.branch = $branch_name)
+                AND type(base_diff_rel) = type(diff_rel)
                 AND all(
-                    r in relationships(latest_source_path)
-                    WHERE r.branch = $source_branch
+                    r in relationships(latest_base_path)
+                    WHERE r.branch = $base_branch_name
                     AND r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
                 )
-                WITH diff_rel_path, latest_source_path, r_node, r_root
-                ORDER BY source_diff_rel.from DESC, r_node.from DESC, r_root.from DESC
+                WITH diff_rel_path, latest_base_path, r_node, r_root
+                ORDER BY base_diff_rel.from DESC, r_node.from DESC, r_root.from DESC
                 LIMIT 1
                 RETURN reduce(
-                    diff_rel_paths = [], item IN [diff_rel_path, latest_source_path] |
+                    diff_rel_paths = [], item IN [diff_rel_path, latest_base_path] |
                     CASE WHEN item IS NULL THEN diff_rel_paths ELSE diff_rel_paths + [item] END
                 ) AS diff_rel_paths
             }
