@@ -5,6 +5,7 @@ import { addRelationship } from "@/graphql/mutations/relationships/addRelationsh
 import { removeRelationship } from "@/graphql/mutations/relationships/removeRelationship";
 import { getGroups } from "@/graphql/queries/groups/getGroups";
 import useQuery from "@/hooks/useQuery";
+import EditFormHookComponent from "@/screens/edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
@@ -17,7 +18,6 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 
 interface Props {
   closeDrawer: Function;

@@ -1,6 +1,8 @@
 import { Button } from "@/components/buttons/button";
 import { getDropdownOptionsForRelatedPeersPaginated } from "@/graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import useFilters from "@/hooks/useFilters";
+import { DynamicControl } from "@/screens/edit-form-hook/dynamic-control";
+import { DynamicFieldData } from "@/screens/edit-form-hook/dynamic-control-types";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
@@ -11,8 +13,6 @@ import { gql, useQuery } from "@apollo/client";
 import { FunnelIcon } from "@heroicons/react/20/solid";
 import { useAtom } from "jotai";
 import { FormProvider, useForm } from "react-hook-form";
-import { DynamicControl } from "../edit-form-hook/dynamic-control";
-import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 
 // TODO: Functionnal programming update
 // TODO: Pagination with infitie scrolling for the select

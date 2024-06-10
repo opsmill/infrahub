@@ -6,6 +6,8 @@ import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWith
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
+import { DynamicFieldData } from "@/screens/edit-form-hook/dynamic-control-types";
+import EditFormHookComponent from "@/screens/edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
@@ -20,8 +22,6 @@ import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
-import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 
 interface Props {
   objectname: string;

@@ -12,6 +12,14 @@ import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
 import { GET_PREFIX } from "@/graphql/queries/ipam/prefixes";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
+import { defaultIpNamespaceAtom } from "@/screens/ipam/common/namespace.state";
+import { constructPathForIpam } from "@/screens/ipam/common/utils";
+import {
+  IPAM_QSP,
+  IPAM_ROUTE,
+  IP_ADDRESS_GENERIC,
+  IP_PREFIX_GENERIC,
+} from "@/screens/ipam/constants";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
@@ -25,9 +33,6 @@ import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { defaultIpNamespaceAtom } from "../common/namespace.state";
-import { constructPathForIpam } from "../common/utils";
-import { IPAM_QSP, IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "../constants";
 import { reloadIpamTreeAtom } from "../ipam-tree/ipam-tree.state";
 
 const IpamIPPrefixDetails = forwardRef((props, ref) => {

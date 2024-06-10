@@ -17,6 +17,7 @@ import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItemCreate from "@/screens/object-item-create/object-item-create-paginated";
+import { getFormStructure } from "@/screens/proposed-changes/conversations";
 import { branchesState } from "@/state/atoms/branches.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
@@ -31,7 +32,6 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { getFormStructure } from "../proposed-changes/conversations";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();

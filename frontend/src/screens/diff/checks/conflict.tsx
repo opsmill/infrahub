@@ -8,6 +8,7 @@ import { DATA_CHECK_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import { getNodeClassName } from "@/screens/diff/data-diff-node";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames } from "@/utils/common";
@@ -20,7 +21,6 @@ import { ArrowTopRightOnSquareIcon, ChevronRightIcon } from "@heroicons/react/24
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { getNodeClassName } from "../data-diff-node";
 
 const renderConflict = {
   attribute_value: (name: string) => {

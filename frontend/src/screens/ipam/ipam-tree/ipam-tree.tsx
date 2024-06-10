@@ -7,11 +7,11 @@ import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { GET_PREFIXES_ONLY } from "@/graphql/queries/ipam/prefixes";
+import { defaultIpNamespaceAtom } from "@/screens/ipam/common/namespace.state";
+import { constructPathForIpam } from "@/screens/ipam/common/utils";
+import { IPAM_QSP, IPAM_ROUTE } from "@/screens/ipam/constants";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { defaultIpNamespaceAtom } from "../common/namespace.state";
-import { constructPathForIpam } from "../common/utils";
-import { IPAM_QSP, IPAM_ROUTE } from "../constants";
 import { IpamTreeSkeleton } from "./ipam-tree-skeleton";
 import { ipamTreeAtom, reloadIpamTreeAtom } from "./ipam-tree.state";
 import {

@@ -5,6 +5,8 @@ import graphqlClient from "@/graphql/graphqlClientApollo";
 import { createObject } from "@/graphql/mutations/objects/createObject";
 import { getObjectItemsPaginated } from "@/graphql/queries/objects/getObjectItems";
 import useQuery from "@/hooks/useQuery";
+import { DynamicFieldData } from "@/screens/edit-form-hook/dynamic-control-types";
+import { Form } from "@/screens/edit-form-hook/form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
@@ -16,8 +18,6 @@ import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
-import { Form } from "../edit-form-hook/form";
 
 interface iProps {
   objectname?: string;

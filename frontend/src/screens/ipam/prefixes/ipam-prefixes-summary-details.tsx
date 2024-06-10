@@ -4,6 +4,9 @@ import { GET_PREFIX_KIND } from "@/graphql/queries/ipam/prefixes";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import NoDataFound from "@/screens/errors/no-data-found";
+import { IpDetailsCard } from "@/screens/ipam/common/ip-details-card";
+import { constructPathForIpam } from "@/screens/ipam/common/utils";
+import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "@/screens/ipam/constants";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
@@ -11,9 +14,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { IpDetailsCard } from "../common/ip-details-card";
-import { constructPathForIpam } from "../common/utils";
-import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";
 import { IpamSummarySkeleton } from "./ipam-summary-skeleton";
 
 export default function IpamIPPrefixesSummaryDetails() {
