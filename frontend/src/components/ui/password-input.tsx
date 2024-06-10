@@ -1,8 +1,8 @@
-import { forwardRef, useState } from "react";
+import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { Input, InputProps } from "./input";
-import { classNames } from "../../utils/common";
+import { forwardRef, useState } from "react";
 import { Button } from "../buttons/button-primitive";
+import { Input, InputProps } from "./input";
 
 interface PasswordInputProps extends InputProps {}
 
