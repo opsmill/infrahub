@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
-import { MoreButton } from "../../../components/buttons/more-button";
-import Accordion from "../../../components/display/accordion";
-import { DateDisplay } from "../../../components/display/date-display";
-import { DurationDisplay } from "../../../components/display/duration-display";
-import { PopOver } from "../../../components/display/popover";
-import { List } from "../../../components/table/list";
-import { Tooltip } from "../../../components/ui/tooltip";
+import { MoreButton } from "../@/components/buttons/more-button";
+import Accordion from "../@/components/display/accordion";
+import { DateDisplay } from "../@/components/display/date-display";
+import { DurationDisplay } from "../@/components/display/duration-display";
+import { PopOver } from "../@/components/display/popover";
+import { List } from "../@/components/table/list";
+import { Tooltip } from "../@/components/ui/tooltip";
 import { ValidatorDetails } from "./validator-details";
 
 type tValidatorProps = {

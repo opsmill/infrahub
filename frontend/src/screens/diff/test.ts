@@ -107,11 +107,11 @@ index 25392af1..2788585a 100644
 -import { StringParam, useQueryParam } from "use-query-params";
 -import LoadingScreen from "../../loading-screen/loading-screen";
 -import { toast } from "react-toastify";
--import { ALERT_TYPES, Alert } from "../../../components/alert";
+-import { ALERT_TYPES, Alert } from "../@/components/alert";
 +import { PencilIcon } from "@heroicons/react/24/outline";
 +import { Diff, Hunk, getChangeKey, parseDiff } from "react-diff-view";
 +import "react-diff-view/style/index.css";
-+import { Button } from "../../../components/button";
++import { Button } from "../@/components/button";
 +import { text as diffText } from "./test";
 +
 +const comments = [

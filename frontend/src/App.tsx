@@ -6,48 +6,48 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { ARTIFACT_OBJECT, GRAPHQL_QUERY_OBJECT } from "./config/constants";
 import { AuthProvider, RequireAuth } from "./hooks/useAuth";
 
+import { IPAM_ROUTE } from "@/screens/ipam/constants";
 import "react-toastify/dist/ReactToastify.css";
-import { IPAM_ROUTE } from "./screens/ipam/constants";
 
 addCollection(mdiIcons);
 
-const Layout = loadable(() => import("./screens/layout/layout"));
-const SchemaPage = loadable(() => import("./screens/schema/schema-page"));
-const GraphiQLPage = loadable(() => import("./screens/graphql/graphiql"));
-const RedirectToGraphiQLPage = loadable(() => import("./screens/graphql/RedirectToGraphiQLPage"));
+const Layout = loadable(() => import("@/screens/layout/layout"));
+const SchemaPage = loadable(() => import("@/screens/schema/schema-page"));
+const GraphiQLPage = loadable(() => import("@/screens/graphql/graphiql"));
+const RedirectToGraphiQLPage = loadable(() => import("@/screens/graphql/RedirectToGraphiQLPage"));
 const ArtifactsObjectItemDetailsPaginated = loadable(
-  () => import("./screens/artifacts/object-item-details-paginated")
+  () => import("@/screens/artifacts/object-item-details-paginated")
 );
 const GraphqlQueryDetailsPage = loadable(
-  () => import("./screens/graphql/details/graphql-query-details-page")
+  () => import("@/screens/graphql/details/graphql-query-details-page")
 );
-const BranchItemDetails = loadable(() => import("./screens/branches/branch-item-details"));
-const BranchesItems = loadable(() => import("./screens/branches/branches-items"));
-const TaskItemsScreen = loadable(() => import("./screens/tasks/task-items-screen"));
-const TaskItemDetailsScreen = loadable(() => import("./screens/tasks/task-item-details-screen"));
-const ProposedChanges = loadable(() => import("./screens/proposed-changes/proposed-changes-items"));
+const BranchItemDetails = loadable(() => import("@/screens/branches/branch-item-details"));
+const BranchesItems = loadable(() => import("@/screens/branches/branches-items"));
+const TaskItemsScreen = loadable(() => import("@/screens/tasks/task-items-screen"));
+const TaskItemDetailsScreen = loadable(() => import("@/screens/tasks/task-item-details-screen"));
+const ProposedChanges = loadable(() => import("@/screens/proposed-changes/proposed-changes-items"));
 const ProposedChangesDetails = loadable(
-  () => import("./screens/proposed-changes/proposed-changes-details")
+  () => import("@/screens/proposed-changes/proposed-changes-details")
 );
 const ProposedChangesCreatePage = loadable(
-  () => import("./screens/proposed-changes/proposed-changes-create-page")
+  () => import("@/screens/proposed-changes/proposed-changes-create-page")
 );
-const UserProfile = loadable(() => import("./screens/user-profile/user-profile"));
+const UserProfile = loadable(() => import("@/screens/user-profile/user-profile"));
 const ObjectItemsPaginated = loadable(
-  () => import("./screens/object-items/object-items-paginated")
+  () => import("@/screens/object-items/object-items-paginated")
 );
 const ObjectItemDetailsPaginated = loadable(
-  () => import("./screens/object-item-details/object-item-details-paginated")
+  () => import("@/screens/object-item-details/object-item-details-paginated")
 );
-const Homepage = loadable(() => import("./screens/homepage"));
-const ResourceManager = loadable(() => import("./screens/resource-manager/resource-manager-page"));
-const ResourcePool = loadable(() => import("./screens/resource-manager/resource-pool-page"));
+const Homepage = loadable(() => import("@/screens/homepage"));
+const ResourceManager = loadable(() => import("@/screens/resource-manager/resource-manager-page"));
+const ResourcePool = loadable(() => import("@/screens/resource-manager/resource-pool-page"));
 const ResourceAllocationPage = loadable(
-  () => import("./screens/resource-manager/resource-allocation-page")
+  () => import("@/screens/resource-manager/resource-allocation-page")
 );
-const SignIn = loadable(() => import("./screens/sign-in/sign-in"));
-const IpamPage = loadable(() => import("./screens/ipam/ipam-page"));
-const IpamRouter = loadable(() => import("./screens/ipam/ipam-router"));
+const SignIn = loadable(() => import("@/screens/sign-in/sign-in"));
+const IpamPage = loadable(() => import("@/screens/ipam/ipam-page"));
+const IpamRouter = loadable(() => import("@/screens/ipam/ipam-router"));
 
 const App = () => {
   return (

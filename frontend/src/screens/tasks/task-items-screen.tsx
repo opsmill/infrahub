@@ -1,5 +1,5 @@
+import { Badge } from "@/components/ui/badge";
 import { gql } from "@apollo/client";
-import { Badge } from "../../components/ui/badge";
 import { TASK_OBJECT } from "../../config/constants";
 import { getTasksItemsCount } from "../../graphql/queries/tasks/getTasksItemsCount";
 import useQuery from "../../hooks/useQuery";

@@ -2,17 +2,17 @@ import { constructPath } from "@/utils/fetch";
 import { AttributeType, ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
 import { getObjectDetailsUrl, getObjectDetailsUrl2 } from "@/utils/objects";
 import { Icon } from "@iconify-icon/react";
-import { CopyToClipboard } from "../../../components/buttons/copy-to-clipboard";
-import PropertiesPopover from "../../../components/display/properties-popover";
-import ObjectEditSlideOverTrigger from "../../../components/form/object-edit-slide-over-trigger";
-import { Property, PropertyList } from "../../../components/table/property-list";
-import { Badge } from "../../../components/ui/badge";
-import { CardWithBorder } from "../../../components/ui/card";
-import { Link } from "../../../components/ui/link";
-import { Tooltip } from "../../../components/ui/tooltip";
 import { RELATIONSHIP_VIEW_BLACKLIST } from "../../../config/constants";
 import { CoreGraphQlQuery } from "../../../generated/graphql";
 import { iNodeSchema } from "../../../state/atoms/schema.atom";
+import { CopyToClipboard } from "../@/components/buttons/copy-to-clipboard";
+import PropertiesPopover from "../@/components/display/properties-popover";
+import ObjectEditSlideOverTrigger from "../@/components/form/object-edit-slide-over-trigger";
+import { Property, PropertyList } from "../@/components/table/property-list";
+import { Badge } from "../@/components/ui/badge";
+import { CardWithBorder } from "../@/components/ui/card";
+import { Link } from "../@/components/ui/link";
+import { Tooltip } from "../@/components/ui/tooltip";
 
 type GraphqlQueryDetailsCardProps = {
   data: CoreGraphQlQuery;

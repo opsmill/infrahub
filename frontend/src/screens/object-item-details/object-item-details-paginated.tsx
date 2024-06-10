@@ -1,3 +1,10 @@
+import { ButtonWithTooltip as ButtonWithTooltip2 } from "@/components/buttons/button-primitive";
+import { ButtonWithTooltip } from "@/components/buttons/button-with-tooltip";
+import { Retry } from "@/components/buttons/retry";
+import MetaDetailsTooltip from "@/components/display/meta-details-tooltips";
+import SlideOver from "@/components/display/slide-over";
+import { Tabs } from "@/components/tabs";
+import { Link } from "@/components/ui/link";
 import { constructPath } from "@/utils/fetch";
 import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
 import {
@@ -16,13 +23,6 @@ import { useAtomValue } from "jotai/index";
 import { useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ButtonWithTooltip as ButtonWithTooltip2 } from "../../components/buttons/button-primitive";
-import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
-import { Retry } from "../../components/buttons/retry";
-import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
-import SlideOver from "../../components/display/slide-over";
-import { Tabs } from "../../components/tabs";
-import { Link } from "../../components/ui/link";
 import {
   ARTIFACT_DEFINITION_OBJECT,
   DEFAULT_BRANCH_NAME,

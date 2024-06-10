@@ -1,6 +1,6 @@
+import { Badge } from "@/components/ui/badge";
 import { warnUnexpectedType } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { Badge } from "../../components/ui/badge";
 import { components } from "../../infraops";
 import { AccordionStyled, ModelDisplay, PropertyRow } from "./styled";
 

@@ -1,11 +1,11 @@
+import { Button } from "@/components/buttons/button-primitive";
+import { Badge } from "@/components/ui/badge";
 import { classNames, isGeneric } from "@/utils/common";
 import { Tab } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { CSSProperties } from "react";
 import { ArrayParam, useQueryParam } from "use-query-params";
-import { Button } from "../../components/buttons/button-primitive";
-import { Badge } from "../../components/ui/badge";
 import { QSP } from "../../config/qsp";
 import {
   IModelSchema,

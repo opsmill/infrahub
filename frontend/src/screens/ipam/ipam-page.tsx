@@ -1,9 +1,9 @@
 import { Outlet } from "react-router-dom";
 
-import { Card } from "../../components/ui/card";
+import { Card } from "@/components/ui/card";
 import Content from "../layout/content";
-import IpamTree from "./ipam-tree/ipam-tree";
 import IpNamespaceSelector from "./ip-namespace-selector";
+import IpamTree from "./ipam-tree/ipam-tree";
 
 export default function IpamPage() {
   return (

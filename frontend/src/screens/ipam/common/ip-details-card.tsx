@@ -1,13 +1,13 @@
 import { constructPath } from "@/utils/fetch";
 import { AttributeType, ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
 import { getObjectDetailsUrl } from "@/utils/objects";
-import ObjectEditSlideOverTrigger from "../../../components/form/object-edit-slide-over-trigger";
-import ProgressBarChart from "../../../components/stats/progress-bar-chart";
-import { Property, PropertyList } from "../../../components/table/property-list";
-import { Badge } from "../../../components/ui/badge";
-import { CardWithBorder } from "../../../components/ui/card";
-import { Link } from "../../../components/ui/link";
 import { IModelSchema } from "../../../state/atoms/schema.atom";
+import ObjectEditSlideOverTrigger from "../@/components/form/object-edit-slide-over-trigger";
+import ProgressBarChart from "../@/components/stats/progress-bar-chart";
+import { Property, PropertyList } from "../@/components/table/property-list";
+import { Badge } from "../@/components/ui/badge";
+import { CardWithBorder } from "../@/components/ui/card";
+import { Link } from "../@/components/ui/link";
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "../constants";
 
 type tIpDetailsCard = {

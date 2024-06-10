@@ -1,13 +1,13 @@
+import { ButtonWithTooltip } from "@/components/buttons/button-with-tooltip";
+import SlideOver from "@/components/display/slide-over";
+import { Tabs } from "@/components/tabs";
+import { Card } from "@/components/ui/card";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
-import SlideOver from "../../components/display/slide-over";
-import { Tabs } from "../../components/tabs";
-import { Card } from "../../components/ui/card";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { usePermission } from "../../hooks/usePermission";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";

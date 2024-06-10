@@ -1,13 +1,13 @@
-import { ChevronRightIcon } from "@heroicons/react/24/outline";
-import { BADGE_TYPES, Badge } from "../components/display/badge";
-import { BadgeCircle, CIRCLE_BADGE_TYPES } from "../components/display/badge-circle";
-import { Tooltip } from "../components/ui/tooltip";
-import { NODE_PATH_EXCLUDELIST } from "../config/constants";
+import { BADGE_TYPES, Badge } from "@/components/display/badge";
+import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/components/display/badge-circle";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   tDataDiffNode,
   tDataDiffNodePeerValue,
   tDataDiffNodePropertyChange,
-} from "../screens/diff/data-diff-node";
+} from "@/screens/diff/data-diff-node";
+import { ChevronRightIcon } from "@heroicons/react/24/outline";
+import { NODE_PATH_EXCLUDELIST } from "../config/constants";
 
 export const displayValue = (value: any) => {
   if (typeof value === "boolean") {

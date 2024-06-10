@@ -1,6 +1,6 @@
+import Accordion from "@/components/display/accordion";
 import { components } from "../../infraops";
 import { AccordionStyled, NullDisplay, PropertyRow } from "./styled";
-import Accordion from "../../components/display/accordion";
 
 export const AttributeDisplay = ({
   attribute,

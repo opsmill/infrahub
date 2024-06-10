@@ -3,10 +3,10 @@ import { TASK_OBJECT } from "../../config/constants";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 
+import { Link } from "@/components/ui/link";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router-dom";
-import { Link } from "../../components/ui/link";
 import { getTaskItemDetailsTitle } from "../../graphql/queries/tasks/getTasksItemDetailsTitle";
 import ErrorScreen from "../errors/error-screen";
 import Content from "../layout/content";

@@ -1,5 +1,5 @@
+import { FormFieldError } from "@/screens/edit-form-hook/form";
 import { classNames } from "@/utils/common";
-import { FormFieldError } from "../../screens/edit-form-hook/form";
 import { CodeEditor } from "../editor/code-editor";
 
 type tOpsCodeEditor = {

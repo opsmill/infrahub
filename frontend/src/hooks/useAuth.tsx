@@ -1,10 +1,10 @@
+import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 import { parseJwt } from "@/utils/common";
 import { fetchUrl } from "@/utils/fetch";
 import { useAtom } from "jotai/index";
 import { createContext, ReactElement, ReactNode, useContext, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "../components/ui/alert";
 import { CONFIG } from "../config/config";
 import { ACCESS_TOKEN_KEY, ADMIN_ROLES, REFRESH_TOKEN_KEY, WRITE_ROLES } from "../config/constants";
 import { components } from "../infraops";

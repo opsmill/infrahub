@@ -1,11 +1,11 @@
+import { PropertyList } from "@/components/table/property-list";
+import { Badge } from "@/components/ui/badge";
+import { CardWithBorder } from "@/components/ui/card";
 import { constructPath } from "@/utils/fetch";
 import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { Icon } from "@iconify-icon/react";
 import { HTMLAttributes } from "react";
 import { Link } from "react-router-dom";
-import { PropertyList } from "../../components/table/property-list";
-import { Badge } from "../../components/ui/badge";
-import { CardWithBorder } from "../../components/ui/card";
 import ResourcePoolUtilization from "./common/ResourcePoolUtilization";
 
 export type ResourceProps = {

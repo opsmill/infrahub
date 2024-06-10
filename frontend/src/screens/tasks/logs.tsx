@@ -1,6 +1,6 @@
-import { BADGE_TYPES, Badge } from "../../components/display/badge";
-import { DateDisplay } from "../../components/display/date-display";
-import { Table } from "../../components/table/table";
+import { BADGE_TYPES, Badge } from "@/components/display/badge";
+import { DateDisplay } from "@/components/display/date-display";
+import { Table } from "@/components/table/table";
 
 export type tLog = {
   id: string;

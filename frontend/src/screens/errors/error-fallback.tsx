@@ -1,10 +1,10 @@
-import { useErrorBoundary } from "react-error-boundary";
-import React, { useEffect, useState } from "react";
-import { Card } from "../../components/ui/card";
+import { Button } from "@/components/buttons/button-primitive";
+import Accordion from "@/components/display/accordion";
+import { Card } from "@/components/ui/card";
+import Kbd from "@/components/ui/kbd";
 import { Icon } from "@iconify-icon/react";
-import { Button } from "../../components/buttons/button-primitive";
-import Kbd from "../../components/ui/kbd";
-import Accordion from "../../components/display/accordion";
+import { useEffect, useState } from "react";
+import { useErrorBoundary } from "react-error-boundary";
 
 type ErrorFallbackProps = {
   error: Error;

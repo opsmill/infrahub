@@ -1,3 +1,4 @@
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { getFormStructureForMetaEditPaginated } from "@/utils/formStructureForCreateEdit";
 import getMutationMetaDetailsFromFormData from "@/utils/getMutationMetaDetailsFromFormData";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -5,7 +6,6 @@ import { gql } from "@apollo/client";
 import { useAtom, useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/ui/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";

@@ -1,7 +1,7 @@
+import { DynamicFieldData } from "@/screens/edit-form-hook/dynamic-control-types";
+import { Form } from "@/screens/edit-form-hook/form";
 import { ReactElement } from "react";
 import { FieldValues, SubmitHandler } from "react-hook-form";
-import { DynamicFieldData } from "../../screens/edit-form-hook/dynamic-control-types";
-import { Form } from "../../screens/edit-form-hook/form";
 
 type tAddComment = {
   onSubmit: SubmitHandler<FieldValues>;

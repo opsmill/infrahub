@@ -1,15 +1,15 @@
+import { Table, tColumn } from "@/components/table/table";
+import { Pagination } from "@/components/ui/pagination";
 import { gql } from "@apollo/client";
-import { Table, tColumn } from "../../components/table/table";
-import { Pagination } from "../../components/ui/pagination";
 import { TASK_OBJECT, TASK_TAB } from "../../config/constants";
 import useQuery from "../../hooks/useQuery";
 
+import { DateDisplay } from "@/components/display/date-display";
+import { DurationDisplay } from "@/components/display/duration-display";
+import { Id } from "@/components/ui/id";
 import { constructPath } from "@/utils/fetch";
 import { forwardRef, useImperativeHandle } from "react";
 import { useLocation, useParams } from "react-router-dom";
-import { DateDisplay } from "../../components/display/date-display";
-import { DurationDisplay } from "../../components/display/duration-display";
-import { Id } from "../../components/ui/id";
 import { QSP } from "../../config/qsp";
 import { getTasksItems } from "../../graphql/queries/tasks/getTasksItems";
 import usePagination from "../../hooks/usePagination";

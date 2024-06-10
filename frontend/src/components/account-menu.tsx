@@ -1,3 +1,4 @@
+import { userNavigation } from "@/screens/layout/navigation-list";
 import { classNames, parseJwt } from "@/utils/common";
 import { gql } from "@apollo/client";
 import { Menu, Transition } from "@headlessui/react";
@@ -9,7 +10,6 @@ import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../config/constants";
 import { getProfileDetails } from "../graphql/queries/accounts/getProfileDetails";
 import { useAuth } from "../hooks/useAuth";
 import { useLazyQuery } from "../hooks/useQuery";
-import { userNavigation } from "../screens/layout/navigation-list";
 import { schemaState } from "../state/atoms/schema.atom";
 import { Avatar } from "./display/avatar";
 import { ALERT_TYPES, Alert } from "./ui/alert";

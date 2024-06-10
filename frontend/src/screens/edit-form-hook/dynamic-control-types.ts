@@ -1,5 +1,5 @@
+import { SelectOption } from "@/components/inputs/select";
 import { RegisterOptions } from "react-hook-form";
-import { SelectOption } from "../../components/inputs/select";
 import { components } from "../../infraops";
 import { FormFieldError } from "./form";
 

@@ -1,5 +1,5 @@
+import { CopyToClipboard } from "@/components/buttons/copy-to-clipboard";
 import { ReactElement } from "react";
-import { CopyToClipboard } from "../../components/buttons/copy-to-clipboard";
 
 type ObjectAttributeRowProps = {
   name: string;

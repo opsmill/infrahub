@@ -1,7 +1,7 @@
+import { MenuItem } from "@/screens/layout/sidebar/desktop-menu";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { MenuItem } from "../../screens/layout/sidebar/desktop-menu";
 import {
   genericsState,
   IModelSchema,

@@ -1,3 +1,13 @@
+import { Button, BUTTON_TYPES } from "@/components/buttons/button";
+import { AddComment } from "@/components/conversations/add-comment";
+import { Thread } from "@/components/conversations/thread";
+import { Avatar, AVATAR_SIZE } from "@/components/display/avatar";
+import { Badge } from "@/components/display/badge";
+import { DateDisplay } from "@/components/display/date-display";
+import SlideOver from "@/components/display/slide-over";
+import { List } from "@/components/table/list";
+import { Alert, ALERT_TYPES } from "@/components/ui/alert";
+import { Tooltip } from "@/components/ui/tooltip";
 import { constructPath } from "@/utils/fetch";
 import { getProposedChangesStateBadgeType } from "@/utils/proposed-changes";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -10,16 +20,6 @@ import { useAtomValue } from "jotai/index";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Button, BUTTON_TYPES } from "../../components/buttons/button";
-import { AddComment } from "../../components/conversations/add-comment";
-import { Thread } from "../../components/conversations/thread";
-import { Avatar, AVATAR_SIZE } from "../../components/display/avatar";
-import { Badge } from "../../components/display/badge";
-import { DateDisplay } from "../../components/display/date-display";
-import SlideOver from "../../components/display/slide-over";
-import { List } from "../../components/table/list";
-import { Alert, ALERT_TYPES } from "../../components/ui/alert";
-import { Tooltip } from "../../components/ui/tooltip";
 import {
   ACCOUNT_OBJECT,
   DEFAULT_BRANCH_NAME,

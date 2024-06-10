@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
 
-import { FormFieldError } from "../screens/edit-form-hook/form";
+import { FormFieldError } from "@/screens/edit-form-hook/form";
 import { Input } from "./inputs/input";
 import { MultipleInput } from "./inputs/multiple-input";
 import { SelectOption } from "./inputs/select";

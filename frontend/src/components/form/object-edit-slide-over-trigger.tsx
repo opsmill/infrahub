@@ -1,14 +1,14 @@
+import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { Icon } from "@iconify-icon/react";
-import { DEFAULT_BRANCH_NAME } from "../../config/constants";
-import ObjectItemEditComponent from "../../screens/object-item-edit/object-item-edit-paginated";
-import SlideOver from "../display/slide-over";
-import { ButtonProps, ButtonWithTooltip } from "../buttons/button-primitive";
-import { usePermission } from "../../hooks/usePermission";
 import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { useState } from "react";
+import { DEFAULT_BRANCH_NAME } from "../../config/constants";
+import { usePermission } from "../../hooks/usePermission";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { IModelSchema } from "../../state/atoms/schema.atom";
+import { ButtonProps, ButtonWithTooltip } from "../buttons/button-primitive";
+import SlideOver from "../display/slide-over";
 
 interface ObjectEditSlideOverTriggerProps extends ButtonProps {
   data: any;

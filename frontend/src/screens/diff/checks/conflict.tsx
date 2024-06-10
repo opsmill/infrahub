@@ -8,18 +8,18 @@ import { ArrowTopRightOnSquareIcon, ChevronRightIcon } from "@heroicons/react/24
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { ToggleButtons } from "../../../components/buttons/toggle-buttons";
-import { Badge } from "../../../components/display/badge";
-import { ALERT_TYPES, Alert } from "../../../components/ui/alert";
-import { Id } from "../../../components/ui/id";
-import { Link } from "../../../components/ui/link";
-import { Tooltip, TooltipPosition } from "../../../components/ui/tooltip";
 import { DATA_CHECK_OBJECT } from "../../../config/constants";
 import { QSP } from "../../../config/qsp";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../../graphql/mutations/objects/updateObjectWithId";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
+import { ToggleButtons } from "../@/components/buttons/toggle-buttons";
+import { Badge } from "../@/components/display/badge";
+import { ALERT_TYPES, Alert } from "../@/components/ui/alert";
+import { Id } from "../@/components/ui/id";
+import { Link } from "../@/components/ui/link";
+import { Tooltip, TooltipPosition } from "../@/components/ui/tooltip";
 import { getNodeClassName } from "../data-diff-node";
 
 const renderConflict = {

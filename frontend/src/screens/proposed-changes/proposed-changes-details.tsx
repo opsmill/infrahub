@@ -1,3 +1,5 @@
+import { Tabs } from "@/components/tabs";
+import { Link } from "@/components/ui/link";
 import { constructPath } from "@/utils/fetch";
 import { getObjectRelationships } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
@@ -6,8 +8,6 @@ import { useAtom } from "jotai";
 import { useRef } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Tabs } from "../../components/tabs";
-import { Link } from "../../components/ui/link";
 import { PROPOSED_CHANGES_OBJECT, TASK_OBJECT, TASK_TAB } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";

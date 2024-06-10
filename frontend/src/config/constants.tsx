@@ -1,4 +1,4 @@
-import { SchemaAttributeType } from "../screens/edit-form-hook/dynamic-control-types";
+import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 
 export const DEFAULT_BRANCH_NAME = "main";
 

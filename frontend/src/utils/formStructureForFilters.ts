@@ -1,4 +1,4 @@
-import { DynamicFieldData } from "../screens/edit-form-hook/dynamic-control-types";
+import { DynamicFieldData } from "@/screens/edit-form-hook/dynamic-control-types";
 import { iComboBoxFilter } from "../state/atoms/filters.atom";
 
 const getFormStructureForFilters = (

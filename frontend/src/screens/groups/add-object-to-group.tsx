@@ -1,10 +1,10 @@
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/ui/alert";
 import { GROUP_OBJECT } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";

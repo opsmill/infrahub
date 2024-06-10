@@ -1,8 +1,8 @@
+import { MoreButton } from "@/components/buttons/more-button";
+import { POPOVER_SIZE, PopOver } from "@/components/display/popover";
+import { Id } from "@/components/ui/id";
 import { reduceArrays } from "@/utils/array";
 import { useContext } from "react";
-import { MoreButton } from "../../components/buttons/more-button";
-import { POPOVER_SIZE, PopOver } from "../../components/display/popover";
-import { Id } from "../../components/ui/id";
 import { Check } from "./checks/check";
 import { DiffContext } from "./data-diff";
 

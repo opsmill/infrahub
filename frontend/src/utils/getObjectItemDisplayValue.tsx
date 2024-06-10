@@ -1,14 +1,13 @@
+import { Badge } from "@/components/display/badge";
+import { ColorDisplay } from "@/components/display/color-display";
+import { DateDisplay } from "@/components/display/date-display";
+import { PasswordDisplay } from "@/components/display/password-display";
+import { TextDisplay } from "@/components/display/text-display";
+import { CodeEditor } from "@/components/editor/code-editor";
+import { MarkdownViewer } from "@/components/editor/markdown-viewer";
+import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { Badge } from "../components/display/badge";
-import { ColorDisplay } from "../components/display/color-display";
-import { DateDisplay } from "../components/display/date-display";
-import { PasswordDisplay } from "../components/display/password-display";
-import { CodeEditor } from "../components/editor/code-editor";
 import { MAX_VALUE_LENGTH_DISPLAY, SCHEMA_ATTRIBUTE_KIND } from "../config/constants";
-import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
-import { MarkdownViewer } from "../components/editor/markdown-viewer";
-import { TextDisplay } from "../components/display/text-display";
-import { components } from "../infraops";
 import {
   AnyAttribute,
   CheckboxAttribute,
@@ -20,7 +19,8 @@ import {
   NumberAttribute,
   TextAttribute,
 } from "../generated/graphql";
-import { SchemaAttributeType } from "../screens/edit-form-hook/dynamic-control-types";
+import { components } from "../infraops";
+import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
 
 const getTextValue = (data: any) => {
   if (typeof data === "string" || typeof data === "number") {
