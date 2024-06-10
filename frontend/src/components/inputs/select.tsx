@@ -5,6 +5,7 @@ import {
   SCHEMA_ENUM_ADD,
   SCHEMA_ENUM_REMOVE,
 } from "@/config/constants";
+import { SchemaContext } from "@/decorators/withSchemaContext";
 import { Form, FormFieldError } from "@/screens/edit-form-hook/form";
 import ObjectItemCreate from "@/screens/object-item-create/object-item-create-paginated";
 import { classNames, getTextColor } from "@/utils/common";
@@ -15,7 +16,6 @@ import { CheckIcon } from "@heroicons/react/20/solid";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { forwardRef, useContext, useEffect, useState } from "react";
-import { SchemaContext } from "../../decorators/withSchemaContext";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { basicMutation } from "../../graphql/mutations/objects/basicMutation";
 import { getDropdownOptions } from "../../graphql/queries/objects/dropdownOptions";
