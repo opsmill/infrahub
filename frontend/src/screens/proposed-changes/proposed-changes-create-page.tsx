@@ -1,9 +1,17 @@
+import { LinkButton } from "@/components/buttons/button-primitive";
 import { MarkdownEditor } from "@/components/editor";
 import { Select } from "@/components/inputs/select";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Combobox } from "@/components/ui/combobox";
-import { Form, FormField, FormInput, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormField,
+  FormInput,
+  FormLabel,
+  FormMessage,
+  FormSubmit,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { CREATE_PROPOSED_CHANGE } from "@/graphql/mutations/proposed-changes/createProposedChange";
 import { GET_ALL_ACCOUNTS } from "@/graphql/queries/accounts/getAllAccounts";
@@ -18,8 +26,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { LinkButton } from "../../components/buttons/button-primitive";
-import { FormSubmit } from "../../components/ui/form";
 import Content from "../layout/content";
 
 const ProposedChangesCreatePage = () => {
