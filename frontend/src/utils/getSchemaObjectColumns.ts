@@ -6,10 +6,10 @@ import {
   relationshipsForListView,
   relationshipsForTabs,
 } from "@/config/constants";
+import { store } from "@/state";
+import { iGenericSchema, iNodeSchema, profilesAtom } from "@/state/atoms/schema.atom";
 import { isValid, parseISO } from "date-fns";
 import * as R from "ramda";
-import { store } from "../state";
-import { iGenericSchema, iNodeSchema, profilesAtom } from "../state/atoms/schema.atom";
 import { isGeneric, sortByOrderWeight } from "./common";
 
 type tgetObjectAttributes = {

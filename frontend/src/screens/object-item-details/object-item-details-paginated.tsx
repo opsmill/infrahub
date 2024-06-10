@@ -19,6 +19,11 @@ import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDe
 import { usePermission } from "@/hooks/usePermission";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
+import { currentBranchAtom } from "@/state/state/atoms/branches.atom";
+import { showMetaEditState } from "@/state/state/atoms/metaEditFieldDetails.atom";
+import { genericsState, profilesAtom, schemaState } from "@/state/state/atoms/schema.atom";
+import { schemaKindNameState } from "@/state/state/atoms/schemaKindName.atom";
+import { metaEditFieldDetailsState } from "@/state/state/atoms/showMetaEdit.atom copy";
 import { constructPath } from "@/utils/fetch";
 import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
 import {
@@ -37,11 +42,6 @@ import { useAtomValue } from "jotai/index";
 import { useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
-import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
-import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { Generate } from "../artifacts/generate";
 import ErrorScreen from "../errors/error-screen";
 import NoDataFound from "../errors/no-data-found";

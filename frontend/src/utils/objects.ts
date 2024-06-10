@@ -5,8 +5,8 @@ import {
   IPAM_QSP,
   IPAM_ROUTE,
 } from "@/screens/ipam/constants";
-import { store } from "../state";
-import { schemaState } from "../state/atoms/schema.atom";
+import { store } from "@/state";
+import { schemaState } from "@/state/atoms/schema.atom";
 import { constructPath, overrideQueryParams } from "./fetch";
 
 const regex = /^Related/; // starts with Related

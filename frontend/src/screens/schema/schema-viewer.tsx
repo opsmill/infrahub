@@ -1,18 +1,18 @@
 import { Button } from "@/components/buttons/button-primitive";
 import { Badge } from "@/components/ui/badge";
 import { QSP } from "@/config/qsp";
+import {
+  IModelSchema,
+  genericsState,
+  profilesAtom,
+  schemaState,
+} from "@/state/state/atoms/schema.atom";
 import { classNames, isGeneric } from "@/utils/common";
 import { Tab } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { CSSProperties } from "react";
 import { ArrayParam, useQueryParam } from "use-query-params";
-import {
-  IModelSchema,
-  genericsState,
-  profilesAtom,
-  schemaState,
-} from "../../state/atoms/schema.atom";
 import { AttributeDisplay } from "./attribute-display";
 import { RelationshipDisplay } from "./relationship-display";
 import { SchemaHelpMenu } from "./schema-help-menu";

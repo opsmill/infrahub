@@ -8,6 +8,8 @@ import { DATA_CHECK_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import { currentBranchAtom } from "@/state/state/state/atoms/branches.atom";
+import { datetimeAtom } from "@/state/state/state/atoms/time.atom";
 import { classNames } from "@/utils/common";
 import { diffContent, getBadgeType } from "@/utils/diff";
 import { constructPath } from "@/utils/fetch";
@@ -18,8 +20,6 @@ import { ArrowTopRightOnSquareIcon, ChevronRightIcon } from "@heroicons/react/24
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { currentBranchAtom } from "../../../state/atoms/branches.atom";
-import { datetimeAtom } from "../../../state/atoms/time.atom";
 import { getNodeClassName } from "../data-diff-node";
 
 const renderConflict = {

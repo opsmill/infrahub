@@ -3,13 +3,13 @@ import { Checkbox } from "@/components/inputs/checkbox";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
 import { QSP } from "@/config/qsp";
+import { proposedChangedState } from "@/state/state/atoms/proposedChanges.atom";
 import { fetchUrl, getUrlWithQsp } from "@/utils/fetch";
 import { useAtomValue } from "jotai/index";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { DataDiffNode } from "./data-diff-node";
 

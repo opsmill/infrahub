@@ -11,6 +11,7 @@ import { GET_ALL_ACCOUNTS } from "@/graphql/queries/accounts/getAllAccounts";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermission } from "@/hooks/usePermission";
 import useQuery from "@/hooks/useQuery";
+import { branchesState } from "@/state/state/atoms/branches.atom";
 import { branchesToSelectOptions } from "@/utils/branches";
 import { constructPath } from "@/utils/fetch";
 import { useMutation } from "@apollo/client";
@@ -18,7 +19,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { branchesState } from "../../state/atoms/branches.atom";
 import Content from "../layout/content";
 
 const ProposedChangesCreatePage = () => {

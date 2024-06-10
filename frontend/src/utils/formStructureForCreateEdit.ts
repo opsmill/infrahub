@@ -5,8 +5,8 @@ import {
   getInputTypeFromAttribute,
   getInputTypeFromRelationship,
 } from "@/screens/edit-form-hook/dynamic-control-types";
+import { iGenericSchema, iNodeSchema } from "@/state/atoms/schema.atom";
 import { isValid } from "date-fns";
-import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 import { sortByOrderWeight } from "./common";
 import {
   getFieldValue,

@@ -5,15 +5,15 @@ import { addRelationship } from "@/graphql/mutations/relationships/addRelationsh
 import { removeRelationship } from "@/graphql/mutations/relationships/removeRelationship";
 import { getGroups } from "@/graphql/queries/groups/getGroups";
 import useQuery from "@/hooks/useQuery";
+import { currentBranchAtom } from "@/state/state/atoms/branches.atom";
+import { genericsState, profilesAtom, schemaState } from "@/state/state/atoms/schema.atom";
+import { datetimeAtom } from "@/state/state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "../errors/error-screen";
 import NoDataFound from "../errors/no-data-found";

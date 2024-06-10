@@ -1,13 +1,13 @@
 import { MenuItem } from "@/screens/layout/sidebar/desktop-menu";
-import { constructPath } from "@/utils/fetch";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
 import {
   genericsState,
   IModelSchema,
   menuFlatAtom,
   schemaState,
-} from "../../state/atoms/schema.atom";
+} from "@/state/state/atoms/schema.atom";
+import { constructPath } from "@/utils/fetch";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
 import { Badge } from "../ui/badge";
 import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-anywhere";
 

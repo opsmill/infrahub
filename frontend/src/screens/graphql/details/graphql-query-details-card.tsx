@@ -7,12 +7,12 @@ import { CardWithBorder } from "@/components/ui/card";
 import { Link } from "@/components/ui/link";
 import { Tooltip } from "@/components/ui/tooltip";
 import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
+import { iNodeSchema } from "@/state/state/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { AttributeType, ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
 import { getObjectDetailsUrl, getObjectDetailsUrl2 } from "@/utils/objects";
 import { CoreGraphQlQuery } from "@generated/graphql";
 import { Icon } from "@iconify-icon/react";
-import { iNodeSchema } from "../../../state/atoms/schema.atom";
 
 type GraphqlQueryDetailsCardProps = {
   data: CoreGraphQlQuery;

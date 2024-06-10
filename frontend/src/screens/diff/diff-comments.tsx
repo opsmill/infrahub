@@ -11,6 +11,9 @@ import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
 import { getProposedChangesObjectThreadComments } from "@/graphql/queries/proposed-changes/getProposedChangesObjectThreadComments";
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
+import { currentBranchAtom } from "@/state/state/atoms/branches.atom";
+import { schemaState } from "@/state/state/atoms/schema.atom";
+import { datetimeAtom } from "@/state/state/atoms/time.atom";
 import { getThreadLabel } from "@/utils/diff";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
@@ -20,9 +23,6 @@ import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { schemaState } from "../../state/atoms/schema.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
 import { DiffContext } from "./data-diff";
 
 type tDataDiffComments = {

@@ -1,11 +1,11 @@
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { usePermission } from "@/hooks/usePermission";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
+import { currentBranchAtom } from "@/state/state/atoms/branches.atom";
+import { metaEditFieldDetailsState } from "@/state/state/atoms/showMetaEdit.atom copy";
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue } from "jotai/index";
 import { useState } from "react";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { ButtonWithTooltip } from "../buttons/button-primitive";
 import MetaDetailsTooltip from "./meta-details-tooltips";
 import SlideOver from "./slide-over";
