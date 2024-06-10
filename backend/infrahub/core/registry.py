@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 class Registry:
     id: Optional[str] = None
     attribute: Dict[str, BaseAttribute] = field(default_factory=dict)
-    branch: dict = field(default_factory=dict)
+    branch: dict[str, Branch] = field(default_factory=dict)
     node: dict = field(default_factory=dict)
     _default_branch: Optional[str] = None
     _default_ipnamespace: Optional[str] = None

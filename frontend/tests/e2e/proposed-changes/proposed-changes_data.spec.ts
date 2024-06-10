@@ -72,7 +72,7 @@ test.describe("/proposed-changes diff data", () => {
 
     await test.step("add first comment", async () => {
       await page.getByTestId("codemirror-editor").getByRole("textbox").fill("first is comment");
-      await page.getByRole("button", { name: "Comment" }).click();
+      await page.getByRole("button", { name: "Comment", exact: true }).click();
       await expect(page.getByTestId("thread").getByTestId("comment")).toContainText(
         "first is comment"
       );
@@ -84,7 +84,7 @@ test.describe("/proposed-changes diff data", () => {
     await test.step("reply to first comment", async () => {
       await thread.getByRole("button", { name: "Reply" }).click();
       await thread.getByTestId("codemirror-editor").getByRole("textbox").fill("second is reply");
-      await page.getByRole("button", { name: "Comment" }).click();
+      await page.getByRole("button", { name: "Comment", exact: true }).click();
       await expect(thread.getByTestId("comment").nth(1)).toContainText("second is reply");
       await expect(page.getByTestId("comments-count")).toContainText("2");
     });
@@ -106,7 +106,7 @@ test.describe("/proposed-changes diff data", () => {
     await test.step("add comment when thread is resolved", async () => {
       await thread.getByRole("button", { name: "Reply" }).click();
       await thread.getByTestId("codemirror-editor").getByRole("textbox").fill("third resolved");
-      await thread.getByRole("button", { name: "Comment" }).click();
+      await thread.getByRole("button", { name: "Comment", exact: true }).click();
       await expect(thread.getByTestId("comment").nth(2)).toContainText("third resolved");
       await expect(page.getByTestId("comments-count")).toContainText("3");
     });

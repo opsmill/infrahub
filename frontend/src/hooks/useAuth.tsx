@@ -25,7 +25,7 @@ type AuthContextType = {
   isAuthenticated: boolean;
   isLoading: boolean;
   permissions?: PermissionsType;
-  signIn: (data: any, callback?: () => void) => void;
+  signIn: (data: any, callback?: () => void) => Promise<void>;
   signOut: (callback?: () => void) => void;
   user: User | null;
 };
@@ -84,7 +84,7 @@ export const AuthContext = createContext<AuthContextType>({
     isAdmin: false,
     write: false,
   },
-  signIn: () => {},
+  signIn: async () => {},
   signOut: () => {},
   user: null,
 });

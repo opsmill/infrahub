@@ -9,17 +9,22 @@ import {
   useForm,
   useFormContext,
 } from "react-hook-form";
+import { Button, ButtonProps } from "../buttons/button-primitive";
+import { Spinner } from "./spinner";
 
-interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
-  onSubmit?: (v: Record<string, any>) => void;
+export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
+  onSubmit?: (v: Record<string, unknown>) => void;
 }
 
-export const Form = ({ onSubmit, children, ...props }: FormProps) => {
+export const Form = ({ className, children, onSubmit, ...props }: FormProps) => {
   const form = useForm();
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSubmit && form.handleSubmit(onSubmit)} {...props}>
+      <form
+        onSubmit={onSubmit && form.handleSubmit(onSubmit)}
+        className={classNames("space-y-4", className)}
+        {...props}>
         {children}
       </form>
     </FormProvider>
@@ -46,7 +51,7 @@ export const FormLabel = ({ className, ...props }: LabelPrimitive.LabelProps) =>
   return (
     <LabelPrimitive.Label
       htmlFor={id}
-      className={classNames("text-sm font-medium text-gray-900", className)}
+      className={classNames("text-sm font-medium text-gray-900 cursor-pointer", className)}
       {...props}
     />
   );
@@ -86,3 +91,18 @@ export const FormMessage = ({
     </p>
   );
 };
+
+export const FormSubmit = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ children, ...props }, ref) => {
+    const { formState } = useFormContext();
+
+    const isLoading = formState.isSubmitting || formState.isValidating;
+
+    return (
+      <Button ref={ref} disabled={isLoading} {...props} type="submit">
+        <span className={classNames(isLoading && "invisible")}>{children}</span>
+        {isLoading && <Spinner className="absolute" />}
+      </Button>
+    );
+  }
+);

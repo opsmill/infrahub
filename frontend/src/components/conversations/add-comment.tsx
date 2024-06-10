@@ -1,46 +1,61 @@
-import { DynamicFieldData } from "@/screens/edit-form-hook/dynamic-control-types";
-import { Form } from "@/screens/edit-form-hook/form";
 import { ReactElement } from "react";
-import { FieldValues, SubmitHandler } from "react-hook-form";
+import { useLocation } from "react-router-dom";
+import { SCHEMA_ATTRIBUTE_KIND } from "../../config/constants";
+import { useAuth } from "../../hooks/useAuth";
+import { constructPath } from "../../utils/fetch";
+import { LinkButton } from "../buttons/button-primitive";
+import DynamicForm from "../form/dynamic-form";
+import { DynamicFieldProps } from "../form/fields/common";
 
-type tAddComment = {
-  onSubmit: SubmitHandler<FieldValues>;
-  isLoading?: boolean;
-  onCancel?: Function;
-  disabled?: boolean;
-  additionalButtons?: ReactElement;
-};
-
-const fields: DynamicFieldData[] = [
+const fields: Array<DynamicFieldProps> = [
   {
     name: "comment",
     label: "Add a comment",
     placeholder: "Add your comment here...",
-    type: "textarea",
-    value: "",
-    config: {
-      required: "Required",
+    type: SCHEMA_ATTRIBUTE_KIND.TEXTAREA,
+    rules: {
+      required: true,
     },
   },
 ];
 
-export const AddComment = ({
-  onSubmit,
-  isLoading,
-  onCancel,
-  disabled,
-  additionalButtons,
-}: tAddComment) => {
+type CommentFormData = {
+  comment: string;
+};
+
+type tAddComment = {
+  onSubmit: ({ comment }: CommentFormData) => Promise<void>;
+  onCancel?: () => void;
+  additionalButtons?: ReactElement;
+};
+
+export const AddComment = ({ onSubmit, onCancel }: tAddComment) => {
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
+
+  if (isAuthenticated) {
+    return (
+      <DynamicForm
+        fields={fields}
+        onCancel={onCancel}
+        onSubmit={async (data) => {
+          await onSubmit(data as CommentFormData);
+        }}
+        submitLabel="Comment"
+      />
+    );
+  }
+
   return (
-    <Form
-      onSubmit={onSubmit}
-      fields={fields}
-      submitLabel="Comment"
-      isLoading={isLoading}
-      onCancel={onCancel}
-      disabled={disabled}
-      additionalButtons={additionalButtons}
-      resetAfterSubmit
-    />
+    <div>
+      <LinkButton
+        size="sm"
+        variant="primary"
+        to={constructPath("/signin")}
+        state={{ from: location }}>
+        Sign in
+      </LinkButton>{" "}
+      to be able to add a comment.
+    </div>
   );
 };

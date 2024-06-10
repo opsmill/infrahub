@@ -204,9 +204,7 @@ export const Thread = (props: tThread) => {
         <div className="flex-1">
           <AddComment
             onSubmit={handleSubmit}
-            isLoading={isLoading}
             onCancel={() => setDisplayAddComment(false)}
-            disabled={isLoading || !auth?.permissions?.write}
             additionalButtons={MarkAsResolvedWithTooltip}
           />
         </div>

@@ -1,82 +1,63 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { ACCOUNT_SELF_UPDATE_OBJECT } from "@/config/constants";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
-import { stringifyWithoutQuotes } from "@/utils/string";
-import { gql } from "@apollo/client";
-import { useState } from "react";
+import { useMutation } from "@apollo/client";
 import { toast } from "react-toastify";
-import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
-import { Form } from "../edit-form-hook/form";
+import DynamicForm from "../../components/form/dynamic-form";
+import { DynamicFieldProps } from "../../components/form/fields/common";
+import { Card } from "../../components/ui/card";
+import { UPDATE_ACCOUNT_PASSWORD } from "../../graphql/mutations/accounts/updateAccountPassword";
+import Content from "../layout/content";
 
-const fields: DynamicFieldData[] = [
+type UpdatePasswordFormData = {
+  newPassword: string;
+  confirmPassword: string;
+};
+
+const fields: Array<DynamicFieldProps> = [
   {
     name: "newPassword",
     label: "New password",
-    type: "password",
-    value: "",
-    config: {
-      required: "Required",
+    type: "Password",
+    rules: {
+      required: true,
     },
   },
   {
     name: "confirmPassword",
     label: "Confirm password",
-    type: "password",
-    value: "",
-    config: {
-      required: "Required",
+    type: "Password",
+    rules: {
+      required: true,
+      validate: (value, fieldValues) => {
+        return value === fieldValues.newPassword || "Passwords don't match.";
+      },
     },
   },
 ];
 
 export default function TabPreferences() {
-  const [isLoading, setIsLoading] = useState(false);
+  const [updateAccountPassword] = useMutation(UPDATE_ACCOUNT_PASSWORD);
 
-  const onSubmit = async ({ newPassword, confirmPassword }: any) => {
-    if (newPassword !== confirmPassword) {
-      toast(<Alert type={ALERT_TYPES.WARNING} message="Passwords must be the same" />);
-      return;
-    }
-
-    setIsLoading(true);
-
+  const onSubmit = async ({ newPassword }: UpdatePasswordFormData) => {
     try {
-      const mutationString = updateObjectWithId({
-        kind: ACCOUNT_SELF_UPDATE_OBJECT,
-        data: stringifyWithoutQuotes({
-          password: newPassword,
-        }),
-      });
+      await updateAccountPassword({ variables: { password: newPassword } });
 
-      const mutation = gql`
-        ${mutationString}
-      `;
-
-      await graphqlClient.mutate({ mutation });
-
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Password updated" />);
+      toast(() => <Alert type={ALERT_TYPES.SUCCESS} message="Password updated" />);
     } catch (error) {
-      console.log("Error while updating the password: ", error);
+      console.error("Error while updating the password: ", error);
     }
-
-    setIsLoading(false);
   };
 
   return (
-    <div className=" flex flex-col flex-1 overflow-auto">
-      <div className="m-4 w-1/3 mx-auto bg-custom-white rounded-md">
-        <div className="px-4 pt-4 flex items-center">
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">Update your password</p>
-        </div>
+    <Content className="p-2">
+      <Card className="m-auto w-full max-w-md">
+        <h3 className="leading-6 font-semibold mb-4">Update your password</h3>
 
-        <Form
-          onSubmit={onSubmit}
+        <DynamicForm
           fields={fields}
-          submitLabel={"Update password"}
-          isLoading={isLoading}
+          onSubmit={async (data) => await onSubmit(data as UpdatePasswordFormData)}
+          submitLabel="Update password"
         />
-      </div>
-    </div>
+      </Card>
+    </Content>
   );
 }

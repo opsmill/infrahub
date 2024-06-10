@@ -1,4 +1,3 @@
-import { Button } from "@/components/buttons/button-primitive";
 import { MarkdownEditor } from "@/components/editor";
 import { Select } from "@/components/inputs/select";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
@@ -17,8 +16,10 @@ import { constructPath } from "@/utils/fetch";
 import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { LinkButton } from "../../components/buttons/button-primitive";
+import { FormSubmit } from "../../components/ui/form";
 import Content from "../layout/content";
 
 const ProposedChangesCreatePage = () => {
@@ -52,11 +53,10 @@ export const ProposedChangeCreateForm = () => {
 
   const { data: getAllAccountsData } = useQuery(GET_ALL_ACCOUNTS);
 
-  const [createProposedChange, { loading, error }] = useMutation(CREATE_PROPOSED_CHANGE);
+  const [createProposedChange, { error }] = useMutation(CREATE_PROPOSED_CHANGE);
 
   return (
     <Form
-      className="space-y-4"
       onSubmit={async ({ source_branch, destination_branch, name, description, reviewers }) => {
         const { data } = await createProposedChange({
           variables: {
@@ -178,13 +178,11 @@ export const ProposedChangeCreateForm = () => {
       />
 
       <div className="text-right">
-        <Link to={constructPath("/proposed-changes")} className="mr-2">
-          <Button variant="outline">Cancel</Button>
-        </Link>
+        <LinkButton variant="outline" to={constructPath("/proposed-changes")} className="mr-2">
+          Cancel
+        </LinkButton>
 
-        <Button type="submit" disabled={loading}>
-          Create proposed change
-        </Button>
+        <FormSubmit>Create proposed change</FormSubmit>
       </div>
 
       {error && (

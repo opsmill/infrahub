@@ -2,13 +2,15 @@ import { classNames } from "@/utils/common";
 import { cva, type VariantProps } from "class-variance-authority";
 import { ButtonHTMLAttributes, forwardRef } from "react";
 import { Tooltip, TooltipProps } from "../ui/tooltip";
+import { focusStyle } from "../ui/style";
+import { Link, LinkProps } from "react-router-dom";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-blue-500 focus-visible:ring-offset-2 disabled:opacity-60",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium disabled:opacity-60",
   {
     variants: {
       variant: {
-        primary: "text-white bg-custom-blue-600 shadow hover:bg-custom-blue-600/90",
+        primary: "text-white bg-custom-blue-700 shadow hover:bg-custom-blue-700/90",
         outline: "border bg-custom-white shadow-sm hover:bg-gray-100",
         ghost: "hover:bg-gray-100",
       },
@@ -31,10 +33,11 @@ export interface ButtonProps
     VariantProps<typeof buttonVariants> {}
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
+  ({ className, variant, size, type = "button", ...props }, ref) => {
     return (
       <button
-        className={classNames(buttonVariants({ variant, size, className }))}
+        type={type}
+        className={classNames(focusStyle, buttonVariants({ variant, size, className }))}
         ref={ref}
         {...props}
       />
@@ -47,12 +50,24 @@ interface ButtonWithTooltipProps extends ButtonProps {
   tooltipEnabled?: TooltipProps["enabled"];
 }
 
-export const ButtonWithTooltip = ({
-  tooltipContent,
-  tooltipEnabled,
-  ...props
-}: ButtonWithTooltipProps) => (
-  <Tooltip enabled={tooltipEnabled} content={tooltipContent}>
-    <Button {...props} />
-  </Tooltip>
+export const ButtonWithTooltip = forwardRef<HTMLButtonElement, ButtonWithTooltipProps>(
+  ({ tooltipContent, tooltipEnabled, ...props }, ref) => (
+    <Tooltip enabled={tooltipEnabled} content={tooltipContent}>
+      <Button ref={ref} {...props} />
+    </Tooltip>
+  )
+);
+
+export interface LinkButtonProps extends LinkProps, VariantProps<typeof buttonVariants> {}
+
+export const LinkButton = forwardRef<HTMLAnchorElement, LinkButtonProps>(
+  ({ className, variant, size, ...props }, ref) => {
+    return (
+      <Link
+        ref={ref}
+        className={classNames(focusStyle, buttonVariants({ variant, size, className }))}
+        {...props}
+      />
+    );
+  }
 );

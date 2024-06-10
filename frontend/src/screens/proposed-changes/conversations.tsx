@@ -143,7 +143,6 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
   useImperativeHandle(ref, () => ({ refetch }));
 
   const isGetProposedChangesThreadsLoadingForthFistTime = networkStatus === NetworkStatus.loading;
-  const isGetProposedChangesThreadsReloading = networkStatus === NetworkStatus.refetch;
 
   if (isGetProposedChangesThreadsLoadingForthFistTime) {
     return <LoadingScreen />;
@@ -550,11 +549,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
         </div>
 
         <div className="bg-custom-white p-4 m-4 rounded-lg relative">
-          <AddComment
-            onSubmit={handleSubmit}
-            isLoading={isGetProposedChangesThreadsReloading}
-            disabled={isGetProposedChangesThreadsReloading || !auth?.permissions?.write}
-          />
+          <AddComment onSubmit={handleSubmit} />
         </div>
       </div>
 
