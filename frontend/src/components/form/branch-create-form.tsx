@@ -1,8 +1,8 @@
+import { QSP } from "@/config/qsp";
 import { BRANCH_CREATE } from "@/graphql/mutations/branches/createBranch";
 import { useMutation } from "@apollo/client";
 import { useAtom } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../config/qsp";
 import { Branch } from "../../generated/graphql";
 import { branchesState } from "../../state/atoms/branches.atom";
 import DynamicForm from "./dynamic-form";

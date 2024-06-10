@@ -1,5 +1,5 @@
+import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { Form, FormProps, FormSubmit } from "@/ui/form";
-import { SCHEMA_ATTRIBUTE_KIND } from "../../config/constants";
 import { Button } from "../buttons/button-primitive";
 import CheckboxField from "./fields/checkbox.field";
 import { DynamicFieldProps } from "./fields/common";

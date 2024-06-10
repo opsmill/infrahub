@@ -1,10 +1,10 @@
 import DynamicForm from "@/components/form/dynamic-form";
 import { DynamicFieldProps } from "@/components/form/fields/common";
 import { Card } from "@/components/ui/card";
+import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { useAuth } from "@/hooks/useAuth";
 import Content from "@/screens/layout/content";
 import { useLocation, useNavigate } from "react-router-dom";
-import { SCHEMA_ATTRIBUTE_KIND } from "../../config/constants";
 import { ReactComponent as InfrahubLogo } from "../../images/Infrahub-SVG-verti.svg";
 
 const fields: Array<DynamicFieldProps> = [
