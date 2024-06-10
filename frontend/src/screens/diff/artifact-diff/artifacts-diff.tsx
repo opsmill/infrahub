@@ -1,4 +1,6 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { CONFIG } from "@/config/config";
+import { QSP } from "@/config/qsp";
 import { fetchUrl, getUrlWithQsp } from "@/utils/fetch";
 import { useAtom } from "jotai";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
@@ -9,8 +11,6 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom";
 import NoDataFound from "../../errors/no-data-found";
 import LoadingScreen from "../../loading-screen/loading-screen";
-import { CONFIG } from "../@/config/config";
-import { QSP } from "../@/config/qsp";
 import { ArtifactRepoDiff } from "./artifact-repo-diff";
 
 export const ArtifactsDiff = forwardRef((props, ref) => {

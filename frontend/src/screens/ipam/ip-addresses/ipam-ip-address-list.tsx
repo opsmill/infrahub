@@ -4,6 +4,7 @@ import { Table } from "@/components/table/table";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Link } from "@/components/ui/link";
 import { Pagination } from "@/components/ui/pagination";
+import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
@@ -22,7 +23,6 @@ import { datetimeAtom } from "../../../state/atoms/time.atom";
 import ErrorScreen from "../../errors/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
-import { DEFAULT_BRANCH_NAME } from "../@/config/constants";
 import { defaultIpNamespaceAtom } from "../common/namespace.state";
 import { constructPathForIpam } from "../common/utils";
 import {

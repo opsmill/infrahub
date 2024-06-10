@@ -4,6 +4,8 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Id } from "@/components/ui/id";
 import { Link } from "@/components/ui/link";
 import { Tooltip, TooltipPosition } from "@/components/ui/tooltip";
+import { DATA_CHECK_OBJECT } from "@/config/constants";
+import { QSP } from "@/config/qsp";
 import { classNames } from "@/utils/common";
 import { diffContent, getBadgeType } from "@/utils/diff";
 import { constructPath } from "@/utils/fetch";
@@ -18,8 +20,6 @@ import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../../graphql/mutations/objects/updateObjectWithId";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
-import { DATA_CHECK_OBJECT } from "../@/config/constants";
-import { QSP } from "../@/config/qsp";
 import { getNodeClassName } from "../data-diff-node";
 
 const renderConflict = {

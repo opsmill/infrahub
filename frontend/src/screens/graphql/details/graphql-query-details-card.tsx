@@ -6,13 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { CardWithBorder } from "@/components/ui/card";
 import { Link } from "@/components/ui/link";
 import { Tooltip } from "@/components/ui/tooltip";
+import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
 import { constructPath } from "@/utils/fetch";
 import { AttributeType, ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
 import { getObjectDetailsUrl, getObjectDetailsUrl2 } from "@/utils/objects";
+import { CoreGraphQlQuery } from "@generated/graphql";
 import { Icon } from "@iconify-icon/react";
-import { CoreGraphQlQuery } from "../../../generated/graphql";
 import { iNodeSchema } from "../../../state/atoms/schema.atom";
-import { RELATIONSHIP_VIEW_BLACKLIST } from "../@/config/constants";
 
 type GraphqlQueryDetailsCardProps = {
   data: CoreGraphQlQuery;
