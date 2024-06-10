@@ -9,8 +9,8 @@ import "react-diff-view/style/index.css";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import NoDataFound from "../../errors/no-data-found";
-import LoadingScreen from "../../loading-screen/loading-screen";
+import NoDataFound from "../@/screens/errors/no-data-found";
+import LoadingScreen from "../@/screens/loading-screen/loading-screen";
 import { ArtifactRepoDiff } from "./artifact-repo-diff";
 
 export const ArtifactsDiff = forwardRef((props, ref) => {

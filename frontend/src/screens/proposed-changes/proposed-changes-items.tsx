@@ -5,7 +5,9 @@ import { getProposedChanges } from "@/graphql/queries/proposed-changes/getPropos
 import { usePermission } from "@/hooks/usePermission";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
+import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { getObjectRelationships } from "@/utils/getSchemaObjectColumns";
@@ -13,8 +15,6 @@ import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { Link } from "react-router-dom";
-import ErrorScreen from "../errors/error-screen";
-import LoadingScreen from "../loading-screen/loading-screen";
 import { ProposedChange } from "./proposed-changes-item";
 
 const ProposedChanges = () => {

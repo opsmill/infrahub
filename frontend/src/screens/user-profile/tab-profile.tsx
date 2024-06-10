@@ -1,6 +1,6 @@
 import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "@/config/constants";
+import ObjectItemDetails from "@/screens/object-item-details/object-item-details-paginated";
 import { parseJwt } from "@/utils/common";
-import ObjectItemDetails from "../object-item-details/object-item-details-paginated";
 
 export default function TabProfile() {
   const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);

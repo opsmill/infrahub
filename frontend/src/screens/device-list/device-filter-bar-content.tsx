@@ -1,6 +1,9 @@
 import { Button } from "@/components/buttons/button";
 import { getDropdownOptionsForRelatedPeersPaginated } from "@/graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import useFilters from "@/hooks/useFilters";
+import ErrorScreen from "@/screens/errors/error-screen";
+import NoDataFound from "@/screens/errors/no-data-found";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import getFormStructureForFilters from "@/utils/formStructureForFilters";
 import { resolve } from "@/utils/objects";
@@ -10,9 +13,6 @@ import { useAtom } from "jotai";
 import { FormProvider, useForm } from "react-hook-form";
 import { DynamicControl } from "../edit-form-hook/dynamic-control";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
-import ErrorScreen from "../errors/error-screen";
-import NoDataFound from "../errors/no-data-found";
-import LoadingScreen from "../loading-screen/loading-screen";
 
 // TODO: Functionnal programming update
 // TODO: Pagination with infitie scrolling for the select

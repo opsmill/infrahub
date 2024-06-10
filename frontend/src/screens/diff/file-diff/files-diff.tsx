@@ -7,9 +7,9 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } fro
 import "react-diff-view/style/index.css";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import ErrorScreen from "../../errors/error-screen";
-import NoDataFound from "../../errors/no-data-found";
-import LoadingScreen from "../../loading-screen/loading-screen";
+import ErrorScreen from "../@/screens/errors/error-screen";
+import NoDataFound from "../@/screens/errors/no-data-found";
+import LoadingScreen from "../@/screens/loading-screen/loading-screen";
 import { FileRepoDiff } from "./file-repo-diff";
 
 export const FilesDiff = forwardRef((props, ref) => {

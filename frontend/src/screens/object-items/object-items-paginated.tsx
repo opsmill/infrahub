@@ -23,7 +23,11 @@ import usePagination from "@/hooks/usePagination";
 import { usePermission } from "@/hooks/usePermission";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
+import ErrorScreen from "@/screens/errors/error-screen";
+import NoDataFound from "@/screens/errors/no-data-found";
 import Content from "@/screens/layout/content";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import ObjectItemCreate from "@/screens/object-item-create/object-item-create-paginated";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { iComboBoxFilter } from "@/state/atoms/filters.atom";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
@@ -45,10 +49,6 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import ErrorScreen from "../errors/error-screen";
-import NoDataFound from "../errors/no-data-found";
-import LoadingScreen from "../loading-screen/loading-screen";
-import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 
 type ObjectItemsProps = {
   objectname?: string;

@@ -15,7 +15,7 @@ import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { Link, useParams } from "react-router-dom";
-import NoDataFound from "../../errors/no-data-found";
+import NoDataFound from "../@/screens/errors/no-data-found";
 
 const GraphqlQueryDetailsPage = () => {
   useTitle("GraphQL Query details");

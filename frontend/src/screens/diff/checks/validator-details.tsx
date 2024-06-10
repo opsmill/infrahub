@@ -3,9 +3,9 @@ import { getValidatorDetails } from "@/graphql/queries/diff/getValidatorDetails"
 import usePagination from "@/hooks/usePagination";
 import useQuery from "@/hooks/useQuery";
 import { gql } from "@apollo/client";
-import ErrorScreen from "../../errors/error-screen";
-import NoDataFound from "../../errors/no-data-found";
-import LoadingScreen from "../../loading-screen/loading-screen";
+import ErrorScreen from "../@/screens/errors/error-screen";
+import NoDataFound from "../@/screens/errors/no-data-found";
+import LoadingScreen from "../@/screens/loading-screen/loading-screen";
 import { Check } from "./check";
 
 type tValidatorDetails = {

@@ -17,7 +17,7 @@ import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import LoadingScreen from "../../loading-screen/loading-screen";
+import LoadingScreen from "../@/screens/loading-screen/loading-screen";
 
 type tChecksSummaryProps = {
   validators: any[];

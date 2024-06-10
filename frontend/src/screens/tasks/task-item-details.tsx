@@ -10,11 +10,11 @@ import { Id } from "@/components/ui/id";
 import { SearchInput } from "@/components/ui/search-input";
 import { QSP } from "@/config/qsp";
 import { getTaskItemDetails } from "@/graphql/queries/tasks/getTasksItemDetails";
+import ErrorScreen from "@/screens/errors/error-screen";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import ErrorScreen from "../errors/error-screen";
-import LoadingScreen from "../loading-screen/loading-screen";
 import { Logs, tLog } from "./logs";
 
 export const getConclusionBadge: { [key: string]: any } = {

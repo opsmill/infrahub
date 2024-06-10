@@ -11,6 +11,8 @@ import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
 import { addRelationship } from "@/graphql/mutations/relationships/addRelationship";
 import { usePermission } from "@/hooks/usePermission";
+import NoDataFound from "@/screens/errors/no-data-found";
+import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
@@ -33,8 +35,6 @@ import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
-import NoDataFound from "../errors/no-data-found";
-import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import { ObjectAttributeRow } from "./object-attribute-row";
 
 type iRelationDetailsProps = {

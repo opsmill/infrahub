@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/skeleton";
 import { NODE_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import { SEARCH } from "@/graphql/queries/objects/search";
@@ -12,7 +13,6 @@ import { Icon } from "@iconify-icon/react";
 import { format } from "date-fns";
 import { useAtomValue } from "jotai/index";
 import { ReactElement, useEffect } from "react";
-import { Skeleton } from "../skeleton";
 import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-anywhere";
 
 type SearchProps = {

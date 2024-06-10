@@ -3,6 +3,7 @@ import { SchemaContext, withSchemaContext } from "@/decorators/withSchemaContext
 import { Branch } from "@/generated/graphql";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import GET_BRANCHES from "@/graphql/queries/branches/getBranches";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { findSelectedBranch } from "@/utils/branches";
 import { useSetAtom } from "jotai";
@@ -10,7 +11,6 @@ import { useAtomValue } from "jotai/index";
 import { useContext, useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import LoadingScreen from "../loading-screen/loading-screen";
 import Header from "./header";
 import { Sidebar } from "./sidebar";
 

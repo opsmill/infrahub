@@ -6,6 +6,9 @@ import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWith
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
+import ErrorScreen from "@/screens/errors/error-screen";
+import NoDataFound from "@/screens/errors/no-data-found";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
@@ -19,9 +22,6 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
-import ErrorScreen from "../errors/error-screen";
-import NoDataFound from "../errors/no-data-found";
-import LoadingScreen from "../loading-screen/loading-screen";
 
 interface Props {
   objectname: string;

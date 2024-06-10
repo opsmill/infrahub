@@ -10,7 +10,16 @@ import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDe
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
+import { Generate } from "@/screens/artifacts/generate";
+import ErrorScreen from "@/screens/errors/error-screen";
+import NoDataFound from "@/screens/errors/no-data-found";
+import AddObjectToGroup from "@/screens/groups/add-object-to-group";
 import Content from "@/screens/layout/content";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import RelationshipDetails from "@/screens/object-item-details/relationship-details-paginated";
+import { RelationshipsDetails } from "@/screens/object-item-details/relationships-details-paginated";
+import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
+import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
@@ -34,15 +43,6 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import ErrorScreen from "../errors/error-screen";
-import NoDataFound from "../errors/no-data-found";
-import AddObjectToGroup from "../groups/add-object-to-group";
-import LoadingScreen from "../loading-screen/loading-screen";
-import RelationshipDetails from "../object-item-details/relationship-details-paginated";
-import { RelationshipsDetails } from "../object-item-details/relationships-details-paginated";
-import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
-import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
-import { Generate } from "./generate";
 
 export default function ArtifactsDetails() {
   const { objectid } = useParams();

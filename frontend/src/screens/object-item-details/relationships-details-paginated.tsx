@@ -5,6 +5,8 @@ import graphqlClient from "@/graphql/graphqlClientApollo";
 import { removeRelationship } from "@/graphql/mutations/relationships/removeRelationship";
 import { getObjectRelationshipsDetailsPaginated } from "@/graphql/queries/objects/getObjectRelationshipDetails";
 import useQuery from "@/hooks/useQuery";
+import ErrorScreen from "@/screens/errors/error-screen";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { genericsState, iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
@@ -17,8 +19,6 @@ import { forwardRef, useEffect, useImperativeHandle } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import ErrorScreen from "../errors/error-screen";
-import LoadingScreen from "../loading-screen/loading-screen";
 import RelationshipDetails from "./relationship-details-paginated";
 
 interface RelationshipsDetailsProps {

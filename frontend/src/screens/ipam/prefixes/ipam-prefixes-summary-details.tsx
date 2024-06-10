@@ -10,7 +10,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import NoDataFound from "../../errors/no-data-found";
+import NoDataFound from "../@/screens/errors/no-data-found";
 import { IpDetailsCard } from "../common/ip-details-card";
 import { constructPathForIpam } from "../common/utils";
 import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";

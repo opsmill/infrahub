@@ -24,6 +24,9 @@ import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWith
 import { getProposedChangesThreads } from "@/graphql/queries/proposed-changes/getProposedChangesThreads";
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
+import ErrorScreen from "@/screens/errors/error-screen";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
@@ -40,9 +43,6 @@ import { forwardRef, useImperativeHandle, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
-import ErrorScreen from "../errors/error-screen";
-import LoadingScreen from "../loading-screen/loading-screen";
-import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 
 type tConversations = {
   refetch?: Function;

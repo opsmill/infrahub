@@ -12,7 +12,7 @@ import { schemaKindLabelState } from "@/state/atoms/schemaKindLabel.atom";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import ErrorScreen from "../../errors/error-screen";
+import ErrorScreen from "../@/screens/errors/error-screen";
 import { Conflict } from "./conflict";
 
 type tCheckProps = {

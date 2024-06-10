@@ -8,7 +8,7 @@ import { fetchUrl } from "@/utils/fetch";
 import { useAtom, useAtomValue } from "jotai/index";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
-import LoadingScreen from "../../loading-screen/loading-screen";
+import LoadingScreen from "../@/screens/loading-screen/loading-screen";
 import DropDownMenuHeader from "./desktop-menu-header";
 
 export type MenuItem = {

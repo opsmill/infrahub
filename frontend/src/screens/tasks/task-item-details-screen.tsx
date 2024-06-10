@@ -5,12 +5,12 @@ import { gql } from "@apollo/client";
 
 import { Link } from "@/components/ui/link";
 import { getTaskItemDetailsTitle } from "@/graphql/queries/tasks/getTasksItemDetailsTitle";
+import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router-dom";
-import ErrorScreen from "../errors/error-screen";
-import LoadingScreen from "../loading-screen/loading-screen";
 import { TaskItemDetails } from "./task-item-details";
 
 const TaskItemDetailsScreen = () => {

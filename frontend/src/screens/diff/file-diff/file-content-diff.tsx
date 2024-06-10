@@ -33,8 +33,8 @@ import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
 import { StringParam, useQueryParam } from "use-query-params";
-import ErrorScreen from "../../errors/error-screen";
-import LoadingScreen from "../../loading-screen/loading-screen";
+import ErrorScreen from "../@/screens/errors/error-screen";
+import LoadingScreen from "../@/screens/loading-screen/loading-screen";
 
 const fakeIndex = () => {
   return sha(Math.random() * 100000).slice(0, 9);

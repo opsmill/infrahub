@@ -14,6 +14,9 @@ import { validateBranch } from "@/graphql/mutations/branches/validateBranch";
 import { getBranchDetails } from "@/graphql/queries/branches/getBranchDetails";
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
+import ErrorScreen from "@/screens/errors/error-screen";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import ObjectItemCreate from "@/screens/object-item-create/object-item-create-paginated";
 import { branchesState } from "@/state/atoms/branches.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
@@ -28,9 +31,6 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import ErrorScreen from "../errors/error-screen";
-import LoadingScreen from "../loading-screen/loading-screen";
-import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "../proposed-changes/conversations";
 
 export const BranchDetails = () => {

@@ -10,11 +10,11 @@ import { Id } from "@/components/ui/id";
 import { QSP } from "@/config/qsp";
 import { getTasksItems } from "@/graphql/queries/tasks/getTasksItems";
 import usePagination from "@/hooks/usePagination";
+import ErrorScreen from "@/screens/errors/error-screen";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { constructPath } from "@/utils/fetch";
 import { forwardRef, useImperativeHandle } from "react";
 import { useLocation, useParams } from "react-router-dom";
-import ErrorScreen from "../errors/error-screen";
-import LoadingScreen from "../loading-screen/loading-screen";
 import { getConclusionBadge } from "./task-item-details";
 
 interface TaskItemsProps {

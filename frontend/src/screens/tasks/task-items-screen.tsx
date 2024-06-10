@@ -3,10 +3,10 @@ import { TASK_OBJECT } from "@/config/constants";
 import { getTasksItemsCount } from "@/graphql/queries/tasks/getTasksItemsCount";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
+import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { gql } from "@apollo/client";
-import ErrorScreen from "../errors/error-screen";
-import LoadingScreen from "../loading-screen/loading-screen";
 import { TaskItems } from "./task-items";
 
 const TaskItemsScreen = () => {
