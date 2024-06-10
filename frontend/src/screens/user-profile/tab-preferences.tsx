@@ -37,7 +37,7 @@ export default function TabPreferences() {
 
   const onSubmit = async ({ newPassword, confirmPassword }: any) => {
     if (newPassword !== confirmPassword) {
-      toast(<Alert type={ALERT_TYPES.WARNING} message="Passwords must be the same" />);
+      toast(() => <Alert type={ALERT_TYPES.WARNING} message="Passwords must be the same" />);
       return;
     }
 
@@ -57,7 +57,7 @@ export default function TabPreferences() {
 
       await graphqlClient.mutate({ mutation });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Password updated" />);
+      toast(() => <Alert type={ALERT_TYPES.SUCCESS} message="Password updated" />);
     } catch (error) {
       console.log("Error while updating the password: ", error);
     }
