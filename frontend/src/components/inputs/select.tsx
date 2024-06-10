@@ -1,4 +1,5 @@
 import { BUTTON_TYPES, Button } from "@/components/buttons/button";
+import SlideOver from "@/components/display/slide-over";
 import {
   DEFAULT_BRANCH_NAME,
   SCHEMA_DROPDOWN_ADD,
@@ -25,7 +26,6 @@ import { CheckIcon } from "@heroicons/react/20/solid";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { forwardRef, useContext, useEffect, useState } from "react";
-import SlideOver from "../display/slide-over";
 import ModalDelete from "../modals/modal-delete";
 import { Input } from "./input";
 import { MultipleInput } from "./multiple-input";

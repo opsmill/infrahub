@@ -1,8 +1,8 @@
+import { AVATAR_SIZE, Avatar } from "@/components/display/avatar";
+import { DateDisplay } from "@/components/display/date-display";
+import { MarkdownViewer } from "@/components/editor/markdown-viewer";
 import { classNames } from "@/utils/common";
 import React from "react";
-import { AVATAR_SIZE, Avatar } from "../display/avatar";
-import { DateDisplay } from "../display/date-display";
-import { MarkdownViewer } from "../editor/markdown-viewer";
 
 type CommentProps = {
   author: string;

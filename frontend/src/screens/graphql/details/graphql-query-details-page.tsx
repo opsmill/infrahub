@@ -6,7 +6,7 @@ import GraphqlQueryViewerCard from "@/graphql-query-viewer-card";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
-import { iNodeSchema, schemaState } from "@/state/state/atoms/schema.atom";
+import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";

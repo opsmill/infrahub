@@ -10,8 +10,8 @@ import {
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { runCheck } from "@/graphql/mutations/diff/runCheck";
 import { useAuth } from "@/hooks/useAuth";
-import { genericsState } from "@/state/state/atoms/schema.atom";
-import { schemaKindLabelState } from "@/state/state/atoms/schemaKindLabel.atom";
+import { genericsState } from "@/state/atoms/schema.atom";
+import { schemaKindLabelState } from "@/state/atoms/schemaKindLabel.atom";
 import { getValidatorsStats } from "@/utils/checks";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";

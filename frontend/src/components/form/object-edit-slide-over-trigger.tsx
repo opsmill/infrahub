@@ -1,4 +1,5 @@
 import { ButtonProps, ButtonWithTooltip } from "@/components/buttons/button-primitive";
+import SlideOver from "@/components/display/slide-over";
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { usePermission } from "@/hooks/usePermission";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
@@ -8,7 +9,6 @@ import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
-import SlideOver from "../display/slide-over";
 
 interface ObjectEditSlideOverTriggerProps extends ButtonProps {
   data: any;

@@ -1,5 +1,6 @@
 // type AlertProps = {};
 
+import Accordion from "@/components/display/accordion";
 import { classNames } from "@/utils/common";
 import {
   CheckCircleIcon,
@@ -9,7 +10,6 @@ import {
   XCircleIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import Accordion from "../display/accordion";
 
 export enum ALERT_TYPES {
   SUCCESS,
