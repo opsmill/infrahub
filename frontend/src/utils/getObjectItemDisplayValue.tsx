@@ -6,8 +6,6 @@ import { TextDisplay } from "@/components/display/text-display";
 import { CodeEditor } from "@/components/editor/code-editor";
 import { MarkdownViewer } from "@/components/editor/markdown-viewer";
 import { MAX_VALUE_LENGTH_DISPLAY, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
-import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
-import { iSchemaKindNameMap } from "@/state/atoms/schemaKindName.atom";
 import {
   AnyAttribute,
   CheckboxAttribute,
@@ -18,7 +16,9 @@ import {
   ListAttribute,
   NumberAttribute,
   TextAttribute,
-} from "@generated/graphql";
+} from "@/generated/graphql";
+import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
+import { iSchemaKindNameMap } from "@/state/atoms/schemaKindName.atom";
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { components } from "../infraops";
 

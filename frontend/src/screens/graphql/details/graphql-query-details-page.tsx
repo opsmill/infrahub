@@ -1,5 +1,6 @@
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import { GRAPHQL_QUERY_OBJECT } from "@/config/constants";
+import { CoreGraphQlQuery } from "@/generated/graphql";
 import GraphqlQueryDetailsCard from "@/graphql-query-details-card";
 import GraphQLQueryDetailsPageSkeleton from "@/graphql-query-details-page-skeleton";
 import GraphqlQueryViewerCard from "@/graphql-query-viewer-card";
@@ -11,7 +12,6 @@ import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
-import { CoreGraphQlQuery } from "@generated/graphql";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { Link, useParams } from "react-router-dom";

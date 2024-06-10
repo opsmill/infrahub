@@ -1,4 +1,5 @@
 import { Button } from "@/components/buttons/button";
+import ModalConfirm from "@/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
@@ -22,7 +23,6 @@ import { useAtomValue } from "jotai/index";
 import * as R from "ramda";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import ModalConfirm from "../modals/modal-confirm";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 

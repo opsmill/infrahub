@@ -1,13 +1,13 @@
 import { Button } from "@/components/buttons/button-primitive";
+import { PropertyList } from "@/components/table/property-list";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@/components/ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AnyAttribute } from "@/generated/graphql";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/utils/date";
 import { constructPath } from "@/utils/fetch";
-import { AnyAttribute } from "@generated/graphql";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
-import { PropertyList } from "../table/property-list";
 
 interface MetaDetailsTooltipProps {
   header?: React.ReactNode;

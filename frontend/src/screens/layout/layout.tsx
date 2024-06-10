@@ -1,10 +1,10 @@
 import { QSP } from "@/config/qsp";
 import { SchemaContext, withSchemaContext } from "@/decorators/withSchemaContext";
+import { Branch } from "@/generated/graphql";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import GET_BRANCHES from "@/graphql/queries/branches/getBranches";
 import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { findSelectedBranch } from "@/utils/branches";
-import { Branch } from "@generated/graphql";
 import { useSetAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useContext, useEffect, useState } from "react";
