@@ -1,5 +1,5 @@
-import { Input } from "@/ui/input";
-import Kbd from "@/ui/kbd";
+import { Input } from "@/components/ui/input";
+import Kbd from "@/components/ui/kbd";
 import { classNames } from "@/utils/common";
 import { Combobox, Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";

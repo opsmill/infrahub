@@ -1,6 +1,6 @@
+import { Button } from "@/components/buttons/button-primitive";
+import { Form, FormProps, FormSubmit } from "@/components/ui/form";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
-import { Form, FormProps, FormSubmit } from "@/ui/form";
-import { Button } from "../buttons/button-primitive";
 import CheckboxField from "./fields/checkbox.field";
 import { DynamicFieldProps } from "./fields/common";
 import InputField from "./fields/input.field";

@@ -1,6 +1,6 @@
 // type PopOver = {}
 
-import Transition from "@/ui/transition";
+import Transition from "@/components/ui/transition";
 import { classNames } from "@/utils/common";
 import { Popover } from "@headlessui/react";
 import { CSSProperties, forwardRef, useState } from "react";

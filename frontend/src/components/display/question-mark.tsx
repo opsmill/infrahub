@@ -1,4 +1,4 @@
-import { Tooltip } from "@/ui/tooltip";
+import { Tooltip } from "@/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 
 type tQuestionMark = {

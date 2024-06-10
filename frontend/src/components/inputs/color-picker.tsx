@@ -1,4 +1,4 @@
-import { Input } from "@/ui/input";
+import { Input } from "@/components/ui/input";
 import { getTextColor } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { ColorResult, Colorful, HsvaColor } from "@uiw/react-color/src/index";

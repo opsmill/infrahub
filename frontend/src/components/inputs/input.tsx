@@ -1,7 +1,7 @@
+import { BUTTON_TYPES, Button } from "@/components/buttons/button";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { forwardRef, useState } from "react";
-import { BUTTON_TYPES, Button } from "../buttons/button";
 
 // type InputProps = {
 //   value?: string;

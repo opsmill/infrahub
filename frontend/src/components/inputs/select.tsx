@@ -1,3 +1,4 @@
+import { BUTTON_TYPES, Button } from "@/components/buttons/button";
 import {
   DEFAULT_BRANCH_NAME,
   SCHEMA_DROPDOWN_ADD,
@@ -24,16 +25,15 @@ import { CheckIcon } from "@heroicons/react/20/solid";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { forwardRef, useContext, useEffect, useState } from "react";
-import { BUTTON_TYPES, Button } from "../buttons/button";
 import SlideOver from "../display/slide-over";
 import ModalDelete from "../modals/modal-delete";
 import { Input } from "./input";
 import { MultipleInput } from "./multiple-input";
 
+import { Tooltip } from "@/components/ui/tooltip";
 import { getObjectDisplayLabel } from "@/graphql/queries/objects/getObjectDisplayLabel";
 import { POOLS_DICTIONNARY, POOLS_PEER } from "@/screens/ipam/constants";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { Tooltip } from "@/ui/tooltip";
 import { comparedOptions } from "@/utils/array";
 import { getOptionsFromRelationship } from "@/utils/getSchemaObjectColumns";
 

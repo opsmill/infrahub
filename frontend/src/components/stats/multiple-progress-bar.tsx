@@ -1,4 +1,4 @@
-import { Tooltip, TooltipProps } from "@/ui/tooltip";
+import { Tooltip, TooltipProps } from "@/components/ui/tooltip";
 import { classNames } from "@/utils/common";
 import * as ProgressPrimitive from "@radix-ui/react-progress";
 

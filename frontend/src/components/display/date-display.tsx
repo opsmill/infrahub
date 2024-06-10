@@ -1,4 +1,4 @@
-import { Tooltip } from "@/ui/tooltip";
+import { Tooltip } from "@/components/ui/tooltip";
 import { differenceInDays, format, formatDistanceToNow } from "date-fns";
 
 type DateDisplayProps = {

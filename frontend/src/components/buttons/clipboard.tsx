@@ -1,5 +1,5 @@
-import { ALERT_TYPES, Alert } from "@/ui/alert";
-import { Tooltip } from "@/ui/tooltip";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Tooltip } from "@/components/ui/tooltip";
 import { ClipboardDocumentCheckIcon, ClipboardDocumentIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { toast } from "react-toastify";

@@ -1,4 +1,4 @@
-import { Tooltip, TooltipProps } from "@/ui/tooltip";
+import { Tooltip, TooltipProps } from "@/components/ui/tooltip";
 import { Button, ButtonProps } from "./button";
 
 interface ButtonWithTooltipProps extends ButtonProps {

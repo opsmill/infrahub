@@ -1,3 +1,6 @@
+import { Button } from "@/components/buttons/button";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
@@ -9,8 +12,6 @@ import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWith
 import { useAuth } from "@/hooks/useAuth";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { ALERT_TYPES, Alert } from "@/ui/alert";
-import { Tooltip } from "@/ui/tooltip";
 import { classNames } from "@/utils/common";
 import { getThreadTitle } from "@/utils/diff";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -20,7 +21,6 @@ import { useAtomValue } from "jotai/index";
 import * as R from "ramda";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { Button } from "../buttons/button";
 import { Checkbox } from "../inputs/checkbox";
 import ModalConfirm from "../modals/modal-confirm";
 import { AddComment } from "./add-comment";

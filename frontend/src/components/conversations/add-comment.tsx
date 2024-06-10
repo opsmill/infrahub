@@ -1,9 +1,9 @@
+import { LinkButton } from "@/components/buttons/button-primitive";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { constructPath } from "@/utils/fetch";
 import { ReactElement } from "react";
 import { useLocation } from "react-router-dom";
-import { LinkButton } from "../buttons/button-primitive";
 import DynamicForm from "../form/dynamic-form";
 import { DynamicFieldProps } from "../form/fields/common";
 

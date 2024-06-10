@@ -1,4 +1,4 @@
-import { focusStyle } from "@/ui/style";
+import { focusStyle } from "@/components/ui/style";
 import { classNames } from "@/utils/common";
 import { ChangeEventHandler, forwardRef } from "react";
 
