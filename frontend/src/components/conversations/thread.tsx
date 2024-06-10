@@ -1,4 +1,5 @@
 import { Button } from "@/components/buttons/button";
+import { Checkbox } from "@/components/inputs/checkbox";
 import ModalConfirm from "@/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -17,7 +18,6 @@ import { classNames } from "@/utils/common";
 import { getThreadTitle } from "@/utils/diff";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
-import { Checkbox } from "@components/inputs/checkbox";
 import { formatISO, isBefore, parseISO } from "date-fns";
 import { useAtomValue } from "jotai/index";
 import * as R from "ramda";

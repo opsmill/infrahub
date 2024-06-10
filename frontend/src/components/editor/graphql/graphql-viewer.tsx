@@ -1,6 +1,6 @@
+import { CodeViewerLimiter } from "@/components/editor/code-viewer-limiter";
 import { useCodeMirror } from "@/hooks/useCodeMirror";
 import { useRef } from "react";
-import { CodeViewerLimiter } from "../code-viewer-limiter";
 
 type GraphqlViewerProps = {
   value?: string;

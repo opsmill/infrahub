@@ -17,10 +17,10 @@ import {
   NumberAttribute,
   TextAttribute,
 } from "@/generated/graphql";
+import { components } from "@/infraops";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 import { iSchemaKindNameMap } from "@/state/atoms/schemaKindName.atom";
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { components } from "../infraops";
 
 const getTextValue = (data: any) => {
   if (typeof data === "string" || typeof data === "number") {

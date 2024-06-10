@@ -1,6 +1,6 @@
+import { SelectOption } from "@/components/inputs/select";
+import List from "@/components/list";
 import { FormFieldError } from "@/screens/edit-form-hook/form";
-import { SelectOption } from "@components/inputs/select";
-import List from "../list";
 
 type OpsListProps = {
   label: string;

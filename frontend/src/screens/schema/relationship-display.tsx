@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
+import { components } from "@/infraops";
 import { warnUnexpectedType } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { components } from "../../infraops";
 import { AccordionStyled, ModelDisplay, PropertyRow } from "./styled";
 
 export const RelationshipDisplay = ({
