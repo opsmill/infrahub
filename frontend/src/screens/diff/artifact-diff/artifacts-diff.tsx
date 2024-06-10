@@ -1,6 +1,8 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
 import { QSP } from "@/config/qsp";
+import NoDataFound from "@/screens/errors/no-data-found";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { fetchUrl, getUrlWithQsp } from "@/utils/fetch";
 import { useAtom } from "jotai";
@@ -9,8 +11,6 @@ import "react-diff-view/style/index.css";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import NoDataFound from "../@/screens/errors/no-data-found";
-import LoadingScreen from "../@/screens/loading-screen/loading-screen";
 import { ArtifactRepoDiff } from "./artifact-repo-diff";
 
 export const ArtifactsDiff = forwardRef((props, ref) => {

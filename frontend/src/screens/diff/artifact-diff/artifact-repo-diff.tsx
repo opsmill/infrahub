@@ -2,12 +2,12 @@ import Accordion from "@/components/display/accordion";
 import { Badge } from "@/components/display/badge";
 import { getArtifactDetails } from "@/graphql/queries/getArtifacts";
 import useQuery from "@/hooks/useQuery";
+import ErrorScreen from "@/screens/errors/error-screen";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import "react-diff-view/style/index.css";
-import ErrorScreen from "../@/screens/errors/error-screen";
-import LoadingScreen from "../@/screens/loading-screen/loading-screen";
 import { ArtifactContentDiff } from "./artifact-content-diff";
 
 export const ArtifactRepoDiff = (props: any) => {

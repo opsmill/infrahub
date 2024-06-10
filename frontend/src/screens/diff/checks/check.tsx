@@ -8,11 +8,11 @@ import { List } from "@/components/table/list";
 import { Tooltip } from "@/components/ui/tooltip";
 import { GET_CHECKS } from "@/graphql/queries/diff/getCheckDetails";
 import useQuery from "@/hooks/useQuery";
+import ErrorScreen from "@/screens/errors/error-screen";
 import { schemaKindLabelState } from "@/state/atoms/schemaKindLabel.atom";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import ErrorScreen from "../@/screens/errors/error-screen";
 import { Conflict } from "./conflict";
 
 type tCheckProps = {

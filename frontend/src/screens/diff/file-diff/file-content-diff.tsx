@@ -15,6 +15,8 @@ import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
 import { getProposedChangesFilesThreads } from "@/graphql/queries/proposed-changes/getProposedChangesFilesThreads";
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
+import ErrorScreen from "@/screens/errors/error-screen";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
@@ -33,8 +35,6 @@ import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
 import { StringParam, useQueryParam } from "use-query-params";
-import ErrorScreen from "../@/screens/errors/error-screen";
-import LoadingScreen from "../@/screens/loading-screen/loading-screen";
 
 const fakeIndex = () => {
   return sha(Math.random() * 100000).slice(0, 9);

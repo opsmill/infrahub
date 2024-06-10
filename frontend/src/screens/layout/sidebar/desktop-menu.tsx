@@ -1,6 +1,7 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { SearchInput } from "@/components/ui/search-input";
 import { CONFIG } from "@/config/config";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { currentSchemaHashAtom, menuAtom } from "@/state/atoms/schema.atom";
 import { classNames } from "@/utils/common";
@@ -8,7 +9,6 @@ import { fetchUrl } from "@/utils/fetch";
 import { useAtom, useAtomValue } from "jotai/index";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
-import LoadingScreen from "../@/screens/loading-screen/loading-screen";
 import DropDownMenuHeader from "./desktop-menu-header";
 
 export type MenuItem = {

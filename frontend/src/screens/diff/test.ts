@@ -105,7 +105,7 @@ index 25392af1..2788585a 100644
 -import { fetchUrl } from "@/utils/fetch";
 -import { QSP } from "@/config/qsp";
 -import { StringParam, useQueryParam } from "use-query-params";
--import LoadingScreen from "../@/screens/loading-screen/loading-screen";
+-import LoadingScreen from "@/screens/loading-screen/loading-screen";
 -import { toast } from "react-toastify";
 -import { ALERT_TYPES, Alert } from "@/components/alert";
 +import { PencilIcon } from "@heroicons/react/24/outline";
