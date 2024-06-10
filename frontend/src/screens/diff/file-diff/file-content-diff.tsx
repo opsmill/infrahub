@@ -9,6 +9,10 @@ import {
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/config/constants";
 import { QSP } from "@/config/qsp";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { createObject } from "@/graphql/mutations/objects/createObject";
+import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
+import { getProposedChangesFilesThreads } from "@/graphql/queries/proposed-changes/getProposedChangesFilesThreads";
 import { fetchStream } from "@/utils/fetch";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
@@ -24,10 +28,6 @@ import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
 import { StringParam, useQueryParam } from "use-query-params";
-import graphqlClient from "../../../graphql/graphqlClientApollo";
-import { createObject } from "../../../graphql/mutations/objects/createObject";
-import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
-import { getProposedChangesFilesThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesFilesThreads";
 import { useAuth } from "../../../hooks/useAuth";
 import useQuery from "../../../hooks/useQuery";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";

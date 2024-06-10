@@ -7,13 +7,13 @@ import {
   VALIDATIONS_ENUM_MAP,
   VALIDATION_STATES,
 } from "@/config/constants";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { runCheck } from "@/graphql/mutations/diff/runCheck";
 import { getValidatorsStats } from "@/utils/checks";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import graphqlClient from "../../../graphql/graphqlClientApollo";
-import { runCheck } from "../../../graphql/mutations/diff/runCheck";
 import { useAuth } from "../../../hooks/useAuth";
 import { genericsState } from "../../../state/atoms/schema.atom";
 import { schemaKindLabelState } from "../../../state/atoms/schemaKindLabel.atom";

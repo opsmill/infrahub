@@ -8,6 +8,10 @@ import {
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/config/constants";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { createObject } from "@/graphql/mutations/objects/createObject";
+import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
+import { getProposedChangesArtifactsThreads } from "@/graphql/queries/proposed-changes/getProposedChangesArtifactsThreads";
 import { fetchStream } from "@/utils/fetch";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
@@ -22,10 +26,6 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
-import graphqlClient from "../../../graphql/graphqlClientApollo";
-import { createObject } from "../../../graphql/mutations/objects/createObject";
-import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
-import { getProposedChangesArtifactsThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesArtifactsThreads";
 import { useAuth } from "../../../hooks/useAuth";
 import useQuery from "../../../hooks/useQuery";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";

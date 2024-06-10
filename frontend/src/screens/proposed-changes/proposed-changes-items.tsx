@@ -1,13 +1,13 @@
 import { Button, ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import { Badge } from "@/components/ui/badge";
 import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import { getProposedChanges } from "@/graphql/queries/proposed-changes/getProposedChanges";
 import { constructPath } from "@/utils/fetch";
 import { getObjectRelationships } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { Link } from "react-router-dom";
-import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
 import { usePermission } from "../../hooks/usePermission";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";

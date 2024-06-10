@@ -17,6 +17,11 @@ import {
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
   PROPOSED_CHANGES_THREAD_OBJECT,
 } from "@/config/constants";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { createObject } from "@/graphql/mutations/objects/createObject";
+import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
+import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import { getProposedChangesThreads } from "@/graphql/queries/proposed-changes/getProposedChangesThreads";
 import { constructPath } from "@/utils/fetch";
 import { getProposedChangesStateBadgeType } from "@/utils/proposed-changes";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -29,11 +34,6 @@ import { useAtomValue } from "jotai/index";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import { createObject } from "../../graphql/mutations/objects/createObject";
-import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
-import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { getProposedChangesThreads } from "../../graphql/queries/proposed-changes/getProposedChangesThreads";
 import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";

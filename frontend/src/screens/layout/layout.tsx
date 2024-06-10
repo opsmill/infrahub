@@ -1,5 +1,7 @@
 import { QSP } from "@/config/qsp";
 import { SchemaContext, withSchemaContext } from "@/decorators/withSchemaContext";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import GET_BRANCHES from "@/graphql/queries/branches/getBranches";
 import { findSelectedBranch } from "@/utils/branches";
 import { Branch } from "@generated/graphql";
 import { useSetAtom } from "jotai";
@@ -7,8 +9,6 @@ import { useAtomValue } from "jotai/index";
 import { useContext, useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import GET_BRANCHES from "../../graphql/queries/branches/getBranches";
 import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
 import LoadingScreen from "../loading-screen/loading-screen";
 import Header from "./header";

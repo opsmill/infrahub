@@ -1,11 +1,11 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { ACCOUNT_SELF_UPDATE_OBJECT } from "@/config/constants";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import { Form } from "../edit-form-hook/form";
 

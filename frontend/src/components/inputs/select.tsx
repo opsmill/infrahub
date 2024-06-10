@@ -6,6 +6,9 @@ import {
   SCHEMA_ENUM_REMOVE,
 } from "@/config/constants";
 import { SchemaContext } from "@/decorators/withSchemaContext";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { basicMutation } from "@/graphql/mutations/objects/basicMutation";
+import { getDropdownOptions } from "@/graphql/queries/objects/dropdownOptions";
 import { Form, FormFieldError } from "@/screens/edit-form-hook/form";
 import ObjectItemCreate from "@/screens/object-item-create/object-item-create-paginated";
 import { classNames, getTextColor } from "@/utils/common";
@@ -16,9 +19,6 @@ import { CheckIcon } from "@heroicons/react/20/solid";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { forwardRef, useContext, useEffect, useState } from "react";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import { basicMutation } from "../../graphql/mutations/objects/basicMutation";
-import { getDropdownOptions } from "../../graphql/queries/objects/dropdownOptions";
 import { useLazyQuery } from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { namespacesState, schemaState } from "../../state/atoms/schema.atom";
@@ -30,11 +30,11 @@ import ModalDelete from "../modals/modal-delete";
 import { Input } from "./input";
 import { MultipleInput } from "./multiple-input";
 
+import { getObjectDisplayLabel } from "@/graphql/queries/objects/getObjectDisplayLabel";
 import { POOLS_DICTIONNARY, POOLS_PEER } from "@/screens/ipam/constants";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { comparedOptions } from "@/utils/array";
 import { getOptionsFromRelationship } from "@/utils/getSchemaObjectColumns";
-import { getObjectDisplayLabel } from "../../graphql/queries/objects/getObjectDisplayLabel";
 import { Tooltip } from "../ui/tooltip";
 
 export type SelectOption = {

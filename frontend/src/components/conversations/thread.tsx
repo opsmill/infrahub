@@ -3,6 +3,9 @@ import {
   PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/config/constants";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { createObject } from "@/graphql/mutations/objects/createObject";
+import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
 import { classNames } from "@/utils/common";
 import { getThreadTitle } from "@/utils/diff";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -12,9 +15,6 @@ import { useAtomValue } from "jotai/index";
 import * as R from "ramda";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import { createObject } from "../../graphql/mutations/objects/createObject";
-import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { useAuth } from "../../hooks/useAuth";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";

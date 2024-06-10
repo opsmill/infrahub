@@ -6,8 +6,8 @@ import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useLazyQuery } from "../../../hooks/useQuery";
 
+import { GET_PREFIXES_ONLY } from "@/graphql/queries/ipam/prefixes";
 import { StringParam, useQueryParam } from "use-query-params";
-import { GET_PREFIXES_ONLY } from "../../../graphql/queries/ipam/prefixes";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import { defaultIpNamespaceAtom } from "../common/namespace.state";
 import { constructPathForIpam } from "../common/utils";

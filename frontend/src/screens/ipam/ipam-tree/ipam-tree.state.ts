@@ -1,12 +1,12 @@
 import { TreeProps } from "@/components/ui/tree";
-import { atom } from "jotai";
-import * as R from "ramda";
-import graphqlClient from "../../../graphql/graphqlClientApollo";
+import graphqlClient from "@/graphql/graphqlClientApollo";
 import {
   GET_PREFIX_ANCESTORS,
   GET_PREFIXES_ONLY,
   GET_TOP_LEVEL_PREFIXES,
-} from "../../../graphql/queries/ipam/prefixes";
+} from "@/graphql/queries/ipam/prefixes";
+import { atom } from "jotai";
+import * as R from "ramda";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
 import { IP_PREFIX_GENERIC, IPAM_TREE_ROOT_ID } from "../constants";

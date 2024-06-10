@@ -1,5 +1,6 @@
 import { QSP } from "@/config/qsp";
 import { Branch } from "@/generated/graphql";
+import { BRANCH_CREATE } from "@/graphql/mutations/branches/createBranch";
 import { DynamicFieldData } from "@/screens/edit-form-hook/dynamic-control-types";
 import { Form } from "@/screens/edit-form-hook/form";
 import { branchesToSelectOptions } from "@/utils/branches";
@@ -9,7 +10,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { StringParam, useQueryParam } from "use-query-params";
-import { BRANCH_CREATE } from "../graphql/mutations/branches/createBranch";
 import { useAuth } from "../hooks/useAuth";
 import { usePermission } from "../hooks/usePermission";
 import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";

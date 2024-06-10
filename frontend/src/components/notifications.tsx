@@ -1,6 +1,6 @@
-import { useSubscription } from "../hooks/useQuery";
-import { subscription } from "../graphql/queries/notifications/subscription";
+import { subscription } from "@/graphql/queries/notifications/subscription";
 import { gql } from "@apollo/client";
+import { useSubscription } from "../hooks/useQuery";
 
 export const Notifications = (props: any) => {
   const { query: queryFromProps } = props;

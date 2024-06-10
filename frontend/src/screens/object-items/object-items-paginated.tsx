@@ -15,6 +15,9 @@ import {
   SEARCH_FILTERS,
   SEARCH_PARTIAL_MATCH,
 } from "@/config/constants";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
+import { getObjectItemsPaginated } from "@/graphql/queries/objects/getObjectItems";
 import { debounce } from "@/utils/common";
 import { constructPath } from "@/utils/fetch";
 import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
@@ -31,9 +34,6 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
-import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
 import useFilters, { Filter } from "../../hooks/useFilters";
 import usePagination from "../../hooks/usePagination";
 import { usePermission } from "../../hooks/usePermission";

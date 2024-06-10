@@ -1,13 +1,13 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Link } from "@/components/ui/link";
+import { GET_PREFIX_KIND } from "@/graphql/queries/ipam/prefixes";
+import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { GET_PREFIX_KIND } from "../../../graphql/queries/ipam/prefixes";
-import { getObjectDetailsPaginated } from "../../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../../hooks/useQuery";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import NoDataFound from "../../errors/no-data-found";
