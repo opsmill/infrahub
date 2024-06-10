@@ -114,7 +114,7 @@ class InfraRack(InfrahubModel):
     _identifiers = ("name", "location")
     _attributes = ("role", "tags", "height", "facility_id", "serial_number", "asset_tag")
     name: str
-    height: int
+    height: Optional[int] = None
     facility_id: Optional[str] = None
     serial_number: Optional[str] = None
     asset_tag: Optional[str] = None

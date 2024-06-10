@@ -198,6 +198,7 @@ schema_mapping:
         reference: OrganizationGeneric
   # -> The netbox constraint is `dcim_device_unique_name_site_tenant`
   # Reusing device_name + site + Organization as identifiers
+  # /!\ Seem like Netbox allowed device to have the same name if there is a virtual-chassis
   - name: InfraDevice
     identifiers: ["name", "location", "rack", "organization"]
     mapping: dcim.devices
