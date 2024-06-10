@@ -1,5 +1,5 @@
 import { CONFIG } from "@/config/config";
-import { authLink, defaultOptions, errorLink } from "@/graphqlClientApollo";
+import { authLink, defaultOptions, errorLink } from "@/graphql/graphqlClientApollo";
 import { ApolloClient, InMemoryCache, from } from "@apollo/client";
 import { WebSocketLink } from "@apollo/client/link/ws";
 import { SubscriptionClient } from "subscriptions-transport-ws";

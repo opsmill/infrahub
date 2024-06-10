@@ -1,3 +1,5 @@
+import { Avatar } from "@/components/display/avatar";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "@/config/constants";
 import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,8 +13,6 @@ import { useAtom } from "jotai/index";
 import { Fragment, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Avatar } from "./display/avatar";
-import { ALERT_TYPES, Alert } from "./ui/alert";
 
 const customId = "profile-alert";
 

@@ -1,3 +1,5 @@
+import { DateDisplay } from "@/components/display/date-display";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { QSP } from "@/config/qsp";
 import { Branch } from "@/generated/graphql";
 import { usePermission } from "@/hooks/usePermission";
@@ -10,10 +12,8 @@ import React from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ButtonWithTooltip } from "./buttons/button-with-tooltip";
 import { SelectButton } from "./buttons/select-button";
-import { DateDisplay } from "./display/date-display";
 import BranchCreateForm from "./form/branch-create-form";
 import { SelectOption } from "./inputs/select";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
   branch && (
