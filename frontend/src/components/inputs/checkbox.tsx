@@ -1,6 +1,6 @@
+import { focusStyle } from "@/ui/style";
 import { ChangeEventHandler, forwardRef } from "react";
 import { classNames } from "../../utils/common";
-import { focusStyle } from "../ui/style";
 
 type CheckboxProps = {
   enabled?: boolean;

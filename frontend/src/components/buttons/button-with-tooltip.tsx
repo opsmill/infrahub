@@ -1,5 +1,5 @@
+import { Tooltip, TooltipProps } from "@/ui/tooltip";
 import { Button, ButtonProps } from "./button";
-import { Tooltip, TooltipProps } from "../ui/tooltip";
 
 interface ButtonWithTooltipProps extends ButtonProps {
   tooltipContent?: TooltipProps["content"];

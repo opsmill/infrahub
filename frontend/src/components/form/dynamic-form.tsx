@@ -1,11 +1,11 @@
-import { Form, FormProps, FormSubmit } from "../ui/form";
+import { Form, FormProps, FormSubmit } from "@/ui/form";
 import { SCHEMA_ATTRIBUTE_KIND } from "../../config/constants";
 import { Button } from "../buttons/button-primitive";
-import { DynamicFieldProps } from "./fields/common";
 import CheckboxField from "./fields/checkbox.field";
+import { DynamicFieldProps } from "./fields/common";
 import InputField from "./fields/input.field";
-import TextareaField from "./fields/textarea.field";
 import PasswordInputField from "./fields/password-input.field";
+import TextareaField from "./fields/textarea.field";
 
 interface DynamicFormProps extends FormProps {
   fields: Array<DynamicFieldProps>;

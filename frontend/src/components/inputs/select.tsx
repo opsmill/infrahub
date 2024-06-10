@@ -33,9 +33,9 @@ import { MultipleInput } from "./multiple-input";
 import { getObjectDisplayLabel } from "@/graphql/queries/objects/getObjectDisplayLabel";
 import { POOLS_DICTIONNARY, POOLS_PEER } from "@/screens/ipam/constants";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { Tooltip } from "@/ui/tooltip";
 import { comparedOptions } from "@/utils/array";
 import { getOptionsFromRelationship } from "@/utils/getSchemaObjectColumns";
-import { Tooltip } from "../ui/tooltip";
 
 export type SelectOption = {
   id: string | number;

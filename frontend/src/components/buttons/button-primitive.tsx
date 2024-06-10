@@ -1,8 +1,8 @@
+import { focusStyle } from "@/ui/style";
+import { Tooltip, TooltipProps } from "@/ui/tooltip";
 import { classNames } from "@/utils/common";
 import { cva, type VariantProps } from "class-variance-authority";
 import { ButtonHTMLAttributes, forwardRef } from "react";
-import { Tooltip, TooltipProps } from "../ui/tooltip";
-import { focusStyle } from "../ui/style";
 import { Link, LinkProps } from "react-router-dom";
 
 const buttonVariants = cva(

@@ -9,6 +9,8 @@ import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWith
 import { useAuth } from "@/hooks/useAuth";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
+import { ALERT_TYPES, Alert } from "@/ui/alert";
+import { Tooltip } from "@/ui/tooltip";
 import { classNames } from "@/utils/common";
 import { getThreadTitle } from "@/utils/diff";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -21,8 +23,6 @@ import { toast } from "react-toastify";
 import { Button } from "../buttons/button";
 import { Checkbox } from "../inputs/checkbox";
 import ModalConfirm from "../modals/modal-confirm";
-import { ALERT_TYPES, Alert } from "../ui/alert";
-import { Tooltip } from "../ui/tooltip";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 

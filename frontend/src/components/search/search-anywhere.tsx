@@ -1,3 +1,5 @@
+import { Input } from "@/ui/input";
+import Kbd from "@/ui/kbd";
 import { classNames } from "@/utils/common";
 import { Combobox, Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
@@ -11,8 +13,6 @@ import {
   useState,
 } from "react";
 import { Link, LinkProps, useNavigate } from "react-router-dom";
-import { Input } from "../ui/input";
-import Kbd from "../ui/kbd";
 import { SearchActions } from "./search-actions";
 import { SearchDocs } from "./search-docs";
 import { SearchNodes } from "./search-nodes";

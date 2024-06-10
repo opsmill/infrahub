@@ -1,5 +1,5 @@
+import { Tooltip } from "@/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
-import { Tooltip } from "../ui/tooltip";
 
 type tQuestionMark = {
   message?: string;
