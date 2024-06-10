@@ -11,12 +11,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
 
-import git
 import jinja2
 import ujson
 import yaml
 from git import Repo
 from git.exc import BadName, GitCommandError, InvalidGitRepositoryError
+from git.refs.remote import RemoteReference
 from infrahub_sdk import (
     GraphQLError,
     InfrahubClient,
@@ -44,13 +44,15 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
-    Error,
     FileOutOfRepositoryError,
     InitializationError,
     RepositoryError,
     RepositoryFileNotFoundError,
     TransformError,
 )
+from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
+from infrahub.git.directory import initialize_repositories_directory
+from infrahub.git.worktree import Worktree
 from infrahub.log import get_logger
 from infrahub.services import InfrahubServices
 
@@ -61,40 +63,9 @@ if TYPE_CHECKING:
     from infrahub_sdk.transforms import InfrahubTransform
 
     from infrahub.message_bus import messages
-# pylint: disable=too-few-public-methods,too-many-lines
+# pylint: disable=too-many-lines
 
 log = get_logger("infrahub.git")
-
-COMMITS_DIRECTORY_NAME = "commits"
-BRANCHES_DIRECTORY_NAME = "branches"
-TEMPORARY_DIRECTORY_NAME = "temp"
-
-
-def get_repositories_directory() -> str:
-    """Return the absolute path to the main directory used for the repositories."""
-    repos_dir = config.SETTINGS.git.repositories_directory
-    if not os.path.isabs(repos_dir):
-        current_dir = os.getcwd()
-        repos_dir = os.path.join(current_dir, config.SETTINGS.git.repositories_directory)
-
-    return str(repos_dir)
-
-
-def initialize_repositories_directory() -> bool:
-    """Check if the main repositories_directory already exist, if not create it.
-
-    Return
-        True if the directory has been created,
-        False if the directory was already present.
-    """
-    repos_dir = get_repositories_directory()
-    if not os.path.isdir(repos_dir):
-        os.makedirs(repos_dir)
-        log.debug(f"Initialized the repositories_directory at {repos_dir}")
-        return True
-
-    log.debug(f"Repositories_directory already present at {repos_dir}")
-    return False
 
 
 class GraphQLQueryInformation(BaseModel):
@@ -236,49 +207,6 @@ def extract_repo_file_information(
         extension=full_path.suffix,
         relative_path_file=str(file_path),
     )
-
-
-class Worktree(BaseModel):
-    identifier: str
-    directory: str
-    commit: str
-    branch: Optional[str] = None
-
-    @classmethod
-    def init(cls, text: str) -> Worktree:
-        lines = text.split("\n")
-
-        full_directory = lines[0].replace("worktree ", "")
-
-        # Extract the identifier from the directory name
-        # We first need to substract the main repository_directory to get the relative path.
-        repo_directory = get_repositories_directory()
-        relative_directory = full_directory.replace(repo_directory, "")
-        relative_paths = relative_directory.split("/")
-
-        identifier = None
-        if len(relative_paths) == 3:
-            # this is the main worktree for the main branch
-            identifier = relative_paths[2]
-
-        elif len(relative_paths) == 4 and relative_paths[2] == COMMITS_DIRECTORY_NAME:
-            # this is the either a commit or a branch worktree
-            identifier = relative_paths[3]
-        elif len(relative_paths) == 4 and relative_paths[2] == BRANCHES_DIRECTORY_NAME and lines[2] != "detached":
-            identifier = lines[2].replace("branch refs/heads/", "")
-        else:
-            raise Error("Unexpected path for a worktree.")
-
-        item = cls(
-            identifier=identifier,
-            directory=full_directory,
-            commit=lines[1].replace("HEAD ", ""),
-        )
-
-        if lines[2] != "detached":
-            item.branch = lines[2].replace("branch refs/heads/", "")
-
-        return item
 
 
 class BranchInGraph(BaseModel):
@@ -588,7 +516,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         branches = {}
 
         for remote_branch in git_repo.remotes.origin.refs:
-            if not isinstance(remote_branch, git.refs.remote.RemoteReference):  # pylint: disable=no-member
+            if not isinstance(remote_branch, RemoteReference):
                 continue
 
             short_name = remote_branch.name.replace("origin/", "")
