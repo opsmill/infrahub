@@ -1,6 +1,6 @@
-import { Link } from "react-router-dom";
+import Content from "@/screens/layout/content";
 import { Icon } from "@iconify-icon/react";
-import Content from "./layout/content";
+import { Link } from "react-router-dom";
 
 const Homepage = () => {
   return (

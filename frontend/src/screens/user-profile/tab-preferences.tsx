@@ -3,9 +3,9 @@ import { DynamicFieldProps } from "@/components/form/fields/common";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { UPDATE_ACCOUNT_PASSWORD } from "@/graphql/mutations/accounts/updateAccountPassword";
+import Content from "@/screens/layout/content";
 import { useMutation } from "@apollo/client";
 import { toast } from "react-toastify";
-import Content from "../layout/content";
 
 type UpdatePasswordFormData = {
   newPassword: string;

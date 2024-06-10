@@ -18,6 +18,7 @@ import { GET_ALL_ACCOUNTS } from "@/graphql/queries/accounts/getAllAccounts";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermission } from "@/hooks/usePermission";
 import useQuery from "@/hooks/useQuery";
+import Content from "@/screens/layout/content";
 import { branchesState } from "@/state/state/atoms/branches.atom";
 import { branchesToSelectOptions } from "@/utils/branches";
 import { constructPath } from "@/utils/fetch";
@@ -26,7 +27,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import Content from "../layout/content";
 
 const ProposedChangesCreatePage = () => {
   const permission = usePermission();

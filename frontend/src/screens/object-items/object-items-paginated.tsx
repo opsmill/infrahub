@@ -23,6 +23,7 @@ import usePagination from "@/hooks/usePagination";
 import { usePermission } from "@/hooks/usePermission";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
+import Content from "@/screens/layout/content";
 import { currentBranchAtom } from "@/state/state/atoms/branches.atom";
 import { iComboBoxFilter } from "@/state/state/atoms/filters.atom";
 import { genericsState, profilesAtom, schemaState } from "@/state/state/atoms/schema.atom";
@@ -46,7 +47,6 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import ErrorScreen from "../errors/error-screen";
 import NoDataFound from "../errors/no-data-found";
-import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 

@@ -10,6 +10,7 @@ import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDe
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
+import Content from "@/screens/layout/content";
 import { currentBranchAtom } from "@/state/state/atoms/branches.atom";
 import { showMetaEditState } from "@/state/state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "@/state/state/atoms/schema.atom";
@@ -36,7 +37,6 @@ import { StringParam, useQueryParam } from "use-query-params";
 import ErrorScreen from "../errors/error-screen";
 import NoDataFound from "../errors/no-data-found";
 import AddObjectToGroup from "../groups/add-object-to-group";
-import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import RelationshipDetails from "../object-item-details/relationship-details-paginated";
 import { RelationshipsDetails } from "../object-item-details/relationships-details-paginated";

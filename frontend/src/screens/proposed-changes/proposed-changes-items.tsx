@@ -5,6 +5,7 @@ import { getProposedChanges } from "@/graphql/queries/proposed-changes/getPropos
 import { usePermission } from "@/hooks/usePermission";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
+import Content from "@/screens/layout/content";
 import { schemaState } from "@/state/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { getObjectRelationships } from "@/utils/getSchemaObjectColumns";
@@ -13,7 +14,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { Link } from "react-router-dom";
 import ErrorScreen from "../errors/error-screen";
-import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { ProposedChange } from "./proposed-changes-item";
 

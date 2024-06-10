@@ -15,7 +15,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { Link, useParams } from "react-router-dom";
 import NoDataFound from "../../errors/no-data-found";
-import Content from "../../layout/content";
+import Content from "../@/screens/layout/content";
 
 const GraphqlQueryDetailsPage = () => {
   useTitle("GraphQL Query details");

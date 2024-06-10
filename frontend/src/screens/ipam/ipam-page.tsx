@@ -1,7 +1,7 @@
 import { Outlet } from "react-router-dom";
 
 import { Card } from "@/components/ui/card";
-import Content from "../layout/content";
+import Content from "@/screens/layout/content";
 import IpNamespaceSelector from "./ip-namespace-selector";
 import IpamTree from "./ipam-tree/ipam-tree";
 

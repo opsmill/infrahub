@@ -4,13 +4,13 @@ import { Tooltip } from "@/components/ui/tooltip";
 import GET_BRANCHES from "@/graphql/queries/branches/getBranches";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
+import Content from "@/screens/layout/content";
 import { branchesState } from "@/state/state/atoms/branches.atom";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useNavigate } from "react-router-dom";
-import Content from "../layout/content";
 
 const BranchesItems = () => {
   const [storedBranches, setBranches] = useAtom(branchesState);

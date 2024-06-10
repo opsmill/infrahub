@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { useTitle } from "@/hooks/useTitle";
+import Content from "@/screens/layout/content";
 import { genericsState, profilesAtom, schemaState } from "@/state/state/atoms/schema.atom";
 import { useAtomValue } from "jotai";
-import Content from "../layout/content";
 import { SchemaSelector } from "./schema-selector";
 import { SchemaViewerStack } from "./schema-viewer";
 

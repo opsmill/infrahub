@@ -19,6 +19,7 @@ import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDe
 import { usePermission } from "@/hooks/usePermission";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
+import Content from "@/screens/layout/content";
 import { currentBranchAtom } from "@/state/state/atoms/branches.atom";
 import { showMetaEditState } from "@/state/state/atoms/metaEditFieldDetails.atom";
 import { genericsState, profilesAtom, schemaState } from "@/state/state/atoms/schema.atom";
@@ -46,7 +47,6 @@ import { Generate } from "../artifacts/generate";
 import ErrorScreen from "../errors/error-screen";
 import NoDataFound from "../errors/no-data-found";
 import AddObjectToGroup from "../groups/add-object-to-group";
-import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
