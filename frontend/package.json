@@ -90,7 +90,6 @@
     "unidiff": "^1.0.4",
     "use-query-params": "^2.2.1",
     "vite": "^5.2.8",
-    "vite-tsconfig-paths": "^4.3.2",
     "web-vitals": "^2.1.4"
   },
   "devDependencies": {
