@@ -1,5 +1,5 @@
-import { MarkdownEditor } from "../@/components/editor";
-import { FormField, FormInput, FormLabel, FormMessage } from "../@/components/ui/form";
+import { MarkdownEditor } from "@/components/editor";
+import { FormField, FormInput, FormLabel, FormMessage } from "@/components/ui/form";
 import { FormFieldProps } from "./common";
 
 const TextareaField = ({ defaultValue, label, name, rules, ...props }: FormFieldProps) => {

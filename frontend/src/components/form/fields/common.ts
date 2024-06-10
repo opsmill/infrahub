@@ -1,6 +1,6 @@
+import { FormField } from "@/components/ui/form";
 import { ComponentProps } from "react";
 import { SchemaAttributeType } from "../../../screens/edit-form-hook/dynamic-control-types";
-import { FormField } from "../@/components/ui/form";
 
 export type FormFieldProps = {
   defaultValue?: string | number | boolean;

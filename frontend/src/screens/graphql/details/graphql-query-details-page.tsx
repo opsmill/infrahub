@@ -6,6 +6,7 @@ import GraphqlQueryViewerCard from "@/graphql-query-viewer-card";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
+import Content from "@/screens/layout/content";
 import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
@@ -15,7 +16,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { Link, useParams } from "react-router-dom";
 import NoDataFound from "../../errors/no-data-found";
-import Content from "../@/screens/layout/content";
 
 const GraphqlQueryDetailsPage = () => {
   useTitle("GraphQL Query details");
