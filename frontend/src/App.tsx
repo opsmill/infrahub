@@ -3,8 +3,8 @@ import mdiIcons from "@iconify-json/mdi/icons.json";
 import loadable from "@loadable/component";
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import { ARTIFACT_OBJECT, GRAPHQL_QUERY_OBJECT } from "@/config/constants";
 import { AuthProvider, RequireAuth } from "@/hooks/useAuth";
-import { ARTIFACT_OBJECT, GRAPHQL_QUERY_OBJECT } from "./config/constants";
 
 import { IPAM_ROUTE } from "@/screens/ipam/constants";
 import "react-toastify/dist/ReactToastify.css";
