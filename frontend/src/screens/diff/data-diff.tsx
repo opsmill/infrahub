@@ -5,6 +5,7 @@ import { CONFIG } from "@/config/config";
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { getThreadsAndChecks } from "@/graphql/queries/proposed-changes/getThreadsAndChecks";
+import useQuery from "@/hooks/useQuery";
 import { fetchUrl, getUrlWithQsp } from "@/utils/fetch";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
@@ -19,7 +20,6 @@ import {
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import useQuery from "../../hooks/useQuery";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import LoadingScreen from "../loading-screen/loading-screen";

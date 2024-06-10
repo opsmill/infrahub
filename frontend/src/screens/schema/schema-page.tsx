@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
+import { useTitle } from "@/hooks/useTitle";
 import { useAtomValue } from "jotai";
-import { useTitle } from "../../hooks/useTitle";
 import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
 import Content from "../layout/content";
 import { SchemaSelector } from "./schema-selector";

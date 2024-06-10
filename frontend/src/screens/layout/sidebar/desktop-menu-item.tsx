@@ -1,8 +1,8 @@
+import useFilters from "@/hooks/useFilters";
 import { classNames } from "@/utils/common";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { NavLink } from "react-router-dom";
-import useFilters from "../../../hooks/useFilters";
 
 interface DropDownMenuItemProps {
   path: string;

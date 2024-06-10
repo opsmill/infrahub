@@ -1,8 +1,8 @@
 import { CONFIG, INFRAHUB_API_SERVER_URL } from "@/config/config";
+import { useDebounce } from "@/hooks/useDebounce";
 import { fetchUrl } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { Fragment, useEffect, useState } from "react";
-import { useDebounce } from "../../hooks/useDebounce";
 import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-anywhere";
 
 type SearchProps = {

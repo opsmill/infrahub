@@ -1,6 +1,6 @@
+import usePagination from "@/hooks/usePagination";
 import { classNames } from "@/utils/common";
 import ReactPaginate from "react-paginate";
-import usePagination from "../../hooks/usePagination";
 import { Select, SelectDirection, SelectOption } from "../inputs/select";
 
 type tPaginationType = {

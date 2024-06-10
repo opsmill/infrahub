@@ -1,7 +1,7 @@
 import { TASK_OBJECT } from "@/config/constants";
+import useQuery from "@/hooks/useQuery";
+import { useTitle } from "@/hooks/useTitle";
 import { gql } from "@apollo/client";
-import useQuery from "../../hooks/useQuery";
-import { useTitle } from "../../hooks/useTitle";
 
 import { Link } from "@/components/ui/link";
 import { getTaskItemDetailsTitle } from "@/graphql/queries/tasks/getTasksItemDetailsTitle";

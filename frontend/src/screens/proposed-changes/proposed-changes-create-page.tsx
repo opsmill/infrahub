@@ -8,6 +8,9 @@ import { Form, FormField, FormInput, FormLabel, FormMessage } from "@/components
 import { Input } from "@/components/ui/input";
 import { CREATE_PROPOSED_CHANGE } from "@/graphql/mutations/proposed-changes/createProposedChange";
 import { GET_ALL_ACCOUNTS } from "@/graphql/queries/accounts/getAllAccounts";
+import { useAuth } from "@/hooks/useAuth";
+import { usePermission } from "@/hooks/usePermission";
+import useQuery from "@/hooks/useQuery";
 import { branchesToSelectOptions } from "@/utils/branches";
 import { constructPath } from "@/utils/fetch";
 import { useMutation } from "@apollo/client";
@@ -15,9 +18,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { useAuth } from "../../hooks/useAuth";
-import { usePermission } from "../../hooks/usePermission";
-import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
 import Content from "../layout/content";
 

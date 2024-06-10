@@ -16,6 +16,9 @@ import {
 } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
+import { usePermission } from "@/hooks/usePermission";
+import useQuery from "@/hooks/useQuery";
+import { useTitle } from "@/hooks/useTitle";
 import { constructPath } from "@/utils/fetch";
 import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
 import {
@@ -34,9 +37,6 @@ import { useAtomValue } from "jotai/index";
 import { useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { usePermission } from "../../hooks/usePermission";
-import useQuery from "../../hooks/useQuery";
-import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";

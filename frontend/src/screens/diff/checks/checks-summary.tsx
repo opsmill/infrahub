@@ -9,12 +9,12 @@ import {
 } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { runCheck } from "@/graphql/mutations/diff/runCheck";
+import { useAuth } from "@/hooks/useAuth";
 import { getValidatorsStats } from "@/utils/checks";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { useAuth } from "../../../hooks/useAuth";
 import { genericsState } from "../../../state/atoms/schema.atom";
 import { schemaKindLabelState } from "../../../state/atoms/schemaKindLabel.atom";
 import LoadingScreen from "../../loading-screen/loading-screen";

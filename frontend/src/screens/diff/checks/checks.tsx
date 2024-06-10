@@ -1,7 +1,7 @@
 import { GET_VALIDATORS } from "@/graphql/queries/diff/getValidators";
+import useQuery from "@/hooks/useQuery";
 import { forwardRef, useImperativeHandle } from "react";
 import { useParams } from "react-router-dom";
-import useQuery from "../../../hooks/useQuery";
 import ErrorScreen from "../../errors/error-screen";
 import { ChecksSummary } from "./checks-summary";
 import { Validator } from "./validator";

@@ -1,8 +1,8 @@
 import { BUTTON_TYPES, Button } from "@/components/buttons/button";
+import usePrevious from "@/hooks/usePrevious";
 import { resolve } from "@/utils/objects";
 import { MouseEventHandler, ReactElement, useEffect } from "react";
 import { FieldValues, FormProvider, SubmitHandler, useForm } from "react-hook-form";
-import usePrevious from "../../hooks/usePrevious";
 import { DynamicControl } from "./dynamic-control";
 import { DynamicFieldData } from "./dynamic-control-types";
 

@@ -1,9 +1,9 @@
 import { Badge } from "@/components/ui/badge";
 import { TASK_OBJECT } from "@/config/constants";
 import { getTasksItemsCount } from "@/graphql/queries/tasks/getTasksItemsCount";
+import useQuery from "@/hooks/useQuery";
+import { useTitle } from "@/hooks/useTitle";
 import { gql } from "@apollo/client";
-import useQuery from "../../hooks/useQuery";
-import { useTitle } from "../../hooks/useTitle";
 import ErrorScreen from "../errors/error-screen";
 import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";

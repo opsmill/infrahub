@@ -1,9 +1,9 @@
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
+import { usePermission } from "@/hooks/usePermission";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue } from "jotai/index";
 import { useState } from "react";
-import { usePermission } from "../../hooks/usePermission";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { ButtonWithTooltip } from "../buttons/button-primitive";

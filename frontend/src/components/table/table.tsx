@@ -1,8 +1,8 @@
+import { useAuth } from "@/hooks/useAuth";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../../hooks/useAuth";
 import { Button } from "../buttons/button-primitive";
 
 export type tColumn = {

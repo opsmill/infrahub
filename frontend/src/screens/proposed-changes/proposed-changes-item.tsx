@@ -8,6 +8,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
+import { useAuth } from "@/hooks/useAuth";
 import { constructPath } from "@/utils/fetch";
 import { getProposedChangesStateBadgeType } from "@/utils/proposed-changes";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -18,7 +19,6 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { useAuth } from "../../hooks/useAuth";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 

@@ -1,5 +1,5 @@
+import { useCodeMirror } from "@/hooks/useCodeMirror";
 import { useRef } from "react";
-import { useCodeMirror } from "../../../hooks/useCodeMirror";
 import { CodeViewerLimiter } from "../code-viewer-limiter";
 
 type GraphqlViewerProps = {

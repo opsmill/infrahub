@@ -1,8 +1,8 @@
 import { Pagination } from "@/components/ui/pagination";
 import { getValidatorDetails } from "@/graphql/queries/diff/getValidatorDetails";
+import usePagination from "@/hooks/usePagination";
+import useQuery from "@/hooks/useQuery";
 import { gql } from "@apollo/client";
-import usePagination from "../../../hooks/usePagination";
-import useQuery from "../../../hooks/useQuery";
 import ErrorScreen from "../../errors/error-screen";
 import NoDataFound from "../../errors/no-data-found";
 import LoadingScreen from "../../loading-screen/loading-screen";

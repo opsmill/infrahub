@@ -1,6 +1,6 @@
 import { TASK_OBJECT } from "@/config/constants";
+import useQuery from "@/hooks/useQuery";
 import { gql } from "@apollo/client";
-import useQuery from "../../hooks/useQuery";
 
 import { BADGE_TYPES, Badge } from "@/components/display/badge";
 import { DateDisplay } from "@/components/display/date-display";
