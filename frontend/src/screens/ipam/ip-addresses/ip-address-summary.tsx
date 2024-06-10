@@ -6,6 +6,7 @@ import ErrorScreen from "@/screens/errors/error-screen";
 import { IpDetailsCard } from "@/screens/ipam/common/ip-details-card";
 import { constructPathForIpam } from "@/screens/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC } from "@/screens/ipam/constants";
+import { IpamSummarySkeleton } from "@/screens/ipam/prefixes/ipam-summary-skeleton";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
@@ -13,7 +14,6 @@ import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { useParams } from "react-router-dom";
-import { IpamSummarySkeleton } from "../prefixes/ipam-summary-skeleton";
 
 export default function IpAddressSummary() {
   const { prefix, ip_address } = useParams();

@@ -9,6 +9,7 @@ import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDe
 import { GET_KIND_FOR_RESOURCE_POOL, GET_RESOURCE_POOL_UTILIZATION } from "@/graphql/resource-pool";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
+import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/screens/ipam/ipam/constants";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
@@ -20,7 +21,6 @@ import { gql, useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { Outlet, useParams } from "react-router-dom";
-import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "../ipam/constants";
 import ResourcePoolUtilization from "./common/ResourcePoolUtilization";
 import { RESOURCE_GENERIC_KIND, RESOURCE_POOL_UTILIZATION_KIND } from "./constants";
 import ResourceSelector, { ResourceProps } from "./resource-selector";

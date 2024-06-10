@@ -13,6 +13,7 @@ import ErrorScreen from "@/screens/errors/error-screen";
 import { defaultIpNamespaceAtom } from "@/screens/ipam/common/namespace.state";
 import { constructPathForIpam } from "@/screens/ipam/common/utils";
 import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "@/screens/ipam/constants";
+import { reloadIpamTreeAtom } from "@/screens/ipam/ipam-tree/ipam-tree.state";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
@@ -25,7 +26,6 @@ import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { reloadIpamTreeAtom } from "../ipam-tree/ipam-tree.state";
 
 const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
   const { prefix } = useParams();

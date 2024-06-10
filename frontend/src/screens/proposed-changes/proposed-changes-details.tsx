@@ -13,6 +13,8 @@ import { FilesDiff } from "@/screens/diff/file-diff/files-diff";
 import { SchemaDiff } from "@/screens/diff/schema-diff";
 import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
+import { TaskItemDetails } from "@/screens/tasks/task-item-details";
+import { TaskItems } from "@/screens/tasks/task-items";
 import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
@@ -23,8 +25,6 @@ import { useAtom } from "jotai";
 import { useRef } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { TaskItemDetails } from "../tasks/task-item-details";
-import { TaskItems } from "../tasks/task-items";
 import { Conversations } from "./conversations";
 import { ProposedChangesChecksTab } from "./proposed-changes-checks-tab";
 

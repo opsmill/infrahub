@@ -1,7 +1,7 @@
 import BranchSelector from "@/components/branch-selector";
 import { ReactComponent as InfrahubLogo } from "@/images/Infrahub-SVG-hori.svg";
+import { Footer } from "@/screens/layout/footer";
 import { Link } from "react-router-dom";
-import { Footer } from "../footer";
 import { DesktopMenu } from "./desktop-menu";
 
 export function Sidebar() {
