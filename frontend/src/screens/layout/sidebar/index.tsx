@@ -1,6 +1,6 @@
 import BranchSelector from "@/components/branch-selector";
+import { ReactComponent as InfrahubLogo } from "@/images/Infrahub-SVG-hori.svg";
 import { Link } from "react-router-dom";
-import { ReactComponent as InfrahubLogo } from "../../../images/Infrahub-SVG-hori.svg";
 import { Footer } from "../footer";
 import { DesktopMenu } from "./desktop-menu";
 

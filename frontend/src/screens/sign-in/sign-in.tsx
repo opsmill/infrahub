@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
+import logoImage from "@/images/Infrahub-SVG-verti.svg";
 import { useLocation, useNavigate } from "react-router-dom";
-import logoImage from "../../images/Infrahub-SVG-verti.svg";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import { Form } from "../edit-form-hook/form";
 import LoadingScreen from "../loading-screen/loading-screen";
