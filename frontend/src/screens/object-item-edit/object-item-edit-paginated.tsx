@@ -3,7 +3,7 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import { Select } from "../../components/inputs/select";
-import { ALERT_TYPES, Alert } from "../../components/utils/alert";
+import { ALERT_TYPES, Alert } from "../../components/ui/alert";
 import { PROFILE_KIND } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";

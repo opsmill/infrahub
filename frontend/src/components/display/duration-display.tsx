@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { format, formatDistanceStrict } from "date-fns";
-import { Tooltip } from "../utils/tooltip";
+import { Tooltip } from "../ui/tooltip";
 
 type DateDisplayProps = {
   date: number | string | Date;

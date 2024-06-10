@@ -10,7 +10,7 @@ import Editor from "react-simple-code-editor";
 import { toast } from "react-toastify";
 import { classNames } from "../../utils/common";
 import { BUTTON_TYPES, Button } from "../buttons/button";
-import { ALERT_TYPES, Alert } from "../utils/alert";
+import { ALERT_TYPES, Alert } from "../ui/alert";
 
 export const CodeEditor = (props: any) => {
   const { value, onChange, enableCopy, dark, ...propsToPass } = props;

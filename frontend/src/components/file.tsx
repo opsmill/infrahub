@@ -4,7 +4,7 @@ import NoDataFound from "../screens/errors/no-data-found";
 import LoadingScreen from "../screens/loading-screen/loading-screen";
 import { fetchStream } from "../utils/fetch";
 import { CodeEditor } from "./editor/code-editor";
-import { ALERT_TYPES, Alert } from "./utils/alert";
+import { ALERT_TYPES, Alert } from "./ui/alert";
 
 type tFile = {
   url: string;

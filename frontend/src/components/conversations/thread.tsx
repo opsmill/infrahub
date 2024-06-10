@@ -21,8 +21,8 @@ import { stringifyWithoutQuotes } from "../../utils/string";
 import { Button } from "../buttons/button";
 import { Checkbox } from "../inputs/checkbox";
 import ModalConfirm from "../modals/modal-confirm";
-import { ALERT_TYPES, Alert } from "../utils/alert";
-import { Tooltip } from "../utils/tooltip";
+import { ALERT_TYPES, Alert } from "../ui/alert";
+import { Tooltip } from "../ui/tooltip";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 

@@ -13,7 +13,7 @@ import { Retry } from "../../components/buttons/retry";
 import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
 import SlideOver from "../../components/display/slide-over";
 import { Tabs } from "../../components/tabs";
-import { Link } from "../../components/utils/link";
+import { Link } from "../../components/ui/link";
 import {
   ARTIFACT_DEFINITION_OBJECT,
   DEFAULT_BRANCH_NAME,

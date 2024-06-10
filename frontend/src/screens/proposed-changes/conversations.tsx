@@ -15,8 +15,8 @@ import { Badge } from "../../components/display/badge";
 import { DateDisplay } from "../../components/display/date-display";
 import SlideOver from "../../components/display/slide-over";
 import { List } from "../../components/table/list";
-import { Alert, ALERT_TYPES } from "../../components/utils/alert";
-import { Tooltip } from "../../components/utils/tooltip";
+import { Alert, ALERT_TYPES } from "../../components/ui/alert";
+import { Tooltip } from "../../components/ui/tooltip";
 import {
   ACCOUNT_OBJECT,
   DEFAULT_BRANCH_NAME,

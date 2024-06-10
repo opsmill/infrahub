@@ -9,11 +9,11 @@ import SlideOver from "../../components/display/slide-over";
 import { Filters } from "../../components/filters/filters";
 import { ObjectHelpButton } from "../../components/menu/object-help-button";
 import ModalDelete from "../../components/modals/modal-delete";
+import { ALERT_TYPES, Alert } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
+import { Pagination } from "../../components/ui/pagination";
 import { SearchInput } from "../../components/ui/search-input";
 import { Tooltip } from "../../components/ui/tooltip";
-import { ALERT_TYPES, Alert } from "../../components/utils/alert";
-import { Pagination } from "../../components/utils/pagination";
 import {
   DEFAULT_BRANCH_NAME,
   MENU_EXCLUDELIST,

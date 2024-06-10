@@ -8,9 +8,9 @@ import { StringParam, useQueryParam } from "use-query-params";
 import SlideOver from "../../../components/display/slide-over";
 import ModalDelete from "../../../components/modals/modal-delete";
 import { Table } from "../../../components/table/table";
-import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
-import { Link } from "../../../components/utils/link";
-import { Pagination } from "../../../components/utils/pagination";
+import { ALERT_TYPES, Alert } from "../../../components/ui/alert";
+import { Link } from "../../../components/ui/link";
+import { Pagination } from "../../../components/ui/pagination";
 import { DEFAULT_BRANCH_NAME } from "../../../config/constants";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
@@ -18,12 +18,12 @@ import { GET_IP_ADDRESSES } from "../../../graphql/queries/ipam/ip-address";
 import { GET_PREFIX_KIND } from "../../../graphql/queries/ipam/prefixes";
 import useQuery from "../../../hooks/useQuery";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
-import { defaultIpNamespaceAtom } from "../common/namespace.state";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "../../../utils/string";
 import ErrorScreen from "../../errors/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../../object-item-edit/object-item-edit-paginated";
+import { defaultIpNamespaceAtom } from "../common/namespace.state";
 import { constructPathForIpam } from "../common/utils";
 import {
   IPAM_QSP,

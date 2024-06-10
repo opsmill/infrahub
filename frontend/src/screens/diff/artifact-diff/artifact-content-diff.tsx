@@ -13,7 +13,7 @@ import { diffLines, formatLines } from "unidiff";
 import { Button } from "../../../components/buttons/button";
 import { AddComment } from "../../../components/conversations/add-comment";
 import { Thread } from "../../../components/conversations/thread";
-import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
+import { ALERT_TYPES, Alert } from "../../../components/ui/alert";
 import { CONFIG } from "../../../config/config";
 import {
   PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,

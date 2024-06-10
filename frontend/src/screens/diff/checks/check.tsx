@@ -7,7 +7,7 @@ import { PopOver } from "../../../components/display/popover";
 import { CodeEditor } from "../../../components/editor/code-editor";
 import { Skeleton } from "../../../components/skeleton";
 import { List } from "../../../components/table/list";
-import { Tooltip } from "../../../components/utils/tooltip";
+import { Tooltip } from "../../../components/ui/tooltip";
 import { GET_CHECKS } from "../../../graphql/queries/diff/getCheckDetails";
 import useQuery from "../../../hooks/useQuery";
 import { schemaKindLabelState } from "../../../state/atoms/schemaKindLabel.atom";

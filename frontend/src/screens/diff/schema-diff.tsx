@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Button } from "../../components/buttons/button";
 import { Checkbox } from "../../components/inputs/checkbox";
-import { ALERT_TYPES, Alert } from "../../components/utils/alert";
+import { ALERT_TYPES, Alert } from "../../components/ui/alert";
 import { CONFIG } from "../../config/config";
 import { QSP } from "../../config/qsp";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";

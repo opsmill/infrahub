@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Retry } from "../../../components/buttons/retry";
 import { PieChart } from "../../../components/display/pie-chart";
-import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
+import { ALERT_TYPES, Alert } from "../../../components/ui/alert";
 import {
   CHECKS_LABEL,
   PROPOSED_CHANGES_VALIDATOR_OBJECT,

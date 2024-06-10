@@ -15,7 +15,7 @@ import { Button } from "../../../components/buttons/button";
 import { AddComment } from "../../../components/conversations/add-comment";
 import { Thread } from "../../../components/conversations/thread";
 import Accordion from "../../../components/display/accordion";
-import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
+import { ALERT_TYPES, Alert } from "../../../components/ui/alert";
 import { CONFIG } from "../../../config/config";
 import {
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,

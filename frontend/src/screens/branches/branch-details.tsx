@@ -12,7 +12,7 @@ import { Badge } from "../../components/display/badge";
 import { DateDisplay } from "../../components/display/date-display";
 import SlideOver from "../../components/display/slide-over";
 import ModalDelete from "../../components/modals/modal-delete";
-import { ALERT_TYPES, Alert } from "../../components/utils/alert";
+import { ALERT_TYPES, Alert } from "../../components/ui/alert";
 import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import graphqlClient from "../../graphql/graphqlClientApollo";

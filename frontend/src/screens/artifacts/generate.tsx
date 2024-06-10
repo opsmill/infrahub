@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
-import { ALERT_TYPES, Alert } from "../../components/utils/alert";
+import { ALERT_TYPES, Alert } from "../../components/ui/alert";
 import { CONFIG } from "../../config/config";
 import { QSP } from "../../config/qsp";
 import { useAuth } from "../../hooks/useAuth";

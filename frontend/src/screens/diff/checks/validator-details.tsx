@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { Pagination } from "../../../components/utils/pagination";
+import { Pagination } from "../../../components/ui/pagination";
 import { getValidatorDetails } from "../../../graphql/queries/diff/getValidatorDetails";
 import usePagination from "../../../hooks/usePagination";
 import useQuery from "../../../hooks/useQuery";

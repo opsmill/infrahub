@@ -6,13 +6,13 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../config/constants";
 import { getProfileDetails } from "../graphql/queries/accounts/getProfileDetails";
+import { useAuth } from "../hooks/useAuth";
 import { useLazyQuery } from "../hooks/useQuery";
 import { userNavigation } from "../screens/layout/navigation-list";
 import { schemaState } from "../state/atoms/schema.atom";
 import { classNames, parseJwt } from "../utils/common";
 import { Avatar } from "./display/avatar";
-import { ALERT_TYPES, Alert } from "./utils/alert";
-import { useAuth } from "../hooks/useAuth";
+import { ALERT_TYPES, Alert } from "./ui/alert";
 
 const customId = "profile-alert";
 

@@ -5,7 +5,7 @@ import { useTitle } from "../../hooks/useTitle";
 
 import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router-dom";
-import { Link } from "../../components/utils/link";
+import { Link } from "../../components/ui/link";
 import { getTaskItemDetailsTitle } from "../../graphql/queries/tasks/getTasksItemDetailsTitle";
 import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../errors/error-screen";

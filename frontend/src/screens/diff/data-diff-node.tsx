@@ -6,7 +6,7 @@ import Accordion from "../../components/display/accordion";
 import { Badge } from "../../components/display/badge";
 import { DateDisplay } from "../../components/display/date-display";
 import { Pill } from "../../components/display/pill";
-import { Tooltip } from "../../components/utils/tooltip";
+import { Tooltip } from "../../components/ui/tooltip";
 import { QSP } from "../../config/qsp";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { classNames } from "../../utils/common";

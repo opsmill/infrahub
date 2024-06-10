@@ -5,7 +5,7 @@ import { FormFieldError } from "../screens/edit-form-hook/form";
 import { Input } from "./inputs/input";
 import { MultipleInput } from "./inputs/multiple-input";
 import { SelectOption } from "./inputs/select";
-import { ALERT_TYPES, Alert } from "./utils/alert";
+import { ALERT_TYPES, Alert } from "./ui/alert";
 
 type OpsListProps = {
   label: string;

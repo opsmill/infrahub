@@ -1,8 +1,8 @@
 import { ClipboardDocumentCheckIcon, ClipboardDocumentIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../utils/alert";
-import { Tooltip } from "../utils/tooltip";
+import { ALERT_TYPES, Alert } from "../ui/alert";
+import { Tooltip } from "../ui/tooltip";
 import { BUTTON_TYPES, Button } from "./button";
 
 type tClipboard = {

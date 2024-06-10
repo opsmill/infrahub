@@ -6,8 +6,8 @@ import { constructPath } from "../../utils/fetch";
 import { Button } from "../buttons/button-primitive";
 import { PropertyList } from "../table/property-list";
 import { Badge } from "../ui/badge";
+import { Link } from "../ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Link } from "../utils/link";
 
 interface MetaDetailsTooltipProps {
   header?: React.ReactNode;

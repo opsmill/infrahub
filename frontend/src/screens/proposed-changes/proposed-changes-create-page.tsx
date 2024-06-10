@@ -4,8 +4,13 @@ import { useAtomValue } from "jotai";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Button } from "../../components/buttons/button-primitive";
+import { MarkdownEditor } from "../../components/editor";
+import { Select } from "../../components/inputs/select";
+import { ALERT_TYPES, Alert } from "../../components/ui/alert";
 import { Card } from "../../components/ui/card";
-import { ALERT_TYPES, Alert } from "../../components/utils/alert";
+import { Combobox } from "../../components/ui/combobox";
+import { Form, FormField, FormInput, FormLabel, FormMessage } from "../../components/ui/form";
+import { Input } from "../../components/ui/input";
 import { CREATE_PROPOSED_CHANGE } from "../../graphql/mutations/proposed-changes/createProposedChange";
 import { GET_ALL_ACCOUNTS } from "../../graphql/queries/accounts/getAllAccounts";
 import { useAuth } from "../../hooks/useAuth";
@@ -15,11 +20,6 @@ import { branchesState } from "../../state/atoms/branches.atom";
 import { branchesToSelectOptions } from "../../utils/branches";
 import { constructPath } from "../../utils/fetch";
 import Content from "../layout/content";
-import { Form, FormField, FormInput, FormLabel, FormMessage } from "../../components/ui/form";
-import { Input } from "../../components/ui/input";
-import { MarkdownEditor } from "../../components/editor";
-import { Select } from "../../components/inputs/select";
-import { Combobox } from "../../components/ui/combobox";
 
 const ProposedChangesCreatePage = () => {
   const permission = usePermission();
