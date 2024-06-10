@@ -1,3 +1,8 @@
+import { classNames } from "@/utils/common";
+import { diffContent, getBadgeType } from "@/utils/diff";
+import { constructPath } from "@/utils/fetch";
+import { getObjectDetailsUrl } from "@/utils/objects";
+import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { ArrowTopRightOnSquareIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useAtomValue } from "jotai/index";
@@ -15,11 +20,6 @@ import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../../graphql/mutations/objects/updateObjectWithId";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
-import { classNames } from "../../../utils/common";
-import { diffContent, getBadgeType } from "../../../utils/diff";
-import { constructPath } from "../../../utils/fetch";
-import { getObjectDetailsUrl } from "../../../utils/objects";
-import { stringifyWithoutQuotes } from "../../../utils/string";
 import { getNodeClassName } from "../data-diff-node";
 
 const renderConflict = {

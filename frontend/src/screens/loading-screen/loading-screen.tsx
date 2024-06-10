@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import ReactLoading, { LoadingType } from "react-loading";
-import { classNames } from "../../utils/common";
 
 interface Props {
   size?: string | number;

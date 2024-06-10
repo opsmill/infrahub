@@ -1,6 +1,6 @@
+import { classNames } from "@/utils/common";
 import { ReactElement } from "react";
 import LoadingScreen from "../../screens/loading-screen/loading-screen";
-import { classNames } from "../../utils/common";
 
 type tPill = {
   type?: PILL_TYPES;

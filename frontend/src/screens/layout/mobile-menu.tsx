@@ -1,8 +1,8 @@
+import { classNames } from "@/utils/common";
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import React, { Fragment } from "react";
 import logo from "../../images/Infrahub-SVG-hori.svg";
-import { classNames } from "../../utils/common";
 import { navigation } from "./navigation-list";
 
 interface Props {

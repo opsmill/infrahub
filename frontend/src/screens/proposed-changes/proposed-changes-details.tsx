@@ -1,3 +1,5 @@
+import { constructPath } from "@/utils/fetch";
+import { getObjectRelationships } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
@@ -13,8 +15,6 @@ import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
-import { constructPath } from "../../utils/fetch";
-import { getObjectRelationships } from "../../utils/getSchemaObjectColumns";
 import { ArtifactsDiff } from "../diff/artifact-diff/artifacts-diff";
 import { Checks } from "../diff/checks/checks";
 import { DataDiff } from "../diff/data-diff";

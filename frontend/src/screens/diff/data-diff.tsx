@@ -1,3 +1,4 @@
+import { fetchUrl, getUrlWithQsp } from "@/utils/fetch";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import {
@@ -21,7 +22,6 @@ import { getThreadsAndChecks } from "../../graphql/queries/proposed-changes/getT
 import useQuery from "../../hooks/useQuery";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
-import { fetchUrl, getUrlWithQsp } from "../../utils/fetch";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { DataDiffNode, tDataDiffNode } from "./data-diff-node";
 

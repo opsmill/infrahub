@@ -1,3 +1,5 @@
+import { classNames, getTextColor } from "@/utils/common";
+import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { Combobox } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/20/solid";
@@ -22,19 +24,17 @@ import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { namespacesState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { classNames, getTextColor } from "../../utils/common";
-import { stringifyWithoutQuotes } from "../../utils/string";
 import { BUTTON_TYPES, Button } from "../buttons/button";
 import SlideOver from "../display/slide-over";
 import ModalDelete from "../modals/modal-delete";
 import { Input } from "./input";
 import { MultipleInput } from "./multiple-input";
 
+import { comparedOptions } from "@/utils/array";
+import { getOptionsFromRelationship } from "@/utils/getSchemaObjectColumns";
 import { getObjectDisplayLabel } from "../../graphql/queries/objects/getObjectDisplayLabel";
 import { POOLS_DICTIONNARY, POOLS_PEER } from "../../screens/ipam/constants";
 import LoadingScreen from "../../screens/loading-screen/loading-screen";
-import { comparedOptions } from "../../utils/array";
-import { getOptionsFromRelationship } from "../../utils/getSchemaObjectColumns";
 import { Tooltip } from "../ui/tooltip";
 
 export type SelectOption = {

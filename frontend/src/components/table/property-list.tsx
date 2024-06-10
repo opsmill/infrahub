@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import React from "react";
-import { classNames } from "../../utils/common";
 
 export type Property = {
   name: React.ReactNode;

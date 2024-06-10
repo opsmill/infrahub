@@ -1,6 +1,6 @@
+import { uniqueItemsArray } from "@/utils/array";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
-import { uniqueItemsArray } from "../utils/array";
 
 export type Filter = {
   name: string;

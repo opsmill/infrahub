@@ -1,21 +1,21 @@
-import { Link, useParams } from "react-router-dom";
-import { useTitle } from "../../../hooks/useTitle";
-import useQuery from "../../../hooks/useQuery";
-import { CoreGraphQlQuery } from "../../../generated/graphql";
-import { useAtomValue } from "jotai/index";
-import { iNodeSchema, schemaState } from "../../../state/atoms/schema.atom";
-import { GRAPHQL_QUERY_OBJECT } from "../../../config/constants";
-import GraphQLQueryDetailsPageSkeleton from "./graphql-query-details-page-skeleton";
-import { getSchemaObjectColumns } from "../../../utils/getSchemaObjectColumns";
+import { constructPath } from "@/utils/fetch";
+import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
-import { getObjectDetailsPaginated } from "../../../graphql/queries/objects/getObjectDetails";
-import Content from "../../layout/content";
-import { constructPath } from "../../../utils/fetch";
 import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai/index";
+import { Link, useParams } from "react-router-dom";
 import { ObjectHelpButton } from "../../../components/menu/object-help-button";
-import GraphqlQueryDetailsCard from "./graphql-query-details-card";
-import GraphqlQueryViewerCard from "./graphql-query-viewer-card";
+import { GRAPHQL_QUERY_OBJECT } from "../../../config/constants";
+import { CoreGraphQlQuery } from "../../../generated/graphql";
+import { getObjectDetailsPaginated } from "../../../graphql/queries/objects/getObjectDetails";
+import useQuery from "../../../hooks/useQuery";
+import { useTitle } from "../../../hooks/useTitle";
+import { iNodeSchema, schemaState } from "../../../state/atoms/schema.atom";
 import NoDataFound from "../../errors/no-data-found";
+import Content from "../../layout/content";
+import GraphqlQueryDetailsCard from "./graphql-query-details-card";
+import GraphQLQueryDetailsPageSkeleton from "./graphql-query-details-page-skeleton";
+import GraphqlQueryViewerCard from "./graphql-query-viewer-card";
 
 const GraphqlQueryDetailsPage = () => {
   useTitle("GraphQL Query details");

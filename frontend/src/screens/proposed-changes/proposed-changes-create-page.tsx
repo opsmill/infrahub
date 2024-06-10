@@ -1,3 +1,5 @@
+import { branchesToSelectOptions } from "@/utils/branches";
+import { constructPath } from "@/utils/fetch";
 import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
@@ -17,8 +19,6 @@ import { useAuth } from "../../hooks/useAuth";
 import { usePermission } from "../../hooks/usePermission";
 import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
-import { branchesToSelectOptions } from "../../utils/branches";
-import { constructPath } from "../../utils/fetch";
 import Content from "../layout/content";
 
 const ProposedChangesCreatePage = () => {

@@ -1,8 +1,8 @@
+import { classNames } from "@/utils/common";
+import { roundNumber } from "@/utils/number";
 import MultipleProgressBar, {
   MultipleProgressBarProps,
 } from "../../../components/stats/multiple-progress-bar";
-import { classNames } from "../../../utils/common";
-import { roundNumber } from "../../../utils/number";
 import { Tooltip } from "../../../components/ui/tooltip";
 
 interface ResourcePoolUtilizationProps extends Omit<MultipleProgressBarProps, "elements"> {

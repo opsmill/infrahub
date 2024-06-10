@@ -102,7 +102,7 @@ index 25392af1..2788585a 100644
 -import { useCallback, useEffect, useState } from "react";
 -import { DataDiffNode } from "./data-diff-node";
 -import { CONFIG } from "../../../config/config";
--import { fetchUrl } from "../../../utils/fetch";
+-import { fetchUrl } from "@/utils/fetch";
 -import { QSP } from "../../../config/qsp";
 -import { StringParam, useQueryParam } from "use-query-params";
 -import LoadingScreen from "../../loading-screen/loading-screen";

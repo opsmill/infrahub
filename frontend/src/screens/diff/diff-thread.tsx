@@ -1,3 +1,4 @@
+import { getThreadLabel, getThreadTitle } from "@/utils/diff";
 import { gql } from "@apollo/client";
 import { ChatBubbleLeftIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
@@ -13,7 +14,6 @@ import { getProposedChangesObjectThreads } from "../../graphql/queries/proposed-
 import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
-import { getThreadLabel, getThreadTitle } from "../../utils/diff";
 import { DiffContext } from "./data-diff";
 import { DataDiffComments } from "./diff-comments";
 

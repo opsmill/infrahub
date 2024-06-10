@@ -1,3 +1,4 @@
+import { classNames, parseJwt } from "@/utils/common";
 import { gql } from "@apollo/client";
 import { Menu, Transition } from "@headlessui/react";
 import { useAtom } from "jotai/index";
@@ -10,7 +11,6 @@ import { useAuth } from "../hooks/useAuth";
 import { useLazyQuery } from "../hooks/useQuery";
 import { userNavigation } from "../screens/layout/navigation-list";
 import { schemaState } from "../state/atoms/schema.atom";
-import { classNames, parseJwt } from "../utils/common";
 import { Avatar } from "./display/avatar";
 import { ALERT_TYPES, Alert } from "./ui/alert";
 

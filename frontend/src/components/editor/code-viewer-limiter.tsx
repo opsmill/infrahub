@@ -1,7 +1,7 @@
-import { HTMLAttributes, useState } from "react";
-import { classNames } from "../../utils/common";
-import { Button } from "../buttons/button-primitive";
+import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
+import { HTMLAttributes, useState } from "react";
+import { Button } from "../buttons/button-primitive";
 
 export const CodeViewerLimiter = ({
   children,

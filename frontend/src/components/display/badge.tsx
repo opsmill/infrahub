@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { classNames } from "../../utils/common";
 
 export enum BADGE_TYPES {
   VALIDATE,

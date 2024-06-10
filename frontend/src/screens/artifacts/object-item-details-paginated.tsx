@@ -1,3 +1,12 @@
+import { classNames } from "@/utils/common";
+import { constructPath } from "@/utils/fetch";
+import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
+import {
+  getObjectAttributes,
+  getObjectRelationships,
+  getSchemaObjectColumns,
+  getTabs,
+} from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { LockClosedIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
@@ -24,15 +33,6 @@ import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
-import { classNames } from "../../utils/common";
-import { constructPath } from "../../utils/fetch";
-import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
-import {
-  getObjectAttributes,
-  getObjectRelationships,
-  getSchemaObjectColumns,
-  getTabs,
-} from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../errors/error-screen";
 import NoDataFound from "../errors/no-data-found";
 import AddObjectToGroup from "../groups/add-object-to-group";

@@ -1,3 +1,5 @@
+import { fetchStream } from "@/utils/fetch";
+import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { formatISO } from "date-fns";
@@ -31,8 +33,6 @@ import useQuery from "../../../hooks/useQuery";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
 import { schemaState } from "../../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
-import { fetchStream } from "../../../utils/fetch";
-import { stringifyWithoutQuotes } from "../../../utils/string";
 import ErrorScreen from "../../errors/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 

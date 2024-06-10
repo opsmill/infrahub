@@ -1,3 +1,12 @@
+import { constructPath } from "@/utils/fetch";
+import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
+import {
+  getObjectAttributes,
+  getObjectRelationships,
+  getObjectTabs,
+  getSchemaObjectColumns,
+  getTabs,
+} from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { LockClosedIcon, PencilIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
@@ -33,15 +42,6 @@ import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
-import { constructPath } from "../../utils/fetch";
-import { ObjectAttributeValue } from "../../utils/getObjectItemDisplayValue";
-import {
-  getObjectAttributes,
-  getObjectRelationships,
-  getObjectTabs,
-  getSchemaObjectColumns,
-  getTabs,
-} from "../../utils/getSchemaObjectColumns";
 import { Generate } from "../artifacts/generate";
 import ErrorScreen from "../errors/error-screen";
 import NoDataFound from "../errors/no-data-found";

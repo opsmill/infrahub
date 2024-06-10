@@ -1,18 +1,18 @@
+import { classNames, isGeneric } from "@/utils/common";
+import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import * as R from "ramda";
+import { useEffect, useRef } from "react";
+import { ArrayParam, useQueryParam } from "use-query-params";
+import Accordion from "../../components/display/accordion";
+import { Badge } from "../../components/ui/badge";
+import { QSP } from "../../config/qsp";
 import {
-  genericsState,
   IModelSchema,
+  genericsState,
   profilesAtom,
   schemaState,
 } from "../../state/atoms/schema.atom";
-import { classNames, isGeneric } from "../../utils/common";
-import { Badge } from "../../components/ui/badge";
-import { Icon } from "@iconify-icon/react";
-import { ArrayParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../config/qsp";
-import Accordion from "../../components/display/accordion";
-import { useEffect, useRef } from "react";
 
 type SchemaSelectorProps = {
   className?: string;

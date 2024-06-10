@@ -1,4 +1,4 @@
-import { classNames } from "../../utils/common";
+import { classNames } from "@/utils/common";
 
 const DEFAULT_CIRCLE_CLASS = "h-1.5 w-1.5 mr-1 fill-gray-400";
 

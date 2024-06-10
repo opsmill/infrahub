@@ -1,3 +1,5 @@
+import { getThreadLabel } from "@/utils/diff";
+import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
@@ -21,8 +23,6 @@ import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { getThreadLabel } from "../../utils/diff";
-import { stringifyWithoutQuotes } from "../../utils/string";
 import { DiffContext } from "./data-diff";
 
 type tDataDiffComments = {

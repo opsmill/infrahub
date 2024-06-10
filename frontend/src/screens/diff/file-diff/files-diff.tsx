@@ -1,3 +1,4 @@
+import { fetchUrl, getUrlWithQsp } from "@/utils/fetch";
 import { useAtom } from "jotai";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
 import "react-diff-view/style/index.css";
@@ -6,7 +7,6 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { CONFIG } from "../../../config/config";
 import { QSP } from "../../../config/qsp";
 import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom";
-import { fetchUrl, getUrlWithQsp } from "../../../utils/fetch";
 import ErrorScreen from "../../errors/error-screen";
 import NoDataFound from "../../errors/no-data-found";
 import LoadingScreen from "../../loading-screen/loading-screen";

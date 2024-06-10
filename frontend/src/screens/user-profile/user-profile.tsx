@@ -1,3 +1,4 @@
+import { parseJwt } from "@/utils/common";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -9,7 +10,6 @@ import { getProfileDetails } from "../../graphql/queries/accounts/getProfileDeta
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { schemaState } from "../../state/atoms/schema.atom";
-import { parseJwt } from "../../utils/common";
 import ErrorScreen from "../errors/error-screen";
 import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";

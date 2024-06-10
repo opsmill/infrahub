@@ -1,4 +1,4 @@
-import { constructPath, overrideQueryParams } from "../../../utils/fetch";
+import { constructPath, overrideQueryParams } from "@/utils/fetch";
 import { IPAM_QSP } from "../constants";
 
 export const constructPathForIpam = (path: string, overrideParams?: overrideQueryParams[]) =>

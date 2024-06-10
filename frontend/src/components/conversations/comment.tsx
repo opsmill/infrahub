@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import React from "react";
-import { classNames } from "../../utils/common";
 import { AVATAR_SIZE, Avatar } from "../display/avatar";
 import { DateDisplay } from "../display/date-display";
 import { MarkdownViewer } from "../editor/markdown-viewer";

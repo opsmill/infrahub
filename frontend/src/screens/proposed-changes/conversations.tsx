@@ -1,3 +1,6 @@
+import { constructPath } from "@/utils/fetch";
+import { getProposedChangesStateBadgeType } from "@/utils/proposed-changes";
+import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql, NetworkStatus } from "@apollo/client";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
@@ -36,9 +39,6 @@ import useQuery from "../../hooks/useQuery";
 import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { constructPath } from "../../utils/fetch";
-import { getProposedChangesStateBadgeType } from "../../utils/proposed-changes";
-import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import ErrorScreen from "../errors/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";

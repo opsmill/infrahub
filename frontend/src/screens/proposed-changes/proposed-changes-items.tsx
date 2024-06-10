@@ -1,6 +1,10 @@
+import { constructPath } from "@/utils/fetch";
+import { getObjectRelationships } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { Link } from "react-router-dom";
+import { Button, ButtonWithTooltip } from "../../components/buttons/button-primitive";
 import { Badge } from "../../components/ui/badge";
 import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
@@ -8,14 +12,10 @@ import { usePermission } from "../../hooks/usePermission";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 import { schemaState } from "../../state/atoms/schema.atom";
-import { constructPath } from "../../utils/fetch";
-import { getObjectRelationships } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../errors/error-screen";
 import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { ProposedChange } from "./proposed-changes-item";
-import { Button, ButtonWithTooltip } from "../../components/buttons/button-primitive";
-import { Icon } from "@iconify-icon/react";
 
 const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);

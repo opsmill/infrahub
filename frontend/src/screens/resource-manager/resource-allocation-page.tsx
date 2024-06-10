@@ -1,3 +1,5 @@
+import { constructPath } from "@/utils/fetch";
+import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { Icon } from "@iconify-icon/react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "../../components/buttons/button-primitive";
@@ -8,8 +10,6 @@ import { Card } from "../../components/ui/card";
 import { Pagination } from "../../components/ui/pagination";
 import { QSP } from "../../config/qsp";
 import useQuery from "../../hooks/useQuery";
-import { constructPath } from "../../utils/fetch";
-import { getObjectDetailsUrl2 } from "../../utils/objects";
 import { RESOURCE_POOL_ALLOCATED_KIND } from "./constants";
 import { GET_RESOURCE_POOL_ALLOCATED } from "./graphql/resource-pool";
 

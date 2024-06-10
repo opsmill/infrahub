@@ -1,3 +1,6 @@
+import { constructPath } from "@/utils/fetch";
+import { getProposedChangesStateBadgeType } from "@/utils/proposed-changes";
+import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { ChevronLeftIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
@@ -18,9 +21,6 @@ import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { useAuth } from "../../hooks/useAuth";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { constructPath } from "../../utils/fetch";
-import { getProposedChangesStateBadgeType } from "../../utils/proposed-changes";
-import { stringifyWithoutQuotes } from "../../utils/string";
 
 export const ProposedChange = (props: any) => {
   const { row, refetch } = props;

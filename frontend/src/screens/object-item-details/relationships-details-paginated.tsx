@@ -1,3 +1,5 @@
+import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
+import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
@@ -15,8 +17,6 @@ import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
-import { stringifyWithoutQuotes } from "../../utils/string";
 import ErrorScreen from "../errors/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import RelationshipDetails from "./relationship-details-paginated";

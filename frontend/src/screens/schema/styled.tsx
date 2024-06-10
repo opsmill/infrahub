@@ -1,9 +1,9 @@
+import { classNames, warnUnexpectedType } from "@/utils/common";
+import { Tab } from "@headlessui/react";
+import { ReactElement } from "react";
+import { ArrayParam, useQueryParam } from "use-query-params";
 import Accordion, { AccordionProps } from "../../components/display/accordion";
 import { Badge } from "../../components/ui/badge";
-import { ReactElement } from "react";
-import { Tab } from "@headlessui/react";
-import { classNames, warnUnexpectedType } from "../../utils/common";
-import { ArrayParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../config/qsp";
 
 interface AccordionStyleProps extends AccordionProps {

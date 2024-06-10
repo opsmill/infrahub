@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import { forwardRef, HTMLAttributes } from "react";
-import { classNames } from "../../utils/common";
 
 export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (

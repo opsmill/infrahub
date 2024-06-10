@@ -1,8 +1,8 @@
+import { formatFullDate, formatRelativeTimeFromNow } from "@/utils/date";
+import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
 import { AnyAttribute } from "../../generated/graphql";
-import { formatFullDate, formatRelativeTimeFromNow } from "../../utils/date";
-import { constructPath } from "../../utils/fetch";
 import { Button } from "../buttons/button-primitive";
 import { PropertyList } from "../table/property-list";
 import { Badge } from "../ui/badge";

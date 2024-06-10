@@ -1,12 +1,12 @@
-import { CardWithBorder } from "../../components/ui/card";
+import { constructPath } from "@/utils/fetch";
+import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { Icon } from "@iconify-icon/react";
-import { Badge } from "../../components/ui/badge";
-import { Link } from "react-router-dom";
-import { getObjectDetailsUrl2 } from "../../utils/objects";
-import ResourcePoolUtilization from "./common/ResourcePoolUtilization";
-import { PropertyList } from "../../components/table/property-list";
-import { constructPath } from "../../utils/fetch";
 import { HTMLAttributes } from "react";
+import { Link } from "react-router-dom";
+import { PropertyList } from "../../components/table/property-list";
+import { Badge } from "../../components/ui/badge";
+import { CardWithBorder } from "../../components/ui/card";
+import ResourcePoolUtilization from "./common/ResourcePoolUtilization";
 
 export type ResourceProps = {
   id: string;

@@ -1,6 +1,6 @@
+import { classNames } from "@/utils/common";
 import { RadioGroup } from "@headlessui/react";
 import { useState } from "react";
-import { classNames } from "../../../utils/common";
 
 const timeOptions = [
   { name: "5m" },

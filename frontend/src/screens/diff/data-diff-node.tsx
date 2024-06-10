@@ -1,3 +1,5 @@
+import { classNames } from "@/utils/common";
+import { getBadgeType } from "@/utils/diff";
 import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
@@ -9,8 +11,6 @@ import { Pill } from "../../components/display/pill";
 import { Tooltip } from "../../components/ui/tooltip";
 import { QSP } from "../../config/qsp";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
-import { classNames } from "../../utils/common";
-import { getBadgeType } from "../../utils/diff";
 import { DataDiffElement } from "./data-diff-element";
 import { DataDiffConflictInfo } from "./diff-conflict-info";
 import { DiffPill } from "./diff-pill";

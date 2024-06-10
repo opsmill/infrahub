@@ -1,3 +1,6 @@
+import { constructPath } from "@/utils/fetch";
+import { AttributeType, ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
+import { getObjectDetailsUrl, getObjectDetailsUrl2 } from "@/utils/objects";
 import { Icon } from "@iconify-icon/react";
 import { CopyToClipboard } from "../../../components/buttons/copy-to-clipboard";
 import PropertiesPopover from "../../../components/display/properties-popover";
@@ -10,9 +13,6 @@ import { Tooltip } from "../../../components/ui/tooltip";
 import { RELATIONSHIP_VIEW_BLACKLIST } from "../../../config/constants";
 import { CoreGraphQlQuery } from "../../../generated/graphql";
 import { iNodeSchema } from "../../../state/atoms/schema.atom";
-import { constructPath } from "../../../utils/fetch";
-import { AttributeType, ObjectAttributeValue } from "../../../utils/getObjectItemDisplayValue";
-import { getObjectDetailsUrl, getObjectDetailsUrl2 } from "../../../utils/objects";
 
 type GraphqlQueryDetailsCardProps = {
   data: CoreGraphQlQuery;

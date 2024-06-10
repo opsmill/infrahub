@@ -1,3 +1,5 @@
+import { classNames } from "@/utils/common";
+import { fetchUrl, getUrlWithQsp } from "@/utils/fetch";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
@@ -8,8 +10,6 @@ import { ALERT_TYPES, Alert } from "../../components/ui/alert";
 import { CONFIG } from "../../config/config";
 import { QSP } from "../../config/qsp";
 import { useAuth } from "../../hooks/useAuth";
-import { classNames } from "../../utils/common";
-import { fetchUrl, getUrlWithQsp } from "../../utils/fetch";
 
 type tGenerateProps = {
   label?: string;

@@ -1,3 +1,4 @@
+import { constructPath, fetchUrl } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -10,7 +11,6 @@ import {
   INFRAHUB_GITHUB_URL,
 } from "../../config/config";
 import { components } from "../../infraops";
-import { constructPath, fetchUrl } from "../../utils/fetch";
 
 const AppVersionInfo = () => {
   const [info, setInfo] = useState<components["schemas"]["InfoAPI"] | null>(null);

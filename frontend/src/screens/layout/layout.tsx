@@ -1,18 +1,18 @@
-import { Outlet } from "react-router-dom";
-import Header from "./header";
-import { Sidebar } from "./sidebar";
+import { findSelectedBranch } from "@/utils/branches";
+import { useSetAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
+import { useContext, useEffect, useState } from "react";
+import { Outlet } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../config/qsp";
-import { useContext, useEffect, useState } from "react";
 import { SchemaContext, withSchemaContext } from "../../decorators/withSchemaContext";
-import GET_BRANCHES from "../../graphql/queries/branches/getBranches";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import { useSetAtom } from "jotai";
 import { Branch } from "../../generated/graphql";
-import { findSelectedBranch } from "../../utils/branches";
+import graphqlClient from "../../graphql/graphqlClientApollo";
+import GET_BRANCHES from "../../graphql/queries/branches/getBranches";
+import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
 import LoadingScreen from "../loading-screen/loading-screen";
+import Header from "./header";
+import { Sidebar } from "./sidebar";
 
 function Layout() {
   const branches = useAtomValue(branchesState);

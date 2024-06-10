@@ -1,3 +1,13 @@
+import { debounce } from "@/utils/common";
+import { constructPath } from "@/utils/fetch";
+import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
+import {
+  getObjectAttributes,
+  getObjectRelationships,
+  getSchemaObjectColumns,
+} from "@/utils/getSchemaObjectColumns";
+import { getObjectDetailsUrl } from "@/utils/objects";
+import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
@@ -34,16 +44,6 @@ import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { debounce } from "../../utils/common";
-import { constructPath } from "../../utils/fetch";
-import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
-import {
-  getObjectAttributes,
-  getObjectRelationships,
-  getSchemaObjectColumns,
-} from "../../utils/getSchemaObjectColumns";
-import { getObjectDetailsUrl } from "../../utils/objects";
-import { stringifyWithoutQuotes } from "../../utils/string";
 import ErrorScreen from "../errors/error-screen";
 import NoDataFound from "../errors/no-data-found";
 import Content from "../layout/content";

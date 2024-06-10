@@ -1,8 +1,8 @@
-import { classNames } from "../../utils/common";
+import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
+import { forwardRef } from "react";
 import { Input, InputProps } from "./input";
 import { Spinner } from "./spinner";
-import { forwardRef } from "react";
 
 interface SearchInputProps extends InputProps {
   loading?: boolean;

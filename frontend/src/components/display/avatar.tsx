@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import LoadingScreen from "../../screens/loading-screen/loading-screen";
-import { classNames } from "../../utils/common";
 
 export enum AVATAR_SIZE {
   SMALL,

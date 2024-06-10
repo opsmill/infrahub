@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import { InputHTMLAttributes } from "react";
-import { classNames } from "../../utils/common";
 
 interface SpinnerProps extends InputHTMLAttributes<HTMLDivElement> {}
 export const Spinner = ({ ...props }: SpinnerProps) => {

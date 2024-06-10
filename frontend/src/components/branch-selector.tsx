@@ -1,3 +1,5 @@
+import { branchesToSelectOptions } from "@/utils/branches";
+import { classNames } from "@/utils/common";
 import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
@@ -11,8 +13,6 @@ import { usePermission } from "../hooks/usePermission";
 import { DynamicFieldData } from "../screens/edit-form-hook/dynamic-control-types";
 import { Form } from "../screens/edit-form-hook/form";
 import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
-import { branchesToSelectOptions } from "../utils/branches";
-import { classNames } from "../utils/common";
 import { BUTTON_TYPES } from "./buttons/button";
 import { ButtonWithTooltip } from "./buttons/button-with-tooltip";
 import { SelectButton } from "./buttons/select-button";

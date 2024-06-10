@@ -16,8 +16,8 @@ import { Config, configState } from "./state/atoms/config.atom";
 
 import LoadingScreen from "./screens/loading-screen/loading-screen";
 
+import { fetchUrl } from "@/utils/fetch";
 import "./styles/index.css";
-import { fetchUrl } from "./utils/fetch";
 
 export const Infrahub = () => {
   const setConfig = useSetAtom(configState);

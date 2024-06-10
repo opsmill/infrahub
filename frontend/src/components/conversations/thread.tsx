@@ -1,3 +1,6 @@
+import { classNames } from "@/utils/common";
+import { getThreadTitle } from "@/utils/diff";
+import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { formatISO, isBefore, parseISO } from "date-fns";
 import { useAtomValue } from "jotai/index";
@@ -15,9 +18,6 @@ import { updateObjectWithId } from "../../graphql/mutations/objects/updateObject
 import { useAuth } from "../../hooks/useAuth";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { classNames } from "../../utils/common";
-import { getThreadTitle } from "../../utils/diff";
-import { stringifyWithoutQuotes } from "../../utils/string";
 import { Button } from "../buttons/button";
 import { Checkbox } from "../inputs/checkbox";
 import ModalConfirm from "../modals/modal-confirm";

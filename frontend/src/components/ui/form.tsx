@@ -1,3 +1,6 @@
+import { classNames } from "@/utils/common";
+import * as LabelPrimitive from "@radix-ui/react-label";
+import { Slot } from "@radix-ui/react-slot";
 import React, { createContext, FormHTMLAttributes, HTMLAttributes, useContext, useId } from "react";
 import {
   Controller,
@@ -6,9 +9,6 @@ import {
   useForm,
   useFormContext,
 } from "react-hook-form";
-import * as LabelPrimitive from "@radix-ui/react-label";
-import { Slot } from "@radix-ui/react-slot";
-import { classNames } from "../../utils/common";
 
 interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
   onSubmit?: (v: Record<string, any>) => void;

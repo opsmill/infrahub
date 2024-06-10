@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import React from "react";
-import { classNames } from "../../utils/common";
 import { Badge } from "../display/badge";
 import { ErrorMessage } from "./constants";
 import { SelectOption } from "./select";

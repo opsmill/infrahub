@@ -5,10 +5,10 @@ import Prism from "prismjs";
 import "prismjs/components/prism-json"; // need this
 import "prismjs/themes/prism.css"; //Example style, you can use another
 
+import { classNames } from "@/utils/common";
 import { useState } from "react";
 import Editor from "react-simple-code-editor";
 import { toast } from "react-toastify";
-import { classNames } from "../../utils/common";
 import { BUTTON_TYPES, Button } from "../buttons/button";
 import { ALERT_TYPES, Alert } from "../ui/alert";
 

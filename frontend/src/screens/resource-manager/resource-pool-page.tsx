@@ -1,3 +1,7 @@
+import { constructPath } from "@/utils/fetch";
+import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
+import { getSchemaObjectColumns, getTabs } from "@/utils/getSchemaObjectColumns";
+import { getObjectDetailsUrl } from "@/utils/objects";
 import { gql, useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
@@ -11,10 +15,6 @@ import { Link } from "../../components/ui/link";
 import { TASK_OBJECT } from "../../config/constants";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
-import { constructPath } from "../../utils/fetch";
-import { ObjectAttributeValue } from "../../utils/getObjectItemDisplayValue";
-import { getSchemaObjectColumns, getTabs } from "../../utils/getSchemaObjectColumns";
-import { getObjectDetailsUrl } from "../../utils/objects";
 import ErrorScreen from "../errors/error-screen";
 import NoDataFound from "../errors/no-data-found";
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "../ipam/constants";

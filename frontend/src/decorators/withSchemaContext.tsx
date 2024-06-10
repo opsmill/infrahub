@@ -1,3 +1,6 @@
+import { findSelectedBranch } from "@/utils/branches";
+import { sortByName, sortByOrderWeight } from "@/utils/common";
+import { fetchUrl } from "@/utils/fetch";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import * as R from "ramda";
 import { createContext } from "react";
@@ -21,9 +24,6 @@ import {
 } from "../state/atoms/schema.atom";
 import { schemaKindLabelState } from "../state/atoms/schemaKindLabel.atom";
 import { schemaKindNameState } from "../state/atoms/schemaKindName.atom";
-import { findSelectedBranch } from "../utils/branches";
-import { sortByName, sortByOrderWeight } from "../utils/common";
-import { fetchUrl } from "../utils/fetch";
 
 type tSchemaContext = {
   checkSchemaUpdate: () => Promise<void>;

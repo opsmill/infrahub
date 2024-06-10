@@ -1,3 +1,4 @@
+import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
@@ -9,7 +10,6 @@ import { GET_PREFIX_KIND } from "../../../graphql/queries/ipam/prefixes";
 import { getObjectDetailsPaginated } from "../../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../../hooks/useQuery";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
-import { getSchemaObjectColumns } from "../../../utils/getSchemaObjectColumns";
 import NoDataFound from "../../errors/no-data-found";
 import { IpDetailsCard } from "../common/ip-details-card";
 import { constructPathForIpam } from "../common/utils";

@@ -1,7 +1,7 @@
+import { classNames } from "@/utils/common";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { components } from "../../infraops";
 import { FormFieldError } from "../../screens/edit-form-hook/form";
-import { classNames } from "../../utils/common";
 import { QuestionMark } from "../display/question-mark";
 import { ColorPicker } from "../inputs/color-picker";
 
