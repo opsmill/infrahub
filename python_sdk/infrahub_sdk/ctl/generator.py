@@ -61,7 +61,9 @@ async def run(
         await generator.run(identifier=generator_config.name, data=data)
 
     else:
-        targets = await client.get(kind="CoreGroup", include=["members"], name__value=generator_config.targets)
+        targets = await client.get(
+            kind="CoreGroup", branch=branch, include=["members"], name__value=generator_config.targets
+        )
         await targets.members.fetch()
         for member in targets.members.peers:
             check_parameter = {}
