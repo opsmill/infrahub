@@ -1,5 +1,5 @@
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
-import { currentBranchAtom } from "@/state/state/atoms/branches.atom";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 

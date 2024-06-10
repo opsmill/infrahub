@@ -4,7 +4,7 @@ import { Property, PropertyList } from "@/components/table/property-list";
 import { Badge } from "@/components/ui/badge";
 import { CardWithBorder } from "@/components/ui/card";
 import { Link } from "@/components/ui/link";
-import { IModelSchema } from "@/state/state/state/atoms/schema.atom";
+import { IModelSchema } from "@/state/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { AttributeType, ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
 import { getObjectDetailsUrl } from "@/utils/objects";

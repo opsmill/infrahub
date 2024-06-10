@@ -1,12 +1,7 @@
 import Accordion from "@/components/display/accordion";
 import { Badge } from "@/components/ui/badge";
 import { QSP } from "@/config/qsp";
-import {
-  IModelSchema,
-  genericsState,
-  profilesAtom,
-  schemaState,
-} from "@/state/state/atoms/schema.atom";
+import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { classNames, isGeneric } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";

@@ -4,7 +4,7 @@ import { DateDisplay } from "@/components/display/date-display";
 import { Pill } from "@/components/display/pill";
 import { Tooltip } from "@/components/ui/tooltip";
 import { QSP } from "@/config/qsp";
-import { proposedChangedState } from "@/state/state/atoms/proposedChanges.atom";
+import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { classNames } from "@/utils/common";
 import { getBadgeType } from "@/utils/diff";
 import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";

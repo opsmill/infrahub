@@ -1,8 +1,8 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { SearchInput } from "@/components/ui/search-input";
 import { CONFIG } from "@/config/config";
-import { currentBranchAtom } from "@/state/state/state/atoms/branches.atom";
-import { currentSchemaHashAtom, menuAtom } from "@/state/state/state/atoms/schema.atom";
+import { currentBranchAtom } from "@/state/state/atoms/branches.atom";
+import { currentSchemaHashAtom, menuAtom } from "@/state/state/atoms/schema.atom";
 import { classNames } from "@/utils/common";
 import { fetchUrl } from "@/utils/fetch";
 import { useAtom, useAtomValue } from "jotai/index";

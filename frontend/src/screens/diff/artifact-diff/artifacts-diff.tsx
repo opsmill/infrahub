@@ -1,7 +1,7 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
 import { QSP } from "@/config/qsp";
-import { proposedChangedState } from "@/state/state/state/atoms/proposedChanges.atom";
+import { proposedChangedState } from "@/state/state/atoms/proposedChanges.atom";
 import { fetchUrl, getUrlWithQsp } from "@/utils/fetch";
 import { useAtom } from "jotai";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";

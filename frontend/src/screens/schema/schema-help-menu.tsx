@@ -6,7 +6,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { INFRAHUB_DOC_LOCAL } from "@/config/config";
-import { IModelSchema, menuFlatAtom } from "@/state/state/atoms/schema.atom";
+import { IModelSchema, menuFlatAtom } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";

@@ -5,8 +5,8 @@ import {
   GET_PREFIXES_ONLY,
   GET_TOP_LEVEL_PREFIXES,
 } from "@/graphql/queries/ipam/prefixes";
-import { currentBranchAtom } from "@/state/state/state/atoms/branches.atom";
-import { datetimeAtom } from "@/state/state/state/atoms/time.atom";
+import { currentBranchAtom } from "@/state/state/atoms/branches.atom";
+import { datetimeAtom } from "@/state/state/atoms/time.atom";
 import { atom } from "jotai";
 import * as R from "ramda";
 import { IP_PREFIX_GENERIC, IPAM_TREE_ROOT_ID } from "../constants";

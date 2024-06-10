@@ -19,7 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePermission } from "@/hooks/usePermission";
 import useQuery from "@/hooks/useQuery";
 import Content from "@/screens/layout/content";
-import { branchesState } from "@/state/state/atoms/branches.atom";
+import { branchesState } from "@/state/atoms/branches.atom";
 import { branchesToSelectOptions } from "@/utils/branches";
 import { constructPath } from "@/utils/fetch";
 import { useMutation } from "@apollo/client";

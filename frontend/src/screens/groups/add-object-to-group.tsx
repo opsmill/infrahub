@@ -5,9 +5,9 @@ import { addRelationship } from "@/graphql/mutations/relationships/addRelationsh
 import { removeRelationship } from "@/graphql/mutations/relationships/removeRelationship";
 import { getGroups } from "@/graphql/queries/groups/getGroups";
 import useQuery from "@/hooks/useQuery";
-import { currentBranchAtom } from "@/state/state/atoms/branches.atom";
-import { genericsState, profilesAtom, schemaState } from "@/state/state/atoms/schema.atom";
-import { datetimeAtom } from "@/state/state/atoms/time.atom";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";

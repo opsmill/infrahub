@@ -3,7 +3,7 @@ import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDe
 import { SEARCH } from "@/graphql/queries/objects/search";
 import { useDebounce } from "@/hooks/useDebounce";
 import useQuery, { useLazyQuery } from "@/hooks/useQuery";
-import { genericsState, schemaState } from "@/state/state/atoms/schema.atom";
+import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/utils/objects";

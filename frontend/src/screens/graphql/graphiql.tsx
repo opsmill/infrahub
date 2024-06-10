@@ -5,8 +5,8 @@ import { useAtomValue } from "jotai/index";
 
 import { CONFIG } from "@/config/config";
 import { ACCESS_TOKEN_KEY } from "@/config/constants";
-import { currentBranchAtom } from "@/state/state/atoms/branches.atom";
-import { datetimeAtom } from "@/state/state/atoms/time.atom";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
 
 import { QSP } from "@/config/qsp";
 import "@graphiql/plugin-explorer/dist/style.css";

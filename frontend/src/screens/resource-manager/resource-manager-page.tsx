@@ -1,4 +1,4 @@
-import { genericsState } from "@/state/state/atoms/schema.atom";
+import { genericsState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { useAtomValue } from "jotai/index";
 import LoadingScreen from "../loading-screen/loading-screen";

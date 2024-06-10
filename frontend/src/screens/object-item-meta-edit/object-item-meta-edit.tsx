@@ -1,9 +1,9 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
-import { currentBranchAtom } from "@/state/state/atoms/branches.atom";
-import { iNodeSchema, schemaState } from "@/state/state/atoms/schema.atom";
-import { datetimeAtom } from "@/state/state/atoms/time.atom";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
 import { getFormStructureForMetaEditPaginated } from "@/utils/formStructureForCreateEdit";
 import getMutationMetaDetailsFromFormData from "@/utils/getMutationMetaDetailsFromFormData";
 import { stringifyWithoutQuotes } from "@/utils/string";

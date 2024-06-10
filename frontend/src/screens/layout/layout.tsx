@@ -2,7 +2,7 @@ import { QSP } from "@/config/qsp";
 import { SchemaContext, withSchemaContext } from "@/decorators/withSchemaContext";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import GET_BRANCHES from "@/graphql/queries/branches/getBranches";
-import { branchesState, currentBranchAtom } from "@/state/state/atoms/branches.atom";
+import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { findSelectedBranch } from "@/utils/branches";
 import { Branch } from "@generated/graphql";
 import { useSetAtom } from "jotai";

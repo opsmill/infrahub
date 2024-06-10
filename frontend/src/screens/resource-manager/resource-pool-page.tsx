@@ -8,7 +8,7 @@ import { TASK_OBJECT } from "@/config/constants";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import { GET_KIND_FOR_RESOURCE_POOL, GET_RESOURCE_POOL_UTILIZATION } from "@/graphql/resource-pool";
 import Content from "@/screens/layout/content";
-import { iNodeSchema, schemaState } from "@/state/state/atoms/schema.atom";
+import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
 import { getSchemaObjectColumns, getTabs } from "@/utils/getSchemaObjectColumns";

@@ -20,11 +20,11 @@ import { usePermission } from "@/hooks/usePermission";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import Content from "@/screens/layout/content";
-import { currentBranchAtom } from "@/state/state/atoms/branches.atom";
-import { showMetaEditState } from "@/state/state/atoms/metaEditFieldDetails.atom";
-import { genericsState, profilesAtom, schemaState } from "@/state/state/atoms/schema.atom";
-import { schemaKindNameState } from "@/state/state/atoms/schemaKindName.atom";
-import { metaEditFieldDetailsState } from "@/state/state/atoms/showMetaEdit.atom copy";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
+import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
 import { constructPath } from "@/utils/fetch";
 import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
 import {

@@ -1,8 +1,8 @@
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { getDropdownOptions } from "@/graphql/queries/objects/dropdownOptions";
 import { FormFieldError } from "@/screens/edit-form-hook/form";
-import { currentBranchAtom } from "@/state/state/atoms/branches.atom";
-import { datetimeAtom } from "@/state/state/atoms/time.atom";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
 import { gql } from "@apollo/client";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { useAtomValue } from "jotai/index";

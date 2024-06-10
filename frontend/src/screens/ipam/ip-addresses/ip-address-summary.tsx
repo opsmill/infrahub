@@ -2,7 +2,7 @@ import { Link } from "@/components/ui/link";
 import { GET_IP_ADDRESS_KIND } from "@/graphql/queries/ipam/ip-address";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/hooks/useQuery";
-import { genericsState, schemaState } from "@/state/state/state/atoms/schema.atom";
+import { genericsState, schemaState } from "@/state/state/atoms/schema.atom";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";

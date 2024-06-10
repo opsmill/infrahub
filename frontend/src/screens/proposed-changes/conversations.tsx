@@ -24,9 +24,9 @@ import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWith
 import { getProposedChangesThreads } from "@/graphql/queries/proposed-changes/getProposedChangesThreads";
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
-import { branchesState, currentBranchAtom } from "@/state/state/atoms/branches.atom";
-import { proposedChangedState } from "@/state/state/atoms/proposedChanges.atom";
-import { datetimeAtom } from "@/state/state/atoms/time.atom";
+import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
+import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
 import { constructPath } from "@/utils/fetch";
 import { getProposedChangesStateBadgeType } from "@/utils/proposed-changes";
 import { stringifyWithoutQuotes } from "@/utils/string";

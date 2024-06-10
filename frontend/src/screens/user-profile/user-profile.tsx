@@ -6,7 +6,7 @@ import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails"
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import Content from "@/screens/layout/content";
-import { schemaState } from "@/state/state/atoms/schema.atom";
+import { schemaState } from "@/state/atoms/schema.atom";
 import { parseJwt } from "@/utils/common";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";

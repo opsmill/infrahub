@@ -6,8 +6,8 @@ import { getProposedChanges } from "@/graphql/queries/proposed-changes/getPropos
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import Content from "@/screens/layout/content";
-import { proposedChangedState } from "@/state/state/atoms/proposedChanges.atom";
-import { schemaState } from "@/state/state/atoms/schema.atom";
+import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
+import { schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { getObjectRelationships } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";

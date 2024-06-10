@@ -1,7 +1,7 @@
 import { Button } from "@/components/buttons/button";
 import { getDropdownOptionsForRelatedPeersPaginated } from "@/graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import useFilters from "@/hooks/useFilters";
-import { genericsState, schemaState } from "@/state/state/atoms/schema.atom";
+import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import getFormStructureForFilters from "@/utils/formStructureForFilters";
 import { resolve } from "@/utils/objects";
 import { gql, useQuery } from "@apollo/client";

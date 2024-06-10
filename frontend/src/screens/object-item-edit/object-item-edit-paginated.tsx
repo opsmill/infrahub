@@ -6,9 +6,9 @@ import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWith
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
-import { currentBranchAtom } from "@/state/state/atoms/branches.atom";
-import { genericsState, profilesAtom, schemaState } from "@/state/state/atoms/schema.atom";
-import { datetimeAtom } from "@/state/state/atoms/time.atom";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
 import getFormStructureForCreateEdit from "@/utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "@/utils/getMutationDetailsFromFormData";
 import { getObjectAttributes, getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";

@@ -6,7 +6,7 @@ import { usePermission } from "@/hooks/usePermission";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import Content from "@/screens/layout/content";
-import { schemaState } from "@/state/state/atoms/schema.atom";
+import { schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { getObjectRelationships } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
