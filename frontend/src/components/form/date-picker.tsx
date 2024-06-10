@@ -1,9 +1,9 @@
 import { QuestionMark } from "@/components/display/question-mark";
 import { FormFieldError } from "@/screens/edit-form-hook/form";
 import { classNames } from "@/utils/common";
+import { DatePicker } from "@components/inputs/date-picker";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { components } from "../../infraops";
-import { DatePicker } from "../inputs/date-picker";
 
 type OpsDatePickerProps = {
   label: string;

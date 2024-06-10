@@ -5,12 +5,12 @@ import { FormFieldError } from "@/screens/edit-form-hook/form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { gql } from "@apollo/client";
+import { SelectOption } from "@components/inputs/select";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { useAtomValue } from "jotai/index";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { components } from "../../infraops";
-import { SelectOption } from "../inputs/select";
 import { OpsSelect } from "./select";
 
 export interface iTwoStepDropdownData {
