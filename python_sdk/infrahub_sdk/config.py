@@ -1,6 +1,6 @@
 from typing import Any, Dict, Optional
 
-from pydantic import Field, model_validator, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from infrahub_sdk.constants import InfrahubClientMode
