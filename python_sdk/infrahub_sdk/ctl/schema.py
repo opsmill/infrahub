@@ -5,12 +5,7 @@ from typing import Any, Dict, List, Optional
 
 import typer
 import yaml
-
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
-
+from pydantic import ValidationError
 from rich.console import Console
 
 from infrahub_sdk import InfrahubClient
@@ -78,7 +73,7 @@ def validate_schema_content_and_exit(client: InfrahubClient, console: Console, s
     for schema_file in schemas:
         try:
             client.schema.validate(data=schema_file.content)
-        except pydantic.ValidationError as exc:
+        except ValidationError as exc:
             console.print(f"[red]Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.location}")
             has_error = True
             for error in exc.errors():

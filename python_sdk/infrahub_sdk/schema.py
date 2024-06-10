@@ -19,12 +19,8 @@ from typing import (
 from urllib.parse import urlencode
 
 import httpx
+from pydantic import BaseModel, Field, field_validator
 from typing_extensions import TypeAlias
-
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
 
 from infrahub_sdk._importer import import_module
 from infrahub_sdk.exceptions import InvalidResponseError, ModuleImportError, SchemaNotFoundError, ValidationError
@@ -54,31 +50,27 @@ ResourceClass = TypeVar("ResourceClass")
 # ---------------------------------------------------------------------------------
 
 
-class InfrahubRepositoryConfigElement(pydantic.BaseModel):
+class InfrahubRepositoryConfigElement(BaseModel):
     """Class to regroup all elements of the infrahub configuration for a repository for typing purpose."""
 
 
 class InfrahubRepositoryArtifactDefinitionConfig(InfrahubRepositoryConfigElement):
-    name: str = pydantic.Field(..., description="The name of the artifact definition")
-    artifact_name: Optional[str] = pydantic.Field(
-        default=None, description="Name of the artifact created from this definition"
-    )
-    parameters: Dict[str, Any] = pydantic.Field(
-        ..., description="The input parameters required to render this artifact"
-    )
-    content_type: str = pydantic.Field(..., description="The content type of the rendered artifact")
-    targets: str = pydantic.Field(..., description="The group to target when creating artifacts")
-    transformation: str = pydantic.Field(..., description="The transformation to use.")
+    name: str = Field(..., description="The name of the artifact definition")
+    artifact_name: Optional[str] = Field(default=None, description="Name of the artifact created from this definition")
+    parameters: Dict[str, Any] = Field(..., description="The input parameters required to render this artifact")
+    content_type: str = Field(..., description="The content type of the rendered artifact")
+    targets: str = Field(..., description="The group to target when creating artifacts")
+    transformation: str = Field(..., description="The transformation to use.")
 
     class Config:
         extra = "forbid"
 
 
 class InfrahubJinja2TransformConfig(InfrahubRepositoryConfigElement):
-    name: str = pydantic.Field(..., description="The name of the transform")
-    query: str = pydantic.Field(..., description="The name of the GraphQL Query")
-    template_path: Path = pydantic.Field(..., description="The path within the repository of the template file")
-    description: Optional[str] = pydantic.Field(default=None, description="Description for this transform")
+    name: str = Field(..., description="The name of the transform")
+    query: str = Field(..., description="The name of the GraphQL Query")
+    template_path: Path = Field(..., description="The path within the repository of the template file")
+    description: Optional[str] = Field(default=None, description="Description for this transform")
 
     @property
     def template_path_value(self) -> str:
@@ -95,30 +87,30 @@ class InfrahubJinja2TransformConfig(InfrahubRepositoryConfigElement):
 
 
 class InfrahubCheckDefinitionConfig(InfrahubRepositoryConfigElement):
-    name: str = pydantic.Field(..., description="The name of the Check Definition")
-    file_path: Path = pydantic.Field(..., description="The file within the repository with the check code.")
-    parameters: Dict[str, Any] = pydantic.Field(
+    name: str = Field(..., description="The name of the Check Definition")
+    file_path: Path = Field(..., description="The file within the repository with the check code.")
+    parameters: Dict[str, Any] = Field(
         default_factory=dict, description="The input parameters required to run this check"
     )
-    targets: Optional[str] = pydantic.Field(
+    targets: Optional[str] = Field(
         default=None, description="The group to target when running this check, leave blank for global checks"
     )
-    class_name: str = pydantic.Field(default="Check", description="The name of the check class to run.")
+    class_name: str = Field(default="Check", description="The name of the check class to run.")
 
     class Config:
         extra = "forbid"
 
 
 class InfrahubGeneratorDefinitionConfig(InfrahubRepositoryConfigElement):
-    name: str = pydantic.Field(..., description="The name of the Generator Definition")
-    file_path: Path = pydantic.Field(..., description="The file within the repository with the generator code.")
-    query: str = pydantic.Field(..., description="The GraphQL query to use as input.")
-    parameters: Dict[str, Any] = pydantic.Field(
+    name: str = Field(..., description="The name of the Generator Definition")
+    file_path: Path = Field(..., description="The file within the repository with the generator code.")
+    query: str = Field(..., description="The GraphQL query to use as input.")
+    parameters: Dict[str, Any] = Field(
         default_factory=dict, description="The input parameters required to run this check"
     )
-    targets: str = pydantic.Field(..., description="The group to target when running this generator")
-    class_name: str = pydantic.Field(default="Generator", description="The name of the generator class to run.")
-    convert_query_response: bool = pydantic.Field(
+    targets: str = Field(..., description="The group to target when running this generator")
+    class_name: str = Field(default="Generator", description="The name of the generator class to run.")
+    convert_query_response: bool = Field(
         default=False,
         description="Decide if the generator should convert the result of the GraphQL query to SDK InfrahubNode objects.",
     )
@@ -143,9 +135,9 @@ class InfrahubGeneratorDefinitionConfig(InfrahubRepositoryConfigElement):
 
 
 class InfrahubPythonTransformConfig(InfrahubRepositoryConfigElement):
-    name: str = pydantic.Field(..., description="The name of the Transform")
-    file_path: Path = pydantic.Field(..., description="The file within the repository with the transform code.")
-    class_name: str = pydantic.Field(default="Transform", description="The name of the transform class to run.")
+    name: str = Field(..., description="The name of the Transform")
+    file_path: Path = Field(..., description="The file within the repository with the transform code.")
+    class_name: str = Field(default="Transform", description="The name of the transform class to run.")
 
     class Config:
         extra = "forbid"
@@ -160,29 +152,29 @@ RESOURCE_MAP: Dict[Any, str] = {
 }
 
 
-class InfrahubRepositoryConfig(pydantic.BaseModel):
-    check_definitions: List[InfrahubCheckDefinitionConfig] = pydantic.Field(
+class InfrahubRepositoryConfig(BaseModel):
+    check_definitions: List[InfrahubCheckDefinitionConfig] = Field(
         default_factory=list, description="User defined checks"
     )
-    schemas: List[Path] = pydantic.Field(default_factory=list, description="Schema files")
-    jinja2_transforms: List[InfrahubJinja2TransformConfig] = pydantic.Field(
+    schemas: List[Path] = Field(default_factory=list, description="Schema files")
+    jinja2_transforms: List[InfrahubJinja2TransformConfig] = Field(
         default_factory=list, description="Jinja2 data transformations"
     )
-    artifact_definitions: List[InfrahubRepositoryArtifactDefinitionConfig] = pydantic.Field(
+    artifact_definitions: List[InfrahubRepositoryArtifactDefinitionConfig] = Field(
         default_factory=list, description="Artifact definitions"
     )
-    python_transforms: List[InfrahubPythonTransformConfig] = pydantic.Field(
+    python_transforms: List[InfrahubPythonTransformConfig] = Field(
         default_factory=list, description="Python data transformations"
     )
-    generator_definitions: List[InfrahubGeneratorDefinitionConfig] = pydantic.Field(
+    generator_definitions: List[InfrahubGeneratorDefinitionConfig] = Field(
         default_factory=list, description="Generator definitions"
     )
 
-    @pydantic.validator(
-        "jinja2_transforms", "check_definitions", "artifact_definitions", "python_transforms", "generator_definitions"
+    @field_validator(
+        "check_definitions", "jinja2_transforms", "artifact_definitions", "python_transforms", "generator_definitions"
     )
     @classmethod
-    def unique_items(cls, v: Any, **kwargs: Dict[str, Any]) -> Any:  # pylint: disable=unused-argument
+    def unique_items(cls, v: list[Any]) -> list[Any]:
         names = [item.name for item in v]
         if dups := duplicates(names):
             raise ValueError(f"Found multiples element with the same names: {dups}")
@@ -239,7 +231,7 @@ class InfrahubRepositoryConfig(pydantic.BaseModel):
 # ---------------------------------------------------------------------------------
 # Main Infrahub Schema File
 # ---------------------------------------------------------------------------------
-class FilterSchema(pydantic.BaseModel):
+class FilterSchema(BaseModel):
     name: str
     kind: str
     description: Optional[str] = None
@@ -281,7 +273,7 @@ class SchemaState(str, Enum):
     ABSENT = "absent"
 
 
-class AttributeSchema(pydantic.BaseModel):
+class AttributeSchema(BaseModel):
     id: Optional[str] = None
     state: SchemaState = SchemaState.PRESENT
     name: str
@@ -301,7 +293,7 @@ class AttributeSchema(pydantic.BaseModel):
     regex: Optional[str] = None
 
 
-class RelationshipSchema(pydantic.BaseModel):
+class RelationshipSchema(BaseModel):
     id: Optional[str] = None
     state: SchemaState = SchemaState.PRESENT
     name: str
@@ -315,19 +307,19 @@ class RelationshipSchema(pydantic.BaseModel):
     branch: Optional[BranchSupportType] = None
     optional: bool = True
     read_only: bool = False
-    filters: List[FilterSchema] = pydantic.Field(default_factory=list)
+    filters: List[FilterSchema] = Field(default_factory=list)
 
 
-class BaseNodeSchema(pydantic.BaseModel):
+class BaseNodeSchema(BaseModel):
     id: Optional[str] = None
     state: SchemaState = SchemaState.PRESENT
     name: str
     label: Optional[str] = None
     namespace: str
     description: Optional[str] = None
-    attributes: List[AttributeSchema] = pydantic.Field(default_factory=list)
-    relationships: List[RelationshipSchema] = pydantic.Field(default_factory=list)
-    filters: List[FilterSchema] = pydantic.Field(default_factory=list)
+    attributes: List[AttributeSchema] = Field(default_factory=list)
+    relationships: List[RelationshipSchema] = Field(default_factory=list)
+    filters: List[FilterSchema] = Field(default_factory=list)
 
     @property
     def kind(self) -> str:
@@ -415,38 +407,38 @@ class BaseNodeSchema(pydantic.BaseModel):
 class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
-    used_by: List[str] = pydantic.Field(default_factory=list)
+    used_by: List[str] = Field(default_factory=list)
 
 
 class NodeSchema(BaseNodeSchema):
-    inherit_from: List[str] = pydantic.Field(default_factory=list)
+    inherit_from: List[str] = Field(default_factory=list)
     branch: Optional[BranchSupportType] = None
     default_filter: Optional[str] = None
     human_friendly_id: Optional[List[str]] = None
 
 
 class ProfileSchema(BaseNodeSchema):
-    inherit_from: List[str] = pydantic.Field(default_factory=list)
+    inherit_from: List[str] = Field(default_factory=list)
 
 
-class NodeExtensionSchema(pydantic.BaseModel):
+class NodeExtensionSchema(BaseModel):
     name: Optional[str] = None
     kind: str
     description: Optional[str] = None
     label: Optional[str] = None
-    inherit_from: List[str] = pydantic.Field(default_factory=list)
+    inherit_from: List[str] = Field(default_factory=list)
     branch: Optional[BranchSupportType] = None
     default_filter: Optional[str] = None
-    attributes: List[AttributeSchema] = pydantic.Field(default_factory=list)
-    relationships: List[RelationshipSchema] = pydantic.Field(default_factory=list)
+    attributes: List[AttributeSchema] = Field(default_factory=list)
+    relationships: List[RelationshipSchema] = Field(default_factory=list)
 
 
-class SchemaRoot(pydantic.BaseModel):
+class SchemaRoot(BaseModel):
     version: str
-    generics: List[GenericSchema] = pydantic.Field(default_factory=list)
-    nodes: List[NodeSchema] = pydantic.Field(default_factory=list)
-    profiles: List[ProfileSchema] = pydantic.Field(default_factory=list)
-    # node_extensions: List[NodeExtensionSchema] = pydantic.Field(default_factory=list)
+    generics: List[GenericSchema] = Field(default_factory=list)
+    nodes: List[NodeSchema] = Field(default_factory=list)
+    profiles: List[ProfileSchema] = Field(default_factory=list)
+    # node_extensions: List[NodeExtensionSchema] = Field(default_factory=list)
 
 
 MainSchemaTypes: TypeAlias = Union[NodeSchema, GenericSchema, ProfileSchema]
@@ -960,10 +952,10 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         return False, None
 
 
-class SchemaLoadResponse(pydantic.BaseModel):
-    hash: str = pydantic.Field(default="", description="The new hash for the entire schema")
-    previous_hash: str = pydantic.Field(default="", description="The previous hash for the entire schema")
-    errors: dict = pydantic.Field(default_factory=dict, description="Errors reported by the server")
+class SchemaLoadResponse(BaseModel):
+    hash: str = Field(default="", description="The new hash for the entire schema")
+    previous_hash: str = Field(default="", description="The previous hash for the entire schema")
+    errors: dict = Field(default_factory=dict, description="Errors reported by the server")
 
     @property
     def schema_updated(self) -> bool:

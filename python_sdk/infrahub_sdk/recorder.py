@@ -6,11 +6,7 @@ from typing import Protocol, runtime_checkable
 
 import httpx
 import ujson
-
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
+from pydantic_settings import BaseSettings
 
 from infrahub_sdk.utils import generate_request_filename
 
@@ -36,7 +32,7 @@ class NoRecorder:
         return cls()
 
 
-class JSONRecorder(pydantic.BaseSettings):
+class JSONRecorder(BaseSettings):
     directory: str = "."
     host: str = ""
 

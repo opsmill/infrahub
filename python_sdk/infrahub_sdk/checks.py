@@ -17,18 +17,16 @@ if TYPE_CHECKING:
 
     from infrahub_sdk.schema import InfrahubCheckDefinitionConfig
 
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
+
+from pydantic import BaseModel, Field
 
 INFRAHUB_CHECK_VARIABLE_TO_IMPORT = "INFRAHUB_CHECKS"
 
 
-class InfrahubCheckInitializer(pydantic.BaseModel):
+class InfrahubCheckInitializer(BaseModel):
     """Information about the originator of the check."""
 
-    proposed_change_id: str = pydantic.Field(
+    proposed_change_id: str = Field(
         default="", description="If available the ID of the proposed change that requested the check"
     )
 

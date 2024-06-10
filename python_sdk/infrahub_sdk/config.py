@@ -1,9 +1,7 @@
 from typing import Any, Dict, Optional
 
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
+from pydantic import Field, model_validator, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.playback import JSONPlayback
@@ -12,70 +10,60 @@ from infrahub_sdk.types import AsyncRequester, InfrahubLoggers, RequesterTranspo
 from infrahub_sdk.utils import get_branch, is_valid_url
 
 
-class ProxyMountsConfig(pydantic.BaseSettings):
-    http: str = pydantic.Field(
+class ProxyMountsConfig(BaseSettings):
+    model_config = SettingsConfigDict(populate_by_name=True)
+    http: str = Field(
         default=None, description="Proxy for HTTP requests", alias="http://", env="INFRAHUB_PROXY_MOUNTS_HTTP"
     )
-    https: str = pydantic.Field(
+    https: str = Field(
         default=None, description="Proxy for HTTPS requests", alias="https://", env="INFRAHUB_PROXY_MOUNTS_HTTPS"
     )
 
-    class Config:
-        allow_population_by_field_name = True
 
-
-class ConfigBase(pydantic.BaseSettings):
-    address: str = pydantic.Field(
+class ConfigBase(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_", case_sensitive=False, validate_assignment=True)
+    address: str = Field(
         default="http://localhost:8000",
         description="The URL to use when connecting to Infrahub.",
     )
-    api_token: Optional[str] = pydantic.Field(
-        default=None, description="API token for authentication against Infrahub."
-    )
-    echo_graphql_queries: bool = pydantic.Field(
+    api_token: Optional[str] = Field(default=None, description="API token for authentication against Infrahub.")
+    echo_graphql_queries: bool = Field(
         default=False, description="If set the GraphQL query and variables will be echoed to the screen"
     )
-    username: Optional[str] = pydantic.Field(default=None, description="Username for accessing Infrahub", min_length=1)
-    password: Optional[str] = pydantic.Field(default=None, description="Password for accessing Infrahub", min_length=1)
-    default_branch: str = pydantic.Field(
+    username: Optional[str] = Field(default=None, description="Username for accessing Infrahub", min_length=1)
+    password: Optional[str] = Field(default=None, description="Password for accessing Infrahub", min_length=1)
+    default_branch: str = Field(
         default="main", description="Default branch to target if not specified for each request."
     )
-    default_branch_from_git: bool = pydantic.Field(
+    default_branch_from_git: bool = Field(
         default=False,
         description="Indicates if the default Infrahub branch to target should come from the active branch in the local Git repository.",
     )
-    identifier: Optional[str] = pydantic.Field(default=None, description="Tracker identifier")
-    insert_tracker: bool = pydantic.Field(default=False, description="Insert a tracker on queries to the server")
-    max_concurrent_execution: int = pydantic.Field(default=5, description="Max concurrent execution in batch mode")
-    mode: InfrahubClientMode = pydantic.Field(InfrahubClientMode.DEFAULT, description="Default mode for the client")
-    pagination_size: int = pydantic.Field(default=50, description="Page size for queries to the server")
-    retry_delay: int = pydantic.Field(default=5, description="Number of seconds to wait until attempting a retry.")
-    retry_on_failure: bool = pydantic.Field(default=False, description="Retry operation in case of failure")
-    timeout: int = pydantic.Field(default=10, description="Default connection timeout in seconds")
-    transport: RequesterTransport = pydantic.Field(
+    identifier: Optional[str] = Field(default=None, description="Tracker identifier")
+    insert_tracker: bool = Field(default=False, description="Insert a tracker on queries to the server")
+    max_concurrent_execution: int = Field(default=5, description="Max concurrent execution in batch mode")
+    mode: InfrahubClientMode = Field(InfrahubClientMode.DEFAULT, description="Default mode for the client")
+    pagination_size: int = Field(default=50, description="Page size for queries to the server")
+    retry_delay: int = Field(default=5, description="Number of seconds to wait until attempting a retry.")
+    retry_on_failure: bool = Field(default=False, description="Retry operation in case of failure")
+    timeout: int = Field(default=10, description="Default connection timeout in seconds")
+    transport: RequesterTransport = Field(
         default=RequesterTransport.HTTPX,
         description="Set an alternate transport using a predefined option",
     )
-    proxy: Optional[str] = pydantic.Field(default=None, description="Proxy address")
-    proxy_mounts: Optional[ProxyMountsConfig] = pydantic.Field(default=None, description="Proxy mounts configuration")
-    update_group_context: bool = pydantic.Field(default=False, description="Update GraphQL query groups")
-    tls_insecure: bool = pydantic.Field(
+    proxy: Optional[str] = Field(default=None, description="Proxy address")
+    proxy_mounts: Optional[ProxyMountsConfig] = Field(default=None, description="Proxy mounts configuration")
+    update_group_context: bool = Field(default=False, description="Update GraphQL query groups")
+    tls_insecure: bool = Field(
         default=False,
         description="""
     Indicates if TLS certificates are verified.
     Enabling this option will disable: CA verification, expiry date verification, hostname verification).
     Can be useful to test with self-signed certificates.""",
     )
-    tls_ca_file: Optional[str] = pydantic.Field(
-        default=None, description="File path to CA cert or bundle in PEM format"
-    )
+    tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
 
-    class Config:
-        env_prefix = "INFRAHUB_"
-        case_sensitive = False
-        validate_assignment = True
-
-    @pydantic.root_validator(pre=True)
+    @model_validator(mode="before")
     @classmethod
     def validate_credentials_input(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         has_username = "username" in values
@@ -84,7 +72,7 @@ class ConfigBase(pydantic.BaseSettings):
             raise ValueError("Both 'username' and 'password' needs to be set")
         return values
 
-    @pydantic.root_validator(pre=True)
+    @model_validator(mode="before")
     @classmethod
     def set_transport(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         if values.get("transport") == RequesterTransport.JSON:
@@ -96,14 +84,14 @@ class ConfigBase(pydantic.BaseSettings):
 
         return values
 
-    @pydantic.root_validator(pre=True)
+    @model_validator(mode="before")
     @classmethod
     def validate_mix_authentication_schemes(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         if values.get("password") and values.get("api_token"):
             raise ValueError("Unable to combine password with token based authentication")
         return values
 
-    @pydantic.validator("address")
+    @field_validator("address")
     @classmethod
     def validate_address(cls, value: str) -> str:
         if is_valid_url(value):
@@ -111,7 +99,7 @@ class ConfigBase(pydantic.BaseSettings):
 
         raise ValueError("The configured address is not a valid url")
 
-    @pydantic.root_validator(pre=True)
+    @model_validator(mode="before")
     @classmethod
     def validate_proxy_config(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         has_proxy = values.get("proxy") is not None
@@ -136,13 +124,9 @@ class ConfigBase(pydantic.BaseSettings):
 
 
 class Config(ConfigBase):
-    recorder: RecorderType = pydantic.Field(
-        default=RecorderType.NONE,
-        description="Select builtin recorder for later replay.",
-    )
-    custom_recorder: Recorder = pydantic.Field(
-        default_factory=NoRecorder.default,
-        description="Provides a way to record responses from the Infrahub API",
+    recorder: RecorderType = Field(default=RecorderType.NONE, description="Select builtin recorder for later replay.")
+    custom_recorder: Recorder = Field(
+        default_factory=NoRecorder.default, description="Provides a way to record responses from the Infrahub API"
     )
     requester: Optional[AsyncRequester] = None
     sync_requester: Optional[SyncRequester] = None
@@ -156,7 +140,7 @@ class Config(ConfigBase):
         # as a logger
         return self.log  # type: ignore
 
-    @pydantic.root_validator(pre=True)
+    @model_validator(mode="before")
     @classmethod
     def set_custom_recorder(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         if values.get("recorder") == RecorderType.NONE and "custom_recorder" not in values:

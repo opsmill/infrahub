@@ -1,42 +1,31 @@
 """Config Class."""
 
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Optional, Union
 
 import toml
 import typer
-
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
+from pydantic import Field, ValidationError, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_CONFIG_FILE = "infrahubctl.toml"
 ENVVAR_CONFIG_FILE = "INFRAHUBCTL_CONFIG"
 INFRAHUB_REPO_CONFIG_FILE = ".infrahub.yml"
 
 
-class Settings(pydantic.BaseSettings):
+class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
-    server_address: str = "http://localhost:8000"
-    api_token: Optional[str] = None
-    default_branch: str = "main"
+    model_config = SettingsConfigDict()
+    server_address: str = Field(default="http://localhost:8000", alias="INFRAHUB_ADDRESS")
+    api_token: Optional[str] = Field(default=None, alias="INFRAHUB_API_TOKEN")
+    default_branch: str = Field(default="main", alias="INFRAHUB_DEFAULT_BRANCH")
 
-    class Config:
-        """Additional parameters to automatically map environment variable to some settings."""
-
-        fields = {
-            "server_address": {"env": "INFRAHUB_ADDRESS"},
-            "api_token": {"env": "INFRAHUB_API_TOKEN"},
-            "default_branch": {"env": "INFRAHUB_DEFAULT_BRANCH"},
-        }
-
-    @pydantic.root_validator
+    @field_validator("server_address")
     @classmethod
-    def cleanup_server_address(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        values["server_address"] = values["server_address"].rstrip("/")
-        return values
+    def cleanup_server_address(cls, v: str) -> str:
+        breakpoint
+        return v.rstrip("/")
 
 
 class ConfiguredSettings:
@@ -98,7 +87,7 @@ class ConfiguredSettings:
 
         try:
             self.load(config_file=config_file, config_data=config_data)
-        except pydantic.ValidationError as exc:
+        except ValidationError as exc:
             print(f"Configuration not valid, found {len(exc.errors())} error(s)")
             for error in exc.errors():
                 loc_str = [str(item) for item in error["loc"]]
