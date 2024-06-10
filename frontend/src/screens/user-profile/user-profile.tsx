@@ -13,15 +13,12 @@ import { parseJwt } from "../../utils/common";
 import ErrorScreen from "../errors/error-screen";
 import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
-import TabPassword from "./tab-account";
 import TabPreferences from "./tab-preferences";
 import TabProfile from "./tab-profile";
 
 const PROFILE_TABS = {
   PREFERENCES: "preferences",
   PROFILE: "profile",
-  TOKENS: "tokens",
-  ACCOUNT: "account",
 };
 
 const tabs = [
@@ -29,10 +26,6 @@ const tabs = [
     label: "Profile",
     name: PROFILE_TABS.PROFILE,
   },
-  // {
-  //   label: "Tokens",
-  //   name: PROFILE_TABS.TOKENS,
-  // },
   {
     label: "Preferences",
     name: PROFILE_TABS.PREFERENCES,
@@ -41,10 +34,6 @@ const tabs = [
 
 const renderContent = (tab: string | null | undefined) => {
   switch (tab) {
-    // case PROFILE_TABS.TOKENS:
-    //   return <TabTokens />;
-    case PROFILE_TABS.ACCOUNT:
-      return <TabPassword />;
     case PROFILE_TABS.PREFERENCES:
       return <TabPreferences />;
     default:
