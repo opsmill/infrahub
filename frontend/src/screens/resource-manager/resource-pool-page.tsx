@@ -6,6 +6,7 @@ import { CardWithBorder } from "@/components/ui/card";
 import { Link } from "@/components/ui/link";
 import { TASK_OBJECT } from "@/config/constants";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
+import { GET_KIND_FOR_RESOURCE_POOL, GET_RESOURCE_POOL_UTILIZATION } from "@/graphql/resource-pool";
 import { iNodeSchema, schemaState } from "@/state/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
@@ -22,7 +23,6 @@ import Content from "../layout/content";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ResourcePoolUtilization from "./common/ResourcePoolUtilization";
 import { RESOURCE_GENERIC_KIND, RESOURCE_POOL_UTILIZATION_KIND } from "./constants";
-import { GET_KIND_FOR_RESOURCE_POOL, GET_RESOURCE_POOL_UTILIZATION } from "./graphql/resource-pool";
 import ResourceSelector, { ResourceProps } from "./resource-selector";
 
 const ResourcePoolPage = () => {

@@ -1,5 +1,8 @@
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import { GRAPHQL_QUERY_OBJECT } from "@/config/constants";
+import GraphqlQueryDetailsCard from "@/graphql-query-details-card";
+import GraphQLQueryDetailsPageSkeleton from "@/graphql-query-details-page-skeleton";
+import GraphqlQueryViewerCard from "@/graphql-query-viewer-card";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
@@ -13,9 +16,6 @@ import { useAtomValue } from "jotai/index";
 import { Link, useParams } from "react-router-dom";
 import NoDataFound from "../../errors/no-data-found";
 import Content from "../../layout/content";
-import GraphqlQueryDetailsCard from "./graphql-query-details-card";
-import GraphQLQueryDetailsPageSkeleton from "./graphql-query-details-page-skeleton";
-import GraphqlQueryViewerCard from "./graphql-query-viewer-card";
 
 const GraphqlQueryDetailsPage = () => {
   useTitle("GraphQL Query details");

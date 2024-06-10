@@ -1,5 +1,6 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
+import graphqlClient from "@/graphql/graphqlClientApollo";
 import { ApolloProvider } from "@apollo/client";
 import { useSetAtom } from "jotai";
 import queryString from "query-string";
@@ -10,7 +11,6 @@ import "react-toastify/dist/ReactToastify.css";
 import { QueryParamProvider } from "use-query-params";
 import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 import App from "./App";
-import graphqlClient from "./graphql/graphqlClientApollo";
 import reportWebVitals from "./reportWebVitals";
 import { Config, configState } from "./state/atoms/config.atom";
 
