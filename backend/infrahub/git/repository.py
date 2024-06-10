@@ -515,14 +515,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return True
 
-    @classmethod
-    async def init(cls, service: Optional[InfrahubServices] = None, **kwargs: Any):
-        service = service or InfrahubServices()
-        self = cls(service=service, **kwargs)
-        self.validate_local_directories()
-        log.debug("Initiated the object on an existing directory.", repository=self.name)
-        return self
-
     def has_worktree(self, identifier: str) -> bool:
         """Return True if a worktree with a given identifier already exist."""
 
@@ -543,7 +535,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             if worktree.identifier == identifier:
                 return worktree
 
-        return None
+        raise RepositoryError(identifier=identifier, message="Unble to get worktree")
 
     def get_commit_worktree(self, commit: str) -> Worktree:
         """Access a specific commit worktree."""
@@ -894,7 +886,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 )
             except PydanticValidationError as exc:
                 for error in exc.errors():
-                    log.error(f"  {'/'.join(error['loc'])} | {error['msg']} ({error['type']})")
+                    locations = [str(error_location) for error_location in error["loc"]]
+                    log.error(f"  {'/'.join(locations)} | {error['msg']} ({error['type']})")
                 continue
             except ValidationError as exc:
                 log.error(exc.message)
@@ -1000,7 +993,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 self.sdk.schema.validate_data_against_schema(schema=schema, data=artdef.dict(exclude_none=True))
             except PydanticValidationError as exc:
                 for error in exc.errors():
-                    log.error(f"  {'/'.join(error['loc'])} | {error['msg']} ({error['type']})")
+                    locations = [str(error_location) for error_location in error["loc"]]
+                    log.error(f"  {'/'.join(locations)} | {error['msg']} ({error['type']})")
                 continue
             except ValidationError as exc:
                 log.error(exc.message)
@@ -1960,7 +1954,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             ) from exc
 
         except Exception as exc:
-            log.critical(exc, exc_info=True, repository=self.name, branch=branch_name, commit=commit, location=location)
+            log.critical(
+                str(exc), exc_info=True, repository=self.name, branch=branch_name, commit=commit, location=location
+            )
             raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc)) from exc
 
     async def artifact_generate(
@@ -2086,6 +2082,14 @@ class InfrahubRepository(InfrahubRepositoryBase):
 
     Eventually we should rename this class InfrahubIntegratedRepository
     """
+
+    @classmethod
+    async def init(cls, service: Optional[InfrahubServices] = None, **kwargs: Any) -> InfrahubRepository:
+        service = service or InfrahubServices()
+        self = cls(service=service, **kwargs)
+        self.validate_local_directories()
+        log.debug("Initiated the object on an existing directory.", repository=self.name)
+        return self
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
         branches = {}
@@ -2282,6 +2286,14 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryBase):
     infrahub_branch_name: Optional[str] = Field(
         None, description="Infrahub branch on which to sync the remote repository"
     )
+
+    @classmethod
+    async def init(cls, service: Optional[InfrahubServices] = None, **kwargs: Any) -> InfrahubReadOnlyRepository:
+        service = service or InfrahubServices()
+        self = cls(service=service, **kwargs)
+        self.validate_local_directories()
+        log.debug("Initiated the object on an existing directory.", repository=self.name)
+        return self
 
     @classmethod
     async def new(cls, service: Optional[InfrahubServices] = None, **kwargs: Any) -> InfrahubReadOnlyRepository:
