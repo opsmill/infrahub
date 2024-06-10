@@ -1,6 +1,6 @@
+import { QSP } from "@/config/qsp";
 import { classNames } from "@/utils/common";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../config/qsp";
 import { Pill } from "./display/pill";
 
 type Tab = {

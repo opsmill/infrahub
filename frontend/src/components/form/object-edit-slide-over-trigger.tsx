@@ -1,9 +1,9 @@
+import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
-import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { usePermission } from "../../hooks/usePermission";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { IModelSchema } from "../../state/atoms/schema.atom";

@@ -1,12 +1,12 @@
 import Accordion from "@/components/display/accordion";
 import { DateDisplay } from "@/components/display/date-display";
+import { QSP } from "@/config/qsp";
 import { classNames } from "@/utils/common";
 import { diffContent } from "@/utils/diff";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../config/qsp";
 import {
   getNodeClassName,
   tDataDiffNodeElement,

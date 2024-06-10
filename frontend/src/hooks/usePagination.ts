@@ -1,6 +1,6 @@
+import { QSP } from "@/config/qsp";
 import { useAtom } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../config/qsp";
 import { configState } from "../state/atoms/config.atom";
 
 type tPagination = {

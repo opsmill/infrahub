@@ -1,3 +1,4 @@
+import { NODE_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { constructPath } from "@/utils/fetch";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/utils/objects";
@@ -6,7 +7,6 @@ import { Icon } from "@iconify-icon/react";
 import { format } from "date-fns";
 import { useAtomValue } from "jotai/index";
 import { ReactElement, useEffect } from "react";
-import { NODE_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "../../config/constants";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import { SEARCH } from "../../graphql/queries/objects/search";
 import { useDebounce } from "../../hooks/useDebounce";

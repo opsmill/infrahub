@@ -1,4 +1,6 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { CONFIG } from "@/config/config";
+import { ACCESS_TOKEN_KEY } from "@/config/constants";
 import {
   ApolloClient,
   DefaultOptions,
@@ -11,8 +13,6 @@ import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import fetch from "cross-fetch";
 import { toast } from "react-toastify";
-import { CONFIG } from "../config/config";
-import { ACCESS_TOKEN_KEY } from "../config/constants";
 import { getNewToken } from "../hooks/useAuth";
 
 export const defaultOptions: DefaultOptions = {

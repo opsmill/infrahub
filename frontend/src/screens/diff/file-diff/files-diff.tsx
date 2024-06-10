@@ -4,12 +4,12 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } fro
 import "react-diff-view/style/index.css";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { CONFIG } from "../../../config/config";
-import { QSP } from "../../../config/qsp";
 import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom";
 import ErrorScreen from "../../errors/error-screen";
 import NoDataFound from "../../errors/no-data-found";
 import LoadingScreen from "../../loading-screen/loading-screen";
+import { CONFIG } from "../@/config/config";
+import { QSP } from "../@/config/qsp";
 import { FileRepoDiff } from "./file-repo-diff";
 
 export const FilesDiff = forwardRef((props, ref) => {

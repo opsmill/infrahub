@@ -5,9 +5,9 @@ import { PasswordDisplay } from "@/components/display/password-display";
 import { TextDisplay } from "@/components/display/text-display";
 import { CodeEditor } from "@/components/editor/code-editor";
 import { MarkdownViewer } from "@/components/editor/markdown-viewer";
+import { MAX_VALUE_LENGTH_DISPLAY, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { MAX_VALUE_LENGTH_DISPLAY, SCHEMA_ATTRIBUTE_KIND } from "../config/constants";
 import {
   AnyAttribute,
   CheckboxAttribute,

@@ -1,7 +1,7 @@
+import { Circle } from "@/components/display/circle";
 import { classNames } from "@/utils/common";
 import { Disclosure } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
-import { Circle } from "../@/components/display/circle";
 import { MenuItem } from "./desktop-menu";
 import { DropDownMenuItem } from "./desktop-menu-item";
 

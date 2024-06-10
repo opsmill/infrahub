@@ -1,8 +1,8 @@
 import { Filters } from "@/components/filters";
 import { Tabs } from "@/components/tabs";
+import { QSP } from "@/config/qsp";
 import { formatISO, parseISO } from "date-fns";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../config/qsp";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import { ArtifactsDiff } from "./artifact-diff/artifacts-diff";
 import { DataDiff } from "./data-diff";

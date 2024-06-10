@@ -1,5 +1,6 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Pagination } from "@/components/ui/pagination";
+import { QSP } from "@/config/qsp";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
@@ -9,7 +10,6 @@ import { forwardRef, useEffect, useImperativeHandle } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../config/qsp";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
 import { getObjectRelationshipsDetailsPaginated } from "../../graphql/queries/objects/getObjectRelationshipDetails";

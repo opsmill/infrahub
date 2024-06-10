@@ -1,3 +1,4 @@
+import { CONFIG } from "@/config/config";
 import {
   OperationVariables,
   useLazyQuery as useApolloLazyQuery,
@@ -5,7 +6,6 @@ import {
   useSubscription as useApolloSubscription,
 } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
-import { CONFIG } from "../config/config";
 import { WSClient } from "../graphql/websocket";
 import { currentBranchAtom } from "../state/atoms/branches.atom";
 import { datetimeAtom } from "../state/atoms/time.atom";

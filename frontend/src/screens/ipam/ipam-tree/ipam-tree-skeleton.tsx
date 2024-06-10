@@ -1,4 +1,4 @@
-import { Skeleton } from "../@/components/skeleton";
+import { Skeleton } from "@/components/skeleton";
 
 export const IpamTreeSkeleton = () => {
   return (

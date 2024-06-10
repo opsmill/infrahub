@@ -1,4 +1,4 @@
-import { TreeItemProps, TreeProps } from "../@/components/ui/tree";
+import { TreeItemProps, TreeProps } from "@/components/ui/tree";
 import { IPAM_TREE_ROOT_ID, IP_PREFIX_GENERIC } from "../constants";
 
 export type PrefixNode = {

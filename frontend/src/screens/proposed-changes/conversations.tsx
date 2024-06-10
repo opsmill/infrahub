@@ -8,6 +8,15 @@ import SlideOver from "@/components/display/slide-over";
 import { List } from "@/components/table/list";
 import { Alert, ALERT_TYPES } from "@/components/ui/alert";
 import { Tooltip } from "@/components/ui/tooltip";
+import {
+  ACCOUNT_OBJECT,
+  DEFAULT_BRANCH_NAME,
+  PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
+  PROPOSED_CHANGES_EDITABLE_STATE,
+  PROPOSED_CHANGES_OBJECT,
+  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+  PROPOSED_CHANGES_THREAD_OBJECT,
+} from "@/config/constants";
 import { constructPath } from "@/utils/fetch";
 import { getProposedChangesStateBadgeType } from "@/utils/proposed-changes";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -20,15 +29,6 @@ import { useAtomValue } from "jotai/index";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import {
-  ACCOUNT_OBJECT,
-  DEFAULT_BRANCH_NAME,
-  PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
-  PROPOSED_CHANGES_EDITABLE_STATE,
-  PROPOSED_CHANGES_OBJECT,
-  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-  PROPOSED_CHANGES_THREAD_OBJECT,
-} from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";

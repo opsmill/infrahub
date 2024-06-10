@@ -1,4 +1,6 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { CONFIG } from "@/config/config";
+import { QSP } from "@/config/qsp";
 import { findSelectedBranch } from "@/utils/branches";
 import { sortByName, sortByOrderWeight } from "@/utils/common";
 import { fetchUrl } from "@/utils/fetch";
@@ -7,8 +9,6 @@ import * as R from "ramda";
 import { createContext } from "react";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { CONFIG } from "../config/config";
-import { QSP } from "../config/qsp";
 import { Branch } from "../generated/graphql";
 import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
 import {

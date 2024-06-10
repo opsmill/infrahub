@@ -1,7 +1,7 @@
 import { Pill } from "@/components/display/pill";
+import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { gql } from "@apollo/client";
 import { useParams } from "react-router-dom";
-import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { getProposedChangesChecks } from "../../graphql/queries/proposed-changes/getProposedChangesChecks";
 import useQuery from "../../hooks/useQuery";
 

@@ -1,3 +1,7 @@
+import { Button } from "@/components/buttons/button";
+import { AddComment } from "@/components/conversations/add-comment";
+import { Thread } from "@/components/conversations/thread";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { fetchStream } from "@/utils/fetch";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
@@ -12,12 +16,6 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
-import { CONFIG } from "../../../config/config";
-import {
-  PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
-  PROPOSED_CHANGES_FILE_THREAD_OBJECT,
-  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-} from "../../../config/constants";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { createObject } from "../../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
@@ -29,10 +27,12 @@ import { schemaState } from "../../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
 import ErrorScreen from "../../errors/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
-import { Button } from "../@/components/buttons/button";
-import { AddComment } from "../@/components/conversations/add-comment";
-import { Thread } from "../@/components/conversations/thread";
-import { ALERT_TYPES, Alert } from "../@/components/ui/alert";
+import { CONFIG } from "../@/config/config";
+import {
+  PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
+  PROPOSED_CHANGES_FILE_THREAD_OBJECT,
+  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+} from "../@/config/constants";
 
 const fakeIndex = () => {
   return sha(Math.random() * 100000).slice(0, 9);

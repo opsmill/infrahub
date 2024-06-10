@@ -1,3 +1,5 @@
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Link } from "@/components/ui/link";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
@@ -9,8 +11,6 @@ import { getObjectDetailsPaginated } from "../../../graphql/queries/objects/getO
 import useQuery from "../../../hooks/useQuery";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import NoDataFound from "../../errors/no-data-found";
-import { ALERT_TYPES, Alert } from "../@/components/ui/alert";
-import { Link } from "../@/components/ui/link";
 import { IpDetailsCard } from "../common/ip-details-card";
 import { constructPathForIpam } from "../common/utils";
 import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "../constants";

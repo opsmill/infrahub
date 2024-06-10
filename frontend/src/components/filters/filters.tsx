@@ -1,9 +1,9 @@
+import { DEFAULT_BRANCH_NAME, SEARCH_FILTERS } from "@/config/constants";
 import { Form } from "@/screens/edit-form-hook/form";
 import getFormStructureForCreateEdit from "@/utils/formStructureForCreateEdit";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
-import { DEFAULT_BRANCH_NAME, SEARCH_FILTERS } from "../../config/constants";
 import useFilters from "../../hooks/useFilters";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";

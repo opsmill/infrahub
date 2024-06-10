@@ -3,13 +3,13 @@ import { BUTTON_TYPES, RoundedButton } from "@/components/buttons/rounded-button
 import { SidePanelTitle } from "@/components/display/sidepanel-title";
 import SlideOver from "@/components/display/slide-over";
 import { Tooltip, TooltipPosition } from "@/components/ui/tooltip";
+import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
 import { getThreadLabel, getThreadTitle } from "@/utils/diff";
 import { gql } from "@apollo/client";
 import { ChatBubbleLeftIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
-import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "../../config/constants";
 import { getProposedChangesObjectThreads } from "../../graphql/queries/proposed-changes/getProposedChangesObjectThreads";
 import { useAuth } from "../../hooks/useAuth";
 import useQuery from "../../hooks/useQuery";

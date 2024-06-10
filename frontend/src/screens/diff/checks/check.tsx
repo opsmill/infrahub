@@ -1,3 +1,11 @@
+import { MoreButton } from "@/components/buttons/more-button";
+import Accordion from "@/components/display/accordion";
+import { DateDisplay } from "@/components/display/date-display";
+import { PopOver } from "@/components/display/popover";
+import { CodeEditor } from "@/components/editor/code-editor";
+import { Skeleton } from "@/components/skeleton";
+import { List } from "@/components/table/list";
+import { Tooltip } from "@/components/ui/tooltip";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
@@ -5,14 +13,6 @@ import { GET_CHECKS } from "../../../graphql/queries/diff/getCheckDetails";
 import useQuery from "../../../hooks/useQuery";
 import { schemaKindLabelState } from "../../../state/atoms/schemaKindLabel.atom";
 import ErrorScreen from "../../errors/error-screen";
-import { MoreButton } from "../@/components/buttons/more-button";
-import Accordion from "../@/components/display/accordion";
-import { DateDisplay } from "../@/components/display/date-display";
-import { PopOver } from "../@/components/display/popover";
-import { CodeEditor } from "../@/components/editor/code-editor";
-import { Skeleton } from "../@/components/skeleton";
-import { List } from "../@/components/table/list";
-import { Tooltip } from "../@/components/ui/tooltip";
 import { Conflict } from "./conflict";
 
 type tCheckProps = {

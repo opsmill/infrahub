@@ -1,6 +1,7 @@
 import Accordion from "@/components/display/accordion";
 import { Badge } from "@/components/display/badge";
 import { DateDisplay } from "@/components/display/date-display";
+import { QSP } from "@/config/qsp";
 import { classNames } from "@/utils/common";
 import { diffPeerContent } from "@/utils/diff";
 import { constructPath } from "@/utils/fetch";
@@ -9,7 +10,6 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../config/qsp";
 import {
   getNodeClassName,
   tDataDiffNodePeerChange,

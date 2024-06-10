@@ -1,10 +1,10 @@
+import { Tree, TreeItemProps } from "@/components/ui/tree";
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useLazyQuery } from "../../../hooks/useQuery";
-import { Tree, TreeItemProps } from "../@/components/ui/tree";
 
 import { StringParam, useQueryParam } from "use-query-params";
 import { GET_PREFIXES_ONLY } from "../../../graphql/queries/ipam/prefixes";

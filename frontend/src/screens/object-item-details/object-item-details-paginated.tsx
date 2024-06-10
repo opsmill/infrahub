@@ -5,6 +5,16 @@ import MetaDetailsTooltip from "@/components/display/meta-details-tooltips";
 import SlideOver from "@/components/display/slide-over";
 import { Tabs } from "@/components/tabs";
 import { Link } from "@/components/ui/link";
+import {
+  ARTIFACT_DEFINITION_OBJECT,
+  DEFAULT_BRANCH_NAME,
+  MENU_EXCLUDELIST,
+  PROFILE_KIND,
+  TASK_OBJECT,
+  TASK_TAB,
+  TASK_TARGET,
+} from "@/config/constants";
+import { QSP } from "@/config/qsp";
 import { constructPath } from "@/utils/fetch";
 import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
 import {
@@ -23,16 +33,6 @@ import { useAtomValue } from "jotai/index";
 import { useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import {
-  ARTIFACT_DEFINITION_OBJECT,
-  DEFAULT_BRANCH_NAME,
-  MENU_EXCLUDELIST,
-  PROFILE_KIND,
-  TASK_OBJECT,
-  TASK_TAB,
-  TASK_TARGET,
-} from "../../config/constants";
-import { QSP } from "../../config/qsp";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import { usePermission } from "../../hooks/usePermission";
 import useQuery from "../../hooks/useQuery";

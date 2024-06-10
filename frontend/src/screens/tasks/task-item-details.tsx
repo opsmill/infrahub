@@ -1,5 +1,5 @@
+import { TASK_OBJECT } from "@/config/constants";
 import { gql } from "@apollo/client";
-import { TASK_OBJECT } from "../../config/constants";
 import useQuery from "../../hooks/useQuery";
 
 import { BADGE_TYPES, Badge } from "@/components/display/badge";
@@ -8,10 +8,10 @@ import { DurationDisplay } from "@/components/display/duration-display";
 import { List } from "@/components/table/list";
 import { Id } from "@/components/ui/id";
 import { SearchInput } from "@/components/ui/search-input";
+import { QSP } from "@/config/qsp";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../config/qsp";
 import { getTaskItemDetails } from "../../graphql/queries/tasks/getTasksItemDetails";
 import ErrorScreen from "../errors/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";

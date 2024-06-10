@@ -1,5 +1,5 @@
+import { ACCESS_TOKEN_KEY, ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
 import { parseJwt } from "@/utils/common";
-import { ACCESS_TOKEN_KEY, ACCOUNT_TOKEN_OBJECT } from "../../config/constants";
 import ObjectItems from "../object-items/object-items-paginated";
 
 export default function TabProfile() {

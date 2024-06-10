@@ -1,3 +1,5 @@
+import Accordion from "@/components/display/accordion";
+import { Badge } from "@/components/display/badge";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import "react-diff-view/style/index.css";
@@ -6,8 +8,6 @@ import useQuery from "../../../hooks/useQuery";
 import { schemaState } from "../../../state/atoms/schema.atom";
 import ErrorScreen from "../../errors/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
-import Accordion from "../@/components/display/accordion";
-import { Badge } from "../@/components/display/badge";
 import { ArtifactContentDiff } from "./artifact-content-diff";
 
 export const ArtifactRepoDiff = (props: any) => {

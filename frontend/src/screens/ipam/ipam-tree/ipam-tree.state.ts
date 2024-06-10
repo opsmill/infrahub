@@ -1,3 +1,4 @@
+import { TreeProps } from "@/components/ui/tree";
 import { atom } from "jotai";
 import * as R from "ramda";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
@@ -8,7 +9,6 @@ import {
 } from "../../../graphql/queries/ipam/prefixes";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../../state/atoms/time.atom";
-import { TreeProps } from "../@/components/ui/tree";
 import { IP_PREFIX_GENERIC, IPAM_TREE_ROOT_ID } from "../constants";
 import {
   AncestorsData,

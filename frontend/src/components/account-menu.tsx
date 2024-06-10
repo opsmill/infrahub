@@ -1,3 +1,4 @@
+import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "@/config/constants";
 import { userNavigation } from "@/screens/layout/navigation-list";
 import { classNames, parseJwt } from "@/utils/common";
 import { gql } from "@apollo/client";
@@ -6,7 +7,6 @@ import { useAtom } from "jotai/index";
 import { Fragment, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../config/constants";
 import { getProfileDetails } from "../graphql/queries/accounts/getProfileDetails";
 import { useAuth } from "../hooks/useAuth";
 import { useLazyQuery } from "../hooks/useQuery";

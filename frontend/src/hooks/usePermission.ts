@@ -1,4 +1,4 @@
-import { QSP } from "../config/qsp";
+import { QSP } from "@/config/qsp";
 import { DateTimeParam, useQueryParam } from "use-query-params";
 import { useAuth } from "./useAuth";
 

@@ -1,9 +1,9 @@
 import { TabsButtons } from "@/components/buttons/tabs-buttons";
+import { QSP } from "@/config/qsp";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { Link, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../config/qsp";
 import { useTitle } from "../../hooks/useTitle";
 import { Diff } from "../diff/diff";
 import Content from "../layout/content";

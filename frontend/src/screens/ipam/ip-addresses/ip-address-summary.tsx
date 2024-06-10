@@ -1,3 +1,4 @@
+import { Link } from "@/components/ui/link";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
@@ -9,7 +10,6 @@ import useQuery from "../../../hooks/useQuery";
 import { genericsState, schemaState } from "../../../state/atoms/schema.atom";
 import ErrorScreen from "../../errors/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
-import { Link } from "../@/components/ui/link";
 import { IpDetailsCard } from "../common/ip-details-card";
 import { constructPathForIpam } from "../common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC } from "../constants";

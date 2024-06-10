@@ -1,5 +1,6 @@
 import { Select, SelectOption } from "@/components/inputs/select";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { PROFILE_KIND } from "@/config/constants";
 import getFormStructureForCreateEdit from "@/utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "@/utils/getMutationDetailsFromFormData";
 import { getObjectAttributes } from "@/utils/getSchemaObjectColumns";
@@ -8,7 +9,6 @@ import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { PROFILE_KIND } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";

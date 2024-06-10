@@ -1,5 +1,5 @@
+import { TASK_OBJECT } from "@/config/constants";
 import { gql } from "@apollo/client";
-import { TASK_OBJECT } from "../../config/constants";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 

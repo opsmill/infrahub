@@ -1,6 +1,6 @@
+import { NODE_OBJECT } from "@/config/constants";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { gql } from "@apollo/client";
-import { NODE_OBJECT } from "../../config/constants";
 import { getObjectDisplayLabel } from "../../graphql/queries/objects/getObjectDisplayLabel";
 import useQuery from "../../hooks/useQuery";
 import { Clipboard } from "../buttons/clipboard";
