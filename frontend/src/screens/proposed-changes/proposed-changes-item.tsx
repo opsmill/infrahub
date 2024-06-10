@@ -103,7 +103,7 @@ export const ProposedChange = (props: any) => {
               </div>
 
               <div className="flex items-center">
-                <Tooltip message={"Destination branch"}>
+                <Tooltip enabled content={"Destination branch"}>
                   <Badge>{row.destination_branch.value}</Badge>
                 </Tooltip>
 
@@ -112,7 +112,7 @@ export const ProposedChange = (props: any) => {
                   aria-hidden="true"
                 />
 
-                <Tooltip message={"Source branch"}>
+                <Tooltip enabled content={"Source branch"}>
                   <Badge>{row.source_branch.value}</Badge>
                 </Tooltip>
               </div>
@@ -120,7 +120,7 @@ export const ProposedChange = (props: any) => {
               <div className="flex items-center space-x-3">
                 <div>Created by:</div>
 
-                <Tooltip message={row?.created_by?.node?.display_label}>
+                <Tooltip enabled content={row?.created_by?.node?.display_label}>
                   <Avatar
                     size={AVATAR_SIZE.SMALL}
                     name={row?.created_by?.node?.display_label}

@@ -173,7 +173,7 @@ export const Thread = (props: tThread) => {
   );
 
   const MarkAsResolvedWithTooltip = (
-    <Tooltip message={"The resolution will be done after submitting the comment"}>
+    <Tooltip enabled content={"The resolution will be done after submitting the comment"}>
       {MarkAsResolved}
     </Tooltip>
   );

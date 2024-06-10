@@ -167,7 +167,10 @@ export const Conflict = (props: any) => {
                     {diffContent[action](property)}
 
                     <div className="ml-2">
-                      <Tooltip message={"Open object in new tab"} position={TooltipPosition.LEFT}>
+                      <Tooltip
+                        enabled
+                        content={"Open object in new tab"}
+                        position={TooltipPosition.LEFT}>
                         <Link to={url} target="_blank">
                           <ArrowTopRightOnSquareIcon className="h-4 w-4" />
                         </Link>

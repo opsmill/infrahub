@@ -482,7 +482,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
       source_branch: <Badge>{proposedChangesDetails?.source_branch?.value}</Badge>,
       destination_branch: <Badge>{proposedChangesDetails?.destination_branch?.value}</Badge>,
       created_by: (
-        <Tooltip message={proposedChangesDetails?.created_by?.node?.display_label}>
+        <Tooltip enabled content={proposedChangesDetails?.created_by?.node?.display_label}>
           <Avatar
             size={AVATAR_SIZE.SMALL}
             name={proposedChangesDetails?.created_by?.node?.display_label}

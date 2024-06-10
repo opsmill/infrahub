@@ -26,7 +26,7 @@ export const DurationDisplay = (props: DateDisplayProps) => {
 
   return (
     <span className="flex items-center flex-wrap">
-      <Tooltip message={tooltip}>
+      <Tooltip enabled content={tooltip}>
         <span className="text-xs font-normal">
           {formatDistanceStrict(
             date ? new Date(date) : new Date(),

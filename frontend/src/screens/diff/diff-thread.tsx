@@ -65,7 +65,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
       {thread?.comments?.count ? (
         <div className="flex items-center cursor-pointer">
           <ChatBubbleLeftIcon className="h-5 w-5 mr-1" />
-          <Tooltip message={"Add comment"} position={TooltipPosition.RIGHT}>
+          <Tooltip enabled content={"Add comment"} position={TooltipPosition.RIGHT}>
             <RoundedButton
               disabled={!auth?.permissions?.write}
               onClick={() => {
@@ -81,7 +81,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
         </div>
       ) : (
         <div className="cursor-pointer hidden group-hover:block">
-          <Tooltip message={"Add comment"} position={TooltipPosition.RIGHT}>
+          <Tooltip enabled content={"Add comment"} position={TooltipPosition.RIGHT}>
             <RoundedButton
               disabled={!auth?.permissions?.write}
               onClick={() => {

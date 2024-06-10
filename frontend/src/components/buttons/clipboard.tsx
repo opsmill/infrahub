@@ -30,7 +30,7 @@ export const Clipboard = (props: tClipboard) => {
   };
 
   return (
-    <Tooltip message={tooltip}>
+    <Tooltip enabled content={tooltip}>
       <Button buttonType={BUTTON_TYPES.INVISIBLE} onClick={handleCopy} className={className}>
         {!isCopied && <ClipboardDocumentIcon className="h-4 w-4" />}
 

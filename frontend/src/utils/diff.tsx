@@ -46,7 +46,7 @@ export const diffContent: { [key: string]: any } = {
     return (
       <div className="flex">
         {newMesage ? (
-          <Tooltip message={newMesage}>
+          <Tooltip enabled content={newMesage}>
             <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newValue)}</Badge>
           </Tooltip>
         ) : (
@@ -65,7 +65,7 @@ export const diffContent: { [key: string]: any } = {
     return (
       <div className="flex">
         {previousMesage ? (
-          <Tooltip message={previousMesage}>
+          <Tooltip enabled content={previousMesage}>
             <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousValue)}</Badge>
           </Tooltip>
         ) : (
@@ -87,7 +87,7 @@ export const diffContent: { [key: string]: any } = {
       <div className="flex items-center">
         <div className="flex">
           {previousMesage ? (
-            <Tooltip message={previousMesage}>
+            <Tooltip enabled content={previousMesage}>
               <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousValue)}</Badge>
             </Tooltip>
           ) : (
@@ -101,7 +101,7 @@ export const diffContent: { [key: string]: any } = {
 
         <div className="flex">
           {newMesage ? (
-            <Tooltip message={newMesage}>
+            <Tooltip enabled content={newMesage}>
               <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newValue)}</Badge>
             </Tooltip>
           ) : (
@@ -146,7 +146,7 @@ export const diffPeerContent = (
     return (
       <div className="flex items-center">
         <div className="flex">
-          <Tooltip message="Previous value">
+          <Tooltip enabled content="Previous value">
             <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousPeer?.display_label)}</Badge>
           </Tooltip>
         </div>
@@ -156,7 +156,7 @@ export const diffPeerContent = (
         </div>
 
         <div className="flex">
-          <Tooltip message="New value">
+          <Tooltip enabled content="New value">
             <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newPeer?.display_label)}</Badge>
           </Tooltip>
         </div>
@@ -168,7 +168,7 @@ export const diffPeerContent = (
   if (kind && display_label && onClick) {
     return (
       <div className="flex">
-        <Tooltip message={`Link to ${display_label} ${branch && `(${branch})`}`}>
+        <Tooltip enabled content={`Link to ${display_label} ${branch && `(${branch})`}`}>
           <Badge
             type={action === "added" ? BADGE_TYPES.VALIDATE : BADGE_TYPES.CANCEL}
             onClick={onClick}>

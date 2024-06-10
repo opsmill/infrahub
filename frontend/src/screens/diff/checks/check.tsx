@@ -23,21 +23,21 @@ const getCheckIcon = (conclusion?: string) => {
   switch (conclusion) {
     case "success": {
       return (
-        <Tooltip message={"Success"}>
+        <Tooltip enabled content={"Success"}>
           <Icon icon={"mdi:check-circle-outline"} className="text-green-500 mr-2" />
         </Tooltip>
       );
     }
     case "failure": {
       return (
-        <Tooltip message={"Failure"}>
+        <Tooltip enabled content={"Failure"}>
           <Icon icon={"mdi:warning"} className="text-red-500 mr-2" />
         </Tooltip>
       );
     }
     default: {
       return (
-        <Tooltip message={"In progress"}>
+        <Tooltip enabled content={"In progress"}>
           <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500 mr-2" />
         </Tooltip>
       );
