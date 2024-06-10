@@ -8,6 +8,8 @@ import { updateObjectWithId } from "../../graphql/mutations/objects/updateObject
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import { Form } from "../edit-form-hook/form";
+import Content from "../layout/content";
+import { Card } from "../../components/ui/card";
 
 const fields: DynamicFieldData[] = [
   {
@@ -64,11 +66,9 @@ export default function TabPreferences() {
   };
 
   return (
-    <div className=" flex flex-col flex-1 overflow-auto">
-      <div className="m-4 w-1/3 mx-auto bg-custom-white rounded-md">
-        <div className="px-4 pt-4 flex items-center">
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">Update your password</p>
-        </div>
+    <Content className="p-2">
+      <Card className="m-auto w-full max-w-md">
+        <h3 className="leading-6 font-semibold">Update your password</h3>
 
         <Form
           onSubmit={onSubmit}
@@ -76,7 +76,7 @@ export default function TabPreferences() {
           submitLabel={"Update password"}
           isLoading={isLoading}
         />
-      </div>
-    </div>
+      </Card>
+    </Content>
   );
 }
