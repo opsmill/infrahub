@@ -600,7 +600,6 @@ class Boolean(BaseAttribute):
     type = bool
 
 
-# TODO: Add properties for different datetime format outputs to mimic IP property types for GraphQL
 class DateTime(BaseAttribute):
     type = str
 
