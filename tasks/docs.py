@@ -268,14 +268,17 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
     for name, prop in schema["properties"].items():
         choices: List[Dict[str, Any]] = []
         kind = ""
+        composed_type = ""
         if "allOf" in prop:
             choices = definitions[prop["allOf"][0]["$ref"].split("/")[-1]].get("enum", [])
             kind = definitions[prop["allOf"][0]["$ref"].split("/")[-1]].get("type", "")
+        if "anyOf" in prop:
+            composed_type = ", ".join(i["type"] for i in prop.get("anyOf", []) if "type" in i and i["type"] != "null")
         properties.append(
             {
                 "name": name,
                 "description": prop.get("description", ""),
-                "type": prop.get("type", kind),
+                "type": prop.get("type", kind) or composed_type or "object",
                 "choices": choices,
                 "default": prop.get("default", ""),
                 "env_vars": list(prop.get("env_names", set())),
