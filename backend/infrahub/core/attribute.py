@@ -5,9 +5,9 @@ import re
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
-import pendulum
 import ujson
 from infrahub_sdk import UUIDT
+from infrahub_sdk.timestamp import TimestampFormatError
 from infrahub_sdk.utils import is_valid_url
 from pydantic.v1 import BaseModel, Field
 
@@ -611,12 +611,9 @@ class DateTime(BaseAttribute):
             return
 
         try:
-            time = pendulum.parse(value, exact=True)
-        except pendulum.exceptions.ParserError as exc:
+            Timestamp(value)
+        except TimestampFormatError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
-
-        if not isinstance(time, pendulum.DateTime):
-            raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
 
 
 class Dropdown(BaseAttribute):
