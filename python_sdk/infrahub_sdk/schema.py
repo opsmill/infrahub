@@ -19,7 +19,7 @@ from typing import (
 from urllib.parse import urlencode
 
 import httpx
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing_extensions import TypeAlias
 
 from infrahub_sdk._importer import import_module
@@ -55,6 +55,7 @@ class InfrahubRepositoryConfigElement(BaseModel):
 
 
 class InfrahubRepositoryArtifactDefinitionConfig(InfrahubRepositoryConfigElement):
+    model_config = ConfigDict(extra="forbid")
     name: str = Field(..., description="The name of the artifact definition")
     artifact_name: Optional[str] = Field(default=None, description="Name of the artifact created from this definition")
     parameters: Dict[str, Any] = Field(..., description="The input parameters required to render this artifact")
@@ -62,11 +63,9 @@ class InfrahubRepositoryArtifactDefinitionConfig(InfrahubRepositoryConfigElement
     targets: str = Field(..., description="The group to target when creating artifacts")
     transformation: str = Field(..., description="The transformation to use.")
 
-    class Config:
-        extra = "forbid"
-
 
 class InfrahubJinja2TransformConfig(InfrahubRepositoryConfigElement):
+    model_config = ConfigDict(extra="forbid")
     name: str = Field(..., description="The name of the transform")
     query: str = Field(..., description="The name of the GraphQL Query")
     template_path: Path = Field(..., description="The path within the repository of the template file")
@@ -82,11 +81,9 @@ class InfrahubJinja2TransformConfig(InfrahubRepositoryConfigElement):
         data["template_path"] = self.template_path_value
         return data
 
-    class Config:
-        extra = "forbid"
-
 
 class InfrahubCheckDefinitionConfig(InfrahubRepositoryConfigElement):
+    model_config = ConfigDict(extra="forbid")
     name: str = Field(..., description="The name of the Check Definition")
     file_path: Path = Field(..., description="The file within the repository with the check code.")
     parameters: Dict[str, Any] = Field(
@@ -97,11 +94,9 @@ class InfrahubCheckDefinitionConfig(InfrahubRepositoryConfigElement):
     )
     class_name: str = Field(default="Check", description="The name of the check class to run.")
 
-    class Config:
-        extra = "forbid"
-
 
 class InfrahubGeneratorDefinitionConfig(InfrahubRepositoryConfigElement):
+    model_config = ConfigDict(extra="forbid")
     name: str = Field(..., description="The name of the Generator Definition")
     file_path: Path = Field(..., description="The file within the repository with the generator code.")
     query: str = Field(..., description="The GraphQL query to use as input.")
@@ -114,9 +109,6 @@ class InfrahubGeneratorDefinitionConfig(InfrahubRepositoryConfigElement):
         default=False,
         description="Decide if the generator should convert the result of the GraphQL query to SDK InfrahubNode objects.",
     )
-
-    class Config:
-        extra = "forbid"
 
     def load_class(
         self, import_root: Optional[str] = None, relative_path: Optional[str] = None
@@ -135,12 +127,10 @@ class InfrahubGeneratorDefinitionConfig(InfrahubRepositoryConfigElement):
 
 
 class InfrahubPythonTransformConfig(InfrahubRepositoryConfigElement):
+    model_config = ConfigDict(extra="forbid")
     name: str = Field(..., description="The name of the Transform")
     file_path: Path = Field(..., description="The file within the repository with the transform code.")
     class_name: str = Field(default="Transform", description="The name of the transform class to run.")
-
-    class Config:
-        extra = "forbid"
 
 
 RESOURCE_MAP: Dict[Any, str] = {
@@ -153,6 +143,7 @@ RESOURCE_MAP: Dict[Any, str] = {
 
 
 class InfrahubRepositoryConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     check_definitions: List[InfrahubCheckDefinitionConfig] = Field(
         default_factory=list, description="User defined checks"
     )
@@ -223,9 +214,6 @@ class InfrahubRepositoryConfig(BaseModel):
 
     def get_python_transform(self, name: str) -> InfrahubPythonTransformConfig:
         return self._get_resource(resource_id=name, resource_type=InfrahubPythonTransformConfig)
-
-    class Config:
-        extra = "forbid"
 
 
 # ---------------------------------------------------------------------------------

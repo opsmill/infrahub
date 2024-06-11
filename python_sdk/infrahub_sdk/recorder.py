@@ -6,7 +6,7 @@ from typing import Protocol, runtime_checkable
 
 import httpx
 import ujson
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from infrahub_sdk.utils import generate_request_filename
 
@@ -33,6 +33,7 @@ class NoRecorder:
 
 
 class JSONRecorder(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_JSON_RECORDER_")
     directory: str = "."
     host: str = ""
 
@@ -67,7 +68,3 @@ class JSONRecorder(BaseSettings):
             )
 
         response.request.url = httpx.URL(url=modified)
-
-    class Config:
-        env_prefix = "INFRAHUB_JSON_RECORDER_"
-        case_sensitive = False
