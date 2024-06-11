@@ -1,7 +1,6 @@
 ---
 global:
   kubernetesClusterDomain: cluster.local
-  imageRegistry: registry.opsmill.io
   infrahubRepository: opsmill/infrahub
   imagePullPolicy: IfNotPresent
 
@@ -73,10 +72,7 @@ infrahubGit:
       INFRAHUB_TIMEOUT: "20"
       INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
     imagePullPolicy: Always
-  waitForInfrahubServer:
-    image:
-      repository: busybox
-      tag: latest
+    imageRegistry: registry.opsmill.io
 
 # ----------- Infrahub Server -----------
 infrahubServer:
@@ -109,22 +105,11 @@ infrahubServer:
       INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
       INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
     imagePullPolicy: Always
+    imageRegistry: registry.opsmill.io
   ports:
     - name: "interface"
       port: 8000
       targetPort: 8000
-  waitForCache:
-    image:
-      repository: busybox
-      tag: latest
-  waitForDatabase:
-    image:
-      repository: busybox
-      tag: latest
-  waitForMessageQueue:
-    image:
-      repository: busybox
-      tag: latest
 
 
 infrahubServerDbInitJob:
@@ -142,6 +127,7 @@ infrahubServerDbInitJob:
 infrahubDemoData:
   enabled: false
   backoffLimit: 4
+  imageRegistry: registry.opsmill.io
   env:
     INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
 

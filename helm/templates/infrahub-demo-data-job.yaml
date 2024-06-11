@@ -45,7 +45,7 @@ spec:
             - secretRef:
                 name: {{ . }}
           {{- end }}
-          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
+          image: {{ default .Values.global.imageRegistry .Values.infrahubDemoData.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
           imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.infrahubDemoData.imagePullPolicy }}
           name: infrahub-demo-data-job
           resources: {}

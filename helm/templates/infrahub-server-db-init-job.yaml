@@ -41,7 +41,7 @@ spec:
             - secretRef:
                 name: {{ . }}
           {{- end }}
-          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
+          image: {{ default .Values.global.imageRegistry .Values.infrahubServer.infrahubServer.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
           name: infrahub-server-db-init-job
           resources: {}
           volumeMounts:

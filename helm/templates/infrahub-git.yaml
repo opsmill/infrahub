@@ -49,7 +49,7 @@ spec:
             - secretRef:
                 name: {{ . }}
           {{- end }}
-          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
+          image: {{ default .Values.global.imageRegistry .Values.infrahubGit.infrahubGit.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
           imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.infrahubGit.infrahubGit.imagePullPolicy }}
           name: infrahub-git
           resources: {}
