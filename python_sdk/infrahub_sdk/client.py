@@ -219,6 +219,7 @@ class BaseClient:
         self,
         resource_pool_id: str,
         identifier: Optional[str] = None,
+        prefix_length: Optional[int] = None,
         address_type: Optional[str] = None,
         data: Optional[Dict[str, Any]] = None,
     ) -> str:
@@ -226,6 +227,8 @@ class BaseClient:
         mutation_parameters = f'id: "{resource_pool_id}"'
         if identifier:
             mutation_parameters += f', identifier: "{identifier}"'
+        if prefix_length:
+            mutation_parameters += f", prefix_length: {prefix_length}"
         if address_type:
             mutation_parameters += f', address_type: "{address_type}"'
         if data:
@@ -252,7 +255,7 @@ class BaseClient:
         self,
         resource_pool_id: str,
         identifier: Optional[str] = None,
-        size: Optional[int] = None,
+        prefix_length: Optional[int] = None,
         member_type: Optional[str] = None,
         prefix_type: Optional[str] = None,
         data: Optional[Dict[str, Any]] = None,
@@ -261,8 +264,8 @@ class BaseClient:
         mutation_parameters = f'id: "{resource_pool_id}"'
         if identifier:
             mutation_parameters += f', identifier: "{identifier}"'
-        if size:
-            mutation_parameters += f", size: {size}"
+        if prefix_length:
+            mutation_parameters += f", prefix_length: {prefix_length}"
         if member_type:
             mutation_parameters += f', member_type: "{member_type}"'
         if prefix_type:
@@ -879,6 +882,7 @@ class InfrahubClient(BaseClient):
         self,
         resource_pool: InfrahubNode,
         identifier: Optional[str] = None,
+        prefix_length: Optional[int] = None,
         address_type: Optional[str] = None,
         data: Optional[Dict[str, Any]] = None,
         branch: Optional[str] = None,
@@ -891,6 +895,7 @@ class InfrahubClient(BaseClient):
         Args:
             resource_pool (InfrahubNode): Node corresponding to the pool to allocate resources from.
             identifier (str, optional): Value to perform idempotent allocation, the same resource will be returned for a given identifier.
+            prefix_length (int, optional): Length of the prefix to set on the address to allocate.
             address_type (str, optional): Kind of the address to allocate.
             data (dict, optional): A key/value map to use to set attributes values on the allocated address.
             branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
@@ -907,7 +912,11 @@ class InfrahubClient(BaseClient):
         mutation_name = "IPAddressPoolGetResource"
 
         query = self._build_ip_address_allocation_query(
-            resource_pool_id=resource_pool.id, identifier=identifier, address_type=address_type, data=data
+            resource_pool_id=resource_pool.id,
+            identifier=identifier,
+            prefix_length=prefix_length,
+            address_type=address_type,
+            data=data,
         )
         response = await self.execute_graphql(
             query=query,
@@ -927,7 +936,7 @@ class InfrahubClient(BaseClient):
         self,
         resource_pool: InfrahubNode,
         identifier: Optional[str] = None,
-        size: Optional[int] = None,
+        prefix_length: Optional[int] = None,
         member_type: Optional[str] = None,
         prefix_type: Optional[str] = None,
         data: Optional[Dict[str, Any]] = None,
@@ -941,7 +950,7 @@ class InfrahubClient(BaseClient):
         Args:
             resource_pool (InfrahubNode): Node corresponding to the pool to allocate resources from.
             identifier (str, optional): Value to perform idempotent allocation, the same resource will be returned for a given identifier.
-            size (int, optional): Length of the prefix to allocate.
+            prefix_length (int, optional): Length of the prefix to allocate.
             member_type (str, optional): Member type of the prefix to allocate.
             prefix_type (str, optional): Kind of the prefix to allocate.
             data (dict, optional): A key/value map to use to set attributes values on the allocated prefix.
@@ -961,7 +970,7 @@ class InfrahubClient(BaseClient):
         query = self._build_ip_prefix_allocation_query(
             resource_pool_id=resource_pool.id,
             identifier=identifier,
-            size=size,
+            prefix_length=prefix_length,
             member_type=member_type,
             prefix_type=prefix_type,
             data=data,
@@ -1499,6 +1508,7 @@ class InfrahubClientSync(BaseClient):
         self,
         resource_pool: InfrahubNodeSync,
         identifier: Optional[str] = None,
+        prefix_length: Optional[int] = None,
         address_type: Optional[str] = None,
         data: Optional[Dict[str, Any]] = None,
         branch: Optional[str] = None,
@@ -1511,6 +1521,7 @@ class InfrahubClientSync(BaseClient):
         Args:
             resource_pool (InfrahubNodeSync): Node corresponding to the pool to allocate resources from.
             identifier (str, optional): Value to perform idempotent allocation, the same resource will be returned for a given identifier.
+            prefix_length (int, optional): Length of the prefix to set on the address to allocate.
             address_type (str, optional): Kind of the address to allocate.
             data (dict, optional): A key/value map to use to set attributes values on the allocated address.
             branch (str, optional): Name of the branch to allocate from. Defaults to default_branch.
@@ -1527,7 +1538,11 @@ class InfrahubClientSync(BaseClient):
         mutation_name = "IPAddressPoolGetResource"
 
         query = self._build_ip_address_allocation_query(
-            resource_pool_id=resource_pool.id, identifier=identifier, address_type=address_type, data=data
+            resource_pool_id=resource_pool.id,
+            identifier=identifier,
+            prefix_length=prefix_length,
+            address_type=address_type,
+            data=data,
         )
         response = self.execute_graphql(
             query=query,
@@ -1547,7 +1562,7 @@ class InfrahubClientSync(BaseClient):
         self,
         resource_pool: InfrahubNodeSync,
         identifier: Optional[str] = None,
-        size: Optional[int] = None,
+        prefix_length: Optional[int] = None,
         member_type: Optional[str] = None,
         prefix_type: Optional[str] = None,
         data: Optional[Dict[str, Any]] = None,
@@ -1581,7 +1596,7 @@ class InfrahubClientSync(BaseClient):
         query = self._build_ip_prefix_allocation_query(
             resource_pool_id=resource_pool.id,
             identifier=identifier,
-            size=size,
+            prefix_length=prefix_length,
             member_type=member_type,
             prefix_type=prefix_type,
             data=data,
