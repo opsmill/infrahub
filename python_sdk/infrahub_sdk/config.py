@@ -13,15 +13,21 @@ from infrahub_sdk.utils import get_branch, is_valid_url
 class ProxyMountsConfig(BaseSettings):
     model_config = SettingsConfigDict(populate_by_name=True)
     http: str = Field(
-        default=None, description="Proxy for HTTP requests", alias="http://", env="INFRAHUB_PROXY_MOUNTS_HTTP"
+        default=None,
+        description="Proxy for HTTP requests",
+        alias="http://",
+        validation_alias="INFRAHUB_PROXY_MOUNTS_HTTP",
     )
     https: str = Field(
-        default=None, description="Proxy for HTTPS requests", alias="https://", env="INFRAHUB_PROXY_MOUNTS_HTTPS"
+        default=None,
+        description="Proxy for HTTPS requests",
+        alias="https://",
+        validation_alias="INFRAHUB_PROXY_MOUNTS_HTTPS",
     )
 
 
 class ConfigBase(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_", case_sensitive=False, validate_assignment=True)
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_", validate_assignment=True)
     address: str = Field(
         default="http://localhost:8000",
         description="The URL to use when connecting to Infrahub.",
