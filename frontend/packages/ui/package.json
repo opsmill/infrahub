@@ -1,0 +1,53 @@
+{
+  "name": "intro-storybook-react-template",
+  "version": "0.2.0",
+  "description": "Starter template to get up and running quickly with React and Storybook",
+  "author": "Chromatic <https://chromatic.com/>",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chromaui/intro-storybook-react-template"
+  },
+  "bugs": {
+    "url": "https://github.com/chromaui/intro-storybook-react-template/issues"
+  },
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "init-msw": "msw init public/"
+  },
+  "devDependencies": {
+    "@storybook/addon-essentials": "^8.1.4",
+    "@storybook/addon-interactions": "^8.1.4",
+    "@storybook/addon-links": "^8.1.4",
+    "@storybook/blocks": "^8.1.4",
+    "@storybook/react": "^8.1.4",
+    "@storybook/react-vite": "^8.1.4",
+    "@storybook/test": "^8.1.4",
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react": "^7.34.1",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.6",
+    "eslint-plugin-storybook": "^0.8.0",
+    "msw": "^2.3.0",
+    "msw-storybook-addon": "^2.0.2",
+    "prop-types": "^15.8.1",
+    "storybook": "^8.1.4",
+    "vite": "^5.2.0"
+  },
+  "resolutions": {
+    "jackspeak": "2.1.1"
+  }
+}
