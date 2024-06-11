@@ -1126,7 +1126,7 @@ async def test_create_valid_datetime_success(db: InfrahubDatabase, default_branc
 async def test_create_valid_datetime_failure(db: InfrahubDatabase, default_branch, criticality_schema):
     query = """
     mutation {
-        TestCriticalityCreate(data: {name: { value: "HIGH"}, level: {value: 1}, time: {value: "10:10:10"}}) {
+        TestCriticalityCreate(data: {name: { value: "HIGH"}, level: {value: 1}, time: {value: "10:1010"}}) {
             ok
         }
     }
@@ -1139,5 +1139,5 @@ async def test_create_valid_datetime_failure(db: InfrahubDatabase, default_branc
         root_value=None,
         variable_values={},
     )
-    assert result.errors[0].args[0] == "10:10:10 is not a valid DateTime at time"
+    assert result.errors[0].args[0] == "10:1010 is not a valid DateTime at time"
     assert result.data["TestCriticalityCreate"] is None

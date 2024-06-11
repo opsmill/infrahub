@@ -120,14 +120,14 @@ async def test_validate_format_datetime_invalid(
     with pytest.raises(ValidationError, match=r"invalid-datetime is not a valid DateTime"):
         DateTime(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="invalid-datetime")
 
-    with pytest.raises(ValidationError, match=r"10:10:10 is not a valid DateTime"):
+    with pytest.raises(ValidationError, match=r"10:1010 is not a valid DateTime"):
         DateTime(
             name="test",
             schema=schema,
             branch=default_branch,
             at=Timestamp(),
             node=None,
-            data="10:10:10",
+            data="10:1010",
         )
 
 
