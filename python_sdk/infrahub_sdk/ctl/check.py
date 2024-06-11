@@ -67,7 +67,7 @@ def run(
 
     check_definitions = repository_config.check_definitions
     if name:
-        check_definitions = [check for check in repository_config.check_definitions if check.name == name]
+        check_definitions = [check for check in repository_config.check_definitions if check.name == name]  # pylint: disable=not-an-iterable
         if not check_definitions:
             console.print(f"[red]Unable to find requested transform: {name}")
             list_checks(repository_config=repository_config)

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import ujson
 from git.repo import Repo
+from pydantic import BaseModel, Field
 
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.exceptions import InfrahubCheckNotFoundError
@@ -16,9 +17,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from infrahub_sdk.schema import InfrahubCheckDefinitionConfig
-
-
-from pydantic import BaseModel, Field
 
 INFRAHUB_CHECK_VARIABLE_TO_IMPORT = "INFRAHUB_CHECKS"
 

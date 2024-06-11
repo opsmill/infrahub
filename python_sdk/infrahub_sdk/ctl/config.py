@@ -24,7 +24,6 @@ class Settings(BaseSettings):
     @field_validator("server_address")
     @classmethod
     def cleanup_server_address(cls, v: str) -> str:
-        breakpoint
         return v.rstrip("/")
 
 

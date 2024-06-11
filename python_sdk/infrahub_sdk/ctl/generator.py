@@ -25,7 +25,7 @@ async def run(
         list_generators(repository_config=repository_config)
         return
 
-    matched = [generator for generator in repository_config.generator_definitions if generator.name == generator_name]
+    matched = [generator for generator in repository_config.generator_definitions if generator.name == generator_name]  # pylint: disable=not-an-iterable
 
     console = Console()
 
