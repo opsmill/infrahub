@@ -1,7 +1,8 @@
 import os
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from invoke import Context, task
 
@@ -255,6 +256,78 @@ def _generate_infrahub_schema_documentation() -> None:
         print(f"Docs saved to: {output_label}")
 
 
+@task
+def config(context: Context):
+    _generate_infrahub_config_documentation()
+
+
+def _generate_infrahub_config_documentation() -> None:
+    import jinja2
+    from pydantic import BaseModel
+
+    from infrahub import config
+
+    sections: List[ConfigurationSection] = []
+
+    schema = config.Settings.model_json_schema()
+    for prop in schema["properties"]:
+        if prop not in ["logging", "storage"]:
+            print(prop)
+            section_ref = schema["properties"][prop]["allOf"][0]["$ref"]
+            section_class_name = section_ref.split("/")[-1]
+            section_class: BaseModel = getattr(config, section_class_name)
+            # breakpoint()
+            # section_config = getattr(config, section)
+            # print(section_class)
+            section = ConfigurationSection(
+                name=prop, description=section_class.__doc__ or "Section description missing"
+            )
+            section_schema = section_class.model_json_schema()
+            env_prefix = section_class.model_config.get("env_prefix")
+            # if prop == "database":
+            #    breakpoint()
+            for param in section_schema["properties"]:
+                # print(param)
+
+                param_type = section_schema["properties"][param].get("type")
+                if param_type == "array":
+                    array_type = section_schema["properties"][param].get("items", {}).get("type")
+                    if array_type:
+                        param_type = f"array[{array_type}]"
+
+                env = None
+                if env_prefix:
+                    env = f"{env_prefix}{param}".upper()
+
+                section_param = ConfigurationSectionParameter(
+                    name=section_schema["properties"][param].get("title", param).lower(),
+                    description=section_schema["properties"][param].get("description"),
+                    default=section_schema["properties"][param].get("default"),
+                    type=param_type,
+                    env=env,
+                )
+
+                section.parameters.append(section_param)
+            sections.append(section)
+
+    template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/infrahub_config.j2"
+    output_label = "docs/reference/configuration.mdx"
+    output_file = f"{DOCUMENTATION_DIRECTORY}/{output_label}"
+
+    if not os.path.exists(template_file):
+        print(f"Unable to find the template file at {template_file}")
+        sys.exit(-1)
+
+    template_text = Path(template_file).read_text(encoding="utf-8")
+
+    environment = jinja2.Environment(trim_blocks=True)
+    template = environment.from_string(template_text)
+    rendered_file = template.render(sections=sections)
+
+    Path(output_file).write_text(rendered_file, encoding="utf-8")
+    print(f"Docs saved to: {output_label}")
+
+
 def _generate_infrahub_sdk_configuration_documentation() -> None:
     """Generate documentation for the Infrahub SDK configuration"""
     import jinja2
@@ -414,3 +487,19 @@ def _generate_infrahub_events_documentation() -> None:
     output_file.parent.mkdir(exist_ok=True)
     output_file.write_text(rendered_doc, encoding="utf-8")
     print(f"Docs saved to: {output_file}")
+
+
+@dataclass
+class ConfigurationSectionParameter:
+    name: str
+    description: str
+    default: Optional[Any] = None
+    type: Optional[str] = None
+    env: Optional[str] = None
+
+
+@dataclass
+class ConfigurationSection:
+    name: str
+    description: str
+    parameters: List[ConfigurationSectionParameter] = field(default_factory=list)

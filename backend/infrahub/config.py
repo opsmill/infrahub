@@ -166,6 +166,8 @@ class DatabaseSettings(BaseSettings):
 
 
 class BrokerSettings(BaseSettings):
+    """Configuration settings for the message bus."""
+
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
     enable: bool = True
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
