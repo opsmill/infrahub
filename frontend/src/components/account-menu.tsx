@@ -1,18 +1,18 @@
+import { Avatar } from "@/components/display/avatar";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "@/config/constants";
+import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails";
+import { useAuth } from "@/hooks/useAuth";
+import { useLazyQuery } from "@/hooks/useQuery";
+import { userNavigation } from "@/screens/layout/navigation-list";
+import { schemaState } from "@/state/atoms/schema.atom";
+import { classNames, parseJwt } from "@/utils/common";
 import { gql } from "@apollo/client";
 import { Menu, Transition } from "@headlessui/react";
 import { useAtom } from "jotai/index";
 import { Fragment, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../config/constants";
-import { getProfileDetails } from "../graphql/queries/accounts/getProfileDetails";
-import { useLazyQuery } from "../hooks/useQuery";
-import { userNavigation } from "../screens/layout/navigation-list";
-import { schemaState } from "../state/atoms/schema.atom";
-import { classNames, parseJwt } from "../utils/common";
-import { Avatar } from "./display/avatar";
-import { ALERT_TYPES, Alert } from "./utils/alert";
-import { useAuth } from "../hooks/useAuth";
 
 const customId = "profile-alert";
 

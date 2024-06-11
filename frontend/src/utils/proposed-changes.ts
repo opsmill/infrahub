@@ -1,4 +1,4 @@
-import { BADGE_TYPES } from "../components/display/badge";
+import { BADGE_TYPES } from "@/components/display/badge";
 
 export const getProposedChangesStateBadgeType = (state: string): BADGE_TYPES | undefined => {
   switch (state) {

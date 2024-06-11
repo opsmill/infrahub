@@ -1,16 +1,16 @@
+import { DateDisplay } from "@/components/display/date-display";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip } from "@/components/ui/tooltip";
+import GET_BRANCHES from "@/graphql/queries/branches/getBranches";
+import { useLazyQuery } from "@/hooks/useQuery";
+import { useTitle } from "@/hooks/useTitle";
+import Content from "@/screens/layout/content";
+import { branchesState } from "@/state/atoms/branches.atom";
+import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useNavigate } from "react-router-dom";
-import { DateDisplay } from "../../components/display/date-display";
-import { Badge } from "../../components/ui/badge";
-import { Tooltip } from "../../components/utils/tooltip";
-import GET_BRANCHES from "../../graphql/queries/branches/getBranches";
-import { useLazyQuery } from "../../hooks/useQuery";
-import { useTitle } from "../../hooks/useTitle";
-import { branchesState } from "../../state/atoms/branches.atom";
-import { constructPath } from "../../utils/fetch";
-import Content from "../layout/content";
 
 const BranchesItems = () => {
   const [storedBranches, setBranches] = useAtom(branchesState);
@@ -59,19 +59,19 @@ const BranchesItems = () => {
                   <div className="flex flex-1 items-center">
                     <div className="flex items-center">
                       {branch.is_default && (
-                        <Tooltip message={"Default branch"}>
+                        <Tooltip enabled content={"Default branch"}>
                           <Icon icon={"mdi:shield-star"} className="text-gray-400 mr-1" />
                         </Tooltip>
                       )}
 
                       {branch.sync_with_git && (
-                        <Tooltip message={"Sync with Git"}>
+                        <Tooltip enabled content={"Sync with Git"}>
                           <Icon icon={"mdi:git"} className="text-red-400 mr-1" />
                         </Tooltip>
                       )}
 
                       {branch.has_schema_changes && (
-                        <Tooltip message={"Has schema changes"}>
+                        <Tooltip enabled content={"Has schema changes"}>
                           <Icon icon={"mdi:file-alert"} className="text-gray-400 mr-1" />
                         </Tooltip>
                       )}

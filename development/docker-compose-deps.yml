@@ -9,7 +9,8 @@ services:
       test: rabbitmq-diagnostics -q check_port_connectivity
       interval: 5s
       timeout: 30s
-      retries: 3
+      retries: 5
+      start_period: 3s
   cache:
     image: "${CACHE_DOCKER_IMAGE:-redis:latest}"
     healthcheck:

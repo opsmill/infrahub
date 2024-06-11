@@ -1,11 +1,11 @@
+import { Pagination } from "@/components/ui/pagination";
+import { getValidatorDetails } from "@/graphql/queries/diff/getValidatorDetails";
+import usePagination from "@/hooks/usePagination";
+import useQuery from "@/hooks/useQuery";
+import ErrorScreen from "@/screens/errors/error-screen";
+import NoDataFound from "@/screens/errors/no-data-found";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { gql } from "@apollo/client";
-import { Pagination } from "../../../components/utils/pagination";
-import { getValidatorDetails } from "../../../graphql/queries/diff/getValidatorDetails";
-import usePagination from "../../../hooks/usePagination";
-import useQuery from "../../../hooks/useQuery";
-import ErrorScreen from "../../errors/error-screen";
-import NoDataFound from "../../errors/no-data-found";
-import LoadingScreen from "../../loading-screen/loading-screen";
 import { Check } from "./check";
 
 type tValidatorDetails = {

@@ -1,5 +1,6 @@
+import { SelectOption } from "@/components/inputs/select";
+import { components } from "@/infraops";
 import { RegisterOptions } from "react-hook-form";
-import { SelectOption } from "../../components/inputs/select";
 import { FormFieldError } from "./form";
 
 // Interface for every field in a create/edit form
@@ -21,6 +22,9 @@ export interface DynamicFieldData {
   disabled?: boolean;
   preventObjectsCreation?: boolean;
   parent?: string;
+  field:
+    | components["schemas"]["AttributeSchema-Output"]
+    | components["schemas"]["RelationshipSchema-Output"];
 }
 
 // Different values for "kind" property of each attribute in the schema

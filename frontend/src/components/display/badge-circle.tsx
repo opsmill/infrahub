@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { classNames } from "../../utils/common";
 import { Circle } from "./circle";
 
 export enum CIRCLE_BADGE_TYPES {

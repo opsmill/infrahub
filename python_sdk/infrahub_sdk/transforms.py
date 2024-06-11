@@ -50,7 +50,7 @@ class InfrahubTransform:
         if client:
             item.client = client
         else:
-            item.client = await InfrahubClient.init(address=item.server_url)
+            item.client = InfrahubClient(address=item.server_url)
 
         return item
 

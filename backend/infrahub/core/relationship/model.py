@@ -218,7 +218,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         if self._node:
             return self._node
 
-        node = await registry.manager.get_one_by_id_or_default_filter(
+        node: Node = await registry.manager.get_one_by_id_or_default_filter(
             db=db,
             id=self.node_id,
             kind=self.schema.kind,
@@ -255,7 +255,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
     async def _get_peer(self, db: InfrahubDatabase) -> None:
         try:
-            peer = await registry.manager.get_one_by_id_or_default_filter(
+            peer: Node = await registry.manager.get_one_by_id_or_default_filter(
                 db=db,
                 id=self.get_peer_id(),
                 kind=self.schema.peer,

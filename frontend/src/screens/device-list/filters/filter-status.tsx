@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import { useState } from "react";
-import { classNames } from "../../../utils/common";
 
 export default function FilterStatus() {
   const [status, setStatus] = useState("");

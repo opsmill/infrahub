@@ -1,14 +1,14 @@
-import { ButtonWithTooltip } from "../buttons/button-primitive";
+import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
+import { DEFAULT_BRANCH_NAME } from "@/config/constants";
+import { usePermission } from "@/hooks/usePermission";
+import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
 import { Icon } from "@iconify-icon/react";
-import MetaDetailsTooltip from "./meta-details-tooltips";
-import { DEFAULT_BRANCH_NAME } from "../../config/constants";
-import ObjectItemMetaEdit from "../../screens/object-item-meta-edit/object-item-meta-edit";
-import SlideOver from "./slide-over";
-import { usePermission } from "../../hooks/usePermission";
 import { useAtom, useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { useState } from "react";
+import MetaDetailsTooltip from "./meta-details-tooltips";
+import SlideOver from "./slide-over";
 
 interface PropertiesEditTriggerProps {
   type: "attribute" | "relationship";

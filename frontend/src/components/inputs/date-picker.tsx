@@ -1,9 +1,9 @@
 import DateTimePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
+import { Button } from "@/components/buttons/button";
 import { format, isValid } from "date-fns";
 import { forwardRef, useEffect, useRef, useState } from "react";
-import { Button } from "../buttons/button";
 import { Input } from "./input";
 
 export const DatePicker = (props: any) => {

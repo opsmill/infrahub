@@ -1,12 +1,12 @@
-import { isValid } from "date-fns";
-import { SelectOption } from "../components/inputs/select";
+import { SelectOption } from "@/components/inputs/select";
 import {
   DynamicFieldData,
   SchemaAttributeType,
   getInputTypeFromAttribute,
   getInputTypeFromRelationship,
-} from "../screens/edit-form-hook/dynamic-control-types";
-import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
+} from "@/screens/edit-form-hook/dynamic-control-types";
+import { iGenericSchema, iNodeSchema } from "@/state/atoms/schema.atom";
+import { isValid } from "date-fns";
 import { sortByOrderWeight } from "./common";
 import {
   getFieldValue,

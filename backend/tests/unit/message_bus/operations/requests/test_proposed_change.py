@@ -126,8 +126,11 @@ async def test_get_proposed_change_schema_integrity_constraints(
     constraints = await proposed_change._get_proposed_change_schema_integrity_constraints(
         message=schema_integrity_01, schema=schema
     )
-    assert len(constraints) == 17
-    dumped_constraints = [c.model_dump() for c in constraints]
+    non_generate_profile_constraints = [c for c in constraints if c.constraint_name != "node.generate_profile.update"]
+    # should be updated/removed when ConstraintValidatorDeterminer is updated (#2592)
+    assert len(constraints) == 60
+    assert len(non_generate_profile_constraints) == 17
+    dumped_constraints = [c.model_dump() for c in non_generate_profile_constraints]
     assert {
         "constraint_name": "relationship.optional.update",
         "path": {

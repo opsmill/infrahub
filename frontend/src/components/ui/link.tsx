@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import { Link as RouterLink } from "react-router-dom";
-import { classNames } from "../../utils/common";
 
 type LinkProps = {
   to: string;

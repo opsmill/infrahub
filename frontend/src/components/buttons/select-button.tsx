@@ -1,7 +1,7 @@
+import { classNames } from "@/utils/common";
 import { Listbox, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { Fragment } from "react";
-import { classNames } from "../../utils/common";
 import { BUTTON_TYPES, Button } from "./button";
 
 // type SelectButtonProps = {};

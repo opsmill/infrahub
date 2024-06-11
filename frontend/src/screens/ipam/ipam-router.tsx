@@ -1,18 +1,19 @@
+import { ButtonWithTooltip } from "@/components/buttons/button-with-tooltip";
+import SlideOver from "@/components/display/slide-over";
+import { Tabs } from "@/components/tabs";
+import { Card } from "@/components/ui/card";
+import { DEFAULT_BRANCH_NAME } from "@/config/constants";
+import { usePermission } from "@/hooks/usePermission";
+import ObjectItemCreate from "@/screens/object-item-create/object-item-create-paginated";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { genericsState, schemaState } from "@/state/atoms/schema.atom";
+import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
-import SlideOver from "../../components/display/slide-over";
-import { Tabs } from "../../components/tabs";
-import { Card } from "../../components/ui/card";
-import { DEFAULT_BRANCH_NAME } from "../../config/constants";
-import { usePermission } from "../../hooks/usePermission";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { genericsState, schemaState } from "../../state/atoms/schema.atom";
-import { constructPath } from "../../utils/fetch";
-import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
+import { defaultIpNamespaceAtom } from "./common/namespace.state";
 import {
   IPAM_QSP,
   IPAM_ROUTE,
@@ -23,7 +24,6 @@ import {
 import IpamIPAddresses from "./ip-addresses/ipam-ip-address";
 import { reloadIpamTreeAtom } from "./ipam-tree/ipam-tree.state";
 import IpamIPPrefixes from "./prefixes/ipam-prefixes";
-import { defaultIpNamespaceAtom } from "./common/namespace.state";
 
 const tabToKind = {
   [IPAM_TABS.IP_DETAILS]: IP_ADDRESS_GENERIC,

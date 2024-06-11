@@ -4,7 +4,7 @@ import {
   CHECK_SEVERITY,
   VALIDATION_CONCLUSIONS,
   VALIDATION_STATES,
-} from "../config/constants";
+} from "@/config/constants";
 
 export const getValidatorsStats = (validators: any[]) => {
   const successValidators = validators.filter(

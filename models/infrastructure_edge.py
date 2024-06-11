@@ -279,6 +279,7 @@ GROUPS = (
     ("backbone_interfaces", "Backbone Interfaces"),
     ("maintenance_circuits", "Circuits in Maintenance"),
     ("provisioning_circuits", "Circuits in Provisioning"),
+    ("backbone_services", "Backbone Services"),
 )
 
 BGP_PEER_GROUPS = (

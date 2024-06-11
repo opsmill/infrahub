@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import { forwardRef, HTMLAttributes, useMemo } from "react";
-import { classNames } from "../../utils/common";
 
 export type KbdKey =
   | "command"

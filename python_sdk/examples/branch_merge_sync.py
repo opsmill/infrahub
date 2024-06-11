@@ -2,7 +2,7 @@ from infrahub_sdk import InfrahubClientSync
 
 
 def main():
-    client = InfrahubClientSync.init(address="http://localhost:8000")
+    client = InfrahubClientSync(address="http://localhost:8000")
     client.branch.merge(branch_name="new-branch")
 
 

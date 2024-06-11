@@ -1,17 +1,17 @@
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import EditFormHookComponent from "@/screens/edit-form-hook/edit-form-hook-component";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
+import { getFormStructureForMetaEditPaginated } from "@/utils/formStructureForCreateEdit";
+import getMutationMetaDetailsFromFormData from "@/utils/getMutationMetaDetailsFromFormData";
+import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtom, useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/utils/alert";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
-import { getFormStructureForMetaEditPaginated } from "../../utils/formStructureForCreateEdit";
-import getMutationMetaDetailsFromFormData from "../../utils/getMutationMetaDetailsFromFormData";
-import { stringifyWithoutQuotes } from "../../utils/string";
-import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 interface Props {
   row: any;
   schema: iNodeSchema;

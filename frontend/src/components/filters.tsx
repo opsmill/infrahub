@@ -1,7 +1,7 @@
+import { DynamicControl } from "@/screens/edit-form-hook/dynamic-control";
+import { FormProps } from "@/screens/edit-form-hook/form";
+import { resolve } from "@/utils/objects";
 import { FormProvider, useForm } from "react-hook-form";
-import { DynamicControl } from "../screens/edit-form-hook/dynamic-control";
-import { FormProps } from "../screens/edit-form-hook/form";
-import { resolve } from "../utils/objects";
 import { Button } from "./buttons/button";
 
 export const Filters = ({ fields, onSubmit }: FormProps) => {

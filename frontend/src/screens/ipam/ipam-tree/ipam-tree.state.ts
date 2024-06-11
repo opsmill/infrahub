@@ -1,15 +1,15 @@
-import { atom } from "jotai";
-import * as R from "ramda";
-import { TreeProps } from "../../../components/ui/tree";
-import graphqlClient from "../../../graphql/graphqlClientApollo";
+import { TreeProps } from "@/components/ui/tree";
+import graphqlClient from "@/graphql/graphqlClientApollo";
 import {
   GET_PREFIX_ANCESTORS,
   GET_PREFIXES_ONLY,
   GET_TOP_LEVEL_PREFIXES,
-} from "../../../graphql/queries/ipam/prefixes";
-import { currentBranchAtom } from "../../../state/atoms/branches.atom";
-import { datetimeAtom } from "../../../state/atoms/time.atom";
-import { IP_PREFIX_GENERIC, IPAM_TREE_ROOT_ID } from "../constants";
+} from "@/graphql/queries/ipam/prefixes";
+import { IP_PREFIX_GENERIC, IPAM_TREE_ROOT_ID } from "@/screens/ipam/constants";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
+import { atom } from "jotai";
+import * as R from "ramda";
 import {
   AncestorsData,
   EMPTY_IPAM_TREE,

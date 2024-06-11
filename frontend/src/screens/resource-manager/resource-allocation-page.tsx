@@ -1,17 +1,17 @@
-import { Link, useParams } from "react-router-dom";
-import useQuery from "../../hooks/useQuery";
-import { Card } from "../../components/ui/card";
-import { Badge } from "../../components/ui/badge";
-import { Table } from "../../components/table/table";
-import { GET_RESOURCE_POOL_ALLOCATED } from "./graphql/resource-pool";
-import { RESOURCE_POOL_ALLOCATED_KIND } from "./constants";
+import { Button } from "@/components/buttons/button-primitive";
+import { Skeleton } from "@/components/skeleton";
+import { Table } from "@/components/table/table";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Pagination } from "@/components/ui/pagination";
+import { QSP } from "@/config/qsp";
+import useQuery from "@/hooks/useQuery";
+import { GET_RESOURCE_POOL_ALLOCATED } from "@/screens/resource-manager/graphql/resource-pool";
+import { constructPath } from "@/utils/fetch";
+import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { Icon } from "@iconify-icon/react";
-import { Button } from "../../components/buttons/button-primitive";
-import { constructPath } from "../../utils/fetch";
-import { getObjectDetailsUrl2 } from "../../utils/objects";
-import { Skeleton } from "../../components/skeleton";
-import { QSP } from "../../config/qsp";
-import { Pagination } from "../../components/utils/pagination";
+import { Link, useParams } from "react-router-dom";
+import { RESOURCE_POOL_ALLOCATED_KIND } from "./constants";
 
 const ResourceAllocationPage = () => {
   const { resourcePoolId, resourceId } = useParams();

@@ -1,26 +1,26 @@
+import { ToggleButtons } from "@/components/buttons/toggle-buttons";
+import { Badge } from "@/components/display/badge";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Id } from "@/components/ui/id";
+import { Link } from "@/components/ui/link";
+import { Tooltip } from "@/components/ui/tooltip";
+import { DATA_CHECK_OBJECT } from "@/config/constants";
+import { QSP } from "@/config/qsp";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import { getNodeClassName } from "@/screens/diff/data-diff-node";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
+import { classNames } from "@/utils/common";
+import { diffContent, getBadgeType } from "@/utils/diff";
+import { constructPath } from "@/utils/fetch";
+import { getObjectDetailsUrl } from "@/utils/objects";
+import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { ArrowTopRightOnSquareIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { ToggleButtons } from "../../../components/buttons/toggle-buttons";
-import { Badge } from "../../../components/display/badge";
-import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
-import { Id } from "../../../components/utils/id";
-import { Link } from "../../../components/utils/link";
-import { Tooltip, TooltipPosition } from "../../../components/utils/tooltip";
-import { DATA_CHECK_OBJECT } from "../../../config/constants";
-import { QSP } from "../../../config/qsp";
-import graphqlClient from "../../../graphql/graphqlClientApollo";
-import { updateObjectWithId } from "../../../graphql/mutations/objects/updateObjectWithId";
-import { currentBranchAtom } from "../../../state/atoms/branches.atom";
-import { datetimeAtom } from "../../../state/atoms/time.atom";
-import { classNames } from "../../../utils/common";
-import { diffContent, getBadgeType } from "../../../utils/diff";
-import { constructPath } from "../../../utils/fetch";
-import { getObjectDetailsUrl } from "../../../utils/objects";
-import { stringifyWithoutQuotes } from "../../../utils/string";
-import { getNodeClassName } from "../data-diff-node";
 
 const renderConflict = {
   attribute_value: (name: string) => {
@@ -167,7 +167,7 @@ export const Conflict = (props: any) => {
                     {diffContent[action](property)}
 
                     <div className="ml-2">
-                      <Tooltip message={"Open object in new tab"} position={TooltipPosition.LEFT}>
+                      <Tooltip enabled content={"Open object in new tab"}>
                         <Link to={url} target="_blank">
                           <ArrowTopRightOnSquareIcon className="h-4 w-4" />
                         </Link>

@@ -499,7 +499,7 @@ core_models: dict[str, Any] = {
             "description": "IPv6 or IPv4 prefix also referred as network",
             "include_in_menu": False,
             "default_filter": "prefix__value",
-            "order_by": ["prefix__version", "prefix__binary_address"],
+            "order_by": ["prefix__version", "prefix__binary_address", "prefix__prefixlen"],
             "display_labels": ["prefix__value"],
             "icon": "mdi:ip-network",
             "branch": BranchSupportType.AWARE.value,
@@ -699,6 +699,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
             "inherit_from": [InfrahubKind.GENERICGROUP],
+            "generate_profile": False,
         },
         {
             "name": "GeneratorGroup",
@@ -712,6 +713,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "branch": BranchSupportType.LOCAL.value,
             "inherit_from": [InfrahubKind.GENERICGROUP],
+            "generate_profile": False,
         },
         {
             "name": "GraphQLQueryGroup",
@@ -725,6 +727,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["name__value"],
             "branch": BranchSupportType.LOCAL.value,
             "inherit_from": [InfrahubKind.GENERICGROUP],
+            "generate_profile": False,
             "attributes": [
                 {"name": "parameters", "kind": "JSON", "optional": True},
             ],
@@ -764,6 +767,7 @@ core_models: dict[str, Any] = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": [InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE],
             "documentation": "/topics/auth",
@@ -797,6 +801,7 @@ core_models: dict[str, Any] = {
             "label": "Account Token",
             "default_filter": "token__value",
             "display_labels": ["token__value"],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "documentation": "/topics/auth",
             "attributes": [
@@ -820,6 +825,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "label": "Refresh Token",
             "display_labels": [],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "expiration", "kind": "DateTime", "optional": False},
@@ -842,6 +848,7 @@ core_models: dict[str, Any] = {
             "label": "Proposed Change",
             "default_filter": "name__value",
             "display_labels": ["name__value"],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": [InfrahubKind.TASKTARGET],
             "documentation": "/topics/proposed-change",
@@ -921,6 +928,7 @@ core_models: dict[str, Any] = {
             "label": "Change Thread",
             "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["CoreThread"],
+            "generate_profile": False,
             "attributes": [],
             "relationships": [],
         },
@@ -932,6 +940,7 @@ core_models: dict[str, Any] = {
             "label": "Thread - File",
             "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["CoreThread"],
+            "generate_profile": False,
             "attributes": [
                 {"name": "file", "kind": "Text", "optional": True},
                 {"name": "commit", "kind": "Text", "optional": True},
@@ -955,6 +964,7 @@ core_models: dict[str, Any] = {
             "label": "Thread - Artifact",
             "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["CoreThread"],
+            "generate_profile": False,
             "attributes": [
                 {"name": "artifact_id", "kind": "Text", "optional": True},
                 {"name": "storage_id", "kind": "Text", "optional": True},
@@ -970,6 +980,7 @@ core_models: dict[str, Any] = {
             "label": "Thread - Object",
             "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["CoreThread"],
+            "generate_profile": False,
             "attributes": [
                 {"name": "object_path", "kind": "Text", "optional": False},
             ],
@@ -985,6 +996,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["text__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["CoreComment"],
+            "generate_profile": False,
             "relationships": [
                 {
                     "name": "change",
@@ -1005,6 +1017,7 @@ core_models: dict[str, Any] = {
             "display_labels": ["text__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["CoreComment"],
+            "generate_profile": False,
             "attributes": [],
             "relationships": [
                 {
@@ -1027,6 +1040,7 @@ core_models: dict[str, Any] = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": [
                 InfrahubKind.LINEAGEOWNER,
@@ -1055,6 +1069,7 @@ core_models: dict[str, Any] = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": [
                 InfrahubKind.LINEAGEOWNER,
@@ -1090,6 +1105,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "inherit_from": [InfrahubKind.TRANSFORM],
+            "generate_profile": False,
             "branch": BranchSupportType.AWARE.value,
             "documentation": "/topics/transformation",
             "attributes": [
@@ -1104,6 +1120,7 @@ core_models: dict[str, Any] = {
             "label": "Data Check",
             "display_labels": ["label__value"],
             "inherit_from": ["CoreCheck"],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "conflicts", "kind": "JSON"},
@@ -1118,6 +1135,7 @@ core_models: dict[str, Any] = {
             "label": "Standard Check",
             "display_labels": ["label__value"],
             "inherit_from": ["CoreCheck"],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
         },
         {
@@ -1128,6 +1146,7 @@ core_models: dict[str, Any] = {
             "label": "Schema Check",
             "display_labels": ["label__value"],
             "inherit_from": ["CoreCheck"],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "conflicts", "kind": "JSON"},
@@ -1141,6 +1160,7 @@ core_models: dict[str, Any] = {
             "label": "File Check",
             "display_labels": ["label__value"],
             "inherit_from": ["CoreCheck"],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "files", "kind": "List", "optional": True},
@@ -1155,6 +1175,7 @@ core_models: dict[str, Any] = {
             "label": "Artifact Check",
             "display_labels": ["label__value"],
             "inherit_from": ["CoreCheck"],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "changed", "kind": "Boolean", "optional": True},
@@ -1172,6 +1193,7 @@ core_models: dict[str, Any] = {
             "label": "Generator Check",
             "display_labels": ["label__value"],
             "inherit_from": ["CoreCheck"],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {
@@ -1189,6 +1211,7 @@ core_models: dict[str, Any] = {
             "label": "Data Validator",
             "display_labels": ["label__value"],
             "inherit_from": [InfrahubKind.VALIDATOR],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
         },
         {
@@ -1199,6 +1222,7 @@ core_models: dict[str, Any] = {
             "label": "Repository Validator",
             "display_labels": ["label__value"],
             "inherit_from": [InfrahubKind.VALIDATOR],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
                 {
@@ -1219,6 +1243,7 @@ core_models: dict[str, Any] = {
             "label": "User Validator",
             "display_labels": ["label__value"],
             "inherit_from": [InfrahubKind.VALIDATOR],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
                 {
@@ -1246,6 +1271,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "label": "Schema Validator",
             "display_labels": ["label__value"],
+            "generate_profile": False,
             "inherit_from": [InfrahubKind.VALIDATOR],
             "branch": BranchSupportType.AGNOSTIC.value,
         },
@@ -1257,6 +1283,7 @@ core_models: dict[str, Any] = {
             "label": "Artifact Validator",
             "display_labels": ["label__value"],
             "inherit_from": [InfrahubKind.VALIDATOR],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
                 {
@@ -1277,6 +1304,7 @@ core_models: dict[str, Any] = {
             "label": "Generator Validator",
             "display_labels": ["label__value"],
             "inherit_from": [InfrahubKind.VALIDATOR],
+            "generate_profile": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
                 {
@@ -1299,6 +1327,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
+            "generate_profile": False,
             "inherit_from": [InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
@@ -1352,6 +1381,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "inherit_from": [InfrahubKind.TRANSFORM],
+            "generate_profile": False,
             "branch": BranchSupportType.AWARE.value,
             "documentation": "/topics/transformation",
             "attributes": [
@@ -1369,6 +1399,7 @@ core_models: dict[str, Any] = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
+            "generate_profile": False,
             "branch": BranchSupportType.AWARE.value,
             "documentation": "/topics/graphql",
             "attributes": [
@@ -1439,6 +1470,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.LOCAL.value,
+            "generate_profile": False,
             "inherit_from": [InfrahubKind.TASKTARGET],
             "documentation": "/topics/artifact",
             "attributes": [
@@ -1495,6 +1527,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
+            "generate_profile": False,
             "inherit_from": [InfrahubKind.TASKTARGET],
             "documentation": "/topics/artifact",
             "attributes": [
@@ -1537,6 +1570,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
+            "generate_profile": False,
             "inherit_from": [InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
@@ -1583,6 +1617,7 @@ core_models: dict[str, Any] = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.LOCAL.value,
+            "generate_profile": False,
             "inherit_from": [InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "name", "kind": "Text"},
@@ -1622,6 +1657,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "icon": "mdi:webhook",
             "branch": BranchSupportType.AGNOSTIC.value,
+            "generate_profile": False,
             "inherit_from": [InfrahubKind.WEBHOOK, InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "shared_key", "kind": "Password", "unique": False, "order_weight": 4000},
@@ -1638,6 +1674,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "icon": "mdi:cog-outline",
             "branch": BranchSupportType.AGNOSTIC.value,
+            "generate_profile": False,
             "inherit_from": [InfrahubKind.WEBHOOK, InfrahubKind.TASKTARGET],
             "attributes": [],
             "relationships": [
@@ -1681,6 +1718,7 @@ core_models: dict[str, Any] = {
                 {
                     "name": "default_prefix_length",
                     "kind": "Number",
+                    "description": "The default prefix length as an integer for prefixes allocated from this pool.",
                     "optional": True,
                     "order_weight": 5000,
                 },
@@ -1741,6 +1779,7 @@ core_models: dict[str, Any] = {
                 {
                     "name": "default_prefix_length",
                     "kind": "Number",
+                    "description": "The default prefix length as an integer for addresses allocated from this pool.",
                     "optional": True,
                     "order_weight": 4000,
                 },

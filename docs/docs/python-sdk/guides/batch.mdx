@@ -25,7 +25,7 @@ from infrahub_sdk import InfrahubClient
 
 
 async def main():
-    client = await InfrahubClient.init()
+    client = InfrahubClient()
     batch = await client.create_batch()
 
     for tag in ["red", "green", "blue", "yellow", "orange"]:
@@ -50,7 +50,7 @@ from infrahub_sdk import Config, InfrahubClient
 
 
 async def main():
-    client = await InfrahubClient.init(Config(max_concurrent_execution=10))
+    client = InfrahubClient(Config(max_concurrent_execution=10))
     batch = await client.create_batch()
 
     for tag in ["red", "green", "blue", "yellow", "orange"]:
@@ -76,7 +76,7 @@ async def will_raise(swallowed: bool):
     raise Exception()
 
 async def main():
-    client = await InfrahubClient.init()
+    client = InfrahubClient()
     batch = await client.create_batch()
 
     batch.add(task=client.get, kind="BuiltinTag", name__value="red")
@@ -101,7 +101,7 @@ async def will_raise(swallowed: bool):
     raise Exception()
 
 async def main():
-    client = await InfrahubClient.init()
+    client = InfrahubClient()
     batch = await client.create_batch()
 
     batch.add(task=client.get, kind="BuiltinTag", name__value="red")
@@ -130,7 +130,7 @@ from infrahub_sdk import InfrahubClient
 
 
 async def main():
-    client = await InfrahubClient.init()
+    client = InfrahubClient()
     batch = await client.create_batch()
 
     for idx in range(100):

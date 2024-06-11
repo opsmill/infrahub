@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 import pendulum
 import pytest
-from infrahub_sdk import UUIDT
+from infrahub_sdk import UUIDT, Config, InfrahubClient
 from neo4j._codec.hydration.v1 import HydrationHandler
 from pytest_httpx import HTTPXMock
 
@@ -39,6 +39,7 @@ from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
 from infrahub.test_data import dataset01 as ds01
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.test_client import dummy_async_request
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -92,6 +93,7 @@ async def git_fixture_repo(git_sources_dir: Path, git_repos_dir: Path) -> Infrah
         id=UUIDT.new(),
         name="test_basename",
         location=f"{git_sources_dir}/test_base",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     await repo.create_branch_in_git(branch_name="main", branch_id="8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba")

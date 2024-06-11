@@ -1,9 +1,9 @@
+import { Pill } from "@/components/display/pill";
+import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import { getProposedChangesChecks } from "@/graphql/queries/proposed-changes/getProposedChangesChecks";
+import useQuery from "@/hooks/useQuery";
 import { gql } from "@apollo/client";
 import { useParams } from "react-router-dom";
-import { Pill } from "../../components/display/pill";
-import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
-import { getProposedChangesChecks } from "../../graphql/queries/proposed-changes/getProposedChangesChecks";
-import useQuery from "../../hooks/useQuery";
 
 export const ProposedChangesChecksTab = () => {
   const { proposedchange } = useParams();

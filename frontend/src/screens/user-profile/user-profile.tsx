@@ -1,27 +1,24 @@
+import { Avatar } from "@/components/display/avatar";
+import { Tabs } from "@/components/tabs";
+import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "@/config/constants";
+import { QSP } from "@/config/qsp";
+import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails";
+import useQuery from "@/hooks/useQuery";
+import { useTitle } from "@/hooks/useTitle";
+import ErrorScreen from "@/screens/errors/error-screen";
+import Content from "@/screens/layout/content";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { schemaState } from "@/state/atoms/schema.atom";
+import { parseJwt } from "@/utils/common";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Avatar } from "../../components/display/avatar";
-import { Tabs } from "../../components/tabs";
-import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../../config/constants";
-import { QSP } from "../../config/qsp";
-import { getProfileDetails } from "../../graphql/queries/accounts/getProfileDetails";
-import useQuery from "../../hooks/useQuery";
-import { useTitle } from "../../hooks/useTitle";
-import { schemaState } from "../../state/atoms/schema.atom";
-import { parseJwt } from "../../utils/common";
-import ErrorScreen from "../errors/error-screen";
-import Content from "../layout/content";
-import LoadingScreen from "../loading-screen/loading-screen";
-import TabPassword from "./tab-account";
 import TabPreferences from "./tab-preferences";
 import TabProfile from "./tab-profile";
 
 const PROFILE_TABS = {
   PREFERENCES: "preferences",
   PROFILE: "profile",
-  TOKENS: "tokens",
-  ACCOUNT: "account",
 };
 
 const tabs = [
@@ -29,10 +26,6 @@ const tabs = [
     label: "Profile",
     name: PROFILE_TABS.PROFILE,
   },
-  // {
-  //   label: "Tokens",
-  //   name: PROFILE_TABS.TOKENS,
-  // },
   {
     label: "Preferences",
     name: PROFILE_TABS.PREFERENCES,
@@ -41,10 +34,6 @@ const tabs = [
 
 const renderContent = (tab: string | null | undefined) => {
   switch (tab) {
-    // case PROFILE_TABS.TOKENS:
-    //   return <TabTokens />;
-    case PROFILE_TABS.ACCOUNT:
-      return <TabPassword />;
     case PROFILE_TABS.PREFERENCES:
       return <TabPreferences />;
     default:

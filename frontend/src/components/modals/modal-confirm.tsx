@@ -1,7 +1,7 @@
+import { BUTTON_TYPES, Button } from "@/components/buttons/button";
 import { Dialog, Transition } from "@headlessui/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import React, { Fragment, useRef } from "react";
-import { BUTTON_TYPES, Button } from "../buttons/button";
 
 interface iProps {
   open: boolean;

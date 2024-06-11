@@ -1,14 +1,14 @@
+import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
-import { Button, ButtonProps } from "../buttons/button-primitive";
-import { Link } from "react-router-dom";
-import { INFRAHUB_DOC_LOCAL } from "../../config/config";
+} from "@/components/ui/dropdown-menu";
+import { INFRAHUB_DOC_LOCAL } from "@/config/config";
+import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
-import { constructPath } from "../../utils/fetch";
+import { Link } from "react-router-dom";
 
 interface ObjectHelpButtonProps extends ButtonProps {
   className?: string;

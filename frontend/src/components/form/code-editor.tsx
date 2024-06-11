@@ -1,6 +1,6 @@
-import { FormFieldError } from "../../screens/edit-form-hook/form";
-import { classNames } from "../../utils/common";
-import { CodeEditor } from "../editor/code-editor";
+import { CodeEditor } from "@/components/editor/code-editor";
+import { FormFieldError } from "@/screens/edit-form-hook/form";
+import { classNames } from "@/utils/common";
 
 type tOpsCodeEditor = {
   label: string;

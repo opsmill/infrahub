@@ -1,13 +1,13 @@
+import { TabsButtons } from "@/components/buttons/tabs-buttons";
+import { QSP } from "@/config/qsp";
+import { useTitle } from "@/hooks/useTitle";
+import { BranchDetails } from "@/screens/branches/branch-details";
+import { Diff } from "@/screens/diff/diff";
+import Content from "@/screens/layout/content";
+import { constructPath } from "@/utils/fetch";
+import { Icon } from "@iconify-icon/react";
 import { Link, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { TabsButtons } from "../../components/buttons/tabs-buttons";
-import { QSP } from "../../config/qsp";
-import { useTitle } from "../../hooks/useTitle";
-import { constructPath } from "../../utils/fetch";
-import { Diff } from "../diff/diff";
-import { BranchDetails } from "./branch-details";
-import Content from "../layout/content";
-import { Icon } from "@iconify-icon/react";
 
 export const BRANCH_TABS = {
   DETAILS: "details",

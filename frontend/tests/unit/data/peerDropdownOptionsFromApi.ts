@@ -1,4 +1,4 @@
-import { iPeerDropdownOptions } from "../utils/dropdownOptionsForRelatedPeers";
+import { iPeerDropdownOptions } from "@/utils/dropdownOptionsForRelatedPeers";
 
 export const C_PEER_DROPDOWN_OPTIONS: iPeerDropdownOptions = {
   account: [

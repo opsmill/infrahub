@@ -20,11 +20,7 @@ test.describe("/proposed-changes checks", () => {
       await page.getByTestId("add-proposed-changes-button").click();
       await expect(page.getByText("Create Proposed Change")).toBeVisible();
       await page.getByLabel("Name *").fill("pc-checks");
-      await page
-        .getByText("Source Branch")
-        .locator("../..")
-        .getByTestId("select-open-option-button")
-        .click();
+      await page.getByLabel("Source Branch *").click();
       await page.getByRole("option", { name: "atl1-delete-upstream" }).click();
       await page.getByRole("button", { name: "Create" }).click();
       await expect(page.getByText("Proposed change created")).toBeVisible();

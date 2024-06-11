@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
-import { classNames } from "../../utils/common";
 import { ComponentPropsWithoutRef, ElementRef, forwardRef } from "react";
 
 export const DropdownMenu = (props: DropdownMenuPrimitive.DropdownMenuProps) => (

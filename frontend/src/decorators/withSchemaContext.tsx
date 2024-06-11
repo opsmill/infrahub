@@ -1,29 +1,29 @@
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import * as R from "ramda";
-import { createContext } from "react";
-import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
-import { ALERT_TYPES, Alert } from "../components/utils/alert";
-import { CONFIG } from "../config/config";
-import { QSP } from "../config/qsp";
-import { Branch } from "../generated/graphql";
-import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { CONFIG } from "@/config/config";
+import { QSP } from "@/config/qsp";
+import { Branch } from "@/generated/graphql";
+import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import {
+  IProfileSchema,
   currentSchemaHashAtom,
   genericsState,
   iGenericSchema,
   iNamespace,
   iNodeSchema,
-  IProfileSchema,
   namespacesState,
   profilesAtom,
   schemaState,
-} from "../state/atoms/schema.atom";
-import { schemaKindLabelState } from "../state/atoms/schemaKindLabel.atom";
-import { schemaKindNameState } from "../state/atoms/schemaKindName.atom";
-import { findSelectedBranch } from "../utils/branches";
-import { sortByName, sortByOrderWeight } from "../utils/common";
-import { fetchUrl } from "../utils/fetch";
+} from "@/state/atoms/schema.atom";
+import { schemaKindLabelState } from "@/state/atoms/schemaKindLabel.atom";
+import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { findSelectedBranch } from "@/utils/branches";
+import { sortByName, sortByOrderWeight } from "@/utils/common";
+import { fetchUrl } from "@/utils/fetch";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import * as R from "ramda";
+import { createContext } from "react";
+import { toast } from "react-toastify";
+import { StringParam, useQueryParam } from "use-query-params";
 
 type tSchemaContext = {
   checkSchemaUpdate: () => Promise<void>;

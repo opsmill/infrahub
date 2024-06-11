@@ -189,7 +189,7 @@ test.describe("/ipam - Ipam home page", () => {
           .getByRole("link", { name: "10.0.0.1/16" })
           .click();
 
-        await page.getByTestId("ip-summary-edit-button").click();
+        await page.getByTestId("edit-button").click();
         await page.getByLabel("Description").fill("from summary");
         await page.getByRole("button", { name: "Save" }).click();
         await expect(page.getByText("IPAddress updated")).toBeVisible();

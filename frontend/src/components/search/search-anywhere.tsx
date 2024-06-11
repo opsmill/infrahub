@@ -1,21 +1,21 @@
+import { Input } from "@/components/ui/input";
+import Kbd from "@/components/ui/kbd";
+import { classNames } from "@/utils/common";
 import { Combobox, Dialog, Transition } from "@headlessui/react";
+import { Icon } from "@iconify-icon/react";
 import {
   ChangeEventHandler,
-  forwardRef,
   Fragment,
   MouseEventHandler,
   ReactNode,
+  forwardRef,
   useEffect,
   useState,
 } from "react";
-import { Icon } from "@iconify-icon/react";
 import { Link, LinkProps, useNavigate } from "react-router-dom";
-import { classNames } from "../../utils/common";
 import { SearchActions } from "./search-actions";
-import { SearchNodes } from "./search-nodes";
 import { SearchDocs } from "./search-docs";
-import Kbd from "../ui/kbd";
-import { Input } from "../ui/input";
+import { SearchNodes } from "./search-nodes";
 
 type SearchInputProps = {
   className?: string;

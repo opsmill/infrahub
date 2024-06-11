@@ -1,21 +1,24 @@
+import { QuestionMark } from "@/components/display/question-mark";
+import { Input } from "@/components/inputs/input";
+import { components } from "@/infraops";
+import { FormFieldError } from "@/screens/edit-form-hook/form";
+import { classNames } from "@/utils/common";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
-import { FormFieldError } from "../../screens/edit-form-hook/form";
-import { classNames } from "../../utils/common";
-import { QuestionMark } from "../display/question-mark";
-import { Input } from "../inputs/input";
 
 type OpsInputProps = {
   label: string;
   value: string;
   onChange: (value: string) => void;
   className?: string;
-  description?: string;
   error?: FormFieldError;
   type: string;
   isProtected?: boolean;
   isOptional?: boolean;
   isUnique?: boolean;
   disabled?: boolean;
+  field:
+    | components["schemas"]["AttributeSchema-Output"]
+    | components["schemas"]["RelationshipSchema-Output"];
 };
 
 const InputUniqueTips = () => <span className="text-xs text-gray-600 italic">must be unique</span>;
@@ -26,12 +29,12 @@ export const OpsInput = (props: OpsInputProps) => {
     onChange,
     value,
     label,
-    description,
     error,
     isProtected,
     isOptional,
     isUnique,
     disabled,
+    field,
   } = props;
 
   return (
@@ -42,7 +45,7 @@ export const OpsInput = (props: OpsInputProps) => {
         </label>
         {isProtected && <LockClosedIcon className="w-4 h-4" />}
         {isUnique && <InputUniqueTips />}
-        <QuestionMark message={description} />
+        <QuestionMark message={field?.description} />
       </div>
       <Input
         id={label}

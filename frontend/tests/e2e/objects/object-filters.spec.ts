@@ -53,4 +53,33 @@ test.describe("Object filters", () => {
       await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 30 results");
     });
   });
+
+  test("should filter using a relationship of cardinality one", async ({ page }) => {
+    await page.goto("/objects/InfraInterface");
+
+    await expect(page.getByRole("link", { name: "Connected to jfk1-edge2" })).toBeVisible();
+
+    await page.getByTestId("apply-filters").click();
+    await page
+      .getByTestId("side-panel-container")
+      .getByText("Device")
+      .locator("../..")
+      .getByTestId("select-open-option-button")
+      .click();
+    await page.getByRole("option", { name: "atl1-core1" }).click();
+    await page.getByRole("button", { name: "Apply filters" }).click();
+
+    await expect(page.getByRole("row", { name: "InfraInterfaceL3 Loopback0" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Connected to jfk1-edge2" })).toBeHidden();
+  });
+
+  test("should correctly display the filters with select 2 steps pointing to any objects", async ({
+    page,
+  }) => {
+    await page.goto("/objects/CoreArtifact");
+    await page.getByTestId("apply-filters").click();
+    await expect(page.getByTestId("side-panel-container").getByText("Object")).toBeVisible();
+    await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
+    await expect(page.getByRole("option", { name: "Tag", exact: true })).toBeVisible();
+  });
 });

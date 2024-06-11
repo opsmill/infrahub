@@ -1,5 +1,5 @@
+import { constructPath } from "@/utils/fetch";
 import { Navigate, useLocation, useParams } from "react-router-dom";
-import { constructPath } from "../../utils/fetch";
 
 const RedirectToGraphiQLPage = () => {
   const { branch } = useParams();

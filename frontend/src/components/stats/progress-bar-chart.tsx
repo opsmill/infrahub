@@ -1,6 +1,6 @@
-import { HTMLAttributes } from "react";
+import { classNames } from "@/utils/common";
 import * as ProgressPrimitive from "@radix-ui/react-progress";
-import { classNames } from "../../utils/common";
+import { HTMLAttributes } from "react";
 
 export const ProgressBar = ({ className, value, ...props }: ProgressPrimitive.ProgressProps) => (
   <ProgressPrimitive.Root

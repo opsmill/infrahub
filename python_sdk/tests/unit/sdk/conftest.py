@@ -25,16 +25,14 @@ class BothClients:
 
 @pytest.fixture
 async def client() -> InfrahubClient:
-    return await InfrahubClient.init(config=Config(address="http://mock", insert_tracker=True, pagination_size=3))
+    return InfrahubClient(config=Config(address="http://mock", insert_tracker=True, pagination_size=3))
 
 
 @pytest.fixture
 async def clients() -> BothClients:
     both = BothClients(
-        standard=await InfrahubClient.init(
-            config=Config(address="http://mock", insert_tracker=True, pagination_size=3)
-        ),
-        sync=InfrahubClientSync.init(config=Config(address="http://mock", insert_tracker=True, pagination_size=3)),
+        standard=InfrahubClient(config=Config(address="http://mock", insert_tracker=True, pagination_size=3)),
+        sync=InfrahubClientSync(config=Config(address="http://mock", insert_tracker=True, pagination_size=3)),
     )
     return both
 

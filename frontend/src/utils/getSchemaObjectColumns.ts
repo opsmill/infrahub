@@ -1,5 +1,3 @@
-import { isValid, parseISO } from "date-fns";
-import * as R from "ramda";
 import {
   attributesKindForDetailsViewExclude,
   attributesKindForListView,
@@ -7,8 +5,11 @@ import {
   relationshipsForDetailsView,
   relationshipsForListView,
   relationshipsForTabs,
-} from "../config/constants";
-import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
+} from "@/config/constants";
+import { store } from "@/state";
+import { iGenericSchema, iNodeSchema, profilesAtom } from "@/state/atoms/schema.atom";
+import { isValid, parseISO } from "date-fns";
+import * as R from "ramda";
 import { isGeneric, sortByOrderWeight } from "./common";
 
 type tgetObjectAttributes = {
@@ -296,7 +297,9 @@ export const getRelationshipOptions = (row: any, field: any, schemas: any[], gen
 
   if (generic) {
     const options = (generic.used_by || []).map((name: string) => {
-      const relatedSchema = schemas.find((s: any) => s.kind === name);
+      const profiles = store.get(profilesAtom);
+
+      const relatedSchema = [...schemas, ...profiles].find((s: any) => s.kind === name);
 
       if (relatedSchema) {
         return {

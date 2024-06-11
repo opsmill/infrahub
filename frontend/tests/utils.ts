@@ -1,17 +1,5 @@
 import { Page } from "@playwright/test";
 
-export const waitFor = (alias, checkFn, maxRequests = 10, level = 0) => {
-  if (level === maxRequests) {
-    throw `${maxRequests} requests exceeded`;
-  }
-
-  return cy.wait(alias, { timeout: 10000 }).then((interception) => {
-    if (!checkFn(interception)) {
-      return waitFor(alias, checkFn, maxRequests, level + 1);
-    }
-  });
-};
-
 export const saveScreenshotForDocs = async (page: Page, filename: string) => {
   if (!process.env.UPDATE_DOCS_SCREENSHOTS) return;
 
@@ -24,7 +12,7 @@ export const saveScreenshotForDocs = async (page: Page, filename: string) => {
 
 export const createBranch = async (page: Page, branchName: string) => {
   await page.getByTestId("create-branch-button").click();
-  await page.locator("[id='New branch name']").fill(branchName);
+  await page.getByLabel("New branch name *").fill(branchName);
 
   await Promise.all([
     page.waitForResponse((response) => {
@@ -33,7 +21,6 @@ export const createBranch = async (page: Page, branchName: string) => {
 
       return reqData?.operationName === "BranchCreate" && status === 200;
     }),
-    page.waitForURL("/?branch=" + branchName), // createBranch redirects to this URL, we must wait for it to avoid ERR_ABORTED errors in the next goto
     page.waitForResponse((response) => {
       const reqData = response.request().postDataJSON();
       const status = response.status();
@@ -45,7 +32,7 @@ export const createBranch = async (page: Page, branchName: string) => {
         status === 200
       );
     }),
-    page.getByRole("button", { name: "Create" }).click(),
+    page.getByRole("button", { name: "Create a new branch" }).click(),
   ]); // to avoid ERR_ABORTED
 };
 

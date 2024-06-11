@@ -24,7 +24,7 @@ The Python SDK provides multiple methods to manage the branches in an Infrahub i
 
   ```python
   from infrahub_sdk import InfrahubClient
-  client = await InfrahubClient.init()
+  client = InfrahubClient()
   branch = await client.branch.get(branch_name="main")
   ```
 
@@ -33,7 +33,7 @@ The Python SDK provides multiple methods to manage the branches in an Infrahub i
 
   ```python
   from infrahub_sdk import InfrahubClientSync
-  client = InfrahubClientSync.init()
+  client = InfrahubClientSync()
   branch = client.branch.get(branch_name="main")
   ```
 
@@ -91,7 +91,7 @@ The Python SDK provides multiple methods to manage the branches in an Infrahub i
 
   ```python
   from infrahub_sdk import InfrahubClient
-  client = await InfrahubClient.init()
+  client = InfrahubClient()
   await client.branch.delete(branch_name="new-branch")
   ```
 
@@ -100,7 +100,7 @@ The Python SDK provides multiple methods to manage the branches in an Infrahub i
 
   ```python
   from infrahub_sdk import InfrahubClientSync
-  client = InfrahubClientSync.init()
+  client = InfrahubClientSync()
   client.branch.delete(branch_name="new-branch")
   ```
 
@@ -114,7 +114,7 @@ The Python SDK provides multiple methods to manage the branches in an Infrahub i
 
   ```python
   from infrahub_sdk import InfrahubClient
-  client = await InfrahubClient.init()
+  client = await InfrahubClient()
   diff = await client.branch.diff_data(branch_name="new-branch")
   ```
 
@@ -123,7 +123,7 @@ The Python SDK provides multiple methods to manage the branches in an Infrahub i
 
   ```python
   from infrahub_sdk import InfrahubClientSync
-  client = InfrahubClientSync.init()
+  client = InfrahubClientSync()
   diff = client.branch.diff_data(branch_name="new-branch")
   ```
 

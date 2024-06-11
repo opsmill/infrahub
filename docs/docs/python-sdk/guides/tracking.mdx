@@ -79,7 +79,7 @@ This behavior ensures that the tracking group specifically reflects changes made
   ```python
   from infrahub_sdk.client import InfrahubClient
 
-  client = await InfrahubClient.init(address="http://localhost:8000")
+  client = InfrahubClient(address="http://localhost:8000")
 
   await client.start_tracking(identifier="my_tracking_session")
   node = await client.create(kind="MyNodeKind", data={"name": "Example"})
@@ -92,7 +92,7 @@ This behavior ensures that the tracking group specifically reflects changes made
   ```python
   from infrahub_sdk.client_sync import InfrahubClientSync
 
-  client = InfrahubClientSync.init(address="http://localhost:8000")
+  client = InfrahubClientSync(address="http://localhost:8000")
 
   client.start_tracking(identifier="my_tracking_session")
   node = client.create(kind="MyNodeKind", data={"name": "Example"})
@@ -165,7 +165,7 @@ This step involves creating or updating (using upsert) the `CoreStandardGroup` u
   ```python
   from infrahub_sdk.client import InfrahubClient
 
-  client = await InfrahubClient.init(address="http://localhost:8000")
+  client = InfrahubClient(address="http://localhost:8000")
 
   await client.start_tracking(identifier="my_tracking_session")
   node = await client.create(kind="MyNodeKind", data={"name": "Example"})
@@ -181,7 +181,7 @@ This step involves creating or updating (using upsert) the `CoreStandardGroup` u
   ```python
   from infrahub_sdk.client_sync import InfrahubClientSync
 
-  client = InfrahubClientSync.init(address="http://localhost:8000")
+  client = InfrahubClientSync(address="http://localhost:8000")
 
   client.start_tracking(identifier="my_tracking_session")
   node = client.create(kind="MyNodeKind", data={"name": "Example"})

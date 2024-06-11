@@ -1,33 +1,33 @@
+import { Select } from "@/components/inputs/select";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { PROFILE_KIND } from "@/config/constants";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
+import { useAuth } from "@/hooks/useAuth";
+import useQuery from "@/hooks/useQuery";
+import { DynamicFieldData } from "@/screens/edit-form-hook/dynamic-control-types";
+import EditFormHookComponent from "@/screens/edit-form-hook/edit-form-hook-component";
+import ErrorScreen from "@/screens/errors/error-screen";
+import NoDataFound from "@/screens/errors/no-data-found";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
+import getFormStructureForCreateEdit from "@/utils/formStructureForCreateEdit";
+import getMutationDetailsFromFormData from "@/utils/getMutationDetailsFromFormData";
+import { getObjectAttributes, getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
+import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { Select } from "../../components/inputs/select";
-import { ALERT_TYPES, Alert } from "../../components/utils/alert";
-import { PROFILE_KIND } from "../../config/constants";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
-import { useAuth } from "../../hooks/useAuth";
-import useQuery from "../../hooks/useQuery";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
-import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
-import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
-import { getObjectAttributes, getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
-import { stringifyWithoutQuotes } from "../../utils/string";
-import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
-import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
-import ErrorScreen from "../errors/error-screen";
-import NoDataFound from "../errors/no-data-found";
-import LoadingScreen from "../loading-screen/loading-screen";
 
 interface Props {
   objectname: string;
   objectid: string;
   closeDrawer: Function;
-  onUpdateComplete: Function;
+  onUpdateComplete?: Function;
   formStructure?: DynamicFieldData[];
 }
 
@@ -59,7 +59,9 @@ export default function ObjectItemEditComponent(props: Props) {
   const columns = getSchemaObjectColumns({ schema: schema, forQuery: true });
 
   const displayProfile =
-    schema && !profileGeneric?.used_by?.includes(schema?.kind) && schema.kind !== PROFILE_KIND;
+    schema?.generate_profile &&
+    !profileGeneric?.used_by?.includes(schema?.kind) &&
+    schema.kind !== PROFILE_KIND;
   const profileName = profileSchema ? objectname : `Profile${objectname}`;
 
   const queryString = schema
@@ -169,7 +171,7 @@ export default function ObjectItemEditComponent(props: Props) {
 
         closeDrawer();
 
-        onUpdateComplete();
+        if (onUpdateComplete) onUpdateComplete();
       } catch (e) {
         console.error("Something went wrong while updating the object:", e);
       }

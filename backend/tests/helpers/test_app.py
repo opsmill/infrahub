@@ -92,7 +92,7 @@ class TestInfrahubApp:
             api_token=api_token, requester=test_client.async_request, sync_requester=test_client.sync_request
         )
 
-        sdk_client = await InfrahubClient.init(config=config)
+        sdk_client = InfrahubClient(config=config)
 
         bus_simulator.service._client = sdk_client
 

@@ -18,6 +18,7 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import AuthorizationError, NodeNotFoundError
 
 if TYPE_CHECKING:
+    from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
 
 # from ..datatypes import AuthResult
@@ -49,7 +50,7 @@ async def authenticate_with_password(
     db: InfrahubDatabase, credentials: models.PasswordCredential, branch: Optional[str] = None
 ) -> models.UserToken:
     selected_branch = await registry.get_branch(db=db, branch=branch)
-    response = await NodeManager.query(
+    response: List[CoreAccount] = await NodeManager.query(
         schema=InfrahubKind.ACCOUNT,
         db=db,
         branch=selected_branch,
@@ -63,8 +64,10 @@ async def authenticate_with_password(
             identifier=credentials.username,
             message="That login user doesn't exist in the system",
         )
+
     account = response[0]
-    valid_credentials = bcrypt.checkpw(credentials.password.encode("UTF-8"), account.password.value.encode("UTF-8"))
+    password = account.password.value
+    valid_credentials = bcrypt.checkpw(credentials.password.encode("UTF-8"), str(password or "").encode("UTF-8"))
     if not valid_credentials:
         raise AuthorizationError("Incorrect password")
 
@@ -80,11 +83,7 @@ async def authenticate_with_password(
 
 async def create_db_refresh_token(db: InfrahubDatabase, account_id: str, expiration: datetime) -> uuid.UUID:
     obj = await Node.init(db=db, schema=InfrahubKind.REFRESHTOKEN)
-    await obj.new(
-        db=db,
-        account=account_id,
-        expiration=expiration.isoformat(),
-    )
+    await obj.new(db=db, account=account_id, expiration=expiration.isoformat())
     await obj.save(db=db)
     return uuid.UUID(obj.id)
 
@@ -94,17 +93,11 @@ async def create_fresh_access_token(
 ) -> models.AccessTokenResponse:
     selected_branch = await registry.get_branch(db=db)
 
-    refresh_token = await NodeManager.get_one(
-        id=str(refresh_data.session_id),
-        db=db,
-    )
+    refresh_token = await NodeManager.get_one(id=str(refresh_data.session_id), db=db)
     if not refresh_token:
         raise AuthorizationError("The provided refresh token has been invalidated in the database")
 
-    account = await NodeManager.get_one(
-        id=refresh_data.account_id,
-        db=db,
-    )
+    account: Optional[CoreAccount] = await NodeManager.get_one(id=refresh_data.account_id, db=db)
     if not account:
         raise NodeNotFoundError(
             branch_name=selected_branch.name,
@@ -248,9 +241,6 @@ def validate_mutation_permissions_update_node(
 
 
 async def invalidate_refresh_token(db: InfrahubDatabase, token_id: str) -> None:
-    refresh_token = await NodeManager.get_one(
-        id=token_id,
-        db=db,
-    )
+    refresh_token = await NodeManager.get_one(id=token_id, db=db)
     if refresh_token:
         await refresh_token.delete(db=db)

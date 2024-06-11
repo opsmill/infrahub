@@ -1,16 +1,16 @@
+import Accordion from "@/components/display/accordion";
+import { Badge } from "@/components/display/badge";
+import { DateDisplay } from "@/components/display/date-display";
+import { Pill } from "@/components/display/pill";
+import { Tooltip } from "@/components/ui/tooltip";
+import { QSP } from "@/config/qsp";
+import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
+import { classNames } from "@/utils/common";
+import { getBadgeType } from "@/utils/diff";
 import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import Accordion from "../../components/display/accordion";
-import { Badge } from "../../components/display/badge";
-import { DateDisplay } from "../../components/display/date-display";
-import { Pill } from "../../components/display/pill";
-import { Tooltip } from "../../components/utils/tooltip";
-import { QSP } from "../../config/qsp";
-import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
-import { classNames } from "../../utils/common";
-import { getBadgeType } from "../../utils/diff";
 import { DataDiffElement } from "./data-diff-element";
 import { DataDiffConflictInfo } from "./diff-conflict-info";
 import { DiffPill } from "./diff-pill";
@@ -200,9 +200,11 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
 
       {commentsCount && (
         <div className="flex items-center" data-cy="comments-count" data-testid="comments-count">
-          <Tooltip message={"Total number of comments"}>
-            <ChatBubbleLeftRightIcon className="w-4 h-4 mr-2" />
-            <Pill className="mr-2">{JSON.stringify(commentsCount)}</Pill>
+          <Tooltip enabled content={"Total number of comments"}>
+            <div className="flex">
+              <ChatBubbleLeftRightIcon className="w-4 h-4 mr-2" />
+              <Pill className="mr-2">{JSON.stringify(commentsCount)}</Pill>
+            </div>
           </Tooltip>
         </div>
       )}

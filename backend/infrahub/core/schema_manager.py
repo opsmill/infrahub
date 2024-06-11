@@ -475,7 +475,8 @@ class SchemaBranch:
         self.process_inheritance()
         self.process_hierarchy()
         self.process_branch_support()
-        self.add_profile_schemas()
+        self.manage_profile_schemas()
+        self.add_profile_relationships()
 
     def process_validate(self) -> None:
         self.validate_names()
@@ -493,7 +494,6 @@ class SchemaBranch:
     def process_post_validation(self) -> None:
         self.add_groups()
         self.add_hierarchy()
-        self.add_profile_relationships()
         self.process_filters()
         self.generate_weight()
         self.process_labels()
@@ -1171,8 +1171,9 @@ class SchemaBranch:
             node.filters = self.generate_filters(schema=node, include_relationships=True)
 
             for rel in node.relationships:
-                peer_schema = self.get(name=rel.peer, duplicate=False)
-                if not peer_schema:
+                try:
+                    peer_schema = self.get(name=rel.peer, duplicate=False)
+                except SchemaNotFoundError:
                     continue
 
                 rel.filters = self.generate_filters(schema=peer_schema, include_relationships=False)
@@ -1378,7 +1379,7 @@ class SchemaBranch:
 
             self.set(name=node_name, schema=node)
 
-    def add_profile_schemas(self) -> None:
+    def manage_profile_schemas(self) -> None:
         if not self.has(name=InfrahubKind.PROFILE):
             core_profile_schema = GenericSchema(**core_profile_schema_definition)
             self.set(name=core_profile_schema.kind, schema=core_profile_schema)
@@ -1388,7 +1389,11 @@ class SchemaBranch:
         profile_schema_kinds = set()
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
-            if node.namespace in RESTRICTED_NAMESPACES:
+            if node.namespace in RESTRICTED_NAMESPACES or not node.generate_profile:
+                try:
+                    self.delete(name=self._get_profile_kind(node_kind=node.kind))
+                except SchemaNotFoundError:
+                    ...
                 continue
 
             profile = self.generate_profile_from_node(node=node)
@@ -1421,25 +1426,33 @@ class SchemaBranch:
     def add_profile_relationships(self) -> None:
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
-            if node.namespace in RESTRICTED_NAMESPACES:
-                continue
+            profile_relationship = None
+            for rel in node.relationships:
+                if rel.name == "profiles":
+                    profile_relationship = rel
+                    break
+            needs_profile_relationship = True
+            if node.namespace in RESTRICTED_NAMESPACES or not node.generate_profile:
+                needs_profile_relationship = False
 
-            if "profiles" in node.relationship_names:
-                continue
-
-            # Add relationship between node and profile
-            node.relationships.append(
-                RelationshipSchema(
-                    name="profiles",
-                    identifier="node__profile",
-                    peer=self._get_profile_kind(node_kind=node.kind),
-                    kind=RelationshipKind.PROFILE,
-                    cardinality=RelationshipCardinality.MANY,
-                    branch=BranchSupportType.AWARE,
+            if needs_profile_relationship and profile_relationship:
+                # set the peer kind in case this schema has been renamed
+                profile_relationship.peer = self._get_profile_kind(node_kind=node.kind)
+            elif not needs_profile_relationship and profile_relationship:
+                node.relationships = [rel for rel in node.relationships if rel.name != "profiles"]
+            elif needs_profile_relationship and not profile_relationship:
+                # Add relationship between node and profile
+                node.relationships.append(
+                    RelationshipSchema(
+                        name="profiles",
+                        identifier="node__profile",
+                        peer=self._get_profile_kind(node_kind=node.kind),
+                        kind=RelationshipKind.PROFILE,
+                        cardinality=RelationshipCardinality.MANY,
+                        branch=BranchSupportType.AWARE,
+                    )
                 )
-            )
-
-        # Add relationship between group and profile
+                # Add relationship between group and profile
 
     def _get_profile_kind(self, node_kind: str) -> str:
         return f"Profile{node_kind}"
@@ -1585,8 +1598,15 @@ class SchemaManager(NodeManager):
         except SchemaNotFoundError:
             return False
 
-    def get(self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True) -> MainSchemaTypes:
+    def get(
+        self,
+        name: str,
+        branch: Optional[Union[Branch, str]] = None,
+        duplicate: bool = True,
+        check_branch_only: bool = False,
+    ) -> MainSchemaTypes:
         # For now we assume that all branches are present, will see how we need to pull new branches later.
+        check_branch_only = check_branch_only and bool(branch)
         branch = registry.get_branch_from_registry(branch=branch)
 
         if branch.name in self._branches:
@@ -1594,6 +1614,11 @@ class SchemaManager(NodeManager):
                 return self._branches[branch.name].get(name=name, duplicate=duplicate)
             except SchemaNotFoundError:
                 pass
+
+        if check_branch_only:
+            raise SchemaNotFoundError(
+                branch_name=branch.name, identifier=name, message=f"Unable to find the schema {name!r} in the registry"
+            )
 
         default_branch = registry.default_branch
         return self._branches[default_branch].get(name=name, duplicate=duplicate)

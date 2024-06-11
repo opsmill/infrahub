@@ -1,15 +1,10 @@
-import { useAtomValue } from "jotai";
-import {
-  genericsState,
-  IModelSchema,
-  menuFlatAtom,
-  schemaState,
-} from "../../state/atoms/schema.atom";
-import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-anywhere";
-import { MenuItem } from "../../screens/layout/sidebar/desktop-menu";
-import { constructPath } from "../../utils/fetch";
+import { Badge } from "@/components/ui/badge";
+import { MenuItem } from "@/screens/layout/sidebar/desktop-menu";
+import { genericsState, IModelSchema, menuFlatAtom, schemaState } from "@/state/atoms/schema.atom";
+import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
-import { Badge } from "../ui/badge";
+import { useAtomValue } from "jotai";
+import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-anywhere";
 
 type SearchProps = {
   query: string;

@@ -1,4 +1,4 @@
-import { iNodeSchema } from "../state/atoms/schema.atom";
+import { iNodeSchema } from "@/state/atoms/schema.atom";
 
 export type MutationMode = "create" | "update";
 

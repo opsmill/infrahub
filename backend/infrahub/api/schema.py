@@ -216,8 +216,12 @@ async def get_json_schema_by_kind(
 
         default_value = attr.default_value if attr.optional else ...
         field_info = Field(default=default_value, description=attr.description)
-        if attr.enum:
-            extras: dict[str, Any] = {"enum": attr.enum}
+        if attr.enum or attr.kind == "Dropdown":
+            extras: dict[str, Any]
+            if attr.kind == "Dropdown" and attr.choices:
+                extras = {"enum": [choice.name for choice in attr.choices]}
+            else:
+                extras = {"enum": attr.enum}
             # ignore types because mypy hates generic kwargs
             field_info = Field(default=default_value, description=attr.description, **extras)
         fields[attr.name] = (field_type, field_info)

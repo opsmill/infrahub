@@ -1,21 +1,21 @@
-import { Link, useParams } from "react-router-dom";
-import { useTitle } from "../../../hooks/useTitle";
-import useQuery from "../../../hooks/useQuery";
-import { CoreGraphQlQuery } from "../../../generated/graphql";
-import { useAtomValue } from "jotai/index";
-import { iNodeSchema, schemaState } from "../../../state/atoms/schema.atom";
-import { GRAPHQL_QUERY_OBJECT } from "../../../config/constants";
-import GraphQLQueryDetailsPageSkeleton from "./graphql-query-details-page-skeleton";
-import { getSchemaObjectColumns } from "../../../utils/getSchemaObjectColumns";
+import { ObjectHelpButton } from "@/components/menu/object-help-button";
+import { GRAPHQL_QUERY_OBJECT } from "@/config/constants";
+import { CoreGraphQlQuery } from "@/generated/graphql";
+import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
+import useQuery from "@/hooks/useQuery";
+import { useTitle } from "@/hooks/useTitle";
+import NoDataFound from "@/screens/errors/no-data-found";
+import GraphqlQueryDetailsCard from "@/screens/graphql/details/graphql-query-details-card";
+import GraphQLQueryDetailsPageSkeleton from "@/screens/graphql/details/graphql-query-details-page-skeleton";
+import GraphqlQueryViewerCard from "@/screens/graphql/details/graphql-query-viewer-card";
+import Content from "@/screens/layout/content";
+import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
+import { constructPath } from "@/utils/fetch";
+import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
-import { getObjectDetailsPaginated } from "../../../graphql/queries/objects/getObjectDetails";
-import Content from "../../layout/content";
-import { constructPath } from "../../../utils/fetch";
 import { Icon } from "@iconify-icon/react";
-import { ObjectHelpButton } from "../../../components/menu/object-help-button";
-import GraphqlQueryDetailsCard from "./graphql-query-details-card";
-import GraphqlQueryViewerCard from "./graphql-query-viewer-card";
-import NoDataFound from "../../errors/no-data-found";
+import { useAtomValue } from "jotai/index";
+import { Link, useParams } from "react-router-dom";
 
 const GraphqlQueryDetailsPage = () => {
   useTitle("GraphQL Query details");

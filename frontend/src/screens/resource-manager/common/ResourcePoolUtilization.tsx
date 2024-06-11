@@ -1,9 +1,9 @@
 import MultipleProgressBar, {
   MultipleProgressBarProps,
-} from "../../../components/stats/multiple-progress-bar";
-import { classNames } from "../../../utils/common";
-import { roundNumber } from "../../../utils/number";
-import { Tooltip } from "../../../components/ui/tooltip";
+} from "@/components/stats/multiple-progress-bar";
+import { Tooltip } from "@/components/ui/tooltip";
+import { classNames } from "@/utils/common";
+import { roundNumber } from "@/utils/number";
 
 interface ResourcePoolUtilizationProps extends Omit<MultipleProgressBarProps, "elements"> {
   utilizationOverall: number;

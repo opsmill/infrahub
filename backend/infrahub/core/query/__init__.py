@@ -501,7 +501,7 @@ class Query(ABC):
             raise ValueError(f"unknown value for {self.type}")
 
         if not results and self.raise_error_if_empty:
-            raise QueryError(query_str, self.params)
+            raise QueryError(query=query_str, params=self.params)
 
         self.results = [QueryResult(data=result, labels=self.return_labels) for result in results]
         self.has_been_executed = True
@@ -542,7 +542,7 @@ class Query(ABC):
         results = await db.execute_query(query=self.get_count_query(), params=self.params, name=f"{self.name}_count")
 
         if not results and self.raise_error_if_empty:
-            raise QueryError(self.get_count_query(), self.params)
+            raise QueryError(query=self.get_count_query(), params=self.params)
 
         return results[0][0]
 

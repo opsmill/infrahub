@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import logging
+import warnings
 from functools import wraps
 from time import sleep
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
@@ -29,7 +30,7 @@ from infrahub_sdk.exceptions import (
     ServerNotReachableError,
     ServerNotResponsiveError,
 )
-from infrahub_sdk.graphql import Query
+from infrahub_sdk.graphql import Mutation, Query
 from infrahub_sdk.node import (
     InfrahubNode,
     InfrahubNodeSync,
@@ -217,30 +218,20 @@ class BaseClient:
 
     def _build_ip_address_allocation_query(
         self, resource_pool_id: str, identifier: Optional[str] = None, data: Optional[Dict[str, Any]] = None
-    ) -> str:
-        mutation_definition = "mutation AllocateIPAddress"
-        mutation_parameters = f'id: "{resource_pool_id}"'
-        if identifier:
-            mutation_parameters += f', identifier: "{identifier}"'
-        if data:
-            mutation_definition += "($data: GenericScalar)"
-            mutation_parameters += ", data: $data"
+    ) -> Mutation:
+        input_data: dict[str, Any] = {"id": resource_pool_id}
 
-        return """
-            %s {
-                IPAddressPoolGetResource(data: {
-                    %s
-                }) {
-                    ok
-                    node {
-                        id
-                        kind
-                        identifier
-                        display_label
-                    }
-                }
-            }
-        """ % (mutation_definition, mutation_parameters)
+        if identifier:
+            input_data["identifier"] = identifier
+        if data:
+            input_data["data"] = data
+
+        return Mutation(
+            name="AllocateIPAddress",
+            mutation="IPAddressPoolGetResource",
+            query={"ok": None, "node": {"id": None, "kind": None, "identifier": None, "display_label": None}},
+            input_data={"data": input_data},
+        )
 
     def _build_ip_prefix_allocation_query(
         self,
@@ -249,34 +240,24 @@ class BaseClient:
         prefix_length: Optional[int] = None,
         member_type: Optional[str] = None,
         data: Optional[Dict[str, Any]] = None,
-    ) -> str:
-        mutation_definition = "mutation AllocateIPPrefix"
-        mutation_parameters = f'id: "{resource_pool_id}"'
-        if identifier:
-            mutation_parameters += f', identifier: "{identifier}"'
-        if prefix_length:
-            mutation_parameters += f", prefix_length: {prefix_length}"
-        if member_type:
-            mutation_parameters += f', member_type: "{member_type}"'
-        if data:
-            mutation_definition += "($data: GenericScalar)"
-            mutation_parameters += ", data: $data"
+    ) -> Mutation:
+        input_data: dict[str, Any] = {"id": resource_pool_id}
 
-        return """
-            %s {
-                IPPrefixPoolGetResource(data: {
-                    %s
-                }) {
-                    ok
-                    node {
-                        id
-                        kind
-                        identifier
-                        display_label
-                    }
-                }
-            }
-        """ % (mutation_definition, mutation_parameters)
+        if identifier:
+            input_data["identifier"] = identifier
+        if prefix_length:
+            input_data["prefix_length"] = prefix_length
+        if member_type:
+            input_data["member_type"] = member_type
+        if data:
+            input_data["data"] = data
+
+        return Mutation(
+            name="AllocateIPPrefix",
+            mutation="IPPrefixPoolGetResource",
+            query={"ok": None, "node": {"id": None, "kind": None, "identifier": None, "display_label": None}},
+            input_data={"data": input_data},
+        )
 
 
 class InfrahubClient(BaseClient):
@@ -299,6 +280,11 @@ class InfrahubClient(BaseClient):
         address: str = "",
         config: Optional[Union[Config, Dict[str, Any]]] = None,
     ) -> InfrahubClient:
+        warnings.warn(
+            "InfrahubClient.init has been deprecated and will be removed in Infrahub SDK 0.14.0 or the next major version",
+            DeprecationWarning,
+            stacklevel=1,
+        )
         return cls(address=address, config=config)
 
     async def create(
@@ -899,12 +885,11 @@ class InfrahubClient(BaseClient):
             resource_pool_id=resource_pool.id, identifier=identifier, data=data
         )
         response = await self.execute_graphql(
-            query=query,
+            query=query.render(),
             branch_name=branch,
             timeout=timeout,
             tracker=tracker,
             raise_for_error=raise_for_error,
-            variables={"data": data},
         )
 
         if response[mutation_name]["ok"]:
@@ -953,12 +938,7 @@ class InfrahubClient(BaseClient):
             data=data,
         )
         response = await self.execute_graphql(
-            query=query,
-            branch_name=branch,
-            timeout=timeout,
-            tracker=tracker,
-            raise_for_error=raise_for_error,
-            variables={"data": data},
+            query=query.render(), branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
         )
 
         if response[mutation_name]["ok"]:
@@ -1051,6 +1031,11 @@ class InfrahubClientSync(BaseClient):
         address: str = "",
         config: Optional[Union[Config, Dict[str, Any]]] = None,
     ) -> InfrahubClientSync:
+        warnings.warn(
+            "InfrahubClientSync.init has been deprecated and will be removed in Infrahub SDK 0.14.0 or the next major version",
+            DeprecationWarning,
+            stacklevel=1,
+        )
         return cls(address=address, config=config)
 
     def create(
@@ -1514,12 +1499,7 @@ class InfrahubClientSync(BaseClient):
             resource_pool_id=resource_pool.id, identifier=identifier, data=data
         )
         response = self.execute_graphql(
-            query=query,
-            branch_name=branch,
-            timeout=timeout,
-            tracker=tracker,
-            raise_for_error=raise_for_error,
-            variables={"data": data},
+            query=query.render(), branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
         )
 
         if response[mutation_name]["ok"]:
@@ -1568,12 +1548,7 @@ class InfrahubClientSync(BaseClient):
             data=data,
         )
         response = self.execute_graphql(
-            query=query,
-            branch_name=branch,
-            timeout=timeout,
-            tracker=tracker,
-            raise_for_error=raise_for_error,
-            variables={"data": data},
+            query=query.render(), branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
         )
 
         if response[mutation_name]["ok"]:

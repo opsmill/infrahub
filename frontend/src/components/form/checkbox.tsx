@@ -1,21 +1,24 @@
+import { QuestionMark } from "@/components/display/question-mark";
+import { Checkbox } from "@/components/inputs/checkbox";
+import { components } from "@/infraops";
+import { FormFieldError } from "@/screens/edit-form-hook/form";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
-import { FormFieldError } from "../../screens/edit-form-hook/form";
-import { QuestionMark } from "../display/question-mark";
-import { Checkbox } from "../inputs/checkbox";
 
 interface Props {
   label: string;
-  description?: string;
   value: boolean;
   onChange: (value: boolean) => void;
   error?: FormFieldError;
   isProtected?: boolean;
   isOptional?: boolean;
+  field:
+    | components["schemas"]["AttributeSchema-Output"]
+    | components["schemas"]["RelationshipSchema-Output"];
 }
 
 export default function OpsCheckbox(props: Props) {
-  const { label, description, onChange, value, error, isProtected, isOptional } = props;
+  const { label, onChange, value, error, isProtected, isOptional, field } = props;
   const [enabled, setEnabled] = useState(value);
 
   return (
@@ -25,7 +28,7 @@ export default function OpsCheckbox(props: Props) {
           {label} {isOptional ? "" : "*"}
         </label>
         <div className="ml-2"> {isProtected ? <LockClosedIcon className="w-4 h-4" /> : null} </div>
-        <QuestionMark message={description} />
+        <QuestionMark message={field?.description} />
       </div>
       <div className="relative flex items-center">
         <Checkbox

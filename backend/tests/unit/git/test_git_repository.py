@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from git import Repo
-from infrahub_sdk import UUIDT, InfrahubNode
+from infrahub_sdk import UUIDT, Config, InfrahubClient, InfrahubNode
 from infrahub_sdk.branch import BranchData
 
 from infrahub.core.constants import InfrahubKind
@@ -15,23 +15,25 @@ from infrahub.exceptions import (
     TransformError,
 )
 from infrahub.git import (
-    BRANCHES_DIRECTORY_NAME,
-    COMMITS_DIRECTORY_NAME,
-    TEMPORARY_DIRECTORY_NAME,
     ArtifactGenerateResult,
     CheckDefinitionInformation,
     GraphQLQueryInformation,
     InfrahubRepository,
     RepoFileInformation,
-    Worktree,
     extract_repo_file_information,
 )
+from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
+from infrahub.git.worktree import Worktree
 from infrahub.utils import find_first_file_in_directory
+from tests.helpers.test_client import dummy_async_request
 
 
 async def test_directories_props(git_upstream_repo_01, git_repos_dir):
     repo = await InfrahubRepository.new(
-        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=git_upstream_repo_01["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     assert repo.directory_root == os.path.join(git_repos_dir, git_upstream_repo_01["name"])
@@ -42,7 +44,10 @@ async def test_directories_props(git_upstream_repo_01, git_repos_dir):
 
 async def test_new_empty_dir(git_upstream_repo_01, git_repos_dir):
     repo = await InfrahubRepository.new(
-        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=git_upstream_repo_01["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     # Check if all the directories are present
@@ -58,7 +63,10 @@ async def test_new_existing_directory(git_upstream_repo_01, git_repos_dir):
     Path(os.path.join(git_repos_dir, git_upstream_repo_01["name"], "file1.txt")).touch()
 
     repo = await InfrahubRepository.new(
-        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=git_upstream_repo_01["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     # Check if all the directories are present
@@ -73,7 +81,10 @@ async def test_new_existing_file(git_upstream_repo_01, git_repos_dir):
     Path(os.path.join(git_repos_dir, git_upstream_repo_01["name"])).touch()
 
     repo = await InfrahubRepository.new(
-        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=git_upstream_repo_01["path"],
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     # Check if all the directories are present

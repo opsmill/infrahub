@@ -1,19 +1,19 @@
+import { Button } from "@/components/buttons/button";
+import { BUTTON_TYPES, RoundedButton } from "@/components/buttons/rounded-button";
+import { SidePanelTitle } from "@/components/display/sidepanel-title";
+import SlideOver from "@/components/display/slide-over";
+import { Tooltip } from "@/components/ui/tooltip";
+import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
+import { getProposedChangesObjectThreads } from "@/graphql/queries/proposed-changes/getProposedChangesObjectThreads";
+import { useAuth } from "@/hooks/useAuth";
+import useQuery from "@/hooks/useQuery";
+import { schemaState } from "@/state/atoms/schema.atom";
+import { getThreadLabel, getThreadTitle } from "@/utils/diff";
 import { gql } from "@apollo/client";
 import { ChatBubbleLeftIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Button } from "../../components/buttons/button";
-import { BUTTON_TYPES, RoundedButton } from "../../components/buttons/rounded-button";
-import { SidePanelTitle } from "../../components/display/sidepanel-title";
-import SlideOver from "../../components/display/slide-over";
-import { Tooltip, TooltipPosition } from "../../components/utils/tooltip";
-import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "../../config/constants";
-import { useAuth } from "../../hooks/useAuth";
-import { getProposedChangesObjectThreads } from "../../graphql/queries/proposed-changes/getProposedChangesObjectThreads";
-import useQuery from "../../hooks/useQuery";
-import { schemaState } from "../../state/atoms/schema.atom";
-import { getThreadLabel, getThreadTitle } from "../../utils/diff";
 import { DiffContext } from "./data-diff";
 import { DataDiffComments } from "./diff-comments";
 
@@ -65,7 +65,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
       {thread?.comments?.count ? (
         <div className="flex items-center cursor-pointer">
           <ChatBubbleLeftIcon className="h-5 w-5 mr-1" />
-          <Tooltip message={"Add comment"} position={TooltipPosition.RIGHT}>
+          <Tooltip enabled content={"Add comment"}>
             <RoundedButton
               disabled={!auth?.permissions?.write}
               onClick={() => {
@@ -81,7 +81,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
         </div>
       ) : (
         <div className="cursor-pointer hidden group-hover:block">
-          <Tooltip message={"Add comment"} position={TooltipPosition.RIGHT}>
+          <Tooltip enabled content={"Add comment"}>
             <RoundedButton
               disabled={!auth?.permissions?.write}
               onClick={() => {

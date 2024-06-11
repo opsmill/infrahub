@@ -125,7 +125,7 @@ async def initialization(db: InfrahubDatabase) -> None:
                 branch=default_branch.name,
             )
 
-        for branch in registry.branch.values():
+        for branch in list(registry.branch.values()):
             if branch.name in [default_branch.name, GLOBAL_BRANCH_NAME]:
                 continue
 

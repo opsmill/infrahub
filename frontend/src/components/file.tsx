@@ -1,10 +1,10 @@
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import NoDataFound from "@/screens/errors/no-data-found";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { fetchStream } from "@/utils/fetch";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import NoDataFound from "../screens/errors/no-data-found";
-import LoadingScreen from "../screens/loading-screen/loading-screen";
-import { fetchStream } from "../utils/fetch";
 import { CodeEditor } from "./editor/code-editor";
-import { ALERT_TYPES, Alert } from "./utils/alert";
 
 type tFile = {
   url: string;

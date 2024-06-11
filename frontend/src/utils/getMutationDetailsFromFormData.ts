@@ -1,6 +1,6 @@
+import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { iNodeSchema } from "@/state/atoms/schema.atom";
 import * as R from "ramda";
-import { SCHEMA_ATTRIBUTE_KIND } from "../config/constants";
-import { iNodeSchema } from "../state/atoms/schema.atom";
 
 export type MutationMode = "create" | "update";
 

@@ -1,4 +1,4 @@
-import { getChecksStats } from "../../../utils/checks";
+import { getChecksStats } from "@/utils/checks";
 
 type tValidatorChecksProgressProps = {
   checks: any[];

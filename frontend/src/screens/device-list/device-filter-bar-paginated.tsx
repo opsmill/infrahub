@@ -1,10 +1,10 @@
+import { Button } from "@/components/buttons/button";
+import { BADGE_TYPES, Badge } from "@/components/display/badge";
+import { SEARCH_FILTERS } from "@/config/constants";
+import { iComboBoxFilter } from "@/graphql/variables/filtersVar";
+import useFilters from "@/hooks/useFilters";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
-import { Button } from "../../components/buttons/button";
-import { BADGE_TYPES, Badge } from "../../components/display/badge";
-import { SEARCH_FILTERS } from "../../config/constants";
-import { iComboBoxFilter } from "../../graphql/variables/filtersVar";
-import useFilters from "../../hooks/useFilters";
 import DeviceFilterBarContent from "./device-filter-bar-content";
 
 // const sortOptions = [

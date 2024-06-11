@@ -657,7 +657,7 @@ class IPNetwork(BaseAttribute):
 
     @staticmethod
     def get_allowed_property_in_path() -> list[str]:
-        return ["value", "version", "binary_address"]
+        return ["value", "version", "binary_address", "prefixlen"]
 
     @property
     def obj(self) -> Union[ipaddress.IPv4Network, ipaddress.IPv6Network]:

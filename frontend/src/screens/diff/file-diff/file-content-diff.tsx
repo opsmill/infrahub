@@ -1,3 +1,27 @@
+import { Button } from "@/components/buttons/button";
+import { AddComment } from "@/components/conversations/add-comment";
+import { Thread } from "@/components/conversations/thread";
+import Accordion from "@/components/display/accordion";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { CONFIG } from "@/config/config";
+import {
+  PROPOSED_CHANGES_FILE_THREAD_OBJECT,
+  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+} from "@/config/constants";
+import { QSP } from "@/config/qsp";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { createObject } from "@/graphql/mutations/objects/createObject";
+import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
+import { getProposedChangesFilesThreads } from "@/graphql/queries/proposed-changes/getProposedChangesFilesThreads";
+import { useAuth } from "@/hooks/useAuth";
+import useQuery from "@/hooks/useQuery";
+import ErrorScreen from "@/screens/errors/error-screen";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { schemaState } from "@/state/atoms/schema.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
+import { fetchStream } from "@/utils/fetch";
+import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { formatISO } from "date-fns";
@@ -11,30 +35,6 @@ import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Button } from "../../../components/buttons/button";
-import { AddComment } from "../../../components/conversations/add-comment";
-import { Thread } from "../../../components/conversations/thread";
-import Accordion from "../../../components/display/accordion";
-import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
-import { CONFIG } from "../../../config/config";
-import {
-  PROPOSED_CHANGES_FILE_THREAD_OBJECT,
-  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-} from "../../../config/constants";
-import { QSP } from "../../../config/qsp";
-import graphqlClient from "../../../graphql/graphqlClientApollo";
-import { createObject } from "../../../graphql/mutations/objects/createObject";
-import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
-import { getProposedChangesFilesThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesFilesThreads";
-import { useAuth } from "../../../hooks/useAuth";
-import useQuery from "../../../hooks/useQuery";
-import { currentBranchAtom } from "../../../state/atoms/branches.atom";
-import { schemaState } from "../../../state/atoms/schema.atom";
-import { datetimeAtom } from "../../../state/atoms/time.atom";
-import { fetchStream } from "../../../utils/fetch";
-import { stringifyWithoutQuotes } from "../../../utils/string";
-import ErrorScreen from "../../errors/error-screen";
-import LoadingScreen from "../../loading-screen/loading-screen";
 
 const fakeIndex = () => {
   return sha(Math.random() * 100000).slice(0, 9);

@@ -1,12 +1,12 @@
+import { QuestionMark } from "@/components/display/question-mark";
+import { ColorPicker } from "@/components/inputs/color-picker";
+import { components } from "@/infraops";
+import { FormFieldError } from "@/screens/edit-form-hook/form";
+import { classNames } from "@/utils/common";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
-import { FormFieldError } from "../../screens/edit-form-hook/form";
-import { classNames } from "../../utils/common";
-import { QuestionMark } from "../display/question-mark";
-import { ColorPicker } from "../inputs/color-picker";
 
 type OpsColorPickerProps = {
   label: string;
-  description?: string;
   value: string;
   onChange: (value: string) => void;
   className?: string;
@@ -15,20 +15,14 @@ type OpsColorPickerProps = {
   isOptional?: boolean;
   isUnique?: boolean;
   disabled?: boolean;
+  field:
+    | components["schemas"]["AttributeSchema-Output"]
+    | components["schemas"]["RelationshipSchema-Output"];
 };
 
 export const OpsColorPicker = (props: OpsColorPickerProps) => {
-  const {
-    className,
-    onChange,
-    value,
-    label,
-    description,
-    error,
-    isProtected,
-    isOptional,
-    disabled,
-  } = props;
+  const { className, onChange, value, label, error, isProtected, isOptional, disabled, field } =
+    props;
 
   return (
     <>
@@ -37,7 +31,7 @@ export const OpsColorPicker = (props: OpsColorPickerProps) => {
           {label} {!isOptional && "*"}
         </label>
         {isProtected && <LockClosedIcon className="w-4 h-4" />}
-        <QuestionMark message={description} />
+        <QuestionMark message={field?.description} />
       </div>
       <ColorPicker
         onChange={onChange}

@@ -1,6 +1,6 @@
-import { AccountMenu } from "../../components/account-menu";
-import { SearchAnywhere } from "../../components/search/search-anywhere";
-import { TimeFrameSelector } from "../../components/time-selector";
+import { AccountMenu } from "@/components/account-menu";
+import { SearchAnywhere } from "@/components/search/search-anywhere";
+import { TimeFrameSelector } from "@/components/time-selector";
 
 export default function Header() {
   return (

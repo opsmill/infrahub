@@ -1,7 +1,7 @@
+import { IModelSchema } from "@/state/atoms/schema.atom";
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
 import * as R from "ramda";
-import { IModelSchema } from "../state/atoms/schema.atom";
+import { twMerge } from "tailwind-merge";
 
 export const classNames = (...classes: ClassValue[]) => {
   return twMerge(clsx(classes));

@@ -1,5 +1,5 @@
+import { Tooltip } from "@/components/ui/tooltip";
 import { differenceInDays, format, formatDistanceToNow } from "date-fns";
-import { Tooltip } from "../utils/tooltip";
 
 type DateDisplayProps = {
   date?: number | string | Date;
@@ -23,7 +23,7 @@ export const DateDisplay = (props: DateDisplayProps) => {
   if (distanceFromNow > 7) {
     return (
       <span className="flex items-center flex-wrap">
-        <Tooltip message={getDateDisplay(date)}>
+        <Tooltip enabled content={getDateDisplay(date)}>
           <span className="text-xs font-normal">{format(dateData, "MMM d")}</span>
         </Tooltip>
       </span>
@@ -32,7 +32,7 @@ export const DateDisplay = (props: DateDisplayProps) => {
 
   return (
     <span className="flex items-center flex-wrap">
-      <Tooltip message={getDateDisplay(date)}>
+      <Tooltip enabled content={getDateDisplay(date)}>
         <span className="text-xs font-normal">
           {formatDistanceToNow(dateData, { addSuffix: true })}
         </span>

@@ -1,23 +1,23 @@
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { GROUP_OBJECT } from "@/config/constants";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { addRelationship } from "@/graphql/mutations/relationships/addRelationship";
+import { removeRelationship } from "@/graphql/mutations/relationships/removeRelationship";
+import { getGroups } from "@/graphql/queries/groups/getGroups";
+import useQuery from "@/hooks/useQuery";
+import EditFormHookComponent from "@/screens/edit-form-hook/edit-form-hook-component";
+import ErrorScreen from "@/screens/errors/error-screen";
+import NoDataFound from "@/screens/errors/no-data-found";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
+import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/utils/alert";
-import { GROUP_OBJECT } from "../../config/constants";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
-import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
-import { getGroups } from "../../graphql/queries/groups/getGroups";
-import useQuery from "../../hooks/useQuery";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
-import { stringifyWithoutQuotes } from "../../utils/string";
-import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
-import ErrorScreen from "../errors/error-screen";
-import NoDataFound from "../errors/no-data-found";
-import LoadingScreen from "../loading-screen/loading-screen";
 
 interface Props {
   closeDrawer: Function;

@@ -33,14 +33,14 @@ if TYPE_CHECKING:
 class Registry:
     id: Optional[str] = None
     attribute: Dict[str, BaseAttribute] = field(default_factory=dict)
-    branch: dict = field(default_factory=dict)
+    branch: dict[str, Branch] = field(default_factory=dict)
     node: dict = field(default_factory=dict)
     _default_branch: Optional[str] = None
     _default_ipnamespace: Optional[str] = None
     _schema: Optional[SchemaManager] = None
     default_graphql_type: Dict[str, InfrahubObject] = field(default_factory=dict)
     graphql_type: dict = field(default_factory=lambda: defaultdict(dict))
-    data_type: Dict[str, InfrahubDataType] = field(default_factory=dict)
+    data_type: Dict[str, Type[InfrahubDataType]] = field(default_factory=dict)
     input_type: Dict[str, Union[BaseAttributeCreate, BaseAttributeUpdate]] = field(default_factory=dict)
     account: dict = field(default_factory=dict)
     account_id: dict = field(default_factory=dict)
@@ -126,7 +126,7 @@ class Registry:
     def get_data_type(
         self,
         name: str,
-    ) -> InfrahubDataType:
+    ) -> Type[InfrahubDataType]:
         if name not in self.data_type:
             raise DataTypeNotFoundError(name=name)
         return self.data_type[name]

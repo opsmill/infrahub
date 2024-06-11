@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
 from infrahub.core.query import Query
 from infrahub.core.registry import registry
@@ -15,11 +15,11 @@ if TYPE_CHECKING:
 class AccountTokenValidateQuery(Query):
     name: str = "account_token_validate"
 
-    def __init__(self, token, **kwargs):
+    def __init__(self, token: str, **kwargs: Any):
         self.token = token
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         token_filter_perms, token_params = self.branch.get_query_filter_relationships(
             rel_labels=["r1", "r2"], at=self.at, include_outside_parentheses=True
         )
@@ -50,7 +50,7 @@ class AccountTokenValidateQuery(Query):
 
         self.return_labels = ["at", "av", "avr", "acc"]
 
-    def get_account_name(self):
+    def get_account_name(self) -> Optional[str]:
         """Return the account name that matched the query or None."""
         if result := self.get_result():
             return result.get("av").get("value")
@@ -73,9 +73,11 @@ class AccountTokenValidateQuery(Query):
 
 
 async def validate_token(
-    token, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, at=None
+    token: str,
+    db: InfrahubDatabase,
+    branch: Optional[Union[Branch, str]] = None,
 ) -> Tuple[Optional[str], str]:
     branch = await registry.get_branch(db=db, branch=branch)
-    query = await AccountTokenValidateQuery.init(db=db, branch=branch, token=token, at=at)
+    query = await AccountTokenValidateQuery.init(db=db, branch=branch, token=token)
     await query.execute(db=db)
     return query.get_account_id(), query.get_account_role()
