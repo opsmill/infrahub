@@ -77,7 +77,7 @@ class InfrahubJinja2TransformConfig(InfrahubRepositoryConfigElement):
 
     @property
     def payload(self) -> Dict[str, str]:
-        data = self.dict(exclude_none=True)
+        data = self.model_dump(exclude_none=True)
         data["template_path"] = self.template_path_value
         return data
 
