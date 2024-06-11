@@ -1,13 +1,13 @@
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import { GRAPHQL_QUERY_OBJECT } from "@/config/constants";
 import { CoreGraphQlQuery } from "@/generated/graphql";
-import GraphqlQueryDetailsCard from "@/graphql-query-details-card";
-import GraphQLQueryDetailsPageSkeleton from "@/graphql-query-details-page-skeleton";
-import GraphqlQueryViewerCard from "@/graphql-query-viewer-card";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import NoDataFound from "@/screens/errors/no-data-found";
+import GraphqlQueryDetailsCard from "@/screens/graphql/details/graphql-query-details-card";
+import GraphQLQueryDetailsPageSkeleton from "@/screens/graphql/details/graphql-query-details-page-skeleton";
+import GraphqlQueryViewerCard from "@/screens/graphql/details/graphql-query-viewer-card";
 import Content from "@/screens/layout/content";
 import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";

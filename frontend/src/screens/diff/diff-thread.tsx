@@ -2,7 +2,7 @@ import { Button } from "@/components/buttons/button";
 import { BUTTON_TYPES, RoundedButton } from "@/components/buttons/rounded-button";
 import { SidePanelTitle } from "@/components/display/sidepanel-title";
 import SlideOver from "@/components/display/slide-over";
-import { Tooltip, TooltipPosition } from "@/components/ui/tooltip";
+import { Tooltip } from "@/components/ui/tooltip";
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
 import { getProposedChangesObjectThreads } from "@/graphql/queries/proposed-changes/getProposedChangesObjectThreads";
 import { useAuth } from "@/hooks/useAuth";
@@ -65,7 +65,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
       {thread?.comments?.count ? (
         <div className="flex items-center cursor-pointer">
           <ChatBubbleLeftIcon className="h-5 w-5 mr-1" />
-          <Tooltip enabled content={"Add comment"} position={TooltipPosition.RIGHT}>
+          <Tooltip enabled content={"Add comment"}>
             <RoundedButton
               disabled={!auth?.permissions?.write}
               onClick={() => {
@@ -81,7 +81,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
         </div>
       ) : (
         <div className="cursor-pointer hidden group-hover:block">
-          <Tooltip enabled content={"Add comment"} position={TooltipPosition.RIGHT}>
+          <Tooltip enabled content={"Add comment"}>
             <RoundedButton
               disabled={!auth?.permissions?.write}
               onClick={() => {

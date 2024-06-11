@@ -6,12 +6,15 @@ import { CardWithBorder } from "@/components/ui/card";
 import { Link } from "@/components/ui/link";
 import { TASK_OBJECT } from "@/config/constants";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
-import { GET_KIND_FOR_RESOURCE_POOL, GET_RESOURCE_POOL_UTILIZATION } from "@/graphql/resource-pool";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
-import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/screens/ipam/ipam/constants";
+import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/screens/ipam/constants";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import {
+  GET_KIND_FOR_RESOURCE_POOL,
+  GET_RESOURCE_POOL_UTILIZATION,
+} from "@/screens/resource-manager/graphql/resource-pool";
 import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";

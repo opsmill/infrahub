@@ -3,7 +3,7 @@ import { Badge } from "@/components/display/badge";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Id } from "@/components/ui/id";
 import { Link } from "@/components/ui/link";
-import { Tooltip, TooltipPosition } from "@/components/ui/tooltip";
+import { Tooltip } from "@/components/ui/tooltip";
 import { DATA_CHECK_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
@@ -167,10 +167,7 @@ export const Conflict = (props: any) => {
                     {diffContent[action](property)}
 
                     <div className="ml-2">
-                      <Tooltip
-                        enabled
-                        content={"Open object in new tab"}
-                        position={TooltipPosition.LEFT}>
+                      <Tooltip enabled content={"Open object in new tab"}>
                         <Link to={url} target="_blank">
                           <ArrowTopRightOnSquareIcon className="h-4 w-4" />
                         </Link>
