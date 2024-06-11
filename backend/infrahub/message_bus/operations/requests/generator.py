@@ -6,7 +6,8 @@ from infrahub_sdk.schema import InfrahubGeneratorDefinitionConfig
 
 from infrahub import lock
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
-from infrahub.git.repository import extract_repo_file_information, get_initialized_repo
+from infrahub.git.base import extract_repo_file_information
+from infrahub.git.repository import get_initialized_repo
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 

@@ -14,15 +14,17 @@ from infrahub.exceptions import (
     RepositoryFileNotFoundError,
     TransformError,
 )
-from infrahub.git import (
-    ArtifactGenerateResult,
-    CheckDefinitionInformation,
-    GraphQLQueryInformation,
-    InfrahubRepository,
+from infrahub.git import InfrahubRepository
+from infrahub.git.base import (
     RepoFileInformation,
     extract_repo_file_information,
 )
 from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
+from infrahub.git.integrator import (
+    ArtifactGenerateResult,
+    CheckDefinitionInformation,
+    GraphQLQueryInformation,
+)
 from infrahub.git.worktree import Worktree
 from infrahub.utils import find_first_file_in_directory
 from tests.helpers.test_client import dummy_async_request
