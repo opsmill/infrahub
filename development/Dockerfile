@@ -32,12 +32,12 @@ FROM docker.io/node:20-slim AS frontend
 
 RUN mkdir /source
 
-COPY frontend/package.json  frontend/package-lock.json /source/
+COPY frontend/app/package.json  frontend/app/package-lock.json /source/
 
 WORKDIR /source
 
 RUN npm install --omit=dev
-COPY frontend/ /source/
+COPY frontend/app/ /source/
 RUN npm run build && npm cache clean --force \
 
 # ****************************************************************
@@ -73,14 +73,14 @@ RUN git config --global user.name "Infrahub" && \
     git config --global credential.usehttppath true && \
     git config --global credential.helper /usr/local/bin/infrahub-git-credential
 
-RUN mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/dist
+RUN mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/app/dist
 
 WORKDIR /source
 
 # --------------------------------------------
 # Import Frontend Build
 # --------------------------------------------
-COPY --from=frontend /source/dist/ /opt/infrahub/frontend/dist
+COPY --from=frontend /source/dist/ /opt/infrahub/frontend/app/dist
 
 # --------------------------------------------
 # Import Documentation Build
