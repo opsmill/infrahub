@@ -37,9 +37,9 @@ spec:
             - name: INFRAHUB_BROKER_PASSWORD
               value: {{ .Values.rabbitmq.auth.password | quote }}
             - name: INFRAHUB_CACHE_ADDRESS
-              value: "{{ include "infrahub-helm.fullname" . }}-cache.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
+              value: "{{ include "infrahub-helm.fullname" . }}-cache-master.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
             - name: INFRAHUB_CACHE_PORT
-              value: "{{ (index .Values.cache.ports 0).port }}"
+              value: "{{ .Values.redis.master.service.ports.redis }}"
             {{- range $key, $value := .Values.infrahubServer.infrahubServer.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}

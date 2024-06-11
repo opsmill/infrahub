@@ -26,6 +26,10 @@ dependencies:
     version: "5.19.0"
     repository: "https://helm.neo4j.com/neo4j/"
     condition: neo4j.enabled
+  - name: redis
+    version: "19.5.2"
+    repository: "oci://registry-1.docker.io/bitnamicharts"
+    condition: redis.enabled
   - name: rabbitmq
     version: "14.4.1"
     repository: "oci://registry-1.docker.io/bitnamicharts"

@@ -6,22 +6,20 @@ global:
   imagePullPolicy: IfNotPresent
 
 # ----------- Cache -----------
-cache:
+redis:
   enabled: true
-  type: ClusterIP
-  cache:
-    image:
-      repository: redis
-      tag: "7.2"
-  ports:
-    - name: "client"
-      port: 6379
-      targetPort: 6379
-    - name: "gossip"
-      port: 16379
-      targetPort: 16379
+  nameOverride: cache
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: false
+    service:
+      ports:
+        redis: 6379
 
-# ----------- Databse -----------
+# ----------- Database -----------
 neo4j:
   enabled: true
   nameOverride: database
@@ -46,7 +44,7 @@ neo4j:
           port: 7687
           targetPort: 7687
     admin:
-      enabled: true
+      enabled: false
   config:
     dbms.security.auth_minimum_password_length: "4"
     dbms.security.procedures.unrestricted: apoc.*
