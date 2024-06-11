@@ -10,7 +10,8 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import React from "react";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ButtonWithTooltip } from "./buttons/button-with-tooltip";
+
+import { ButtonWithTooltip } from "./buttons/button-primitive";
 import { SelectButton } from "./buttons/select-button";
 import BranchCreateForm from "./form/branch-create-form";
 import { SelectOption } from "./inputs/select";
