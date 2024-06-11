@@ -260,9 +260,9 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
     import jinja2
     from infrahub_sdk.config import ConfigBase
 
-    schema = ConfigBase.schema()
+    schema = ConfigBase.model_json_schema()
 
-    definitions = schema["definitions"]
+    definitions = schema["$defs"]
 
     properties = []
     for name, prop in schema["properties"].items():
@@ -307,7 +307,7 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
     import jinja2
     from infrahub_sdk.schema import InfrahubRepositoryConfig
 
-    schema = InfrahubRepositoryConfig.schema()
+    schema = InfrahubRepositoryConfig.model_json_schema()
 
     properties = [
         {
@@ -323,13 +323,17 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
         for name, property in schema["properties"].items()
     ]
 
-    definitions = deepcopy(schema["definitions"])
+    definitions = deepcopy(schema["$defs"])
 
-    for name, definition in schema["definitions"].items():
-        for property in definition["properties"].keys():
+    for name, definition in schema["$defs"].items():
+        for property, value in definition["properties"].items():
             definitions[name]["properties"][property]["required"] = (
                 True if property in definition["required"] else False
             )
+            if "anyOf" in value:
+                definitions[name]["properties"][property]["type"] = ", ".join(
+                    [i["type"] for i in value["anyOf"] if i["type"] != "null"]
+                )
 
     print(" - Generate Infrahub repository configuration documentation")
 
