@@ -201,8 +201,10 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
       {commentsCount && (
         <div className="flex items-center" data-cy="comments-count" data-testid="comments-count">
           <Tooltip enabled content={"Total number of comments"}>
-            <ChatBubbleLeftRightIcon className="w-4 h-4 mr-2" />
-            <Pill className="mr-2">{JSON.stringify(commentsCount)}</Pill>
+            <div className="flex">
+              <ChatBubbleLeftRightIcon className="w-4 h-4 mr-2" />
+              <Pill className="mr-2">{JSON.stringify(commentsCount)}</Pill>
+            </div>
           </Tooltip>
         </div>
       )}
