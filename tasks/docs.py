@@ -1,9 +1,11 @@
 import os
 import sys
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List
 
 from invoke import Context, task
+from pydantic_settings import BaseSettings, EnvSettingsSource
 
 from .shared import (
     BUILD_NAME,
@@ -255,13 +257,25 @@ def _generate_infrahub_schema_documentation() -> None:
         print(f"Docs saved to: {output_label}")
 
 
+def _get_env_vars(settings_group: BaseSettings) -> dict[str, str]:
+    env_vars: dict[str, list[str]] = defaultdict(list[str])
+    env_settings = EnvSettingsSource(settings_group, env_prefix=settings_group.model_config.get("env_prefix"))
+
+    for field_name, field in settings_group.model_fields.items():
+        for field_key, field_env_name, _ in env_settings._extract_field_info(field, field_name):
+            env_vars[field_key].append(field_env_name.upper())
+
+    return env_vars
+
+
 def _generate_infrahub_sdk_configuration_documentation() -> None:
     """Generate documentation for the Infrahub SDK configuration"""
     import jinja2
     from infrahub_sdk.config import ConfigBase
 
-    schema = ConfigBase.model_json_schema()
-
+    config = ConfigBase()
+    schema = config.model_json_schema()
+    env_vars = _get_env_vars(config)
     definitions = schema["$defs"]
 
     properties = []
@@ -281,7 +295,7 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
                 "type": prop.get("type", kind) or composed_type or "object",
                 "choices": choices,
                 "default": prop.get("default", ""),
-                "env_vars": list(prop.get("env_names", set())),
+                "env_vars": env_vars[name],
             }
         )
 

@@ -28,10 +28,7 @@ class ProxyMountsConfig(BaseSettings):
 
 class ConfigBase(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_", validate_assignment=True)
-    address: str = Field(
-        default="http://localhost:8000",
-        description="The URL to use when connecting to Infrahub.",
-    )
+    address: str = Field(default="http://localhost:8000", description="The URL to use when connecting to Infrahub.")
     api_token: Optional[str] = Field(default=None, description="API token for authentication against Infrahub.")
     echo_graphql_queries: bool = Field(
         default=False, description="If set the GraphQL query and variables will be echoed to the screen"
@@ -54,8 +51,7 @@ class ConfigBase(BaseSettings):
     retry_on_failure: bool = Field(default=False, description="Retry operation in case of failure")
     timeout: int = Field(default=10, description="Default connection timeout in seconds")
     transport: RequesterTransport = Field(
-        default=RequesterTransport.HTTPX,
-        description="Set an alternate transport using a predefined option",
+        default=RequesterTransport.HTTPX, description="Set an alternate transport using a predefined option"
     )
     proxy: Optional[str] = Field(default=None, description="Proxy address")
     proxy_mounts: Optional[ProxyMountsConfig] = Field(default=None, description="Proxy mounts configuration")
