@@ -14,11 +14,7 @@ from infrahub_sync import (
     SyncAdapter,
     SyncConfig,
 )
-
-try:
-    from diffsync import Adapter as DiffSync  # type: ignore[attr-defined]
-except ImportError:
-    from diffsync import DiffSync  # type: ignore[no-redef]
+from diffsync import Adapter
 
 if TYPE_CHECKING:
     from pynetbox.core.response import Record as NetboxRecord
@@ -36,7 +32,7 @@ def get_value(obj, name: str):
     return get_value(obj=sub_obj, name=remaining_part)
 
 
-class NetboxAdapter(DiffSyncMixin, DiffSync):
+class NetboxAdapter(DiffSyncMixin, Adapter):
     type = "Netbox"
 
     def __init__(self, *args, target: str, adapter: SyncAdapter, config: SyncConfig, **kwargs):

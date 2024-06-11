@@ -6,7 +6,7 @@ from infrahub_sdk import InfrahubClientSync
 from rich.console import Console
 
 from infrahub_sync.utils import get_all_sync, get_instance, get_potenda_from_instance, render_adapter
-
+from infrahub_sdk.exceptions import ServerNotResponsiveError
 app = typer.Typer()
 console = Console()
 
@@ -103,8 +103,23 @@ def generate(
     if not sync_instance:
         print_error_and_abort(f"Unable to find the sync {name}. Use the list command to see the sync available")
 
-    client = InfrahubClientSync()
-    schema = client.schema.all()
+    # TODO
+    # - Do not use the env variable token here if token is present in settings
+    # - Do not use `main` if the branch is indicated in the file
+    infrahub_address = None
+    if sync_instance.destination.name == "infrahub":
+        if sync_instance.destination.settings and isinstance(sync_instance.source.settings, dict):
+            infrahub_address = sync_instance.destination.settings["url"]
+    elif sync_instance.source.name == "infrahub":
+        if sync_instance.source.settings and isinstance(sync_instance.source.settings, dict):
+            infrahub_address = sync_instance.source.settings["url"]
+
+    client = InfrahubClientSync(address=infrahub_address)
+
+    try:
+        schema = client.schema.all()
+    except ServerNotResponsiveError as exc:
+        print_error_and_abort(str(exc))
 
     rendered_files = render_adapter(sync_instance=sync_instance, schema=schema)
     for template, output_path in rendered_files:

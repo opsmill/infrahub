@@ -1,10 +1,5 @@
 from typing import Any, Dict, List, Optional
-
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
-
+import pydantic
 
 class SchemaMappingField(pydantic.BaseModel):
     name: str
