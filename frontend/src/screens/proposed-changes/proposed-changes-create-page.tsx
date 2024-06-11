@@ -1,20 +1,9 @@
-import { useMutation } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { Navigate, useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
-import { LinkButton } from "../../components/buttons/button-primitive";
-import { Card } from "../../components/ui/card";
-import { ALERT_TYPES, Alert } from "../../components/utils/alert";
-import { CREATE_PROPOSED_CHANGE } from "../../graphql/mutations/proposed-changes/createProposedChange";
-import { GET_ALL_ACCOUNTS } from "../../graphql/queries/accounts/getAllAccounts";
-import { useAuth } from "../../hooks/useAuth";
-import { usePermission } from "../../hooks/usePermission";
-import useQuery from "../../hooks/useQuery";
-import { branchesState } from "../../state/atoms/branches.atom";
-import { branchesToSelectOptions } from "../../utils/branches";
-import { constructPath } from "../../utils/fetch";
-import Content from "../layout/content";
+import { LinkButton } from "@/components/buttons/button-primitive";
+import { MarkdownEditor } from "@/components/editor";
+import { Select } from "@/components/inputs/select";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Form,
   FormField,
@@ -22,11 +11,22 @@ import {
   FormLabel,
   FormMessage,
   FormSubmit,
-} from "../../components/ui/form";
-import { Input } from "../../components/ui/input";
-import { MarkdownEditor } from "../../components/editor";
-import { Select } from "../../components/inputs/select";
-import { Combobox } from "../../components/ui/combobox";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { CREATE_PROPOSED_CHANGE } from "@/graphql/mutations/proposed-changes/createProposedChange";
+import { GET_ALL_ACCOUNTS } from "@/graphql/queries/accounts/getAllAccounts";
+import { useAuth } from "@/hooks/useAuth";
+import { usePermission } from "@/hooks/usePermission";
+import useQuery from "@/hooks/useQuery";
+import Content from "@/screens/layout/content";
+import { branchesState } from "@/state/atoms/branches.atom";
+import { branchesToSelectOptions } from "@/utils/branches";
+import { constructPath } from "@/utils/fetch";
+import { useMutation } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { Navigate, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 const ProposedChangesCreatePage = () => {
   const permission = usePermission();

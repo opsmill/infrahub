@@ -1,12 +1,11 @@
-import React from "react";
-import { useAtom } from "jotai";
+import { QSP } from "@/config/qsp";
+import { Branch } from "@/generated/graphql";
+import { BRANCH_CREATE } from "@/graphql/mutations/branches/createBranch";
+import { branchesState } from "@/state/atoms/branches.atom";
 import { useMutation } from "@apollo/client";
+import { useAtom } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
 import DynamicForm from "./dynamic-form";
-import { BRANCH_CREATE } from "../../graphql/mutations/branches/createBranch";
-import { Branch } from "../../generated/graphql";
-import { branchesState } from "../../state/atoms/branches.atom";
-import { QSP } from "../../config/qsp";
 
 type BranchFormData = {
   name: string;

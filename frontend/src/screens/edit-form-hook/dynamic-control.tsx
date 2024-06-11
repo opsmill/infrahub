@@ -1,15 +1,15 @@
+import OpsCheckbox from "@/components/form/checkbox";
+import { OpsCodeEditor } from "@/components/form/code-editor";
+import { OpsColorPicker } from "@/components/form/color-picker";
+import { OpsDatePicker } from "@/components/form/date-picker";
+import { OpsInput } from "@/components/form/input";
+import OpsList from "@/components/form/list";
+import { OpsSelect } from "@/components/form/select";
+import { OpsSelect2Step } from "@/components/form/select-2-step";
+import OpsSwitch from "@/components/form/switch";
+import { OpsTextarea } from "@/components/form/textarea";
 import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
-import OpsCheckbox from "../../components/form/checkbox";
-import { OpsCodeEditor } from "../../components/form/code-editor";
-import { OpsColorPicker } from "../../components/form/color-picker";
-import { OpsDatePicker } from "../../components/form/date-picker";
-import { OpsInput } from "../../components/form/input";
-import OpsList from "../../components/form/list";
-import { OpsSelect } from "../../components/form/select";
-import { OpsSelect2Step } from "../../components/form/select-2-step";
-import OpsSwitch from "../../components/form/switch";
-import { OpsTextarea } from "../../components/form/textarea";
 import { DynamicFieldData } from "./dynamic-control-types";
 
 export const DynamicControl = (props: DynamicFieldData) => {

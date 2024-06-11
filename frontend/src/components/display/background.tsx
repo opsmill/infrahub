@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import { MouseEventHandler } from "react";
-import { classNames } from "../../utils/common";
 
 type tBackground = {
   onClick?: MouseEventHandler;

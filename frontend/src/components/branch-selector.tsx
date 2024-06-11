@@ -1,19 +1,20 @@
+import { DateDisplay } from "@/components/display/date-display";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { QSP } from "@/config/qsp";
+import { Branch } from "@/generated/graphql";
+import { usePermission } from "@/hooks/usePermission";
+import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
+import { branchesToSelectOptions } from "@/utils/branches";
+import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
-import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../config/qsp";
-import { Branch } from "../generated/graphql";
-import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
-import { branchesToSelectOptions } from "../utils/branches";
-import { classNames } from "../utils/common";
-import { SelectButton } from "./buttons/select-button";
-import { DateDisplay } from "./display/date-display";
-import { SelectOption } from "./inputs/select";
-import BranchCreateForm from "./form/branch-create-form";
-import { usePermission } from "../hooks/usePermission";
 import React from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { StringParam, useQueryParam } from "use-query-params";
+
 import { ButtonWithTooltip } from "./buttons/button-primitive";
+import { SelectButton } from "./buttons/select-button";
+import BranchCreateForm from "./form/branch-create-form";
+import { SelectOption } from "./inputs/select";
 
 const getBranchIcon = (branch: Branch | null, active?: Boolean) =>
   branch && (

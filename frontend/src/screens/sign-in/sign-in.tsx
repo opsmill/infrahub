@@ -1,11 +1,11 @@
-import { ReactComponent as InfrahubLogo } from "../../images/Infrahub-SVG-verti.svg";
+import DynamicForm from "@/components/form/dynamic-form";
+import { DynamicFieldProps } from "@/components/form/fields/common";
+import { Card } from "@/components/ui/card";
+import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { useAuth } from "@/hooks/useAuth";
+import { ReactComponent as InfrahubLogo } from "@/images/Infrahub-SVG-verti.svg";
+import Content from "@/screens/layout/content";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../../hooks/useAuth";
-import DynamicForm from "../../components/form/dynamic-form";
-import Content from "../layout/content";
-import { Card } from "../../components/ui/card";
-import { DynamicFieldProps } from "../../components/form/fields/common";
-import { SCHEMA_ATTRIBUTE_KIND } from "../../config/constants";
 
 const fields: Array<DynamicFieldProps> = [
   {

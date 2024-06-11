@@ -1,5 +1,5 @@
+import { QSP } from "@/config/qsp";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../config/qsp";
 import { BUTTON_TYPES, Button } from "./button";
 
 type Tab = {

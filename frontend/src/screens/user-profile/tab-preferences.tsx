@@ -1,11 +1,11 @@
+import DynamicForm from "@/components/form/dynamic-form";
+import { DynamicFieldProps } from "@/components/form/fields/common";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { UPDATE_ACCOUNT_PASSWORD } from "@/graphql/mutations/accounts/updateAccountPassword";
+import Content from "@/screens/layout/content";
 import { useMutation } from "@apollo/client";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/utils/alert";
-import Content from "../layout/content";
-import { Card } from "../../components/ui/card";
-import DynamicForm from "../../components/form/dynamic-form";
-import { DynamicFieldProps } from "../../components/form/fields/common";
-import { UPDATE_ACCOUNT_PASSWORD } from "../../graphql/mutations/accounts/updateAccountPassword";
 
 type UpdatePasswordFormData = {
   newPassword: string;

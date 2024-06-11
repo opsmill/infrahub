@@ -1,3 +1,48 @@
+import { ButtonWithTooltip as ButtonWithTooltip2 } from "@/components/buttons/button-primitive";
+import { ButtonWithTooltip } from "@/components/buttons/button-with-tooltip";
+import { Retry } from "@/components/buttons/retry";
+import MetaDetailsTooltip from "@/components/display/meta-details-tooltips";
+import SlideOver from "@/components/display/slide-over";
+import { Tabs } from "@/components/tabs";
+import { Link } from "@/components/ui/link";
+import {
+  ARTIFACT_DEFINITION_OBJECT,
+  DEFAULT_BRANCH_NAME,
+  MENU_EXCLUDELIST,
+  PROFILE_KIND,
+  TASK_OBJECT,
+  TASK_TAB,
+  TASK_TARGET,
+} from "@/config/constants";
+import { QSP } from "@/config/qsp";
+import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
+import { usePermission } from "@/hooks/usePermission";
+import useQuery from "@/hooks/useQuery";
+import { useTitle } from "@/hooks/useTitle";
+import { Generate } from "@/screens/artifacts/generate";
+import ErrorScreen from "@/screens/errors/error-screen";
+import NoDataFound from "@/screens/errors/no-data-found";
+import AddObjectToGroup from "@/screens/groups/add-object-to-group";
+import Content from "@/screens/layout/content";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
+import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
+import { TaskItemDetails } from "@/screens/tasks/task-item-details";
+import { TaskItems } from "@/screens/tasks/task-items";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
+import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
+import { constructPath } from "@/utils/fetch";
+import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
+import {
+  getObjectAttributes,
+  getObjectRelationships,
+  getObjectTabs,
+  getSchemaObjectColumns,
+  getTabs,
+} from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { LockClosedIcon, PencilIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
@@ -7,51 +52,6 @@ import { useAtomValue } from "jotai/index";
 import { useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ButtonWithTooltip as ButtonWithTooltip2 } from "../../components/buttons/button-primitive";
-import { ButtonWithTooltip } from "../../components/buttons/button-with-tooltip";
-import { Retry } from "../../components/buttons/retry";
-import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
-import SlideOver from "../../components/display/slide-over";
-import { Tabs } from "../../components/tabs";
-import { Link } from "../../components/utils/link";
-import {
-  ARTIFACT_DEFINITION_OBJECT,
-  DEFAULT_BRANCH_NAME,
-  MENU_EXCLUDELIST,
-  PROFILE_KIND,
-  TASK_OBJECT,
-  TASK_TAB,
-  TASK_TARGET,
-} from "../../config/constants";
-import { QSP } from "../../config/qsp";
-import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
-import { usePermission } from "../../hooks/usePermission";
-import useQuery from "../../hooks/useQuery";
-import { useTitle } from "../../hooks/useTitle";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
-import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
-import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
-import { constructPath } from "../../utils/fetch";
-import { ObjectAttributeValue } from "../../utils/getObjectItemDisplayValue";
-import {
-  getObjectAttributes,
-  getObjectRelationships,
-  getObjectTabs,
-  getSchemaObjectColumns,
-  getTabs,
-} from "../../utils/getSchemaObjectColumns";
-import { Generate } from "../artifacts/generate";
-import ErrorScreen from "../errors/error-screen";
-import NoDataFound from "../errors/no-data-found";
-import AddObjectToGroup from "../groups/add-object-to-group";
-import Content from "../layout/content";
-import LoadingScreen from "../loading-screen/loading-screen";
-import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
-import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
-import { TaskItemDetails } from "../tasks/task-item-details";
-import { TaskItems } from "../tasks/task-items";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
 import { RelationshipsDetails } from "./relationships-details-paginated";

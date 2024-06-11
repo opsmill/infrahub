@@ -1,6 +1,6 @@
+import { MarkdownEditor } from "@/components/editor";
+import { classNames } from "@/utils/common";
 import { FC } from "react";
-import { classNames } from "../../utils/common";
-import { MarkdownEditor } from "../editor";
 
 type TextareaWithEditorProps = {
   className?: string;

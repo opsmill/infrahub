@@ -1,28 +1,28 @@
+import { Button } from "@/components/buttons/button";
+import { Checkbox } from "@/components/inputs/checkbox";
+import ModalConfirm from "@/components/modals/modal-confirm";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Tooltip } from "@/components/ui/tooltip";
+import {
+  PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
+  PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
+  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+} from "@/config/constants";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { createObject } from "@/graphql/mutations/objects/createObject";
+import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import { useAuth } from "@/hooks/useAuth";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
+import { classNames } from "@/utils/common";
+import { getThreadTitle } from "@/utils/diff";
+import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { formatISO, isBefore, parseISO } from "date-fns";
 import { useAtomValue } from "jotai/index";
 import * as R from "ramda";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import {
-  PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
-  PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
-  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-} from "../../config/constants";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import { createObject } from "../../graphql/mutations/objects/createObject";
-import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { useAuth } from "../../hooks/useAuth";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
-import { classNames } from "../../utils/common";
-import { getThreadTitle } from "../../utils/diff";
-import { stringifyWithoutQuotes } from "../../utils/string";
-import { Button } from "../buttons/button";
-import { Checkbox } from "../inputs/checkbox";
-import ModalConfirm from "../modals/modal-confirm";
-import { ALERT_TYPES, Alert } from "../utils/alert";
-import { Tooltip } from "../utils/tooltip";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 
@@ -173,7 +173,7 @@ export const Thread = (props: tThread) => {
   );
 
   const MarkAsResolvedWithTooltip = (
-    <Tooltip message={"The resolution will be done after submitting the comment"}>
+    <Tooltip enabled content={"The resolution will be done after submitting the comment"}>
       {MarkAsResolved}
     </Tooltip>
   );

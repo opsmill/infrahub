@@ -1,4 +1,4 @@
-import { Pill } from "../../components/display/pill";
+import { Pill } from "@/components/display/pill";
 
 type DiffPillProps = {
   added?: number;

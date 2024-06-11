@@ -1,15 +1,15 @@
+import { BUTTON_TYPES, Button } from "@/components/buttons/button";
+import { ButtonWithTooltip } from "@/components/buttons/button-with-tooltip";
+import SlideOver from "@/components/display/slide-over";
+import { DEFAULT_BRANCH_NAME, SEARCH_FILTERS } from "@/config/constants";
+import useFilters from "@/hooks/useFilters";
+import { Form } from "@/screens/edit-form-hook/form";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { genericsState, schemaState } from "@/state/atoms/schema.atom";
+import getFormStructureForCreateEdit from "@/utils/formStructureForCreateEdit";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
-import { DEFAULT_BRANCH_NAME, SEARCH_FILTERS } from "../../config/constants";
-import useFilters from "../../hooks/useFilters";
-import { Form } from "../../screens/edit-form-hook/form";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { genericsState, schemaState } from "../../state/atoms/schema.atom";
-import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
-import { BUTTON_TYPES, Button } from "../buttons/button";
-import { ButtonWithTooltip } from "../buttons/button-with-tooltip";
-import SlideOver from "../display/slide-over";
 
 type tFilters = {
   schema: any;

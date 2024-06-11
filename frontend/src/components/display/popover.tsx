@@ -1,10 +1,10 @@
 // type PopOver = {}
 
+import Transition from "@/components/ui/transition";
+import { classNames } from "@/utils/common";
 import { Popover } from "@headlessui/react";
 import { CSSProperties, forwardRef, useState } from "react";
 import { usePopper } from "react-popper";
-import { classNames } from "../../utils/common";
-import Transition from "../utils/transition";
 
 export enum POPOVER_SIZE {
   NONE,

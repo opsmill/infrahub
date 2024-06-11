@@ -1,5 +1,5 @@
+import { Branch } from "@/generated/graphql";
 import { gql } from "@apollo/client";
-import { Branch } from "../../../generated/graphql";
 
 export interface iBranchData {
   branch: Array<Branch>;

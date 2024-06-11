@@ -1,6 +1,6 @@
+import { SelectOption } from "@/components/inputs/select";
+import { components } from "@/infraops";
 import { RegisterOptions } from "react-hook-form";
-import { SelectOption } from "../../components/inputs/select";
-import { components } from "../../infraops";
 import { FormFieldError } from "./form";
 
 // Interface for every field in a create/edit form

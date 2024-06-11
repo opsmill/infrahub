@@ -1,5 +1,5 @@
-import { useSubscription } from "../hooks/useQuery";
-import { subscription } from "../graphql/queries/notifications/subscription";
+import { subscription } from "@/graphql/queries/notifications/subscription";
+import { useSubscription } from "@/hooks/useQuery";
 import { gql } from "@apollo/client";
 
 export const Notifications = (props: any) => {

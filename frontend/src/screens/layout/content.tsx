@@ -1,6 +1,6 @@
+import { Retry } from "@/components/buttons/retry";
+import { classNames } from "@/utils/common";
 import { HTMLAttributes, ReactNode } from "react";
-import { classNames } from "../../utils/common";
-import { Retry } from "../../components/buttons/retry";
 
 const ContentRoot = ({ className, ...props }: HTMLAttributes<HTMLElement>) => {
   return <main className={classNames("h-full overflow-auto", className)} {...props} />;

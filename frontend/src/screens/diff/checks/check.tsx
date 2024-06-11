@@ -1,18 +1,18 @@
+import { MoreButton } from "@/components/buttons/more-button";
+import Accordion from "@/components/display/accordion";
+import { DateDisplay } from "@/components/display/date-display";
+import { PopOver } from "@/components/display/popover";
+import { CodeEditor } from "@/components/editor/code-editor";
+import { Skeleton } from "@/components/skeleton";
+import { List } from "@/components/table/list";
+import { Tooltip } from "@/components/ui/tooltip";
+import { GET_CHECKS } from "@/graphql/queries/diff/getCheckDetails";
+import useQuery from "@/hooks/useQuery";
+import ErrorScreen from "@/screens/errors/error-screen";
+import { schemaKindLabelState } from "@/state/atoms/schemaKindLabel.atom";
+import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { MoreButton } from "../../../components/buttons/more-button";
-import Accordion from "../../../components/display/accordion";
-import { DateDisplay } from "../../../components/display/date-display";
-import { PopOver } from "../../../components/display/popover";
-import { CodeEditor } from "../../../components/editor/code-editor";
-import { Skeleton } from "../../../components/skeleton";
-import { List } from "../../../components/table/list";
-import { Tooltip } from "../../../components/utils/tooltip";
-import { GET_CHECKS } from "../../../graphql/queries/diff/getCheckDetails";
-import useQuery from "../../../hooks/useQuery";
-import { schemaKindLabelState } from "../../../state/atoms/schemaKindLabel.atom";
-import { classNames } from "../../../utils/common";
-import ErrorScreen from "../../errors/error-screen";
 import { Conflict } from "./conflict";
 
 type tCheckProps = {
@@ -23,21 +23,21 @@ const getCheckIcon = (conclusion?: string) => {
   switch (conclusion) {
     case "success": {
       return (
-        <Tooltip message={"Success"}>
+        <Tooltip enabled content={"Success"}>
           <Icon icon={"mdi:check-circle-outline"} className="text-green-500 mr-2" />
         </Tooltip>
       );
     }
     case "failure": {
       return (
-        <Tooltip message={"Failure"}>
+        <Tooltip enabled content={"Failure"}>
           <Icon icon={"mdi:warning"} className="text-red-500 mr-2" />
         </Tooltip>
       );
     }
     default: {
       return (
-        <Tooltip message={"In progress"}>
+        <Tooltip enabled content={"In progress"}>
           <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500 mr-2" />
         </Tooltip>
       );

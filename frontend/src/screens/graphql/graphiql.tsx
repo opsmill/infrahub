@@ -1,18 +1,17 @@
-import React from "react";
-import { GraphiQL } from "graphiql";
 import { explorerPlugin } from "@graphiql/plugin-explorer";
 import type { Fetcher } from "@graphiql/toolkit";
+import { GraphiQL } from "graphiql";
 import { useAtomValue } from "jotai/index";
 
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { CONFIG } from "../../config/config";
-import { ACCESS_TOKEN_KEY } from "../../config/constants";
-import { datetimeAtom } from "../../state/atoms/time.atom";
+import { CONFIG } from "@/config/config";
+import { ACCESS_TOKEN_KEY } from "@/config/constants";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
 
-import "graphiql/graphiql.min.css";
+import { QSP } from "@/config/qsp";
 import "@graphiql/plugin-explorer/dist/style.css";
+import "graphiql/graphiql.min.css";
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../config/qsp";
 
 const fetcher =
   (url: string): Fetcher =>

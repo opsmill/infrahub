@@ -1,4 +1,4 @@
-import { QSP } from "../config/qsp";
+import { QSP } from "@/config/qsp";
 
 export const fetchUrl = async (url: string, payload?: any) => {
   const newPayload = {

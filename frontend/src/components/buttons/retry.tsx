@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { classNames } from "../../utils/common";
 
 type tRetryProps = {
   isLoading?: boolean;

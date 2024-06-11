@@ -1,8 +1,8 @@
-import { SubscriptionClient } from "subscriptions-transport-ws";
-import { CONFIG } from "../config/config";
-import { WebSocketLink } from "@apollo/client/link/ws";
+import { CONFIG } from "@/config/config";
+import { authLink, defaultOptions, errorLink } from "@/graphql/graphqlClientApollo";
 import { ApolloClient, InMemoryCache, from } from "@apollo/client";
-import { defaultOptions, authLink, errorLink } from "./graphqlClientApollo";
+import { WebSocketLink } from "@apollo/client/link/ws";
+import { SubscriptionClient } from "subscriptions-transport-ws";
 
 export class WSClient {
   branch: string | undefined;

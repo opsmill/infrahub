@@ -1,6 +1,6 @@
+import { components } from "@/infraops";
+import { MenuItem } from "@/screens/layout/sidebar/desktop-menu";
 import { atom } from "jotai";
-import { components } from "../../infraops";
-import { MenuItem } from "../../screens/layout/sidebar/desktop-menu";
 
 export type iNodeSchema = components["schemas"]["APINodeSchema"];
 export const schemaState = atom<iNodeSchema[]>([]);

@@ -1,9 +1,9 @@
+import { QuestionMark } from "@/components/display/question-mark";
+import { Checkbox } from "@/components/inputs/checkbox";
+import { components } from "@/infraops";
+import { FormFieldError } from "@/screens/edit-form-hook/form";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
-import { components } from "../../infraops";
-import { FormFieldError } from "../../screens/edit-form-hook/form";
-import { QuestionMark } from "../display/question-mark";
-import { Checkbox } from "../inputs/checkbox";
 
 interface Props {
   label: string;

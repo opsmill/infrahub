@@ -1,6 +1,6 @@
+import { Tooltip } from "@/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 import { format, formatDistanceStrict } from "date-fns";
-import { Tooltip } from "../utils/tooltip";
 
 type DateDisplayProps = {
   date: number | string | Date;
@@ -26,7 +26,7 @@ export const DurationDisplay = (props: DateDisplayProps) => {
 
   return (
     <span className="flex items-center flex-wrap">
-      <Tooltip message={tooltip}>
+      <Tooltip enabled content={tooltip}>
         <span className="text-xs font-normal">
           {formatDistanceStrict(
             date ? new Date(date) : new Date(),

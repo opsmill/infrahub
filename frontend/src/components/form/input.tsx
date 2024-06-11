@@ -1,9 +1,9 @@
+import { QuestionMark } from "@/components/display/question-mark";
+import { Input } from "@/components/inputs/input";
+import { components } from "@/infraops";
+import { FormFieldError } from "@/screens/edit-form-hook/form";
+import { classNames } from "@/utils/common";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
-import { components } from "../../infraops";
-import { FormFieldError } from "../../screens/edit-form-hook/form";
-import { classNames } from "../../utils/common";
-import { QuestionMark } from "../display/question-mark";
-import { Input } from "../inputs/input";
 
 type OpsInputProps = {
   label: string;

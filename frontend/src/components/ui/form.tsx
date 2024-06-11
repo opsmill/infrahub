@@ -1,3 +1,7 @@
+import { Button, ButtonProps } from "@/components/buttons/button-primitive";
+import { classNames } from "@/utils/common";
+import * as LabelPrimitive from "@radix-ui/react-label";
+import { Slot } from "@radix-ui/react-slot";
 import React, { createContext, FormHTMLAttributes, HTMLAttributes, useContext, useId } from "react";
 import {
   Controller,
@@ -6,10 +10,6 @@ import {
   useForm,
   useFormContext,
 } from "react-hook-form";
-import * as LabelPrimitive from "@radix-ui/react-label";
-import { Slot } from "@radix-ui/react-slot";
-import { classNames } from "../../utils/common";
-import { Button, ButtonProps } from "../buttons/button-primitive";
 import { Spinner } from "./spinner";
 
 export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {

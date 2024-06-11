@@ -1,7 +1,7 @@
+import { IPAM_QSP, IPAM_TABS } from "@/screens/ipam/constants";
+import IpamIPAddresses from "@/screens/ipam/ip-addresses/ipam-ip-address";
 import { forwardRef } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
-import { IPAM_QSP, IPAM_TABS } from "../constants";
-import IpamIPAddresses from "../ip-addresses/ipam-ip-address";
 import IpamIPPrefixDetails from "./ipam-prefix-details";
 import IpamIPPrefixesSummary from "./ipam-prefixes-summary";
 

@@ -1,3 +1,19 @@
+import { RoundedButton } from "@/components/buttons/rounded-button";
+import { AVATAR_SIZE, Avatar } from "@/components/display/avatar";
+import { Badge } from "@/components/display/badge";
+import { DateDisplay } from "@/components/display/date-display";
+import ModalDelete from "@/components/modals/modal-delete";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Tooltip } from "@/components/ui/tooltip";
+import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
+import { useAuth } from "@/hooks/useAuth";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
+import { constructPath } from "@/utils/fetch";
+import { getProposedChangesStateBadgeType } from "@/utils/proposed-changes";
+import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { ChevronLeftIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
@@ -5,22 +21,6 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { RoundedButton } from "../../components/buttons/rounded-button";
-import { AVATAR_SIZE, Avatar } from "../../components/display/avatar";
-import { Badge } from "../../components/display/badge";
-import { DateDisplay } from "../../components/display/date-display";
-import ModalDelete from "../../components/modals/modal-delete";
-import { ALERT_TYPES, Alert } from "../../components/utils/alert";
-import { Tooltip } from "../../components/utils/tooltip";
-import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
-import { useAuth } from "../../hooks/useAuth";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
-import { constructPath } from "../../utils/fetch";
-import { getProposedChangesStateBadgeType } from "../../utils/proposed-changes";
-import { stringifyWithoutQuotes } from "../../utils/string";
 
 export const ProposedChange = (props: any) => {
   const { row, refetch } = props;
@@ -103,7 +103,7 @@ export const ProposedChange = (props: any) => {
               </div>
 
               <div className="flex items-center">
-                <Tooltip message={"Destination branch"}>
+                <Tooltip enabled content={"Destination branch"}>
                   <Badge>{row.destination_branch.value}</Badge>
                 </Tooltip>
 
@@ -112,7 +112,7 @@ export const ProposedChange = (props: any) => {
                   aria-hidden="true"
                 />
 
-                <Tooltip message={"Source branch"}>
+                <Tooltip enabled content={"Source branch"}>
                   <Badge>{row.source_branch.value}</Badge>
                 </Tooltip>
               </div>
@@ -120,7 +120,7 @@ export const ProposedChange = (props: any) => {
               <div className="flex items-center space-x-3">
                 <div>Created by:</div>
 
-                <Tooltip message={row?.created_by?.node?.display_label}>
+                <Tooltip enabled content={row?.created_by?.node?.display_label}>
                   <Avatar
                     size={AVATAR_SIZE.SMALL}
                     name={row?.created_by?.node?.display_label}

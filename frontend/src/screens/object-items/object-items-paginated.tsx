@@ -1,54 +1,54 @@
-import { gql } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { toast } from "react-toastify";
-import { Button, ButtonWithTooltip } from "../../components/buttons/button-primitive";
-import SlideOver from "../../components/display/slide-over";
-import { Filters } from "../../components/filters/filters";
-import { ObjectHelpButton } from "../../components/menu/object-help-button";
-import ModalDelete from "../../components/modals/modal-delete";
-import { Badge } from "../../components/ui/badge";
-import { SearchInput } from "../../components/ui/search-input";
-import { Tooltip } from "../../components/ui/tooltip";
-import { ALERT_TYPES, Alert } from "../../components/utils/alert";
-import { Pagination } from "../../components/utils/pagination";
+import { Button, ButtonWithTooltip } from "@/components/buttons/button-primitive";
+import SlideOver from "@/components/display/slide-over";
+import { Filters } from "@/components/filters/filters";
+import { ObjectHelpButton } from "@/components/menu/object-help-button";
+import ModalDelete from "@/components/modals/modal-delete";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Pagination } from "@/components/ui/pagination";
+import { SearchInput } from "@/components/ui/search-input";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   DEFAULT_BRANCH_NAME,
   MENU_EXCLUDELIST,
   SEARCH_ANY_FILTER,
   SEARCH_FILTERS,
   SEARCH_PARTIAL_MATCH,
-} from "../../config/constants";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
-import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
-import useFilters, { Filter } from "../../hooks/useFilters";
-import usePagination from "../../hooks/usePagination";
-import { usePermission } from "../../hooks/usePermission";
-import useQuery from "../../hooks/useQuery";
-import { useTitle } from "../../hooks/useTitle";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { iComboBoxFilter } from "../../state/atoms/filters.atom";
-import { genericsState, profilesAtom, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
-import { debounce } from "../../utils/common";
-import { constructPath } from "../../utils/fetch";
-import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
+} from "@/config/constants";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
+import { getObjectItemsPaginated } from "@/graphql/queries/objects/getObjectItems";
+import useFilters, { Filter } from "@/hooks/useFilters";
+import usePagination from "@/hooks/usePagination";
+import { usePermission } from "@/hooks/usePermission";
+import useQuery from "@/hooks/useQuery";
+import { useTitle } from "@/hooks/useTitle";
+import ErrorScreen from "@/screens/errors/error-screen";
+import NoDataFound from "@/screens/errors/no-data-found";
+import Content from "@/screens/layout/content";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import ObjectItemCreate from "@/screens/object-item-create/object-item-create-paginated";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { iComboBoxFilter } from "@/state/atoms/filters.atom";
+import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
+import { debounce } from "@/utils/common";
+import { constructPath } from "@/utils/fetch";
+import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
 import {
   getObjectAttributes,
   getObjectRelationships,
   getSchemaObjectColumns,
-} from "../../utils/getSchemaObjectColumns";
-import { getObjectDetailsUrl } from "../../utils/objects";
-import { stringifyWithoutQuotes } from "../../utils/string";
-import ErrorScreen from "../errors/error-screen";
-import NoDataFound from "../errors/no-data-found";
-import Content from "../layout/content";
-import LoadingScreen from "../loading-screen/loading-screen";
-import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
+} from "@/utils/getSchemaObjectColumns";
+import { getObjectDetailsUrl } from "@/utils/objects";
+import { stringifyWithoutQuotes } from "@/utils/string";
+import { gql } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai/index";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 
 type ObjectItemsProps = {
   objectname?: string;

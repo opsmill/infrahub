@@ -1,29 +1,32 @@
+import ObjectEditSlideOverTrigger from "@/components/form/object-edit-slide-over-trigger";
+import { ObjectHelpButton } from "@/components/menu/object-help-button";
+import { Property, PropertyList } from "@/components/table/property-list";
+import { Badge } from "@/components/ui/badge";
+import { CardWithBorder } from "@/components/ui/card";
+import { Link } from "@/components/ui/link";
+import { TASK_OBJECT } from "@/config/constants";
+import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
+import ErrorScreen from "@/screens/errors/error-screen";
+import NoDataFound from "@/screens/errors/no-data-found";
+import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/screens/ipam/constants";
+import Content from "@/screens/layout/content";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import {
+  GET_KIND_FOR_RESOURCE_POOL,
+  GET_RESOURCE_POOL_UTILIZATION,
+} from "@/screens/resource-manager/graphql/resource-pool";
+import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
+import { constructPath } from "@/utils/fetch";
+import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
+import { getSchemaObjectColumns, getTabs } from "@/utils/getSchemaObjectColumns";
+import { getObjectDetailsUrl } from "@/utils/objects";
+import { gql, useQuery } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { Outlet, useParams } from "react-router-dom";
-import Content from "../layout/content";
-import { ObjectHelpButton } from "../../components/menu/object-help-button";
-import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
-import { gql, useQuery } from "@apollo/client";
-import { GET_KIND_FOR_RESOURCE_POOL, GET_RESOURCE_POOL_UTILIZATION } from "./graphql/resource-pool";
-import LoadingScreen from "../loading-screen/loading-screen";
-import { RESOURCE_GENERIC_KIND, RESOURCE_POOL_UTILIZATION_KIND } from "./constants";
-import NoDataFound from "../errors/no-data-found";
-import { getSchemaObjectColumns, getTabs } from "../../utils/getSchemaObjectColumns";
-import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
-import { TASK_OBJECT } from "../../config/constants";
-import ErrorScreen from "../errors/error-screen";
-import { Icon } from "@iconify-icon/react";
-import { constructPath } from "../../utils/fetch";
-import { Link } from "../../components/utils/link";
-import { CardWithBorder } from "../../components/ui/card";
-import { Property, PropertyList } from "../../components/table/property-list";
-import { ObjectAttributeValue } from "../../utils/getObjectItemDisplayValue";
-import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "../ipam/constants";
-import { getObjectDetailsUrl } from "../../utils/objects";
-import { Badge } from "../../components/ui/badge";
-import ResourceSelector, { ResourceProps } from "./resource-selector";
 import ResourcePoolUtilization from "./common/ResourcePoolUtilization";
-import ObjectEditSlideOverTrigger from "../../components/form/object-edit-slide-over-trigger";
+import { RESOURCE_GENERIC_KIND, RESOURCE_POOL_UTILIZATION_KIND } from "./constants";
+import ResourceSelector, { ResourceProps } from "./resource-selector";
 
 const ResourcePoolPage = () => {
   const { resourcePoolId } = useParams();

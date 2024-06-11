@@ -1,4 +1,4 @@
-import { RELATIONSHIP_VIEW_BLACKLIST } from "../../config/constants";
+import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
 
 export const NAMESPACE_GENERIC = "BuiltinIPNamespace";
 export const IP_ADDRESS_GENERIC = "BuiltinIPAddress";

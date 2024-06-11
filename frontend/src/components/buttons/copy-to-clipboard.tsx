@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { classNames } from "../../utils/common";
+import { useState } from "react";
 import { Button, ButtonProps } from "./button-primitive";
 
 interface CopyToClipboardProps extends ButtonProps {

@@ -1,10 +1,10 @@
-import { Link } from "react-router-dom";
+import { Button } from "@/components/buttons/button-primitive";
+import { CopyToClipboard } from "@/components/buttons/copy-to-clipboard";
+import { GraphqlViewer } from "@/components/editor/graphql/graphql-viewer";
+import { CardWithBorder } from "@/components/ui/card";
+import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
-import { CopyToClipboard } from "../../../components/buttons/copy-to-clipboard";
-import { constructPath } from "../../../utils/fetch";
-import { Button } from "../../../components/buttons/button-primitive";
-import { CardWithBorder } from "../../../components/ui/card";
-import { GraphqlViewer } from "../../../components/editor/graphql/graphql-viewer";
+import { Link } from "react-router-dom";
 
 const GraphqlQueryViewerCard = ({ query }: { query: string }) => {
   return (

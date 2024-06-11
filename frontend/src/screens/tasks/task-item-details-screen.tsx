@@ -1,16 +1,16 @@
+import { TASK_OBJECT } from "@/config/constants";
+import useQuery from "@/hooks/useQuery";
+import { useTitle } from "@/hooks/useTitle";
 import { gql } from "@apollo/client";
-import { TASK_OBJECT } from "../../config/constants";
-import useQuery from "../../hooks/useQuery";
-import { useTitle } from "../../hooks/useTitle";
 
+import { Link } from "@/components/ui/link";
+import { getTaskItemDetailsTitle } from "@/graphql/queries/tasks/getTasksItemDetailsTitle";
+import ErrorScreen from "@/screens/errors/error-screen";
+import Content from "@/screens/layout/content";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router-dom";
-import { Link } from "../../components/utils/link";
-import { getTaskItemDetailsTitle } from "../../graphql/queries/tasks/getTasksItemDetailsTitle";
-import { constructPath } from "../../utils/fetch";
-import ErrorScreen from "../errors/error-screen";
-import Content from "../layout/content";
-import LoadingScreen from "../loading-screen/loading-screen";
 import { TaskItemDetails } from "./task-item-details";
 
 const TaskItemDetailsScreen = () => {

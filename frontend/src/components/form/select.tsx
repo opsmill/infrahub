@@ -1,8 +1,8 @@
+import { QuestionMark } from "@/components/display/question-mark";
+import { Select, SelectOption } from "@/components/inputs/select";
+import { components } from "@/infraops";
+import { FormFieldError } from "@/screens/edit-form-hook/form";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
-import { components } from "../../infraops";
-import { FormFieldError } from "../../screens/edit-form-hook/form";
-import { QuestionMark } from "../display/question-mark";
-import { Select, SelectOption } from "../inputs/select";
 
 type SelectProps = {
   label: string;

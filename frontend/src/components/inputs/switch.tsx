@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import { Switch as HSwitch } from "@headlessui/react";
-import { classNames } from "../../utils/common";
 
 // type SwitchProps = {}
 

@@ -1,6 +1,6 @@
 // type ButtonProps = {};
 
-import { classNames } from "../../utils/common";
+import { classNames } from "@/utils/common";
 import { forwardRef } from "react";
 import { ButtonProps } from "./button";
 

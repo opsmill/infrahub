@@ -1,6 +1,6 @@
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { classNames } from "@/utils/common";
 import { ButtonHTMLAttributes, forwardRef } from "react";
-import LoadingScreen from "../../screens/loading-screen/loading-screen";
-import { classNames } from "../../utils/common";
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   type?: "button" | "reset" | "submit";

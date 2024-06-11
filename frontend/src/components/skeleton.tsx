@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import { HTMLAttributes } from "react";
-import { classNames } from "../utils/common";
 
 export const Skeleton = ({ className = "", ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (

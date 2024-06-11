@@ -1,6 +1,6 @@
-import { FormField, FormInput, FormLabel, FormMessage } from "../../ui/form";
+import { FormField, FormInput, FormLabel, FormMessage } from "@/components/ui/form";
+import { PasswordInput } from "@/components/ui/password-input";
 import { FormFieldProps } from "./common";
-import { PasswordInput } from "../../ui/password-input";
 
 const PasswordInputField = ({ defaultValue, label, name, rules, ...props }: FormFieldProps) => {
   return (

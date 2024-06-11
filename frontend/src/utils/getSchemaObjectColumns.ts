@@ -1,5 +1,3 @@
-import { isValid, parseISO } from "date-fns";
-import * as R from "ramda";
 import {
   attributesKindForDetailsViewExclude,
   attributesKindForListView,
@@ -7,10 +5,12 @@ import {
   relationshipsForDetailsView,
   relationshipsForListView,
   relationshipsForTabs,
-} from "../config/constants";
-import { iGenericSchema, iNodeSchema, profilesAtom } from "../state/atoms/schema.atom";
+} from "@/config/constants";
+import { store } from "@/state";
+import { iGenericSchema, iNodeSchema, profilesAtom } from "@/state/atoms/schema.atom";
+import { isValid, parseISO } from "date-fns";
+import * as R from "ramda";
 import { isGeneric, sortByOrderWeight } from "./common";
-import { store } from "../state";
 
 type tgetObjectAttributes = {
   schema: iNodeSchema | iGenericSchema | undefined;

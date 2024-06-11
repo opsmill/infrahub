@@ -1,6 +1,6 @@
+import { useCodeMirror } from "@/hooks/useCodeMirror";
+import { classNames } from "@/utils/common";
 import { FC, forwardRef, useRef, useState } from "react";
-import { useCodeMirror } from "../../hooks/useCodeMirror";
-import { classNames } from "../../utils/common";
 import { MarkdownEditorHeader } from "./markdown-editor-header";
 import { MarkdownViewer } from "./markdown-viewer";
 

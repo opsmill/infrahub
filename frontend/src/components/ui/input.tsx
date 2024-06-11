@@ -1,5 +1,5 @@
+import { classNames } from "@/utils/common";
 import { forwardRef, InputHTMLAttributes } from "react";
-import { classNames } from "../../utils/common";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {}
 

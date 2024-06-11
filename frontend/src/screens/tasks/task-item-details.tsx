@@ -1,20 +1,20 @@
+import { TASK_OBJECT } from "@/config/constants";
+import useQuery from "@/hooks/useQuery";
 import { gql } from "@apollo/client";
-import { TASK_OBJECT } from "../../config/constants";
-import useQuery from "../../hooks/useQuery";
 
+import { BADGE_TYPES, Badge } from "@/components/display/badge";
+import { DateDisplay } from "@/components/display/date-display";
+import { DurationDisplay } from "@/components/display/duration-display";
+import { List } from "@/components/table/list";
+import { Id } from "@/components/ui/id";
+import { SearchInput } from "@/components/ui/search-input";
+import { QSP } from "@/config/qsp";
+import { getTaskItemDetails } from "@/graphql/queries/tasks/getTasksItemDetails";
+import ErrorScreen from "@/screens/errors/error-screen";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { BADGE_TYPES, Badge } from "../../components/display/badge";
-import { DateDisplay } from "../../components/display/date-display";
-import { DurationDisplay } from "../../components/display/duration-display";
-import { List } from "../../components/table/list";
-import { SearchInput } from "../../components/ui/search-input";
-import { Id } from "../../components/utils/id";
-import { QSP } from "../../config/qsp";
-import { getTaskItemDetails } from "../../graphql/queries/tasks/getTasksItemDetails";
-import ErrorScreen from "../errors/error-screen";
-import LoadingScreen from "../loading-screen/loading-screen";
 import { Logs, tLog } from "./logs";
 
 export const getConclusionBadge: { [key: string]: any } = {

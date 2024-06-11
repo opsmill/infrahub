@@ -1,41 +1,41 @@
-import { gql } from "@apollo/client";
-import { Combobox } from "@headlessui/react";
-import { CheckIcon } from "@heroicons/react/20/solid";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
-import { forwardRef, useContext, useEffect, useState } from "react";
+import { BUTTON_TYPES, Button } from "@/components/buttons/button";
+import SlideOver from "@/components/display/slide-over";
+import ModalDelete from "@/components/modals/modal-delete";
 import {
   DEFAULT_BRANCH_NAME,
   SCHEMA_DROPDOWN_ADD,
   SCHEMA_DROPDOWN_REMOVE,
   SCHEMA_ENUM_ADD,
   SCHEMA_ENUM_REMOVE,
-} from "../../config/constants";
-import { SchemaContext } from "../../decorators/withSchemaContext";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import { basicMutation } from "../../graphql/mutations/objects/basicMutation";
-import { getDropdownOptions } from "../../graphql/queries/objects/dropdownOptions";
-import { useLazyQuery } from "../../hooks/useQuery";
-import { Form, FormFieldError } from "../../screens/edit-form-hook/form";
-import ObjectItemCreate from "../../screens/object-item-create/object-item-create-paginated";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { namespacesState, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
-import { classNames, getTextColor } from "../../utils/common";
-import { stringifyWithoutQuotes } from "../../utils/string";
-import { BUTTON_TYPES, Button } from "../buttons/button";
-import SlideOver from "../display/slide-over";
-import ModalDelete from "../modals/modal-delete";
+} from "@/config/constants";
+import { SchemaContext } from "@/decorators/withSchemaContext";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { basicMutation } from "@/graphql/mutations/objects/basicMutation";
+import { getDropdownOptions } from "@/graphql/queries/objects/dropdownOptions";
+import { useLazyQuery } from "@/hooks/useQuery";
+import { Form, FormFieldError } from "@/screens/edit-form-hook/form";
+import ObjectItemCreate from "@/screens/object-item-create/object-item-create-paginated";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { namespacesState, schemaState } from "@/state/atoms/schema.atom";
+import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
+import { classNames, getTextColor } from "@/utils/common";
+import { stringifyWithoutQuotes } from "@/utils/string";
+import { gql } from "@apollo/client";
+import { Combobox } from "@headlessui/react";
+import { CheckIcon } from "@heroicons/react/20/solid";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai/index";
+import { forwardRef, useContext, useEffect, useState } from "react";
 import { Input } from "./input";
 import { MultipleInput } from "./multiple-input";
 
-import { getObjectDisplayLabel } from "../../graphql/queries/objects/getObjectDisplayLabel";
-import { POOLS_DICTIONNARY, POOLS_PEER } from "../../screens/ipam/constants";
-import LoadingScreen from "../../screens/loading-screen/loading-screen";
-import { comparedOptions } from "../../utils/array";
-import { getOptionsFromRelationship } from "../../utils/getSchemaObjectColumns";
-import { Tooltip } from "../ui/tooltip";
+import { Tooltip } from "@/components/ui/tooltip";
+import { getObjectDisplayLabel } from "@/graphql/queries/objects/getObjectDisplayLabel";
+import { POOLS_DICTIONNARY, POOLS_PEER } from "@/screens/ipam/constants";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { comparedOptions } from "@/utils/array";
+import { getOptionsFromRelationship } from "@/utils/getSchemaObjectColumns";
 
 export type SelectOption = {
   id: string | number;

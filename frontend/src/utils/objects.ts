@@ -1,13 +1,13 @@
-import { store } from "../state";
-import { schemaState } from "../state/atoms/schema.atom";
+import { constructPathForIpam } from "@/screens/ipam/common/utils";
 import {
   IP_ADDRESS_GENERIC,
   IP_PREFIX_GENERIC,
   IPAM_QSP,
   IPAM_ROUTE,
-} from "../screens/ipam/constants";
+} from "@/screens/ipam/constants";
+import { store } from "@/state";
+import { schemaState } from "@/state/atoms/schema.atom";
 import { constructPath, overrideQueryParams } from "./fetch";
-import { constructPathForIpam } from "../screens/ipam/common/utils";
 
 const regex = /^Related/; // starts with Related
 

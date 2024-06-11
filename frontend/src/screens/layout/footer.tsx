@@ -1,16 +1,16 @@
-import { Icon } from "@iconify-icon/react";
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { Button } from "../../components/buttons/button-primitive";
-import { Tooltip } from "../../components/ui/tooltip";
+import { Button } from "@/components/buttons/button-primitive";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   CONFIG,
   INFRAHUB_API_SERVER_URL,
   INFRAHUB_DOC_LOCAL,
   INFRAHUB_GITHUB_URL,
-} from "../../config/config";
-import { components } from "../../infraops";
-import { constructPath, fetchUrl } from "../../utils/fetch";
+} from "@/config/config";
+import { components } from "@/infraops";
+import { constructPath, fetchUrl } from "@/utils/fetch";
+import { Icon } from "@iconify-icon/react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 const AppVersionInfo = () => {
   const [info, setInfo] = useState<components["schemas"]["InfoAPI"] | null>(null);

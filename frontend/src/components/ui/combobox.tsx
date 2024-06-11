@@ -1,11 +1,11 @@
-import { Popover, PopoverContent, PopoverTrigger } from "./popover";
-import { ButtonProps } from "../buttons/button-primitive";
-import React, { forwardRef, useState } from "react";
-import { Combobox as ComboboxPrimitive, ComboboxOptionProps } from "@headlessui/react";
-import { SearchInput } from "./search-input";
-import { classNames } from "../../utils/common";
+import { ButtonProps } from "@/components/buttons/button-primitive";
+import { classNames } from "@/utils/common";
+import { ComboboxOptionProps, Combobox as ComboboxPrimitive } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
+import React, { forwardRef, useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import { SearchInput } from "./search-input";
 
 interface ComboboxProps extends Omit<ButtonProps, "onChange"> {
   children?: React.ReactNode;

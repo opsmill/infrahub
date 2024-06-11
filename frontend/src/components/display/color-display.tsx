@@ -1,4 +1,4 @@
-import { getTextColor } from "../../utils/common";
+import { getTextColor } from "@/utils/common";
 
 type tColorDisplay = {
   color?: string | null;

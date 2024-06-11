@@ -1,3 +1,39 @@
+import { BUTTON_TYPES, Button } from "@/components/buttons/button";
+import MetaDetailsTooltip from "@/components/display/meta-details-tooltips";
+import SlideOver from "@/components/display/slide-over";
+import { File } from "@/components/file";
+import { Tabs } from "@/components/tabs";
+import { CONFIG } from "@/config/config";
+import { ARTIFACT_OBJECT, DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST } from "@/config/constants";
+import { QSP } from "@/config/qsp";
+import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
+import { useAuth } from "@/hooks/useAuth";
+import useQuery from "@/hooks/useQuery";
+import { useTitle } from "@/hooks/useTitle";
+import { Generate } from "@/screens/artifacts/generate";
+import ErrorScreen from "@/screens/errors/error-screen";
+import NoDataFound from "@/screens/errors/no-data-found";
+import AddObjectToGroup from "@/screens/groups/add-object-to-group";
+import Content from "@/screens/layout/content";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import RelationshipDetails from "@/screens/object-item-details/relationship-details-paginated";
+import { RelationshipsDetails } from "@/screens/object-item-details/relationships-details-paginated";
+import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
+import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
+import { genericsState, schemaState } from "@/state/atoms/schema.atom";
+import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
+import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
+import { classNames } from "@/utils/common";
+import { constructPath } from "@/utils/fetch";
+import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
+import {
+  getObjectAttributes,
+  getObjectRelationships,
+  getSchemaObjectColumns,
+  getTabs,
+} from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { LockClosedIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
@@ -7,42 +43,6 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { BUTTON_TYPES, Button } from "../../components/buttons/button";
-import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
-import SlideOver from "../../components/display/slide-over";
-import { File } from "../../components/file";
-import { Tabs } from "../../components/tabs";
-import { CONFIG } from "../../config/config";
-import { ARTIFACT_OBJECT, DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST } from "../../config/constants";
-import { QSP } from "../../config/qsp";
-import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
-import { useAuth } from "../../hooks/useAuth";
-import useQuery from "../../hooks/useQuery";
-import { useTitle } from "../../hooks/useTitle";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
-import { genericsState, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
-import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
-import { classNames } from "../../utils/common";
-import { constructPath } from "../../utils/fetch";
-import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
-import {
-  getObjectAttributes,
-  getObjectRelationships,
-  getSchemaObjectColumns,
-  getTabs,
-} from "../../utils/getSchemaObjectColumns";
-import ErrorScreen from "../errors/error-screen";
-import NoDataFound from "../errors/no-data-found";
-import AddObjectToGroup from "../groups/add-object-to-group";
-import Content from "../layout/content";
-import LoadingScreen from "../loading-screen/loading-screen";
-import RelationshipDetails from "../object-item-details/relationship-details-paginated";
-import { RelationshipsDetails } from "../object-item-details/relationships-details-paginated";
-import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
-import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
-import { Generate } from "./generate";
 
 export default function ArtifactsDetails() {
   const { objectid } = useParams();

@@ -1,3 +1,15 @@
+import { Button } from "@/components/buttons/button";
+import { Checkbox } from "@/components/inputs/checkbox";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { CONFIG } from "@/config/config";
+import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
+import { QSP } from "@/config/qsp";
+import { getThreadsAndChecks } from "@/graphql/queries/proposed-changes/getThreadsAndChecks";
+import useQuery from "@/hooks/useQuery";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
+import { schemaState } from "@/state/atoms/schema.atom";
+import { fetchUrl, getUrlWithQsp } from "@/utils/fetch";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import {
@@ -11,18 +23,6 @@ import {
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Button } from "../../components/buttons/button";
-import { Checkbox } from "../../components/inputs/checkbox";
-import { ALERT_TYPES, Alert } from "../../components/utils/alert";
-import { CONFIG } from "../../config/config";
-import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "../../config/constants";
-import { QSP } from "../../config/qsp";
-import { getThreadsAndChecks } from "../../graphql/queries/proposed-changes/getThreadsAndChecks";
-import useQuery from "../../hooks/useQuery";
-import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
-import { schemaState } from "../../state/atoms/schema.atom";
-import { fetchUrl, getUrlWithQsp } from "../../utils/fetch";
-import LoadingScreen from "../loading-screen/loading-screen";
 import { DataDiffNode, tDataDiffNode } from "./data-diff-node";
 
 type tDiffContext = {
