@@ -324,7 +324,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                     <tr
                       key={index}
                       className="hover:bg-gray-50 cursor-pointer"
-                      data-cy="relationship-row">
+                      data-cy="relationship-row"
+                      data-testid="relationship-row">
                       {newColumns?.map((column) => (
                         <td
                           key={node.id + "-" + column.name}

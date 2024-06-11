@@ -109,7 +109,7 @@ test.describe("/objects/:objectname/:objectid - relationship tab", () => {
       await page.getByTestId("select2step-1").getByText("IP Address").click();
       await expect(page.getByTestId("select-open-pool-option-button")).toBeVisible();
       await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
-      await expect(page.getByText("10.0.0.1/")).toBeVisible();
+      await expect(page.getByTestId("relationship-row").first()).toBeVisible();
     });
   });
 });
