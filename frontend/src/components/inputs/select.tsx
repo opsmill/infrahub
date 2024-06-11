@@ -204,7 +204,7 @@ export const Select = (props: SelectProps) => {
 
     if (newValue.id === emptyOption.id) {
       setSelectedOption(emptyOption);
-      onChange(newValue);
+      onChange(null);
       return;
     }
 

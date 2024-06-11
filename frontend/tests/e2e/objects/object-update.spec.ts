@@ -118,4 +118,70 @@ test.describe("Object update", () => {
       await expect(tabInput).toBeVisible();
     });
   });
+
+  test("should correctly remove values from selector", async ({ page }) => {
+    await test.step("access the object", async () => {
+      await page.goto("/objects/InfraDevice/");
+      await page.getByRole("link", { name: "atl1-leaf1" }).click();
+    });
+
+    await test.step("assert initial object values", async () => {
+      await expect(page.getByText("Active")).toBeVisible();
+      await expect(page.getByText("Leaf Switch")).toBeVisible();
+      await expect(page.getByRole("link", { name: "AS64496" })).toBeVisible();
+    });
+
+    await test.step("edit object values", async () => {
+      await page.getByRole("button", { name: "Edit" }).click();
+
+      await page
+        .getByTestId("side-panel-container")
+        .getByText("Status")
+        .locator("../..")
+        .getByTestId("select-open-option-button")
+        .click();
+      await page.getByText("Empty").click();
+
+      await page
+        .getByTestId("side-panel-container")
+        .getByText("Role")
+        .locator("../..")
+        .getByTestId("select-open-option-button")
+        .click();
+      await page.getByText("Empty").click();
+
+      await page
+        .getByTestId("side-panel-container")
+        .getByText("Asn")
+        .locator("../..")
+        .getByTestId("select-open-option-button")
+        .click();
+      await page.getByText("Empty").click();
+
+      await page.getByRole("button", { name: "Save" }).click();
+    });
+
+    await test.step("assert new empty values", async () => {
+      await expect(
+        page
+          .locator("div")
+          .filter({ hasText: /^Status-$/ })
+          .getByRole("definition")
+      ).toBeVisible();
+
+      await expect(
+        page
+          .locator("div")
+          .filter({ hasText: /^Role-$/ })
+          .getByRole("definition")
+      ).toBeVisible();
+
+      await expect(
+        page
+          .locator("div")
+          .filter({ hasText: /^Asn-$/ })
+          .getByRole("definition")
+      ).toBeVisible();
+    });
+  });
 });
