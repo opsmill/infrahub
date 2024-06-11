@@ -22,35 +22,35 @@ cache:
       targetPort: 16379
 
 # ----------- Databse -----------
-database:
+neo4j:
   enabled: true
-  type: ClusterIP
-  persistence:
+  nameOverride: database
+  neo4j:
+    name: "infrahub"
+    edition: "community"
+    password: "admin"
+    minimumClusterSize: 1
+    acceptLicenseAgreement: "no"
+    resources: {}
+  volumes:
     data:
+      mode: "volume"
+      volume:
+        emptyDir: {}
+  services:
+    neo4j:
+      enabled: false
+      ports:
+        bolt:
+          enabled: true
+          port: 7687
+          targetPort: 7687
+    admin:
       enabled: true
-      size: 100Mi
-    logs:
-      enabled: true
-      size: 100Mi
-  database:
-    env:
-      neo4JAuth: neo4j/admin
-      neo4JDbmsSecurityAuthMinimumPasswordLength: "4"
-      neo4JDbmsSecurityProceduresUnrestricted: apoc.*
-    image:
-      repository: neo4j
-      tag: 5.13-community
-  ports:
-    - name: "metrics"
-      port: 2004
-      targetPort: 2004
-    - name: "interface"
-      port: 7474
-      targetPort: 7474
-    - name: "bolt"
-      port: 7687
-      targetPort: 7687
-
+  config:
+    dbms.security.auth_minimum_password_length: "4"
+    dbms.security.procedures.unrestricted: apoc.*
+  logInitialPassword: false
 
 # ----------- Infrahub GIT -----------
 infrahubGit:
