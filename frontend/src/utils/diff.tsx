@@ -227,7 +227,7 @@ const badgeTypes: { [key: string]: BADGE_TYPES } = {
 };
 
 export const getBadgeType = (action?: string) => {
-  if (!action) return null;
+  if (!action) return undefined;
 
   return badgeTypes[action];
 };
