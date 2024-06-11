@@ -11,9 +11,8 @@ generics:
     display_labels:
       - name__value
     order_by:
+      - device__name__value
       - name__value
-    uniqueness_constraints:
-      - ["device", "name__value"]
     attributes:
       - name: name
         kind: Text
@@ -25,7 +24,7 @@ generics:
         optional: true
       - name: mtu
         label: MTU
-        default_value: 1500
+        default_value: 2000
         kind: Number
       - name: enabled
         kind: Boolean
@@ -336,15 +335,12 @@ nodes:
     description: "Generic Device object"
     label: "Device"
     icon: "mdi:router-network"
-    # default_filter: name__value
     inherit_from:
       - "CoreArtifactTarget"
     order_by:
       - name__value
     display_labels:
       - name__value
-    uniqueness_constraints:
-      - ["name__value", "location"]
     attributes:
       - name: name
         kind: Text
@@ -356,12 +352,10 @@ nodes:
         label: Serial Number
         kind: Text
         optional: true
-        # unique: true
       - name: asset_tag
         label: Asset Tag
         kind: Text
         optional: true
-        # unique: true
     relationships:
       - name: location
         peer: LocationGeneric
@@ -468,6 +462,7 @@ nodes:
     display_labels:
       - name__value
     order_by:
+      - device__name__value
       - name__value
     inherit_from:
       - "InfraInterface"
@@ -509,6 +504,7 @@ nodes:
     display_labels:
       - name__value
     order_by:
+      - device__name__value
       - name__value
     inherit_from:
       - "InfraInterface"
@@ -528,6 +524,7 @@ nodes:
     display_labels:
       - name__value
     order_by:
+      - device__name__value
       - name__value
     inherit_from:
       - "InfraInterface"
@@ -705,11 +702,8 @@ nodes:
     label: "Rack"
     icon: "mdi:server"
     menu_placement: "LocationGeneric"
-    # default_filter: name__value
     display_labels:
       - name__value
-    uniqueness_constraints:
-      - ["name__value", "location"]
     attributes:
       - name: name
         kind: Text
@@ -787,7 +781,6 @@ nodes:
     description: "A VLAN is isolated layer two domain"
     label: "VLAN"
     icon: "mdi:lan-pending"   # mdi:lan
-    default_filter: name__value
     order_by:
       - vlan_id__value
     display_labels:
