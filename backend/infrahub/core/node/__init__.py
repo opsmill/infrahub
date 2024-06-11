@@ -93,14 +93,14 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         )
 
         if not schema_path.has_property:
-            raise ValueError(f"Unable to retrive the value of a path without property {path!r} on {self.get_kind()!r}")
+            raise ValueError(f"Unable to retrieve the value of a path without property {path!r} on {self.get_kind()!r}")
 
         if (
             schema_path.is_type_relationship
             and schema_path.relationship_schema.cardinality == RelationshipCardinality.MANY
         ):
             raise ValueError(
-                f"Unable to retrive the value of a path on a relationship of cardinality many {path!r} on {self.get_kind()!r}"
+                f"Unable to retrieve the value of a path on a relationship of cardinality many {path!r} on {self.get_kind()!r}"
             )
 
         if schema_path.is_type_attribute:
@@ -109,6 +109,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         if schema_path.is_type_relationship:
             relm: RelationshipManager = getattr(self, schema_path.relationship_schema.name)
+            await relm.resolve(db=db)
             node = await relm.get_peer(db=db)
             attr = getattr(node, schema_path.attribute_schema.name)
             return getattr(attr, schema_path.attribute_property_name)

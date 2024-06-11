@@ -206,7 +206,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
 
     if (newValue.id === emptyOption.id) {
       setSelectedOption(emptyOption);
-      onChange(newValue);
+      onChange(null);
       return;
     }
 

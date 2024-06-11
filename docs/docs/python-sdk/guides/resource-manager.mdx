@@ -107,8 +107,8 @@ We will create a `CoreIPaddressPool` with the following properties:
 
   ```python
   pool = await client.create(
-
-  name="My IP address pool",
+      kind="CoreIPAddressPool",
+      name="My IP address pool",
       default_address_type="IpamIPAddress",
       default_prefix_size=32,
       resources=[prefix],

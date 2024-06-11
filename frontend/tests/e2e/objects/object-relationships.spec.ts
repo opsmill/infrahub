@@ -99,5 +99,17 @@ test.describe("/objects/:objectname/:objectid - relationship tab", () => {
         await expect(page.getByRole("link", { name: "Francesca Wilcox" })).toBeVisible();
       });
     });
+
+    test("should access to the pool selector on relationships add", async ({ page }) => {
+      await page.goto("/objects/InfraInterfaceL3/");
+      await page.getByRole("link", { name: "Connected to den1-edge1" }).click();
+      await page.getByText("Ip Addresses1").click();
+      await page.getByTestId("open-relationship-form-button").click();
+      await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
+      await page.getByTestId("select2step-1").getByText("IP Address").click();
+      await expect(page.getByTestId("select-open-pool-option-button")).toBeVisible();
+      await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
+      await expect(page.getByTestId("relationship-row").first()).toBeVisible();
+    });
   });
 });

@@ -653,3 +653,45 @@ async def test_relationship_add_busy(db: InfrahubDatabase, default_branch: Branc
     )
     assert result.errors
     assert "'TestElectricCar' is already related to another peer on 'owner'" in str(result.errors[0])
+
+
+async def test_relationship_add_from_pool(
+    db: InfrahubDatabase, default_branch: Branch, prefix_pool_01: dict[str, Node]
+):
+    hugh = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await hugh.new(db=db, name="Hugh Jackman")
+    await hugh.save(db=db)
+
+    query = """
+    mutation {
+        RelationshipAdd(
+            data: {
+                id: "%s",
+                name: "%s",
+                nodes: [
+                    {
+                        from_pool: {
+                            id: "%s"
+                        }
+                    }
+                ]
+            }
+        ) {
+            ok
+        }
+    }
+    """ % (hugh.id, "ip_prefixes", prefix_pool_01["prefix_pool"].id)
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema, source=query, context_value=gql_params.context, root_value=None, variable_values={}
+    )
+
+    assert result.errors is None
+
+    p1 = await NodeManager.get_one(db=db, id=hugh.id, branch=default_branch)
+
+    prefixes = await p1.ip_prefixes.get(db=db)
+    addresses = await p1.ip_addresses.get(db=db)
+    assert prefixes
+    assert not addresses
