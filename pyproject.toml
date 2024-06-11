@@ -357,11 +357,92 @@ module = "infrahub.lock"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations.*"
+module = "infrahub.message_bus.operations"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.test_data.*"
+module = "infrahub.message_bus.operations.check.artifact"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.check.generator"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.check.repository"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.refresh.webhook"
+ignore_errors = true
+
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.requests.artifact"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.requests.generator"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.requests.graphql_query_group"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.requests.proposed_change"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.requests.repository"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.schema.migration"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.schema.validator"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.send.telemetry"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.send.webhook"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.trigger.ipam"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.test_data.dataset01"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.test_data.dataset03"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.test_data.dataset04"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.test_data.gen_connected_nodes"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.test_data.gen_isolated_node"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.test_data.gen_node_profile_node"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.test_data.shared"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
