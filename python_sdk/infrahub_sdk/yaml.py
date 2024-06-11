@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 
 class SchemaFile(BaseModel):
-    identifier: Optional[str]
+    identifier: Optional[str] = None
     location: Path
     content: Optional[dict] = None
     valid: bool = True
