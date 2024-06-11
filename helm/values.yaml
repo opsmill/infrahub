@@ -148,45 +148,16 @@ infrahubDemoData:
     INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
 
 # ----------- Mesage Queue (Rabbit MQ) -----------
-messageQueue:
+rabbitmq:
   enabled: true
-  type: ClusterIP
-  messageQueue:
-    image:
-      repository: rabbitmq
-      tag: 3.12-management
-  ports:
-    - name: "epmd"
-      port: 4369
-      targetPort: 4369
-    - name: "amqptls"
-      port: 5671
-      targetPort: 5671
-    - name: "amqp"
-      port: 5672
-      targetPort: 5672
-    - name: "manager"
-      port: 15672
-      targetPort: 15672
-    - name: "metrics"
-      port: 15692
-      targetPort: 15692
-    - name: "dist"
-      port: 25672
-      targetPort: 25672
-  # storageSize: 10Gi
+  nameOverride: message-queue
+  persistence:
+    enabled: false
   auth:
     username: infrahub
     password: infrahub
   metrics:
     enabled: true
-  livenessProbe:
-    enabled: true
-    initialDelaySeconds: 120
-    timeoutSeconds: 20
-    periodSeconds: 30
-    failureThreshold: 6
-    successThreshold: 1
 
 # ----------- NFS Server -----------
 nfs-server-provisioner:

@@ -26,6 +26,10 @@ dependencies:
     version: "5.19.0"
     repository: "https://helm.neo4j.com/neo4j/"
     condition: neo4j.enabled
+  - name: rabbitmq
+    version: "14.4.1"
+    repository: "oci://registry-1.docker.io/bitnamicharts"
+    condition: rabbitmq.enabled
   - name: nfs-server-provisioner
     version: "1.8.0"
     repository: "https://kubernetes-sigs.github.io/nfs-ganesha-server-and-external-provisioner/"

@@ -27,9 +27,9 @@ spec:
             - name: INFRAHUB_BROKER_ADDRESS
               value: "{{ include "infrahub-helm.fullname" . }}-message-queue.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
             - name: INFRAHUB_BROKER_USERNAME
-              value: {{ .Values.messageQueue.auth.username | quote }}
+              value: {{ .Values.rabbitmq.auth.username | quote }}
             - name: INFRAHUB_BROKER_PASSWORD
-              value: {{ .Values.messageQueue.auth.password | quote }}
+              value: {{ .Values.rabbitmq.auth.password | quote }}
             - name: INFRAHUB_CACHE_ADDRESS
               value: "{{ include "infrahub-helm.fullname" . }}-cache.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
             - name: INFRAHUB_CACHE_PORT

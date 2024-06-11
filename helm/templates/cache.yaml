@@ -8,7 +8,7 @@ metadata:
     service: cache
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.messageQueue.replicas | default 1 }}
+  replicas: {{ .Values.cache.replicas | default 1 }}
   selector:
     matchLabels:
       service: cache
