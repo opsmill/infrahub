@@ -45,6 +45,7 @@ from .model.diff import (
 )
 
 if TYPE_CHECKING:
+    from infrahub.core.query import QueryResult
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 

@@ -497,6 +497,7 @@ class DiffAllPathsQuery(DiffQuery):
                 "base_branch_name": self.base_branch.name,
                 "branch_name": self.branch.name,
                 "branch_names": [registry.default_branch, self.branch.name],
+                "from_time": self.diff_from.to_string(),
                 "to_time": self.diff_to.to_string(),
             }
         )
@@ -546,7 +547,7 @@ class DiffAllPathsQuery(DiffQuery):
                 AND all(
                     r in relationships(latest_base_path)
                     WHERE r.branch = $base_branch_name
-                    AND r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
+                    AND r.from <= $from_time AND (r.to IS NULL or r.to <= $from_time)
                 )
                 WITH diff_rel_path, latest_base_path, r_node, r_root
                 ORDER BY base_diff_rel.from DESC, r_node.from DESC, r_root.from DESC
