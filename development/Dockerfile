@@ -8,7 +8,7 @@ ENV PYTHONUNBUFFERED 1
 
 ENV PATH="${PATH}:/root/.local/bin" \
     PROMETHEUS_MULTIPROC_DIR="/prom_shared" \
-    INFRAHUB_FRONTEND_DIRECTORY="/opt/infrahub/frontend" \
+    INFRAHUB_FRONTEND_DIRECTORY="/opt/infrahub/frontend/app" \
     INFRAHUB_DOCS_DIRECTORY="/opt/infrahub/docs"
 
 RUN mkdir /prom_shared /remote
