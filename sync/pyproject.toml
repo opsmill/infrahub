@@ -26,7 +26,6 @@ python = ">=3.9, < 3.13"
 infrahub-sdk = {version = "^0,>=0.9.1", extras = ["all"]}
 structlog = "^22.3.0"
 diffsync = { version = ">=1.10,<2.0 || >=2.0", extras = ["redis"] }
-ipfabric = "^6.8.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
