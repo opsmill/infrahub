@@ -1,6 +1,6 @@
 import { Checkbox } from "@/components/inputs/checkbox";
 import { FormField, FormInput, FormLabel, FormMessage } from "@/components/ui/form";
-import { FormFieldProps } from "./common";
+import { FormFieldProps } from "@/components/form/type";
 
 const CheckboxField = ({ defaultValue, label, name, rules, ...props }: FormFieldProps) => {
   return (
