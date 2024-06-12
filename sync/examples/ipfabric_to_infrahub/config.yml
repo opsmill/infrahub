@@ -3,8 +3,8 @@ name: from-ipfabric
 source:
   name: ipfabricsync
   settings:
-    base_url: "https://demo1.eu.ipfabric.io"
-    auth: "972cb3f149e998a12da2491dfdfd3fa4"
+    base_url: "https://<IPFABRIC-ENDPOINT>"
+    auth: "<TOKEN>"
 
 destination:
   name: infrahub
