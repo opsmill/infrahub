@@ -63,6 +63,7 @@ async def test_simple_directive(db: InfrahubDatabase, default_branch: Branch, cr
             "json_no_default": {"value": None, "is_default": True, "is_from_profile": False},
             "json_default": {"value": {"value": "bob"}, "is_default": True, "is_from_profile": False},
             "description": {"value": None, "is_default": True, "is_from_profile": False},
+            "time": {"value": None, "is_default": True, "is_from_profile": False},
             "status": {"value": None, "is_default": True, "is_from_profile": False},
         }
     } in result.data["TestCriticality"]["edges"]
@@ -117,6 +118,7 @@ async def test_directive_exclude(db: InfrahubDatabase, default_branch: Branch, c
             "json_no_default": {"value": None, "is_default": True, "is_from_profile": False},
             "json_default": {"value": {"value": "bob"}, "is_default": True, "is_from_profile": False},
             "description": {"value": None, "is_default": True, "is_from_profile": False},
+            "time": {"value": None, "is_default": True, "is_from_profile": False},
             "status": {"value": None, "is_default": True, "is_from_profile": False},
         }
     } in result.data["TestCriticality"]["edges"]

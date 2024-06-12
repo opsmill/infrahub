@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
 import ujson
 from infrahub_sdk import UUIDT
+from infrahub_sdk.timestamp import TimestampFormatError
 from infrahub_sdk.utils import is_valid_url
 from pydantic.v1 import BaseModel, Field
 
@@ -597,6 +598,22 @@ class Integer(BaseAttribute):
 
 class Boolean(BaseAttribute):
     type = bool
+
+
+class DateTime(BaseAttribute):
+    type = str
+
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        super().validate_format(value=value, name=name, schema=schema)
+
+        if not value and schema.optional:
+            return
+
+        try:
+            Timestamp(value)
+        except TimestampFormatError as exc:
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
 
 class Dropdown(BaseAttribute):
