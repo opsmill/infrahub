@@ -1,3 +1,4 @@
+import { Icon } from "@iconify-icon/react";
 import { Link, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { TabsButtons } from "../../components/buttons/tabs-buttons";
@@ -5,25 +6,13 @@ import { QSP } from "../../config/qsp";
 import { useTitle } from "../../hooks/useTitle";
 import { constructPath } from "../../utils/fetch";
 import { Diff } from "../diff/diff";
-import { BranchDetails } from "./branch-details";
 import Content from "../layout/content";
-import { Icon } from "@iconify-icon/react";
+import { BranchDetails } from "./branch-details";
 
 export const BRANCH_TABS = {
   DETAILS: "details",
   DIFF: "diff",
 };
-
-const tabs = [
-  {
-    label: "Details",
-    name: BRANCH_TABS.DETAILS,
-  },
-  {
-    label: "Diff",
-    name: BRANCH_TABS.DIFF,
-  },
-];
 
 const renderContent = (tab: string | null | undefined) => {
   switch (tab) {
@@ -38,8 +27,25 @@ const renderContent = (tab: string | null | undefined) => {
 
 const BranchItemDetails = () => {
   const { branchname } = useParams();
-  const [qspTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
+  const [qspTab, setQspTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
   useTitle(`${branchname} details`);
+
+  const tabs = [
+    {
+      label: "Details",
+      name: BRANCH_TABS.DETAILS,
+    },
+    {
+      label: "Diff",
+      name: BRANCH_TABS.DIFF,
+      disabled: branchname === "main",
+    },
+  ];
+
+  if (qspTab === BRANCH_TABS.DIFF && branchname === "main") {
+    // Prevent dif access for main branch, when loading the url
+    setQspTab(undefined);
+  }
 
   return (
     <Content>

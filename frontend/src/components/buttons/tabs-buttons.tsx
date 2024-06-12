@@ -5,6 +5,7 @@ import { BUTTON_TYPES, Button } from "./button";
 type Tab = {
   name?: string;
   label?: string;
+  disabled?: boolean;
 };
 
 type TabsProps = {
@@ -30,6 +31,7 @@ export const TabsButtons = (props: TabsProps) => {
                 ? BUTTON_TYPES.ACTIVE
                 : undefined
             }
+            disabled={tab.disabled}
             className={"border-0 px-4 py-2 rounded-none"}>
             {tab.label}
           </Button>
