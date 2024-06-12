@@ -26,6 +26,10 @@ class ProxyMountsConfig(BaseSettings):
         validation_alias="INFRAHUB_PROXY_MOUNTS_HTTPS",
     )
 
+    @property
+    def is_set(self) -> bool:
+        return self.http is not None or self.https is not None
+
 
 class ConfigBase(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_", validate_assignment=True)
@@ -104,7 +108,7 @@ class ConfigBase(BaseSettings):
 
     @model_validator(mode="after")
     def validate_proxy_config(self) -> Self:
-        if self.proxy and self.has_proxy_mounts:
+        if self.proxy and self.proxy_mounts.is_set:
             raise ValueError("'proxy' and 'proxy_mounts' are mutually exclusive")
         return self
 
@@ -118,14 +122,7 @@ class ConfigBase(BaseSettings):
 
     @property
     def password_authentication(self) -> bool:
-        if self.username:
-            return True
-        return False
-
-    @property
-    def has_proxy_mounts(self) -> bool:
-        # pylint: disable=no-member
-        return self.proxy_mounts.http is not None or self.proxy_mounts.https is not None
+        return bool(self.username)
 
 
 class Config(ConfigBase):
