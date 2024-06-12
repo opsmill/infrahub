@@ -38,7 +38,7 @@ def generate_sdk_repository_config():
 
     repository_dir = Path(f"{SDK_DIRECTORY}/repository-config")
     repository_dir.mkdir(parents=True, exist_ok=True)
-    schema = InfrahubRepositoryConfig.schema_json(indent=4)
+    schema = json.dumps(InfrahubRepositoryConfig.model_json_schema(), indent=4)
 
     write(file_path=repository_dir / "develop.json", content=schema)
 
