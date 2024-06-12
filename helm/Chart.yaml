@@ -14,7 +14,7 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 1.1.0
+version: 2.0.0
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
@@ -22,6 +22,18 @@ version: 1.1.0
 appVersion: "0.14.0"
 
 dependencies:
+  - name: neo4j
+    version: "5.19.0"
+    repository: "https://helm.neo4j.com/neo4j/"
+    condition: neo4j.enabled
+  - name: redis
+    version: "19.5.2"
+    repository: "oci://registry-1.docker.io/bitnamicharts"
+    condition: redis.enabled
+  - name: rabbitmq
+    version: "14.4.1"
+    repository: "oci://registry-1.docker.io/bitnamicharts"
+    condition: rabbitmq.enabled
   - name: nfs-server-provisioner
     version: "1.8.0"
     repository: "https://kubernetes-sigs.github.io/nfs-ganesha-server-and-external-provisioner/"

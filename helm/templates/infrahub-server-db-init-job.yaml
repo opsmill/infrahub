@@ -25,23 +25,23 @@ spec:
             - name: INFRAHUB_DATABASE_ADDRESS
               value: "{{ include "infrahub-helm.fullname" . }}-database.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
             - name: INFRAHUB_DATABASE_PORT
-              value: "{{ (index .Values.database.ports 2).port }}"
+              value: "{{ .Values.neo4j.services.neo4j.ports.bolt.port }}"
             - name: INFRAHUB_BROKER_ADDRESS
               value: "{{ include "infrahub-helm.fullname" . }}-message-queue.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
             - name: INFRAHUB_BROKER_USERNAME
-              value: {{ .Values.messageQueue.auth.username | quote }}
+              value: {{ .Values.rabbitmq.auth.username | quote }}
             - name: INFRAHUB_BROKER_PASSWORD
-              value: {{ .Values.messageQueue.auth.password | quote }}
+              value: {{ .Values.rabbitmq.auth.password | quote }}
             - name: INFRAHUB_CACHE_ADDRESS
-              value: "{{ include "infrahub-helm.fullname" . }}-cache.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
+              value: "{{ include "infrahub-helm.fullname" . }}-cache-master.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
             - name: INFRAHUB_CACHE_PORT
-              value: "{{ (index .Values.cache.ports 0).port }}"
+              value: "{{ .Values.redis.master.service.ports.redis }}"
           {{- with .Values.infrahubServer.infrahubServer.envFromExistingSecret }}
           envFrom:
             - secretRef:
                 name: {{ . }}
           {{- end }}
-          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
+          image: {{ default .Values.global.imageRegistry .Values.infrahubServer.infrahubServer.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
           name: infrahub-server-db-init-job
           resources: {}
           volumeMounts:

@@ -1,56 +1,53 @@
 ---
 global:
   kubernetesClusterDomain: cluster.local
-  imageRegistry: registry.opsmill.io
   infrahubRepository: opsmill/infrahub
   imagePullPolicy: IfNotPresent
 
 # ----------- Cache -----------
-cache:
+redis:
   enabled: true
-  type: ClusterIP
-  cache:
-    image:
-      repository: redis
-      tag: "7.2"
-  ports:
-    - name: "client"
-      port: 6379
-      targetPort: 6379
-    - name: "gossip"
-      port: 16379
-      targetPort: 16379
+  nameOverride: cache
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: false
+    service:
+      ports:
+        redis: 6379
 
-# ----------- Databse -----------
-database:
+# ----------- Database -----------
+neo4j:
   enabled: true
-  type: ClusterIP
-  persistence:
+  nameOverride: database
+  neo4j:
+    name: "infrahub"
+    edition: "community"
+    password: "admin"
+    minimumClusterSize: 1
+    acceptLicenseAgreement: "no"
+    resources: {}
+  volumes:
     data:
-      enabled: true
-      size: 100Mi
-    logs:
-      enabled: true
-      size: 100Mi
-  database:
-    env:
-      neo4JAuth: neo4j/admin
-      neo4JDbmsSecurityAuthMinimumPasswordLength: "4"
-      neo4JDbmsSecurityProceduresUnrestricted: apoc.*
-    image:
-      repository: neo4j
-      tag: 5.13-community
-  ports:
-    - name: "metrics"
-      port: 2004
-      targetPort: 2004
-    - name: "interface"
-      port: 7474
-      targetPort: 7474
-    - name: "bolt"
-      port: 7687
-      targetPort: 7687
-
+      mode: "volume"
+      volume:
+        emptyDir: {}
+  services:
+    neo4j:
+      enabled: false
+      ports:
+        bolt:
+          enabled: true
+          port: 7687
+          targetPort: 7687
+    admin:
+      enabled: false
+  config:
+    dbms.security.auth_minimum_password_length: "4"
+    dbms.security.procedures.unrestricted: apoc.*
+  logInitialPassword: false
 
 # ----------- Infrahub GIT -----------
 infrahubGit:
@@ -75,10 +72,7 @@ infrahubGit:
       INFRAHUB_TIMEOUT: "20"
       INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
     imagePullPolicy: Always
-  waitForInfrahubServer:
-    image:
-      repository: busybox
-      tag: latest
+    imageRegistry: registry.opsmill.io
 
 # ----------- Infrahub Server -----------
 infrahubServer:
@@ -111,22 +105,11 @@ infrahubServer:
       INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
       INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
     imagePullPolicy: Always
+    imageRegistry: registry.opsmill.io
   ports:
     - name: "interface"
       port: 8000
       targetPort: 8000
-  waitForCache:
-    image:
-      repository: busybox
-      tag: latest
-  waitForDatabase:
-    image:
-      repository: busybox
-      tag: latest
-  waitForMessageQueue:
-    image:
-      repository: busybox
-      tag: latest
 
 
 infrahubServerDbInitJob:
@@ -144,49 +127,21 @@ infrahubServerDbInitJob:
 infrahubDemoData:
   enabled: false
   backoffLimit: 4
+  imageRegistry: registry.opsmill.io
   env:
     INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
 
 # ----------- Mesage Queue (Rabbit MQ) -----------
-messageQueue:
+rabbitmq:
   enabled: true
-  type: ClusterIP
-  messageQueue:
-    image:
-      repository: rabbitmq
-      tag: 3.12-management
-  ports:
-    - name: "epmd"
-      port: 4369
-      targetPort: 4369
-    - name: "amqptls"
-      port: 5671
-      targetPort: 5671
-    - name: "amqp"
-      port: 5672
-      targetPort: 5672
-    - name: "manager"
-      port: 15672
-      targetPort: 15672
-    - name: "metrics"
-      port: 15692
-      targetPort: 15692
-    - name: "dist"
-      port: 25672
-      targetPort: 25672
-  # storageSize: 10Gi
+  nameOverride: message-queue
+  persistence:
+    enabled: false
   auth:
     username: infrahub
     password: infrahub
   metrics:
     enabled: true
-  livenessProbe:
-    enabled: true
-    initialDelaySeconds: 120
-    timeoutSeconds: 20
-    periodSeconds: 30
-    failureThreshold: 6
-    successThreshold: 1
 
 # ----------- NFS Server -----------
 nfs-server-provisioner:
