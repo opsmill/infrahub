@@ -2,6 +2,7 @@ from typing import Any, Dict, Optional
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing_extensions import Self
 
 from infrahub_sdk.constants import InfrahubClientMode
 from infrahub_sdk.playback import JSONPlayback
@@ -12,13 +13,13 @@ from infrahub_sdk.utils import get_branch, is_valid_url
 
 class ProxyMountsConfig(BaseSettings):
     model_config = SettingsConfigDict(populate_by_name=True)
-    http: str = Field(
+    http: Optional[str] = Field(
         default=None,
         description="Proxy for HTTP requests",
         alias="http://",
         validation_alias="INFRAHUB_PROXY_MOUNTS_HTTP",
     )
-    https: str = Field(
+    https: Optional[str] = Field(
         default=None,
         description="Proxy for HTTPS requests",
         alias="https://",
@@ -54,7 +55,7 @@ class ConfigBase(BaseSettings):
         default=RequesterTransport.HTTPX, description="Set an alternate transport using a predefined option"
     )
     proxy: Optional[str] = Field(default=None, description="Proxy address")
-    proxy_mounts: Optional[ProxyMountsConfig] = Field(default=None, description="Proxy mounts configuration")
+    proxy_mounts: ProxyMountsConfig = Field(default=ProxyMountsConfig(), description="Proxy mounts configuration")
     update_group_context: bool = Field(default=False, description="Update GraphQL query groups")
     tls_insecure: bool = Field(
         default=False,
@@ -101,14 +102,11 @@ class ConfigBase(BaseSettings):
 
         raise ValueError("The configured address is not a valid url")
 
-    @model_validator(mode="before")
-    @classmethod
-    def validate_proxy_config(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        has_proxy = values.get("proxy") is not None
-        has_proxy_mounts = values.get("proxy_mounts") is not None
-        if has_proxy and has_proxy_mounts:
+    @model_validator(mode="after")
+    def validate_proxy_config(self) -> Self:
+        if self.proxy and self.has_proxy_mounts:
             raise ValueError("'proxy' and 'proxy_mounts' are mutually exclusive")
-        return values
+        return self
 
     @property
     def default_infrahub_branch(self) -> str:
@@ -123,6 +121,11 @@ class ConfigBase(BaseSettings):
         if self.username:
             return True
         return False
+
+    @property
+    def has_proxy_mounts(self) -> bool:
+        # pylint: disable=no-member
+        return self.proxy_mounts.http is not None or self.proxy_mounts.https is not None
 
 
 class Config(ConfigBase):
