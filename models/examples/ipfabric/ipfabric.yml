@@ -13,9 +13,12 @@ generics:
     order_by:
       - device__hostname__value
       - name__value
+    uniqueness_constraints:
+      - ["device", "name__value"]
     attributes:
       - name: name
         kind: Text
+        optional: false
       - name: description
         kind: Text
         optional: true
@@ -24,7 +27,7 @@ generics:
         optional: true
       - name: mtu
         label: MTU
-        default_value: 2000
+        default_value: 1500
         kind: Number
       - name: enabled
         kind: Boolean
@@ -262,20 +265,28 @@ nodes:
         identifier: "device__interface"
         cardinality: many
         kind: Component
+      - name: part_number
+        peer: InfraPartNumber
+        kind: Component
+        optional: true
+        cardinality: many
+        identifier: "device__part"
   - name: PartNumber
     namespace: Infra
     label: Part Number
     description: Modules and part numbers from inventory of network infrastructure devices.
     icon: "mdi:format-list-bulleted"
-    default_filter: name__value
+    uniqueness_constraints:
+      - ["device", "name__value"]
     display_labels:
       - name__value
     order_by:
+      - device__hostname__value
       - name__value
     attributes:
       - name: name
         kind: Text
-        optional: true
+        optional: false
       - name: description
         kind: Text
         optional: true
@@ -305,12 +316,14 @@ nodes:
         kind: Attribute
       - name: device
         peer: InfraDevice
+        kind: Parent
+        optional: false
         cardinality: one
+        identifier: "device__part"
   - name: NOSVersion
     namespace: Infra
     description: NOS Version
     icon: "mdi:content-copy"
-    default_filter: version__value
     # uniqueness_constraints:
     #   - ["manufacturer", "model", "version__value"]
     order_by:
@@ -345,13 +358,14 @@ nodes:
     description: "A VLAN is isolated layer two domain"
     label: "VLAN"
     icon: "mdi:lan-pending"   # mdi:lan
-    default_filter: name__value
     menu_placement: "InfraIPAddress"
     order_by:
       - vlan_id__value
     display_labels:
       - name__value
       - vlan_id__value
+    uniqueness_constraints:
+      - ["location", "vlan_id"]
     attributes:
       - name: name
         kind: Text
@@ -364,7 +378,7 @@ nodes:
     relationships:
       - name: location
         peer: LocationGeneric
-        optional: true
+        optional: false
         cardinality: one
         kind: Attribute
   - name: VRF
@@ -405,7 +419,10 @@ nodes:
     display_labels:
       - name__value
     order_by:
+      - device__hostname__value
       - name__value
+    uniqueness_constraints:
+      - ["device", "name__value"]
     inherit_from:
       - "InfraInterface"
       - "InfraEndpoint"

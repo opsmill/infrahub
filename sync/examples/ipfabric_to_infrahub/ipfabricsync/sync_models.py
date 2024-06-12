@@ -30,7 +30,7 @@ class InfraInterfaceL3(IpfabricsyncModel):
     name: str
     description: Optional[str] = None
     speed: Optional[int] = None
-    mtu: Optional[int] = 2000
+    mtu: Optional[int] = 1500
     mac_address: Optional[str] = None
     device: str
     local_id: Optional[str] = None
@@ -51,14 +51,14 @@ class InfraPartNumber(IpfabricsyncModel):
     _modelname = "InfraPartNumber"
     _identifiers = ("device", "name")
     _attributes = ("manufacturer", "model", "description", "part_id", "part_sn", "part_vid")
-    name: Optional[str] = None
+    name: str
     description: Optional[str] = None
     part_id: Optional[str] = None
     part_sn: Optional[str] = None
     part_vid: Optional[str] = None
     manufacturer: Optional[str] = None
     model: Optional[str] = None
-    device: Optional[str] = None
+    device: str
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
@@ -78,7 +78,7 @@ class InfraVLAN(IpfabricsyncModel):
     name: Optional[str] = None
     description: Optional[str] = None
     vlan_id: int
-    location: Optional[str] = None
+    location: str
     local_id: Optional[str] = None
     local_data: Optional[Any] = None
 
