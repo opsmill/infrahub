@@ -37,7 +37,7 @@ const theme = EditorView.baseTheme({
 });
 
 type CodeMirrorProps = {
-  value?: string;
+  defaultValue?: string;
   placeholder?: string;
   onChange?: (value: string) => void;
   lang?: "markdown" | "graphql";
@@ -46,7 +46,13 @@ type CodeMirrorProps = {
 
 export function useCodeMirror(
   container: HTMLDivElement | null,
-  { value, onChange, placeholder = "", lang = "markdown", readOnly = false }: CodeMirrorProps
+  {
+    defaultValue = "",
+    onChange,
+    placeholder = "",
+    lang = "markdown",
+    readOnly = false,
+  }: CodeMirrorProps
 ) {
   const [containerElement, setContainerElement] = useState<HTMLDivElement>();
   const [view, setView] = useState<EditorView>();
@@ -75,7 +81,7 @@ export function useCodeMirror(
             ];
 
       const stateCurrent = EditorState.create({
-        doc: value,
+        doc: defaultValue,
         extensions: [
           updateListener,
           theme,
@@ -105,7 +111,7 @@ export function useCodeMirror(
         setState(undefined);
       }
     };
-  }, [containerElement, state, view]);
+  }, [containerElement, state, view, defaultValue]);
 
   useEffect(() => setContainerElement(container!), [container]);
 

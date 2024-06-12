@@ -28,7 +28,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = forwardRef<
 
   const codeMirror = useCodeMirror(codeMirrorRef.current, {
     placeholder,
-    value: editorText,
+    defaultValue,
     onChange: handleTextChange,
   });
 
