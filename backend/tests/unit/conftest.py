@@ -1708,6 +1708,7 @@ async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group
             {"name": "json_no_default", "kind": "JSON", "optional": True},
             {"name": "json_default", "kind": "JSON", "default_value": {"value": "bob"}},
             {"name": "description", "kind": "Text", "optional": True},
+            {"name": "time", "kind": "DateTime", "optional": True},
             {
                 "name": "status",
                 "kind": "Dropdown",
@@ -2729,3 +2730,69 @@ async def ip_dataset_prefix_v4(
         "net147": net147,
     }
     return data
+
+
+@pytest.fixture
+async def person_ip_schema_unregistered(db: InfrahubDatabase, data_schema, register_ipam_schema) -> SchemaRoot:
+    schema: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "display_labels": ["name__value"],
+                "human_friendly_id": ["name__value"],
+                "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+                "relationships": [
+                    {
+                        "name": "ip_addresses",
+                        "peer": "IpamIPAddress",
+                        "identifier": "person__addresses",
+                        "cardinality": "many",
+                    },
+                    {
+                        "name": "ip_prefixes",
+                        "peer": "IpamIPPrefix",
+                        "identifier": "person__prefixes",
+                        "cardinality": "many",
+                    },
+                ],
+            },
+        ],
+    }
+
+    return SchemaRoot(**schema)
+
+
+@pytest.fixture
+async def person_ip_schema(db: InfrahubDatabase, default_branch: Branch, person_ip_schema_unregistered) -> SchemaBranch:
+    return registry.schema.register_schema(schema=person_ip_schema_unregistered, branch=default_branch.name)
+
+
+@pytest.fixture
+async def prefix_pool_01(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    init_nodes_registry,
+    person_ip_schema,
+    ip_dataset_prefix_v4,
+):
+    ns1 = ip_dataset_prefix_v4["ns1"]
+    net140 = ip_dataset_prefix_v4["net140"]
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    prefix_pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
+    await prefix_pool.new(
+        db=db,
+        name="pool1",
+        default_prefix_length=24,
+        default_prefix_type="IpamIPPrefix",
+        resources=[net140],
+        ip_namespace=ns1,
+    )
+    await prefix_pool.save(db=db)
+
+    ip_dataset_prefix_v4["prefix_pool"] = prefix_pool
+
+    return ip_dataset_prefix_v4

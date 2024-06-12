@@ -22,7 +22,7 @@ export interface DynamicFieldData {
   disabled?: boolean;
   preventObjectsCreation?: boolean;
   parent?: string;
-  field:
+  field?:
     | components["schemas"]["AttributeSchema-Output"]
     | components["schemas"]["RelationshipSchema-Output"];
 }

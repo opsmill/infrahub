@@ -133,12 +133,12 @@ class TextArea(Text):
 
 class DateTime(InfrahubDataType):
     label: str = "DateTime"
-    graphql = graphene.String
+    graphql = graphene.DateTime
     graphql_query = "TextAttributeType"
     graphql_create = "TextAttributeCreate"
     graphql_update = "TextAttributeUpdate"
-    graphql_filter = graphene.String
-    infrahub = "String"
+    graphql_filter = graphene.DateTime
+    infrahub = "DateTime"
 
 
 class Email(InfrahubDataType):

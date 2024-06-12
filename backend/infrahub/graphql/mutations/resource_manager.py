@@ -21,7 +21,7 @@ class IPPrefixPoolGetResourceInput(InputObjectType):
     id = InputField(String(required=False), description="ID of the pool to allocate from")
     hfid = InputField(String(required=False), description="HFID of the pool to allocate from")
     identifier = InputField(String(required=False), description="Identifier for the allocated resource")
-    size = InputField(Int(required=False), description="Size of the prefix to allocate")
+    prefix_length = InputField(Int(required=False), description="Size of the prefix to allocate")
     member_type = InputField(String(required=False), description="member_type of the newly created prefix")
     prefix_type = InputField(String(required=False), description="kind of prefix to allocate")
     data = InputField(GenericScalar(required=False), description="Additional data to pass to the newly created prefix")
@@ -31,8 +31,8 @@ class IPAddressPoolGetResourceInput(InputObjectType):
     id = InputField(String(required=False), description="ID of the pool to allocate from")
     hfid = InputField(String(required=False), description="HFID of the pool to allocate from")
     identifier = InputField(String(required=False), description="Identifier for the allocated resource")
-    prefixlen = InputField(
-        String(required=False), description="size of the prefix mask to allocate on the new ip address"
+    prefix_length = InputField(
+        Int(required=False), description="Size of the prefix mask to allocate on the new IP address"
     )
     address_type = InputField(String(required=False), description="kind of ip address to allocate")
     data = InputField(
@@ -68,7 +68,7 @@ class IPPrefixPoolGetResource(Mutation):
             db=context.db,
             branch=context.branch,
             identifier=data.get("identifier", None),
-            prefixlen=data.get("prefixlen", None),
+            prefixlen=data.get("prefix_length", None),
             member_type=data.get("member_type", None),
             prefix_type=data.get("prefix_type", None),
             data=data.get("data", None),
@@ -116,7 +116,7 @@ class IPAddressPoolGetResource(Mutation):
             db=context.db,
             branch=context.branch,
             identifier=data.get("identifier", None),
-            prefixlen=data.get("prefixlen", None),
+            prefixlen=data.get("prefix_length", None),
             address_type=data.get("address_type", None),
             data=data.get("data", None),
         )

@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from infrahub.core.attribute import (
         URL,
         Boolean,
+        DateTime,
         Dropdown,
         HashedPassword,
         Integer,
@@ -74,13 +75,13 @@ class CoreCheck(CoreNode):
     message: String
     conclusion: Enum
     severity: Enum
-    created_at: String
+    created_at: DateTime
     validator: RelationshipManager
 
 
 class CoreComment(CoreNode):
     text: String
-    created_at: String
+    created_at: DateTime
     created_by: RelationshipManager
 
 
@@ -124,7 +125,7 @@ class CoreTaskTarget(CoreNode):
 class CoreThread(CoreNode):
     label: String
     resolved: Boolean
-    created_at: String
+    created_at: DateTime
     change: RelationshipManager
     comments: RelationshipManager
     created_by: RelationshipManager
@@ -144,8 +145,8 @@ class CoreValidator(CoreNode):
     label: String
     state: Enum
     conclusion: Enum
-    completed_at: String
-    started_at: String
+    completed_at: DateTime
+    started_at: DateTime
     proposed_change: RelationshipManager
     checks: RelationshipManager
 
@@ -402,12 +403,12 @@ class CoreUserValidator(CoreValidator):
 class InternalAccountToken(CoreNode):
     name: String
     token: String
-    expiration: String
+    expiration: DateTime
     account: RelationshipManager
 
 
 class InternalRefreshToken(CoreNode):
-    expiration: String
+    expiration: DateTime
     account: RelationshipManager
 
 
