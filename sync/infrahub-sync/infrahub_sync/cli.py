@@ -3,10 +3,11 @@ from timeit import default_timer as timer
 
 import typer
 from infrahub_sdk import InfrahubClientSync
+from infrahub_sdk.exceptions import ServerNotResponsiveError
 from rich.console import Console
 
 from infrahub_sync.utils import get_all_sync, get_instance, get_potenda_from_instance, render_adapter
-from infrahub_sdk.exceptions import ServerNotResponsiveError
+
 app = typer.Typer()
 console = Console()
 

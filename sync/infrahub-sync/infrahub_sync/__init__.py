@@ -1,5 +1,7 @@
 from typing import Any, Dict, List, Optional
+
 import pydantic
+
 
 class SchemaMappingField(pydantic.BaseModel):
     name: str

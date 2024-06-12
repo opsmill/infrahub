@@ -76,7 +76,7 @@ generics:
         kind: Attribute
         identifier: connected__endpoint
 nodes:
-  - name: Generic # Organization
+  - name: Generic  # Organization
     namespace: Organization
     label: Organization
     description: An organization represent a legal entity, a company.
@@ -105,7 +105,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Generic
-  - name: Generic # Location
+  - name: Generic  # Location
     namespace: Location
     label: Location
     description: 'A location represent a physical element: a building, a site, a city'

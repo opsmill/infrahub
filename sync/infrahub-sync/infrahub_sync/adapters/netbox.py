@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict
 
 import pynetbox
 
-from diffsync import DiffSyncModel
+from diffsync import Adapter, DiffSyncModel
 from infrahub_sync import (
     DiffSyncMixin,
     DiffSyncModelMixin,
@@ -14,7 +14,6 @@ from infrahub_sync import (
     SyncAdapter,
     SyncConfig,
 )
-from diffsync import Adapter
 
 if TYPE_CHECKING:
     from pynetbox.core.response import Record as NetboxRecord

@@ -16,36 +16,11 @@ from infrahub_sync import (
     SyncConfig,
 )
 
-ipf_filters = {"tables/inventory/summary/platforms": {
-    "and": [
-      {
-        "platform": [
-          "empty",
-          False
-        ]
-      }
-    ]
-  },
-  "tables/inventory/summary/models": {
-    "and": [
-      {
-        "model": [
-          "empty",
-          False
-        ]
-      }
-    ]
-  },
-  "tables/inventory/pn": {
-    "and": [
-      {
-        "name": [
-          "empty",
-          False
-        ]
-      }
-    ]
-  }}
+ipf_filters = {
+    "tables/inventory/summary/platforms": {"and": [{"platform": ["empty", False]}]},
+    "tables/inventory/summary/models": {"and": [{"model": ["empty", False]}]},
+    "tables/inventory/pn": {"and": [{"name": ["empty", False]}]},
+}
 
 
 class IpfabricsyncAdapter(DiffSyncMixin, Adapter):
@@ -59,7 +34,6 @@ class IpfabricsyncAdapter(DiffSyncMixin, Adapter):
         self.config = config
 
     def _create_ipfabric_client(self, adapter: SyncAdapter):
-
         settings = adapter.settings or {}
 
         base_url = settings.get("base_url") or None
@@ -75,10 +49,7 @@ class IpfabricsyncAdapter(DiffSyncMixin, Adapter):
         object_class, modelname = self.store._get_object_class_and_model(model=reference)
 
         # Find the schema element matching the model name
-        schema_element = next(
-            (element for element in self.config.schema_mapping if element.name == modelname),
-            None
-        )
+        schema_element = next((element for element in self.config.schema_mapping if element.name == modelname), None)
 
         # Collect all relevant field mappings for identifiers
         new_identifiers = []
@@ -130,7 +101,6 @@ class IpfabricsyncAdapter(DiffSyncMixin, Adapter):
                 )
 
             elif field.mapping and field.reference:
-
                 all_nodes_for_reference = self.store.get_all(model=field.reference)
 
                 nodes = [item for item in all_nodes_for_reference]  # noqa: C416
