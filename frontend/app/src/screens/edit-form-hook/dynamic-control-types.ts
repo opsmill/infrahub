@@ -37,7 +37,6 @@ export type SchemaAttributeType =
   | "Email"
   | "Password"
   | "HashedPassword"
-  | "Hierarchy"
   | "URL"
   | "File"
   | "MacAddress"
@@ -48,10 +47,8 @@ export type SchemaAttributeType =
   | "Checkbox"
   | "List"
   | "Any"
-  | "String"
   | "Boolean"
   | "JSON"
-  | "Integer"
   | "Dropdown";
 
 // Different kind of form inputs
@@ -105,7 +102,6 @@ export const getInputTypeFromKind = (kind: SchemaAttributeType): ControlType => 
     case "IPHost":
     case "IPNetwork":
     case "Any":
-    case "String":
     default:
       return "text";
   }

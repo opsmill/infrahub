@@ -148,7 +148,7 @@ export const attributesKindForListView = [
   "DateTime",
 ];
 
-export const SCHEMA_ATTRIBUTE_KIND: Record<string, SchemaAttributeType> = {
+export const SCHEMA_ATTRIBUTE_KIND = {
   ID: "ID",
   DROPDOWN: "Dropdown",
   TEXT: "Text",
@@ -169,10 +169,8 @@ export const SCHEMA_ATTRIBUTE_KIND: Record<string, SchemaAttributeType> = {
   LIST: "List",
   JSON: "JSON",
   ANY: "Any",
-  STRING: "String",
-  INTEGER: "Integer",
   BOOLEAN: "Boolean",
-} as const;
+} satisfies Record<string, SchemaAttributeType>;
 
 export const attributesKindForDetailsViewExclude = ["HashedPassword"];
 
