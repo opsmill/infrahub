@@ -100,12 +100,12 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: frontend/app/package-lock.json
       - name: Install frontend dependencies
-        working-directory: ./frontend
+        working-directory: ./frontend/app
         run: npm install
       - name: Run ESLint
-        working-directory: ./frontend
+        working-directory: ./frontend/app
         run: npm run eslint
 
   python-lint:
@@ -500,15 +500,15 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: frontend/app/package-lock.json
       - name: "Install frontend"
-        working-directory: ./frontend
+        working-directory: ./frontend/app
         run: npm install
       - name: "Run unit tests"
-        working-directory: ./frontend
+        working-directory: ./frontend/app
         run: "npm run test:coverage"
       - name: "Run integration tests"
-        working-directory: ./frontend
+        working-directory: ./frontend/app
         run: "npm run cypress:run"
       - name: Upload cypress screenshots
         if: failure()
@@ -521,7 +521,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: screenshots
-          path: frontend/cypress/videos/*
+          path: frontend/app/cypress/videos/*
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -530,7 +530,7 @@ jobs:
         with:
           flag-name: frontend-unit
           parallel: true
-          file: frontend/coverage/lcov.info
+          file: frontend/app/coverage/lcov.info
 
   documentation:
     defaults:
@@ -609,7 +609,7 @@ jobs:
   E2E-testing-playwright:
     defaults:
       run:
-        working-directory: ./frontend
+        working-directory: ./frontend/app
     needs:
       - javascript-lint
       - files-changed
@@ -740,7 +740,7 @@ jobs:
         with:
           jobName: "E2E-testing-playwright"
           stepName: "Run Playwright tests"
-          path: "frontend/playwright-junit.xml"
+          path: "frontend/app/playwright-junit.xml"
           type: "junit"
           githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
 
@@ -749,7 +749,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
-          path: frontend/playwright-report/
+          path: frontend/app/playwright-report/
 
       - name: Containers after tests
         if: always()

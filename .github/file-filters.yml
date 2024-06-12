@@ -32,10 +32,10 @@ sync_poetry_files: &sync_poetry_files
   - "sync/poetry.lock"
 
 frontend_files: &frontend_files
-  - "frontend/**"
+  - "frontend/app/**"
 
 e2e_test_files:
-  - "frontend/tests/e2e/**"
+  - "frontend/app/tests/e2e/**"
 
 demo_files: &demo_files
   - "models/**"
