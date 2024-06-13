@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import bisect
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -16,77 +15,12 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class DiffValue:
-    changed_at: Timestamp
-    value: Any
-
-    def __hash__(self) -> int:
-        return hash(f"{self.changed_at.to_string()}|{self.value}")
-
-
-@dataclass
 class DiffProperty:
-    db_id: str
     property_type: str
-    diff_values_by_asc_time: list[DiffValue] = field(default_factory=list)
-    diff_values_set: set[DiffValue] = field(default_factory=set)
-
-    def add_value(self, diff_value: DiffValue) -> None:
-        if diff_value in self.diff_values_set:
-            return
-        bisect.insort(self.diff_values_by_asc_time, diff_value, key=lambda df: df.changed_at)
-        self.diff_values_set.add(diff_value)
-
-    @property
-    def previous_diff_value(self) -> Optional[DiffValue]:
-        if not self.diff_values_by_asc_time:
-            return None
-        return self.diff_values_by_asc_time[0]
-
-    @property
-    def new_diff_value(self) -> Optional[DiffValue]:
-        if not self.diff_values_by_asc_time:
-            return None
-        return self.diff_values_by_asc_time[-1]
-
-    @property
-    def previous_value(self) -> Any:
-        diff_value = self.previous_diff_value
-        return diff_value.value if diff_value is not None else None
-
-    @property
-    def new_value(self) -> Any:
-        diff_value = self.new_diff_value
-        return diff_value.value if diff_value is not None else None
-
-    @property
-    def previous_value_changed_at(self) -> Optional[Timestamp]:
-        diff_value = self.previous_diff_value
-        return diff_value.changed_at if diff_value is not None else None
-
-    @property
-    def new_value_changed_at(self) -> Optional[Timestamp]:
-        diff_value = self.new_diff_value
-        return diff_value.changed_at if diff_value is not None else None
-
-    def get_diff_action(self, from_time: Timestamp) -> DiffAction:
-        if len(self.diff_values_by_asc_time) == 0:
-            return DiffAction.UNCHANGED
-        if len(self.diff_values_by_asc_time) == 1:
-            lone_value = self.diff_values_by_asc_time[0]
-            if lone_value.changed_at < from_time:
-                return DiffAction.REMOVED
-            return DiffAction.ADDED
-        previous_diff_value = self.diff_values_by_asc_time[0]
-        new_diff_value = self.diff_values_by_asc_time[-1]
-        action = DiffAction.UPDATED
-        if previous_diff_value.value is None and new_diff_value.value:
-            action = DiffAction.ADDED
-        if previous_diff_value.value and new_diff_value.value is None:
-            action = DiffAction.REMOVED
-        if previous_diff_value.value == new_diff_value.value:
-            action = DiffAction.UNCHANGED
-        return action
+    changed_at: Timestamp
+    previous_value: Any
+    new_value: Any
+    action: DiffAction
 
 
 @dataclass
@@ -95,7 +29,7 @@ class DiffAttribute:
     name: str
     changed_at: Timestamp
     action: DiffAction
-    properties_by_type: dict[str, DiffProperty] = field(default_factory=dict)
+    properties: list[DiffProperty] = field(default_factory=list)
 
 
 @dataclass
@@ -103,7 +37,7 @@ class DiffSingleRelationship:
     uuid: str
     changed_at: Timestamp
     action: DiffAction
-    properties_by_type: dict[str, DiffProperty] = field(default_factory=dict)
+    properties: list[DiffProperty] = field(default_factory=list)
 
     def __hash__(self) -> int:
         return hash(self.uuid)
@@ -114,7 +48,7 @@ class DiffRelationshipOne:
     name: str
     changed_at: Timestamp
     action: DiffAction
-    properties_by_type: dict[str, DiffProperty] = field(default_factory=dict)
+    properties: list[DiffProperty] = field(default_factory=list)
 
 
 @dataclass
@@ -131,16 +65,16 @@ class DiffNode:
     kind: str
     changed_at: Timestamp
     action: DiffAction
-    attributes_by_name: dict[str, DiffAttribute] = field(default_factory=dict)
-    one_relationships_by_name: dict[str, DiffRelationshipOne] = field(default_factory=dict)
-    many_relationships_by_name: dict[str, DiffRelationshipMany] = field(default_factory=dict)
+    attributes: list[DiffAttribute] = field(default_factory=list)
+    one_relationships: list[DiffRelationshipOne] = field(default_factory=list)
+    many_relationships: list[DiffRelationshipMany] = field(default_factory=list)
 
 
 @dataclass
 class DiffRoot:
     uuid: str
     branch: str
-    nodes_by_id: dict[str, DiffNode] = field(default_factory=dict)
+    nodes: list[DiffNode] = field(default_factory=list)
 
 
 @dataclass
@@ -237,6 +171,10 @@ class DatabasePath:
     @property
     def property_changed_at(self) -> Timestamp:
         return Timestamp(self.path_to_property.get("from"))
+
+    @property
+    def property_status(self) -> RelationshipStatus:
+        return RelationshipStatus(self.path_to_property.get("status"))
 
     @property
     def property_end_time(self) -> Optional[Timestamp]:
