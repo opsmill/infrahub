@@ -1,8 +1,8 @@
-import { FormField, FormInput, FormLabel, FormMessage } from "@/components/ui/form";
+import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { FormFieldProps } from "@/components/form/type";
 import { DatePicker } from "@/components/inputs/date-picker";
 import { ComponentProps } from "react";
-import { QuestionMark } from "@/components/display/question-mark";
+import { LabelFormField } from "@/components/form/fields/common";
 
 export interface DatetimeFieldProps
   extends FormFieldProps,
@@ -14,6 +14,7 @@ const DatetimeField = ({
   label,
   name,
   rules,
+  unique,
   ...props
 }: DatetimeFieldProps) => {
   return (
@@ -25,13 +26,12 @@ const DatetimeField = ({
       render={({ field }) => {
         return (
           <div className="flex flex-col items-start">
-            <div className="px-1 mb-1 flex justify-between items-center gap-1">
-              <FormLabel>
-                {label} {rules?.required && "*"}
-              </FormLabel>
-
-              {description && <QuestionMark message={description} />}
-            </div>
+            <LabelFormField
+              label={label}
+              unique={unique}
+              required={!!rules?.required}
+              description={description}
+            />
 
             <FormInput>
               <DatePicker date={field.value} {...field} {...props} />

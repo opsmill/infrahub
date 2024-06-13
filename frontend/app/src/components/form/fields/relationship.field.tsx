@@ -1,4 +1,4 @@
-import { FormField, FormInput, FormLabel, FormMessage } from "@/components/ui/form";
+import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { Select } from "../../inputs/select";
 import { ElementRef, forwardRef } from "react";
 import { components } from "@/infraops";
@@ -6,7 +6,7 @@ import { genericsState, IModelSchema, profilesAtom, schemaState } from "@/state/
 import { OpsSelect2Step } from "@/components/form/select-2-step";
 import { store } from "@/state";
 import { DynamicRelationshipFieldProps, FormFieldProps } from "@/components/form/type";
-import { QuestionMark } from "@/components/display/question-mark";
+import { LabelFormField } from "@/components/form/fields/common";
 
 export interface RelationshipFieldProps extends DynamicRelationshipFieldProps {}
 
@@ -16,6 +16,7 @@ const RelationshipField = ({
   label,
   name,
   rules,
+  unique,
   ...props
 }: RelationshipFieldProps) => {
   return (
@@ -27,13 +28,12 @@ const RelationshipField = ({
       render={({ field }) => {
         return (
           <div className="flex flex-col">
-            <div className="px-1 mb-1 flex justify-between items-center gap-1">
-              <FormLabel>
-                {label} {rules?.required && "*"}
-              </FormLabel>
-
-              {description && <QuestionMark message={description} />}
-            </div>
+            <LabelFormField
+              label={label}
+              unique={unique}
+              required={!!rules?.required}
+              description={description}
+            />
 
             <FormInput>
               <RelationshipInput {...field} {...props} />

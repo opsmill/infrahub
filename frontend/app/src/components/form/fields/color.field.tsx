@@ -1,8 +1,8 @@
-import { FormField, FormInput, FormLabel, FormMessage } from "@/components/ui/form";
+import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { FormFieldProps } from "@/components/form/type";
 import { InputProps } from "@/components/ui/input";
 import { ColorPicker } from "@/components/inputs/color-picker";
-import { QuestionMark } from "@/components/display/question-mark";
+import { LabelFormField } from "@/components/form/fields/common";
 
 export interface InputFieldProps
   extends FormFieldProps,
@@ -14,6 +14,7 @@ const ColorField = ({
   label,
   name,
   rules,
+  unique,
   ...props
 }: InputFieldProps) => {
   return (
@@ -28,13 +29,12 @@ const ColorField = ({
         const { value, ...fieldMethodsWithoutValue } = field;
         return (
           <div className="flex flex-col">
-            <div className="px-1 mb-1 flex justify-between items-center gap-1">
-              <FormLabel>
-                {label} {rules?.required && "*"}
-              </FormLabel>
-
-              {description && <QuestionMark message={description} />}
-            </div>
+            <LabelFormField
+              label={label}
+              unique={unique}
+              required={!!rules?.required}
+              description={description}
+            />
 
             <FormInput>
               <ColorPicker {...field} className {...props} />

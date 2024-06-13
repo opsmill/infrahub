@@ -1,11 +1,13 @@
 import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/buttons/button-primitive";
+import { classNames } from "@/utils/common";
 
 type tQuestionMark = {
+  className?: string;
   message?: string;
 };
 
-export const QuestionMark = ({ message }: tQuestionMark) => {
+export const QuestionMark = ({ className, message }: tQuestionMark) => {
   if (!message) return null;
 
   return (
@@ -13,7 +15,7 @@ export const QuestionMark = ({ message }: tQuestionMark) => {
       <Button
         size="icon"
         variant="outline"
-        className="h-4 w-4 p-2 text-[10px]"
+        className={classNames("h-4 w-4 p-2 text-[10px]", className)}
         data-cy="question-mark">
         ?
       </Button>

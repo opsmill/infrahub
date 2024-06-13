@@ -31,7 +31,7 @@ describe("getFormFieldsFromSchema", () => {
           label: "Name",
           description: null,
           read_only: false,
-          unique: false,
+          unique: true,
           optional: false,
           branch: "aware",
           order_weight: 1000,
@@ -49,9 +49,11 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).to.deep.equal({
       defaultValue: null,
+      description: undefined,
       name: "name",
       label: "Name",
       type: "Text",
+      unique: true,
       rules: {
         required: true,
       },
@@ -93,9 +95,11 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).to.deep.equal({
       defaultValue: null,
+      description: undefined,
       name: "password",
       label: "Password",
       type: "HashedPassword",
+      unique: false,
       rules: {
         required: true,
       },
@@ -137,9 +141,11 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).to.deep.equal({
       defaultValue: null,
+      description: undefined,
       name: "url",
       label: "Url",
       type: "URL",
+      unique: false,
       rules: {
         required: false,
       },
@@ -181,9 +187,11 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).to.deep.equal({
       defaultValue: null,
+      description: undefined,
       name: "parameters",
       label: "Parameters",
       type: "JSON",
+      unique: false,
       rules: {
         required: true,
       },
@@ -242,6 +250,7 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields.length).to.equal(1);
     expect(fields[0]).to.deep.equal({
       defaultValue: "address",
+      description: undefined,
       name: "member_type",
       label: "Member Type",
       type: "Dropdown",
@@ -262,6 +271,7 @@ describe("getFormFieldsFromSchema", () => {
           name: "Address",
         },
       ],
+      unique: false,
     });
   });
 });

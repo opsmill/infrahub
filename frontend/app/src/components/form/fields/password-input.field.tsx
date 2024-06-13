@@ -1,7 +1,7 @@
-import { FormField, FormInput, FormLabel, FormMessage } from "@/components/ui/form";
+import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { PasswordInput } from "@/components/ui/password-input";
 import { FormFieldProps } from "@/components/form/type";
-import { QuestionMark } from "@/components/display/question-mark";
+import { LabelFormField } from "@/components/form/fields/common";
 
 const PasswordInputField = ({
   defaultValue,
@@ -9,6 +9,7 @@ const PasswordInputField = ({
   label,
   name,
   rules,
+  unique,
   ...props
 }: FormFieldProps) => {
   return (
@@ -24,14 +25,12 @@ const PasswordInputField = ({
 
         return (
           <div className="flex flex-col">
-            <div className="px-1 mb-1 flex justify-between items-center gap-1">
-              <FormLabel>
-                {label} {rules?.required && "*"}
-              </FormLabel>
-
-              {description && <QuestionMark message={description} />}
-            </div>
-
+            <LabelFormField
+              label={label}
+              unique={unique}
+              required={!!rules?.required}
+              description={description}
+            />
             <FormInput>
               <PasswordInput value={value ?? ""} {...fieldMethodsWithoutValue} {...props} />
             </FormInput>

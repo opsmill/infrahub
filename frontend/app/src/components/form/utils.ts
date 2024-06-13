@@ -29,7 +29,7 @@ export const getFormFieldsFromSchema = ({
   const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
 
   return orderedFields.map((attribute) => {
-    if ("cardinality" in attribute) {
+    if ("peer" in attribute) {
       return {
         name: attribute.name,
         label: attribute.label ?? undefined,
@@ -51,6 +51,7 @@ export const getFormFieldsFromSchema = ({
         label: attribute.label ?? undefined,
         type: SCHEMA_ATTRIBUTE_KIND.DROPDOWN,
         defaultValue: getFieldValue({ field: attribute, row: initialObject, profile }),
+        unique: attribute.unique,
         description: attribute.description ?? undefined,
         rules: {
           required: !attribute.optional,
@@ -70,6 +71,7 @@ export const getFormFieldsFromSchema = ({
         label: attribute.label ?? undefined,
         type: "enum",
         defaultValue: getFieldValue({ field: attribute, row: initialObject, profile }),
+        unique: attribute.unique,
         description: attribute.description ?? undefined,
         rules: {
           required: !attribute.optional,
@@ -84,6 +86,7 @@ export const getFormFieldsFromSchema = ({
       defaultValue: getFieldValue({ field: attribute, row: initialObject, profile }),
       description: attribute.description ?? undefined,
       type: attribute.kind as Exclude<SchemaAttributeType, "Dropdown">,
+      unique: attribute.unique,
       rules: {
         required: !attribute.optional,
       },

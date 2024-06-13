@@ -1,7 +1,7 @@
 import { MarkdownEditor } from "@/components/editor";
-import { FormField, FormInput, FormLabel, FormMessage } from "@/components/ui/form";
+import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { FormFieldProps } from "@/components/form/type";
-import { QuestionMark } from "@/components/display/question-mark";
+import { LabelFormField } from "@/components/form/fields/common";
 
 const TextareaField = ({
   defaultValue,
@@ -9,6 +9,7 @@ const TextareaField = ({
   label,
   name,
   rules,
+  unique,
   ...props
 }: FormFieldProps) => {
   return (
@@ -19,13 +20,12 @@ const TextareaField = ({
       defaultValue={defaultValue}
       render={({ field }) => (
         <div className="flex flex-col">
-          <div className="px-1 mb-1 flex justify-between items-center gap-1">
-            <FormLabel>
-              {label} {rules?.required && "*"}
-            </FormLabel>
-
-            {description && <QuestionMark message={description} />}
-          </div>
+          <LabelFormField
+            label={label}
+            unique={unique}
+            required={!!rules?.required}
+            description={description}
+          />
 
           <FormInput>
             <MarkdownEditor

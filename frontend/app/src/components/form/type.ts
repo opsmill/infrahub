@@ -11,6 +11,7 @@ export type FormFieldProps = {
   label?: string;
   name: string;
   placeholder?: string;
+  unique?: boolean;
   rules?: ComponentProps<typeof FormField>["rules"];
 };
 

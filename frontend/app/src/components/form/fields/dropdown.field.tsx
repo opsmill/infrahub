@@ -1,7 +1,7 @@
-import { FormField, FormInput, FormLabel, FormMessage } from "@/components/ui/form";
+import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { Select, SelectProps } from "@/components/inputs/select";
 import { DynamicDropdownFieldProps } from "@/components/form/type";
-import { QuestionMark } from "@/components/display/question-mark";
+import { LabelFormField } from "@/components/form/fields/common";
 
 export interface DropdownFieldProps
   extends Omit<DynamicDropdownFieldProps, "type">,
@@ -14,6 +14,7 @@ const DropdownField = ({
   label,
   name,
   rules,
+  unique,
   ...props
 }: DropdownFieldProps) => {
   return (
@@ -25,13 +26,12 @@ const DropdownField = ({
       render={({ field }) => {
         return (
           <div className="flex flex-col">
-            <div className="px-1 mb-1 flex justify-between items-center gap-1">
-              <FormLabel>
-                {label} {rules?.required && "*"}
-              </FormLabel>
-
-              {description && <QuestionMark message={description} />}
-            </div>
+            <LabelFormField
+              label={label}
+              unique={unique}
+              required={!!rules?.required}
+              description={description}
+            />
 
             <FormInput>
               <Select {...field} {...props} options={items} dropdown className="w-full" />

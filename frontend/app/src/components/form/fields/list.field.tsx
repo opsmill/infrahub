@@ -1,9 +1,17 @@
-import { FormField, FormInput, FormLabel, FormMessage } from "@/components/ui/form";
+import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { FormFieldProps } from "@/components/form/type";
 import List from "@/components/list";
-import { QuestionMark } from "@/components/display/question-mark";
+import { LabelFormField } from "@/components/form/fields/common";
 
-const ListField = ({ defaultValue, description, label, name, rules, ...props }: FormFieldProps) => {
+const ListField = ({
+  defaultValue,
+  description,
+  label,
+  name,
+  rules,
+  unique,
+  ...props
+}: FormFieldProps) => {
   return (
     <FormField
       key={name}
@@ -12,13 +20,12 @@ const ListField = ({ defaultValue, description, label, name, rules, ...props }: 
       defaultValue={defaultValue}
       render={({ field }) => (
         <div className="flex flex-col">
-          <div className="px-1 mb-1 flex justify-between items-center gap-1">
-            <FormLabel>
-              {label} {rules?.required && "*"}
-            </FormLabel>
-
-            {description && <QuestionMark message={description} />}
-          </div>
+          <LabelFormField
+            label={label}
+            unique={unique}
+            required={!!rules?.required}
+            description={description}
+          />
 
           <FormInput>
             <List {...field} {...props} />
