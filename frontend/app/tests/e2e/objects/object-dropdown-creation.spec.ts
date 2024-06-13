@@ -57,12 +57,10 @@ test.describe("object dropdown creation", () => {
     await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
 
     // Create a new tag
-    await page.getByLabel("Create TagmainStandard Tag").locator("#Name").click();
-    await page.getByLabel("Create TagmainStandard Tag").locator("#Name").fill("new-tag");
-    await page.getByLabel("Create TagmainStandard Tag").locator("#Name").press("Tab");
+    await page.getByLabel("Create TagmainStandard Tag").getByLabel("Name").fill("new-tag");
     await page
       .getByLabel("Create TagmainStandard Tag")
-      .locator("#Description")
+      .getByLabel("Description")
       .fill("New tag description");
 
     // Submit

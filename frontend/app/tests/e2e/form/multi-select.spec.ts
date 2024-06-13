@@ -52,8 +52,8 @@ test.describe("Verify multi select behaviour", () => {
 
     await test.step("Create a new tag directly on multi select", async () => {
       await page.getByRole("option", { name: "Add Tag" }).click();
-      await page.getByLabel("Create TagmainStandard Tag").locator("#Name").fill("new tag");
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByLabel("Create TagmainStandard Tag").getByLabel("Name").fill("new tag");
+      await page.getByRole("button", { name: "Save" }).click();
       await expect(page.locator("form").first()).toContainText("bluenew tag");
     });
   });
