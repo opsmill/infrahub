@@ -1,5 +1,6 @@
 import os
 import sys
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -255,30 +256,48 @@ def _generate_infrahub_schema_documentation() -> None:
         print(f"Docs saved to: {output_label}")
 
 
+def _get_env_vars() -> dict[str, str]:
+    from infrahub_sdk.config import ConfigBase
+    from pydantic_settings import EnvSettingsSource
+
+    env_vars: dict[str, list[str]] = defaultdict(list[str])
+    settings = ConfigBase()
+    env_settings = EnvSettingsSource(settings.__class__, env_prefix=settings.model_config.get("env_prefix"))
+
+    for field_name, field in settings.model_fields.items():
+        for field_key, field_env_name, _ in env_settings._extract_field_info(field, field_name):
+            env_vars[field_key].append(field_env_name.upper())
+
+    return env_vars
+
+
 def _generate_infrahub_sdk_configuration_documentation() -> None:
     """Generate documentation for the Infrahub SDK configuration"""
     import jinja2
     from infrahub_sdk.config import ConfigBase
 
-    schema = ConfigBase.schema()
-
-    definitions = schema["definitions"]
+    schema = ConfigBase.model_json_schema()
+    env_vars = _get_env_vars()
+    definitions = schema["$defs"]
 
     properties = []
     for name, prop in schema["properties"].items():
         choices: List[Dict[str, Any]] = []
         kind = ""
+        composed_type = ""
         if "allOf" in prop:
             choices = definitions[prop["allOf"][0]["$ref"].split("/")[-1]].get("enum", [])
             kind = definitions[prop["allOf"][0]["$ref"].split("/")[-1]].get("type", "")
+        if "anyOf" in prop:
+            composed_type = ", ".join(i["type"] for i in prop.get("anyOf", []) if "type" in i and i["type"] != "null")
         properties.append(
             {
                 "name": name,
                 "description": prop.get("description", ""),
-                "type": prop.get("type", kind),
+                "type": prop.get("type", kind) or composed_type or "object",
                 "choices": choices,
                 "default": prop.get("default", ""),
-                "env_vars": list(prop.get("env_names", set())),
+                "env_vars": env_vars[name],
             }
         )
 
@@ -307,7 +326,7 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
     import jinja2
     from infrahub_sdk.schema import InfrahubRepositoryConfig
 
-    schema = InfrahubRepositoryConfig.schema()
+    schema = InfrahubRepositoryConfig.model_json_schema()
 
     properties = [
         {
@@ -323,13 +342,17 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
         for name, property in schema["properties"].items()
     ]
 
-    definitions = deepcopy(schema["definitions"])
+    definitions = deepcopy(schema["$defs"])
 
-    for name, definition in schema["definitions"].items():
-        for property in definition["properties"].keys():
+    for name, definition in schema["$defs"].items():
+        for property, value in definition["properties"].items():
             definitions[name]["properties"][property]["required"] = (
                 True if property in definition["required"] else False
             )
+            if "anyOf" in value:
+                definitions[name]["properties"][property]["type"] = ", ".join(
+                    [i["type"] for i in value["anyOf"] if i["type"] != "null"]
+                )
 
     print(" - Generate Infrahub repository configuration documentation")
 

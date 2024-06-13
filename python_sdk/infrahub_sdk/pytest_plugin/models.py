@@ -6,11 +6,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 
 import ujson
 import yaml
-
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
+from pydantic import BaseModel, ConfigDict, Field
 
 from .exceptions import DirectoryNotFoundError
 
@@ -27,19 +23,19 @@ class InfrahubTestResource(str, Enum):
     GRAPHQL_QUERY = "GraphQLQuery"
 
 
-class InfrahubBaseTest(pydantic.BaseModel):
+class InfrahubBaseTest(BaseModel):
     """Basic Infrahub test model used as a common ground for all tests."""
 
 
 class InfrahubInputOutputTest(InfrahubBaseTest):
-    directory: Optional[Path] = pydantic.Field(
+    directory: Optional[Path] = Field(
         None, description="Path to the directory where the input and output files are located"
     )
-    input: Path = pydantic.Field(
+    input: Path = Field(
         Path("input.json"),
         description="Path to the file with the input data for the test, can be a relative path from the config file or from the directory.",
     )
-    output: Optional[Path] = pydantic.Field(
+    output: Optional[Path] = Field(
         None,
         description="Path to the file with the expected output for the test, can be a relative path from the config file or from the directory.",
     )
@@ -103,7 +99,7 @@ class InfrahubInputOutputTest(InfrahubBaseTest):
 
 
 class InfrahubIntegrationTest(InfrahubInputOutputTest):
-    variables: Union[Path, Dict[str, Any]] = pydantic.Field(
+    variables: Union[Path, Dict[str, Any]] = Field(
         Path("variables.json"), description="Variables and corresponding values to pass to the GraphQL query"
     )
 
@@ -142,12 +138,12 @@ class InfrahubCheckIntegrationTest(InfrahubIntegrationTest):
 
 class InfrahubGraphQLQuerySmokeTest(InfrahubBaseTest):
     kind: Literal["graphql-query-smoke"]
-    path: Path = pydantic.Field(description="Path to the file in which the GraphQL query is defined")
+    path: Path = Field(..., description="Path to the file in which the GraphQL query is defined")
 
 
 class InfrahubGraphQLQueryIntegrationTest(InfrahubIntegrationTest):
     kind: Literal["graphql-query-integration"]
-    query: str = pydantic.Field(description="Name of a pre-defined GraphQL query to execute")
+    query: str = Field(..., description="Name of a pre-defined GraphQL query to execute")
 
 
 class InfrahubJinja2TransformSmokeTest(InfrahubBaseTest):
@@ -174,9 +170,9 @@ class InfrahubPythonTransformIntegrationTest(InfrahubIntegrationTest):
     kind: Literal["python-transform-integration"]
 
 
-class InfrahubTest(pydantic.BaseModel):
-    name: str = pydantic.Field(..., description="Name of the test, must be unique")
-    expect: InfrahubTestExpectedResult = pydantic.Field(
+class InfrahubTest(BaseModel):
+    name: str = Field(..., description="Name of the test, must be unique")
+    expect: InfrahubTestExpectedResult = Field(
         InfrahubTestExpectedResult.PASS,
         description="Expected outcome of the test, can be either PASS (default) or FAIL",
     )
@@ -192,18 +188,16 @@ class InfrahubTest(pydantic.BaseModel):
         InfrahubPythonTransformSmokeTest,
         InfrahubPythonTransformUnitProcessTest,
         InfrahubPythonTransformIntegrationTest,
-    ] = pydantic.Field(..., discriminator="kind")
+    ] = Field(..., discriminator="kind")
 
 
-class InfrahubTestGroup(pydantic.BaseModel):
+class InfrahubTestGroup(BaseModel):
     resource: InfrahubTestResource
     resource_name: str
     tests: List[InfrahubTest]
 
 
-class InfrahubTestFileV1(pydantic.BaseModel):
+class InfrahubTestFileV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     version: Optional[str] = "1.0"
     infrahub_tests: List[InfrahubTestGroup]
-
-    class Config:
-        extra = pydantic.Extra.forbid

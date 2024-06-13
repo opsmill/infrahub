@@ -194,7 +194,6 @@ jobs:
           - "3.10"
           - "3.11"
           - "3.12"
-        pydantic-version: ["1.10.14", "^2"]
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -220,8 +219,6 @@ jobs:
           pipx install poetry
           poetry config virtualenvs.prefer-active-python true
           pip install invoke toml
-      - name: Set Version of Pydantic
-        run: poetry add pydantic@${{ matrix.pydantic-version }}
       - name: "Install Package"
         run: "poetry install --all-extras"
       - name: "Mypy Tests"

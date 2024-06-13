@@ -10,23 +10,19 @@ from graphql import (
     parse,
     validate,
 )
-
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
+from pydantic import BaseModel
 
 from infrahub_sdk.utils import calculate_dict_depth, calculate_dict_height, extract_fields
 
 
-class GraphQLQueryVariable(pydantic.BaseModel):
+class GraphQLQueryVariable(BaseModel):
     name: str
     type: str
     required: bool = False
     default_value: Optional[Any] = None
 
 
-class GraphQLOperation(pydantic.BaseModel):
+class GraphQLOperation(BaseModel):
     name: Optional[str] = None
     operation_type: OperationType
 

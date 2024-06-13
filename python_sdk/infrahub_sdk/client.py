@@ -689,10 +689,10 @@ class InfrahubClient(BaseClient):
         proxy_config: Dict[str, Union[str, Dict[str, httpx.HTTPTransport]]] = {}
         if self.config.proxy:
             proxy_config["proxy"] = self.config.proxy
-        elif self.config.proxy_mounts:
+        elif self.config.proxy_mounts.is_set:
             proxy_config["mounts"] = {
                 key: httpx.HTTPTransport(proxy=value)
-                for key, value in self.config.proxy_mounts.dict(by_alias=True).items()
+                for key, value in self.config.proxy_mounts.model_dump(by_alias=True).items()
             }
 
         async with httpx.AsyncClient(
@@ -1666,10 +1666,10 @@ class InfrahubClientSync(BaseClient):
         proxy_config: Dict[str, Union[str, Dict[str, httpx.HTTPTransport]]] = {}
         if self.config.proxy:
             proxy_config["proxy"] = self.config.proxy
-        elif self.config.proxy_mounts:
+        elif self.config.proxy_mounts.is_set:
             proxy_config["mounts"] = {
                 key: httpx.HTTPTransport(proxy=value)
-                for key, value in self.config.proxy_mounts.dict(by_alias=True).items()
+                for key, value in self.config.proxy_mounts.model_dump(by_alias=True).items()
             }
 
         with httpx.Client(

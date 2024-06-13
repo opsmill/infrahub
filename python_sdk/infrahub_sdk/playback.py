@@ -3,18 +3,16 @@ from typing import Any, Dict, Optional
 
 import httpx
 import ujson
-
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from infrahub_sdk.types import HTTPMethod
 from infrahub_sdk.utils import generate_request_filename
 
 
-class JSONPlayback(pydantic.BaseSettings):
-    directory: str = pydantic.Field(default=".", description="Directory to read recorded files from")
+class JSONPlayback(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_PLAYBACK_")
+    directory: str = Field(default=".", description="Directory to read recorded files from")
 
     async def async_request(
         self,
@@ -55,7 +53,3 @@ class JSONPlayback(pydantic.BaseSettings):
 
         response = httpx.Response(status_code=data["status_code"], content=data["response_content"], request=request)
         return response
-
-    class Config:
-        env_prefix = "INFRAHUB_PLAYBACK_"
-        case_sensitive = False

@@ -269,7 +269,7 @@ def transform(
         list_transforms(config=repository_config)
         return
 
-    matched = [transform for transform in repository_config.python_transforms if transform.name == transform_name]
+    matched = [transform for transform in repository_config.python_transforms if transform.name == transform_name]  # pylint: disable=not-an-iterable
 
     if not matched:
         console.print(f"[red]Unable to find requested transform: {transform_name}")
