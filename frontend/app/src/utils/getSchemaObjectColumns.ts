@@ -11,6 +11,7 @@ import { iGenericSchema, iNodeSchema, profilesAtom } from "@/state/atoms/schema.
 import { isValid, parseISO } from "date-fns";
 import * as R from "ramda";
 import { isGeneric, sortByOrderWeight } from "./common";
+import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 
 type tgetObjectAttributes = {
   schema: iNodeSchema | iGenericSchema | undefined;
@@ -325,10 +326,13 @@ export const getRelationshipOptions = (row: any, field: any, schemas: any[], gen
   return [option];
 };
 
-export const getSelectParent = (row: any, field: any) => {
-  const parent = row[field.name]?.node?.__typename;
+export const getSelectParent = (
+  row: Record<string, AttributeType> | undefined,
+  field: { name: string }
+) => {
+  const parentKind = row?.[field.name]?.node?.__typename;
 
-  return parent;
+  return parentKind;
 };
 
 export const getOptionsFromAttribute = (attribute: any, value: any) => {

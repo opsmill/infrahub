@@ -7,19 +7,25 @@ import { IModelSchema } from "@/state/atoms/schema.atom";
 
 export type FormFieldProps = {
   defaultValue?: string | number | boolean;
+  description?: string;
   label?: string;
   name: string;
   placeholder?: string;
   rules?: ComponentProps<typeof FormField>["rules"];
 };
 
-type DynamicInputFieldProps = FormFieldProps & {
+export type DynamicInputFieldProps = FormFieldProps & {
   type: Exclude<SchemaAttributeType, "Dropdown">;
 };
 
-type DynamicDropdownFieldProps = FormFieldProps & {
+export type DynamicDropdownFieldProps = FormFieldProps & {
   type: "Dropdown";
   items: Array<SelectOption>;
+};
+
+export type DynamicEnumFieldProps = FormFieldProps & {
+  type: "enum";
+  items: Array<string>;
 };
 
 export type DynamicRelationshipFieldProps = FormFieldProps & {
@@ -32,4 +38,5 @@ export type DynamicRelationshipFieldProps = FormFieldProps & {
 export type DynamicFieldProps =
   | DynamicInputFieldProps
   | DynamicDropdownFieldProps
+  | DynamicEnumFieldProps
   | DynamicRelationshipFieldProps;

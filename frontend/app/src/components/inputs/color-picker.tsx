@@ -3,30 +3,27 @@ import { Input } from "@/components/ui/input";
 import { getTextColor } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { ColorResult, Colorful, HsvaColor } from "@uiw/react-color/src/index";
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 
-export const ColorPicker = (props: any) => {
-  const { value, onChange } = props;
+export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
+  const { id, value, onChange } = props;
 
   const [hsva, setHsva] = useState<string | HsvaColor>(value ?? { h: 0, s: 0, v: 0, a: 0 }); // Used for colorfule
-  const [hex, setHex] = useState(value); // Used for input
 
   const handleChange = (newValue: ColorResult) => {
     setHsva(newValue.hsva);
-    setHex(newValue.hex);
     onChange(newValue.hex);
   };
 
   const handleInputChange = (newValue: string) => {
-    setHex(newValue);
     onChange(newValue);
   };
 
   const getInputStyle = () => {
-    const textColor = getTextColor(hex);
+    const textColor = getTextColor(value);
 
     return {
-      backgroundColor: hex,
+      backgroundColor: value,
       color: textColor,
     };
   };
@@ -40,7 +37,9 @@ export const ColorPicker = (props: any) => {
   return (
     <div className="flex items-center relative">
       <Input
-        value={hex}
+        ref={ref}
+        id={id}
+        value={value ?? ""}
         style={getInputStyle()}
         onChange={(e) => handleInputChange(e.target.value)}
         className="flex-1"
@@ -61,4 +60,4 @@ export const ColorPicker = (props: any) => {
       </div>
     </div>
   );
-};
+});

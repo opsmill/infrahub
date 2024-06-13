@@ -14,7 +14,7 @@ import { basicMutation } from "@/graphql/mutations/objects/basicMutation";
 import { getDropdownOptions } from "@/graphql/queries/objects/dropdownOptions";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { Form, FormFieldError } from "@/screens/edit-form-hook/form";
-import ObjectItemCreate from "@/screens/object-item-create/object-item-create-paginated";
+import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { namespacesState, schemaState } from "@/state/atoms/schema.atom";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
@@ -48,8 +48,9 @@ export enum SelectDirection {
   OVER,
 }
 
-type SelectProps = {
+export type SelectProps = {
   id?: string;
+  className?: string;
   value?: string | string[] | number | number[];
   kind?: string;
   name?: string;
@@ -75,6 +76,7 @@ type SelectProps = {
 export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const {
     id,
+    className,
     options,
     value,
     onChange,
@@ -112,13 +114,13 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const [hasBeenOpened, setHasBeenOpened] = useState(false);
   const [optionToDelete, setOptionToDelete] = useState<null | number | string>(null);
   const [localOptions, setLocalOptions] = useState(options);
-  const [selectedOption, setSelectedOption] = useState(
+  const getSelectedOption = (value) =>
     multiple
       ? localOptions.filter(
           (option) => Array.isArray(value) && value.map((v) => v.id)?.includes(option.id)
         )
-      : localOptions?.find((option) => option?.id === value || option.name === value)
-  );
+      : localOptions?.find((option) => option?.id === value || option.name === value);
+  const [selectedOption, setSelectedOption] = useState(getSelectedOption(value));
 
   const namespaceData = namespaces.find((n) => n.name === schema?.namespace);
 
@@ -644,12 +646,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
           open={open}
           setOpen={setOpen}
           offset={1}>
-          <ObjectItemCreate
-            onCreate={handleCreate}
-            onCancel={() => setOpen(false)}
-            objectname={peer}
-            preventObjectsCreation
-          />
+          <ObjectForm kind={peer} onSuccess={handleCreate} onCancel={() => setOpen(false)} />
         </SlideOver>
       );
     }
@@ -784,16 +781,17 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
 
   // Fetch option display label if not defined by current selected option
   const handleFetchLabel = async () => {
-    if (!selectedOption) return;
+    if (!value) return;
 
-    if (peer && !multiple && !Array.isArray(selectedOption) && !selectedOption?.name) {
-      const { data } = await fetchLabel({ variables: { ids: [selectedOption?.id] } });
+    if (peer && !multiple && !Array.isArray(value) && !value?.name) {
+      const { data } = await fetchLabel({ variables: { ids: [value?.id || value] } });
 
+      const id = data[peer]?.edges[0]?.node?.id;
       const label = data[peer]?.edges[0]?.node?.display_label;
 
       const newSelectedOption = {
-        ...selectedOption,
-        name: label ?? "Unkown",
+        id,
+        name: label ?? "Unknown",
       } as SelectOption;
 
       setSelectedOption(newSelectedOption);
@@ -801,13 +799,13 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       return;
     }
 
-    if (!Array.isArray(selectedOption)) return;
+    if (!Array.isArray(value)) return;
 
     // Get ids only
-    const ids = selectedOption.map((o) => o.id) ?? [];
+    const ids = value.map((o) => o.id) ?? [];
 
     // Get defined names only
-    const names = selectedOption.map((o) => o.name).filter(Boolean) ?? [];
+    const names = value.map((o) => o.name).filter(Boolean) ?? [];
 
     // If ids and names have !== lengths, then some names are not defined
     if (peer && multiple && ids.length && ids.length !== names.length) {
@@ -823,12 +821,17 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   };
 
   useEffect(() => {
-    // Avoid fetching labels if ther eis no value
-    if (!value) return;
+    if (!value) {
+      setSelectedOption(emptyOption);
+      return;
+    }
 
-    if (Array.isArray(value) && !value.length) return;
+    if (localOptions.length === 0) {
+      handleFetchLabel();
+      return;
+    }
 
-    handleFetchLabel();
+    setSelectedOption(getSelectedOption(value));
   }, [value]);
 
   // If options from query are updated
@@ -842,7 +845,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   }, [options?.length]);
 
   return (
-    <div className="relative" data-testid="select-container">
+    <div className={classNames("relative", className)} data-testid="select-container">
       <Combobox
         as="div"
         value={multiple ? selectedOption ?? [] : selectedOption ?? ""}

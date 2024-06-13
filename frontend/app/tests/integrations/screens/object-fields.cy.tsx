@@ -502,7 +502,7 @@ describe("Object list", () => {
     cy.get("[data-cy='create']").click();
 
     // Type 0 as value
-    cy.get("#Counter").type("0", { delay: 0, force: true });
+    cy.get("[name='counter']").type("0", { delay: 0, force: true });
 
     // Save
     cy.get("[data-cy='submit-form']").click();

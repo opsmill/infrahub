@@ -4,26 +4,23 @@ import "react-datepicker/dist/react-datepicker.css";
 import { Button } from "@/components/buttons/button";
 import { format, isValid } from "date-fns";
 import { forwardRef, useEffect, useRef, useState } from "react";
-import { Input } from "./input";
+import { Input } from "@/components/inputs/input";
 
-export const DatePicker = (props: any) => {
-  const { date, onChange, onClickNow, error, disabled, isProtected } = props;
+export const DatePicker = forwardRef<HTMLInputElement, any>((props, ref) => {
+  const { id, date, onChange, onClickNow, error, disabled, isProtected } = props;
 
   const currentDate = date && isValid(date) ? date : null;
 
   const [text, setText] = useState(currentDate ? format(currentDate, "MM/dd/yyy HH:mm") : "");
-  const [stateHasFocus, setStateHasFocus] = useState(false);
   const [hasError, setHasError] = useState(error);
-  const refCustomInput = useRef();
+  const refCustomInput = useRef(ref);
 
   const handleChangeDate = (newDate: Date) => {
-    setStateHasFocus(true);
     setText(format(newDate, "MM/dd/yyy HH:mm"));
     onChange(newDate);
   };
 
   const handleChangeInput = (value: string) => {
-    setStateHasFocus(true);
     setText(value);
 
     if (!value) {
@@ -44,7 +41,6 @@ export const DatePicker = (props: any) => {
   const handleClickNow = () => {
     setText("");
     onClickNow();
-    setStateHasFocus(false);
     setHasError({});
   };
 
@@ -56,12 +52,12 @@ export const DatePicker = (props: any) => {
 
   const CustomInput = forwardRef(({ onClick }: any, ref: any) => (
     <Input
+      id={id}
       onClick={onClick}
       ref={ref}
       value={text}
       onChange={handleChangeInput}
       className="rounded-r-none"
-      autoFocus={stateHasFocus}
       error={hasError}
       disabled={disabled || isProtected}
     />
@@ -85,4 +81,4 @@ export const DatePicker = (props: any) => {
       </Button>
     </div>
   );
-};
+});

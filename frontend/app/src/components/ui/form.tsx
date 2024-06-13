@@ -1,7 +1,15 @@
 import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 import { classNames } from "@/utils/common";
+import * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
-import React, { createContext, FormHTMLAttributes, HTMLAttributes, useContext, useId } from "react";
+import React, {
+  createContext,
+  FormHTMLAttributes,
+  HTMLAttributes,
+  useContext,
+  useEffect,
+  useId,
+} from "react";
 import {
   Controller,
   ControllerProps,
@@ -9,15 +17,20 @@ import {
   useForm,
   useFormContext,
 } from "react-hook-form";
-import { Spinner } from "./spinner";
-import Label, { LabelProps } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
+import Label from "@/components/ui/label";
 
 export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
   onSubmit?: (v: Record<string, unknown>) => void;
+  defaultValues?: Partial<Record<string, unknown>>;
 }
 
-export const Form = ({ className, children, onSubmit, ...props }: FormProps) => {
-  const form = useForm();
+export const Form = ({ defaultValues, className, children, onSubmit, ...props }: FormProps) => {
+  const form = useForm({ defaultValues });
+
+  useEffect(() => {
+    form.reset(defaultValues);
+  }, [JSON.stringify(defaultValues)]);
 
   return (
     <FormProvider {...form}>
@@ -40,12 +53,12 @@ export const FormField = (props: ControllerProps) => {
 
   return (
     <FormFieldContext.Provider value={{ id, name: props.name }}>
-      <Controller control={control} {...props} />
+      <Controller control={control} {...props} shouldUnregister />
     </FormFieldContext.Provider>
   );
 };
 
-export const FormLabel = (props: LabelProps) => {
+export const FormLabel = ({ ...props }: LabelPrimitive.LabelProps) => {
   const { id } = useContext(FormFieldContext);
 
   return <Label htmlFor={id} {...props} />;
@@ -80,6 +93,7 @@ export const FormMessage = ({
         error && "text-red-600",
         className
       )}
+      data-cy={error && "field-error-message"}
       {...props}>
       {message}
     </p>
@@ -93,7 +107,7 @@ export const FormSubmit = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const isLoading = formState.isSubmitting || formState.isValidating;
 
     return (
-      <Button ref={ref} disabled={isLoading} {...props} type="submit">
+      <Button ref={ref} disabled={isLoading} {...props} type="submit" data-cy="submit-form">
         <span className={classNames(isLoading && "invisible")}>{children}</span>
         {isLoading && <Spinner className="absolute" />}
       </Button>

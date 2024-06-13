@@ -35,6 +35,7 @@ export const getFormFieldsFromSchema = ({
         label: attribute.label ?? undefined,
         type: "relationship",
         defaultValue: getRelationshipValue({ field: attribute, row: initialObject }),
+        description: attribute.description ?? undefined,
         parent: getSelectParent(initialObject, attribute),
         rules: {
           required: !attribute.optional,
@@ -50,6 +51,7 @@ export const getFormFieldsFromSchema = ({
         label: attribute.label ?? undefined,
         type: SCHEMA_ATTRIBUTE_KIND.DROPDOWN,
         defaultValue: getFieldValue({ field: attribute, row: initialObject, profile }),
+        description: attribute.description ?? undefined,
         rules: {
           required: !attribute.optional,
         },
@@ -62,10 +64,25 @@ export const getFormFieldsFromSchema = ({
       };
     }
 
+    if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.TEXT && Array.isArray(attribute.enum)) {
+      return {
+        name: attribute.name,
+        label: attribute.label ?? undefined,
+        type: "enum",
+        defaultValue: getFieldValue({ field: attribute, row: initialObject, profile }),
+        description: attribute.description ?? undefined,
+        rules: {
+          required: !attribute.optional,
+        },
+        items: attribute.enum as string[],
+      };
+    }
+
     return {
       name: attribute.name,
       label: attribute.label ?? undefined,
       defaultValue: getFieldValue({ field: attribute, row: initialObject, profile }),
+      description: attribute.description ?? undefined,
       type: attribute.kind as Exclude<SchemaAttributeType, "Dropdown">,
       rules: {
         required: !attribute.optional,

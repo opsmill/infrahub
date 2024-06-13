@@ -1,5 +1,5 @@
 import { Tooltip } from "@/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
+import { Button } from "@/components/buttons/button-primitive";
 
 type tQuestionMark = {
   message?: string;
@@ -10,11 +10,13 @@ export const QuestionMark = ({ message }: tQuestionMark) => {
 
   return (
     <Tooltip content={message} enabled>
-      <span
-        className="text-custom-blue-50 border border-sm rounded-full w-4 h-4 flex items-center justify-center cursor-pointer"
+      <Button
+        size="icon"
+        variant="outline"
+        className="h-4 w-4 p-2 text-[10px]"
         data-cy="question-mark">
-        <Icon icon={"mdi:question-mark"} className="text-xxs" />
-      </span>
+        ?
+      </Button>
     </Tooltip>
   );
 };

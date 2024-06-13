@@ -16,8 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import ObjectItemCreate from "@/screens/object-item-create/object-item-create-paginated";
-import { getFormStructure } from "@/screens/proposed-changes/conversations";
+import ObjectForm from "@/components/form/object-form";
 import { branchesState } from "@/state/atoms/branches.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
@@ -99,27 +98,6 @@ export const BranchDetails = () => {
   const { loading, error, data } = useQuery(query, { skip: !accountSchemaData });
 
   const branch = data?.Branch?.filter((branch: any) => branch.name === branchname)[0];
-
-  const customObject = {
-    created_by: {
-      id: auth?.data?.sub,
-    },
-  };
-
-  const branchesOptions: any[] = branches
-    .filter((branch) => branch.name !== "main")
-    .map((branch) => ({ id: branch.name, name: branch.name }));
-
-  const reviewersOptions: any[] = data
-    ? data[accountSchemaData.kind]?.edges.map((edge: any) => ({
-        id: edge?.node.id,
-        name: edge?.node?.display_label,
-      }))
-    : [];
-
-  const formStructure = getFormStructure(branchesOptions, reviewersOptions, {
-    source_branch: { value: branchname },
-  });
 
   return (
     <div className="bg-custom-white">
@@ -309,15 +287,11 @@ export const BranchDetails = () => {
           </div>
         }
         open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}
-        // title={`Create ${objectname}`}
-      >
-        <ObjectItemCreate
-          onCreate={() => setShowCreateDrawer(false)}
+        setOpen={setShowCreateDrawer}>
+        <ObjectForm
+          kind={PROPOSED_CHANGES_OBJECT}
+          onSuccess={() => setShowCreateDrawer(false)}
           onCancel={() => setShowCreateDrawer(false)}
-          objectname={PROPOSED_CHANGES_OBJECT!}
-          formStructure={formStructure}
-          customObject={customObject}
         />
       </SlideOver>
     </div>
