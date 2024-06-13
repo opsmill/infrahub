@@ -24,22 +24,7 @@ spec:
       containers:
         - args: {{- toYaml .Values.infrahubServer.infrahubServer.args | nindent 12 }}
           env:
-            - name: INFRAHUB_INTERNAL_ADDRESS
-              value: "http://{{ include "infrahub-helm.fullname" . }}-infrahub-server.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}:8000"
-            - name: INFRAHUB_DB_ADDRESS
-              value: "{{ include "infrahub-helm.fullname" . }}-database.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
-            - name: INFRAHUB_DB_PORT
-              value: "{{ .Values.neo4j.services.neo4j.ports.bolt.port }}"
-            - name: INFRAHUB_BROKER_ADDRESS
-              value: "{{ include "infrahub-helm.fullname" . }}-message-queue.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
-            - name: INFRAHUB_BROKER_USERNAME
-              value: {{ .Values.rabbitmq.auth.username | quote }}
-            - name: INFRAHUB_BROKER_PASSWORD
-              value: {{ .Values.rabbitmq.auth.password | quote }}
-            - name: INFRAHUB_CACHE_ADDRESS
-              value: "{{ include "infrahub-helm.fullname" . }}-cache-master.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
-            - name: INFRAHUB_CACHE_PORT
-              value: "{{ .Values.redis.master.service.ports.redis }}"
+            {{- include "infrahub-helm.infrahubServer.defaultEnv" . | nindent 12 }}
             {{- range $key, $value := .Values.infrahubServer.infrahubServer.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}
