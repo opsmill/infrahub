@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-sync"
-version = "0.4.1"
+version = "0.4.2"
 description = "Infrahub-Sync is a versatile Python package that synchronizes data between a source and a destination system"
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -23,7 +23,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.9, < 3.13"
-infrahub-sdk = {version = "^0,>=0.9.1", extras = ["all"]}
+infrahub-sdk = {version = "^0,>=0.11", extras = ["all"]}
 structlog = "^22.3.0"
 diffsync = { version = ">=1.10,<2.0 || >=2.0", extras = ["redis"] }
 
