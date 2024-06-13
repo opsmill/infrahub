@@ -4,6 +4,7 @@ from infrahub.core.constants import DiffAction
 from infrahub.core.diff.query_parser import DiffQueryParser
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.core.query.diff import DiffAllPathsQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -202,6 +203,47 @@ async def test_node_branch_delete(db: InfrahubDatabase, default_branch: Branch, 
         diff_property = properties_by_type["HAS_VALUE"]
         assert diff_property.action is DiffAction.REMOVED
         assert diff_property.new_value is None
+
+
+async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car_accord_main):
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp(branch.created_at)
+    new_person = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await new_person.new(db=db, name="Stokely")
+    before_change = Timestamp()
+    await new_person.save(db=db)
+    after_change = Timestamp()
+
+    diff_query = await DiffAllPathsQuery.init(
+        db=db,
+        branch=branch,
+        base_branch=default_branch,
+    )
+    await diff_query.execute(db=db)
+    diff_parser = DiffQueryParser(
+        diff_query=diff_query, base_branch_name=default_branch.name, schema_manager=registry.schema, from_time=from_time
+    )
+    diff_parser.parse()
+
+    assert diff_parser.get_branches() == {branch.name}
+    branch_root_path = diff_parser.get_diff_root_for_branch(branch=branch.name)
+    assert branch_root_path.branch == branch.name
+    assert len(branch_root_path.nodes) == 1
+    node_diff = branch_root_path.nodes[0]
+    assert node_diff.uuid == new_person.id
+    assert node_diff.kind == "TestPerson"
+    assert node_diff.action is DiffAction.ADDED
+    assert before_change < node_diff.changed_at < after_change
+    attributes_by_name = {attr.name: attr for attr in node_diff.attributes}
+    assert set(attributes_by_name.keys()) == {"name", "height"}
+    attribute_diff = attributes_by_name["name"]
+    assert attribute_diff.action is DiffAction.ADDED
+    assert before_change < attribute_diff.changed_at < after_change
+    properties_by_type = {prop.property_type: prop for prop in attribute_diff.properties}
+    diff_property = properties_by_type["HAS_VALUE"]
+    assert diff_property.action is DiffAction.ADDED
+    assert diff_property.new_value == "Stokely"
+    assert before_change < diff_property.changed_at < after_change
 
 
 async def test_attribute_property_multiple_branch_updates(
