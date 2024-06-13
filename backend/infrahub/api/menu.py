@@ -125,17 +125,13 @@ async def get_menu(branch: Branch = Depends(get_branch_dep)) -> list[InterfaceMe
                 path=f"/objects/{InfrahubKind.PROFILE}",
                 icon=_extract_node_icon(full_schema[InfrahubKind.PROFILE]),
             ),
-        ],
-    )
-
-    if has_ipam:
-        groups.children.append(
             InterfaceMenu(
                 title="Resource Manager",
                 path="/resource-manager",
                 icon=_extract_node_icon(full_schema[InfrahubKind.RESOURCEPOOL]),
-            )
-        )
+            ),
+        ],
+    )
 
     unified_storage = InterfaceMenu(
         title="Unified Storage",

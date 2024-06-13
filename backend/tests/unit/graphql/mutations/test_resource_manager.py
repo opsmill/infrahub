@@ -7,9 +7,11 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import prepare_graphql_params
+from tests.helpers.schema import TICKET, load_schema
 
 
 @pytest.fixture
@@ -605,3 +607,80 @@ async def test_address_pool_get_resource_with_prefix_length(
     assert result.data
     assert result.data["IPAddressPoolGetResource"]["ok"]
     assert result.data["IPAddressPoolGetResource"]["node"] == {"display_label": "10.10.3.2/32", "kind": "IpamIPAddress"}
+
+
+CREATE_NUMBER_POOL = """
+mutation CreateNumberPool(
+    $name: String!,
+    $node: String!,
+    $node_attribute: String!,
+    $start_range: Int!,
+    $end_range: Int!
+  ) {
+  CoreNumberPoolCreate(
+    data: {
+      name: {value: $name},
+      node:{value: $node},
+      node_attribute: {value: $node_attribute},
+      start_range: {value: $start_range},
+      end_range: {value: $end_range}
+    }
+  ) {
+    object {
+      display_label
+      id
+    }
+  }
+}
+"""
+
+
+async def test_test_number_pool_creation(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    no_model = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "name": "pool1",
+            "node": "TestNotHere",
+            "node_attribute": "ticket_id",
+            "start_range": 1,
+            "end_range": 3,
+        },
+    )
+    missing_attribute = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "name": "pool1",
+            "node": "TestingTicket",
+            "node_attribute": "not_here",
+            "start_range": 1,
+            "end_range": 3,
+        },
+    )
+    wrong_attribute = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_NUMBER_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "name": "pool1",
+            "node": "TestingTicket",
+            "node_attribute": "description",
+            "start_range": 1,
+            "end_range": 3,
+        },
+    )
+
+    assert no_model.errors
+    assert "The selected model does not exist" in str(no_model.errors[0])
+    assert missing_attribute.errors
+    assert "The selected attribute doesn't exist in the selected" in str(missing_attribute.errors[0])
+    assert wrong_attribute.errors
+    assert "The selected attribute is not of the kind Number" in str(wrong_attribute.errors[0])

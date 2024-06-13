@@ -51,7 +51,7 @@ log = get_logger()
 # Infrahub GraphQLType
 # ------------------------------------------
 class InfrahubMutationOptions(MutationOptions):
-    schema = None
+    schema: Optional[NodeSchema] = None
 
 
 class InfrahubMutationMixin:
@@ -213,7 +213,7 @@ class InfrahubMutationMixin:
         at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
-    ):
+    ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
 

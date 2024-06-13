@@ -200,6 +200,7 @@ class NodeManager:
         branch: Optional[Union[Branch, str]] = None,
         account=None,  # pylint: disable=unused-argument
         partial_match: bool = False,
+        branch_agnostic: bool = False,
     ) -> int:
         """Return the total number of nodes using a given filter
 
@@ -222,7 +223,13 @@ class NodeManager:
             raise ValueError(f"Invalid schema provided {schema}")
 
         query = await NodeGetListQuery.init(
-            db=db, schema=schema, branch=branch, filters=filters, at=at, partial_match=partial_match
+            db=db,
+            schema=schema,
+            branch=branch,
+            filters=filters,
+            at=at,
+            partial_match=partial_match,
+            branch_agnostic=branch_agnostic,
         )
         return await query.count(db=db)
 
