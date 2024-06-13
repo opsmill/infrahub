@@ -114,13 +114,15 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const [hasBeenOpened, setHasBeenOpened] = useState(false);
   const [optionToDelete, setOptionToDelete] = useState<null | number | string>(null);
   const [localOptions, setLocalOptions] = useState(options);
-  const getSelectedOption = (value) =>
-    multiple
+
+  const findSelectedOption = () => {
+    return multiple
       ? localOptions.filter(
           (option) => Array.isArray(value) && value.map((v) => v.id)?.includes(option.id)
         )
       : localOptions?.find((option) => option?.id === value || option.name === value);
-  const [selectedOption, setSelectedOption] = useState(getSelectedOption(value));
+  };
+  const [selectedOption, setSelectedOption] = useState(findSelectedOption());
 
   const namespaceData = namespaces.find((n) => n.name === schema?.namespace);
 
@@ -781,17 +783,16 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
 
   // Fetch option display label if not defined by current selected option
   const handleFetchLabel = async () => {
-    if (!value) return;
+    if (!selectedOption) return;
 
-    if (peer && !multiple && !Array.isArray(value) && !value?.name) {
-      const { data } = await fetchLabel({ variables: { ids: [value?.id || value] } });
+    if (peer && !multiple && !Array.isArray(selectedOption) && !selectedOption?.name) {
+      const { data } = await fetchLabel({ variables: { ids: [selectedOption?.id] } });
 
-      const id = data[peer]?.edges[0]?.node?.id;
       const label = data[peer]?.edges[0]?.node?.display_label;
 
       const newSelectedOption = {
-        id,
-        name: label ?? "Unknown",
+        ...selectedOption,
+        name: label ?? "Unkown",
       } as SelectOption;
 
       setSelectedOption(newSelectedOption);
@@ -799,13 +800,13 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       return;
     }
 
-    if (!Array.isArray(value)) return;
+    if (!Array.isArray(selectedOption)) return;
 
     // Get ids only
-    const ids = value.map((o) => o.id) ?? [];
+    const ids = selectedOption.map((o) => o.id) ?? [];
 
     // Get defined names only
-    const names = value.map((o) => o.name).filter(Boolean) ?? [];
+    const names = selectedOption.map((o) => o.name).filter(Boolean) ?? [];
 
     // If ids and names have !== lengths, then some names are not defined
     if (peer && multiple && ids.length && ids.length !== names.length) {
@@ -821,17 +822,16 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   };
 
   useEffect(() => {
-    if (!value) {
-      setSelectedOption(emptyOption);
+    if (!value) return;
+
+    if (Array.isArray(value) && !value.length) return;
+
+    if (dropdown || enumBoolean) {
+      setSelectedOption(findSelectedOption);
       return;
     }
 
-    if (localOptions.length === 0) {
-      handleFetchLabel();
-      return;
-    }
-
-    setSelectedOption(getSelectedOption(value));
+    handleFetchLabel();
   }, [value]);
 
   // If options from query are updated
