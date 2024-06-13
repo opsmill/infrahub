@@ -40,6 +40,7 @@ const CheckboxField = ({
               </FormInput>
 
               <LabelFormField
+                className="m-0"
                 label={label}
                 unique={unique}
                 required={!!rules?.required}

@@ -785,7 +785,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const handleFetchLabel = async () => {
     if (!selectedOption && !value) return;
 
-    if (peer && !multiple && !Array.isArray(selectedOption)) {
+    if (peer && !multiple && !Array.isArray(selectedOption) && !selectedOption?.name) {
       const id = selectedOption?.id ?? value?.id ?? value;
       const { data } = await fetchLabel({ variables: { ids: [id] } });
 
@@ -801,10 +801,10 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       return;
     }
 
-    if (!Array.isArray(selectedOption) && !Array.isArray(value)) return;
+    if (!Array.isArray(selectedOption)) return;
 
     // Get ids only
-    const ids = [selectedOption].map((o) => o.id) ?? [];
+    const ids = selectedOption.map((o) => o.id) ?? [];
 
     // Get defined names only
     const names = selectedOption.map((o) => o.name).filter(Boolean) ?? [];
@@ -823,16 +823,12 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   };
 
   useEffect(() => {
+    // Avoid fetching labels if ther eis no value
     if (!value) return;
-
-    if (localOptions.length === 0) {
-      handleFetchLabel();
-      return;
-    }
 
     if (Array.isArray(value) && !value.length) return;
 
-    setSelectedOption(findSelectedOption);
+    handleFetchLabel();
   }, [value]);
 
   // If options from query are updated
