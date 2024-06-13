@@ -14,12 +14,12 @@ Define default env variables if required.
 - name: INFRAHUB_INTERNAL_ADDRESS
   value: "http://{{ include "infrahub-helm.fullname" . }}-infrahub-server.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}:8000"
 {{- end }}
-{{- if not .Values.infrahubDemoData.env.INFRAHUB_DATABASE_ADDRESS }}
-- name: INFRAHUB_DATABASE_ADDRESS
+{{- if not .Values.infrahubDemoData.env.INFRAHUB_DB_ADDRESS }}
+- name: INFRAHUB_DB_ADDRESS
   value: "{{ include "infrahub-helm.fullname" . }}-database.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
 {{- end }}
-{{- if not .Values.infrahubDemoData.env.INFRAHUB_DATABASE_PORT }}
-- name: INFRAHUB_DATABASE_PORT
+{{- if not .Values.infrahubDemoData.env.INFRAHUB_DB_PORT }}
+- name: INFRAHUB_DB_PORT
   value: "{{ .Values.neo4j.services.neo4j.ports.bolt.port }}"
 {{- end }}
 {{- if not .Values.infrahubDemoData.env.INFRAHUB_BROKER_ADDRESS }}
@@ -57,12 +57,12 @@ Define default env variables if required.
 - name: INFRAHUB_INTERNAL_ADDRESS
   value: "http://{{ include "infrahub-helm.fullname" . }}-infrahub-server.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}:8000"
 {{- end }}
-{{- if not .Values.infrahubServer.infrahubServer.env.INFRAHUB_DATABASE_ADDRESS }}
-- name: INFRAHUB_DATABASE_ADDRESS
+{{- if not .Values.infrahubServer.infrahubServer.env.INFRAHUB_DB_ADDRESS }}
+- name: INFRAHUB_DB_ADDRESS
   value: "{{ include "infrahub-helm.fullname" . }}-database.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
 {{- end }}
-{{- if not .Values.infrahubServer.infrahubServer.env.INFRAHUB_DATABASE_PORT }}
-- name: INFRAHUB_DATABASE_PORT
+{{- if not .Values.infrahubServer.infrahubServer.env.INFRAHUB_DB_PORT }}
+- name: INFRAHUB_DB_PORT
   value: "{{ .Values.neo4j.services.neo4j.ports.bolt.port }}"
 {{- end }}
 {{- if not .Values.infrahubServer.infrahubServer.env.INFRAHUB_BROKER_ADDRESS }}
@@ -100,12 +100,12 @@ Define default env variables if required.
 - name: INFRAHUB_INTERNAL_ADDRESS
   value: "http://{{ include "infrahub-helm.fullname" . }}-infrahub-server.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}:8000"
 {{- end }}
-{{- if not .Values.infrahubGit.infrahubGit.env.INFRAHUB_DATABASE_ADDRESS }}
-- name: INFRAHUB_DATABASE_ADDRESS
+{{- if not .Values.infrahubGit.infrahubGit.env.INFRAHUB_DB_ADDRESS }}
+- name: INFRAHUB_DB_ADDRESS
   value: "{{ include "infrahub-helm.fullname" . }}-database.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
 {{- end }}
-{{- if not .Values.infrahubGit.infrahubGit.env.INFRAHUB_DATABASE_PORT }}
-- name: INFRAHUB_DATABASE_PORT
+{{- if not .Values.infrahubGit.infrahubGit.env.INFRAHUB_DB_PORT }}
+- name: INFRAHUB_DB_PORT
   value: "{{ .Values.neo4j.services.neo4j.ports.bolt.port }}"
 {{- end }}
 {{- if not .Values.infrahubGit.infrahubGit.env.INFRAHUB_BROKER_ADDRESS }}
