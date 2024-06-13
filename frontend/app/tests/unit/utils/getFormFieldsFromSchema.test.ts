@@ -276,6 +276,8 @@ describe("getFormFieldsFromSchema", () => {
           name: "Address",
         },
       ],
+      field: schema.attributes?.[0],
+      schema,
       unique: false,
     });
   });
