@@ -100,6 +100,7 @@ const RelationshipInput = forwardRef<ElementRef<typeof Select>, RelationshipInpu
           <OpsSelect2Step
             {...props}
             isOptional
+            isProtected={props.disabled}
             options={selectOptions}
             value={{
               parent: parent ?? null,

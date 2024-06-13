@@ -27,6 +27,7 @@ import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames } from "@/utils/common";
 import DynamicForm, { DynamicFormProps } from "@/components/form/dynamic-form";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   kind: string;
@@ -174,8 +175,14 @@ const NodeForm = ({
 }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const { data } = useAuth();
 
-  const fields = getFormFieldsFromSchema({ schema, profile, initialObject: currentObject });
+  const fields = getFormFieldsFromSchema({
+    schema,
+    profile,
+    initialObject: currentObject,
+    user: data,
+  });
 
   async function onSubmit(data: any) {
     try {

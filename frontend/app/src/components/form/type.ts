@@ -8,6 +8,7 @@ import { IModelSchema } from "@/state/atoms/schema.atom";
 export type FormFieldProps = {
   defaultValue?: string | number | boolean;
   description?: string;
+  disabled?: boolean;
   label?: string;
   name: string;
   placeholder?: string;

@@ -12,17 +12,20 @@ import {
 } from "@/utils/getSchemaObjectColumns";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { store } from "@/state";
+import { getIsDisabled } from "@/utils/formStructureForCreateEdit";
 
 type GetFormFieldsFromSchema = {
   schema: iNodeSchema;
   profile?: Object;
   initialObject?: Record<string, AttributeType>;
+  user?: any;
 };
 
 export const getFormFieldsFromSchema = ({
   schema,
   profile,
   initialObject,
+  user,
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
   const unorderedFields = [
     ...(schema.attributes ?? []),
@@ -31,6 +34,16 @@ export const getFormFieldsFromSchema = ({
   const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
 
   return orderedFields.map((attribute) => {
+    const disabled = getIsDisabled({
+      owner: initialObject && initialObject[attribute.name]?.owner,
+      user,
+      isProtected:
+        initialObject &&
+        initialObject[attribute.name] &&
+        initialObject[attribute.name].is_protected,
+      isReadOnly: attribute.read_only,
+    });
+
     if ("peer" in attribute) {
       const nodes = store.get(schemaState);
       const generics = store.get(genericsState);
@@ -41,6 +54,7 @@ export const getFormFieldsFromSchema = ({
         type: "relationship",
         defaultValue: getRelationshipValue({ field: attribute, row: initialObject }),
         description: attribute.description ?? undefined,
+        disabled,
         parent: getSelectParent(initialObject, attribute),
         options: getRelationshipOptions(initialObject, attribute, nodes, generics),
         rules: {
@@ -59,6 +73,7 @@ export const getFormFieldsFromSchema = ({
         defaultValue: getFieldValue({ field: attribute, row: initialObject, profile }),
         unique: attribute.unique,
         description: attribute.description ?? undefined,
+        disabled,
         rules: {
           required: !attribute.optional,
         },
@@ -77,6 +92,7 @@ export const getFormFieldsFromSchema = ({
         label: attribute.label ?? undefined,
         type: "enum",
         defaultValue: getFieldValue({ field: attribute, row: initialObject, profile }),
+        disabled,
         unique: attribute.unique,
         description: attribute.description ?? undefined,
         rules: {
@@ -91,6 +107,7 @@ export const getFormFieldsFromSchema = ({
       label: attribute.label ?? undefined,
       defaultValue: getFieldValue({ field: attribute, row: initialObject, profile }),
       description: attribute.description ?? undefined,
+      disabled,
       type: attribute.kind as Exclude<SchemaAttributeType, "Dropdown">,
       unique: attribute.unique,
       rules: {

@@ -50,6 +50,7 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields[0]).to.deep.equal({
       defaultValue: null,
       description: undefined,
+      disabled: false,
       name: "name",
       label: "Name",
       type: "Text",
@@ -96,6 +97,7 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields[0]).to.deep.equal({
       defaultValue: null,
       description: undefined,
+      disabled: false,
       name: "password",
       label: "Password",
       type: "HashedPassword",
@@ -142,6 +144,7 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields[0]).to.deep.equal({
       defaultValue: null,
       description: undefined,
+      disabled: false,
       name: "url",
       label: "Url",
       type: "URL",
@@ -188,6 +191,7 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields[0]).to.deep.equal({
       defaultValue: null,
       description: undefined,
+      disabled: false,
       name: "parameters",
       label: "Parameters",
       type: "JSON",
@@ -251,6 +255,7 @@ describe("getFormFieldsFromSchema", () => {
     expect(fields[0]).to.deep.equal({
       defaultValue: "address",
       description: undefined,
+      disabled: false,
       name: "member_type",
       label: "Member Type",
       type: "Dropdown",

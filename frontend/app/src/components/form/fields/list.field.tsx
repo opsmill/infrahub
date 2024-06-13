@@ -28,7 +28,7 @@ const ListField = ({
           />
 
           <FormInput>
-            <List {...field} {...props} />
+            <List isProtected={props.disabled} {...field} {...props} />
           </FormInput>
           <FormMessage />
         </div>

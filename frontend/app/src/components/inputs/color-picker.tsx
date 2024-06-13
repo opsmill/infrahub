@@ -1,12 +1,12 @@
 import { POPOVER_SIZE, PopOver } from "@/components/display/popover";
 import { Input } from "@/components/ui/input";
-import { getTextColor } from "@/utils/common";
+import { classNames, getTextColor } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { ColorResult, Colorful, HsvaColor } from "@uiw/react-color/src/index";
 import { forwardRef, useState } from "react";
 
 export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
-  const { id, value, onChange } = props;
+  const { id, disabled, value, onChange } = props;
 
   const [hsva, setHsva] = useState<string | HsvaColor>(value ?? { h: 0, s: 0, v: 0, a: 0 }); // Used for colorfule
 
@@ -35,8 +35,13 @@ export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
   );
 
   return (
-    <div className="flex items-center relative">
+    <div
+      className={classNames(
+        "flex items-center relative",
+        disabled && "pointer-events-none opacity-50"
+      )}>
       <Input
+        disabled={disabled}
         ref={ref}
         id={id}
         value={value ?? ""}

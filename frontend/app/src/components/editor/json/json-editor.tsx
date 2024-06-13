@@ -6,6 +6,7 @@ import { classNames } from "@/utils/common";
 type JsonEditorProps = {
   onChange: (value: string) => void;
   defaultValue?: string;
+  disabled?: boolean;
   value?: string;
   className?: string;
   id?: string;
@@ -25,9 +26,9 @@ export const JsonEditor = forwardRef<ElementRef<typeof Editor>, JsonEditorProps>
           fontSize: 12,
         }}
         preClassName="!break-all"
-        textareaClassName="!break-all !text-red-100" // text-red-100 needed to make highligted text (in browser search) visible
+        textareaClassName="!break-all !text-red-100 disabled:cursor-not-allowed disabled:!bg-gray-100 mix-blend-multiply" // text-red-100 needed to make highligted text (in browser search) visible
         className={classNames(
-          "w-full rounded-md shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 border-gray-300 text-sm disabled:cursor-not-allowed disabled:bg-gray-300 focus-within:ring-2 focus-within:ring-inset focus-within:ring-custom-blue-600 focus-within:border-custom-blue-600 focus-within:outline-none bg-custom-white",
+          "w-full rounded-md shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 border-gray-300 text-sm focus-within:ring-2 focus-within:ring-inset focus-within:ring-custom-blue-600 focus-within:border-custom-blue-600 focus-within:outline-none bg-custom-white",
           className
         )}
         {...props}
