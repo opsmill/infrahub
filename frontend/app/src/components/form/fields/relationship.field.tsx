@@ -54,17 +54,18 @@ interface RelationshipInputProps extends FormFieldProps, RelationshipFieldProps 
 }
 
 const RelationshipInput = forwardRef<ElementRef<typeof Select>, RelationshipInputProps>(
-  ({ schema, value, parent, relationship, ...props }, ref) => {
+  ({ schema, value, options, parent, relationship, ...props }, ref) => {
     if (relationship.cardinality === "many") {
       return (
         <Select
           ref={ref}
           {...props}
           multiple
-          options={[]}
+          options={options ?? []}
           peer={relationship.peer}
           field={relationship}
           schema={schema}
+          value={value}
           className="w-full"
         />
       );
@@ -119,7 +120,7 @@ const RelationshipInput = forwardRef<ElementRef<typeof Select>, RelationshipInpu
         ref={ref}
         {...props}
         value={value}
-        options={[]}
+        options={options ?? []}
         peer={relationship.peer}
         field={relationship}
         schema={schema}

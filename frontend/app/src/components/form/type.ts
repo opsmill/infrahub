@@ -32,6 +32,7 @@ export type DynamicEnumFieldProps = FormFieldProps & {
 export type DynamicRelationshipFieldProps = FormFieldProps & {
   type: "relationship";
   parent?: string;
+  options?: SelectOption[];
   relationship: components["schemas"]["RelationshipSchema-Output"];
   schema: IModelSchema;
 };

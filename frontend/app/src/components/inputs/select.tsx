@@ -783,16 +783,17 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
 
   // Fetch option display label if not defined by current selected option
   const handleFetchLabel = async () => {
-    if (!selectedOption) return;
+    if (!selectedOption && !value) return;
 
-    if (peer && !multiple && !Array.isArray(selectedOption) && !selectedOption?.name) {
-      const { data } = await fetchLabel({ variables: { ids: [selectedOption?.id] } });
+    if (peer && !multiple && !Array.isArray(selectedOption)) {
+      const id = selectedOption?.id ?? value?.id ?? value;
+      const { data } = await fetchLabel({ variables: { ids: [id] } });
 
       const label = data[peer]?.edges[0]?.node?.display_label;
 
       const newSelectedOption = {
         ...selectedOption,
-        name: label ?? "Unkown",
+        name: label ?? "Unknown",
       } as SelectOption;
 
       setSelectedOption(newSelectedOption);
@@ -800,10 +801,10 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       return;
     }
 
-    if (!Array.isArray(selectedOption)) return;
+    if (!Array.isArray(selectedOption) && !Array.isArray(value)) return;
 
     // Get ids only
-    const ids = selectedOption.map((o) => o.id) ?? [];
+    const ids = [selectedOption].map((o) => o.id) ?? [];
 
     // Get defined names only
     const names = selectedOption.map((o) => o.name).filter(Boolean) ?? [];
@@ -824,14 +825,14 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   useEffect(() => {
     if (!value) return;
 
-    if (Array.isArray(value) && !value.length) return;
-
-    if (dropdown || enumBoolean) {
-      setSelectedOption(findSelectedOption);
+    if (localOptions.length === 0) {
+      handleFetchLabel();
       return;
     }
 
-    handleFetchLabel();
+    if (Array.isArray(value) && !value.length) return;
+
+    setSelectedOption(findSelectedOption);
   }, [value]);
 
   // If options from query are updated

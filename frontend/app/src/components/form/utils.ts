@@ -1,15 +1,17 @@
 import { DynamicFieldProps } from "./type";
-import { iNodeSchema } from "@/state/atoms/schema.atom";
+import { genericsState, iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 import { sortByOrderWeight } from "@/utils/common";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import {
   getFieldValue,
   getObjectRelationshipsForForm,
+  getRelationshipOptions,
   getRelationshipValue,
   getSelectParent,
 } from "@/utils/getSchemaObjectColumns";
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
+import { store } from "@/state";
 
 type GetFormFieldsFromSchema = {
   schema: iNodeSchema;
@@ -30,6 +32,9 @@ export const getFormFieldsFromSchema = ({
 
   return orderedFields.map((attribute) => {
     if ("peer" in attribute) {
+      const nodes = store.get(schemaState);
+      const generics = store.get(genericsState);
+
       return {
         name: attribute.name,
         label: attribute.label ?? undefined,
@@ -37,6 +42,7 @@ export const getFormFieldsFromSchema = ({
         defaultValue: getRelationshipValue({ field: attribute, row: initialObject }),
         description: attribute.description ?? undefined,
         parent: getSelectParent(initialObject, attribute),
+        options: getRelationshipOptions(initialObject, attribute, nodes, generics),
         rules: {
           required: !attribute.optional,
         },
