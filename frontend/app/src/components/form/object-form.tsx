@@ -26,11 +26,13 @@ import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames } from "@/utils/common";
 import DynamicForm, { DynamicFormProps } from "@/components/form/dynamic-form";
+import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 
 interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   kind: string;
   onSuccess?: (newObject: any) => void;
-  currentObject?: Object;
+  currentObject?: Record<string, AttributeType>;
+  currentProfile?: Record<string, Pick<AttributeType, "value" | "__typename">>;
 }
 
 const ObjectForm = ({ kind, ...props }: ObjectFormProps) => {
@@ -80,10 +82,12 @@ const GenericSelector = (props: GenericSelectorProps) => {
   );
 };
 
-const NodeWithProfileForm = ({ kind, ...props }: ObjectFormProps) => {
+const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps) => {
   const nodes = useAtomValue(schemaState);
   const profiles = useAtomValue(profilesAtom);
-  const [profileSelected, setProfileSelected] = useState<any>();
+  const [profileSelected, setProfileSelected] = useState<
+    Record<string, Pick<AttributeType, "value" | "__typename">> | undefined
+  >(currentProfile);
 
   const nodeSchema = [...nodes, ...profiles].find((node) => node.kind === kind);
 
@@ -109,8 +113,8 @@ const NodeWithProfileForm = ({ kind, ...props }: ObjectFormProps) => {
 
 type ProfilesSelectorProps = {
   schema: IProfileSchema;
-  value?: string;
-  onChange: (item: string) => void;
+  value?: Record<string, Pick<AttributeType, "value" | "__typename">>;
+  onChange: (item: Record<string, Pick<AttributeType, "value" | "__typename">>) => void;
 };
 
 const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) => {
@@ -155,9 +159,9 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
 type NodeFormProps = {
   className?: string;
   schema: iNodeSchema | IProfileSchema;
-  profile: Object;
+  profile?: Record<string, Pick<AttributeType, "value" | "__typename">>;
   onSuccess?: (newObject: any) => void;
-  currentObject?: Object;
+  currentObject?: Record<string, AttributeType>;
 };
 
 const NodeForm = ({
