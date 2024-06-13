@@ -43,7 +43,7 @@ test.describe("/ipam - Ipam home page", () => {
       await test.step("create a prefix at top level", async () => {
         await page.getByTestId("create-object-button").click();
         await page.getByLabel("Prefix *").fill("11.0.0.0/8");
-        await page.getByRole("button", { name: "Create" }).click();
+        await page.getByRole("button", { name: "Save" }).click();
         await expect(page.getByText("IPPrefix created")).toBeVisible();
       });
 
@@ -55,7 +55,7 @@ test.describe("/ipam - Ipam home page", () => {
       await test.step("create a children prefix", async () => {
         await page.getByTestId("create-object-button").click();
         await page.getByLabel("Prefix *").fill("11.0.0.0/16");
-        await page.getByRole("button", { name: "Create" }).click();
+        await page.getByRole("button", { name: "Save" }).click();
         await expect(page.getByText("IPPrefix created")).toBeVisible();
       });
 
@@ -72,7 +72,7 @@ test.describe("/ipam - Ipam home page", () => {
       await test.step("create a prefix between a parent and its children", async () => {
         await page.getByTestId("create-object-button").click();
         await page.getByLabel("Prefix *").fill("11.0.0.0/10");
-        await page.getByRole("button", { name: "Create" }).click();
+        await page.getByRole("button", { name: "Save" }).click();
         await expect(page.getByText("IPPrefix created")).toBeVisible();
       });
 
@@ -158,7 +158,7 @@ test.describe("/ipam - Ipam home page", () => {
       await test.step("create an ip address", async () => {
         await page.getByTestId("create-object-button").click();
         await page.getByLabel("Address *").fill("10.0.0.1/16");
-        await page.getByRole("button", { name: "Create" }).click();
+        await page.getByRole("button", { name: "Save" }).click();
         await expect(page.getByText("IPAddress created")).toBeVisible();
       });
 

@@ -32,14 +32,11 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
     await test.step("Create a new profile", async () => {
       await page.getByTestId("create-object-button").click();
-      await page
-        .getByTestId("side-panel-container")
-        .getByTestId("select-open-option-button")
-        .click();
+      await page.getByLabel("Select an object type").click();
       await page.getByRole("option", { name: "ProfileBuiltinTag" }).click();
       await page.getByLabel("Profile Name *").fill("profile test tag");
       await page.getByLabel("Description").fill("A profile for E2E test");
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
     });
 
     await test.step("Verify profile creation success", async () => {
@@ -93,10 +90,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
 
     await test.step("Select profile and enter details", async () => {
-      await page
-        .getByTestId("side-panel-container")
-        .getByTestId("select-open-option-button")
-        .click();
+      await page.getByLabel("Select a Profile").click();
       await page.getByRole("option", { name: "profile test tag" }).click();
 
       // Verify initial input fields for profile
@@ -104,7 +98,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await expect(page.getByLabel("Description")).toHaveValue("A profile for E2E test");
 
       await page.getByLabel("Name *").fill("tag with profile");
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
     });
 
     await test.step("Verify object creation", async () => {
@@ -271,7 +265,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         .getByTestId("select-open-option-button")
         .click();
       await page.getByText("Provisioning").click();
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
       await expect(
         page
           .locator("#alert-success-InfraInterfaceL2-created")

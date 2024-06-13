@@ -175,13 +175,13 @@ const NodeForm = ({
 }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const { data } = useAuth();
+  const { data, permissions } = useAuth();
 
   const fields = getFormFieldsFromSchema({
     schema,
     profile,
     initialObject: currentObject,
-    user: data,
+    user: { ...data, permissions },
   });
 
   async function onSubmit(data: any) {

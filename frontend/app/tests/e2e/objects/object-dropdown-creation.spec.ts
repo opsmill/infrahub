@@ -54,7 +54,7 @@ test.describe("object dropdown creation", () => {
 
     // Assert form content is visible
     await expect(page.getByText("Create Tag")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Create" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
 
     // Create a new tag
     await page.getByLabel("Create TagmainStandard Tag").locator("#Name").click();
@@ -66,7 +66,7 @@ test.describe("object dropdown creation", () => {
       .fill("New tag description");
 
     // Submit
-    await page.getByRole("button", { name: "Create" }).click();
+    await page.getByRole("button", { name: "Save" }).click();
     await expect(page.getByText("Tag created")).toBeVisible();
 
     // Closes the form

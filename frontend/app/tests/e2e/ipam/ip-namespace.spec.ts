@@ -12,7 +12,7 @@ test.describe("/ipam - IP Namespace", () => {
 
     await page.getByTestId("create-object-button").click();
     await page.getByLabel("Name *").fill("test-namespace");
-    await page.getByRole("button", { name: "Create" }).click();
+    await page.getByRole("button", { name: "Save" }).click();
 
     await expect(page.getByText("Namespace created")).toBeVisible();
     await expect(page.getByRole("link", { name: "test-namespace" })).toBeVisible();
@@ -115,7 +115,7 @@ test.describe("/ipam - IP Namespace", () => {
 
       await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: "test-namespace" }).click();
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("IPPrefix created")).toBeVisible();
     });
 
@@ -142,7 +142,7 @@ test.describe("/ipam - IP Namespace", () => {
 
       await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: "test-namespace" }).click();
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("IPPrefix created")).toBeVisible();
     });
 
@@ -174,7 +174,7 @@ test.describe("/ipam - IP Namespace", () => {
 
       await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: "test-namespace" }).click();
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("IPPrefix created")).toBeVisible();
     });
 

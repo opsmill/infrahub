@@ -27,7 +27,7 @@ test.describe("Object groups update", () => {
       ]);
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Name *").fill(NEW_TAG);
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
     });
 
     await test.step("go to the new tag", async () => {

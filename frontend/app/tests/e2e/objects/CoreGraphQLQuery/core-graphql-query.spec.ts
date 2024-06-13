@@ -46,7 +46,7 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
       await page.getByLabel("Description").click();
       await page.getByLabel("Description").fill("A profile for E2E test");
 
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
     });
 
     await test.step("Verify graphql query creation success", async () => {
