@@ -1,7 +1,8 @@
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { DynamicEnumFieldProps } from "@/components/form/type";
-import { Combobox, ComboboxProps } from "@/components/ui/combobox";
+import { ComboboxProps } from "@/components/ui/combobox";
 import { LabelFormField } from "@/components/form/fields/common";
+import { Select } from "@/components/inputs/select";
 
 export interface EnumFieldProps
   extends Omit<DynamicEnumFieldProps, "type">,
@@ -14,6 +15,7 @@ const EnumField = ({
   name,
   rules,
   unique,
+  items,
   ...props
 }: EnumFieldProps) => {
   return (
@@ -33,7 +35,7 @@ const EnumField = ({
             />
 
             <FormInput>
-              <Combobox {...field} {...props} />
+              <Select {...field} {...props} options={items} enum className="w-full" />
             </FormInput>
             <FormMessage />
           </div>

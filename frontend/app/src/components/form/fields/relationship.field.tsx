@@ -108,6 +108,7 @@ const RelationshipInput = forwardRef<ElementRef<typeof Select>, RelationshipInpu
             }}
             peer={relationship.peer}
             field={relationship}
+            schema={schema}
             onChange={(newOption) => {
               props.onChange(newOption);
             }}
