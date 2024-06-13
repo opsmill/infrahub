@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import pynetbox
 
-from diffsync import DiffSyncModel
+from diffsync import Adapter, DiffSyncModel
 from infrahub_sync import (
     DiffSyncMixin,
     DiffSyncModelMixin,
@@ -14,11 +14,6 @@ from infrahub_sync import (
     SyncAdapter,
     SyncConfig,
 )
-
-try:
-    from diffsync import Adapter as DiffSync  # type: ignore[attr-defined]
-except ImportError:
-    from diffsync import DiffSync  # type: ignore[no-redef]
 
 if TYPE_CHECKING:
     from pynetbox.core.response import Record as NetboxRecord
@@ -36,7 +31,7 @@ def get_value(obj, name: str):
     return get_value(obj=sub_obj, name=remaining_part)
 
 
-class NetboxAdapter(DiffSyncMixin, DiffSync):
+class NetboxAdapter(DiffSyncMixin, Adapter):
     type = "Netbox"
 
     def __init__(self, *args, target: str, adapter: SyncAdapter, config: SyncConfig, **kwargs):
