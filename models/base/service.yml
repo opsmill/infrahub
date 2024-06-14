@@ -20,6 +20,7 @@ nodes:
     namespace: Infra
     description: "Backbone Service"
     label: "Backbone Service"
+    icon: "carbon:container-services"
     menu_placement: "InfraService"
     inherit_from:
       - InfraService
