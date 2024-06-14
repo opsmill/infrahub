@@ -61,8 +61,8 @@ export const Infrahub = () => {
 
   if (isLoadingConfig) {
     return (
-      <div className="w-screen h-screen flex">
-        <LoadingScreen />;
+      <div className="w-screen h-screen flex items-center justify-center">
+        <LoadingScreen />
       </div>
     );
   }
