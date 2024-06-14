@@ -22,12 +22,12 @@ export const LabelFormField = ({
   description,
 }: LabelFormFieldProps) => {
   return (
-    <div className={classNames("px-1 mb-1 flex gap-1", className)}>
+    <div className={classNames("px-1 mb-1 flex items-center gap-1", className)}>
       <FormLabel>
         {label} {required && "*"}
       </FormLabel>
       {unique && <InputUniqueTips />}
-      {description && <QuestionMark message={description} className="ml-auto" />}
+      {description && <QuestionMark message={description} />}
     </div>
   );
 };

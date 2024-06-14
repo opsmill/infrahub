@@ -20,6 +20,7 @@ type GetFormFieldsFromSchema = {
   profile?: Object;
   initialObject?: Record<string, AttributeType>;
   user?: any;
+  isFilterForm?: boolean;
 };
 
 export const getFormFieldsFromSchema = ({
@@ -27,6 +28,7 @@ export const getFormFieldsFromSchema = ({
   profile,
   initialObject,
   user,
+  isFilterForm,
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
   const unorderedFields = [
     ...(schema.attributes ?? []),
@@ -45,22 +47,28 @@ export const getFormFieldsFromSchema = ({
       isReadOnly: attribute.read_only,
     });
 
+    const basicFomFieldProps = {
+      name: attribute.name,
+      label: attribute.label ?? undefined,
+      defaultValue: getFieldValue({ field: attribute, row: initialObject, profile }),
+      description: attribute.description ?? undefined,
+      disabled,
+      type: attribute.kind as Exclude<SchemaAttributeType, "Dropdown">,
+      rules: {
+        required: !isFilterForm && !attribute.optional,
+      },
+    };
+
     if ("peer" in attribute) {
       const nodes = store.get(schemaState);
       const generics = store.get(genericsState);
 
       return {
-        name: attribute.name,
-        label: attribute.label ?? undefined,
+        ...basicFomFieldProps,
         type: "relationship",
         defaultValue: getRelationshipValue({ field: attribute, row: initialObject }),
-        description: attribute.description ?? undefined,
-        disabled,
         parent: getSelectParent(initialObject, attribute),
         options: getRelationshipOptions(initialObject, attribute, nodes, generics),
-        rules: {
-          required: !attribute.optional,
-        },
         relationship: attribute,
         schema,
       };
@@ -68,16 +76,9 @@ export const getFormFieldsFromSchema = ({
 
     if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.DROPDOWN) {
       return {
-        name: attribute.name,
-        label: attribute.label ?? undefined,
+        ...basicFomFieldProps,
         type: SCHEMA_ATTRIBUTE_KIND.DROPDOWN,
-        defaultValue: getFieldValue({ field: attribute, row: initialObject, profile }),
         unique: attribute.unique,
-        description: attribute.description ?? undefined,
-        disabled,
-        rules: {
-          required: !attribute.optional,
-        },
         field: attribute,
         schema: schema,
         items: (attribute.choices ?? []).map((choice) => ({
@@ -92,33 +93,19 @@ export const getFormFieldsFromSchema = ({
     if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.TEXT && Array.isArray(attribute.enum)) {
       const fieldValue = getFieldValue({ field: attribute, row: initialObject, profile });
       return {
-        name: attribute.name,
-        label: attribute.label ?? undefined,
+        ...basicFomFieldProps,
         type: "enum",
         defaultValue: fieldValue,
-        disabled,
         field: attribute,
         schema: schema,
         unique: attribute.unique,
-        description: attribute.description ?? undefined,
-        rules: {
-          required: !attribute.optional,
-        },
         items: getOptionsFromAttribute(attribute, fieldValue),
       };
     }
 
     return {
-      name: attribute.name,
-      label: attribute.label ?? undefined,
-      defaultValue: getFieldValue({ field: attribute, row: initialObject, profile }),
-      description: attribute.description ?? undefined,
-      disabled,
-      type: attribute.kind as Exclude<SchemaAttributeType, "Dropdown">,
+      ...basicFomFieldProps,
       unique: attribute.unique,
-      rules: {
-        required: !attribute.optional,
-      },
     };
   });
 };

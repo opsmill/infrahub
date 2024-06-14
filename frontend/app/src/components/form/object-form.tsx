@@ -34,6 +34,8 @@ interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType>;
   currentProfile?: Record<string, Pick<AttributeType, "value" | "__typename">>;
+  isFilterForm?: boolean;
+  onSubmit?: (data: any) => void;
 }
 
 const ObjectForm = ({ kind, ...props }: ObjectFormProps) => {
@@ -163,6 +165,8 @@ type NodeFormProps = {
   profile?: Record<string, Pick<AttributeType, "value" | "__typename">>;
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType>;
+  isFilterForm?: boolean;
+  onSubmit?: (data: any) => void;
 };
 
 const NodeForm = ({
@@ -171,6 +175,8 @@ const NodeForm = ({
   schema,
   profile,
   onSuccess,
+  isFilterForm,
+  onSubmit: onSubmitOverride,
   ...props
 }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
@@ -182,6 +188,7 @@ const NodeForm = ({
     profile,
     initialObject: currentObject,
     user: { ...data, permissions },
+    isFilterForm,
   });
 
   async function onSubmit(data: any) {
@@ -224,7 +231,7 @@ const NodeForm = ({
   return (
     <DynamicForm
       fields={fields}
-      onSubmit={onSubmit}
+      onSubmit={onSubmitOverride || onSubmit}
       className={classNames("bg-custom-white flex flex-col flex-1 overflow-auto p-4", className)}
       {...props}
     />
