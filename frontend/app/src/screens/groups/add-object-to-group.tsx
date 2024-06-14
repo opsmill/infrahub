@@ -150,24 +150,23 @@ export default function AddObjectToGroup(props: Props) {
   }
 
   return (
-    <div className="bg-custom-white flex-1 overflow-auto flex flex-col">
-      <DynamicForm
-        fields={[
-          {
-            label: "Group",
-            name: "groupids",
-            defaultValue: values,
-            type: "relationship",
-            relationship: objectSchemaData?.relationships?.find(
-              ({ name }) => name === "member_of_groups"
-            ),
-            options,
-            schema: objectSchemaData,
-          },
-        ]}
-        onCancel={closeDrawer}
-        onSubmit={onSubmit}
-      />
-    </div>
+    <DynamicForm
+      fields={[
+        {
+          label: "Group",
+          name: "groupids",
+          defaultValue: values,
+          type: "relationship",
+          relationship: objectSchemaData?.relationships?.find(
+            ({ name }) => name === "member_of_groups"
+          ),
+          options,
+          schema: objectSchemaData,
+        },
+      ]}
+      onCancel={closeDrawer}
+      onSubmit={onSubmit}
+      className="p-4"
+    />
   );
 }
