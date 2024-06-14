@@ -153,7 +153,7 @@ export const DataDiffComments = (props: tDataDiffComments) => {
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
+      toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
 
       handleRefetch();
     } catch (error: any) {

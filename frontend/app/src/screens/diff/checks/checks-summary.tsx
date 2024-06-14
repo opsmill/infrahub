@@ -64,7 +64,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
     refetch();
 
     if (result?.data?.CoreProposedChangeRunCheck?.ok) {
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Checks are running" />);
+      toast(() => <Alert type={ALERT_TYPES.SUCCESS} message="Checks are running" />);
     }
   };
 

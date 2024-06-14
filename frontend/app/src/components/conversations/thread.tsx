@@ -150,7 +150,7 @@ export const Thread = (props: tThread) => {
       setDisplayAddComment(false);
     }
 
-    toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Thread resolved"} />);
+    toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={"Thread resolved"} />);
   };
 
   const comments = thread?.comments?.edges?.map((comment: any) => comment.node) ?? [];

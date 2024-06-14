@@ -40,7 +40,7 @@ const List = forwardRef<HTMLInputElement, OpsListProps>((props, ref) => {
       sertInputValue("");
 
       if (newArray.length === value.length) {
-        toast(<Alert message="Item already in the list" type={ALERT_TYPES.INFO} />);
+        toast(() => <Alert message="Item already in the list" type={ALERT_TYPES.INFO} />);
       }
     }
   };

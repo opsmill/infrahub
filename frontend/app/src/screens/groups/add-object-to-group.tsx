@@ -135,7 +135,7 @@ export default function AddObjectToGroup(props: Props) {
         });
       }
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schemaData?.name} updated`} />);
+      toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={`${schemaData?.name} updated`} />);
 
       closeDrawer();
 

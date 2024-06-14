@@ -77,7 +77,7 @@ export const BranchDetails = () => {
       console.log("error: ", error);
       setDetailsContent(error);
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={errorMessage} />);
+      toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={errorMessage} />);
     }
 
     setIsLoadingRequest(false);
