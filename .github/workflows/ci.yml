@@ -119,7 +119,7 @@ jobs:
       - name: "Setup environment"
         run: "pip install ruff==0.4.6"
       - name: "Linting: ruff check"
-        run: "ruff check --diff ."
+        run: "ruff check ."
       - name: "Linting: ruff format"
         run: "ruff format --check --diff ."
 

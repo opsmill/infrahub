@@ -278,5 +278,5 @@ async def test_display_schema_load_errors_details(mock_get_node, console_output)
     output = console_output.file.getvalue()
     expected_console = """Unable to load the schema:
   Node: CloudInstance | Attribute: status ({'name': 'status', 'kind': 'Dropdown'}) | Value error, The property 'choices' is required for kind=Dropdown (value_error)
-"""
+"""  # noqa: E501
     assert output == expected_console

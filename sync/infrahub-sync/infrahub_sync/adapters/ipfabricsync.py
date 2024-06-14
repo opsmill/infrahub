@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 try:
     from ipfabric import IPFClient
@@ -80,7 +80,7 @@ class IpfabricsyncAdapter(DiffSyncMixin, Adapter):
                 self.update_or_add_model_instance(item)
 
     def ipfabric_dict_to_diffsync(self, obj: dict, mapping: SchemaMappingModel, model: IpfabricsyncModel) -> dict:  # pylint: disable=too-many-branches
-        data: Dict[str, Any] = {"local_id": str(obj["id"])}
+        data: dict[str, Any] = {"local_id": str(obj["id"])}
 
         for field in mapping.fields:  # pylint: disable=too-many-nested-blocks
             field_is_list = model.is_list(name=field.name)
