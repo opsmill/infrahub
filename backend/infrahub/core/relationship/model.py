@@ -260,6 +260,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                 at=self.at,
                 include_owner=True,
                 include_source=True,
+                branch_agnostic=self.schema.branch is BranchSupportType.AGNOSTIC,
             )
         except NodeNotFoundError:
             self._peer = None

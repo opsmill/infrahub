@@ -395,7 +395,6 @@ async def test_read_resources_in_pool_with_branch(db: InfrahubDatabase, default_
     ns1 = prefix_pools_02["ns1"]
     ipv4_address_pool = prefix_pools_02["ipv4_address_pool"]
     peers = await ipv4_address_pool.resources.get_peers(db=db)
-    peer_ids = [peer.id for peer in peers.values()]
 
     # At first there should be 1 resource
     gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
@@ -428,6 +427,7 @@ async def test_read_resources_in_pool_with_branch(db: InfrahubDatabase, default_
     branched_peer_ids = [peer.id for peer in branched_peers.values()]
 
     # In main there should be 1 resource
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     resources_result = await graphql(
         schema=gql_params.schema,
         source=RESOURCES,
@@ -438,10 +438,12 @@ async def test_read_resources_in_pool_with_branch(db: InfrahubDatabase, default_
 
     assert not resources_result.errors
     assert resources_result.data
-    assert [
+    assert resources_result.data["CoreIPAddressPool"]["count"] == 1
+    assert resources_result.data["CoreIPAddressPool"]["edges"][0]["node"]["resources"]["count"] == 2
+    assert {
         edge["node"]["id"]
         for edge in resources_result.data["CoreIPAddressPool"]["edges"][0]["node"]["resources"]["edges"]
-    ] == peer_ids
+    } == set(branched_peer_ids)
 
     # In branch there should be 2 resources
     gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch.name)
@@ -455,10 +457,12 @@ async def test_read_resources_in_pool_with_branch(db: InfrahubDatabase, default_
 
     assert not resources_result.errors
     assert resources_result.data
-    assert [
+    assert resources_result.data["CoreIPAddressPool"]["count"] == 1
+    assert resources_result.data["CoreIPAddressPool"]["edges"][0]["node"]["resources"]["count"] == 2
+    assert {
         edge["node"]["id"]
         for edge in resources_result.data["CoreIPAddressPool"]["edges"][0]["node"]["resources"]["edges"]
-    ] == branched_peer_ids
+    } == set(branched_peer_ids)
 
 
 async def test_read_resources_in_pool_with_branch_with_mutations(
@@ -468,6 +472,8 @@ async def test_read_resources_in_pool_with_branch_with_mutations(
     ipv4_address_pool = prefix_pools_02["ipv4_address_pool"]
     peers = await ipv4_address_pool.resources.get_peers(db=db)
     peer_ids = [peer.id for peer in peers.values()]
+    assert len(peer_ids) == 1
+    peer_id = peer_ids[0]
 
     # At first there should be 1 resource
     gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
@@ -503,7 +509,6 @@ async def test_read_resources_in_pool_with_branch_with_mutations(
         % ns1.id,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={"pool_id": ipv4_address_pool.id},
     )
     prefix_id = prefix_result.data["IpamIPPrefixCreate"]["object"]["id"]
 
@@ -519,10 +524,9 @@ async def test_read_resources_in_pool_with_branch_with_mutations(
             }
         }
         """
-        % (ipv4_address_pool.id, peer_ids[0], prefix_id),
+        % (ipv4_address_pool.id, peer_id, prefix_id),
         context_value=gql_params.context,
         root_value=None,
-        variable_values={"pool_id": ipv4_address_pool.id},
     )
 
     # In main there should be 1 resource
@@ -537,10 +541,12 @@ async def test_read_resources_in_pool_with_branch_with_mutations(
 
     assert not resources_result.errors
     assert resources_result.data
-    assert [
+    assert resources_result.data["CoreIPAddressPool"]["count"] == 1
+    assert resources_result.data["CoreIPAddressPool"]["edges"][0]["node"]["resources"]["count"] == 2
+    assert {
         edge["node"]["id"]
         for edge in resources_result.data["CoreIPAddressPool"]["edges"][0]["node"]["resources"]["edges"]
-    ] == peer_ids
+    } == {peer_id, prefix_id}
 
     # In branch there should be 2 resources
     gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch.name)
@@ -554,7 +560,9 @@ async def test_read_resources_in_pool_with_branch_with_mutations(
 
     assert not resources_result.errors
     assert resources_result.data
-    assert [
+    assert resources_result.data["CoreIPAddressPool"]["count"] == 1
+    assert resources_result.data["CoreIPAddressPool"]["edges"][0]["node"]["resources"]["count"] == 2
+    assert {
         edge["node"]["id"]
         for edge in resources_result.data["CoreIPAddressPool"]["edges"][0]["node"]["resources"]["edges"]
-    ] == peer_ids + [prefix_id]
+    } == {peer_id, prefix_id}

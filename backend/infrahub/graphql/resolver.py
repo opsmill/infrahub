@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from infrahub_sdk.utils import extract_fields
 
-from infrahub.core.constants import RelationshipHierarchyDirection
+from infrahub.core.constants import BranchSupportType, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetHierarchyQuery
 
@@ -211,6 +211,7 @@ async def many_relationship_resolver(
                 filters=filters,
                 at=context.at,
                 branch=context.branch,
+                branch_agnostic=node_rel.branch is BranchSupportType.AGNOSTIC,
             )
 
         if not node_fields:
@@ -227,6 +228,7 @@ async def many_relationship_resolver(
             limit=limit,
             at=context.at,
             branch=context.branch,
+            branch_agnostic=node_rel.branch is BranchSupportType.AGNOSTIC,
         )
 
         if not objs:

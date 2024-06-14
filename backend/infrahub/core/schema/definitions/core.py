@@ -608,6 +608,15 @@ core_models: dict[str, Any] = {
                     "allow_override": AllowOverrideType.NONE,
                     "read_only": True,
                 },
+                {
+                    "name": "resource_pool",
+                    "peer": "CoreIPAddressPool",
+                    "identifier": "ipaddresspool__resource",
+                    "cardinality": "one",
+                    "branch": BranchSupportType.AGNOSTIC.value,
+                    "optional": True,
+                    "read_only": True,
+                },
             ],
         },
         {
