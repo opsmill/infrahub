@@ -1,7 +1,8 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Config(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_")
     url: str = "http://localhost:8000"
     api_token: str = "06438eb2-8019-4776-878c-0941b1f1d1ec"
     server_container: str = "infrahub-infrahub-server-1"
@@ -25,10 +26,6 @@ class Config(BaseSettings):
     current_stage: str = ""
 
     failed_requests: int = 0
-
-    class Config:
-        env_prefix = "INFRAHUB_"
-        case_sensitive = False
 
 
 config = Config()

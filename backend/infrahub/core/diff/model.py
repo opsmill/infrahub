@@ -5,10 +5,7 @@ from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-from infrahub.core.constants import (
-    DiffAction,
-    PathType,
-)
+from infrahub.core.constants import DiffAction, PathType
 from infrahub.core.timestamp import Timestamp
 
 
@@ -18,8 +15,7 @@ class RelationshipPath(BaseModel):
 
 
 class BaseDiffElement(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def to_graphql(self) -> dict[str, Any]:
         """Recursively Export the model to a dict for GraphQL.
