@@ -824,7 +824,10 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
 
   useEffect(() => {
     // Avoid fetching labels if ther eis no value
-    if (!value) return;
+    if (!value) {
+      setSelectedOption(findSelectedOption());
+      return;
+    }
 
     if (Array.isArray(value) && !value.length) return;
 
