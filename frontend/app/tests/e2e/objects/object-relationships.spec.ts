@@ -64,9 +64,7 @@ test.describe("/objects/:objectname/:objectid - relationship tab", () => {
 
       await test.step("Add a new relationship", async () => {
         await page.getByTestId("open-relationship-form-button").click();
-        await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
-        await page.getByRole("option", { name: "Device" }).click();
-        await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
+        await page.getByTestId("side-panel-container").getByLabel("Devices").click();
         await page.getByRole("option", { name: "dfw1-core1" }).click();
         await page.getByRole("button", { name: "Save" }).click();
       });
@@ -105,10 +103,11 @@ test.describe("/objects/:objectname/:objectid - relationship tab", () => {
       await page.getByRole("link", { name: "Connected to den1-edge1" }).click();
       await page.getByText("Ip Addresses1").click();
       await page.getByTestId("open-relationship-form-button").click();
-      await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
-      await page.getByTestId("select2step-1").getByText("IP Address").click();
       await expect(page.getByTestId("select-open-pool-option-button")).toBeVisible();
-      await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
+      await page
+        .getByTestId("side-panel-container")
+        .getByTestId("select-open-option-button")
+        .click();
       await expect(page.getByTestId("relationship-row").first()).toBeVisible();
     });
   });
