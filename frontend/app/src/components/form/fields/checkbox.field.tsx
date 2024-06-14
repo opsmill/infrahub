@@ -21,8 +21,8 @@ const CheckboxField = ({
       rules={{
         validate: {
           ...rules?.validate,
-          requireChecked: (checked: boolean) => {
-            if (rules?.required) return checked ?? "Required";
+          required: (checked: boolean) => {
+            if (rules?.required) return checked !== undefined && checked !== null;
 
             return true;
           },
