@@ -1,0 +1,60 @@
+---
+title: Managing API tokens
+---
+
+# Managing API tokens
+
+API tokens can be used as an authentication mechanism for Infrahub's REST- and GraphQL API, the Python SDK and infrahubctl.
+
+Managing API tokens for users is, at this moment, only possible through the GraphQL API. In the future we will be adding support for managing tokens through the web interface.
+
+## Generating an API token for a user
+
+1. Login to Infrahub's web interface as the user for which the token should be generated
+2. In the GraphQL sandbox, execute the following mutation, replace the name of the token in the mutation with a value that is appropriate for your use case
+
+```graphql
+mutation {
+  CoreAccountTokenCreate(data: {name: "token name"}) {
+    object {
+      token {
+        value
+      }
+    }
+  }
+}
+```
+
+3. The result of the query will show you the value of the token that was generated for the token. Store the token in a secure location, as there will be no way to retrieve the token from Infrahub at a later stage.
+
+## Listing existing API tokens for a user
+
+1. Login to Infrahub's web interface as the user for which you want to list the tokens
+2. In the GraphQL sandbox, execute the following query
+
+```graphql
+query {
+  CoreAccountToken {
+    edges {
+      node {
+        name
+        expiration
+        id
+      }
+    }
+  }
+}
+```
+
+## Deleting an API token for a user
+
+1. Login to Infrahub's web interface as the user for which the token should be generated
+2. In the GraphQL sandbox, execute the following mutation, replace the id of the token in the mutation with the id of the token that you want to delete
+
+```graphql
+mutation {
+  CoreAccountTokenDelete(data: {id: "17d8cde3-d36b-a0a3-370e-c51707234f19"}) {
+    ok
+  }
+}
+```

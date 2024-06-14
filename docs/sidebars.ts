@@ -66,6 +66,7 @@ const sidebars: SidebarsConfig = {
         'guides/object-storage',
 	'guides/check',
 	'guides/resource-manager',
+	'guides/managing-api-tokens',
       ],
     },
     {
