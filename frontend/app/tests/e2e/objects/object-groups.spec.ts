@@ -40,6 +40,7 @@ test.describe("Object groups update", () => {
       await page.getByTestId("select-open-option-button").click();
       await page.getByText("Arista Devices").click();
       await page.getByText("Cisco Devices").click();
+      await page.getByTestId("select-open-option-button").click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Group updated")).toBeVisible();
       await page.getByRole("button", { name: "Manage groups" }).click();
@@ -57,6 +58,7 @@ test.describe("Object groups update", () => {
       await expect(
         page.getByTestId("multi-select-input").getByText("Cisco Devices")
       ).not.toBeVisible();
+      await page.getByTestId("select-open-option-button").click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Group updated")).toBeVisible();
       await page.getByRole("button", { name: "Manage groups" }).click();
