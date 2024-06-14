@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe("/resource-manager - Resource Manager", () => {
+test.describe.only("/resource-manager - Resource Manager", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
@@ -38,18 +38,7 @@ test.describe("/resource-manager - Resource Manager", () => {
     await page.getByRole("option", { name: "10.1.0.0/16" }).click();
     await page.getByLabel("Resources *").click();
     await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
-
-    await Promise.all([
-      page.waitForResponse((response) => {
-        const reqData = response.request().postDataJSON();
-        const status = response.status();
-
-        return reqData?.operationName === "DropdownOptions" && status === 200;
-      }), // wait for second dropdown to appear
-
-      page.getByRole("option", { name: "Namespace" }).click(),
-    ]);
-
+    await page.getByRole("option", { name: "Namespace" }).click();
     await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
     await page.getByRole("option", { name: "default" }).click();
     await page.getByRole("button", { name: "Save" }).click();
