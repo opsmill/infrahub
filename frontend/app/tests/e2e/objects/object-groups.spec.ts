@@ -3,7 +3,7 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 
 const NEW_TAG = "group-tag";
 
-test.describe.only("Object groups update", () => {
+test.describe("Object groups update", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test.beforeEach(async function ({ page }) {
