@@ -431,6 +431,57 @@ async def test_prefix_pool_get_resource_with_prefix_length(
     assert result.data["IPPrefixPoolGetResource"]["node"] == {"display_label": "10.10.3.32/31", "kind": "IpamIPPrefix"}
 
 
+async def test_prefix_pool_get_resource_invalid_member_type(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_extended_schema: SchemaBranch,
+    init_nodes_registry,
+    ip_dataset_prefix_v4,
+):
+    ns1 = ip_dataset_prefix_v4["ns1"]
+    net140 = ip_dataset_prefix_v4["net140"]
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
+    await pool.new(
+        db=db,
+        name="pool1",
+        default_prefix_length=24,
+        default_prefix_type="IpamIPPrefix",
+        resources=[net140],
+        ip_namespace=ns1,
+    )
+    await pool.save(db=db)
+
+    query = (
+        """
+    mutation {
+        IPPrefixPoolGetResource(data: {
+            id: "%s"
+            member_type: "human"
+        }) {
+            ok
+        }
+    }
+    """
+        % pool.id
+    )
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert result.errors[0].message == "Invalid member_type value, allowed values are ['prefix', 'address']"
+
+
 async def test_address_pool_get_resource(
     db: InfrahubDatabase,
     default_branch: Branch,
