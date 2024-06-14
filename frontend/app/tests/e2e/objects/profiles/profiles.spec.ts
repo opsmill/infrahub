@@ -213,7 +213,12 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         page.goto("/objects/CoreProfile"),
       ]);
       await page.getByTestId("create-object-button").click();
-      await page.getByTestId("side-panel-container").getByTestId("select-input").fill("l2");
+      await page.getByLabel("Select an object type").click();
+      await page
+        .locator("div")
+        .filter({ hasText: /^Clear$/ })
+        .getByRole("combobox")
+        .fill("l2");
       await page.getByText("ProfileInfraInterfaceL2").click();
     });
 
@@ -250,7 +255,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         page.goto("/objects/CoreProfile"),
       ]);
       await page.getByTestId("create-object-button").click();
-      await page.getByTestId("side-panel-container").getByTestId("select-input").fill("l2");
+      await page.getByLabel("Select an object type").click();
       await page.getByText("ProfileInfraInterfaceL2").click();
     });
 
