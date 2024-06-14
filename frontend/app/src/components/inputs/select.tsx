@@ -832,6 +832,11 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       return;
     }
 
+    if (localOptions.length > 0 && !peer) {
+      setSelectedOption(findSelectedOption());
+      return;
+    }
+
     if (Array.isArray(value) && !value.length) return;
 
     handleFetchLabel();

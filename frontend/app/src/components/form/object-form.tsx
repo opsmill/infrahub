@@ -38,7 +38,7 @@ interface ObjectFormProps extends Omit<DynamicFormProps, "fields"> {
   onSubmit?: (data: any) => void;
 }
 
-const ObjectForm = ({ kind, ...props }: ObjectFormProps) => {
+const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
   // get all attributes and relationship ordered
   // map them into form fields
   // render form
@@ -46,7 +46,7 @@ const ObjectForm = ({ kind, ...props }: ObjectFormProps) => {
   const generic = generics.find((g) => g.kind === kind);
   const [kindToCreate, setKindToCreate] = useState<string>();
 
-  if (generic) {
+  if (!isFilterForm && generic) {
     if (!generic.used_by || generic.used_by.length === 0) {
       return (
         <NoDataFound message="No nodes are referencing this generic. Only nodes can be created." />
@@ -65,7 +65,7 @@ const ObjectForm = ({ kind, ...props }: ObjectFormProps) => {
     );
   }
 
-  return <NodeWithProfileForm kind={kind} {...props} />;
+  return <NodeWithProfileForm kind={kind} isFilterForm {...props} />;
 };
 
 type GenericSelectorProps = {
@@ -87,12 +87,13 @@ const GenericSelector = (props: GenericSelectorProps) => {
 
 const NodeWithProfileForm = ({ kind, currentProfile, ...props }: ObjectFormProps) => {
   const nodes = useAtomValue(schemaState);
+  const generics = useAtomValue(genericsState);
   const profiles = useAtomValue(profilesAtom);
   const [profileSelected, setProfileSelected] = useState<
     Record<string, Pick<AttributeType, "value" | "__typename">> | undefined
   >(currentProfile);
 
-  const nodeSchema = [...nodes, ...profiles].find((node) => node.kind === kind);
+  const nodeSchema = [...nodes, ...generics, ...profiles].find((node) => node.kind === kind);
 
   if (!nodeSchema) {
     return <NoDataFound message={`${kind} schema not found. Try to reload the page.`} />;
