@@ -13,7 +13,7 @@ import graphqlClient from "@/graphql/graphqlClientApollo";
 import { basicMutation } from "@/graphql/mutations/objects/basicMutation";
 import { getDropdownOptions } from "@/graphql/queries/objects/dropdownOptions";
 import { useLazyQuery } from "@/hooks/useQuery";
-import { Form, FormFieldError } from "@/screens/edit-form-hook/form";
+import { FormFieldError } from "@/screens/edit-form-hook/form";
 import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { namespacesState, schemaState } from "@/state/atoms/schema.atom";
@@ -36,6 +36,7 @@ import { POOLS_DICTIONNARY, POOLS_PEER } from "@/screens/ipam/constants";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { comparedOptions } from "@/utils/array";
 import { getOptionsFromRelationship } from "@/utils/getSchemaObjectColumns";
+import DynamicForm from "@/components/form/dynamic-form";
 
 export type SelectOption = {
   id: string | number;
@@ -321,39 +322,6 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   };
 
   const renderContentForDropdown = () => {
-    const fields = [
-      {
-        name: "value",
-        label: "Name",
-        value: "",
-        type: "text",
-        config: {
-          required: "Required",
-        },
-      },
-      {
-        name: "color",
-        label: "Color",
-        value: "",
-        type: "color",
-        isOptional: true,
-      },
-      {
-        name: "label",
-        label: "Label",
-        value: "",
-        type: "text",
-        isOptional: true,
-      },
-      {
-        name: "description",
-        label: "Description",
-        value: "",
-        type: "text",
-        isOptional: true,
-      },
-    ];
-
     const handleSubmit = async (data: any) => {
       setIsLoading(true);
 
@@ -408,23 +376,42 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
     const handleCancel = () => setOpen(false);
 
     return (
-      <Form fields={fields} onSubmit={handleSubmit} onCancel={handleCancel} isLoading={isLoading} />
+      <DynamicForm
+        fields={[
+          {
+            name: "value",
+            label: "Name",
+            type: "Text",
+            rules: {
+              required: true,
+            },
+          },
+          {
+            name: "color",
+            label: "Color",
+            type: "Color",
+          },
+          {
+            name: "label",
+            label: "Label",
+            type: "Text",
+          },
+          {
+            name: "description",
+            label: "Description",
+            type: "Text",
+          },
+        ]}
+        onSubmit={async (data) => {
+          await handleSubmit(data);
+        }}
+        onCancel={handleCancel}
+        className="p-4"
+      />
     );
   };
 
   const renderContentForEnum = () => {
-    const fields = [
-      {
-        name: "value",
-        label: "Value",
-        value: "",
-        type: kind === "Number" ? "number" : "text",
-        config: {
-          required: "Required",
-        },
-      },
-    ];
-
     const handleSubmit = async ({ value }: any) => {
       setIsLoading(true);
 
@@ -472,7 +459,23 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
     const handleCancel = () => setOpen(false);
 
     return (
-      <Form fields={fields} onSubmit={handleSubmit} onCancel={handleCancel} isLoading={isLoading} />
+      <DynamicForm
+        fields={[
+          {
+            name: "value",
+            label: "Value",
+            type: kind === "Number" ? "Number" : "Text",
+            rules: {
+              required: true,
+            },
+          },
+        ]}
+        onSubmit={async (data) => {
+          await handleSubmit(data);
+        }}
+        onCancel={handleCancel}
+        className="p-4"
+      />
     );
   };
 
