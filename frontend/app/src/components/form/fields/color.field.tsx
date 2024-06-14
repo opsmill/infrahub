@@ -28,7 +28,7 @@ const ColorField = ({
         // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
         const { value, ...fieldMethodsWithoutValue } = field;
         return (
-          <div className="flex flex-col">
+          <div className="relative flex flex-col">
             <LabelFormField
               label={label}
               unique={unique}

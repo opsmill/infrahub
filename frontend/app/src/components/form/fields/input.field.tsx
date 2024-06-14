@@ -27,7 +27,7 @@ const InputField = ({
         // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
         const { value, onChange, ...fieldMethodsWithoutValue } = field;
         return (
-          <div className="flex flex-col">
+          <div className="relative mb-2 flex flex-col">
             <LabelFormField
               label={label}
               unique={unique}

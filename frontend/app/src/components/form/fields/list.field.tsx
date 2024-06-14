@@ -19,7 +19,7 @@ const ListField = ({
       rules={rules}
       defaultValue={defaultValue}
       render={({ field }) => (
-        <div className="flex flex-col">
+        <div className="relative flex flex-col">
           <LabelFormField
             label={label}
             unique={unique}

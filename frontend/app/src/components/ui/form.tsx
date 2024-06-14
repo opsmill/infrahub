@@ -97,7 +97,7 @@ export const FormMessage = ({
   return (
     <p
       className={classNames(
-        "text-xs mt-1 italic text-gray-600",
+        "absolute -bottom-4 left-2 text-xs mt-1 italic text-gray-600",
         error && "text-red-600",
         className
       )}

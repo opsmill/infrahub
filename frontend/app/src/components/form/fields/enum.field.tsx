@@ -26,7 +26,7 @@ const EnumField = ({
       defaultValue={defaultValue}
       render={({ field }) => {
         return (
-          <div className="flex flex-col">
+          <div className="relative flex flex-col">
             <LabelFormField
               label={label}
               unique={unique}

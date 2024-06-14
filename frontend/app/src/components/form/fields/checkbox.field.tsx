@@ -33,7 +33,7 @@ const CheckboxField = ({
         const { value, ...fieldMethodsWithoutValue } = field;
 
         return (
-          <div className="flex flex-col">
+          <div className="relative flex flex-col">
             <div className="flex items-center">
               <FormInput>
                 <Checkbox enabled={!!value} {...fieldMethodsWithoutValue} {...props} />

@@ -36,7 +36,7 @@ export const OpsSelect2Step = (props: Props) => {
   );
 
   return (
-    <div className="flex flex-col">
+    <div className="relative flex flex-col">
       <div className="flex items-center gap-1.5">
         <label htmlFor={label} className="text-sm font-medium leading-6 text-gray-900">
           {label} {!isOptional && "*"}
