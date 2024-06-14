@@ -165,7 +165,7 @@ class SchemaNode(BaseModel):
     namespace: str
     branch: str
     include_in_menu: bool
-    default_filter: Optional[str]
+    default_filter: Optional[str] = None
     attributes: list[SchemaAttribute]
     relationships: list[SchemaRelationship]
     display_labels: list[str]

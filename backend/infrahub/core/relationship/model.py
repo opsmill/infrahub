@@ -50,9 +50,9 @@ class RelationshipCreateData(BaseModel):
     uuid: str
     name: str
     destination_id: str
-    branch: Optional[str]
+    branch: Optional[str] = None
     branch_level: int
-    branch_support: Optional[str]
+    branch_support: Optional[str] = None
     direction: str
     status: str
     is_protected: bool
