@@ -3,7 +3,7 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 
 const NEW_TAG = "group-tag";
 
-test.describe("Object groups update", () => {
+test.describe.only("Object groups update", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test.beforeEach(async function ({ page }) {
@@ -38,8 +38,8 @@ test.describe("Object groups update", () => {
 
     await test.step("update the groups #1", async () => {
       await page.getByTestId("select-open-option-button").click();
-      await page.getByText("Arista Devices").click();
-      await page.getByText("Cisco Devices").click();
+      await page.getByText("arista_devices").click();
+      await page.getByText("cisco_devices").click();
       await page.getByTestId("select-open-option-button").click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Group updated")).toBeVisible();
