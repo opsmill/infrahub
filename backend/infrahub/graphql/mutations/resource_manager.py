@@ -7,6 +7,8 @@ from typing_extensions import Self
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.ipam.constants import PrefixMemberType
+from infrahub.exceptions import QueryValidationError
 
 from ..queries.resource_manager import PoolAllocatedNode
 
@@ -23,7 +25,7 @@ class IPPrefixPoolGetResourceInput(InputObjectType):
     identifier = InputField(String(required=False), description="Identifier for the allocated resource")
     prefix_length = InputField(Int(required=False), description="Size of the prefix to allocate")
     member_type = InputField(String(required=False), description="member_type of the newly created prefix")
-    prefix_type = InputField(String(required=False), description="kind of prefix to allocate")
+    prefix_type = InputField(String(required=False), description="Kind of prefix to allocate")
     data = InputField(GenericScalar(required=False), description="Additional data to pass to the newly created prefix")
 
 
@@ -34,7 +36,7 @@ class IPAddressPoolGetResourceInput(InputObjectType):
     prefix_length = InputField(
         Int(required=False), description="Size of the prefix mask to allocate on the new IP address"
     )
-    address_type = InputField(String(required=False), description="kind of ip address to allocate")
+    address_type = InputField(String(required=False), description="Kind of ip address to allocate")
     data = InputField(
         GenericScalar(required=False), description="Additional data to pass to the newly created ip address"
     )
@@ -56,6 +58,11 @@ class IPPrefixPoolGetResource(Mutation):
     ) -> Self:
         context: GraphqlContext = info.context
 
+        member_type = data.get("member_type", None)
+        allowed_member_types = [t.value for t in PrefixMemberType]
+        if member_type and member_type not in allowed_member_types:
+            raise QueryValidationError(f"Invalid member_type value, allowed values are {allowed_member_types}")
+
         obj: CoreIPPrefixPool = await registry.manager.find_object(  # type: ignore[assignment]
             db=context.db,
             kind=InfrahubKind.IPPREFIXPOOL,
@@ -69,7 +76,7 @@ class IPPrefixPoolGetResource(Mutation):
             branch=context.branch,
             identifier=data.get("identifier", None),
             prefixlen=data.get("prefix_length", None),
-            member_type=data.get("member_type", None),
+            member_type=member_type,
             prefix_type=data.get("prefix_type", None),
             data=data.get("data", None),
         )
