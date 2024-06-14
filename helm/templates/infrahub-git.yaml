@@ -21,6 +21,9 @@ spec:
       {{- with .Values.infrahubGit.affinity }}
       affinity: {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.infrahubGit.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - args: {{- toYaml .Values.infrahubGit.infrahubGit.args | nindent 12 }}
           env:
