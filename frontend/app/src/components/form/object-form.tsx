@@ -65,7 +65,7 @@ const ObjectForm = ({ kind, isFilterForm, ...props }: ObjectFormProps) => {
     );
   }
 
-  return <NodeWithProfileForm kind={kind} isFilterForm {...props} />;
+  return <NodeWithProfileForm kind={kind} isFilterForm={isFilterForm} {...props} />;
 };
 
 type GenericSelectorProps = {
