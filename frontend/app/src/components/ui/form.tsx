@@ -21,7 +21,7 @@ import { Spinner } from "@/components/ui/spinner";
 import Label from "@/components/ui/label";
 
 export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
-  onSubmit?: (v: Record<string, unknown>) => void;
+  onSubmit?: (v: Record<string, unknown>) => Promise<void>;
   defaultValues?: Partial<Record<string, unknown>>;
 }
 
@@ -35,7 +35,15 @@ export const Form = ({ defaultValues, className, children, onSubmit, ...props }:
   return (
     <FormProvider {...form}>
       <form
-        onSubmit={onSubmit && form.handleSubmit(onSubmit)}
+        onSubmit={(event) => {
+          if (event && event.stopPropagation) {
+            event.stopPropagation();
+          }
+
+          if (!onSubmit) return;
+
+          form.handleSubmit(onSubmit)(event);
+        }}
         className={classNames("space-y-4", className)}
         {...props}>
         {children}
