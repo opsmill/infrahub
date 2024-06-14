@@ -16,8 +16,6 @@ export const DATA_CHECK_OBJECT = "CoreDataCheck";
 
 export const ACCOUNT_OBJECT = "CoreAccount";
 
-export const ACCOUNT_SELF_UPDATE_OBJECT = "CoreAccountSelf";
-
 export const ACCOUNT_TOKEN_OBJECT = "InternalAccountToken";
 
 export const ARTIFACT_DEFINITION_OBJECT = "CoreArtifactDefinition";
@@ -37,8 +35,6 @@ export const ARTIFACT_OBJECT = "CoreArtifact";
 export const GRAPHQL_QUERY_OBJECT = "CoreGraphQLQuery";
 
 export const PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT = "CoreArtifactThread";
-
-export const PROPOSED_CHANGES_COMMENT_OBJECT = "CoreChangeComment";
 
 export const PROPOSED_CHANGES_THREAD_COMMENT_OBJECT = "CoreThreadComment";
 
@@ -80,8 +76,6 @@ export const MENU_EXCLUDELIST = [
   "CoreRepositoryValidator",
   "CoreArtifactValidator",
 ];
-
-export const ATTRIBUTES_NAME_EXCLUDELIST = ["checksum", "storage_id"];
 
 export const NODE_PATH_EXCLUDELIST = ["property"];
 
@@ -148,7 +142,7 @@ export const attributesKindForListView = [
   "DateTime",
 ];
 
-export const SCHEMA_ATTRIBUTE_KIND: Record<string, SchemaAttributeType> = {
+export const SCHEMA_ATTRIBUTE_KIND = {
   ID: "ID",
   DROPDOWN: "Dropdown",
   TEXT: "Text",
@@ -169,10 +163,8 @@ export const SCHEMA_ATTRIBUTE_KIND: Record<string, SchemaAttributeType> = {
   LIST: "List",
   JSON: "JSON",
   ANY: "Any",
-  STRING: "String",
-  INTEGER: "Integer",
   BOOLEAN: "Boolean",
-} as const;
+} satisfies Record<string, SchemaAttributeType>;
 
 export const attributesKindForDetailsViewExclude = ["HashedPassword"];
 

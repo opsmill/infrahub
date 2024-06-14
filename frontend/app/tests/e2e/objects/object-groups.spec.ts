@@ -27,7 +27,7 @@ test.describe("Object groups update", () => {
       ]);
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Name *").fill(NEW_TAG);
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
     });
 
     await test.step("go to the new tag", async () => {
@@ -38,8 +38,9 @@ test.describe("Object groups update", () => {
 
     await test.step("update the groups #1", async () => {
       await page.getByTestId("select-open-option-button").click();
-      await page.getByText("Arista Devices").click();
-      await page.getByText("Cisco Devices").click();
+      await page.getByText("arista_devices").click();
+      await page.getByText("cisco_devices").click();
+      await page.getByTestId("select-open-option-button").click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Group updated")).toBeVisible();
       await page.getByRole("button", { name: "Manage groups" }).click();
@@ -57,6 +58,7 @@ test.describe("Object groups update", () => {
       await expect(
         page.getByTestId("multi-select-input").getByText("Cisco Devices")
       ).not.toBeVisible();
+      await page.getByTestId("select-open-option-button").click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Group updated")).toBeVisible();
       await page.getByRole("button", { name: "Manage groups" }).click();

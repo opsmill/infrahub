@@ -33,9 +33,9 @@ describe("Config fetch", () => {
     );
 
     cy.contains("Sign in to your account");
-    cy.contains("label", "Username").next().clear({ force: true });
-    cy.contains("label", "Username").next().type("test");
-    cy.contains("label", "Password").next().type("test");
+    cy.contains("label", "Username").parent().next().clear({ force: true });
+    cy.contains("label", "Username").parent().next().type("test");
+    cy.contains("label", "Password").parent().next().type("test");
     cy.contains("button", "Sign in").click();
 
     cy.wait("@login").then(({ response }) => {

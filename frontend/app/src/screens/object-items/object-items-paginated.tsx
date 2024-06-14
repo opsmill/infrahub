@@ -27,7 +27,7 @@ import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import ObjectItemCreate from "@/screens/object-item-create/object-item-create-paginated";
+import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { iComboBoxFilter } from "@/state/atoms/filters.atom";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
@@ -372,11 +372,13 @@ export default function ObjectItems({
         }
         open={showCreateDrawer}
         setOpen={setShowCreateDrawer}>
-        <ObjectItemCreate
-          onCreate={() => setShowCreateDrawer(false)}
+        <ObjectForm
+          onSuccess={async () => {
+            setShowCreateDrawer(false);
+            await refetch();
+          }}
           onCancel={() => setShowCreateDrawer(false)}
-          objectname={objectname!}
-          refetch={refetch}
+          kind={objectname!}
         />
       </SlideOver>
 

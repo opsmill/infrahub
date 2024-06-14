@@ -32,7 +32,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page.getByLabel("Description").fill("Testing Infrahub");
       await saveScreenshotForDocs(page, "tutorial_1_organization_create");
 
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
     });
 
     await test.step("confirm creation and update UI", async () => {
@@ -49,9 +49,9 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await test.step("fill and submit form for new organization", async () => {
       await expect(page.getByText("Create a new branch")).toBeVisible();
-      await page.locator("[id='New branch name']").fill("cr1234");
+      await page.getByLabel("New branch name *").fill("cr1234");
       await saveScreenshotForDocs(page, "tutorial_1_branch_creation");
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Create a new branch" }).click();
     });
 
     // After submit
@@ -140,7 +140,6 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await test.step("Row my-first-tenant is not visible when date prior to its creation is selected", async () => {
       await page.getByTestId("timeframe-selector").click();
       await saveScreenshotForDocs(page, "tutorial_2_historical");
-      //await page.getByLabel(`Choose ${format(dateBeforeTest, "iiii, MMMM do,")}`).click();
       await page.getByRole("option", { name: format(dateBeforeTest, "h:mm aa") }).click();
       await expect(page.locator("tbody")).not.toContainText("my-first-tenant");
     });

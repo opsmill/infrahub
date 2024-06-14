@@ -1,17 +1,23 @@
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
-import { PasswordInput } from "@/components/ui/password-input";
-import { FormFieldProps } from "@/components/form/type";
+import { DynamicEnumFieldProps } from "@/components/form/type";
+import { ComboboxProps } from "@/components/ui/combobox";
 import { LabelFormField } from "@/components/form/fields/common";
+import { Select } from "@/components/inputs/select";
 
-const PasswordInputField = ({
+export interface EnumFieldProps
+  extends Omit<DynamicEnumFieldProps, "type">,
+    Omit<ComboboxProps, "defaultValue" | "name" | "items"> {}
+
+const EnumField = ({
   defaultValue,
   description,
   label,
   name,
   rules,
   unique,
+  items,
   ...props
-}: FormFieldProps) => {
+}: EnumFieldProps) => {
   return (
     <FormField
       key={name}
@@ -19,10 +25,6 @@ const PasswordInputField = ({
       rules={rules}
       defaultValue={defaultValue}
       render={({ field }) => {
-        // Not passing value is needed to prevent error on uncontrolled component
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
-        const { value, ...fieldMethodsWithoutValue } = field;
-
         return (
           <div className="relative flex flex-col">
             <LabelFormField
@@ -31,10 +33,10 @@ const PasswordInputField = ({
               required={!!rules?.required}
               description={description}
             />
-            <FormInput>
-              <PasswordInput value={value ?? ""} {...fieldMethodsWithoutValue} {...props} />
-            </FormInput>
 
+            <FormInput>
+              <Select {...field} {...props} options={items} enum className="w-full" />
+            </FormInput>
             <FormMessage />
           </div>
         );
@@ -43,4 +45,4 @@ const PasswordInputField = ({
   );
 };
 
-export default PasswordInputField;
+export default EnumField;

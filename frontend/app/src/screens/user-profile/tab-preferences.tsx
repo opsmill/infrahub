@@ -1,5 +1,5 @@
 import DynamicForm from "@/components/form/dynamic-form";
-import { DynamicFieldProps } from "@/components/form/fields/common";
+import { DynamicFieldProps } from "@/components/form/type";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { UPDATE_ACCOUNT_PASSWORD } from "@/graphql/mutations/accounts/updateAccountPassword";

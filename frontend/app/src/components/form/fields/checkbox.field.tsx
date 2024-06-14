@@ -1,28 +1,56 @@
 import { Checkbox } from "@/components/inputs/checkbox";
-import { FormField, FormInput, FormLabel, FormMessage } from "@/components/ui/form";
-import { FormFieldProps } from "./common";
+import { FormField, FormInput, FormMessage } from "@/components/ui/form";
+import { FormFieldProps } from "@/components/form/type";
+import { LabelFormField } from "@/components/form/fields/common";
 
-const CheckboxField = ({ defaultValue, label, name, rules, ...props }: FormFieldProps) => {
+export interface CheckboxFieldProps extends FormFieldProps {}
+
+const CheckboxField = ({
+  defaultValue,
+  description,
+  label,
+  name,
+  rules,
+  unique,
+  ...props
+}: CheckboxFieldProps) => {
   return (
     <FormField
       key={name}
       name={name}
-      rules={rules}
-      defaultValue={defaultValue}
-      render={({ field }) => (
-        <div className="flex flex-col items-start">
-          <div className="flex items-center">
-            <FormInput>
-              <Checkbox {...field} {...props} />
-            </FormInput>
+      rules={{
+        validate: {
+          ...rules?.validate,
+          required: (checked: boolean) => {
+            if (rules?.required) return checked !== undefined && checked !== null;
 
-            <FormLabel className="ml-1">
-              {label} {rules?.required && "*"}
-            </FormLabel>
+            return true;
+          },
+        },
+      }}
+      defaultValue={rules?.required ? defaultValue || false : defaultValue}
+      render={({ field }) => {
+        const { value, ...fieldMethodsWithoutValue } = field;
+
+        return (
+          <div className="relative flex flex-col">
+            <div className="flex items-center">
+              <FormInput>
+                <Checkbox enabled={!!value} {...fieldMethodsWithoutValue} {...props} />
+              </FormInput>
+
+              <LabelFormField
+                className="m-0"
+                label={label}
+                unique={unique}
+                required={!!rules?.required}
+                description={description}
+              />
+            </div>
+            <FormMessage />
           </div>
-          <FormMessage />
-        </div>
-      )}
+        );
+      }}
     />
   );
 };

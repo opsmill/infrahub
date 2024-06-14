@@ -1,9 +1,9 @@
-import { MarkdownEditor } from "@/components/editor";
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { FormFieldProps } from "@/components/form/type";
+import List from "@/components/list";
 import { LabelFormField } from "@/components/form/fields/common";
 
-const TextareaField = ({
+const ListField = ({
   defaultValue,
   description,
   label,
@@ -28,13 +28,7 @@ const TextareaField = ({
           />
 
           <FormInput>
-            <MarkdownEditor
-              {...field}
-              {...props}
-              defaultValue={defaultValue as string | undefined}
-              onChange={(value: string) => field.onChange(value)}
-              className="w-full"
-            />
+            <List isProtected={props.disabled} {...field} {...props} />
           </FormInput>
           <FormMessage />
         </div>
@@ -43,4 +37,4 @@ const TextareaField = ({
   );
 };
 
-export default TextareaField;
+export default ListField;

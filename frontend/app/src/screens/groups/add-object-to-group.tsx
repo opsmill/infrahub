@@ -5,7 +5,6 @@ import { addRelationship } from "@/graphql/mutations/relationships/addRelationsh
 import { removeRelationship } from "@/graphql/mutations/relationships/removeRelationship";
 import { getGroups } from "@/graphql/queries/groups/getGroups";
 import useQuery from "@/hooks/useQuery";
-import EditFormHookComponent from "@/screens/edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
@@ -15,9 +14,9 @@ import { datetimeAtom } from "@/state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
-import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import DynamicForm from "@/components/form/dynamic-form";
 
 interface Props {
   closeDrawer: Function;
@@ -34,7 +33,6 @@ export default function AddObjectToGroup(props: Props) {
   const allProfiles = useAtomValue(profilesAtom);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const [isLoading, setIsLoading] = useState(false);
 
   const schemaData = allGenerics.find((s) => s.kind === GROUP_OBJECT);
 
@@ -85,16 +83,6 @@ export default function AddObjectToGroup(props: Props) {
     name: group?.label?.value,
   }));
 
-  const formStructure = [
-    {
-      label: "Group",
-      name: "groupids",
-      value: values,
-      type: "multiselect",
-      options,
-    },
-  ];
-
   async function onSubmit(data: any) {
     // TODO: use object update mutation to provide the whole list
 
@@ -110,8 +98,6 @@ export default function AddObjectToGroup(props: Props) {
 
     try {
       if (newGroups.length) {
-        setIsLoading(true);
-
         const mutationString = addRelationship({
           data: stringifyWithoutQuotes({
             id: objectid,
@@ -155,28 +141,32 @@ export default function AddObjectToGroup(props: Props) {
 
       onUpdateComplete();
 
-      setIsLoading(false);
-
       return;
     } catch (e) {
       console.error("Something went wrong while updating the object:", e);
-
-      setIsLoading(false);
 
       return;
     }
   }
 
   return (
-    <div className="bg-custom-white flex-1 overflow-auto flex flex-col">
-      {formStructure && (
-        <EditFormHookComponent
-          onCancel={closeDrawer}
-          onSubmit={onSubmit}
-          fields={formStructure}
-          isLoading={isLoading}
-        />
-      )}
-    </div>
+    <DynamicForm
+      fields={[
+        {
+          label: "Group",
+          name: "groupids",
+          defaultValue: values,
+          type: "relationship",
+          relationship: objectSchemaData?.relationships?.find(
+            ({ name }) => name === "member_of_groups"
+          ),
+          options,
+          schema: objectSchemaData,
+        },
+      ]}
+      onCancel={closeDrawer}
+      onSubmit={onSubmit}
+      className="p-4"
+    />
   );
 }

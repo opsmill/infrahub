@@ -8,7 +8,7 @@ export type Filter = {
   display_label?: string;
 };
 
-const useFilters = () => {
+const useFilters = (): [Array<Filter>, (filter: Array<Filter>) => void] => {
   const [filtersInQueryString, setFiltersInQueryString] = useQueryParam(QSP.FILTER, StringParam);
 
   const filters = filtersInQueryString ? JSON.parse(filtersInQueryString) : [];

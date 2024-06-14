@@ -11,8 +11,6 @@ import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
 import { addRelationship } from "@/graphql/mutations/relationships/addRelationship";
 import { usePermission } from "@/hooks/usePermission";
-import { DynamicFieldData } from "@/screens/edit-form-hook/dynamic-control-types";
-import EditFormHookComponent from "@/screens/edit-form-hook/edit-form-hook-component";
 import NoDataFound from "@/screens/errors/no-data-found";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
@@ -36,6 +34,7 @@ import { Fragment, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ObjectAttributeRow } from "./object-attribute-row";
+import DynamicForm from "@/components/form/dynamic-form";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -69,7 +68,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const schemaKindName = useAtomValue(schemaKindNameState);
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
 
@@ -103,18 +101,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       });
     }
   }
-
-  const formFields: DynamicFieldData[] = [
-    {
-      kind: "Text",
-      label: relationshipSchema.label,
-      name: "relation",
-      options,
-      type: "select2step",
-      value: {},
-      config: {},
-    },
-  ];
 
   const [, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
@@ -179,8 +165,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     const { relation } = data;
 
     if (relation?.id || relation?.from_pool) {
-      setIsLoading(true);
-
       const mutationString = addRelationship({
         data: stringifyWithoutQuotes({
           id: objectid,
@@ -211,8 +195,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           message={`Association with ${relationshipSchema.peer} added`}
         />
       );
-
-      setIsLoading(false);
 
       setShowAddDrawer(false);
     }
@@ -477,13 +459,24 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         }
         open={showAddDrawer}
         setOpen={setShowAddDrawer}>
-        <EditFormHookComponent
+        <DynamicForm
+          fields={[
+            {
+              name: "relation",
+              label: relationshipSchema.label,
+              type: "relationship",
+              relationship: { ...relationshipSchema, cardinality: "one", inherited: true },
+              schema: relationshipSchemaData,
+              options,
+            },
+          ]}
+          onSubmit={async (data) => {
+            await handleSubmit(data);
+          }}
           onCancel={() => {
             setShowAddDrawer(false);
           }}
-          onSubmit={handleSubmit}
-          fields={formFields}
-          isLoading={isLoading}
+          className="w-full p-4"
         />
       </SlideOver>
 

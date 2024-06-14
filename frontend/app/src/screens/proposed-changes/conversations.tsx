@@ -24,10 +24,8 @@ import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWith
 import { getProposedChangesThreads } from "@/graphql/queries/proposed-changes/getProposedChangesThreads";
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
-import { DynamicFieldData } from "@/screens/edit-form-hook/dynamic-control-types";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
@@ -43,78 +41,18 @@ import { useAtomValue } from "jotai/index";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import DynamicForm from "@/components/form/dynamic-form";
+import getMutationDetailsFromFormData from "@/utils/getMutationDetailsFromFormData";
+import { schemaState } from "@/state/atoms/schema.atom";
+import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 
 type tConversations = {
   refetch?: Function;
 };
 
-export const getFormStructure = (
-  branches: any[] = [],
-  reviewers: any[] = [],
-  data?: any
-): DynamicFieldData[] => [
-  {
-    name: "name",
-    kind: "Text",
-    type: "text",
-    label: "Name",
-    value: data?.name?.value ?? "",
-    options: [],
-    config: {
-      validate: (value) => !!value || "Required",
-    },
-    isProtected: false,
-  },
-  {
-    name: "description",
-    kind: "Text",
-    type: "text",
-    label: "Description",
-    value: data?.description?.value ?? "",
-    options: [],
-    config: {},
-    isProtected: false,
-    isOptional: true,
-  },
-  {
-    name: "source_branch",
-    kind: "String",
-    type: "select",
-    label: "Source Branch",
-    value: data?.source_branch?.value ?? "",
-    options: branches,
-    config: {
-      validate: (value) => !!value || "Required",
-    },
-    isProtected: !!data?.source_branch?.value,
-  },
-  {
-    name: "destination_branch",
-    kind: "Text",
-    type: "text",
-    label: "Destination Branch",
-    value: "main",
-    options: [],
-    config: {},
-    isProtected: true,
-  },
-  {
-    name: "reviewers",
-    kind: "String",
-    type: "multiselect",
-    label: "Reviewers",
-    value:
-      data?.reviewers?.edges.map((edge: any) => ({ id: edge?.node?.id })).filter(Boolean) ?? "",
-    options: reviewers,
-    config: {},
-    isProtected: false,
-  },
-];
-
 export const Conversations = forwardRef((props: tConversations, ref) => {
   const { refetch: detailsRefetch } = props;
   const { proposedchange } = useParams();
-  const [branches] = useAtom(branchesState);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
@@ -412,19 +350,6 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
     }
   };
 
-  const branchesOptions: any[] = branches
-    .filter((branch) => branch.name !== "main")
-    .map((branch) => ({ id: branch.name, name: branch.name }));
-
-  const reviewersOptions: any[] = data
-    ? data[ACCOUNT_OBJECT]?.edges.map((edge: any) => ({
-        id: edge?.node.id,
-        name: edge?.node?.display_label,
-      }))
-    : [];
-
-  const formStructure = getFormStructure(branchesOptions, reviewersOptions, proposedChangesDetails);
-
   const columns = [
     {
       label: "ID",
@@ -621,17 +546,131 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
         }
         open={showEditDrawer}
         setOpen={setShowEditDrawer}>
-        <ObjectItemEditComponent
-          closeDrawer={() => setShowEditDrawer(false)}
-          onUpdateComplete={() => {
+        <ProposedChangeEditForm
+          initialData={proposedChangesDetails}
+          onSuccess={() => {
+            setShowEditDrawer(false);
             if (detailsRefetch) detailsRefetch();
             refetch();
           }}
-          objectid={proposedchange!}
-          objectname={PROPOSED_CHANGES_OBJECT!}
-          formStructure={formStructure}
         />
       </SlideOver>
     </div>
   );
 });
+
+type ProposedChangeEditFormProps = {
+  initialData: Record<string, AttributeType>;
+  onSuccess?: () => void;
+};
+
+const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChangeEditFormProps) => {
+  const nodes = useAtomValue(schemaState);
+  const branches = useAtomValue(branchesState);
+  const currentBranch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
+  const proposedChangeSchema = nodes.find(({ kind }) => kind === PROPOSED_CHANGES_OBJECT);
+
+  if (!proposedChangeSchema) return null;
+
+  async function onSubmit(data: any) {
+    const updatedObject = getMutationDetailsFromFormData(
+      proposedChangeSchema,
+      data,
+      "update",
+      initialData
+    );
+
+    if (Object.keys(updatedObject).length) {
+      try {
+        const mutationString = updateObjectWithId({
+          kind: proposedChangeSchema?.kind,
+          data: stringifyWithoutQuotes({
+            id: initialData.id,
+            ...updatedObject,
+          }),
+        });
+
+        const mutation = gql`
+          ${mutationString}
+        `;
+
+        await graphqlClient.mutate({
+          mutation,
+          context: { branch: currentBranch?.name, date },
+        });
+
+        toast(
+          () => (
+            <Alert type={ALERT_TYPES.SUCCESS} message={`${proposedChangeSchema?.name} updated`} />
+          ),
+          {
+            toastId: "alert-success-updated",
+          }
+        );
+
+        if (onSuccess) onSuccess();
+      } catch (e) {
+        console.error("Something went wrong while updating the object:", e);
+      }
+    }
+  }
+
+  return (
+    <DynamicForm
+      onSubmit={onSubmit}
+      fields={[
+        {
+          name: "name",
+          type: "Text",
+          label: "Name",
+          defaultValue: initialData?.name?.value,
+          rules: {
+            required: true,
+          },
+        },
+        {
+          name: "description",
+          type: "TextArea",
+          label: "Description",
+          defaultValue: initialData?.description?.value,
+        },
+        {
+          name: "source_branch",
+          type: "enum",
+          label: "Source Branch",
+          defaultValue: initialData?.source_branch?.value,
+          items: branches.map(({ name }) => name),
+          rules: {
+            required: true,
+          },
+          disabled: true,
+        },
+        {
+          name: "destination_branch",
+          type: "enum",
+          label: "Destination Branch",
+          defaultValue: "main",
+          items: [],
+          disabled: true,
+        },
+        {
+          name: "reviewers",
+          label: "Reviewers",
+          type: "relationship",
+          relationship: { cardinality: "many", peer: "CoreAccount" } as any,
+          schema: {} as any,
+          defaultValue:
+            initialData?.reviewers?.edges
+              .map((edge: any) => ({ id: edge?.node?.id }))
+              .filter(Boolean) ?? [],
+          options: initialData?.reviewers?.edges.map(({ node }) => ({
+            id: node?.id,
+            name: node?.display_label,
+          })),
+        },
+      ]}
+      className="p-4"
+    />
+  );
+};

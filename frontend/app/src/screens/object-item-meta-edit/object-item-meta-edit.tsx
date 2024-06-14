@@ -1,25 +1,23 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
-import EditFormHookComponent from "@/screens/edit-form-hook/edit-form-hook-component";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
+import { iNodeSchema } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { getFormStructureForMetaEditPaginated } from "@/utils/formStructureForCreateEdit";
 import getMutationMetaDetailsFromFormData from "@/utils/getMutationMetaDetailsFromFormData";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
-import { useAtom, useAtomValue } from "jotai/index";
-import { useState } from "react";
+import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
+import DynamicForm from "@/components/form/dynamic-form";
 interface Props {
   row: any;
   schema: iNodeSchema;
   type: "attribute" | "relationship";
   attributeOrRelationshipToEdit: any;
   attributeOrRelationshipName: any;
-  closeDrawer: Function;
-  onUpdateComplete: Function;
+  closeDrawer: () => void;
+  onUpdateComplete: () => void;
 }
 
 export default function ObjectItemMetaEdit(props: Props) {
@@ -35,17 +33,8 @@ export default function ObjectItemMetaEdit(props: Props) {
 
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const [schemaList] = useAtom(schemaState);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const formStructure = getFormStructureForMetaEditPaginated(
-    attributeOrRelationshipToEdit,
-    schemaList
-  );
 
   async function onSubmit(data: any) {
-    setIsLoading(true);
-
     const updatedObject = getMutationMetaDetailsFromFormData(
       schema,
       data,
@@ -71,20 +60,13 @@ export default function ObjectItemMetaEdit(props: Props) {
           context: { branch: branch?.name, date },
         });
 
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Metadata updated"} />);
+        toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={"Metadata updated"} />);
 
         onUpdateComplete();
 
-        setIsLoading(false);
-
         closeDrawer();
-
-        return;
       } catch (e) {
         console.error("Something went wrong while updating the meetadata", e);
-
-        setIsLoading(false);
-
         return;
       }
     }
@@ -92,11 +74,50 @@ export default function ObjectItemMetaEdit(props: Props) {
 
   return (
     <div className="flex-1 bg-custom-white flex">
-      <EditFormHookComponent
+      <DynamicForm
+        fields={[
+          {
+            name: "owner",
+            label: "Owner",
+            type: "relationship",
+            relationship: { cardinality: "one", inherited: true, peer: "LineageOwner" } as any,
+            schema,
+            defaultValue: attributeOrRelationshipToEdit.owner?.id,
+            parent: attributeOrRelationshipToEdit.owner?.__typename,
+          },
+          {
+            name: "source",
+            label: "Source",
+            type: "relationship",
+            relationship: { cardinality: "one", inherited: true, peer: "LineageSource" } as any,
+            schema,
+            defaultValue: attributeOrRelationshipToEdit.source?.id,
+            parent: attributeOrRelationshipToEdit.source?.__typename,
+          },
+          {
+            name: "is_visible",
+            label: "is visible",
+            type: "Checkbox",
+            defaultValue: attributeOrRelationshipToEdit.is_visible,
+            rules: {
+              required: true,
+            },
+          },
+          {
+            name: "is_protected",
+            label: "is protected",
+            type: "Checkbox",
+            defaultValue: attributeOrRelationshipToEdit.is_protected,
+            rules: {
+              required: true,
+            },
+          },
+        ]}
         onCancel={closeDrawer}
-        onSubmit={onSubmit}
-        fields={formStructure}
-        isLoading={isLoading}
+        onSubmit={async (data: any) => {
+          await onSubmit(data);
+        }}
+        className="w-full p-4"
       />
     </div>
   );

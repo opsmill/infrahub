@@ -41,39 +41,11 @@ test.describe("Object metadata", () => {
     // Check is protected
     await page.getByLabel("is protected *").check();
 
-    // Select account in first select
-    await page
-      .locator(".col-span-7 > div > div:nth-child(2)")
-      .first()
-      .getByTestId("select-container")
-      .nth(0)
-      .getByTestId("select-open-option-button")
-      .click();
-
-    await page
-      .locator(".col-span-7 > div > div:nth-child(2)")
-      .first()
-      .getByTestId("select-container")
-      .nth(0)
-      .getByRole("option", { name: "Account" })
-      .click();
-
-    // Select Architecture team in 2nd select
-    await page
-      .locator(".col-span-7 > div > div:nth-child(2)")
-      .first()
-      .getByTestId("select-container")
-      .nth(1)
-      .getByTestId("select-open-option-button")
-      .click();
-
-    await page
-      .locator(".col-span-7 > div > div:nth-child(2)")
-      .first()
-      .getByTestId("select-container")
-      .nth(1)
-      .getByRole("option", { name: "Architecture Team" })
-      .click();
+    // Select Architecture team
+    await page.getByLabel("Owner").click();
+    await page.getByRole("option", { name: "Account" }).click();
+    await page.getByTestId("select2step-2").getByTestId("select-open-option-button").nth(0).click();
+    await page.getByRole("option", { name: "Architecture Team" }).click();
 
     // Save
     await page.getByRole("button", { name: "Save" }).click();

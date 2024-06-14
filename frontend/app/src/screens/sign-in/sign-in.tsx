@@ -1,5 +1,5 @@
 import DynamicForm from "@/components/form/dynamic-form";
-import { DynamicFieldProps } from "@/components/form/fields/common";
+import { DynamicFieldProps } from "@/components/form/type";
 import { Card } from "@/components/ui/card";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { useAuth } from "@/hooks/useAuth";

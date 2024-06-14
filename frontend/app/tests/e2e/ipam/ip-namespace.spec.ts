@@ -12,7 +12,7 @@ test.describe("/ipam - IP Namespace", () => {
 
     await page.getByTestId("create-object-button").click();
     await page.getByLabel("Name *").fill("test-namespace");
-    await page.getByRole("button", { name: "Create" }).click();
+    await page.getByRole("button", { name: "Save" }).click();
 
     await expect(page.getByText("Namespace created")).toBeVisible();
     await expect(page.getByRole("link", { name: "test-namespace" })).toBeVisible();
@@ -101,21 +101,10 @@ test.describe("/ipam - IP Namespace", () => {
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Prefix *").fill("11.0.0.0/8");
       await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
-
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
-
-          return reqData?.operationName === "DropdownOptions" && status === 200;
-        }), // wait for second dropdown to appear
-
-        page.getByRole("option", { name: "Namespace" }).click(),
-      ]);
-
+      await page.getByRole("option", { name: "Namespace" }).click();
       await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: "test-namespace" }).click();
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("IPPrefix created")).toBeVisible();
     });
 
@@ -128,21 +117,10 @@ test.describe("/ipam - IP Namespace", () => {
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Prefix *").fill("11.0.0.0/16");
       await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
-
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
-
-          return reqData?.operationName === "DropdownOptions" && status === 200;
-        }), // wait for second dropdown to appear
-
-        page.getByRole("option", { name: "Namespace" }).click(),
-      ]);
-
+      await page.getByRole("option", { name: "Namespace" }).click();
       await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: "test-namespace" }).click();
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("IPPrefix created")).toBeVisible();
     });
 
@@ -160,21 +138,10 @@ test.describe("/ipam - IP Namespace", () => {
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Prefix *").fill("11.0.0.0/10");
       await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
-
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const reqData = response.request().postDataJSON();
-          const status = response.status();
-
-          return reqData?.operationName === "DropdownOptions" && status === 200;
-        }), // wait for second dropdown to appear
-
-        page.getByRole("option", { name: "Namespace" }).click(),
-      ]);
-
+      await page.getByRole("option", { name: "Namespace" }).click();
       await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: "test-namespace" }).click();
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("IPPrefix created")).toBeVisible();
     });
 

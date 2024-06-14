@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 import { toast } from "react-toastify";
 
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
@@ -8,7 +8,7 @@ import { MultipleInput } from "./inputs/multiple-input";
 import { SelectOption } from "./inputs/select";
 
 type OpsListProps = {
-  label: string;
+  id?: string;
   value: (string | SelectOption)[];
   onChange: (value: (string | SelectOption)[]) => void;
   error?: FormFieldError;
@@ -16,8 +16,8 @@ type OpsListProps = {
   disabled?: boolean;
 };
 
-export default function List(props: OpsListProps) {
-  const { value = [], onChange, label, error, isProtected, disabled } = props;
+const List = forwardRef<HTMLInputElement, OpsListProps>((props, ref) => {
+  const { value = [], onChange, id, error, isProtected, disabled } = props;
 
   const [inputValue, sertInputValue] = useState("");
 
@@ -48,7 +48,8 @@ export default function List(props: OpsListProps) {
   return (
     <>
       <Input
-        id={label}
+        ref={ref}
+        id={id}
         onChange={handleInputChange}
         error={error}
         disabled={isProtected}
@@ -60,4 +61,6 @@ export default function List(props: OpsListProps) {
       <MultipleInput value={value} onChange={onChange} disabled={disabled} />
     </>
   );
-}
+});
+
+export default List;

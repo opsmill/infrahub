@@ -2,14 +2,12 @@ import { BUTTON_TYPES, Button } from "@/components/buttons/button";
 import { ButtonWithTooltip } from "@/components/buttons/button-with-tooltip";
 import SlideOver from "@/components/display/slide-over";
 import { DEFAULT_BRANCH_NAME, SEARCH_FILTERS } from "@/config/constants";
-import useFilters from "@/hooks/useFilters";
-import { Form } from "@/screens/edit-form-hook/form";
+import useFilters, { Filter } from "@/hooks/useFilters";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { genericsState, schemaState } from "@/state/atoms/schema.atom";
-import getFormStructureForCreateEdit from "@/utils/formStructureForCreateEdit";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
+import ObjectForm from "@/components/form/object-form";
 
 type tFilters = {
   schema: any;
@@ -18,7 +16,7 @@ type tFilters = {
 const computeFilter = (data: [key: string, value: any]) => {
   const [key, value] = data;
 
-  if (value.id) {
+  if (value?.id) {
     return {
       name: `${key}__ids`,
       value: [value.id],
@@ -42,56 +40,10 @@ const computeFilter = (data: [key: string, value: any]) => {
 
 const constructNewFilters = (data: any) => Object.entries(data).map(computeFilter).filter(Boolean);
 
-const parseFilter = (acc: any, filter: any, schema: any) => {
-  if (!filter?.name) return;
-
-  if (filter.name.includes("__value")) {
-    const key = filter.name.replace("__value", "");
-
-    return {
-      ...acc,
-      [key]: {
-        value: filter.value,
-      },
-    };
-  }
-
-  if (schema && filter.name.includes("__ids")) {
-    const key = filter.name.replace("__ids", "");
-
-    const field =
-      schema.attributes.find((attribute) => attribute.name === key) ||
-      schema.relationships.find((relationship) => relationship.name === key);
-
-    if (field.cardinality === "many") {
-      return {
-        ...acc,
-        [key]: {
-          edges: filter.value.map((id) => ({ node: { id } })),
-        },
-      };
-    }
-
-    return {
-      ...acc,
-      [key]: {
-        node: {
-          id: filter.value,
-        },
-      },
-    };
-  }
-
-  return acc;
-};
-
 export const Filters = (props: tFilters) => {
   const { schema } = props;
 
   const branch = useAtomValue(currentBranchAtom);
-  const schemaList = useAtomValue(schemaState);
-  const genericList = useAtomValue(genericsState);
-
   const [filters, setFilters] = useFilters();
   const [showFilters, setShowFilters] = useState(false);
 
@@ -104,24 +56,14 @@ export const Filters = (props: tFilters) => {
   const handleShowFilters = () => setShowFilters(true);
 
   const handleSubmit = (data: any) => {
-    const newFilters = constructNewFilters(data);
+    const newFilters = constructNewFilters(data) as Filter[];
 
     setFilters([...filters, ...newFilters]);
 
     setShowFilters(false);
   };
 
-  const filtersObject = filters.reduce((acc, filter) => parseFilter(acc, filter, schema), {});
-
   const currentFilters = filters.filter((filter) => !SEARCH_FILTERS.includes(filter.name));
-
-  const fields = getFormStructureForCreateEdit({
-    schema,
-    schemas: schemaList,
-    generics: genericList,
-    row: filtersObject,
-    isFilters: true,
-  });
 
   return (
     <div className="flex flex-1">
@@ -176,7 +118,12 @@ export const Filters = (props: tFilters) => {
         }
         open={showFilters}
         setOpen={setShowFilters}>
-        <Form fields={fields} submitLabel="Apply filters" onSubmit={handleSubmit} />
+        <ObjectForm
+          onSubmit={handleSubmit}
+          kind={schema?.kind}
+          isFilterForm
+          submitLabel="Apply filters"
+        />
       </SlideOver>
     </div>
   );

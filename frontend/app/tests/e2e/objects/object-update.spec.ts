@@ -26,47 +26,23 @@ test.describe("Object update", () => {
       await page.getByLabel("Name *").fill("atl1-core1-new-name");
       await page.getByLabel("Description").fill("New description");
 
-      await page
-        .getByTestId("side-panel-container")
-        .getByText("Status")
-        .locator("../..")
-        .getByTestId("select-open-option-button")
-        .click();
+      await page.getByTestId("side-panel-container").getByLabel("Status").click();
       await page.getByRole("option", { name: "Active" }).click();
 
-      await page
-        .getByTestId("side-panel-container")
-        .getByText("Role")
-        .locator("../..")
-        .getByTestId("select-open-option-button")
-        .click();
+      await page.getByTestId("side-panel-container").getByLabel("Role").click();
       await page.getByRole("option", { name: "Edge Router" }).click();
 
-      await page
-        .getByTestId("side-panel-container")
-        .getByText("Asn")
-        .locator("../..")
-        .getByTestId("select-open-option-button")
-        .click();
+      await page.getByTestId("side-panel-container").getByLabel("Asn").click();
       await page.getByRole("option", { name: "AS701 701" }).click();
 
-      const tagsMultiSelectOpenButton = page
-        .getByTestId("side-panel-container")
-        .getByText("Tags")
-        .locator("../..")
-        .getByTestId("select-open-option-button");
+      const tagsMultiSelectOpenButton = page.getByTestId("side-panel-container").getByLabel("Tags");
       await tagsMultiSelectOpenButton.click();
 
       await page.getByRole("option", { name: "blue" }).click(); // Removes blue
       await page.getByRole("option", { name: "green" }).click(); // Adds green
       await page.getByRole("option", { name: "red" }).click(); // Adds red
 
-      await page
-        .getByTestId("side-panel-container")
-        .getByText("Tags")
-        .locator("../..")
-        .getByTestId("select-open-option-button")
-        .click();
+      await page.getByTestId("side-panel-container").getByLabel("Tags").click();
 
       await page.getByRole("button", { name: "Save" }).click();
     });
@@ -91,26 +67,23 @@ test.describe("Object update", () => {
       await expect(page.getByLabel("Name *")).toHaveValue("atl1-core1-new-name");
       await expect(page.getByLabel("Description")).toHaveValue("New description");
       await expect(page.getByLabel("Type *")).toHaveValue("MX204");
+      await page.pause();
       await expect(
         page
           .getByTestId("side-panel-container")
-          .getByText("Status")
+          .getByLabel("Status")
           .locator("../..")
-          .getByTestId("select-input")
+          .locator("input")
       ).toHaveValue("Active");
       await expect(
         page
           .getByTestId("side-panel-container")
-          .getByText("Role")
+          .getByLabel("Role")
           .locator("../..")
-          .getByTestId("select-input")
+          .locator("input")
       ).toHaveValue("Edge Router");
       await expect(
-        page
-          .getByTestId("side-panel-container")
-          .getByText("Asn")
-          .locator("../..")
-          .getByTestId("select-input")
+        page.getByTestId("side-panel-container").getByLabel("Asn").locator("../..").locator("input")
       ).toHaveValue("AS701 701");
 
       const tabInput = page.getByTestId("side-panel-container").getByText("greenred");
@@ -134,28 +107,13 @@ test.describe("Object update", () => {
     await test.step("edit object values", async () => {
       await page.getByRole("button", { name: "Edit" }).click();
 
-      await page
-        .getByTestId("side-panel-container")
-        .getByText("Status")
-        .locator("../..")
-        .getByTestId("select-open-option-button")
-        .click();
+      await page.getByTestId("side-panel-container").getByLabel("Status").click();
       await page.getByText("Empty").click();
 
-      await page
-        .getByTestId("side-panel-container")
-        .getByText("Role")
-        .locator("../..")
-        .getByTestId("select-open-option-button")
-        .click();
+      await page.getByTestId("side-panel-container").getByLabel("Role").click();
       await page.getByText("Empty").click();
 
-      await page
-        .getByTestId("side-panel-container")
-        .getByText("Asn")
-        .locator("../..")
-        .getByTestId("select-open-option-button")
-        .click();
+      await page.getByTestId("side-panel-container").getByLabel("Asn").click();
       await page.getByText("Empty").click();
 
       await page.getByRole("button", { name: "Save" }).click();

@@ -67,9 +67,9 @@ test.describe("/objects/:objectname/:objectid", () => {
       await expect(page.getByTestId("select2step-1").getByTestId("select-input")).toHaveValue(
         "CircuitEndpoint"
       );
-      await expect(
-        await page.getByTestId("select2step-2").getByTestId("select-input").inputValue()
-      ).toMatch(/InfraCircuitEndpoint\(ID: .*\)/g);
+      await expect(page.getByTestId("select2step-2").locator("input")).toHaveValue(
+        /InfraCircuitEndpoint/g
+      );
     });
   });
 });

@@ -1,9 +1,14 @@
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
-import { PasswordInput } from "@/components/ui/password-input";
 import { FormFieldProps } from "@/components/form/type";
+import { DatePicker } from "@/components/inputs/date-picker";
+import { ComponentProps } from "react";
 import { LabelFormField } from "@/components/form/fields/common";
 
-const PasswordInputField = ({
+export interface DatetimeFieldProps
+  extends FormFieldProps,
+    Omit<ComponentProps<typeof DatePicker>, "defaultValue" | "name"> {}
+
+const DatetimeField = ({
   defaultValue,
   description,
   label,
@@ -11,7 +16,7 @@ const PasswordInputField = ({
   rules,
   unique,
   ...props
-}: FormFieldProps) => {
+}: DatetimeFieldProps) => {
   return (
     <FormField
       key={name}
@@ -19,22 +24,18 @@ const PasswordInputField = ({
       rules={rules}
       defaultValue={defaultValue}
       render={({ field }) => {
-        // Not passing value is needed to prevent error on uncontrolled component
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
-        const { value, ...fieldMethodsWithoutValue } = field;
-
         return (
-          <div className="relative flex flex-col">
+          <div className="flex flex-col items-start">
             <LabelFormField
               label={label}
               unique={unique}
               required={!!rules?.required}
               description={description}
             />
-            <FormInput>
-              <PasswordInput value={value ?? ""} {...fieldMethodsWithoutValue} {...props} />
-            </FormInput>
 
+            <FormInput>
+              <DatePicker date={field.value} {...field} {...props} />
+            </FormInput>
             <FormMessage />
           </div>
         );
@@ -43,4 +44,4 @@ const PasswordInputField = ({
   );
 };
 
-export default PasswordInputField;
+export default DatetimeField;

@@ -13,8 +13,8 @@ import graphqlClient from "@/graphql/graphqlClientApollo";
 import { basicMutation } from "@/graphql/mutations/objects/basicMutation";
 import { getDropdownOptions } from "@/graphql/queries/objects/dropdownOptions";
 import { useLazyQuery } from "@/hooks/useQuery";
-import { Form, FormFieldError } from "@/screens/edit-form-hook/form";
-import ObjectItemCreate from "@/screens/object-item-create/object-item-create-paginated";
+import { FormFieldError } from "@/screens/edit-form-hook/form";
+import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { namespacesState, schemaState } from "@/state/atoms/schema.atom";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
@@ -36,6 +36,7 @@ import { POOLS_DICTIONNARY, POOLS_PEER } from "@/screens/ipam/constants";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { comparedOptions } from "@/utils/array";
 import { getOptionsFromRelationship } from "@/utils/getSchemaObjectColumns";
+import DynamicForm from "@/components/form/dynamic-form";
 
 export type SelectOption = {
   id: string | number;
@@ -48,8 +49,9 @@ export enum SelectDirection {
   OVER,
 }
 
-type SelectProps = {
+export type SelectProps = {
   id?: string;
+  className?: string;
   value?: string | string[] | number | number[];
   kind?: string;
   name?: string;
@@ -75,6 +77,7 @@ type SelectProps = {
 export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const {
     id,
+    className,
     options,
     value,
     onChange,
@@ -112,13 +115,15 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const [hasBeenOpened, setHasBeenOpened] = useState(false);
   const [optionToDelete, setOptionToDelete] = useState<null | number | string>(null);
   const [localOptions, setLocalOptions] = useState(options);
-  const [selectedOption, setSelectedOption] = useState(
-    multiple
+
+  const findSelectedOption = () => {
+    return multiple
       ? localOptions.filter(
           (option) => Array.isArray(value) && value.map((v) => v.id)?.includes(option.id)
         )
-      : localOptions?.find((option) => option?.id === value || option.name === value)
-  );
+      : localOptions?.find((option) => option?.id === value || option.name === value);
+  };
+  const [selectedOption, setSelectedOption] = useState(findSelectedOption());
 
   const namespaceData = namespaces.find((n) => n.name === schema?.namespace);
 
@@ -317,39 +322,6 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   };
 
   const renderContentForDropdown = () => {
-    const fields = [
-      {
-        name: "value",
-        label: "Name",
-        value: "",
-        type: "text",
-        config: {
-          required: "Required",
-        },
-      },
-      {
-        name: "color",
-        label: "Color",
-        value: "",
-        type: "color",
-        isOptional: true,
-      },
-      {
-        name: "label",
-        label: "Label",
-        value: "",
-        type: "text",
-        isOptional: true,
-      },
-      {
-        name: "description",
-        label: "Description",
-        value: "",
-        type: "text",
-        isOptional: true,
-      },
-    ];
-
     const handleSubmit = async (data: any) => {
       setIsLoading(true);
 
@@ -404,23 +376,42 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
     const handleCancel = () => setOpen(false);
 
     return (
-      <Form fields={fields} onSubmit={handleSubmit} onCancel={handleCancel} isLoading={isLoading} />
+      <DynamicForm
+        fields={[
+          {
+            name: "value",
+            label: "Name",
+            type: "Text",
+            rules: {
+              required: true,
+            },
+          },
+          {
+            name: "color",
+            label: "Color",
+            type: "Color",
+          },
+          {
+            name: "label",
+            label: "Label",
+            type: "Text",
+          },
+          {
+            name: "description",
+            label: "Description",
+            type: "Text",
+          },
+        ]}
+        onSubmit={async (data) => {
+          await handleSubmit(data);
+        }}
+        onCancel={handleCancel}
+        className="p-4"
+      />
     );
   };
 
   const renderContentForEnum = () => {
-    const fields = [
-      {
-        name: "value",
-        label: "Value",
-        value: "",
-        type: kind === "Number" ? "number" : "text",
-        config: {
-          required: "Required",
-        },
-      },
-    ];
-
     const handleSubmit = async ({ value }: any) => {
       setIsLoading(true);
 
@@ -468,7 +459,23 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
     const handleCancel = () => setOpen(false);
 
     return (
-      <Form fields={fields} onSubmit={handleSubmit} onCancel={handleCancel} isLoading={isLoading} />
+      <DynamicForm
+        fields={[
+          {
+            name: "value",
+            label: "Value",
+            type: kind === "Number" ? "Number" : "Text",
+            rules: {
+              required: true,
+            },
+          },
+        ]}
+        onSubmit={async (data) => {
+          await handleSubmit(data);
+        }}
+        onCancel={handleCancel}
+        className="p-4"
+      />
     );
   };
 
@@ -644,12 +651,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
           open={open}
           setOpen={setOpen}
           offset={1}>
-          <ObjectItemCreate
-            onCreate={handleCreate}
-            onCancel={() => setOpen(false)}
-            objectname={peer}
-            preventObjectsCreation
-          />
+          <ObjectForm kind={peer} onSuccess={handleCreate} onCancel={() => setOpen(false)} />
         </SlideOver>
       );
     }
@@ -784,16 +786,17 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
 
   // Fetch option display label if not defined by current selected option
   const handleFetchLabel = async () => {
-    if (!selectedOption) return;
+    if (!selectedOption && !value) return;
 
     if (peer && !multiple && !Array.isArray(selectedOption) && !selectedOption?.name) {
-      const { data } = await fetchLabel({ variables: { ids: [selectedOption?.id] } });
+      const id = selectedOption?.id ?? value?.id ?? value;
+      const { data } = await fetchLabel({ variables: { ids: [id] } });
 
       const label = data[peer]?.edges[0]?.node?.display_label;
 
       const newSelectedOption = {
         ...selectedOption,
-        name: label ?? "Unkown",
+        name: label ?? "Unknown",
       } as SelectOption;
 
       setSelectedOption(newSelectedOption);
@@ -824,7 +827,15 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
 
   useEffect(() => {
     // Avoid fetching labels if ther eis no value
-    if (!value) return;
+    if (!value) {
+      setSelectedOption(findSelectedOption());
+      return;
+    }
+
+    if (localOptions.length > 0 && !peer) {
+      setSelectedOption(findSelectedOption());
+      return;
+    }
 
     if (Array.isArray(value) && !value.length) return;
 
@@ -842,7 +853,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   }, [options?.length]);
 
   return (
-    <div className="relative" data-testid="select-container">
+    <div className={classNames("relative", className)} data-testid="select-container">
       <Combobox
         as="div"
         value={multiple ? selectedOption ?? [] : selectedOption ?? ""}

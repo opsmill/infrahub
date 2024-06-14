@@ -17,7 +17,7 @@ import {
   getSelectParent,
 } from "./getSchemaObjectColumns";
 
-const getIsDisabled = ({ owner, user, isProtected, isReadOnly }: any) => {
+export const getIsDisabled = ({ owner, user, isProtected, isReadOnly }: any) => {
   // Field is read only
   if (isReadOnly) return true;
 

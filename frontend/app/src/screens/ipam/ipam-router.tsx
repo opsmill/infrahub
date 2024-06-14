@@ -4,7 +4,7 @@ import { Tabs } from "@/components/tabs";
 import { Card } from "@/components/ui/card";
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { usePermission } from "@/hooks/usePermission";
-import ObjectItemCreate from "@/screens/object-item-create/object-item-create-paginated";
+import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
@@ -163,8 +163,10 @@ export default function IpamRouter() {
         }
         open={showCreateDrawer}
         setOpen={setShowCreateDrawer}>
-        <ObjectItemCreate
-          onCreate={() => {
+        <ObjectForm
+          kind={objectname}
+          onSuccess={() => {
+            refetchRef?.current?.refetch();
             setShowCreateDrawer(false);
 
             const currentIpNamespace = namespace ?? defaultIpNamespace;
@@ -173,8 +175,6 @@ export default function IpamRouter() {
             }
           }}
           onCancel={() => setShowCreateDrawer(false)}
-          objectname={objectname!}
-          refetch={refetchRef?.current?.refetch}
         />
       </SlideOver>
     </Card>

@@ -1,20 +1,16 @@
-import { Select } from "@/components/inputs/select";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { PROFILE_KIND } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
-import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
 import { DynamicFieldData } from "@/screens/edit-form-hook/dynamic-control-types";
-import EditFormHookComponent from "@/screens/edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import getFormStructureForCreateEdit from "@/utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "@/utils/getMutationDetailsFromFormData";
 import { getObjectAttributes, getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -22,25 +18,18 @@ import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
+import ObjectForm from "@/components/form/object-form";
 
 interface Props {
   objectname: string;
   objectid: string;
-  closeDrawer: Function;
+  closeDrawer: () => void;
   onUpdateComplete?: Function;
   formStructure?: DynamicFieldData[];
 }
 
 export default function ObjectItemEditComponent(props: Props) {
-  const {
-    objectname,
-    objectid,
-    closeDrawer,
-    onUpdateComplete,
-    formStructure: formStructureFromProps,
-  } = props;
-
-  const user = useAuth();
+  const { objectname, objectid, closeDrawer, onUpdateComplete } = props;
 
   const schemaList = useAtomValue(schemaState);
   const allProfiles = useAtomValue(profilesAtom);
@@ -48,8 +37,7 @@ export default function ObjectItemEditComponent(props: Props) {
   const profileGeneric = genericsList.find((s) => s.kind === PROFILE_KIND);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const [isLoading, setIsLoading] = useState(false);
-  const [profile, setProfile] = useState("");
+  const [profile] = useState("");
 
   const nodeSchema = schemaList.find((s) => s.kind === objectname);
   const profileSchema = allProfiles.find((s) => s.kind === objectname);
@@ -118,22 +106,6 @@ export default function ObjectItemEditComponent(props: Props) {
       ? profilesOptions?.find((p) => p.id === objectProfiles[0].id)?.values
       : profilesOptions?.find((p) => p.id === profile)?.values;
 
-  const formStructure =
-    formStructureFromProps ??
-    getFormStructureForCreateEdit({
-      schema,
-      schemas: schemaList,
-      generics: genericsList,
-      row: objectDetailsData,
-      user,
-      isUpdate: true,
-      profile: currentProfile,
-    });
-
-  const handleProfileChange = (newProfile: string) => {
-    setProfile(newProfile);
-  };
-
   async function onSubmit(data: any) {
     const updatedObject = getMutationDetailsFromFormData(
       schema,
@@ -144,8 +116,6 @@ export default function ObjectItemEditComponent(props: Props) {
     );
 
     if (Object.keys(updatedObject).length || objectProfiles[0]?.id !== profile) {
-      setIsLoading(true);
-
       try {
         const mutationString = updateObjectWithId({
           kind: schema?.kind,
@@ -175,36 +145,17 @@ export default function ObjectItemEditComponent(props: Props) {
       } catch (e) {
         console.error("Something went wrong while updating the object:", e);
       }
-
-      setIsLoading(false);
     }
   }
 
   return (
-    <div className="bg-custom-white flex-1 overflow-auto flex flex-col" data-cy="object-item-edit">
-      {displayProfile && (
-        <div className="p-4 pt-3 bg-gray-100">
-          <div className="flex items-center">
-            <label className="block text-sm font-medium leading-6 text-gray-900">
-              Select a Profile <span className="text-xs italic text-gray-500 ml-1">optional</span>
-            </label>
-          </div>
-          <Select
-            options={profilesOptions}
-            value={profile || currentProfile?.id}
-            onChange={handleProfileChange}
-          />
-        </div>
-      )}
-
-      {formStructure && (
-        <EditFormHookComponent
-          onCancel={closeDrawer}
-          onSubmit={onSubmit}
-          fields={formStructure}
-          isLoading={isLoading}
-        />
-      )}
-    </div>
+    <ObjectForm
+      onCancel={closeDrawer}
+      onSubmit={onSubmit}
+      kind={objectname}
+      currentObject={objectDetailsData}
+      currentProfile={currentProfile}
+      data-cy="object-item-edit"
+    />
   );
 }

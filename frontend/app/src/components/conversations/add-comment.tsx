@@ -1,6 +1,6 @@
 import { LinkButton } from "@/components/buttons/button-primitive";
 import DynamicForm from "@/components/form/dynamic-form";
-import { DynamicFieldProps } from "@/components/form/fields/common";
+import { DynamicFieldProps } from "@/components/form/type";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { constructPath } from "@/utils/fetch";
