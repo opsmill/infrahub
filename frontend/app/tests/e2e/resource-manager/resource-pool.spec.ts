@@ -37,7 +37,20 @@ test.describe("/resource-manager - Resource Manager", () => {
     await page.getByRole("option", { name: "10.0.0.0/16" }).click();
     await page.getByRole("option", { name: "10.1.0.0/16" }).click();
     await page.getByLabel("Resources *").click();
-    await page.getByLabel("Ip Namespace *").click();
+    await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
+
+    await Promise.all([
+      page.waitForResponse((response) => {
+        const reqData = response.request().postDataJSON();
+        const status = response.status();
+
+        return reqData?.operationName === "DropdownOptions" && status === 200;
+      }), // wait for second dropdown to appear
+
+      page.getByRole("option", { name: "Namespace" }).click(),
+    ]);
+
+    await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
     await page.getByRole("option", { name: "default" }).click();
     await page.getByRole("button", { name: "Save" }).click();
 

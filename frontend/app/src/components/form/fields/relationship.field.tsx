@@ -1,10 +1,11 @@
-import { FormField, FormInput, FormMessage } from "@/components/ui/form";
-import { Select } from "../../inputs/select";
 import { ElementRef, forwardRef } from "react";
+import { useAtomValue } from "jotai";
 import { components } from "@/infraops";
-import { genericsState, IModelSchema, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { OpsSelect2Step } from "@/components/form/select-2-step";
 import { store } from "@/state";
+import { genericsState, IModelSchema, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { FormField, FormInput, FormMessage } from "@/components/ui/form";
+import { Select } from "@/components/inputs/select";
+import { OpsSelect2Step } from "@/components/form/select-2-step";
 import { DynamicRelationshipFieldProps, FormFieldProps } from "@/components/form/type";
 import { LabelFormField } from "@/components/form/fields/common";
 
@@ -55,6 +56,7 @@ interface RelationshipInputProps extends FormFieldProps, RelationshipFieldProps 
 
 const RelationshipInput = forwardRef<ElementRef<typeof Select>, RelationshipInputProps>(
   ({ schema, value, options, parent, relationship, ...props }, ref) => {
+    const generics = useAtomValue(genericsState);
     if (relationship.cardinality === "many") {
       return (
         <Select
@@ -71,10 +73,8 @@ const RelationshipInput = forwardRef<ElementRef<typeof Select>, RelationshipInpu
       );
     }
 
-    if (relationship.inherited) {
-      const generics = store.get(genericsState);
-      const generic = generics.find((generic) => generic.kind === relationship.peer);
-
+    const generic = generics.find((generic) => generic.kind === relationship.peer);
+    if (generic || relationship.inherited) {
       if (generic) {
         const nodes = store.get(schemaState);
         const profiles = store.get(profilesAtom);
