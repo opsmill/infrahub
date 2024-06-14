@@ -194,7 +194,7 @@ class StandardNode(BaseModel):
                 data[attr_name] = NULL_VALUE
             elif inspect.isclass(field_type) and issubclass(field_type, BaseModel):
                 if isinstance(attr_value, list):
-                    clean_value = [item.dict() for item in attr_value]
+                    clean_value = [item.model_dump() for item in attr_value]
                     data[attr_name] = ujson.dumps(clean_value)
                 else:
                     data[attr_name] = attr_value.model_dump_json()

@@ -245,7 +245,7 @@ class ObjectConflict(BaseModel):
     id: str
 
     def to_conflict_dict(self) -> dict[str, Any]:
-        return self.dict()
+        return self.model_dump()
 
 
 class DataConflict(ObjectConflict):
@@ -257,7 +257,7 @@ class DataConflict(ObjectConflict):
     changes: list[BranchChanges] = Field(default_factory=list)
 
     def to_conflict_dict(self) -> dict[str, Any]:
-        conflict_dict = self.dict(exclude={"path_type"})
+        conflict_dict = self.model_dump(exclude={"path_type"})
         conflict_dict["path_type"] = self.path_type.value
         return conflict_dict
 
