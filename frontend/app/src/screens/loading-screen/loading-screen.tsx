@@ -17,7 +17,7 @@ export default function LoadingScreen(props: Props) {
   return (
     <div
       className={classNames(
-        "flex-1 flex flex-col items-center justify-center h-auto w-auto",
+        "flex flex-col items-center justify-center h-auto w-auto",
         className ?? ""
       )}>
       <ReactLoading

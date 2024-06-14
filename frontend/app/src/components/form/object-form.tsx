@@ -130,7 +130,7 @@ const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) =>
 
   const { data, error, loading } = useQuery(query);
 
-  if (loading) return <LoadingScreen />;
+  if (loading) return <LoadingScreen size={30} hideText className="p-12 pb-0" />;
 
   if (error) return <ErrorScreen message={error.message} />;
 
