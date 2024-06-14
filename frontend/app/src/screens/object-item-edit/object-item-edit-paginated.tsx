@@ -135,7 +135,7 @@ export default function ObjectItemEditComponent(props: Props) {
           context: { branch: branch?.name, date },
         });
 
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
+        toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
           toastId: "alert-success-updated",
         });
 

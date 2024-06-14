@@ -50,9 +50,9 @@ export const Generate = (props: tGenerateProps) => {
       });
 
       if (artifactid) {
-        toast(<Alert message="Artifact re-generated" type={ALERT_TYPES.SUCCESS} />);
+        toast(() => <Alert message="Artifact re-generated" type={ALERT_TYPES.SUCCESS} />);
       } else {
-        toast(<Alert message="Artifacts generated" type={ALERT_TYPES.SUCCESS} />);
+        toast(() => <Alert message="Artifacts generated" type={ALERT_TYPES.SUCCESS} />);
       }
 
       setIsLoading(false);

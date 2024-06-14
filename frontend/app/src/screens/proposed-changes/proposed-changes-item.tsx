@@ -66,7 +66,7 @@ export const ProposedChange = (props: any) => {
 
     setIsLoading(false);
 
-    toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed changes deleted"} />);
+    toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={"Proposed changes deleted"} />);
   };
 
   return (

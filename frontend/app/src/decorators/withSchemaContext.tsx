@@ -87,9 +87,9 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
       setNamespaces(namespaces);
       setProfiles(profiles);
     } catch (error) {
-      toast(
+      toast(() => (
         <Alert type={ALERT_TYPES.ERROR} message="Something went wrong when fetching the schema" />
-      );
+      ));
 
       console.error("Error while fetching the schema: ", error);
     }
