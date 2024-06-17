@@ -66,7 +66,13 @@ def test_identify_unsafe_graphql_value(value: str) -> None:
 
 
 @pytest.mark.parametrize("method", async_node_methods)
-async def test_validate_method_signature(method):
+async def test_validate_method_signature(
+    method,
+    replace_async_parameter_annotations,
+    replace_sync_parameter_annotations,
+    replace_async_return_annotation,
+    replace_sync_return_annotation,
+):
     EXCLUDE_PARAMETERS = ["client"]
     async_method = getattr(InfrahubNode, method)
     sync_method = getattr(InfrahubNodeSync, method)
@@ -80,8 +86,14 @@ async def test_validate_method_signature(method):
     sync_params = {key: value for key, value in sync_sig.parameters.items() if key not in EXCLUDE_PARAMETERS}
 
     assert async_params_name == sync_params_name
-    assert async_params == sync_params
-    assert async_sig.return_annotation == sync_sig.return_annotation
+    assert replace_sync_parameter_annotations(async_params) == replace_sync_parameter_annotations(sync_params)
+    assert replace_async_parameter_annotations(async_params) == replace_async_parameter_annotations(sync_params)
+    assert replace_sync_return_annotation(async_sig.return_annotation) == replace_sync_return_annotation(
+        sync_sig.return_annotation
+    )
+    assert replace_async_return_annotation(async_sig.return_annotation) == replace_async_return_annotation(
+        sync_sig.return_annotation
+    )
 
 
 @pytest.mark.parametrize("client_type", client_types)
