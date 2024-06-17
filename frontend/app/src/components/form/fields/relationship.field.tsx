@@ -75,9 +75,9 @@ const RelationshipField = ({
               <div className="relative flex flex-col">
                 <LabelFormField
                   label={"Kind"}
+                  description="Kind of node to use as relationship"
                   unique={unique}
                   required={!!rules?.required}
-                  description={description}
                   variant="small"
                 />
 
@@ -106,9 +106,9 @@ const RelationshipField = ({
               <div className="relative flex flex-col mt-1">
                 <LabelFormField
                   label={"Parent"}
+                  description="Parent to filter the available nodes"
                   unique={unique}
                   required={!!rules?.required}
-                  description={description}
                   variant="small"
                 />
 
@@ -137,7 +137,7 @@ const RelationshipField = ({
             return (
               <div className="relative flex flex-col mt-1">
                 <LabelFormField
-                  label={"Object"}
+                  label={"Node"}
                   unique={unique}
                   required={!!rules?.required}
                   description={description}
@@ -187,10 +187,10 @@ const RelationshipField = ({
             return (
               <div className="relative flex flex-col">
                 <LabelFormField
-                  label={"Parent"}
+                  label="Parent"
+                  description="Parent to filter the available nodes"
                   unique={unique}
                   required={!!rules?.required}
-                  description={description}
                   variant="small"
                 />
 
