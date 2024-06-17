@@ -21,18 +21,25 @@ const RelationshipField = ({
   ...props
 }: RelationshipFieldProps) => {
   const { options, parent, relationship } = props;
-
-  const [selectedLeft, setSelectedLeft] = useState(
-    parent ? options?.find((option) => option.id === parent) : null
-  );
+  console.log("---");
 
   const generics = useAtomValue(genericsState);
+  const schemaList = useAtomValue(schemaState);
+
+  const [selectedKind, setSelectedKind] = useState(
+    parent ? options?.find((option) => option.id === parent) : null
+  );
+  const [selectedParent, setSelectedParent] = useState(null);
+
   const generic = generics.find((generic) => generic.kind === relationship.peer);
 
   if (generic) {
     const nodes = store.get(schemaState);
     const profiles = store.get(profilesAtom);
-    const options = (generic.used_by || []).map((name: string) => {
+    const schemaData = schemaList.find((schema) => schema.kind === selectedKind?.id);
+    const parentRelationship = schemaData?.relationships?.find((rel) => rel.kind === "Parent");
+
+    const genericOptions = (generic.used_by || []).map((name: string) => {
       const relatedSchema = [...nodes, ...profiles].find((s: any) => s.kind === name);
 
       if (relatedSchema) {
@@ -43,8 +50,8 @@ const RelationshipField = ({
       }
     });
 
-    const selectOptions = Array.isArray(options)
-      ? options.map((o) => ({
+    const kindOptions = Array.isArray(genericOptions)
+      ? genericOptions.map((o) => ({
           name: o.name,
           id: o.id,
         }))
@@ -79,9 +86,41 @@ const RelationshipField = ({
                   <RelationshipInput
                     {...field}
                     {...props}
-                    options={selectOptions}
-                    onChange={setSelectedLeft}
-                    value={selectedLeft?.id}
+                    options={kindOptions}
+                    onChange={setSelectedKind}
+                    value={selectedKind?.id}
+                  />
+                </FormInput>
+                <FormMessage />
+              </div>
+            );
+          }}
+        />
+
+        <FormField
+          key={`${name}_parent`}
+          name={name}
+          rules={rules}
+          defaultValue={defaultValue}
+          render={({ field }) => {
+            return (
+              <div className="relative flex flex-col mt-2">
+                <LabelFormField
+                  label={"Parent"}
+                  unique={unique}
+                  required={!!rules?.required}
+                  description={description}
+                  variant="small"
+                />
+
+                <FormInput>
+                  <RelationshipInput
+                    {...field}
+                    {...props}
+                    peer={parentRelationship?.peer}
+                    disabled={props.disabled || !selectedKind?.id}
+                    onChange={setSelectedParent}
+                    className="mt-1"
                   />
                 </FormInput>
                 <FormMessage />
@@ -110,8 +149,9 @@ const RelationshipField = ({
                   <RelationshipInput
                     {...field}
                     {...props}
-                    peer={selectedLeft?.id}
-                    disabled={props.disabled || !selectedLeft?.id}
+                    peer={selectedKind?.id}
+                    parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
+                    disabled={props.disabled || !selectedKind?.id}
                     className="mt-1"
                   />
                 </FormInput>

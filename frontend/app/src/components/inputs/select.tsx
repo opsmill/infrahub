@@ -38,6 +38,11 @@ import { comparedOptions } from "@/utils/array";
 import { getOptionsFromRelationship } from "@/utils/getSchemaObjectColumns";
 import DynamicForm from "@/components/form/dynamic-form";
 
+export type Parent = {
+  name: string;
+  value: string;
+};
+
 export type SelectOption = {
   id: string | number;
   name: string;
@@ -56,6 +61,7 @@ export type SelectProps = {
   kind?: string;
   name?: string;
   peer?: string;
+  parent?: Parent;
   options: SelectOption[];
   onChange?: (value: any) => void;
   disabled?: boolean;
@@ -85,6 +91,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
     error,
     direction,
     peer,
+    parent,
     preventObjectsCreation,
     multiple,
     dropdown,
@@ -135,9 +142,13 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
     ?.filter(Boolean)?.length;
   const poolPeer = canRequestPools && POOLS_DICTIONNARY[peer];
 
+  const parentFilter = parent?.value ? `${parent.name}__ids: ["${parent.value}"]` : "";
+
   // Query to fetch options only if a peer is defined
   // TODO: Find another solution for queries while loading schema
-  const optionsQueryString = peer ? getDropdownOptions({ kind: peer }) : "query { ok }";
+  const optionsQueryString = peer
+    ? getDropdownOptions({ kind: peer, parentFilter })
+    : "query { ok }";
   const poolsQueryString = poolPeer ? getDropdownOptions({ kind: poolPeer }) : "query { ok }";
 
   const optionsQuery = gql`
