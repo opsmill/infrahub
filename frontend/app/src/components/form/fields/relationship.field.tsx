@@ -37,6 +37,7 @@ const RelationshipField = ({
     const profiles = store.get(profilesAtom);
     const schemaData = schemaList.find((schema) => schema.kind === selectedKind?.id);
     const parentRelationship = schemaData?.relationships?.find((rel) => rel.kind === "Parent");
+    console.log("parentRelationship: ", parentRelationship);
 
     const genericOptions = (generic.used_by || []).map((name: string) => {
       const relatedSchema = [...nodes, ...profiles].find((s: any) => s.kind === name);
@@ -117,7 +118,7 @@ const RelationshipField = ({
                     {...field}
                     {...props}
                     peer={parentRelationship?.peer}
-                    disabled={props.disabled || !selectedKind?.id}
+                    disabled={props.disabled || !parentRelationship || !selectedKind?.id}
                     onChange={setSelectedParent}
                     className="mt-1"
                   />
