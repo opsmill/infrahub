@@ -1,7 +1,7 @@
 import { FormField } from "@/components/ui/form";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 import { ComponentProps } from "react";
-import { SelectOption } from "@/components/inputs/select";
+import { Parent, SelectOption } from "@/components/inputs/select";
 import { components } from "@/infraops";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 
@@ -32,7 +32,8 @@ export type DynamicEnumFieldProps = FormFieldProps & {
 
 export type DynamicRelationshipFieldProps = FormFieldProps & {
   type: "relationship";
-  parent?: string;
+  peer?: string;
+  parent?: Parent;
   options?: SelectOption[];
   relationship: components["schemas"]["RelationshipSchema-Output"];
   schema: IModelSchema;

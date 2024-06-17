@@ -39,8 +39,8 @@ import { getOptionsFromRelationship } from "@/utils/getSchemaObjectColumns";
 import DynamicForm from "@/components/form/dynamic-form";
 
 export type Parent = {
-  name: string;
-  value: string;
+  name?: string;
+  value?: string;
 };
 
 export type SelectOption = {

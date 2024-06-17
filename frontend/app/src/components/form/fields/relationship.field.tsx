@@ -163,7 +163,7 @@ const RelationshipField = ({
     );
   }
 
-  const schemaData = schemaList.find((schema) => schema.kind === selectedKind?.id);
+  const schemaData = schemaList.find((schema) => schema.kind === relationship?.peer);
   const parentRelationship = schemaData?.relationships?.find((rel) => rel.kind === "Parent");
 
   return (
@@ -239,7 +239,12 @@ const RelationshipField = ({
               )}
 
               <FormInput>
-                <RelationshipInput {...field} {...props} peer={relationship?.peer} />
+                <RelationshipInput
+                  {...field}
+                  {...props}
+                  peer={relationship?.peer}
+                  parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
+                />
               </FormInput>
               <FormMessage />
             </div>
