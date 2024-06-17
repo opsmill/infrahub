@@ -24,7 +24,7 @@ from infrahub_sdk.exceptions import (
     NodeNotFoundError,
     UninitializedError,
 )
-from infrahub_sdk.graphql import Mutation
+from infrahub_sdk.graphql import Mutation, Query
 from infrahub_sdk.schema import GenericSchema, RelationshipCardinality, RelationshipKind
 from infrahub_sdk.utils import compare_lists, get_flat_value
 from infrahub_sdk.uuidt import UUIDT
@@ -902,27 +902,16 @@ class InfrahubNodeBase:
                     data.pop(item)
                     continue
                 if isinstance(original_data[item], dict):
-                    self._strip_unmodified_dict(
-                        data=data,
-                        original_data=original_data,
-                        variables=variables,
-                        item=item,
-                    )
+                    self._strip_unmodified_dict(data=data, original_data=original_data, variables=variables, item=item)
                     if item in self._relationships and original_data[item].get("node"):
                         relationship_data_cardinality_one = copy(original_data)
                         relationship_data_cardinality_one[item] = original_data[item]["node"]
                         self._strip_unmodified_dict(
-                            data=data,
-                            original_data=relationship_data_cardinality_one,
-                            variables=variables,
-                            item=item,
+                            data=data, original_data=relationship_data_cardinality_one, variables=variables, item=item
                         )
                         # Run again to remove the "id" key if it's the last one remaining
                         self._strip_unmodified_dict(
-                            data=data,
-                            original_data=relationship_data_cardinality_one,
-                            variables=variables,
-                            item=item,
+                            data=data, original_data=relationship_data_cardinality_one, variables=variables, item=item
                         )
 
         return data, variables
@@ -1404,6 +1393,108 @@ class InfrahubNode(InfrahubNodeBase):
                         related_node = await InfrahubNode.from_graphql(client=self._client, branch=branch, data=peer)
                         related_nodes.append(related_node)
 
+    async def get_pool_allocated_resources(self, resource: InfrahubNode) -> List[InfrahubNode]:
+        """Fetch all nodes that were allocated for the pool and a given resource.
+
+        Args:
+            resource (InfrahubNode): The resource from which the nodes were allocated.
+
+        Returns:
+            List[InfrahubNode]: The allocated nodes.
+        """
+        if not self.is_resource_pool():
+            raise ValueError("Allocate resources can only be fetched from resource pool nodes.")
+
+        graphql_query_name = "InfrahubResourcePoolAllocated"
+        node_ids_per_kind: Dict[str, List[str]] = {}
+
+        has_remaining_items = True
+        page_number = 1
+        while has_remaining_items:
+            page_offset = (page_number - 1) * self._client.pagination_size
+
+            query = Query(
+                query={
+                    graphql_query_name: {
+                        "@filters": {
+                            "pool_id": "$pool_id",
+                            "resource_id": "$resource_id",
+                            "offset": page_offset,
+                            "limit": self._client.pagination_size,
+                        },
+                        "count": None,
+                        "edges": {"node": {"id": None, "kind": None, "branch": None, "identifier": None}},
+                    }
+                },
+                name="GetAllocatedResourceForPool",
+                variables={"pool_id": str, "resource_id": str},
+            )
+            response = await self._client.execute_graphql(
+                query=query.render(),
+                variables={"pool_id": self.id, "resource_id": resource.id},
+                branch_name=self._branch,
+                tracker=f"get-allocated-resources-page{page_number}",
+            )
+
+            for edge in response[graphql_query_name]["edges"]:
+                node = edge["node"]
+                node_ids_per_kind.setdefault(node["kind"], []).append(node["id"])
+
+            remaining_items = response[graphql_query_name].get("count", 0) - (
+                page_offset + self._client.pagination_size
+            )
+            if remaining_items <= 0:
+                has_remaining_items = False
+
+            page_number += 1
+
+        nodes: List[InfrahubNode] = []
+        for kind, node_ids in node_ids_per_kind.items():
+            nodes.extend(await self._client.filters(kind=kind, branch=self._branch, ids=node_ids))
+
+        return nodes
+
+    async def get_pool_resources_utilization(self) -> List[Dict[str, Any]]:
+        """Fetch the utilization of each resource for the pool.
+
+        Returns:
+            List[Dict[str, Any]]: A list containing the allocation numbers for each resource of the pool.
+        """
+        if not self.is_resource_pool():
+            raise ValueError("Pool utilization can only be fetched for resource pool nodes.")
+
+        graphql_query_name = "InfrahubResourcePoolUtilization"
+
+        query = Query(
+            query={
+                graphql_query_name: {
+                    "@filters": {"pool_id": "$pool_id"},
+                    "count": None,
+                    "edges": {
+                        "node": {
+                            "id": None,
+                            "kind": None,
+                            "utilization": None,
+                            "utilization_branches": None,
+                            "utilization_default_branch": None,
+                        }
+                    },
+                }
+            },
+            name="GetUtilizationForPool",
+            variables={"pool_id": str},
+        )
+        response = await self._client.execute_graphql(
+            query=query.render(),
+            variables={"pool_id": self.id},
+            branch_name=self._branch,
+            tracker="get-pool-utilization",
+        )
+
+        if response[graphql_query_name].get("count", 0):
+            return [edge["node"] for edge in response[graphql_query_name]["edges"]]
+        return []
+
 
 class InfrahubNodeSync(InfrahubNodeBase):
     """Represents a Infrahub node in a synchronous context."""
@@ -1763,6 +1854,108 @@ class InfrahubNodeSync(InfrahubNodeBase):
                     for peer in peers["edges"]:
                         related_node = InfrahubNodeSync.from_graphql(client=self._client, branch=branch, data=peer)
                         related_nodes.append(related_node)
+
+    def get_pool_allocated_resources(self, resource: InfrahubNodeSync) -> List[InfrahubNodeSync]:
+        """Fetch all nodes that were allocated for the pool and a given resource.
+
+        Args:
+            resource (InfrahubNode): The resource from which the nodes were allocated.
+
+        Returns:
+            List[InfrahubNode]: The allocated nodes.
+        """
+        if not self.is_resource_pool():
+            raise ValueError("Allocate resources can only be fetched from resource pool nodes.")
+
+        graphql_query_name = "InfrahubResourcePoolAllocated"
+        node_ids_per_kind: Dict[str, List[str]] = {}
+
+        has_remaining_items = True
+        page_number = 1
+        while has_remaining_items:
+            page_offset = (page_number - 1) * self._client.pagination_size
+
+            query = Query(
+                query={
+                    graphql_query_name: {
+                        "@filters": {
+                            "pool_id": "$pool_id",
+                            "resource_id": "$resource_id",
+                            "offset": page_offset,
+                            "limit": self._client.pagination_size,
+                        },
+                        "count": None,
+                        "edges": {"node": {"id": None, "kind": None, "branch": None, "identifier": None}},
+                    }
+                },
+                name="GetAllocatedResourceForPool",
+                variables={"pool_id": str, "resource_id": str},
+            )
+            response = self._client.execute_graphql(
+                query=query.render(),
+                variables={"pool_id": self.id, "resource_id": resource.id},
+                branch_name=self._branch,
+                tracker=f"get-allocated-resources-page{page_number}",
+            )
+
+            for edge in response[graphql_query_name]["edges"]:
+                node = edge["node"]
+                node_ids_per_kind.setdefault(node["kind"], []).append(node["id"])
+
+            remaining_items = response[graphql_query_name].get("count", 0) - (
+                page_offset + self._client.pagination_size
+            )
+            if remaining_items <= 0:
+                has_remaining_items = False
+
+            page_number += 1
+
+        nodes: List[InfrahubNodeSync] = []
+        for kind, node_ids in node_ids_per_kind.items():
+            nodes.extend(self._client.filters(kind=kind, branch=self._branch, ids=node_ids))
+
+        return nodes
+
+    def get_pool_resources_utilization(self) -> List[Dict[str, Any]]:
+        """Fetch the utilization of each resource for the pool.
+
+        Returns:
+            List[Dict[str, Any]]: A list containing the allocation numbers for each resource of the pool.
+        """
+        if not self.is_resource_pool():
+            raise ValueError("Pool utilization can only be fetched for resource pool nodes.")
+
+        graphql_query_name = "InfrahubResourcePoolUtilization"
+
+        query = Query(
+            query={
+                graphql_query_name: {
+                    "@filters": {"pool_id": "$pool_id"},
+                    "count": None,
+                    "edges": {
+                        "node": {
+                            "id": None,
+                            "kind": None,
+                            "utilization": None,
+                            "utilization_branches": None,
+                            "utilization_default_branch": None,
+                        }
+                    },
+                }
+            },
+            name="GetUtilizationForPool",
+            variables={"pool_id": str},
+        )
+        response = self._client.execute_graphql(
+            query=query.render(),
+            variables={"pool_id": self.id},
+            branch_name=self._branch,
+            tracker="get-pool-utilization",
+        )
+
+        if response[graphql_query_name].get("count", 0):
+            return [edge["node"] for edge in response[graphql_query_name]["edges"]]
+        return []
 
 
 class NodeProperty:
