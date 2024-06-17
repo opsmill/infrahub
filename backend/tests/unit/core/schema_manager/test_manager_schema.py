@@ -2547,3 +2547,36 @@ def test_schema_branch_load_schema_update_nested_list(schema_all_in_one):
         ["primary_tag", "status"],
         ["my_generic_name", "mybool", "status"],
     ]
+
+
+def test_schema_branch_conflicting_required_relationships(schema_all_in_one):
+    tag_schema = _get_schema_by_kind(full_schema=schema_all_in_one, kind="BuiltinTag")
+    tag_schema["relationships"] = [
+        {
+            "name": "crits",
+            "peer": "BuiltinCriticality",
+            "label": "Crits",
+            "optional": False,
+            "cardinality": "many",
+        },
+    ]
+    crit_schema = _get_schema_by_kind(full_schema=schema_all_in_one, kind="BuiltinCriticality")
+    crit_schema["relationships"] = [
+        {
+            "name": "tags",
+            "peer": InfrahubKind.TAG,
+            "label": "Tags",
+            "optional": False,
+            "cardinality": "many",
+        },
+    ]
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_required_relationships()
+
+    assert "BuiltinTag" in exc.value.args[0]
+    assert "BuiltinCriticality" in exc.value.args[0]
+    assert "cannot both have required relationships" in exc.value.args[0]
