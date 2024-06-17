@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from invoke.tasks import task
 
@@ -193,12 +193,103 @@ def migrate(context: Context, database: str = INFRAHUB_DATABASE):
 
 
 @task
-def gen_config_env(context: Context):
-    """Generate list of env vars required for configuration."""
+def update_docker_compose(context: Context, docker_file: Optional[str] = "docker-compose.yml"):
+    """Update docker-compose.yml with the current version from pyproject.toml."""
+    import re
+
+    import toml
+
+    version = toml.load("pyproject.toml")["tool"]["poetry"]["version"]
+    version_pattern = r"registry.opsmill.io/opsmill/infrahub:\$\{VERSION:-[\d\.\-a-zA-Z]+\}"
+
+    def replace_version(match):
+        return f"registry.opsmill.io/opsmill/infrahub:${{VERSION:-{version}}}"
+
+    with open(docker_file, "r", encoding="utf-8") as file:
+        docker_compose = file.read()
+
+    updated_docker_compose = re.sub(version_pattern, replace_version, docker_compose)
+
+    with open(docker_file, "w", encoding="utf-8") as file:
+        file.write(updated_docker_compose)
+
+    print(f"{docker_file} updated with version {version}")
+
+
+def get_enum_mappings():
+    """Extracts enum mappings dynamically."""
+    from infrahub.config import StorageDriver, TraceExporterType, TraceTransportProtocol
+    from infrahub.database.constants import DatabaseType
+
+    enum_mappings = {}
+
+    for enum_class in [DatabaseType, StorageDriver, TraceExporterType, TraceTransportProtocol]:
+        for item in enum_class:
+            enum_mappings[item] = item.value
+
+    return enum_mappings
+
+
+def update_docker_compose_env_vars(
+    env_vars: list[str],
+    env_defaults: Dict[str, Any],
+    enum_mappings: Dict[Any, str],
+    docker_file: Optional[str] = "docker-compose.yml"
+) -> None:
+    """Update the docker-compose.yml file with the environment variables."""
+    from infrahub.config import StorageDriver, TraceExporterType, TraceTransportProtocol
+    from infrahub.database.constants import DatabaseType
+
+    with open(docker_file, "r", encoding="utf-8") as file:
+        docker_compose = file.readlines()
+
+    in_infrahub_config_section = False
+
+    for i, line in enumerate(docker_compose):
+        if line.strip().startswith("x-infrahub-config: &infrahub_config"):
+            in_infrahub_config_section = True
+            continue
+        if line.strip().startswith("services:"):
+            in_infrahub_config_section = False
+
+        if in_infrahub_config_section and line.strip().startswith("INFRAHUB_"):
+            var_name, existing_value = line.split(":", 1)
+            var_name = var_name.strip()
+            existing_value = existing_value.strip().strip('"')
+            if var_name in env_vars:
+                default_value = env_defaults.get(var_name, None)
+                if default_value is not None:
+                    # Convert bool to lowercase strings
+                    if isinstance(default_value, bool):
+                        default_value = str(default_value).lower()
+                    # Check if the default value is an enum-like value and replace it with its actual value
+                    elif isinstance(default_value, (DatabaseType, StorageDriver, TraceExporterType, TraceTransportProtocol)):
+                        default_value = enum_mappings[default_value]
+
+                    # Update only if the default value is different from the existing value
+                    if existing_value != default_value:
+                        if var_name in ["INFRAHUB_BROKER_USERNAME", "INFRAHUB_BROKER_PASSWORD"]:
+                            docker_compose[i] = f'  {var_name}: &{var_name.lower().replace("_", "")} "{default_value}"\n'
+                        else:
+                            docker_compose[i] = f'  {var_name}: "{default_value}"\n'
+
+    with open(docker_file, "w", encoding="utf-8") as file:
+        file.writelines(docker_compose)
+    print(f"{docker_file} updated with environment variables")
+
+
+@task
+def gen_config_env(
+    context: Context,
+    docker_file: Optional[str] = "docker-compose.yml",
+    update_docker_file: Optional[bool] = False):
+    """Generate list of env vars required for configuration and update docker file.yml if need."""
     from pydantic_settings import BaseSettings
     from pydantic_settings.sources import EnvSettingsSource
 
     from infrahub.config import Settings
+
+    enum_mappings = get_enum_mappings()
 
     # These are environment variables used outside of Pydantic settings
     env_vars = {
@@ -209,6 +300,7 @@ def gen_config_env(context: Context):
         "INFRAHUB_ADDRESS",
     }
     settings = Settings()
+    env_defaults = {}
 
     def fetch_fields(subset: BaseSettings):
         env_settings = EnvSettingsSource(
@@ -222,11 +314,16 @@ def gen_config_env(context: Context):
             else:
                 for _, field_env_name, _ in env_settings._extract_field_info(field, field_name):
                     env_vars.add(field_env_name.upper())
+                    env_defaults[field_env_name.upper()] = field.get_default()
 
     for subsetting in dict(settings):
         subsettings = getattr(settings, subsetting)
         fetch_fields(subsettings)
 
-    env_vars.remove("PATH")
-    for var in sorted(env_vars):
-        print(f"{var}:")
+    if "PATH" in env_vars:
+        env_vars.remove("PATH")
+    if update_docker_file:
+        update_docker_compose_env_vars(env_vars=sorted(env_vars), env_defaults=env_defaults, enum_mappings=enum_mappings, docker_file=docker_file)
+    else:
+        for var in sorted(env_vars):
+            print(f"{var}:")

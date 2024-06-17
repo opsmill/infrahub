@@ -20,6 +20,11 @@ on:
 jobs:
   update-docker-compose:
     runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'stable')
+
 
     steps:
       - name: "Check out repository code"
@@ -29,12 +34,17 @@ jobs:
         with:
           python-version: 3.12
       - name: "Setup environment"
-        run: "pip install invoke toml"
-
-      - name: Update docker-compose.yml
         run: |
-          VERSION=$(python -c "import toml; print(toml.load('pyproject.toml')['tool']['poetry']['version'])")
-          sed -i'' -e "s|\(image: \)\(.*\)/infrahub:.*\"|\1\2/infrahub:\${VERSION:-$VERSION}\"|g" docker-compose.yml
+          pipx install poetry
+          poetry config virtualenvs.prefer-active-python true
+          pip install invoke toml
+      - name: "Install Package"
+        run: "poetry install --all-extras"
+
+      - name: "Update Docker Env variable in docker-compose.yml file"
+        run: "invoke dev.gen-config-env -u true"
+      - name: "Update Infrahub Image Version in docker-compose.yml file"
+        run: "invoke dev.update-docker-compose"
 
       - name: Commit docker-compose.yml
         uses: github-actions-x/commit@v2.9
