@@ -1,15 +1,11 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
 version: "1.0"
-nodes:
-  - name: BackBoneService
+generics:
+  - name: Service
     namespace: Infra
-    description: "Backbone Service"
-    label: "Backbone Service"
-    icon: ""
+    description: "Services"
     default_filter: name__value
-    uniqueness_constraints:
-      - ["circuit_id__value", "internal_circuit_id__value"]
     order_by:
       - name__value
     display_labels:
@@ -19,6 +15,18 @@ nodes:
         kind: Text
         label: Name
         optional: false
+nodes:
+  - name: BackBoneService
+    namespace: Infra
+    description: "Backbone Service"
+    label: "Backbone Service"
+    icon: "carbon:container-services"
+    menu_placement: "InfraService"
+    inherit_from:
+      - InfraService
+    uniqueness_constraints:
+      - ["circuit_id__value", "internal_circuit_id__value"]
+    attributes:
       - name: circuit_id
         kind: Text
         label: Circuit ID
