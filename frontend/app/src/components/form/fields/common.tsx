@@ -12,6 +12,7 @@ type LabelFormFieldProps = {
   required?: boolean;
   unique?: boolean;
   description?: string;
+  variant?: string;
 };
 
 export const LabelFormField = ({
@@ -20,10 +21,11 @@ export const LabelFormField = ({
   required,
   unique,
   description,
+  variant,
 }: LabelFormFieldProps) => {
   return (
-    <div className={classNames("px-1 mb-1 flex items-center gap-1", className)}>
-      <FormLabel>
+    <div className={classNames("mb-1 flex items-center gap-1", className)}>
+      <FormLabel variant={variant}>
         {label} {required && "*"}
       </FormLabel>
       {unique && <InputUniqueTips />}

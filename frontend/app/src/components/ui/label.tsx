@@ -8,12 +8,27 @@ export interface LabelProps
     VariantProps<typeof labelVariants> {}
 
 const labelVariants = cva(
-  "text-sm font-medium text-gray-900 cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+  "cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+  {
+    variants: {
+      variant: {
+        noramal: "text-sm font-medium text-gray-900",
+        small: "text-xs font-normal",
+      },
+    },
+    defaultVariants: {
+      variant: "noramal",
+    },
+  }
 );
 
 const Label = React.forwardRef<React.ElementRef<typeof LabelPrimitive.Root>, LabelProps>(
-  ({ className, ...props }, ref) => (
-    <LabelPrimitive.Root ref={ref} className={classNames(labelVariants(), className)} {...props} />
+  ({ className, variant, ...props }, ref) => (
+    <LabelPrimitive.Root
+      ref={ref}
+      className={classNames(labelVariants({ variant }), className)}
+      {...props}
+    />
   )
 );
 
