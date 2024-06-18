@@ -44,6 +44,7 @@ from .queries import (
     InfrahubResourcePoolUtilization,
     InfrahubStatus,
     Relationship,
+    SearchAnywhere,
     Task,
 )
 
@@ -81,6 +82,8 @@ async def account_resolver(root, info: GraphQLResolveInfo):
 
 
 class InfrahubBaseQuery(ObjectType):
+    SearchAnywhere = SearchAnywhere
+
     Branch = BranchQueryList
     CoreAccountToken = AccountToken
 
