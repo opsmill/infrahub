@@ -63,13 +63,20 @@ test.describe("/objects/:objectname/:objectid", () => {
       await page.getByText("Interfaces15").click();
       await page.getByRole("link", { name: "Backbone: Connected to jfk1-" }).click();
       await page.getByRole("button", { name: "Edit" }).click();
-      await page.getByTestId("select2step-1").scrollIntoViewIfNeeded();
-      await expect(page.getByTestId("select2step-1").getByTestId("select-input")).toHaveValue(
-        "CircuitEndpoint"
-      );
-      await expect(page.getByTestId("select2step-2").locator("input")).toHaveValue(
-        /InfraCircuitEndpoint/g
-      );
+
+      const kindSelector = page
+        .getByTestId("side-panel-container")
+        .getByText("Kind")
+        .locator("../..")
+        .getByTestId("select-input");
+      await expect(kindSelector).toHaveValue("CircuitEndpoint");
+
+      const nodeSelector = page
+        .getByTestId("side-panel-container")
+        .getByText("Node")
+        .locator("../..")
+        .getByTestId("select-input");
+      await expect(nodeSelector).toHaveValue(/InfraCircuitEndpoint/g);
     });
   });
 });
