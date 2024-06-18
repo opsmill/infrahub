@@ -37,7 +37,6 @@ const RelationshipField = ({
     const profiles = store.get(profilesAtom);
     const schemaData = schemaList.find((schema) => schema.kind === selectedKind?.id);
     const parentRelationship = schemaData?.relationships?.find((rel) => rel.kind === "Parent");
-    console.log("parentRelationship: ", parentRelationship);
 
     const genericOptions = (generic.used_by || []).map((name: string) => {
       const relatedSchema = [...nodes, ...profiles].find((s: any) => s.kind === name);
@@ -152,6 +151,7 @@ const RelationshipField = ({
                     peer={selectedKind?.id}
                     parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
                     disabled={props.disabled || !selectedKind?.id}
+                    multiple={relationship.cardinality === "many"}
                     className="mt-1"
                   />
                 </FormInput>
@@ -245,6 +245,7 @@ const RelationshipField = ({
                   {...props}
                   peer={relationship?.peer}
                   parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
+                  multiple={relationship.cardinality === "many"}
                 />
               </FormInput>
               <FormMessage />
@@ -261,6 +262,7 @@ interface RelationshipInputProps extends FormFieldProps, RelationshipFieldProps 
   schema: IModelSchema;
   onChange: (value: any) => void;
   value?: string;
+  multiple?: boolean;
   className?: string;
 }
 
@@ -275,7 +277,6 @@ const RelationshipInput = forwardRef<ElementRef<typeof Select>, RelationshipInpu
         options={options ?? []}
         field={relationship}
         schema={schema}
-        multiple={relationship.cardinality === "many"}
         className="w-full"
       />
     );
