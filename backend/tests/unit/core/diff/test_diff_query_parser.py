@@ -290,3 +290,128 @@ async def test_attribute_property_multiple_branch_updates(
     assert property_diff.previous_value == "Alfred"
     assert property_diff.new_value == "Alfred Four"
     assert before_last_change < property_diff.changed_at < after_last_change
+
+
+async def test_relationship_one_property_branch_update(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_alfred_main,
+    person_jane_main,
+    person_john_main,
+    car_accord_main,
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp(branch.created_at)
+    car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    await car_main.owner.update(db=db, data={"id": person_jane_main.id})
+    before_main_change = Timestamp()
+    await car_main.save(db=db)
+    after_main_change = Timestamp()
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await car_branch.owner.update(db=db, data={"id": person_john_main.id, "_relation__is_visible": False})
+    before_branch_change = Timestamp()
+    await car_branch.save(db=db)
+    after_branch_change = Timestamp()
+
+    diff_query = await DiffAllPathsQuery.init(
+        db=db,
+        branch=branch,
+        base_branch=default_branch,
+    )
+    await diff_query.execute(db=db)
+    diff_parser = DiffQueryParser(
+        diff_query=diff_query, base_branch_name=default_branch.name, schema_manager=registry.schema, from_time=from_time
+    )
+    diff_parser.parse()
+
+    assert diff_parser.get_branches() == {branch.name, default_branch.name}
+    root_path = diff_parser.get_diff_root_for_branch(branch=branch.name)
+    assert root_path.branch == branch.name
+    assert len(root_path.nodes) == 1
+    node_diff = root_path.nodes[0]
+    assert node_diff.uuid == car_accord_main.id
+    assert node_diff.kind == "TestCar"
+    assert node_diff.action is DiffAction.UPDATED
+    assert len(node_diff.attributes) == 0
+    assert len(node_diff.relationships) == 1
+    relationship_diff = node_diff.relationships[0]
+    assert relationship_diff.name == "owner"
+    assert relationship_diff.action is DiffAction.UPDATED
+    assert len(relationship_diff.relationships) == 1
+    single_relationship = relationship_diff.relationships[0]
+    assert single_relationship.peer_id == person_john_main.id
+    assert single_relationship.action is DiffAction.UPDATED
+    assert len(single_relationship.properties) == 2
+    property_diff_by_type = {p.property_type: p for p in single_relationship.properties}
+    property_diff = property_diff_by_type["IS_VISIBLE"]
+    assert property_diff.property_type == "IS_VISIBLE"
+    assert property_diff.previous_value is True
+    assert property_diff.new_value is False
+    assert before_branch_change < property_diff.changed_at < after_branch_change
+    property_diff = property_diff_by_type["IS_RELATED"]
+    assert property_diff.property_type == "IS_RELATED"
+    assert property_diff.previous_value == person_john_main.id
+    assert property_diff.new_value == person_john_main.id
+    assert property_diff.changed_at < before_branch_change
+    root_main_path = diff_parser.get_diff_root_for_branch(branch=default_branch.name)
+    assert root_main_path.branch == default_branch.name
+    assert len(root_main_path.nodes) == 1
+    node_diff = root_main_path.nodes[0]
+    assert node_diff.uuid == car_accord_main.id
+    assert node_diff.kind == "TestCar"
+    assert node_diff.action is DiffAction.UPDATED
+    assert len(node_diff.attributes) == 0
+    assert len(node_diff.relationships) == 1
+    relationship_diff = node_diff.relationships[0]
+    assert relationship_diff.name == "owner"
+    assert relationship_diff.action is DiffAction.UPDATED
+    assert len(relationship_diff.relationships) == 2
+    single_relationships_by_peer_id = {sr.peer_id: sr for sr in relationship_diff.relationships}
+    single_relationship = single_relationships_by_peer_id[person_jane_main.id]
+    assert single_relationship.peer_id == person_jane_main.id
+    assert single_relationship.action is DiffAction.ADDED
+    assert len(single_relationship.properties) == 3
+    assert before_main_change < single_relationship.changed_at < after_main_change
+    property_diff_by_type = {p.property_type: p for p in single_relationship.properties}
+    property_diff = property_diff_by_type["IS_RELATED"]
+    assert property_diff.property_type == "IS_RELATED"
+    assert property_diff.previous_value is None
+    assert property_diff.new_value == person_jane_main.id
+    assert property_diff.action is DiffAction.ADDED
+    assert before_main_change < property_diff.changed_at < after_main_change
+    property_diff = property_diff_by_type["IS_VISIBLE"]
+    assert property_diff.property_type == "IS_VISIBLE"
+    assert property_diff.previous_value is None
+    assert property_diff.new_value is True
+    assert property_diff.action is DiffAction.ADDED
+    assert before_main_change < property_diff.changed_at < after_main_change
+    property_diff = property_diff_by_type["IS_PROTECTED"]
+    assert property_diff.property_type == "IS_PROTECTED"
+    assert property_diff.previous_value is None
+    assert property_diff.new_value is False
+    assert property_diff.action is DiffAction.ADDED
+    assert before_main_change < property_diff.changed_at < after_main_change
+    single_relationship = single_relationships_by_peer_id[person_john_main.id]
+    assert single_relationship.peer_id == person_john_main.id
+    assert single_relationship.action is DiffAction.REMOVED
+    assert len(single_relationship.properties) == 3
+    assert before_main_change < single_relationship.changed_at < after_main_change
+    property_diff_by_type = {p.property_type: p for p in single_relationship.properties}
+    property_diff = property_diff_by_type["IS_RELATED"]
+    assert property_diff.property_type == "IS_RELATED"
+    assert property_diff.previous_value == person_john_main.id
+    assert property_diff.new_value is None
+    assert property_diff.action is DiffAction.REMOVED
+    assert before_main_change < property_diff.changed_at < after_main_change
+    property_diff = property_diff_by_type["IS_VISIBLE"]
+    assert property_diff.property_type == "IS_VISIBLE"
+    assert property_diff.previous_value is True
+    assert property_diff.new_value is None
+    assert property_diff.action is DiffAction.REMOVED
+    assert before_main_change < property_diff.changed_at < after_main_change
+    property_diff = property_diff_by_type["IS_PROTECTED"]
+    assert property_diff.property_type == "IS_PROTECTED"
+    assert property_diff.previous_value is False
+    assert property_diff.new_value is None
+    assert property_diff.action is DiffAction.REMOVED
+    assert before_main_change < property_diff.changed_at < after_main_change

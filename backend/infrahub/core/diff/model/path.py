@@ -34,29 +34,18 @@ class DiffAttribute:
 
 @dataclass
 class DiffSingleRelationship:
-    uuid: str
     changed_at: Timestamp
     action: DiffAction
-    properties: list[DiffProperty] = field(default_factory=list)
-
-    def __hash__(self) -> int:
-        return hash(self.uuid)
-
-
-@dataclass
-class DiffRelationshipOne:
-    name: str
-    changed_at: Timestamp
-    action: DiffAction
+    peer_id: str
     properties: list[DiffProperty] = field(default_factory=list)
 
 
 @dataclass
-class DiffRelationshipMany:
+class DiffRelationship:
     name: str
     changed_at: Timestamp
     action: DiffAction
-    relationships: set[DiffSingleRelationship] = field(default_factory=set)
+    relationships: list[DiffSingleRelationship] = field(default_factory=list)
 
 
 @dataclass
@@ -66,8 +55,7 @@ class DiffNode:
     changed_at: Timestamp
     action: DiffAction
     attributes: list[DiffAttribute] = field(default_factory=list)
-    one_relationships: list[DiffRelationshipOne] = field(default_factory=list)
-    many_relationships: list[DiffRelationshipMany] = field(default_factory=list)
+    relationships: list[DiffRelationship] = field(default_factory=list)
 
 
 @dataclass
@@ -86,6 +74,16 @@ class DatabasePath:
     attribute_node: Neo4jNode
     path_to_property: Neo4jRelationship
     property_node: Neo4jNode
+
+    def __str__(self) -> str:
+        node_branch = self.path_to_node.get("branch")
+        node_status = self.path_to_node.get("status")
+        attribute_branch = self.path_to_attribute.get("branch")
+        attribute_status = self.path_to_attribute.get("status")
+        property_branch = self.path_to_property.get("branch")
+        property_status = self.path_to_property.get("status")
+        property_value = self.property_value if self.property_value is not None else self.peer_id
+        return f"branch={self.deepest_branch} (:Root)-[{node_branch=},{node_status=}]-({self.node_kind} '{self.node_id}')-[{attribute_branch=},{attribute_status=}]-({self.attribute_name})-[{property_branch=},{property_status=}]-({self.property_type=},{property_value=})"
 
     @classmethod
     def from_cypher_path(cls, cypher_path: Neo4jPath) -> DatabasePath:
@@ -111,13 +109,10 @@ class DatabasePath:
 
     @property
     def deepest_branch(self) -> str:
-        deepest_edge = self.path_to_node
-        deepest_branch_level = 0
-        for database_edge in (self.path_to_node, self.path_to_attribute, self.path_to_property):
-            branch_level = int(database_edge.get("branch_level"))
-            if branch_level > deepest_branch_level:
-                deepest_edge = database_edge
-                deepest_branch_level = branch_level
+        deepest_edge = max(
+            (self.path_to_node, self.path_to_attribute, self.path_to_property),
+            key=lambda edge: int(edge.get("branch_level")),
+        )
         return str(deepest_edge.get("branch"))
 
     @property

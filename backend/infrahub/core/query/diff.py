@@ -527,6 +527,7 @@ class DiffAllPathsQuery(DiffQuery):
                     (:Root)<-[r_root:IS_PART_OF]-(n:Node)-[r_node:HAS_ATTRIBUTE|IS_RELATED]-(p:Attribute|Relationship)-[diff_rel:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE]->(q:Boolean|Node|AttributeValue)
                 )
                 WHERE %(n_node_where)s
+                AND n <> q
                 AND ALL(
                     r in [r_root, r_node]
                     WHERE r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
@@ -543,17 +544,29 @@ class DiffAllPathsQuery(DiffQuery):
                 WITH diff_rel_path, diff_rel, r_root, n, r_node, p
                 OPTIONAL MATCH latest_base_path = (:Root)<-[r_root]-(n)-[r_node]-(p)-[base_diff_rel]->(base_prop)
                 WHERE any(r in relationships(diff_rel_path) WHERE r.branch = $branch_name)
+                AND n <> base_prop
                 AND type(base_diff_rel) = type(diff_rel)
                 AND all(
                     r in relationships(latest_base_path)
                     WHERE r.branch = $base_branch_name
                     AND r.from <= $from_time AND (r.to IS NULL or r.to <= $from_time)
                 )
-                WITH diff_rel_path, latest_base_path, r_node, r_root
+                WITH diff_rel_path, latest_base_path, diff_rel, r_root, n, r_node, p
                 ORDER BY base_diff_rel.from DESC, r_node.from DESC, r_root.from DESC
                 LIMIT 1
+                WITH diff_rel_path, latest_base_path, diff_rel, r_root, n, r_node, p
+                OPTIONAL MATCH base_peer_path = (
+                   (:Root)<-[r_root]-(n)-[r_node]-(p:Relationship)-[base_r_peer:IS_RELATED]-(base_peer:Node)
+                )
+                WHERE type(diff_rel) <> "IS_RELATED"
+                AND base_peer <> n
+                AND base_r_peer.from <= $from_time
+                AND base_r_peer.branch IN $branch_names
+                WITH diff_rel_path, latest_base_path, base_peer_path, base_r_peer, diff_rel
+                ORDER BY base_r_peer.branch = diff_rel.branch DESC, base_r_peer.from DESC
+                LIMIT 1
                 RETURN reduce(
-                    diff_rel_paths = [], item IN [diff_rel_path, latest_base_path] |
+                    diff_rel_paths = [], item IN [diff_rel_path, latest_base_path, base_peer_path] |
                     CASE WHEN item IS NULL THEN diff_rel_paths ELSE diff_rel_paths + [item] END
                 ) AS diff_rel_paths
             }

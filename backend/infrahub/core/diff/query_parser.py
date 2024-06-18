@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipStatus
 from infrahub.core.timestamp import Timestamp
 
-from .model.path import DatabasePath, DiffAttribute, DiffNode, DiffProperty, DiffRoot
+from .model.path import (
+    DatabasePath,
+    DiffAttribute,
+    DiffNode,
+    DiffProperty,
+    DiffRelationship,
+    DiffRoot,
+    DiffSingleRelationship,
+)
 
 if TYPE_CHECKING:
     from infrahub.core.query.diff import DiffAllPathsQuery
@@ -15,6 +23,9 @@ if TYPE_CHECKING:
 
 
 class DiffNoChildPathError(Exception): ...
+
+
+class DiffNoPeerIdError(Exception): ...
 
 
 @dataclass
@@ -54,7 +65,7 @@ class DiffValueIntermediate:
     value: Any
 
     def __hash__(self) -> int:
-        return hash(f"{self.changed_at.to_string()}|{self.status.value}|{self.value}")
+        return hash("|".join(str(v) for v in (self.changed_at.to_string(), self.status.value, self.value)))
 
 
 @dataclass
@@ -103,9 +114,9 @@ class DiffPropertyIntermediate:
         previous_diff_value = ordered_values[0]
         new_diff_value = ordered_values[-1]
         action = DiffAction.UPDATED
-        if previous_diff_value.value in (None, "NULL") and new_diff_value.value:
+        if previous_diff_value.value in (None, "NULL") and new_diff_value.value not in (None, "NULL"):
             action = DiffAction.ADDED
-        if previous_diff_value.value and new_diff_value.value in (None, "NULL"):
+        if previous_diff_value.value not in (None, "NULL") and new_diff_value.value in (None, "NULL"):
             action = DiffAction.REMOVED
         if previous_diff_value.value == new_diff_value.value:
             action = DiffAction.UNCHANGED
@@ -137,30 +148,161 @@ class DiffAttributeIntermediate(TrackedStatusUpdates):
 
 
 @dataclass
-class DiffSingleRelationshipIntermediate:
-    uuid: str
+class DiffRelationshipPropertyIntermediate:
+    property_type: str
+    db_id: str
     changed_at: Timestamp
-    action: DiffAction
-    properties_by_type: dict[str, DiffPropertyIntermediate] = field(default_factory=dict)
+    status: RelationshipStatus
+    value: Any
 
     def __hash__(self) -> int:
-        return hash(self.uuid)
+        return hash(
+            "|".join((self.property_type, self.db_id, self.changed_at.to_string(), self.status.value, str(self.value)))
+        )
 
 
 @dataclass
-class DiffRelationshipOneIntermediate:
-    name: str
-    changed_at: Timestamp
-    action: DiffAction
-    properties_by_type: dict[str, DiffPropertyIntermediate] = field(default_factory=dict)
+class DiffSingleRelationshipIntermediate:
+    peer_id: str
+    last_changed_at: Timestamp
+    ordered_properties_by_type: dict[str, list[DiffRelationshipPropertyIntermediate]] = field(default_factory=dict)
+
+    @classmethod
+    def from_properties(
+        cls, properties: list[DiffRelationshipPropertyIntermediate]
+    ) -> DiffSingleRelationshipIntermediate:
+        if not properties:
+            raise DiffNoChildPathError()
+        peer_id = None
+        for property in properties:
+            if property.property_type == "IS_RELATED":
+                peer_id = property.value
+                break
+        if not peer_id:
+            raise DiffNoPeerIdError(f"Cannot identify peer ID for relationship property {(properties[0]).db_id}")
+
+        ordered_properties_by_type: dict[str, list[DiffRelationshipPropertyIntermediate]] = {}
+        chronological_properties = sorted(properties, key=lambda p: p.changed_at)
+        last_changed_at = chronological_properties[-1].changed_at
+        for chronological_property in chronological_properties:
+            if chronological_property.property_type not in ordered_properties_by_type:
+                ordered_properties_by_type[chronological_property.property_type] = []
+            ordered_properties_by_type[chronological_property.property_type].append(chronological_property)
+        return cls(
+            peer_id=peer_id,
+            last_changed_at=last_changed_at,
+            ordered_properties_by_type=ordered_properties_by_type,
+        )
+
+    def _get_single_relationship_final_property(
+        self, chronological_properties: list[DiffRelationshipPropertyIntermediate], from_time: Timestamp
+    ) -> DiffProperty:
+        property_type = chronological_properties[0].property_type
+        changed_at = chronological_properties[-1].changed_at
+        previous_value = None
+        first_diff_prop = chronological_properties[0]
+        if first_diff_prop.changed_at < from_time and first_diff_prop.status is not RelationshipStatus.DELETED:
+            previous_value = first_diff_prop.value
+        new_value = None
+        last_diff_prop = chronological_properties[-1]
+        changed_at = last_diff_prop.changed_at
+        if last_diff_prop is first_diff_prop:
+            new_value = None if last_diff_prop.status is RelationshipStatus.DELETED else last_diff_prop.value
+        elif last_diff_prop.status != RelationshipStatus.DELETED:
+            new_value = last_diff_prop.value
+        action = DiffAction.UPDATED
+        if last_diff_prop.changed_at < from_time:
+            action = DiffAction.UNCHANGED
+        elif previous_value in (None, "NULL") and new_value not in (None, "NULL"):
+            action = DiffAction.ADDED
+        elif previous_value not in (None, "NULL") and new_value in (None, "NULL"):
+            action = DiffAction.REMOVED
+        elif previous_value == new_value:
+            action = DiffAction.UNCHANGED
+        return DiffProperty(
+            property_type=property_type,
+            changed_at=changed_at,
+            previous_value=previous_value,
+            new_value=new_value,
+            action=action,
+        )
+
+    def get_final_single_relationship(self, from_time: Timestamp) -> DiffSingleRelationship:
+        final_properties = []
+        peer_id_properties = self.ordered_properties_by_type["IS_RELATED"]
+        peer_final_property = self._get_single_relationship_final_property(
+            chronological_properties=peer_id_properties, from_time=from_time
+        )
+        peer_id = peer_final_property.new_value or peer_final_property.previous_value
+        other_final_properties = [
+            self._get_single_relationship_final_property(chronological_properties=property_list, from_time=from_time)
+            for property_type, property_list in self.ordered_properties_by_type.items()
+            if property_type != "IS_RELATED"
+        ]
+        final_properties = [peer_final_property] + other_final_properties
+        last_changed_property = max(final_properties, key=lambda fp: fp.changed_at)
+        last_changed_at = last_changed_property.changed_at
+        if last_changed_at < from_time:
+            action = DiffAction.UNCHANGED
+        elif peer_final_property.action in (DiffAction.ADDED, DiffAction.REMOVED):
+            action = peer_final_property.action
+        else:
+            action = DiffAction.UPDATED
+        return DiffSingleRelationship(
+            peer_id=peer_id, changed_at=last_changed_at, action=action, properties=final_properties
+        )
 
 
 @dataclass
-class DiffRelationshipManyIntermediate:
+class DiffRelationshipIntermediate:
     name: str
-    changed_at: Timestamp
-    action: DiffAction
-    relationships: set[DiffSingleRelationshipIntermediate] = field(default_factory=set)
+    cardinality: RelationshipCardinality
+    properties_by_db_id: dict[str, set[DiffRelationshipPropertyIntermediate]] = field(default_factory=dict)
+    _single_relationship_list: list[DiffSingleRelationshipIntermediate] = field(default_factory=list)
+
+    def add_path(self, database_path: DatabasePath) -> None:
+        if database_path.property_type == "IS_RELATED":
+            value = database_path.peer_id
+        else:
+            value = database_path.property_value
+        db_id = database_path.attribute_node.element_id
+        if db_id not in self.properties_by_db_id:
+            self.properties_by_db_id[db_id] = set()
+        self.properties_by_db_id[db_id].add(
+            DiffRelationshipPropertyIntermediate(
+                db_id=db_id,
+                property_type=database_path.property_type,
+                changed_at=database_path.property_changed_at,
+                status=database_path.property_status,
+                value=value,
+            )
+        )
+
+    def _index_relationships(self) -> None:
+        self._single_relationship_list = [
+            DiffSingleRelationshipIntermediate.from_properties(list(single_relationship_properties))
+            for single_relationship_properties in self.properties_by_db_id.values()
+        ]
+
+    def to_diff_relationship(self, from_time: Timestamp) -> DiffRelationship:
+        self._index_relationships()
+        single_relationships = [
+            sr.get_final_single_relationship(from_time=from_time) for sr in self._single_relationship_list
+        ]
+        last_changed_relatonship = max(single_relationships, key=lambda r: r.changed_at)
+        last_changed_at = last_changed_relatonship.changed_at
+        action = DiffAction.UPDATED
+        if last_changed_at < from_time:
+            action = DiffAction.UNCHANGED
+        if (
+            self.cardinality is RelationshipCardinality.ONE
+            and len(single_relationships) == 1
+            and single_relationships[0].action in (DiffAction.ADDED, DiffAction.REMOVED)
+        ):
+            action = single_relationships[0].action
+        return DiffRelationship(
+            name=self.name, changed_at=last_changed_at, action=action, relationships=single_relationships
+        )
 
 
 @dataclass
@@ -168,11 +310,12 @@ class DiffNodeIntermediate(TrackedStatusUpdates):
     uuid: str
     kind: str
     attributes_by_name: dict[str, DiffAttributeIntermediate] = field(default_factory=dict)
-    one_relationships_by_name: dict[str, DiffRelationshipOneIntermediate] = field(default_factory=dict)
-    many_relationships_by_name: dict[str, DiffRelationshipManyIntermediate] = field(default_factory=dict)
+    relationships_by_name: dict[str, DiffRelationshipIntermediate] = field(default_factory=dict)
+    # many_relationships_by_name: dict[str, DiffRelationshipManyIntermediate] = field(default_factory=dict)
 
     def to_diff_node(self, from_time: Timestamp) -> DiffNode:
         attributes = [attr.to_diff_attribute(from_time=from_time) for attr in self.attributes_by_name.values()]
+        relationships = [rel.to_diff_relationship(from_time=from_time) for rel in self.relationships_by_name.values()]
         action, changed_at = self.get_action_and_timestamp(from_time=from_time)
         return DiffNode(
             uuid=self.uuid,
@@ -180,8 +323,7 @@ class DiffNodeIntermediate(TrackedStatusUpdates):
             changed_at=changed_at,
             action=action,
             attributes=attributes,
-            one_relationships=[],
-            many_relationships=[],
+            relationships=relationships,
         )
 
 
@@ -267,6 +409,10 @@ class DiffQueryParser:
         )
         if not relationship_schema:
             return
+        diff_relationship = self._get_diff_relationship(
+            database_path=database_path, diff_node=diff_node, relationship_schema=relationship_schema
+        )
+        diff_relationship.add_path(database_path=database_path)
 
     def _get_diff_attribute(
         self, database_path: DatabasePath, diff_node: DiffNodeIntermediate
@@ -298,24 +444,13 @@ class DiffQueryParser:
 
     def _get_diff_relationship(
         self, database_path: DatabasePath, diff_node: DiffNodeIntermediate, relationship_schema: RelationshipSchema
-    ) -> Union[DiffRelationshipOneIntermediate, DiffRelationshipManyIntermediate]:
-        is_cardinality_one = relationship_schema.cardinality == RelationshipCardinality.ONE
-        diff_relationship: Optional[Union[DiffRelationshipOneIntermediate, DiffRelationshipManyIntermediate]] = None
-        if is_cardinality_one:
-            diff_relationship = diff_node.one_relationships_by_name.get(relationship_schema.name, None)
-        else:
-            diff_relationship = diff_node.many_relationships_by_name.get(relationship_schema.name, None)
+    ) -> DiffRelationshipIntermediate:
+        diff_relationship = diff_node.relationships_by_name.get(relationship_schema.name)
         if not diff_relationship:
-            changed_at = database_path.attribute_changed_at
-            action = DiffAction.ADDED
-            if is_cardinality_one:
-                diff_relationship = DiffRelationshipOneIntermediate(
-                    name=relationship_schema.name, changed_at=changed_at, action=action
-                )
-            else:
-                diff_relationship = DiffRelationshipManyIntermediate(
-                    name=relationship_schema.name, changed_at=changed_at, action=action
-                )
+            diff_relationship = DiffRelationshipIntermediate(
+                name=relationship_schema.name, cardinality=relationship_schema.cardinality
+            )
+            diff_node.relationships_by_name[relationship_schema.name] = diff_relationship
         return diff_relationship
 
     def _apply_base_branch_previous_values(self) -> None:
@@ -331,17 +466,51 @@ class DiffQueryParser:
                 base_diff_node = base_diff_root.nodes_by_id.get(node_id)
                 if not base_diff_node:
                     continue
-                for attribute_name, diff_attribute in diff_node.attributes_by_name.items():
-                    base_diff_attribute = base_diff_node.attributes_by_name.get(attribute_name)
-                    if not base_diff_attribute:
+                self._apply_attribute_previous_values(diff_node=diff_node, base_diff_node=base_diff_node)
+                self._apply_relationship_previous_values(diff_node=diff_node, base_diff_node=base_diff_node)
+
+    def _apply_attribute_previous_values(
+        self, diff_node: DiffNodeIntermediate, base_diff_node: DiffNodeIntermediate
+    ) -> None:
+        for attribute_name, diff_attribute in diff_node.attributes_by_name.items():
+            base_diff_attribute = base_diff_node.attributes_by_name.get(attribute_name)
+            if not base_diff_attribute:
+                continue
+            for property_type, diff_property in diff_attribute.properties_by_type.items():
+                base_diff_property = base_diff_attribute.properties_by_type.get(property_type)
+                if not base_diff_property:
+                    return
+                base_previous_diff_value = base_diff_property.earliest_diff_value
+                if base_previous_diff_value:
+                    diff_property.add_value(diff_value=base_previous_diff_value)
+
+    def _apply_relationship_previous_values(
+        self, diff_node: DiffNodeIntermediate, base_diff_node: DiffNodeIntermediate
+    ) -> None:
+        for relationship_name, diff_relationship in diff_node.relationships_by_name.items():
+            base_diff_relationship = base_diff_node.relationships_by_name.get(relationship_name)
+            if not base_diff_relationship:
+                continue
+            for db_id, property_set in diff_relationship.properties_by_db_id.items():
+                base_property_set = base_diff_relationship.properties_by_db_id.get(db_id)
+                if not base_property_set:
+                    continue
+                base_diff_property_by_type: dict[str, Optional[DiffRelationshipPropertyIntermediate]] = {p.property_type: None for p in property_set}
+                base_diff_property_by_type["IS_RELATED"] = None
+                for base_diff_property in base_property_set:
+                    prop_type = base_diff_property.property_type
+                    if prop_type not in base_diff_property_by_type:
                         continue
-                    for property_type, diff_property in diff_attribute.properties_by_type.items():
-                        base_diff_property = base_diff_attribute.properties_by_type.get(property_type)
-                        if not base_diff_property:
-                            return
-                        base_previous_diff_value = base_diff_property.earliest_diff_value
-                        if base_previous_diff_value:
-                            diff_property.add_value(diff_value=base_previous_diff_value)
+                    if base_diff_property.changed_at >= self.from_time:
+                        continue
+                    if (
+                        base_diff_property_by_type[prop_type] is None
+                        or base_diff_property.changed_at < base_diff_property_by_type[prop_type]
+                    ):
+                        base_diff_property_by_type[prop_type] = base_diff_property
+                for diff_property in base_diff_property_by_type.values():
+                    if diff_property:
+                        property_set.add(diff_property)
 
     def _remove_empty_base_diff_root(self) -> None:
         base_diff_root = self._diff_root_by_branch.get(self.base_branch_name)
@@ -355,6 +524,11 @@ class DiffQueryParser:
                         continue
                     if ordered_diff_values[-1].changed_at >= self.from_time:
                         return
+            for relationship_diff in node_diff.relationships_by_name.values():
+                for diff_relationship_property_list in relationship_diff.properties_by_db_id.values():
+                    for diff_relationship_property in diff_relationship_property_list:
+                        if diff_relationship_property.changed_at <= self.from_time:
+                            return
         del self._diff_root_by_branch[self.base_branch_name]
 
     def _finalize(self) -> None:
