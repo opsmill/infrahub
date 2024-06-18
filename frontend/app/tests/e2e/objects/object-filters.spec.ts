@@ -79,7 +79,13 @@ test.describe("Object filters", () => {
     await page.goto("/objects/CoreArtifact");
     await page.getByTestId("apply-filters").click();
     await expect(page.getByTestId("side-panel-container").getByText("Object")).toBeVisible();
-    await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
+
+    const kindSelector = page
+      .getByTestId("side-panel-container")
+      .getByText("Kind")
+      .locator("../..")
+      .getByTestId("select-open-option-button");
+    await kindSelector.click();
     await expect(page.getByRole("option", { name: "Tag", exact: true })).toBeVisible();
   });
 });
