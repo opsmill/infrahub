@@ -1859,10 +1859,10 @@ class InfrahubNodeSync(InfrahubNodeBase):
         """Fetch all nodes that were allocated for the pool and a given resource.
 
         Args:
-            resource (InfrahubNode): The resource from which the nodes were allocated.
+            resource (InfrahubNodeSync): The resource from which the nodes were allocated.
 
         Returns:
-            List[InfrahubNode]: The allocated nodes.
+            List[InfrahubNodeSync]: The allocated nodes.
         """
         if not self.is_resource_pool():
             raise ValueError("Allocate resources can only be fetched from resource pool nodes.")

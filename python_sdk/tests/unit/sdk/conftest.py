@@ -2265,3 +2265,11 @@ def query_introspection() -> str:
         }
     """
     return query
+
+
+@pytest.fixture
+async def mock_schema_query_ipam(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response_text = (get_fixtures_dir() / "schema_ipam.json").read_text(encoding="UTF-8")
+
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=ujson.loads(response_text))
+    return httpx_mock
