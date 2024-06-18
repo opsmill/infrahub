@@ -42,7 +42,7 @@ jobs:
         run: "poetry install --all-extras"
 
       - name: "Update Docker Env variable in docker-compose.yml file"
-        run: "invoke dev.gen-config-env -u true"
+        run: "invoke dev.gen-config-env -u"
       - name: "Update Infrahub Image Version in docker-compose.yml file"
         run: "invoke dev.update-docker-compose"
 

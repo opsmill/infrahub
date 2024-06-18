@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from invoke.tasks import task
@@ -234,12 +235,9 @@ def update_docker_compose_env_vars(
     env_vars: list[str],
     env_defaults: Dict[str, Any],
     enum_mappings: Dict[Any, str],
-    docker_file: Optional[str] = "docker-compose.yml"
+    docker_file: Optional[str] = "docker-compose.yml",
 ) -> None:
     """Update the docker-compose.yml file with the environment variables."""
-    from infrahub.config import StorageDriver, TraceExporterType, TraceTransportProtocol
-    from infrahub.database.constants import DatabaseType
-
     with open(docker_file, "r", encoding="utf-8") as file:
         docker_compose = file.readlines()
 
@@ -263,13 +261,18 @@ def update_docker_compose_env_vars(
                     if isinstance(default_value, bool):
                         default_value = str(default_value).lower()
                     # Check if the default value is an enum-like value and replace it with its actual value
-                    elif isinstance(default_value, (DatabaseType, StorageDriver, TraceExporterType, TraceTransportProtocol)):
+                    elif isinstance(default_value, Enum):
                         default_value = enum_mappings[default_value]
 
                     # Update only if the default value is different from the existing value
                     if existing_value != default_value:
-                        if var_name in ["INFRAHUB_BROKER_USERNAME", "INFRAHUB_BROKER_PASSWORD"]:
-                            docker_compose[i] = f'  {var_name}: &{var_name.lower().replace("_", "")} "{default_value}"\n'
+                        if var_name in [
+                            "INFRAHUB_BROKER_USERNAME",
+                            "INFRAHUB_BROKER_PASSWORD",
+                            "INFRAHUB_INITIAL_AGENT_TOKEN",
+                        ]:
+                            key_name = var_name.replace("INFRAHUB_", "").lower()
+                            docker_compose[i] = f'  {var_name}: &{key_name} "{default_value}"\n'
                         else:
                             docker_compose[i] = f'  {var_name}: "{default_value}"\n'
 
@@ -280,9 +283,8 @@ def update_docker_compose_env_vars(
 
 @task
 def gen_config_env(
-    context: Context,
-    docker_file: Optional[str] = "docker-compose.yml",
-    update_docker_file: Optional[bool] = False):
+    context: Context, docker_file: Optional[str] = "docker-compose.yml", update_docker_file: Optional[bool] = False
+):
     """Generate list of env vars required for configuration and update docker file.yml if need."""
     from pydantic_settings import BaseSettings
     from pydantic_settings.sources import EnvSettingsSource
@@ -323,7 +325,9 @@ def gen_config_env(
     if "PATH" in env_vars:
         env_vars.remove("PATH")
     if update_docker_file:
-        update_docker_compose_env_vars(env_vars=sorted(env_vars), env_defaults=env_defaults, enum_mappings=enum_mappings, docker_file=docker_file)
+        update_docker_compose_env_vars(
+            env_vars=sorted(env_vars), env_defaults=env_defaults, enum_mappings=enum_mappings, docker_file=docker_file
+        )
     else:
         for var in sorted(env_vars):
             print(f"{var}:")
