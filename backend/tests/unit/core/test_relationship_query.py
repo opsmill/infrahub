@@ -337,7 +337,10 @@ async def test_relationship_delete_peer(db: InfrahubDatabase, default_branch, ta
         elif database_rel.status == "deleted":
             assert create_after < database_rel.changed_at < update_after
 
-async def test_relationship_update_with_delete_peer(db: InfrahubDatabase, default_branch, tag_blue_main: Node, tag_red_main: Node):
+
+async def test_relationship_update_with_delete_peer(
+    db: InfrahubDatabase, default_branch, tag_blue_main: Node, tag_red_main: Node
+):
     person = await Node.init(db=db, branch=default_branch, schema="TestPerson")
     await person.new(db=db, firstname="Kara", lastname="Thrace", tags=[tag_blue_main])
     create_before = Timestamp()
