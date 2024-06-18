@@ -423,6 +423,7 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
 
 class RelationshipDeleteQuery(RelationshipQuery):
     name = "relationship_delete"
+    insert_return = False
 
     type: QueryType = QueryType.WRITE
 
