@@ -612,7 +612,7 @@ core_models: dict[str, Any] = {
                     "name": "resource_pool",
                     "peer": "CoreIPAddressPool",
                     "identifier": "ipaddresspool__resource",
-                    "cardinality": "one",
+                    "cardinality": "many",
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "optional": True,
                     "read_only": True,
