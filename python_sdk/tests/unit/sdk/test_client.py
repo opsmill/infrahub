@@ -361,18 +361,216 @@ async def test_method_filters_empty(httpx_mock: HTTPXMock, clients, mock_query_r
     assert len(repos) == 0
 
 
+@pytest.mark.parametrize("client_type", client_types)
+async def test_allocate_next_ip_address(
+    httpx_mock: HTTPXMock,
+    mock_schema_query_ipam: HTTPXMock,
+    clients,
+    ipaddress_pool_schema,
+    ipam_ipprefix_schema,
+    ipam_ipprefix_data,
+    client_type,
+):
+    httpx_mock.add_response(
+        method="POST",
+        json={
+            "data": {
+                "IPAddressPoolGetResource": {
+                    "ok": True,
+                    "node": {
+                        "id": "17da1246-54f1-a9c0-2784-179f0ec5b128",
+                        "kind": "IpamIPAddress",
+                        "identifier": "test",
+                        "display_label": "192.0.2.0/32",
+                    },
+                }
+            }
+        },
+        match_headers={"X-Infrahub-Tracker": "allocate-ip-loopback"},
+    )
+    httpx_mock.add_response(
+        method="POST",
+        json={
+            "data": {
+                "IpamIPAddress": {
+                    "count": 1,
+                    "edges": [
+                        {
+                            "node": {
+                                "id": "17d9bd8d-8fc2-70b0-278a-179f425e25cb",
+                                "__typename": "IpamIPAddress",
+                                "address": {"value": "192.0.2.0/32"},
+                                "description": {"value": "test"},
+                            }
+                        }
+                    ],
+                }
+            }
+        },
+        match_headers={"X-Infrahub-Tracker": "query-ipamipaddress-page1"},
+    )
+
+    if client_type == "standard":
+        ip_prefix = InfrahubNode(client=clients.standard, schema=ipam_ipprefix_schema, data=ipam_ipprefix_data)
+        ip_pool = InfrahubNode(
+            client=clients.standard,
+            schema=ipaddress_pool_schema,
+            data={
+                "id": "pppppppp-pppp-pppp-pppp-pppppppppppp",
+                "name": "Core loopbacks",
+                "default_address_type": "IpamIPAddress",
+                "default_prefix_length": 32,
+                "ip_namespace": "ip_namespace",
+                "resources": [ip_prefix],
+            },
+        )
+        ip_address = await clients.standard.allocate_next_ip_address(
+            resource_pool=ip_pool,
+            identifier="test",
+            prefix_length=32,
+            address_type="IpamIPAddress",
+            data={"description": "test"},
+            tracker="allocate-ip-loopback",
+        )
+    else:
+        ip_prefix = InfrahubNodeSync(client=clients.sync, schema=ipam_ipprefix_schema, data=ipam_ipprefix_data)
+        ip_pool = InfrahubNodeSync(
+            client=clients.sync,
+            schema=ipaddress_pool_schema,
+            data={
+                "id": "pppppppp-pppp-pppp-pppp-pppppppppppp",
+                "name": "Core loopbacks",
+                "default_address_type": "IpamIPAddress",
+                "default_prefix_length": 32,
+                "ip_namespace": "ip_namespace",
+                "resources": [ip_prefix],
+            },
+        )
+        ip_address = clients.sync.allocate_next_ip_address(
+            resource_pool=ip_pool,
+            identifier="test",
+            prefix_length=32,
+            address_type="IpamIPAddress",
+            data={"description": "test"},
+            tracker="allocate-ip-loopback",
+        )
+
+    assert ip_address
+    assert str(ip_address.address.value) == "192.0.2.0/32"
+    assert ip_address.description.value == "test"
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_allocate_next_ip_prefix(
+    httpx_mock: HTTPXMock,
+    mock_schema_query_ipam: HTTPXMock,
+    clients,
+    ipprefix_pool_schema,
+    ipam_ipprefix_schema,
+    ipam_ipprefix_data,
+    client_type,
+):
+    httpx_mock.add_response(
+        method="POST",
+        json={
+            "data": {
+                "IPPrefixPoolGetResource": {
+                    "ok": True,
+                    "node": {
+                        "id": "7d9bd8d-8fc2-70b0-278a-179f425e25cb",
+                        "kind": "IpamIPPrefix",
+                        "identifier": "test",
+                        "display_label": "192.0.2.0/31",
+                    },
+                }
+            }
+        },
+        match_headers={"X-Infrahub-Tracker": "allocate-ip-interco"},
+    )
+    httpx_mock.add_response(
+        method="POST",
+        json={
+            "data": {
+                "IpamIPPrefix": {
+                    "count": 1,
+                    "edges": [
+                        {
+                            "node": {
+                                "id": "17d9bd8d-8fc2-70b0-278a-179f425e25cb",
+                                "__typename": "IpamIPPrefix",
+                                "prefix": {"value": "192.0.2.0/31"},
+                                "description": {"value": "test"},
+                            }
+                        }
+                    ],
+                }
+            }
+        },
+        match_headers={"X-Infrahub-Tracker": "query-ipamipprefix-page1"},
+    )
+
+    if client_type == "standard":
+        ip_prefix = InfrahubNode(client=clients.standard, schema=ipam_ipprefix_schema, data=ipam_ipprefix_data)
+        ip_pool = InfrahubNode(
+            client=clients.standard,
+            schema=ipprefix_pool_schema,
+            data={
+                "id": "pppppppp-pppp-pppp-pppp-pppppppppppp",
+                "name": "Core intercos",
+                "default_prefix_type": "IpamIPPrefix",
+                "default_prefix_length": 31,
+                "ip_namespace": "ip_namespace",
+                "resources": [ip_prefix],
+            },
+        )
+        ip_prefix = await clients.standard.allocate_next_ip_prefix(
+            resource_pool=ip_pool,
+            identifier="test",
+            prefix_length=31,
+            prefix_type="IpamIPPrefix",
+            data={"description": "test"},
+            tracker="allocate-ip-interco",
+        )
+    else:
+        ip_prefix = InfrahubNodeSync(client=clients.sync, schema=ipam_ipprefix_schema, data=ipam_ipprefix_data)
+        ip_pool = InfrahubNodeSync(
+            client=clients.sync,
+            schema=ipprefix_pool_schema,
+            data={
+                "id": "pppppppp-pppp-pppp-pppp-pppppppppppp",
+                "name": "Core intercos",
+                "default_prefix_type": "IpamIPPrefix",
+                "default_prefix_length": 31,
+                "ip_namespace": "ip_namespace",
+                "resources": [ip_prefix],
+            },
+        )
+        ip_prefix = clients.sync.allocate_next_ip_prefix(
+            resource_pool=ip_pool,
+            identifier="test",
+            prefix_length=31,
+            prefix_type="IpamIPPrefix",
+            data={"description": "test"},
+            tracker="allocate-ip-interco",
+        )
+
+    assert ip_prefix
+    assert str(ip_prefix.prefix.value) == "192.0.2.0/31"
+    assert ip_prefix.description.value == "test"
+
+
 EXPECTED_ECHO = """URL: http://mock/graphql
 QUERY:
 
     query GetTags($name: String!) {
-    BuiltinTag(name__value: $name) {
-        edges {
-        node {
-            id
-            display_label
+        BuiltinTag(name__value: $name) {
+            edges {
+                node {
+                    id
+                    display_label
+                }
+            }
         }
-        }
-    }
     }
 
 VARIABLES:
@@ -392,14 +590,14 @@ async def test_query_echo(httpx_mock: HTTPXMock, echo_clients, client_type):  # 
 
     query = """
     query GetTags($name: String!) {
-    BuiltinTag(name__value: $name) {
-        edges {
-        node {
-            id
-            display_label
+        BuiltinTag(name__value: $name) {
+            edges {
+                node {
+                    id
+                    display_label
+                }
+            }
         }
-        }
-    }
     }
 """
 

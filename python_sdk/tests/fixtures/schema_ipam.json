@@ -36,6 +36,15 @@
                 {
                     "id": null,
                     "state": "present",
+                    "name": "prefix__value",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "id": null,
+                    "state": "present",
                     "name": "description__value",
                     "kind": "Text",
                     "enum": null,

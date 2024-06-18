@@ -1518,7 +1518,7 @@ async def test_create_mutation_query_with_resource_pool_relationship(
 @pytest.mark.parametrize("client_type", client_types)
 async def test_get_pool_allocated_resources(
     httpx_mock: HTTPXMock,
-    mock_schema_query_ipam,
+    mock_schema_query_ipam: HTTPXMock,
     clients,
     ipaddress_pool_schema,
     ipam_ipprefix_schema,
@@ -1643,10 +1643,9 @@ async def test_get_pool_resources_utilization(
     )
 
     if client_type == "standard":
-        client: InfrahubClient = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
-        ip_prefix = InfrahubNode(client=client, schema=ipam_ipprefix_schema, data=ipam_ipprefix_data)
+        ip_prefix = InfrahubNode(client=clients.standard, schema=ipam_ipprefix_schema, data=ipam_ipprefix_data)
         ip_pool = InfrahubNode(
-            client=client,
+            client=clients.standard,
             schema=ipaddress_pool_schema,
             data={
                 "id": "pppppppp-pppp-pppp-pppp-pppppppppppp",
@@ -1662,10 +1661,9 @@ async def test_get_pool_resources_utilization(
         assert len(utilizations) == 1
         assert utilizations[0]["utilization"] == 93.75
     else:
-        client: InfrahubClientSync = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
-        ip_prefix = InfrahubNodeSync(client=client, schema=ipam_ipprefix_schema, data=ipam_ipprefix_data)
+        ip_prefix = InfrahubNodeSync(client=clients.sync, schema=ipam_ipprefix_schema, data=ipam_ipprefix_data)
         ip_pool = InfrahubNodeSync(
-            client=client,
+            client=clients.sync,
             schema=ipaddress_pool_schema,
             data={
                 "id": "pppppppp-pppp-pppp-pppp-pppppppppppp",
