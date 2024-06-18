@@ -52,6 +52,7 @@ async def search_resolver(
         result.extend(
             await NodeManager.query(
                 db=context.db,
+                branch=context.branch,
                 schema=InfrahubKind.NODE,
                 filters={"any__value": q},
                 limit=limit,
