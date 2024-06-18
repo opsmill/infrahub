@@ -1,10 +1,12 @@
-from typing import Dict
+from dataclasses import dataclass
+from typing import Any, Dict
 
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipDirection
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.relationship import (
@@ -27,6 +29,56 @@ from infrahub.database import InfrahubDatabase
 class DummyRelationshipQuery(RelationshipQuery):
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         pass
+
+
+@dataclass
+class DatabaseRelationshipProperty:
+    property_type: str
+    branch: str
+    status: str
+    changed_at: Timestamp
+    value: Any
+
+    def __hash__(self) -> int:
+        return hash(
+            "|".join((self.property_type, self.branch, self.status, self.changed_at.to_string(), str(self.value)))
+        )
+
+    def to_comparison_tuple(self) -> tuple[str, str, str, Any]:
+        return (self.property_type, self.branch, self.status, self.value)
+
+
+async def get_relationship_properties(
+    db: InfrahubDatabase,
+    source_uuid: str,
+    destination_uuid: str,
+) -> list[DatabaseRelationshipProperty]:
+    query = """
+    MATCH (s {uuid: $source_uuid})-[:IS_RELATED]-(r:Relationship)-[:IS_RELATED]-(d {uuid: $destination_uuid})
+    WITH DISTINCT r
+    MATCH (r)-[edge]-(p)
+    WHERE type(edge) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_OWNER", "HAS_SOURCE"]
+    RETURN r, edge, p
+    """
+
+    params = {"source_uuid": source_uuid, "destination_uuid": destination_uuid}
+
+    records = await db.execute_query(query=query, params=params, name="get_relationship_properties")
+
+    relationship_properties = []
+    for record in records:
+        neo4j_edge = record.get("edge")
+        property_node = record.get("p")
+        relationship_properties.append(
+            DatabaseRelationshipProperty(
+                property_type=neo4j_edge.type,
+                branch=neo4j_edge.get("branch"),
+                status=neo4j_edge.get("status"),
+                changed_at=Timestamp(neo4j_edge.get("from")),
+                value=property_node.get("value"),
+            )
+        )
+    return relationship_properties
 
 
 async def test_RelationshipQuery_init(
@@ -252,6 +304,36 @@ async def test_query_RelationshipDeleteQuery(
         relationships=["IS_RELATED"],
     )
     assert len(paths) == 8
+
+
+async def test_relationship_delete_peer(db: InfrahubDatabase, default_branch, tag_blue_main: Node):
+    person = await Node.init(db=db, branch=default_branch, schema="TestPerson")
+    await person.new(db=db, firstname="Kara", lastname="Thrace", tags=[tag_blue_main])
+    create_before = Timestamp()
+    await person.save(db=db)
+    create_after = Timestamp()
+    branch = await create_branch(db=db, branch_name="branch")
+    person_branch = await NodeManager.get_one(db=db, branch=branch, id=person.id)
+    await person_branch.tags.delete(db=db)
+    update_after = Timestamp()
+
+    database_relationships = await get_relationship_properties(
+        db=db, source_uuid=person.get_id(), destination_uuid=tag_blue_main.get_id()
+    )
+
+    expected_relationships = {
+        ("IS_VISIBLE", default_branch.name, "active", True),
+        ("IS_VISIBLE", branch.name, "deleted", True),
+        ("IS_PROTECTED", default_branch.name, "active", False),
+        ("IS_PROTECTED", branch.name, "deleted", False),
+    }
+    assert len(database_relationships) == 4
+    assert {dr.to_comparison_tuple() for dr in database_relationships} == expected_relationships
+    for database_rel in database_relationships:
+        if database_rel.status == "active":
+            assert create_before < database_rel.changed_at < create_after
+        elif database_rel.status == "deleted":
+            assert create_after < database_rel.changed_at < update_after
 
 
 async def test_query_RelationshipGetPeerQuery(

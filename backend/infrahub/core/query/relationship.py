@@ -423,6 +423,7 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
 
 class RelationshipDeleteQuery(RelationshipQuery):
     name = "relationship_delete"
+    insert_return = False
 
     type: QueryType = QueryType.WRITE
 
@@ -451,6 +452,27 @@ class RelationshipDeleteQuery(RelationshipQuery):
         MATCH (s:Node { uuid: $source_id })-[]-(rl:Relationship {uuid: $rel_id})-[]-(d:Node { uuid: $destination_id })
         CREATE (s)%s(rl)
         CREATE (rl)%s(d)
+        WITH rl
+        CALL {
+            WITH rl
+            MATCH (rl)-[edge:IS_VISIBLE]->(visible)
+            CREATE (rl)-[deleted_edge:IS_VISIBLE $rel_prop]->(visible)
+        }
+        CALL {
+            WITH rl
+            MATCH (rl)-[edge:IS_PROTECTED]->(protected)
+            CREATE (rl)-[deleted_edge:IS_PROTECTED $rel_prop]->(protected)
+        }
+        CALL {
+            WITH rl
+            MATCH (rl)-[edge:HAS_OWNER]->(owner_node)
+            CREATE (rl)-[deleted_edge:HAS_OWNER $rel_prop]->(owner_node)
+        }
+        CALL {
+            WITH rl
+            MATCH (rl)-[edge:HAS_SOURCE]->(source_node)
+            CREATE (rl)-[deleted_edge:HAS_SOURCE $rel_prop]->(source_node)
+        }
         """ % (
             r1,
             r2,
@@ -459,7 +481,6 @@ class RelationshipDeleteQuery(RelationshipQuery):
         self.params["at"] = self.at.to_string()
 
         self.add_to_query(query)
-        self.return_labels = ["s", "d", "rl", "r1", "r2"]
 
 
 class RelationshipGetPeerQuery(Query):
