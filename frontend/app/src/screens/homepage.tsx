@@ -17,7 +17,7 @@ const Homepage = () => {
           </Link>{" "}
           or{" "}
           <Link
-            to="https://docs.infrahub.app/tutorials/"
+            to="https://docs.infrahub.app/tutorials/getting-started/"
             target="_blank"
             className="text-custom-blue-700 font-semibold">
             tutorials
