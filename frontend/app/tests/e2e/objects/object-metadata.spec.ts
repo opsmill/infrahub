@@ -42,9 +42,9 @@ test.describe("Object metadata", () => {
     await page.getByLabel("is protected *").check();
 
     // Select Architecture team
-    await page.getByLabel("Owner").click();
+    await page.getByText("Owner Kind ?Parent ?Node").getByLabel("Kind").click();
     await page.getByRole("option", { name: "Account" }).click();
-    await page.getByTestId("select2step-2").getByTestId("select-open-option-button").nth(0).click();
+    await page.getByText("Owner Kind ?Parent ?Node").getByLabel("Node").click();
     await page.getByRole("option", { name: "Architecture Team" }).click();
 
     // Save
