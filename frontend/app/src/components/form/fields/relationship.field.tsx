@@ -50,11 +50,15 @@ const RelationshipField = ({
     });
 
     const kindOptions = Array.isArray(genericOptions)
-      ? genericOptions.map((o) => ({
-          name: o.name,
-          id: o.id,
+      ? genericOptions.map((option) => ({
+          name: option?.name,
+          id: option?.id,
         }))
       : [];
+
+    if (kindOptions?.length === 1 && !selectedKind) {
+      setSelectedKind(kindOptions[0]);
+    }
 
     return (
       <div>
