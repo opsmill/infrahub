@@ -928,6 +928,65 @@ async def ipaddress_pool_schema() -> NodeSchema:
 
 
 @pytest.fixture
+async def ipprefix_pool_schema() -> NodeSchema:
+    data = {
+        "name": "IPPrefixPool",
+        "namespace": "Core",
+        "description": "A pool of IP prefix resources",
+        "label": "IP Prefix Pool",
+        "include_in_menu": False,
+        "branch": BranchSupportType.AGNOSTIC.value,
+        "inherit_from": ["CoreResourcePool"],
+        "attributes": [
+            {
+                "name": "default_prefix_length",
+                "kind": "Number",
+                "description": "The default prefix length as an integer for prefixes allocated from this pool.",
+                "optional": True,
+                "order_weight": 5000,
+            },
+            {
+                "name": "default_member_type",
+                "kind": "Text",
+                "enum": ["prefix", "address"],
+                "default_value": "prefix",
+                "optional": True,
+                "order_weight": 3000,
+            },
+            {
+                "name": "default_prefix_type",
+                "kind": "Text",
+                "optional": True,
+                "order_weight": 4000,
+            },
+        ],
+        "relationships": [
+            {
+                "name": "resources",
+                "peer": "BuiltinIPPrefix",
+                "kind": "Attribute",
+                "identifier": "prefixpool__resource",
+                "cardinality": "many",
+                "branch": BranchSupportType.AGNOSTIC.value,
+                "optional": False,
+                "order_weight": 6000,
+            },
+            {
+                "name": "ip_namespace",
+                "peer": "BuiltinIPNamespace",
+                "kind": "Attribute",
+                "identifier": "prefixpool__ipnamespace",
+                "cardinality": "one",
+                "branch": BranchSupportType.AGNOSTIC.value,
+                "optional": False,
+                "order_weight": 7000,
+            },
+        ],
+    }
+    return NodeSchema(**data)  # type: ignore
+
+
+@pytest.fixture
 async def address_schema() -> NodeSchema:
     data = {
         "name": "Address",
@@ -2265,3 +2324,11 @@ def query_introspection() -> str:
         }
     """
     return query
+
+
+@pytest.fixture
+async def mock_schema_query_ipam(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response_text = (get_fixtures_dir() / "schema_ipam.json").read_text(encoding="UTF-8")
+
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=ujson.loads(response_text))
+    return httpx_mock
