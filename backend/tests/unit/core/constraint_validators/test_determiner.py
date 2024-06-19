@@ -4,7 +4,7 @@ from infrahub_sdk.client import NodeDiff
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, SchemaPathType
-from infrahub.core.diff.model import DiffElementType
+from infrahub.core.diff.model.diff import DiffElementType
 from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
