@@ -124,6 +124,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         partial_match: bool = False,
+        branch_agnostic: bool = False,
     ) -> List[Node]:  # pylint: disable=unused-argument
         """Query one or multiple nodes of a given type based on filter arguments.
 
@@ -157,6 +158,7 @@ class NodeManager:
             filters=filters,
             at=at,
             partial_match=partial_match,
+            branch_agnostic=branch_agnostic,
         )
         await query.execute(db=db)
         node_ids = query.get_node_ids()
@@ -183,6 +185,7 @@ class NodeManager:
             include_owner=include_owner,
             db=db,
             prefetch_relationships=prefetch_relationships,
+            branch_agnostic=branch_agnostic,
         )
 
         return list(response.values()) if node_ids else []
@@ -233,6 +236,7 @@ class NodeManager:
         db: InfrahubDatabase,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
+        branch_agnostic: bool = False,
     ) -> int:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
@@ -240,7 +244,14 @@ class NodeManager:
         rel = Relationship(schema=schema, branch=branch, node_id="PLACEHOLDER")
 
         query = await RelationshipGetPeerQuery.init(
-            db=db, source_ids=ids, source_kind=source_kind, schema=schema, filters=filters, rel=rel, at=at
+            db=db,
+            source_ids=ids,
+            source_kind=source_kind,
+            schema=schema,
+            filters=filters,
+            rel=rel,
+            at=at,
+            branch_agnostic=branch_agnostic,
         )
         return await query.count(db=db)
 
@@ -257,6 +268,7 @@ class NodeManager:
         limit: Optional[int] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
+        branch_agnostic: bool = False,
     ) -> List[Relationship]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
@@ -273,6 +285,7 @@ class NodeManager:
             offset=offset,
             limit=limit,
             at=at,
+            branch_agnostic=branch_agnostic,
         )
         await query.execute(db=db)
 
@@ -436,6 +449,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         raise_on_error: Literal[False] = False,
+        branch_agnostic: bool = False,
     ) -> Optional[Node]: ...
 
     @overload
@@ -453,6 +467,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         raise_on_error: Literal[True] = True,
+        branch_agnostic: bool = False,
     ) -> Node: ...
 
     @classmethod
@@ -469,6 +484,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         raise_on_error: bool = False,
+        branch_agnostic: bool = False,
     ) -> Optional[Node]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
@@ -489,6 +505,7 @@ class NodeManager:
             include_source=include_source,
             prefetch_relationships=prefetch_relationships,
             account=account,
+            branch_agnostic=branch_agnostic,
         )
 
         if len(items) > 1:
@@ -612,6 +629,7 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
+        branch_agnostic: bool = False,
     ) -> Node:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
@@ -626,6 +644,7 @@ class NodeManager:
             db=db,
             prefetch_relationships=prefetch_relationships,
             account=account,
+            branch_agnostic=branch_agnostic,
         )
         if node:
             return node
@@ -641,6 +660,7 @@ class NodeManager:
             include_owner=include_owner,
             prefetch_relationships=prefetch_relationships,
             account=account,
+            branch_agnostic=branch_agnostic,
         )
         if not node:
             raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=id)
@@ -661,6 +681,7 @@ class NodeManager:
         account=None,
         kind: Optional[str] = None,
         raise_on_error: Literal[False] = False,
+        branch_agnostic: bool = False,
     ) -> Optional[Node]: ...
 
     @overload
@@ -678,6 +699,7 @@ class NodeManager:
         account=None,
         kind: Optional[str] = None,
         raise_on_error: Literal[True] = True,
+        branch_agnostic: bool = False,
     ) -> Node: ...
 
     @classmethod
@@ -694,6 +716,7 @@ class NodeManager:
         account=None,
         kind: Optional[str] = None,
         raise_on_error: bool = False,
+        branch_agnostic: bool = False,
     ) -> Optional[Node]:
         """Return one node based on its ID."""
         branch = await registry.get_branch(branch=branch, db=db)
@@ -708,6 +731,7 @@ class NodeManager:
             account=account,
             prefetch_relationships=prefetch_relationships,
             db=db,
+            branch_agnostic=branch_agnostic,
         )
 
         if not result:
