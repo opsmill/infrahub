@@ -140,7 +140,9 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await test.step("Row my-first-tenant is not visible when date prior to its creation is selected", async () => {
       await page.getByTestId("timeframe-selector").click();
       await saveScreenshotForDocs(page, "tutorial_2_historical");
-      await page.getByRole("option", { name: format(dateBeforeTest, "h:mm aa") }).click();
+      await page
+        .getByRole("option", { name: format(dateBeforeTest, "h:mm aa"), exact: true })
+        .click();
       await expect(page.locator("tbody")).not.toContainText("my-first-tenant");
     });
 

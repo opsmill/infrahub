@@ -4,7 +4,6 @@ import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-ty
 import { sortByOrderWeight } from "@/utils/common";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import {
-  getFieldValue,
   getObjectRelationshipsForForm,
   getOptionsFromAttribute,
   getRelationshipOptions,
@@ -14,6 +13,7 @@ import {
 import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { store } from "@/state";
 import { getIsDisabled } from "@/utils/formStructureForCreateEdit";
+import { components } from "@/infraops";
 
 type GetFormFieldsFromSchema = {
   schema: iNodeSchema;
@@ -50,7 +50,7 @@ export const getFormFieldsFromSchema = ({
     const basicFomFieldProps = {
       name: attribute.name,
       label: attribute.label ?? undefined,
-      defaultValue: getFieldValue({ field: attribute, row: initialObject, profile }),
+      defaultValue: getObjectDefaultValue({ fieldSchema: attribute, initialObject, profile }),
       description: attribute.description ?? undefined,
       disabled,
       type: attribute.kind as Exclude<SchemaAttributeType, "Dropdown">,
@@ -91,15 +91,13 @@ export const getFormFieldsFromSchema = ({
     }
 
     if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.TEXT && Array.isArray(attribute.enum)) {
-      const fieldValue = getFieldValue({ field: attribute, row: initialObject, profile });
       return {
         ...basicFomFieldProps,
         type: "enum",
-        defaultValue: fieldValue,
         field: attribute,
         schema: schema,
         unique: attribute.unique,
-        items: getOptionsFromAttribute(attribute, fieldValue),
+        items: getOptionsFromAttribute(attribute, basicFomFieldProps.defaultValue),
       };
     }
 
@@ -108,4 +106,34 @@ export const getFormFieldsFromSchema = ({
       unique: attribute.unique,
     };
   });
+};
+
+export type GetObjectDefaultValue = {
+  fieldSchema: GetObjectDefaultValueFromSchema;
+  initialObject?: Record<string, AttributeType>;
+  profile?: Record<string, AttributeType>;
+};
+
+export const getObjectDefaultValue = ({
+  fieldSchema,
+  initialObject,
+  profile,
+}: GetObjectDefaultValue) => {
+  const currentFieldValue = initialObject?.[fieldSchema.name]?.value;
+  const defaultValueFromProfile = profile?.[fieldSchema.name]?.value;
+  const defaultValueFromSchema = getDefaultValueFromSchema(fieldSchema);
+
+  return currentFieldValue ?? defaultValueFromProfile ?? defaultValueFromSchema ?? null;
+};
+
+export type GetObjectDefaultValueFromSchema =
+  | components["schemas"]["AttributeSchema-Output"]
+  | components["schemas"]["RelationshipSchema-Output"];
+
+const getDefaultValueFromSchema = (fieldSchema: GetObjectDefaultValueFromSchema) => {
+  if (fieldSchema.kind === "Boolean" || fieldSchema.kind === "Checkbox") {
+    return !!fieldSchema.default_value;
+  }
+
+  return "default_value" in fieldSchema ? fieldSchema.default_value : null;
 };

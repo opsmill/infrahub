@@ -490,6 +490,7 @@ class SchemaBranch:
         self.validate_default_filters()
         self.validate_parent_component()
         self.validate_human_friendly_id()
+        self.validate_required_relationships()
 
     def process_post_validation(self) -> None:
         self.add_groups()
@@ -747,6 +748,23 @@ class SchemaBranch:
                 raise ValueError(
                     f"At least one attribute must be unique in the human_friendly_id for {node_schema.kind}."
                 )
+
+    def validate_required_relationships(self) -> None:
+        reverse_dependency_map: dict[str, set[str]] = {}
+        for name in self.node_names + self.generic_names:
+            node_schema = self.get(name=name, duplicate=False)
+            for relationship_schema in node_schema.relationships:
+                if relationship_schema.optional:
+                    continue
+
+                peer_kind = relationship_schema.peer
+                if peer_kind in reverse_dependency_map.get(node_schema.kind, set()):
+                    raise ValueError(
+                        f"'{node_schema.kind}' and '{peer_kind}' cannot both have required relationships to one another."
+                    )
+                if peer_kind not in reverse_dependency_map:
+                    reverse_dependency_map[peer_kind] = set()
+                reverse_dependency_map[peer_kind].add(node_schema.kind)
 
     def validate_parent_component(self) -> None:
         # {parent_kind: {component_kind_1, component_kind_2, ...}}

@@ -92,7 +92,7 @@ export const Conflict = (props: any) => {
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Conflict marked as resovled" />);
+      toast(() => <Alert type={ALERT_TYPES.SUCCESS} message="Conflict marked as resovled" />);
 
       setIsLoading(false);
 

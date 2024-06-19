@@ -174,7 +174,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
+      toast(() => <Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
 
       await refetch();
     } catch (error: any) {
@@ -234,7 +234,7 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
         context: { branch: branch?.name, date },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Proposed change approved" />);
+      toast(() => <Alert type={ALERT_TYPES.SUCCESS} message="Proposed change approved" />);
 
       if (detailsRefetch) {
         await detailsRefetch();
@@ -283,16 +283,18 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
         detailsRefetch();
       }
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed changes merged successfully!"} />);
+      toast(() => (
+        <Alert type={ALERT_TYPES.SUCCESS} message={"Proposed changes merged successfully!"} />
+      ));
     } catch (error: any) {
       console.log("error: ", error);
 
-      toast(
+      toast(() => (
         <Alert
           type={ALERT_TYPES.SUCCESS}
           message={"An error occurred while merging the proposed changes"}
         />
-      );
+      ));
     }
 
     setIsLoadingMerge(false);
@@ -327,12 +329,12 @@ export const Conversations = forwardRef((props: tConversations, ref) => {
         context: { branch: branch?.name, date },
       });
 
-      toast(
+      toast(() => (
         <Alert
           type={ALERT_TYPES.SUCCESS}
           message={`Proposed change ${state === "closed" ? "opened" : "closed"}`}
         />
-      );
+      ));
 
       if (detailsRefetch) {
         detailsRefetch();

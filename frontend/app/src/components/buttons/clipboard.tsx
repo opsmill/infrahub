@@ -22,7 +22,7 @@ export const Clipboard = (props: tClipboard) => {
 
     await navigator.clipboard.writeText(value);
 
-    toast(<Alert message={alert} type={ALERT_TYPES.INFO} />);
+    toast(() => <Alert message={alert} type={ALERT_TYPES.INFO} />);
 
     setTimeout(() => {
       setIsCopied(false);

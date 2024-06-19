@@ -4,6 +4,7 @@ import { getArtifactDetails } from "@/graphql/queries/getArtifacts";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import NoDataFound from "@/screens/errors/no-data-found";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
@@ -39,13 +40,17 @@ export const ArtifactRepoDiff = (props: any) => {
     return <ErrorScreen message="Something went wrong when artifact differences." />;
   }
 
+  if (!diff) {
+    return <NoDataFound message="No artifact diff" />;
+  }
+
   const artifact = data?.CoreArtifact?.edges[0]?.node?.object?.node?.display_label;
 
   const title = (
     <div className="flex">
       {artifact && <Badge className="mr-2">{artifact?.object?.node?.display_label}</Badge>}
 
-      {diff.display_label}
+      {diff?.display_label}
     </div>
   );
 

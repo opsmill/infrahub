@@ -135,7 +135,7 @@ export const DataDiff = forwardRef((props, ref) => {
     } catch (err) {
       console.error("Error when fethcing branches: ", err);
 
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading branch diff" />);
+      toast(() => <Alert type={ALERT_TYPES.ERROR} message="Error while loading branch diff" />);
     }
 
     setIsLoading(false);

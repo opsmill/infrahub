@@ -45,7 +45,7 @@ export const ArtifactsDiff = forwardRef((props, ref) => {
       setArtifactsDiff(filesResult);
     } catch (err) {
       console.error("Error while loading artifacts diff: ", err);
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading artifacts diff" />);
+      toast(() => <Alert type={ALERT_TYPES.ERROR} message="Error while loading artifacts diff" />);
     }
 
     setIsLoading(false);
@@ -69,8 +69,6 @@ export const ArtifactsDiff = forwardRef((props, ref) => {
   if (!Object.values(artifactsDiff).length) {
     return <NoDataFound message="No artifact found." />;
   }
-
-  // const result = data ? data[schemaData?.kind]?.edges[0]?.node : {};
 
   return (
     <div className="text-sm">
