@@ -109,9 +109,7 @@ export const getFormFieldsFromSchema = ({
 };
 
 export type GetObjectDefaultValue = {
-  fieldSchema:
-    | components["schemas"]["AttributeSchema-Output"]
-    | components["schemas"]["RelationshipSchema-Output"];
+  fieldSchema: GetObjectDefaultValueFromSchema;
   initialObject?: Record<string, AttributeType>;
   profile?: Record<string, AttributeType>;
 };
@@ -121,13 +119,21 @@ export const getObjectDefaultValue = ({
   initialObject,
   profile,
 }: GetObjectDefaultValue) => {
+  const currentFieldValue = initialObject?.[fieldSchema.name]?.value;
+  const defaultValueFromProfile = profile?.[fieldSchema.name]?.value;
+  const defaultValueFromSchema = getDefaultValueFromSchema(fieldSchema);
+
+  return currentFieldValue ?? defaultValueFromProfile ?? defaultValueFromSchema ?? null;
+};
+
+export type GetObjectDefaultValueFromSchema =
+  | components["schemas"]["AttributeSchema-Output"]
+  | components["schemas"]["RelationshipSchema-Output"];
+
+const getDefaultValueFromSchema = (fieldSchema: GetObjectDefaultValueFromSchema) => {
   if (fieldSchema.kind === "Boolean" || fieldSchema.kind === "Checkbox") {
     return !!fieldSchema.default_value;
   }
 
-  const currentFieldValue = initialObject?.[fieldSchema.name]?.value;
-  const defaultValueFromProfile = profile?.[fieldSchema.name]?.value;
-  const defaultValueFromSchema = "default_value" in fieldSchema ? fieldSchema.default_value : null;
-
-  return currentFieldValue ?? defaultValueFromProfile ?? defaultValueFromSchema ?? null;
+  return "default_value" in fieldSchema ? fieldSchema.default_value : null;
 };
