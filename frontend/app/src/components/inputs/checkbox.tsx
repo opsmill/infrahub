@@ -3,20 +3,19 @@ import { classNames } from "@/utils/common";
 import { ChangeEventHandler, forwardRef } from "react";
 
 type CheckboxProps = {
-  enabled?: boolean;
+  checked?: boolean;
   onChange?: ChangeEventHandler;
   disabled?: boolean;
   id?: string;
 };
 
 export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>((props, ref) => {
-  const { enabled, onChange, disabled, ...propsToPass } = props;
+  const { onChange, disabled, ...propsToPass } = props;
 
   return (
     <input
       ref={ref}
       type="checkbox"
-      checked={enabled}
       disabled={disabled}
       onChange={onChange}
       className={classNames(

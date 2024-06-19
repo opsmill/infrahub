@@ -28,7 +28,7 @@ const CheckboxField = ({
           },
         },
       }}
-      defaultValue={rules?.required ? defaultValue || false : defaultValue}
+      defaultValue={defaultValue}
       render={({ field }) => {
         const { value, ...fieldMethodsWithoutValue } = field;
 
@@ -36,7 +36,7 @@ const CheckboxField = ({
           <div className="relative flex flex-col">
             <div className="flex items-center">
               <FormInput>
-                <Checkbox enabled={!!value} {...fieldMethodsWithoutValue} {...props} />
+                <Checkbox {...fieldMethodsWithoutValue} {...props} checked={!!value} />
               </FormInput>
 
               <LabelFormField
