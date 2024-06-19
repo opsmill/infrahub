@@ -49,6 +49,8 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import HierarchicalTree from "@/screens/object-items/hierarchical-tree";
+import { Card } from "@/components/ui/card";
 
 type ObjectItemsProps = {
   objectname?: string;
@@ -251,98 +253,104 @@ export default function ObjectItems({
         </Content.Title>
       )}
 
-      <div className="m-2 rounded-md border overflow-hidden bg-custom-white shadow-sm">
-        <div className="flex items-center p-2">
-          <SearchInput
-            loading={loading}
-            onChange={debouncedHandleSearch}
-            placeholder="Search an object"
-            className="border-none focus-visible:ring-0 h-7"
-            data-testid="object-list-search-bar"
-          />
-
-          <Filters schema={schemaData} />
-
-          <Tooltip
-            enabled={!permission.write.allow}
-            content={permission.write.message ?? undefined}>
-            <Button
-              data-cy="create"
-              data-testid="create-object-button"
-              disabled={!permission.write.allow}
-              onClick={() => setShowCreateDrawer(true)}
-              size="sm">
-              <Icon icon="mdi:plus" className="text-sm" />
-              Add {schemaData?.label}
-            </Button>
-          </Tooltip>
-        </div>
-
-        {loading && !rows && <LoadingScreen />}
-
-        {/* TODO: use new Table component for list */}
-        {rows && (
-          <div className="overflow-auto">
-            <table className="table-auto border-spacing-0 w-full">
-              <thead className="bg-gray-50 text-left border-y border-gray-300">
-                <tr>
-                  {columns?.map((attribute) => (
-                    <th
-                      key={attribute.name}
-                      scope="col"
-                      className="p-2 text-xs font-semibold text-gray-900">
-                      {attribute.label}
-                    </th>
-                  ))}
-                  <th scope="col"></th>
-                </tr>
-              </thead>
-
-              <tbody className="bg-custom-white text-left">
-                {rows?.map((row: any, index: number) => (
-                  <tr
-                    key={index}
-                    className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer h-[36px]"
-                    data-cy="object-table-row">
-                    {columns?.map((attribute) => (
-                      <td key={row.id + "-" + attribute.name} className="p-0">
-                        <Link
-                          className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
-                          to={
-                            overrideDetailsViewUrl
-                              ? overrideDetailsViewUrl(row.id, row.__typename)
-                              : constructPath(getObjectDetailsUrl(row.id, row.__typename))
-                          }>
-                          <div>{getObjectItemDisplayValue(row, attribute)}</div>
-                        </Link>
-                      </td>
-                    ))}
-
-                    <td className="text-right w-8">
-                      <ButtonWithTooltip
-                        data-cy="delete"
-                        data-testid="delete-row-button"
-                        disabled={!permission.write.allow}
-                        tooltipEnabled={!permission.write.allow}
-                        tooltipContent={permission.write.message ?? undefined}
-                        variant="ghost"
-                        onClick={() => {
-                          setRowToDelete(row);
-                          setDeleteModal(true);
-                        }}>
-                        <Icon icon="mdi:trash" className="text-red-500" />
-                      </ButtonWithTooltip>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {!rows?.length && <NoDataFound message="No items found." />}
-
-            <Pagination count={count} />
-          </div>
+      <div className="flex m-2 gap-2">
+        {schemaData && "hierarchical" in schemaData && schemaData.hierarchical && (
+          <HierarchicalTree schema={schemaData} />
         )}
+
+        <Card className="p-0 flex-grow  overflow-hidden">
+          <div className="flex items-center p-2">
+            <SearchInput
+              loading={loading}
+              onChange={debouncedHandleSearch}
+              placeholder="Search an object"
+              className="border-none focus-visible:ring-0 h-7"
+              data-testid="object-list-search-bar"
+            />
+
+            <Filters schema={schemaData} />
+
+            <Tooltip
+              enabled={!permission.write.allow}
+              content={permission.write.message ?? undefined}>
+              <Button
+                data-cy="create"
+                data-testid="create-object-button"
+                disabled={!permission.write.allow}
+                onClick={() => setShowCreateDrawer(true)}
+                size="sm">
+                <Icon icon="mdi:plus" className="text-sm" />
+                Add {schemaData?.label}
+              </Button>
+            </Tooltip>
+          </div>
+
+          {loading && !rows && <LoadingScreen />}
+
+          {/* TODO: use new Table component for list */}
+          {rows && (
+            <div className="overflow-auto">
+              <table className="table-auto border-spacing-0 w-full">
+                <thead className="bg-gray-50 text-left border-y border-gray-300">
+                  <tr>
+                    {columns?.map((attribute) => (
+                      <th
+                        key={attribute.name}
+                        scope="col"
+                        className="p-2 text-xs font-semibold text-gray-900">
+                        {attribute.label}
+                      </th>
+                    ))}
+                    <th scope="col"></th>
+                  </tr>
+                </thead>
+
+                <tbody className="bg-custom-white text-left">
+                  {rows?.map((row: any, index: number) => (
+                    <tr
+                      key={index}
+                      className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer h-[36px]"
+                      data-cy="object-table-row">
+                      {columns?.map((attribute) => (
+                        <td key={row.id + "-" + attribute.name} className="p-0">
+                          <Link
+                            className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
+                            to={
+                              overrideDetailsViewUrl
+                                ? overrideDetailsViewUrl(row.id, row.__typename)
+                                : constructPath(getObjectDetailsUrl(row.id, row.__typename))
+                            }>
+                            <div>{getObjectItemDisplayValue(row, attribute)}</div>
+                          </Link>
+                        </td>
+                      ))}
+
+                      <td className="text-right w-8">
+                        <ButtonWithTooltip
+                          data-cy="delete"
+                          data-testid="delete-row-button"
+                          disabled={!permission.write.allow}
+                          tooltipEnabled={!permission.write.allow}
+                          tooltipContent={permission.write.message ?? undefined}
+                          variant="ghost"
+                          onClick={() => {
+                            setRowToDelete(row);
+                            setDeleteModal(true);
+                          }}>
+                          <Icon icon="mdi:trash" className="text-red-500" />
+                        </ButtonWithTooltip>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {!rows?.length && <NoDataFound message="No items found." />}
+
+              <Pagination count={count} />
+            </div>
+          )}
+        </Card>
       </div>
 
       <SlideOver

@@ -1,9 +1,6 @@
 import { ButtonWithTooltip as ButtonWithTooltip2 } from "@/components/buttons/button-primitive";
-import { ButtonWithTooltip } from "@/components/buttons/button-with-tooltip";
-import { Retry } from "@/components/buttons/retry";
 import MetaDetailsTooltip from "@/components/display/meta-details-tooltips";
 import SlideOver from "@/components/display/slide-over";
-import { Tabs } from "@/components/tabs";
 import { Link } from "@/components/ui/link";
 import {
   ARTIFACT_DEFINITION_OBJECT,
@@ -19,7 +16,6 @@ import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDe
 import { usePermission } from "@/hooks/usePermission";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
-import { Generate } from "@/screens/artifacts/generate";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import AddObjectToGroup from "@/screens/groups/add-object-to-group";
@@ -55,6 +51,12 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
 import { RelationshipsDetails } from "./relationships-details-paginated";
+import { Tabs } from "@/components/tabs";
+import { Generate } from "@/screens/artifacts/generate";
+import { ButtonWithTooltip } from "@/components/buttons/button-with-tooltip";
+import HierarchicalTree from "@/screens/object-items/hierarchical-tree";
+import { Card } from "@/components/ui/card";
+import { ObjectHelpButton } from "@/components/menu/object-help-button";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -188,179 +190,191 @@ export default function ObjectItemDetails(props: any) {
   return (
     <Content>
       {!hideHeaders && (
-        <div className="bg-custom-white">
-          <div className="px-4 py-5 flex items-center">
-            <Link to={constructPath(`/objects/${profile ? PROFILE_KIND : objectname}`)}>
-              <h1 className="text-md font-semibold text-gray-900 mr-2">
-                {profile ? "All Profiles" : schemaData.name}
-              </h1>
-            </Link>
+        <Content.Title
+          title={
+            <div className="flex items-center gap-2">
+              <Link to={constructPath(`/objects/${profile ? PROFILE_KIND : objectname}`)}>
+                <h1>{profile ? "All Profiles" : schemaData.label}</h1>
+              </Link>
 
-            <ChevronRightIcon
-              className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
-              aria-hidden="true"
-            />
+              <Icon icon="mdi:chevron-right" />
 
-            <p className="max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
-
-            <div className="ml-2">
-              <Retry isLoading={loading} onClick={handleRefetch} />
+              <p>{objectDetailsData.display_label}</p>
             </div>
-          </div>
+          }
+          isReloadLoading={loading}
+          reload={handleRefetch}
+          description={schemaData?.description}>
+          <ObjectHelpButton
+            documentationUrl={schemaData.documentation}
+            kind={schemaData.kind}
+            className="ml-auto"
+          />
+        </Content.Title>
+      )}
 
-          <div className="px-4">{schemaData?.description}</div>
+      <div className="flex gap-2 p-2">
+        {schemaData && "hierarchy" in schemaData && schemaData.hierarchy && (
+          <HierarchicalTree
+            schema={genericList.find(({ kind }) => kind === schemaData.hierarchy)}
+            currentNodeId={objectid}
+          />
+        )}
 
-          <Tabs
-            tabs={tabs}
-            rightItems={
-              <>
-                {schemaData.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
+        {schemaData && "hierarchical" in schemaData && schemaData.hierarchical && (
+          <HierarchicalTree schema={schemaData} currentNodeId={objectid} />
+        )}
 
-                <ButtonWithTooltip
-                  disabled={!permission.write.allow}
-                  tooltipEnabled={!permission.write.allow}
-                  tooltipContent={permission.write.message ?? undefined}
-                  onClick={() => setShowEditDrawer(true)}
-                  className="mr-4">
-                  Edit
-                  <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                </ButtonWithTooltip>
+        <Card className="flex-grow py-0">
+          {!hideHeaders && (
+            <Tabs
+              tabs={tabs}
+              rightItems={
+                <>
+                  {schemaData.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
 
-                {!schemaData.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
                   <ButtonWithTooltip
                     disabled={!permission.write.allow}
                     tooltipEnabled={!permission.write.allow}
                     tooltipContent={permission.write.message ?? undefined}
-                    onClick={() => setShowAddToGroupDrawer(true)}
+                    onClick={() => setShowEditDrawer(true)}
                     className="mr-4">
-                    Manage groups
-                    <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                    Edit
+                    <PencilIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                   </ButtonWithTooltip>
-                )}
-              </>
-            }
-          />
-        </div>
-      )}
 
-      {!qspTab && (
-        <dl className="bg-custom-white divide-y">
-          <ObjectAttributeRow name="ID" value={objectDetailsData.id} enableCopyToClipboard />
-          {attributes.map((attribute) => {
-            if (
-              !objectDetailsData[attribute.name] ||
-              !objectDetailsData[attribute.name].is_visible
-            ) {
-              return null;
-            }
+                  {!schemaData.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
+                    <ButtonWithTooltip
+                      disabled={!permission.write.allow}
+                      tooltipEnabled={!permission.write.allow}
+                      tooltipContent={permission.write.message ?? undefined}
+                      onClick={() => setShowAddToGroupDrawer(true)}
+                      className="mr-4">
+                      Manage groups
+                      <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                    </ButtonWithTooltip>
+                  )}
+                </>
+              }
+            />
+          )}
 
-            return (
-              <ObjectAttributeRow
-                key={attribute.name}
-                name={attribute.label as string}
-                value={
-                  <>
-                    <ObjectAttributeValue
-                      attributeSchema={attribute}
-                      attributeValue={objectDetailsData[attribute.name]}
-                    />
-
-                    {objectDetailsData[attribute.name] && (
-                      <MetaDetailsTooltip
-                        updatedAt={objectDetailsData[attribute.name].updated_at}
-                        source={objectDetailsData[attribute.name].source}
-                        owner={objectDetailsData[attribute.name].owner}
-                        isFromProfile={objectDetailsData[attribute.name].is_from_profile}
-                        isProtected={objectDetailsData[attribute.name].is_protected}
-                        header={
-                          <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
-                            <div className="font-semibold">{attribute.label}</div>
-                            <ButtonWithTooltip2
-                              disabled={!permission.write.allow}
-                              tooltipEnabled={!permission.write.allow}
-                              tooltipContent={permission.write.message ?? undefined}
-                              onClick={() => {
-                                setMetaEditFieldDetails({
-                                  type: "attribute",
-                                  attributeOrRelationshipName: attribute.name,
-                                  label: attribute.label || attribute.name,
-                                });
-                                setShowMetaEditModal(true);
-                              }}
-                              variant="ghost"
-                              size="icon"
-                              data-testid="edit-metadata-button"
-                              data-cy="metadata-edit-button">
-                              <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                            </ButtonWithTooltip2>
-                          </div>
-                        }
-                      />
-                    )}
-
-                    {objectDetailsData[attribute.name].is_protected && (
-                      <LockClosedIcon className="w-4 h-4" />
-                    )}
-                  </>
+          {!qspTab && (
+            <dl className="bg-custom-white divide-y">
+              <ObjectAttributeRow name="ID" value={objectDetailsData.id} enableCopyToClipboard />
+              {attributes.map((attribute) => {
+                if (
+                  !objectDetailsData[attribute.name] ||
+                  !objectDetailsData[attribute.name].is_visible
+                ) {
+                  return null;
                 }
-              />
-            );
-          })}
 
-          {relationships?.map((relationship: any) => {
-            const relationshipSchema = schemaData?.relationships?.find(
-              (relation) => relation?.name === relationship?.name
-            );
+                return (
+                  <ObjectAttributeRow
+                    key={attribute.name}
+                    name={attribute.label as string}
+                    value={
+                      <>
+                        <ObjectAttributeValue
+                          attributeSchema={attribute}
+                          attributeValue={objectDetailsData[attribute.name]}
+                        />
 
-            const relationshipData = relationship?.paginated
-              ? objectDetailsData[relationship.name]?.edges
-              : objectDetailsData[relationship.name];
+                        {objectDetailsData[attribute.name] && (
+                          <MetaDetailsTooltip
+                            updatedAt={objectDetailsData[attribute.name].updated_at}
+                            source={objectDetailsData[attribute.name].source}
+                            owner={objectDetailsData[attribute.name].owner}
+                            isFromProfile={objectDetailsData[attribute.name].is_from_profile}
+                            isProtected={objectDetailsData[attribute.name].is_protected}
+                            header={
+                              <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
+                                <div className="font-semibold">{attribute.label}</div>
+                                <ButtonWithTooltip2
+                                  disabled={!permission.write.allow}
+                                  tooltipEnabled={!permission.write.allow}
+                                  tooltipContent={permission.write.message ?? undefined}
+                                  onClick={() => {
+                                    setMetaEditFieldDetails({
+                                      type: "attribute",
+                                      attributeOrRelationshipName: attribute.name,
+                                      label: attribute.label || attribute.name,
+                                    });
+                                    setShowMetaEditModal(true);
+                                  }}
+                                  variant="ghost"
+                                  size="icon"
+                                  data-testid="edit-metadata-button"
+                                  data-cy="metadata-edit-button">
+                                  <Icon icon="mdi:pencil" className="text-custom-blue-500" />
+                                </ButtonWithTooltip2>
+                              </div>
+                            }
+                          />
+                        )}
 
-            return (
-              <RelationshipDetails
-                parentNode={objectDetailsData}
-                mode="DESCRIPTION-LIST"
-                parentSchema={schemaData}
-                key={relationship.name}
-                relationshipsData={relationshipData}
-                relationshipSchema={relationshipSchema}
-              />
-            );
-          })}
-        </dl>
-      )}
+                        {objectDetailsData[attribute.name].is_protected && (
+                          <LockClosedIcon className="w-4 h-4" />
+                        )}
+                      </>
+                    }
+                  />
+                );
+              })}
 
-      {qspTab && qspTab !== TASK_TAB && (
-        <RelationshipsDetails
-          parentNode={objectDetailsData}
-          parentSchema={schemaData}
-          refetchObjectDetails={refetch}
-          ref={refetchRef}
-        />
-      )}
+              {relationships?.map((relationship: any) => {
+                const relationshipSchema = schemaData?.relationships?.find(
+                  (relation) => relation?.name === relationship?.name
+                );
 
-      {qspTab && qspTab === TASK_TAB && !qspTaskId && (
-        <TaskItems ref={refetchRef} hideRelatedNode />
-      )}
+                const relationshipData = relationship?.paginated
+                  ? objectDetailsData[relationship.name]?.edges
+                  : objectDetailsData[relationship.name];
 
-      {qspTab && qspTab === TASK_TAB && qspTaskId && (
-        <div>
-          <div className="flex bg-custom-white text-sm">
-            <Link
-              to={constructPath(pathname, [
-                { name: QSP.TAB, value: TASK_TAB },
-                { name: QSP.TASK_ID, exclude: true },
-              ])}
-              className="flex items-center p-2 ">
-              <Icon icon={"mdi:chevron-left"} />
-              All tasks
-            </Link>
-          </div>
+                return (
+                  <RelationshipDetails
+                    parentNode={objectDetailsData}
+                    mode="DESCRIPTION-LIST"
+                    parentSchema={schemaData}
+                    key={relationship.name}
+                    relationshipsData={relationshipData}
+                    relationshipSchema={relationshipSchema}
+                  />
+                );
+              })}
+            </dl>
+          )}
+          {qspTab && qspTab !== TASK_TAB && (
+            <RelationshipsDetails
+              parentNode={objectDetailsData}
+              parentSchema={schemaData}
+              refetchObjectDetails={refetch}
+              ref={refetchRef}
+            />
+          )}
+          {qspTab && qspTab === TASK_TAB && !qspTaskId && (
+            <TaskItems ref={refetchRef} hideRelatedNode />
+          )}
+          {qspTab && qspTab === TASK_TAB && qspTaskId && (
+            <div>
+              <div className="flex bg-custom-white text-sm">
+                <Link
+                  to={constructPath(pathname, [
+                    { name: QSP.TAB, value: TASK_TAB },
+                    { name: QSP.TASK_ID, exclude: true },
+                  ])}
+                  className="flex items-center p-2 ">
+                  <Icon icon={"mdi:chevron-left"} />
+                  All tasks
+                </Link>
+              </div>
 
-          <TaskItemDetails ref={refetchRef} />
-        </div>
-      )}
-
+              <TaskItemDetails ref={refetchRef} />
+            </div>
+          )}
+        </Card>
+      </div>
       <SlideOver
         title={
           <div className="space-y-2">
