@@ -121,6 +121,10 @@ export const getObjectDefaultValue = ({
   initialObject,
   profile,
 }: GetObjectDefaultValue) => {
+  if (fieldSchema.kind === "Boolean" || fieldSchema.kind === "Checkbox") {
+    return !!fieldSchema.default_value;
+  }
+
   const currentFieldValue = initialObject?.[fieldSchema.name]?.value;
   const defaultValueFromProfile = profile?.[fieldSchema.name]?.value;
   const defaultValueFromSchema = "default_value" in fieldSchema ? fieldSchema.default_value : null;
