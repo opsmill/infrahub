@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
 class Node(ObjectType):
     id = Field(String, required=True)
-    display_label = Field(String, required=False)
 
 
 class NodeEdge(ObjectType):
@@ -61,8 +60,7 @@ async def search_resolver(
         )
 
     if "edges" in fields and result:
-        objects = [{"node": {"id": obj.id, "display_label": getattr(obj, "display_label", None)}} for obj in result]
-        response["edges"] = objects
+        response["edges"] = [{"node": {"id": obj.id}} for obj in result]
 
     if "count" in fields:
         response["count"] = len(result)
