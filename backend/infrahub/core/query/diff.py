@@ -515,19 +515,30 @@ class DiffAllPathsQuery(DiffQuery):
         self.params["branch_support"] = [item.value for item in self.branch_support]
 
         query = """
-            // all updated edges
-            MATCH (p:Node|Attribute|Relationship)-[diff_rel]-(q)
-            WHERE %(diff_rel_filter)s
+            // all updated edges for our branches and time frame
+            MATCH (p)-[diff_rel]-(q)
+            WHERE any(l in labels(p) WHERE l in ["Node", "Attribute", "Relationship"])
+            AND %(diff_rel_filter)s
             AND p.branch_support IN $branch_support
             AND %(p_node_where)s
-            // deepest diff edges HAS_VALUE, HAS_SOURCE/OWNER, IS_VISIBLE/PROTECTED
+            // subqueries to get full paths associated with the above update edges
+            WITH p, diff_rel, q
+            // -- DEEPEST EDGE SUBQUERY --
+            // get full path for every HAS_VALUE, HAS_SOURCE/OWNER, IS_VISIBLE/PROTECTED
+            // explicitly add in base branch path, if it exists to capture previous value
+            // explicitly add in far-side of any relationship to get peer_id for rel properties
             CALL {
                 WITH p, q, diff_rel
                 OPTIONAL MATCH path = (
-                    (:Root)<-[r_root:IS_PART_OF]-(n:Node)-[r_node:HAS_ATTRIBUTE|IS_RELATED]-(p:Attribute|Relationship)-[diff_rel:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE]->(q:Boolean|Node|AttributeValue)
+                    (:Root)<-[r_root:IS_PART_OF]-(n:Node)-[r_node]-(inner_p)-[inner_diff_rel]->(inner_q)
                 )
-                WHERE %(n_node_where)s
-                AND n <> q
+                WHERE ID(inner_p) = ID(p) AND ID(inner_diff_rel) = ID(diff_rel) AND ID(inner_q) = ID(q)
+                AND any(l in labels(inner_p) WHERE l in ["Attribute", "Relationship"])
+                AND type(inner_diff_rel) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE"]
+                AND any(l in labels(inner_q) WHERE l in ["Boolean", "Node", "AttributeValue"])
+                AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"] 
+                AND %(n_node_where)s
+                AND ID(n) <> ID(inner_q)
                 AND ALL(
                     r in [r_root, r_node]
                     WHERE r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
@@ -542,9 +553,10 @@ class DiffAllPathsQuery(DiffQuery):
                 LIMIT 1
                 // get base branch version of the diff path, if it exists
                 WITH diff_rel_path, diff_rel, r_root, n, r_node, p
-                OPTIONAL MATCH latest_base_path = (:Root)<-[r_root]-(n)-[r_node]-(p)-[base_diff_rel]->(base_prop)
-                WHERE any(r in relationships(diff_rel_path) WHERE r.branch = $branch_name)
-                AND n <> base_prop
+                OPTIONAL MATCH latest_base_path = (:Root)<-[r_root2]-(n2)-[r_node2]-(inner_p2)-[base_diff_rel]->(base_prop)
+                WHERE ID(r_root2) = ID(r_root) AND ID(n2) = ID(n) AND ID(r_node2) = ID(r_node)  AND ID(inner_p2) = ID(p)
+                AND any(r in relationships(diff_rel_path) WHERE r.branch = $branch_name)
+                AND ID(n2) <> ID(base_prop)
                 AND type(base_diff_rel) = type(diff_rel)
                 AND all(
                     r in relationships(latest_base_path)
@@ -557,10 +569,11 @@ class DiffAllPathsQuery(DiffQuery):
                 // get peer node for updated relationship properties
                 WITH diff_rel_path, latest_base_path, diff_rel, r_root, n, r_node, p
                 OPTIONAL MATCH base_peer_path = (
-                   (:Root)<-[r_root]-(n)-[r_node]-(p:Relationship)-[base_r_peer:IS_RELATED]-(base_peer:Node)
+                   (:Root)<-[r_root3]-(n3)-[r_node3]-(inner_p3:Relationship)-[base_r_peer:IS_RELATED]-(base_peer:Node)
                 )
-                WHERE type(diff_rel) <> "IS_RELATED"
-                AND base_peer <> n
+                WHERE ID(r_root3) = ID(r_root) AND ID(n3) = ID(n) AND ID(r_node3) = ID(r_node) AND ID(inner_p3) = ID(p)
+                AND type(diff_rel) <> "IS_RELATED"
+                AND ID(n3) <> ID(base_peer)
                 AND base_r_peer.from <= $from_time
                 AND base_r_peer.branch IN $branch_names
                 WITH diff_rel_path, latest_base_path, base_peer_path, base_r_peer, diff_rel
@@ -571,22 +584,30 @@ class DiffAllPathsQuery(DiffQuery):
                     CASE WHEN item IS NULL THEN diff_rel_paths ELSE diff_rel_paths + [item] END
                 ) AS diff_rel_paths
             }
-            // middle-level edges, HAS_ATTRIBUTE, IS_RELATED
+            // -- MIDDLE EDGE SUBQUERY --
+            // get full paths for every HAS_ATTRIBUTE, IS_RELATED edge
+            // this includes at least one path for every property under the middle edge in question
             WITH p, q, diff_rel, diff_rel_paths AS full_diff_paths
             CALL {
                 WITH p, q, diff_rel
                 OPTIONAL MATCH path = (
-                    (:Root)<-[r_root:IS_PART_OF]-(p:Node)-[diff_rel:HAS_ATTRIBUTE|IS_RELATED]-(q:Attribute|Relationship)-[r_prop:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE|IS_RELATED]-(prop:Boolean|Node|AttributeValue)
+                    (:Root)<-[r_root:IS_PART_OF]-(inner_p)-[inner_diff_rel]-(inner_q)-[r_prop]-(prop)
                 )
-                WHERE ALL(
+                WHERE ID(inner_p) = ID(p) AND ID(inner_diff_rel) = ID(diff_rel) AND ID(inner_q) = ID(q)
+                AND "Node" IN labels(inner_p)
+                AND type(inner_diff_rel) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
+                AND any(l in labels(inner_q) WHERE l in ["Attribute", "Relationship"])
+                AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
+                AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
+                AND ALL(
                     r in [r_root, r_prop]
                     WHERE r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
                     AND r.branch IN $branch_names
                 )
-                AND p <> prop
+                AND ID(inner_p) <> ID(prop)
                 WITH path, prop, r_prop, r_root
                 ORDER BY
-                    prop,
+                    ID(prop),
                     r_prop.branch = diff_rel.branch DESC,
                     r_root.branch = diff_rel.branch DESC,
                     r_prop.from DESC,
@@ -595,22 +616,30 @@ class DiffAllPathsQuery(DiffQuery):
                 RETURN collect(latest_prop_path) AS latest_paths
             }
             WITH p, q, diff_rel, full_diff_paths + latest_paths AS full_diff_paths
-            // whole node-paths - IS_PART_OF
+            // -- TOP EDGE SUBQUERY --
+            // get full paths for every IS_PART_OF edge
+            // this edge indicates a whole node was added or deleted
+            // we need to get every attribute and relationship on the node to capture the new and previous values
             CALL {
                 WITH p, q, diff_rel
                 OPTIONAL MATCH path = (
-                    (q:Root)<-[diff_rel:IS_PART_OF]-(p:Node)-[r_node:HAS_ATTRIBUTE|IS_RELATED]-(node:Attribute|Relationship)-[r_prop:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE|IS_RELATED]-(prop:Boolean|Node|AttributeValue)
+                    (inner_q:Root)<-[inner_diff_rel:IS_PART_OF]-(inner_p:Node)-[r_node]-(node)-[r_prop]-(prop)
                 )
-                WHERE ALL(
+                WHERE ID(inner_p) = ID(p) AND ID(inner_diff_rel) = ID(diff_rel) AND ID(inner_q) = ID(q)
+                AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
+                AND any(l in labels(node) WHERE l in ["Attribute", "Relationship"])
+                AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
+                AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
+                AND ALL(
                     r in [r_node, r_prop]
                     WHERE r.from <= $to_time AND (r.to IS NULL or r.to >= $to_time)
                     AND r.branch IN $branch_names
                 )
-                AND p <> prop
+                AND ID(inner_p) <> ID(prop)
                 WITH path, node, prop, r_prop, r_node
                 ORDER BY
-                    node,
-                    prop,
+                    ID(node),
+                    ID(prop),
                     r_prop.branch = diff_rel.branch DESC,
                     r_node.branch = diff_rel.branch DESC,
                     r_prop.from DESC,
