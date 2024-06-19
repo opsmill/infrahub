@@ -29,7 +29,7 @@ test.describe("Object metadata", () => {
 
     // Owner should be empty
     await expect(
-      page.getByTestId("select-container").nth(0).getByTestId("select-input")
+      page.getByText("Kind").first().locator("../..").getByTestId("select-input")
     ).toHaveValue("");
 
     // Is visible should be checked
@@ -42,9 +42,9 @@ test.describe("Object metadata", () => {
     await page.getByLabel("is protected *").check();
 
     // Select Architecture team
-    await page.getByText("Owner Kind ?Parent ?Node").getByLabel("Kind").click();
+    await page.getByLabel("Kind").first().click();
     await page.getByRole("option", { name: "Account" }).click();
-    await page.getByText("Owner Kind ?Parent ?Node").getByLabel("Node").click();
+    await page.getByLabel("Node").first().click();
     await page.getByRole("option", { name: "Architecture Team" }).click();
 
     // Save
@@ -70,10 +70,10 @@ test.describe("Object metadata", () => {
 
     // Source should be Account + Pop-Builder
     await expect(
-      page.getByTestId("select-container").nth(0).getByTestId("select-input")
+      page.getByText("Kind").first().locator("../..").getByTestId("select-input")
     ).toHaveValue("Account");
     await expect(
-      page.getByTestId("select-container").nth(1).getByTestId("select-input")
+      page.getByText("Node").first().locator("../..").getByTestId("select-input")
     ).toHaveValue("Architecture Team");
 
     // Is protected should be checked
