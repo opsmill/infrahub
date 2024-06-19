@@ -66,7 +66,7 @@ class DiffRoot:
 
 
 @dataclass
-class DatabasePath:
+class DatabasePath:  # pylint: disable=too-many-public-methods
     root_node: Neo4jNode
     path_to_node: Neo4jRelationship
     node_node: Neo4jNode
@@ -83,7 +83,11 @@ class DatabasePath:
         property_branch = self.path_to_property.get("branch")
         property_status = self.path_to_property.get("status")
         property_value = self.property_value if self.property_value is not None else self.peer_id
-        return f"branch={self.deepest_branch} (:Root)-[{node_branch=},{node_status=}]-({self.node_kind} '{self.node_id}')-[{attribute_branch=},{attribute_status=}]-({self.attribute_name})-[{property_branch=},{property_status=}]-({self.property_type=},{property_value=})"
+        return (
+            f"branch={self.deepest_branch} (:Root)-[{node_branch=},{node_status=}]-({self.node_kind}"
+            f" '{self.node_id}')-[{attribute_branch=},{attribute_status=}]-({self.attribute_name})-"
+            f"[{property_branch=},{property_status=}]-({self.property_type=},{property_value=})"
+        )
 
     @classmethod
     def from_cypher_path(cls, cypher_path: Neo4jPath) -> DatabasePath:
@@ -187,3 +191,9 @@ class DatabasePath:
         if "Node" not in self.property_node.labels:
             return None
         return str(self.property_node.get("uuid"))
+
+    @property
+    def peer_kind(self) -> Optional[str]:
+        if "Node" not in self.property_node.labels:
+            return None
+        return str(self.property_node.get("kind"))

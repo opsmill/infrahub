@@ -168,7 +168,7 @@ async def test_attribute_branch_set_null(db: InfrahubDatabase, default_branch: B
     assert before_change < property_diff.changed_at < after_change
 
 
-async def test_node_branch_delete(db: InfrahubDatabase, default_branch: Branch, car_accord_main):
+async def test_node_branch_delete(db: InfrahubDatabase, default_branch: Branch, car_accord_main, person_john_main):
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
@@ -188,12 +188,15 @@ async def test_node_branch_delete(db: InfrahubDatabase, default_branch: Branch, 
     assert diff_parser.get_branches() == {branch.name}
     branch_root_path = diff_parser.get_diff_root_for_branch(branch=branch.name)
     assert branch_root_path.branch == branch.name
-    assert len(branch_root_path.nodes) == 1
-    node_diff = branch_root_path.nodes[0]
+    assert len(branch_root_path.nodes) == 2
+    node_diffs_by_id = {n.uuid: n for n in branch_root_path.nodes}
+    node_diff = node_diffs_by_id[car_accord_main.id]
     assert node_diff.uuid == car_accord_main.id
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.REMOVED
     assert len(node_diff.attributes) == 5
+    assert len(node_diff.relationships) == 1
+    relationship_diff = node_diff.relationships[0]
     attributes_by_name = {attr.name: attr for attr in node_diff.attributes}
     assert set(attributes_by_name.keys()) == {"name", "nbr_seats", "color", "is_electric", "transmission"}
     for attribute_name in attributes_by_name:
@@ -203,6 +206,30 @@ async def test_node_branch_delete(db: InfrahubDatabase, default_branch: Branch, 
         diff_property = properties_by_type["HAS_VALUE"]
         assert diff_property.action is DiffAction.REMOVED
         assert diff_property.new_value is None
+    assert len(node_diff.relationships) == 1
+    relationship_diff = node_diff.relationships[0]
+    assert relationship_diff.name == "owner"
+    assert relationship_diff.action is DiffAction.REMOVED
+    assert len(relationship_diff.relationships) == 1
+    single_relationship_diff = relationship_diff.relationships[0]
+    assert single_relationship_diff.peer_id == person_john_main.id
+    assert single_relationship_diff.action is DiffAction.REMOVED
+    node_diff = node_diffs_by_id[person_john_main.id]
+    assert node_diff.uuid == person_john_main.id
+    assert node_diff.kind == "TestPerson"
+    assert node_diff.action is DiffAction.UPDATED
+    assert len(node_diff.attributes) == 0
+    assert len(node_diff.relationships) == 1
+    relationship_diff = node_diff.relationships[0]
+    assert relationship_diff.name == "cars"
+    assert relationship_diff.action is DiffAction.UPDATED
+    assert len(relationship_diff.relationships) == 1
+    single_relationship_diff = relationship_diff.relationships[0]
+    assert single_relationship_diff.peer_id == car_branch.id
+    assert single_relationship_diff.action is DiffAction.REMOVED
+    assert len(single_relationship_diff.properties) == 3
+    for diff_property in single_relationship_diff.properties:
+        assert diff_property.action is DiffAction.REMOVED
 
 
 async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car_accord_main):
@@ -355,8 +382,35 @@ async def test_relationship_one_property_branch_update(
     assert property_diff.changed_at < before_branch_change
     root_main_path = diff_parser.get_diff_root_for_branch(branch=default_branch.name)
     assert root_main_path.branch == default_branch.name
-    assert len(root_main_path.nodes) == 1
-    node_diff = root_main_path.nodes[0]
+    assert len(root_main_path.nodes) == 3
+    diff_nodes_by_id = {n.uuid: n for n in root_main_path.nodes}
+    node_diff = diff_nodes_by_id[person_jane_main.id]
+    assert node_diff.uuid == person_jane_main.id
+    assert node_diff.kind == "TestPerson"
+    assert node_diff.action is DiffAction.UPDATED
+    assert len(node_diff.attributes) == 0
+    assert len(node_diff.relationships) == 1
+    relationship_diff = node_diff.relationships[0]
+    assert relationship_diff.name == "cars"
+    assert relationship_diff.action is DiffAction.UPDATED
+    assert len(relationship_diff.relationships) == 1
+    single_relationship_diff = relationship_diff.relationships[0]
+    assert single_relationship_diff.peer_id == car_accord_main.id
+    assert single_relationship_diff.action is DiffAction.ADDED
+    node_diff = diff_nodes_by_id[person_john_main.id]
+    assert node_diff.uuid == person_john_main.id
+    assert node_diff.kind == "TestPerson"
+    assert node_diff.action is DiffAction.UPDATED
+    assert len(node_diff.attributes) == 0
+    assert len(node_diff.relationships) == 1
+    relationship_diff = node_diff.relationships[0]
+    assert relationship_diff.name == "cars"
+    assert relationship_diff.action is DiffAction.UPDATED
+    assert len(relationship_diff.relationships) == 1
+    single_relationship_diff = relationship_diff.relationships[0]
+    assert single_relationship_diff.peer_id == car_accord_main.id
+    assert single_relationship_diff.action is DiffAction.REMOVED
+    node_diff = diff_nodes_by_id[car_accord_main.id]
     assert node_diff.uuid == car_accord_main.id
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.UPDATED
@@ -415,3 +469,87 @@ async def test_relationship_one_property_branch_update(
     assert property_diff.new_value is None
     assert property_diff.action is DiffAction.REMOVED
     assert before_main_change < property_diff.changed_at < after_main_change
+
+
+async def test_add_node_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_alfred_main,
+    person_jane_main,
+    person_john_main,
+    car_accord_main,
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp(branch.created_at)
+    new_car = await Node.init(db=db, branch=branch, schema="TestCar")
+    await new_car.new(db=db, name="Batmobile", color="#000000", owner=person_jane_main)
+    await new_car.save(db=db)
+
+    diff_query = await DiffAllPathsQuery.init(
+        db=db,
+        branch=branch,
+        base_branch=default_branch,
+    )
+    await diff_query.execute(db=db)
+    diff_parser = DiffQueryParser(
+        diff_query=diff_query, base_branch_name=default_branch.name, schema_manager=registry.schema, from_time=from_time
+    )
+    diff_parser.parse()
+
+    assert diff_parser.get_branches() == {branch.name}
+    root_path = diff_parser.get_diff_root_for_branch(branch=branch.name)
+    assert root_path.branch == branch.name
+    assert len(root_path.nodes) == 2
+    diff_nodes_by_id = {n.uuid: n for n in root_path.nodes}
+    node_diff = diff_nodes_by_id[person_jane_main.id]
+    assert node_diff.uuid == person_jane_main.id
+    assert node_diff.kind == "TestPerson"
+    assert node_diff.action is DiffAction.UPDATED
+    assert len(node_diff.attributes) == 0
+    assert len(node_diff.relationships) == 1
+    relationship_diff = node_diff.relationships[0]
+    assert relationship_diff.name == "cars"
+    assert relationship_diff.action is DiffAction.UPDATED
+    assert len(relationship_diff.relationships) == 1
+    single_relationship = relationship_diff.relationships[0]
+    assert single_relationship.peer_id == new_car.id
+    assert single_relationship.action is DiffAction.ADDED
+    assert len(single_relationship.properties) == 3
+    assert {p.property_type for p in single_relationship.properties} == {"IS_RELATED", "IS_VISIBLE", "IS_PROTECTED"}
+    assert all(p.action is DiffAction.ADDED for p in single_relationship.properties)
+    node_diff = diff_nodes_by_id[new_car.id]
+    assert node_diff.uuid == new_car.id
+    assert node_diff.kind == "TestCar"
+    assert node_diff.action is DiffAction.ADDED
+    assert len(node_diff.attributes) == 5
+    attributes_by_name = {a.name: a for a in node_diff.attributes}
+    assert set(attributes_by_name.keys()) == {"name", "color", "transmission", "nbr_seats", "is_electric"}
+    assert all(a.action is DiffAction.ADDED for a in node_diff.attributes)
+    attribute_diff = attributes_by_name["name"]
+    assert len(attribute_diff.properties) == 3
+    assert {(p.property_type, p.action, p.new_value, p.previous_value) for p in attribute_diff.properties} == {
+        ("IS_VISIBLE", DiffAction.ADDED, True, None),
+        ("IS_PROTECTED", DiffAction.ADDED, False, None),
+        ("HAS_VALUE", DiffAction.ADDED, "Batmobile", None),
+    }
+    attribute_diff = attributes_by_name["color"]
+    assert len(attribute_diff.properties) == 3
+    assert {(p.property_type, p.action, p.new_value, p.previous_value) for p in attribute_diff.properties} == {
+        ("IS_VISIBLE", DiffAction.ADDED, True, None),
+        ("IS_PROTECTED", DiffAction.ADDED, False, None),
+        ("HAS_VALUE", DiffAction.ADDED, "#000000", None),
+    }
+    assert len(node_diff.relationships) == 1
+    relationship_diff = node_diff.relationships[0]
+    assert relationship_diff.name == "owner"
+    assert relationship_diff.action is DiffAction.ADDED
+    assert len(relationship_diff.relationships) == 1
+    single_relationship = relationship_diff.relationships[0]
+    assert single_relationship.peer_id == person_jane_main.id
+    assert single_relationship.action is DiffAction.ADDED
+    assert len(single_relationship.properties) == 3
+    assert {(p.property_type, p.action, p.new_value, p.previous_value) for p in single_relationship.properties} == {
+        ("IS_VISIBLE", DiffAction.ADDED, True, None),
+        ("IS_PROTECTED", DiffAction.ADDED, False, None),
+        ("IS_RELATED", DiffAction.ADDED, person_jane_main.id, None),
+    }

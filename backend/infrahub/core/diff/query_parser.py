@@ -111,16 +111,17 @@ class DiffPropertyIntermediate:
                 action = DiffAction.REMOVED
                 previous = lone_value.value
             return (action, lone_value.changed_at, previous, new)
-        previous_diff_value = ordered_values[0]
+        previous_value = ordered_values[0].value
         new_diff_value = ordered_values[-1]
+        new_value = new_diff_value.value
         action = DiffAction.UPDATED
-        if previous_diff_value.value in (None, "NULL") and new_diff_value.value not in (None, "NULL"):
+        if previous_value in (None, "NULL") and new_value not in (None, "NULL"):
             action = DiffAction.ADDED
-        if previous_diff_value.value not in (None, "NULL") and new_diff_value.value in (None, "NULL"):
+        if previous_value not in (None, "NULL") and new_value in (None, "NULL"):
             action = DiffAction.REMOVED
-        if previous_diff_value.value == new_diff_value.value:
+        if previous_value == new_value or {previous_value, new_value} <= {None, "NULL"}:
             action = DiffAction.UNCHANGED
-        return (action, new_diff_value.changed_at, previous_diff_value.value, new_diff_value.value)
+        return (action, new_diff_value.changed_at, previous_value, new_value)
 
     def to_diff_property(self, from_time: Timestamp) -> DiffProperty:
         action, changed_at, previous_value, new_value = self.get_property_details(from_time=from_time)
@@ -174,9 +175,9 @@ class DiffSingleRelationshipIntermediate:
         if not properties:
             raise DiffNoChildPathError()
         peer_id = None
-        for property in properties:
-            if property.property_type == "IS_RELATED":
-                peer_id = property.value
+        for diff_property in properties:
+            if diff_property.property_type == "IS_RELATED":
+                peer_id = diff_property.value
                 break
         if not peer_id:
             raise DiffNoPeerIdError(f"Cannot identify peer ID for relationship property {(properties[0]).db_id}")
@@ -207,7 +208,10 @@ class DiffSingleRelationshipIntermediate:
         last_diff_prop = chronological_properties[-1]
         changed_at = last_diff_prop.changed_at
         if last_diff_prop is first_diff_prop:
-            new_value = None if last_diff_prop.status is RelationshipStatus.DELETED else last_diff_prop.value
+            if last_diff_prop.status is RelationshipStatus.DELETED:
+                previous_value = last_diff_prop.value
+            else:
+                new_value = last_diff_prop.value
         elif last_diff_prop.status != RelationshipStatus.DELETED:
             new_value = last_diff_prop.value
         action = DiffAction.UPDATED
@@ -217,7 +221,7 @@ class DiffSingleRelationshipIntermediate:
             action = DiffAction.ADDED
         elif previous_value not in (None, "NULL") and new_value in (None, "NULL"):
             action = DiffAction.REMOVED
-        elif previous_value == new_value:
+        elif previous_value == new_value or {previous_value, new_value} <= {None, "NULL"}:
             action = DiffAction.UNCHANGED
         return DiffProperty(
             property_type=property_type,
@@ -409,9 +413,7 @@ class DiffQueryParser:
         )
         if not relationship_schema:
             return
-        diff_relationship = self._get_diff_relationship(
-            database_path=database_path, diff_node=diff_node, relationship_schema=relationship_schema
-        )
+        diff_relationship = self._get_diff_relationship(diff_node=diff_node, relationship_schema=relationship_schema)
         diff_relationship.add_path(database_path=database_path)
 
     def _get_diff_attribute(
@@ -443,7 +445,7 @@ class DiffQueryParser:
         )
 
     def _get_diff_relationship(
-        self, database_path: DatabasePath, diff_node: DiffNodeIntermediate, relationship_schema: RelationshipSchema
+        self, diff_node: DiffNodeIntermediate, relationship_schema: RelationshipSchema
     ) -> DiffRelationshipIntermediate:
         diff_relationship = diff_node.relationships_by_name.get(relationship_schema.name)
         if not diff_relationship:
@@ -495,7 +497,9 @@ class DiffQueryParser:
                 base_property_set = base_diff_relationship.properties_by_db_id.get(db_id)
                 if not base_property_set:
                     continue
-                base_diff_property_by_type: dict[str, Optional[DiffRelationshipPropertyIntermediate]] = {p.property_type: None for p in property_set}
+                base_diff_property_by_type: dict[str, Optional[DiffRelationshipPropertyIntermediate]] = {
+                    p.property_type: None for p in property_set
+                }
                 base_diff_property_by_type["IS_RELATED"] = None
                 for base_diff_property in base_property_set:
                     prop_type = base_diff_property.property_type

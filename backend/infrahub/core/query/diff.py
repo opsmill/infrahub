@@ -516,7 +516,7 @@ class DiffAllPathsQuery(DiffQuery):
 
         query = """
             // all updated edges
-            MATCH (p:Node|Attribute|Relationship)-[diff_rel]->(q)
+            MATCH (p:Node|Attribute|Relationship)-[diff_rel]-(q)
             WHERE %(diff_rel_filter)s
             AND p.branch_support IN $branch_support
             AND %(p_node_where)s
@@ -554,6 +554,7 @@ class DiffAllPathsQuery(DiffQuery):
                 WITH diff_rel_path, latest_base_path, diff_rel, r_root, n, r_node, p
                 ORDER BY base_diff_rel.from DESC, r_node.from DESC, r_root.from DESC
                 LIMIT 1
+                // get peer node for updated relationship properties
                 WITH diff_rel_path, latest_base_path, diff_rel, r_root, n, r_node, p
                 OPTIONAL MATCH base_peer_path = (
                    (:Root)<-[r_root]-(n)-[r_node]-(p:Relationship)-[base_r_peer:IS_RELATED]-(base_peer:Node)
@@ -583,18 +584,16 @@ class DiffAllPathsQuery(DiffQuery):
                     AND r.branch IN $branch_names
                 )
                 AND p <> prop
-                WITH path, q, prop, r_prop, r_root
+                WITH path, prop, r_prop, r_root
                 ORDER BY
-                    q,
                     prop,
                     r_prop.branch = diff_rel.branch DESC,
                     r_root.branch = diff_rel.branch DESC,
                     r_prop.from DESC,
                     r_root.from DESC
-                WITH q, prop, head(collect(path)) AS latest_path
-                RETURN latest_path
+                WITH prop, head(collect(path)) AS latest_prop_path
+                RETURN collect(latest_prop_path) AS latest_paths
             }
-            WITH p, q, diff_rel, full_diff_paths, collect(latest_path) AS latest_paths
             WITH p, q, diff_rel, full_diff_paths + latest_paths AS full_diff_paths
             // whole node-paths - IS_PART_OF
             CALL {
