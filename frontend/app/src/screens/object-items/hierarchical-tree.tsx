@@ -66,32 +66,32 @@ const HierarchicalTree = ({ schema, currentNodeId }: HierarchicalTreeProps) => {
     });
   }, [currentNodeId]);
 
-  if (isLoading) return null;
+  if (isLoading && treeData.length === 1) return null;
+
+  const getUrl = (id: string | number) => constructPath(`/objects/${schema?.kind}/${id}`);
 
   return (
     <Card className="w-full max-w-sm self-start">
       <Tree
         data={treeData}
-        itemContent={ObjectTreeItem}
+        itemContent={({ element }) => <ObjectTreeItem url={getUrl(element.id)} element={element} />}
         defaultExpandedIds={expandedIds}
         selectedIds={currentNodeId ? [currentNodeId] : undefined}
         onNodeSelect={({ element, isSelected, isBranch }) => {
           if (!isSelected || isBranch) return;
 
-          const url = constructPath(`/objects/${schema?.kind}/${element.id}`);
-          navigate(url);
+          navigate(getUrl(element.id));
         }}
       />
     </Card>
   );
 };
 
-const ObjectTreeItem = ({ element }: TreeItemProps) => {
+const ObjectTreeItem = ({ element, url }: TreeItemProps & { url: string }) => {
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
 
   const schema = [...nodes, ...generics].find(({ kind }) => kind === element.metadata?.kind);
-  const url = constructPath(`/objects/${schema?.kind}/${element.id}`);
 
   return (
     <Link
