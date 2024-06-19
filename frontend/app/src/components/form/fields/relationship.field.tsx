@@ -56,8 +56,14 @@ const RelationshipField = ({
         }))
       : [];
 
+    // Select the first option if the only available
     if (kindOptions?.length === 1 && !selectedKind) {
       setSelectedKind(kindOptions[0]);
+    }
+
+    // Select the kind after building the options from generics
+    if (parent && !selectedKind && kindOptions?.length) {
+      setSelectedKind(kindOptions?.find((option) => option.id === parent));
     }
 
     return (
