@@ -423,7 +423,6 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
 
 class RelationshipDeleteQuery(RelationshipQuery):
     name = "relationship_delete"
-    insert_return = False
 
     type: QueryType = QueryType.WRITE
 
@@ -479,6 +478,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
         )
 
         self.params["at"] = self.at.to_string()
+        self.return_labels = ["rl"]
 
         self.add_to_query(query)
 
