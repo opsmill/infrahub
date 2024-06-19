@@ -37,9 +37,8 @@ test.describe("/resource-manager - Resource Manager", () => {
     await page.getByRole("option", { name: "10.0.0.0/16" }).click();
     await page.getByRole("option", { name: "10.1.0.0/16" }).click();
     await page.getByLabel("Resources *").click();
-    await page.getByTestId("select2step-1").getByTestId("select-open-option-button").click();
-    await page.getByRole("option", { name: "Namespace" }).click();
-    await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
+
+    await page.getByLabel("Node").click();
     await page.getByRole("option", { name: "default" }).click();
     await page.getByRole("button", { name: "Save" }).click();
 
