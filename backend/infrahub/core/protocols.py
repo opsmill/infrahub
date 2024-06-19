@@ -59,6 +59,7 @@ class BuiltinIPPrefix(CoreNode):
     broadcast_address: String
     ip_namespace: RelationshipManager
     ip_addresses: RelationshipManager
+    resource_pool: RelationshipManager
     parent: RelationshipManager
     children: RelationshipManager
 

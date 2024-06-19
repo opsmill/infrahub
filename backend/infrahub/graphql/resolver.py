@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from infrahub_sdk.utils import extract_fields
 
-from infrahub.core.constants import RelationshipHierarchyDirection
+from infrahub.core.constants import BranchSupportType, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetHierarchyQuery
 
@@ -78,6 +78,7 @@ async def default_resolver(*args, **kwargs):
             fields=fields,
             at=context.at,
             branch=context.branch,
+            branch_agnostic=node_rel.branch is BranchSupportType.AGNOSTIC,
         )
 
         if node_rel.cardinality == "many":
@@ -132,6 +133,7 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
             fields=node_fields,
             at=context.at,
             branch=context.branch,
+            branch_agnostic=node_rel.branch is BranchSupportType.AGNOSTIC,
         )
 
         if not objs:
@@ -211,6 +213,7 @@ async def many_relationship_resolver(
                 filters=filters,
                 at=context.at,
                 branch=context.branch,
+                branch_agnostic=node_rel.branch is BranchSupportType.AGNOSTIC,
             )
 
         if not node_fields:
@@ -227,6 +230,7 @@ async def many_relationship_resolver(
             limit=limit,
             at=context.at,
             branch=context.branch,
+            branch_agnostic=node_rel.branch is BranchSupportType.AGNOSTIC,
         )
 
         if not objs:
