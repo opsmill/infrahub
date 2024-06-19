@@ -12,7 +12,7 @@ query ($search: String!) {
         edges {
             node {
                 id
-                __typename
+                kind
             }
         }
     }
@@ -43,7 +43,7 @@ async def test_search_anywhere_by_uuid(
     assert result.data
     assert result.data["SearchAnywhere"]["count"] == 1
     assert result.data["SearchAnywhere"]["edges"][0]["node"]["id"] == car_accord_main.id
-    assert result.data["SearchAnywhere"]["edges"][0]["node"]["__typename"] == car_accord_main.get_kind()
+    assert result.data["SearchAnywhere"]["edges"][0]["node"]["kind"] == car_accord_main.get_kind()
 
 
 async def test_search_anywhere_by_string(
@@ -71,7 +71,7 @@ async def test_search_anywhere_by_string(
     assert result.data
     assert result.data["SearchAnywhere"]["count"] == 1
     assert result.data["SearchAnywhere"]["edges"][0]["node"]["id"] == car_prius_main.id
-    assert result.data["SearchAnywhere"]["edges"][0]["node"]["__typename"] == car_prius_main.get_kind()
+    assert result.data["SearchAnywhere"]["edges"][0]["node"]["kind"] == car_prius_main.get_kind()
 
     result = await graphql(
         schema=gql_params.schema,
@@ -85,6 +85,6 @@ async def test_search_anywhere_by_string(
     assert result.data
     assert result.data["SearchAnywhere"]["count"] == 2
     assert result.data["SearchAnywhere"]["edges"][0]["node"]["id"] == person_john_main.id
-    assert result.data["SearchAnywhere"]["edges"][0]["node"]["__typename"] == person_john_main.get_kind()
+    assert result.data["SearchAnywhere"]["edges"][0]["node"]["kind"] == person_john_main.get_kind()
     assert result.data["SearchAnywhere"]["edges"][1]["node"]["id"] == person_jane_main.id
-    assert result.data["SearchAnywhere"]["edges"][1]["node"]["__typename"] == person_jane_main.get_kind()
+    assert result.data["SearchAnywhere"]["edges"][1]["node"]["kind"] == person_jane_main.get_kind()

@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 class Node(ObjectType):
     id = Field(String, required=True)
+    kind = Field(String, required=True, description="The node kind")
 
 
 class NodeEdge(ObjectType):
@@ -60,7 +61,7 @@ async def search_resolver(
         )
 
     if "edges" in fields and result:
-        response["edges"] = [{"node": {"id": obj.id}} for obj in result]
+        response["edges"] = [{"node": {"id": obj.id, "kind": obj.get_kind()}} for obj in result]
 
     if "count" in fields:
         response["count"] = len(result)
