@@ -14,17 +14,6 @@ export const BRANCH_TABS = {
   DIFF: "diff",
 };
 
-const tabs = [
-  {
-    label: "Details",
-    name: BRANCH_TABS.DETAILS,
-  },
-  {
-    label: "Diff",
-    name: BRANCH_TABS.DIFF,
-  },
-];
-
 const renderContent = (tab: string | null | undefined) => {
   switch (tab) {
     case BRANCH_TABS.DIFF: {
@@ -38,8 +27,25 @@ const renderContent = (tab: string | null | undefined) => {
 
 const BranchItemDetails = () => {
   const { branchname } = useParams();
-  const [qspTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
+  const [qspTab, setQspTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
   useTitle(`${branchname} details`);
+
+  const tabs = [
+    {
+      label: "Details",
+      name: BRANCH_TABS.DETAILS,
+    },
+    {
+      label: "Diff",
+      name: BRANCH_TABS.DIFF,
+      disabled: branchname === "main",
+    },
+  ];
+
+  if (qspTab === BRANCH_TABS.DIFF && branchname === "main") {
+    // Prevent dif access for main branch, when loading the url
+    setQspTab(undefined);
+  }
 
   return (
     <Content>

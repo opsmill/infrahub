@@ -214,6 +214,10 @@ const getValue = (row: any, attribute: any, profile: any) => {
     return profile[attribute.name]?.value;
   }
 
+  if (attribute.kind === "Boolean") {
+    return attribute.default_value ?? false;
+  }
+
   return attribute.default_value;
 };
 

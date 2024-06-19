@@ -304,7 +304,7 @@ describe("Object list", () => {
     cy.get("[data-cy='field-error-message']").should("not.exist");
   });
 
-  it("should open the add panel, submit without checking the checkbox and display a required message", function () {
+  it("should open the add panel, submit without checking the checkbox and do not display a required message", function () {
     cy.viewport(1920, 1080);
 
     cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
@@ -341,7 +341,7 @@ describe("Object list", () => {
     cy.get("[data-cy='submit-form']").click();
 
     // The required message should appear
-    cy.get("[data-cy='field-error-message']").should("have.text", "Required");
+    cy.get("[data-cy='field-error-message']").should("not.exist");
   });
 
   it("should open the add panel, submit without checking the checkbox and should not display a required message (default value is defined)", function () {

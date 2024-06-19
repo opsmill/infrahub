@@ -70,8 +70,6 @@ export const ArtifactsDiff = forwardRef((props, ref) => {
     return <NoDataFound message="No artifact found." />;
   }
 
-  // const result = data ? data[schemaData?.kind]?.edges[0]?.node : {};
-
   return (
     <div className="text-sm">
       {Object.values(artifactsDiff).map((diff, index) => (

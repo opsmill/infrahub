@@ -41,6 +41,11 @@ const validate = (value: any, attribute: any = {}, optional?: boolean) => {
     return true;
   }
 
+  // If the attribute is of kind boolean, then it should
+  if (attribute.kind === "Boolean") {
+    return true;
+  }
+
   // If the attribute is a date, check if the date is valid
   if (attribute.kind === "DateTime") {
     if (!value) {

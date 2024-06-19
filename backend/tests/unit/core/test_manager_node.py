@@ -11,6 +11,7 @@ from infrahub.core.schema import NodeSchema
 from infrahub.core.schema_manager import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import NodeNotFoundError
 
 
 async def test_get_one_attribute(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
@@ -138,6 +139,12 @@ async def test_get_one_relationship(db: InfrahubDatabase, default_branch: Branch
     assert p11.height.value == 180
     assert len(list(await p11.cars.get(db=db))) == 2
 
+    not_exist = await NodeManager.get_one(db=db, id="e57fef37-d9eb-4548-b890-b5e31d76f56b")
+    assert not not_exist
+
+    with pytest.raises(NodeNotFoundError, match=r"Unable to find the node"):
+        await NodeManager.get_one(db=db, id="e57fef37-d9eb-4548-b890-b5e31d76f56b", raise_on_error=True)
+
 
 async def test_get_one_relationship_with_flag_property(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
     p1 = await Node.init(db=db, schema="TestPerson")
@@ -232,6 +239,12 @@ async def test_get_one_by_hfid(
     node1 = await NodeManager.get_one_by_hfid(db=db, hfid=["Jack", "Rocky"], kind=dog_schema.kind)
     assert isinstance(node1, Node)
     assert node1.id == dog1.id
+
+    not_a_dog = await NodeManager.get_one_by_hfid(db=db, hfid=["Not", "Dog"], kind=dog_schema.kind)
+    assert not not_a_dog
+
+    with pytest.raises(NodeNotFoundError, match=r"Unable to find the node"):
+        await NodeManager.get_one_by_hfid(db=db, hfid=["Not", "Dog"], kind=dog_schema.kind, raise_on_error=True)
 
 
 async def test_get_many(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium):

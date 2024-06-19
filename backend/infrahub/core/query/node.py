@@ -739,7 +739,9 @@ class NodeGetListQuery(Query):
         self.return_labels = ["n.uuid", "rb.branch", "ID(rb) as rb_id"]
         where_clause_elements = []
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic
+        )
         self.params.update(branch_params)
 
         query = """
