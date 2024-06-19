@@ -337,69 +337,6 @@ async def test_relationship_delete_peer(db: InfrahubDatabase, default_branch, ta
         elif database_rel.status == "deleted":
             assert create_after < database_rel.changed_at < update_after
 
-async def test_relationship_update_with_delete_peer(db: InfrahubDatabase, default_branch, tag_blue_main: Node, tag_red_main: Node):
-    person = await Node.init(db=db, branch=default_branch, schema="TestPerson")
-    await person.new(db=db, firstname="Kara", lastname="Thrace", tags=[tag_blue_main])
-    create_before = Timestamp()
-    await person.save(db=db)
-    create_after = Timestamp()
-    branch = await create_branch(db=db, branch_name="branch")
-    person_branch = await NodeManager.get_one(db=db, branch=branch, id=person.id)
-    await person_branch.tags.update(db=db, data=[tag_red_main])
-    update_before = Timestamp()
-    await person_branch.save(db=db)
-    update_after = Timestamp()
-
-    database_relationships = await get_relationship_properties(
-        db=db, source_uuid=person.get_id(), destination_uuid=tag_blue_main.get_id()
-    )
-    expected_relationships = {
-        ("IS_VISIBLE", default_branch.name, "active", True, True),
-        ("IS_VISIBLE", branch.name, "deleted", True, True),
-        ("IS_PROTECTED", default_branch.name, "active", False, True),
-        ("IS_PROTECTED", branch.name, "deleted", False, True),
-    }
-    assert len(database_relationships) == 4
-    assert {dr.to_comparison_tuple() for dr in database_relationships} == expected_relationships
-    for database_rel in database_relationships:
-        if database_rel.status == "active":
-            assert create_before < database_rel.changed_at < create_after
-        elif database_rel.status == "deleted":
-            assert update_before < database_rel.changed_at < update_after
-
-
-async def test_relationship_update_with_delete_peer(
-    db: InfrahubDatabase, default_branch, tag_blue_main: Node, tag_red_main: Node
-):
-    person = await Node.init(db=db, branch=default_branch, schema="TestPerson")
-    await person.new(db=db, firstname="Kara", lastname="Thrace", tags=[tag_blue_main])
-    create_before = Timestamp()
-    await person.save(db=db)
-    create_after = Timestamp()
-    branch = await create_branch(db=db, branch_name="branch")
-    person_branch = await NodeManager.get_one(db=db, branch=branch, id=person.id)
-    await person_branch.tags.update(db=db, data=[tag_red_main])
-    update_before = Timestamp()
-    await person_branch.save(db=db)
-    update_after = Timestamp()
-
-    database_relationships = await get_relationship_properties(
-        db=db, source_uuid=person.get_id(), destination_uuid=tag_blue_main.get_id()
-    )
-    expected_relationships = {
-        ("IS_VISIBLE", default_branch.name, "active", True, True),
-        ("IS_VISIBLE", branch.name, "deleted", True, True),
-        ("IS_PROTECTED", default_branch.name, "active", False, True),
-        ("IS_PROTECTED", branch.name, "deleted", False, True),
-    }
-    assert len(database_relationships) == 4
-    assert {dr.to_comparison_tuple() for dr in database_relationships} == expected_relationships
-    for database_rel in database_relationships:
-        if database_rel.status == "active":
-            assert create_before < database_rel.changed_at < create_after
-        elif database_rel.status == "deleted":
-            assert update_before < database_rel.changed_at < update_after
-
 
 async def test_relationship_update_with_delete_peer(
     db: InfrahubDatabase, default_branch, tag_blue_main: Node, tag_red_main: Node

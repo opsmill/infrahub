@@ -74,24 +74,6 @@ class NodeAttributeDiffElement(BaseDiffElement):
     properties: dict[str, PropertyDiffElement]
 
 
-# class NodeRelationshipDiffElement(BaseDiffElement):
-#     labels: List[str]
-#     kind: str
-#     branch: str
-#     id: str
-#     db_id: str = Field(exclude=True)
-#     name: str
-#     action: DiffAction
-#     properties: Dict[str, PropertyDiffElement]
-#     changed_at: Optional[Timestamp] = None
-#     path: str
-#     # conflict_paths: List[str]
-
-
-class RootDiffElement(BaseDiffElement):
-    nodes: dict[str, NodeDiffElement] = Field(default_factory=list, description="map node IDs to NodeDiffElements")
-
-
 class NodeDiffElement(BaseDiffElement):
     branch: Optional[str] = None
     labels: list[str]

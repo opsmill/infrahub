@@ -16,7 +16,6 @@ from infrahub.core.constants import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.diff import (
-    DiffAllPathsQuery,
     DiffAttributeQuery,
     DiffNodePropertiesByIDSQuery,
     DiffNodeQuery,
@@ -45,7 +44,6 @@ from .model.diff import (
 )
 
 if TYPE_CHECKING:
-    from infrahub.core.query import QueryResult
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
@@ -1028,89 +1026,3 @@ class BranchDiffer:
                 files.extend(response)
 
         return files
-
-
-class BranchDifferNew:
-    diff_from: Timestamp
-    diff_to: Timestamp
-
-    def __init__(
-        self,
-        branch: Branch,
-        origin_branch: Optional[Branch] = None,
-        branch_only: bool = False,
-        diff_from: Optional[Union[str, Timestamp]] = None,
-        diff_to: Optional[Union[str, Timestamp]] = None,
-        namespaces_include: Optional[List[str]] = None,
-        namespaces_exclude: Optional[List[str]] = None,
-        kinds_include: Optional[List[str]] = None,
-        kinds_exclude: Optional[List[str]] = None,
-        branch_support: Optional[List[BranchSupportType]] = None,
-        db: Optional[InfrahubDatabase] = None,
-        service: Optional[InfrahubServices] = None,
-    ):
-        """_summary_
-
-        Args:
-            branch (Branch): Main branch this diff is caculated from
-            origin_branch (Branch): Storing the origin branch the main branch started from for convenience.
-            branch_only (bool, optional): When True, only consider the changes in the branch, ignore the changes in main. Defaults to False.
-            diff_from (Union[str, Timestamp], optional): Time from when the diff is calculated. Defaults to None.
-            diff_to (Union[str, Timestamp], optional): Time to when the diff is calculated. Defaults to None.
-
-        Raises:
-            ValueError: if diff_from and diff_to are not correct
-        """
-
-        self.branch = branch
-        self.branch_only = branch_only
-        self.origin_branch = origin_branch
-
-        self._db = db
-        self._service = service
-
-        self.namespaces_include = namespaces_include
-        self.namespaces_exclude = namespaces_exclude
-        self.kinds_include = kinds_include
-        self.kinds_exclude = kinds_exclude
-        self.branch_support = branch_support or [BranchSupportType.AWARE]
-
-        if not diff_from and self.branch.is_default:
-            raise DiffFromRequiredOnDefaultBranchError(
-                f"diff_from is mandatory when diffing on the default branch `{self.branch.name}`."
-            )
-
-        # If diff from hasn't been provided, we'll use the creation of the branch as the starting point
-        if diff_from:
-            self.diff_from = Timestamp(diff_from)
-        else:
-            self.diff_from = Timestamp(self.branch.created_at)
-
-        # If diff_to hasn't been provided, we will use the current time.
-        self.diff_to = Timestamp(diff_to)
-
-        if self.diff_to < self.diff_from:
-            raise DiffRangeValidationError("diff_to must be later than diff_from")
-
-    @property
-    def db(self) -> InfrahubDatabase:
-        if not self._db:
-            raise ValueError("BranchDiffer object was not initialized with InfrahubDatabase")
-        return self._db
-
-    async def _get_diff_paths(self) -> list[QueryResult]:
-        query_paths = await DiffAllPathsQuery.init(
-            db=self.db,
-            branch=self.branch,
-            diff_from=self.diff_from,
-            diff_to=self.diff_to,
-            namespaces_include=self.namespaces_include,
-            namespaces_exclude=self.namespaces_exclude,
-            kinds_include=self.kinds_include,
-            kinds_exclude=self.kinds_exclude,
-            branch_support=self.branch_support,
-        )
-        await query_paths.execute(db=self.db)
-
-        results = list(query_paths.get_results())
-        return results
