@@ -536,7 +536,7 @@ class DiffAllPathsQuery(DiffQuery):
                 AND any(l in labels(inner_p) WHERE l in ["Attribute", "Relationship"])
                 AND type(inner_diff_rel) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE"]
                 AND any(l in labels(inner_q) WHERE l in ["Boolean", "Node", "AttributeValue"])
-                AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"] 
+                AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
                 AND %(n_node_where)s
                 AND ID(n) <> ID(inner_q)
                 AND ALL(
