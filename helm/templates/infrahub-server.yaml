@@ -24,6 +24,9 @@ spec:
       {{- with .Values.infrahubServer.tolerations }}
       tolerations: {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.infrahubServer.runtimeClassName }}
+      runtimeClassName: {{ . }}
+      {{- end }}
       containers:
         - args: {{- toYaml .Values.infrahubServer.infrahubServer.args | nindent 12 }}
           env:
