@@ -21,6 +21,7 @@ const RelationshipField = ({
   ...props
 }: RelationshipFieldProps) => {
   const { options, parent, relationship } = props;
+  console.log("parent: ", parent);
 
   const generics = useAtomValue(genericsState);
   const schemaList = useAtomValue(schemaState);
@@ -32,7 +33,7 @@ const RelationshipField = ({
 
   const generic = generics.find((generic) => generic.kind === relationship.peer);
 
-  if (generic) {
+  if (generic && relationship.cardinality === "one") {
     const nodes = store.get(schemaState);
     const profiles = store.get(profilesAtom);
     const schemaData = schemaList.find((schema) => schema.kind === selectedKind?.id);
