@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
     from infrahub.graphql.types import InfrahubObject
     from infrahub.storage import InfrahubObjectStorage
-    from infrahub.types import InfrahubDatatype
+    from infrahub.types import InfrahubDataType
 
 # pylint: disable=too-many-public-methods
 
@@ -36,7 +36,7 @@ class Registry:
     _schema: Optional[SchemaManager] = None
     default_graphql_type: dict[str, InfrahubObject] = field(default_factory=dict)
     graphql_type: dict = field(default_factory=lambda: defaultdict(dict))
-    data_type: dict[str, type[InfrahubDatatype]] = field(default_factory=dict)
+    data_type: dict[str, type[InfrahubDataType]] = field(default_factory=dict)
     input_type: dict[str, Union[BaseAttributeCreate, BaseAttributeUpdate]] = field(default_factory=dict)
     account: dict = field(default_factory=dict)
     account_id: dict = field(default_factory=dict)
@@ -119,7 +119,7 @@ class Registry:
     def get_node_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> NodeSchema:
         return self.schema.get_node_schema(name=name, branch=branch)
 
-    def get_data_type(self, name: str) -> type[InfrahubDatatype]:
+    def get_data_type(self, name: str) -> type[InfrahubDataType]:
         if name not in self.data_type:
             raise DataTypeNotFoundError(name=name)
         return self.data_type[name]
