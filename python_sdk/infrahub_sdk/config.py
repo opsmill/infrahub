@@ -50,7 +50,7 @@ class ConfigBase(BaseSettings):
     identifier: Optional[str] = Field(default=None, description="Tracker identifier")
     insert_tracker: bool = Field(default=False, description="Insert a tracker on queries to the server")
     max_concurrent_execution: int = Field(default=5, description="Max concurrent execution in batch mode")
-    mode: InfrahubClientMode = Field(InfrahubClientMode.DEFAULT, description="Default mode for the client")
+    mode: InfrahubClientMode = Field(default=InfrahubClientMode.DEFAULT, description="Default mode for the client")
     pagination_size: int = Field(default=50, description="Page size for queries to the server")
     retry_delay: int = Field(default=5, description="Number of seconds to wait until attempting a retry.")
     retry_on_failure: bool = Field(default=False, description="Retry operation in case of failure")
