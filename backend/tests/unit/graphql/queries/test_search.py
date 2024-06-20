@@ -84,7 +84,12 @@ async def test_search_anywhere_by_string(
     assert result.errors is None
     assert result.data
     assert result.data["InfrahubSearchAnywhere"]["count"] == 2
-    assert result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["id"] == person_john_main.id
-    assert result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["kind"] == person_john_main.get_kind()
-    assert result.data["InfrahubSearchAnywhere"]["edges"][1]["node"]["id"] == person_jane_main.id
-    assert result.data["InfrahubSearchAnywhere"]["edges"][1]["node"]["kind"] == person_jane_main.get_kind()
+
+    node_ids = []
+    node_kinds = []
+    for edge in result.data["InfrahubSearchAnywhere"]["edges"]:
+        node_ids.append(edge["node"]["id"])
+        node_kinds.append(edge["node"]["kind"])
+
+    assert node_ids == [person_john_main.id, person_jane_main.id]
+    assert node_kinds == [person_john_main.get_kind(), person_jane_main.get_kind()]
