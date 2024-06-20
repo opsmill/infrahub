@@ -1,19 +1,20 @@
 import { FormLabel } from "@/components/ui/form";
 import { QuestionMark } from "@/components/display/question-mark";
 import { classNames } from "@/utils/common";
+import { LabelProps } from "@headlessui/react/dist/components/label/label";
 
 export const InputUniqueTips = () => (
   <span className="text-xs text-gray-600 italic self-end mb-px">must be unique</span>
 );
 
-type LabelFormFieldProps = {
+interface LabelFormFieldProps extends LabelProps {
   className?: string;
   label?: string;
   required?: boolean;
   unique?: boolean;
   description?: string;
   variant?: string;
-};
+}
 
 export const LabelFormField = ({
   className,
