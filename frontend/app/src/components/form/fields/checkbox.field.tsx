@@ -36,11 +36,11 @@ const CheckboxField = ({
           <div className="relative flex flex-col">
             <div className="flex items-center">
               <FormInput>
-                <Checkbox {...fieldMethodsWithoutValue} {...props} checked={!!value} />
+                <Checkbox {...fieldMethodsWithoutValue} {...props} checked={!!value} cl />
               </FormInput>
 
               <LabelFormField
-                className="m-0"
+                className="m-0 ml-2"
                 label={label}
                 unique={unique}
                 required={!!rules?.required}

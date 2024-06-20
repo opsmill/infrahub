@@ -28,9 +28,8 @@ test.describe("Object metadata", () => {
     await metadataTooltip.getByTestId("edit-metadata-button").click();
 
     // Owner should be empty
-    await expect(
-      page.getByTestId("select-container").nth(0).getByTestId("select-input")
-    ).toHaveValue("");
+    await expect(page.getByTestId("select-input").nth(0)).toHaveValue("");
+    await expect(page.getByTestId("select-input").nth(2)).toHaveValue("");
 
     // Is visible should be checked
     await expect(page.getByLabel("is visible *")).toBeChecked();
@@ -42,9 +41,9 @@ test.describe("Object metadata", () => {
     await page.getByLabel("is protected *").check();
 
     // Select Architecture team
-    await page.getByLabel("Owner").click();
+    await page.getByText("Owner Kind ?Parent ?Node").getByLabel("Kind").first().click();
     await page.getByRole("option", { name: "Account" }).click();
-    await page.getByTestId("select2step-2").getByTestId("select-open-option-button").nth(0).click();
+    await page.getByText("Owner Kind ?Parent ?Node").getByLabel("Node").click();
     await page.getByRole("option", { name: "Architecture Team" }).click();
 
     // Save
@@ -69,12 +68,8 @@ test.describe("Object metadata", () => {
     await metadataTooltipUpdated.getByTestId("edit-metadata-button").click();
 
     // Source should be Account + Pop-Builder
-    await expect(
-      page.getByTestId("select-container").nth(0).getByTestId("select-input")
-    ).toHaveValue("Account");
-    await expect(
-      page.getByTestId("select-container").nth(1).getByTestId("select-input")
-    ).toHaveValue("Architecture Team");
+    await expect(page.getByTestId("select-input").nth(0)).toHaveValue("Account");
+    await expect(page.getByTestId("select-input").nth(2)).toHaveValue("Architecture Team");
 
     // Is protected should be checked
     await expect(page.getByLabel("is protected *")).toBeChecked();

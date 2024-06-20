@@ -1,7 +1,7 @@
 import Handlebars from "handlebars";
 
 export const getDropdownOptions = Handlebars.compile(`query DropdownOptions {
-  {{kind}} {
+  {{kind}}{{#if parentFilter}}({{{parentFilter}}}){{/if}}  {
     count
     edges {
       node {

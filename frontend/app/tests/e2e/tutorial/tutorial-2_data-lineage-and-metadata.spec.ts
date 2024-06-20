@@ -27,9 +27,9 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
 
     await test.step("Update Description attribute to make it protected", async () => {
       await page.getByTestId("edit-metadata-button").click();
-      await page.getByTestId("select2step-1").first().getByRole("button").click();
+      await page.getByLabel("Kind").first().click();
       await page.getByRole("option", { name: "Account" }).click();
-      await page.getByTestId("select2step-2").first().getByRole("button").click();
+      await page.getByLabel("Node").first().click();
       await page.getByRole("option", { name: "Admin" }).click();
       await page.getByLabel("is protected *").check();
       await saveScreenshotForDocs(page, "tutorial_4_metadata_edit");
