@@ -499,7 +499,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         return data
 
 
-class RelationshipValidatorlist:
+class RelationshipValidatorList:
     """Provides a list/set like interface to the RelationshipManager's _relationships but with validation against min/max count and no duplicates.
 
     Raises:
@@ -662,7 +662,7 @@ class RelationshipManager:
         # TODO Ideally this information should come from the Schema
         self.rel_class = Relationship
 
-        self._relationships: RelationshipValidatorlist = RelationshipValidatorlist(
+        self._relationships: RelationshipValidatorList = RelationshipValidatorList(
             name=self.schema.name,
             min_count=0 if self.schema.optional else self.schema.min_count,
             max_count=self.schema.max_count,
