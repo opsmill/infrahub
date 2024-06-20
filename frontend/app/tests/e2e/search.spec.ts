@@ -78,7 +78,7 @@ test.describe("when searching an object", () => {
     });
   });
 
-  test.only("display result when searching by uuid", async ({ page }) => {
+  test("display result when searching by uuid", async ({ page }) => {
     await page.goto("/objects/InfraAutonomousSystem");
 
     await page.getByRole('link', { name: 'AS174', exact: true }).click();
