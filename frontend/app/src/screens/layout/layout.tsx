@@ -8,7 +8,7 @@ import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { findSelectedBranch } from "@/utils/branches";
 import { useSetAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { ReactNode, useContext, useEffect, useState } from "react";
+import { ReactNode, Suspense, useContext, useEffect, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import Header from "./header";
 import { Sidebar } from "./sidebar";
@@ -71,6 +71,7 @@ function Layout({ children }: { children?: ReactNode }) {
       </div>
     );
   }
+
   return (
     <div className="h-screen flex">
       <Sidebar />
@@ -78,7 +79,7 @@ function Layout({ children }: { children?: ReactNode }) {
       <div className="flex flex-1 flex-col bg-gray-100 overflow-hidden">
         <Header />
 
-        {children}
+        <Suspense fallback={<LoadingScreen />}>{children}</Suspense>
       </div>
     </div>
   );

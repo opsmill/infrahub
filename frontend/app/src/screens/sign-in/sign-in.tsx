@@ -34,7 +34,7 @@ function SignIn() {
   const from = (location.state?.from?.pathname || "/") + (location.state?.from?.search ?? "");
 
   return (
-    <Content className="flex justify-center items-center bg-gray-200 p-2">
+    <Content className="flex justify-center items-center bg-gray-200 p-2 h-screen">
       <Card className="w-full max-w-lg shadow">
         <div className="flex flex-col items-center p-8">
           <InfrahubLogo className="h-28 w-28" alt="Intrahub logo" />
