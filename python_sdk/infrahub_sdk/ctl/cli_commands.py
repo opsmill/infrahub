@@ -300,7 +300,6 @@ def transform(
 @app.command(name="protocols")
 def export_protocols(
     branch: str = typer.Option(None, help="Branch of schema to export Python protocols for."),
-    debug: bool = False,
     _: str = CONFIG_PARAM,
     out: str = typer.Option(None, help="Path to a file to save the result."),
     sync: bool = typer.Option(False, help="Generate Python protocols to use with synchronous SDK client."),
@@ -334,8 +333,6 @@ def export_protocols(
         name = value.name
         kind = value.kind
 
-        if "enum" in value:
-            return f"{name}: Enum"
         return f"{name}: {attribute_kind_map[kind.lower()]}"
 
     def _jinja2_filter_render_relationship(value: RelationshipSchema) -> str:
@@ -358,10 +355,10 @@ def export_protocols(
             filters = ["CoreNode"]
 
         filtered: list[Union[AttributeSchema, RelationshipSchema]] = []
-        for name, schema in models.items():
+        for name, model in models.items():
             if name in filters:
                 continue
-            filtered.append(schema)
+            filtered.append(model)
 
         return sorted(filtered, key=lambda k: k.name)
 
