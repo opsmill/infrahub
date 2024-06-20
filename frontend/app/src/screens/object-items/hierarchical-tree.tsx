@@ -75,7 +75,7 @@ const HierarchicalTree = ({ schema, currentNodeId }: HierarchicalTreeProps) => {
       <Tree
         data={treeData}
         itemContent={({ element }) => <ObjectTreeItem url={getUrl(element.id)} element={element} />}
-        defaultExpandedIds={expandedIds}
+        expandedIds={expandedIds}
         selectedIds={currentNodeId ? [currentNodeId] : undefined}
         onNodeSelect={({ element, isSelected, isBranch }) => {
           if (!isSelected || isBranch) return;
