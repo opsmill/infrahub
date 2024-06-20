@@ -107,6 +107,8 @@ const BranchesItems = () => {
   );
 };
 
+export default BranchesItems;
+
 export function Component() {
   return <BranchesItems />;
 }
