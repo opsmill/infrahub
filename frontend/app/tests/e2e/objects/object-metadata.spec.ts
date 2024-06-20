@@ -28,20 +28,8 @@ test.describe("Object metadata", () => {
     await metadataTooltip.getByTestId("edit-metadata-button").click();
 
     // Owner should be empty
-    await expect(
-      page
-        .getByText("Owner Kind ?Parent ?Node")
-        .getByLabel("Kind")
-        .locator("../..")
-        .getByTestId("select-input")
-    ).toHaveValue("");
-    await expect(
-      page
-        .getByText("Owner Kind ?Parent ?Node")
-        .getByLabel("Node")
-        .locator("../..")
-        .getByTestId("select-input")
-    ).toHaveValue("");
+    await expect(page.getByTestId("select-input").nth(0)).toHaveValue("");
+    await expect(page.getByTestId("select-input").nth(2)).toHaveValue("");
 
     // Is visible should be checked
     await expect(page.getByLabel("is visible *")).toBeChecked();
@@ -80,20 +68,8 @@ test.describe("Object metadata", () => {
     await metadataTooltipUpdated.getByTestId("edit-metadata-button").click();
 
     // Source should be Account + Pop-Builder
-    await expect(
-      page
-        .getByText("Owner Kind ?Parent ?Node")
-        .getByLabel("Kind")
-        .locator("../..")
-        .getByTestId("select-input")
-    ).toHaveValue("Account");
-    await expect(
-      page
-        .getByText("Owner Kind ?Parent ?Node")
-        .getByLabel("Node")
-        .locator("../..")
-        .getByTestId("select-input")
-    ).toHaveValue("Architecture Team");
+    await expect(page.getByTestId("select-input").nth(0)).toHaveValue("Account");
+    await expect(page.getByTestId("select-input").nth(2)).toHaveValue("Architecture Team");
 
     // Is protected should be checked
     await expect(page.getByLabel("is protected *")).toBeChecked();
