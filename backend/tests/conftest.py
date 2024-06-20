@@ -4,7 +4,7 @@ import os
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, AsyncGenerator, Generator, List, Optional, TypeVar
+from typing import Any, AsyncGenerator, Generator, Optional, TypeVar
 
 import pytest
 import ujson
@@ -21,11 +21,7 @@ from infrahub.core.initialization import (
     create_root_node,
 )
 from infrahub.core.node import Node
-from infrahub.core.schema import (
-    SchemaRoot,
-    core_models,
-    internal_schema,
-)
+from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
@@ -448,8 +444,8 @@ def git_repos_source_dir_module_scope(tmp_path_module_scope: Path) -> Path:
 
 class BusRPCMock(InfrahubMessageBus):
     def __init__(self) -> None:
-        self.response: List[InfrahubResponse] = []
-        self.messages: List[InfrahubMessage] = []
+        self.response: list[InfrahubResponse] = []
+        self.messages: list[InfrahubMessage] = []
 
     async def publish(
         self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False

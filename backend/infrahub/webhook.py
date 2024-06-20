@@ -3,7 +3,7 @@ import hashlib
 import hmac
 from datetime import datetime, timezone
 from math import floor
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional, Union
 from uuid import uuid4
 
 import httpx
@@ -19,10 +19,10 @@ class Webhook(BaseModel):
     service: InfrahubServices = Field(...)
     url: str = Field(...)
     event_type: str = Field(...)
-    data: Dict[str, Any] = Field(...)
+    data: dict[str, Any] = Field(...)
     validate_certificates: bool = Field(...)
     _payload: Any = None
-    _headers: Optional[Dict[str, Any]] = None
+    _headers: Optional[dict[str, Any]] = None
 
     async def _prepare_payload(self) -> None:
         self._payload = {"event_type": self.event_type, "data": self.data}

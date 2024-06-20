@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -72,7 +72,7 @@ class ConfigBase(BaseSettings):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_credentials_input(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_credentials_input(cls, values: dict[str, Any]) -> dict[str, Any]:
         has_username = "username" in values
         has_password = "password" in values
         if has_username != has_password:
@@ -81,7 +81,7 @@ class ConfigBase(BaseSettings):
 
     @model_validator(mode="before")
     @classmethod
-    def set_transport(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    def set_transport(cls, values: dict[str, Any]) -> dict[str, Any]:
         if values.get("transport") == RequesterTransport.JSON:
             playback = JSONPlayback()
             if "requester" not in values:
@@ -93,7 +93,7 @@ class ConfigBase(BaseSettings):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_mix_authentication_schemes(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_mix_authentication_schemes(cls, values: dict[str, Any]) -> dict[str, Any]:
         if values.get("password") and values.get("api_token"):
             raise ValueError("Unable to combine password with token based authentication")
         return values
@@ -144,7 +144,7 @@ class Config(ConfigBase):
 
     @model_validator(mode="before")
     @classmethod
-    def set_custom_recorder(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    def set_custom_recorder(cls, values: dict[str, Any]) -> dict[str, Any]:
         if values.get("recorder") == RecorderType.NONE and "custom_recorder" not in values:
             values["custom_recorder"] = NoRecorder()
         elif values.get("recorder") == RecorderType.JSON and "custom_recorder" not in values:

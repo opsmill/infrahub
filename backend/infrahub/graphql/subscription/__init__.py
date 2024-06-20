@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Iterable, Optional
 
 from graphene import ObjectType
 from graphql import GraphQLResolveInfo
@@ -14,9 +14,9 @@ class InfrahubBaseSubscription(ObjectType):
         parent: dict,  # pylint: disable=unused-argument
         info: GraphQLResolveInfo,
         name: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
         interval: Optional[int] = 10,
-    ) -> Iterable[Dict]:
+    ) -> Iterable[dict]:
         async for result in resolver_graphql_query(
             parent=parent, info=info, name=name, params=params, interval=interval
         ):

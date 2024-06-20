@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pytest
 from infrahub_sdk import InfrahubClient
@@ -148,7 +148,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step02(
         self, schema_car_base, schema_person_02_first_last, schema_manufacturer_base, schema_tag_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_02_first_last, schema_car_base, schema_manufacturer_base, schema_tag_base],
@@ -157,7 +157,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step03(
         self, schema_car_base, schema_person_03_no_height, schema_manufacturer_base, schema_tag_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [

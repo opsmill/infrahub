@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Union
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.timestamp import Timestamp
@@ -31,7 +31,7 @@ async def create(message: messages.CheckArtifactCreate, service: InfrahubService
 
     conclusion = ValidatorConclusion.SUCCESS.value
     severity = "info"
-    artifact_result: Dict[str, Union[str, bool, None]] = {
+    artifact_result: dict[str, Union[str, bool, None]] = {
         "changed": None,
         "checksum": None,
         "artifact_id": None,

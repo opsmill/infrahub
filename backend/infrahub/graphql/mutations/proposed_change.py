@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from graphene import Boolean, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
@@ -117,7 +117,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             )
 
             if updated_state == ProposedChangeState.MERGED:
-                conflict_resolution: Dict[str, bool] = {}
+                conflict_resolution: dict[str, bool] = {}
                 source_branch = await Branch.get_by_name(db=dbt, name=proposed_change.source_branch.value)
                 validations = await proposed_change.validations.get_peers(db=dbt)
                 for validation in validations.values():
@@ -193,8 +193,8 @@ class ProposedChangeRequestRunCheck(Mutation):
         cls,
         root: dict,  # pylint: disable=unused-argument
         info: GraphQLResolveInfo,
-        data: Dict[str, Any],
-    ) -> Dict[str, bool]:
+        data: dict[str, Any],
+    ) -> dict[str, bool]:
         context: GraphqlContext = info.context
 
         check_type = data.get("check_type") or CheckType.ALL

@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 import pendulum
 from pendulum.datetime import DateTime
@@ -25,8 +25,8 @@ def init_logging(debug: bool = False) -> None:
 
 
 def execute_graphql_query(
-    query: str, variables_dict: Dict[str, Any], branch: Optional[str] = None, debug: bool = False
-) -> Dict:
+    query: str, variables_dict: dict[str, Any], branch: Optional[str] = None, debug: bool = False
+) -> dict:
     console = Console()
     query_str = find_graphql_query(query)
 
@@ -45,7 +45,7 @@ def execute_graphql_query(
     return response
 
 
-def print_graphql_errors(console: Console, errors: List) -> None:
+def print_graphql_errors(console: Console, errors: list) -> None:
     if not isinstance(errors, list):
         console.print(f"[red]{escape(str(errors))}")
 
@@ -56,7 +56,7 @@ def print_graphql_errors(console: Console, errors: List) -> None:
             console.print(f"[red]{escape(str(error))}")
 
 
-def parse_cli_vars(variables: Optional[List[str]]) -> Dict[str, str]:
+def parse_cli_vars(variables: Optional[list[str]]) -> dict[str, str]:
     if not variables:
         return {}
 

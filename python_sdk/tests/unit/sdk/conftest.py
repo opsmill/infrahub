@@ -3,7 +3,7 @@ import sys
 from dataclasses import dataclass
 from inspect import Parameter
 from io import StringIO
-from typing import AsyncGenerator, Dict, Mapping, Optional, Tuple
+from typing import AsyncGenerator, Mapping, Optional
 
 import pytest
 import ujson
@@ -73,7 +73,7 @@ def replace_async_return_annotation():
 def replace_async_parameter_annotations(replace_async_return_annotation):
     """Allows for comparison between sync and async parameter annotations."""
 
-    def replace_annotations(parameters: Mapping[str, Parameter]) -> Tuple[str, str]:
+    def replace_annotations(parameters: Mapping[str, Parameter]) -> tuple[str, str]:
         parameter_tuples = []
         for name, parameter in parameters.items():
             parameter_tuples.append((name, replace_async_return_annotation(parameter.annotation)))
@@ -103,7 +103,7 @@ def replace_sync_return_annotation() -> str:
 def replace_sync_parameter_annotations(replace_sync_return_annotation):
     """Allows for comparison between sync and async parameter annotations."""
 
-    def replace_annotations(parameters: Mapping[str, Parameter]) -> Tuple[str, str]:
+    def replace_annotations(parameters: Mapping[str, Parameter]) -> tuple[str, str]:
         parameter_tuples = []
         for name, parameter in parameters.items():
             parameter_tuples.append((name, replace_sync_return_annotation(parameter.annotation)))
@@ -150,7 +150,7 @@ async def location_schema() -> NodeSchema:
 
 
 @pytest.fixture
-async def schema_with_hfid() -> Dict[str, NodeSchema]:
+async def schema_with_hfid() -> dict[str, NodeSchema]:
     data = {
         "location": {
             "name": "Location",

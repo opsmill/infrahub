@@ -1,13 +1,13 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 
 class Error(Exception):
     HTTP_CODE: int = 500
     DESCRIPTION: str = "Unknown Error"
     message: str = ""
-    errors: Optional[List] = None
+    errors: Optional[list] = None
 
-    def api_response(self) -> Dict[str, Any]:
+    def api_response(self) -> dict[str, Any]:
         """Return error response."""
         if isinstance(self.errors, list):
             return {"data": None, "errors": self.errors}

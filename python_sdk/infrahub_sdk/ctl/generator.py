@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from rich.console import Console
 
@@ -17,7 +17,7 @@ async def run(
     debug: bool,
     list_available: bool,
     branch: Optional[str] = None,
-    variables: Optional[List[str]] = None,
+    variables: Optional[list[str]] = None,
 ):  # pylint: disable=unused-argument
     repository_config = get_repository_config(Path(config.INFRAHUB_REPO_CONFIG_FILE))
 

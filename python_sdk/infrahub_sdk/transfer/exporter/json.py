@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Generator, Optional
 
 import ujson
 from rich.console import Console
@@ -32,10 +32,10 @@ class LineDelimitedJSONExporter(ExporterInterface):
             self.console.print(f"{end}")
 
     def identify_many_to_many_relationships(
-        self, node_schema_map: Dict[str, MainSchemaTypes]
-    ) -> Dict[Tuple[str, str], str]:
+        self, node_schema_map: dict[str, MainSchemaTypes]
+    ) -> dict[tuple[str, str], str]:
         # Identify many to many relationships by src/dst couples
-        many_relationship_identifiers: Dict[Tuple[str, str], str] = {}
+        many_relationship_identifiers: dict[tuple[str, str], str] = {}
 
         for node_schema in node_schema_map.values():
             for relationship in node_schema.relationships:
@@ -60,14 +60,14 @@ class LineDelimitedJSONExporter(ExporterInterface):
         return many_relationship_identifiers
 
     async def retrieve_many_to_many_relationships(
-        self, node_schema_map: Dict[str, MainSchemaTypes], branch: str
-    ) -> List[Dict[str, Any]]:
+        self, node_schema_map: dict[str, MainSchemaTypes], branch: str
+    ) -> list[dict[str, Any]]:
         has_remaining_items = True
         page_number = 1
         page_size = 50
 
         many_relationship_identifiers = list(self.identify_many_to_many_relationships(node_schema_map).values())
-        many_relationships: List[Dict[str, Any]] = []
+        many_relationships: list[dict[str, Any]] = []
 
         if not many_relationship_identifiers:
             return []
@@ -96,7 +96,7 @@ class LineDelimitedJSONExporter(ExporterInterface):
 
     # FIXME: Split in smaller functions
     async def export(  # pylint: disable=too-many-branches
-        self, export_directory: Path, namespaces: List[str], branch: str, exclude: Optional[List[str]] = None
+        self, export_directory: Path, namespaces: list[str], branch: str, exclude: Optional[list[str]] = None
     ) -> None:
         illegal_namespaces = set(ILLEGAL_NAMESPACES)
         node_file = export_directory / "nodes.json"
@@ -131,7 +131,7 @@ class LineDelimitedJSONExporter(ExporterInterface):
         for node_schema in node_schema_map.values():
             schema_batch.add(node_schema.kind, task=self.client.all, branch=branch)
 
-        all_nodes: List[InfrahubNode] = []
+        all_nodes: list[InfrahubNode] = []
         if self.console:
             progress = Progress()
             progress.start()

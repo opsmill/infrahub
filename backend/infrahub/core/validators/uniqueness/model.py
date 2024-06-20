@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Set, Tuple, Union
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -36,8 +36,8 @@ class QueryAttributePath(BaseModel):
 
 class NodeUniquenessQueryRequest(BaseModel):
     kind: str
-    unique_attribute_paths: Set[QueryAttributePath] = Field(default_factory=set)
-    relationship_attribute_paths: Set[QueryRelationshipAttributePath] = Field(default_factory=set)
+    unique_attribute_paths: set[QueryAttributePath] = Field(default_factory=set)
+    relationship_attribute_paths: set[QueryRelationshipAttributePath] = Field(default_factory=set)
 
     def __bool__(self) -> bool:
         if self.unique_attribute_paths or self.relationship_attribute_paths:
@@ -100,8 +100,8 @@ class NonUniqueAttribute(BaseModel):
 class NonUniqueNode(BaseModel):
     node_schema: MainSchemaTypes
     node_id: str
-    non_unique_attributes: List[NonUniqueAttribute] = Field(default_factory=list)
-    non_unique_related_attributes: List[NonUniqueRelatedAttribute] = Field(default_factory=list)
+    non_unique_attributes: list[NonUniqueAttribute] = Field(default_factory=list)
+    non_unique_related_attributes: list[NonUniqueRelatedAttribute] = Field(default_factory=list)
 
     def get_relationship_violation(
         self, relationship_name: str, attribute_name: Optional[str]
@@ -121,9 +121,9 @@ class NonUniqueNode(BaseModel):
         return None
 
     def get_constraint_violation(
-        self, constraint_specifications: List[Tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]]
-    ) -> Optional[List[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]]]:
-        violations: List[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]] = []
+        self, constraint_specifications: list[tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]]
+    ) -> Optional[list[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]]]:
+        violations: list[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]] = []
         for sub_schema, property_name in constraint_specifications:
             if isinstance(sub_schema, AttributeSchema):
                 attribute_violation = self.get_attribute_violation(sub_schema.name)

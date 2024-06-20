@@ -1,7 +1,7 @@
 import asyncio
 import os
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, Optional
+from typing import Any, AsyncGenerator, Optional
 
 import pytest
 import yaml
@@ -80,7 +80,7 @@ class IntegrationHelper:
         self.db = db
         self._admin_headers: dict[str, Any] = {}
 
-    async def admin_headers(self) -> Dict[str, Any]:
+    async def admin_headers(self) -> dict[str, Any]:
         if not self._admin_headers:
             self._admin_headers = {"X-INFRAHUB-KEY": await self.create_token()}
         return self._admin_headers

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 from uuid import uuid4
 
 from infrahub import config, lock
@@ -68,7 +68,7 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     # ---------------------------------------------------
     # Load existing branches into the registry
     # ---------------------------------------------------
-    branches: List[Branch] = await Branch.get_list(db=db)
+    branches: list[Branch] = await Branch.get_list(db=db)
     for branch in branches:
         registry.branch[branch.name] = branch
 

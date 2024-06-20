@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 from infrahub_sdk.client import Config as InfrahubClientConfig
 from infrahub_sdk.client import InfrahubClientSync
@@ -28,9 +28,9 @@ class InfrahubBackendPlugin:
 
         self.proposed_change: InfrahubNodeSync
         self.validator: InfrahubNodeSync
-        self.checks: Dict[str, InfrahubNodeSync] = {}
+        self.checks: dict[str, InfrahubNodeSync] = {}
 
-    def get_repository_validator(self) -> Tuple[InfrahubNodeSync, bool]:
+    def get_repository_validator(self) -> tuple[InfrahubNodeSync, bool]:
         """Return the existing RepositoryValidator for the ProposedChange or create a new one."""
         validator_name = "Repository Tests Validator"
 
@@ -52,7 +52,7 @@ class InfrahubBackendPlugin:
 
         return validator, True
 
-    def pytest_collection_modifyitems(self, session: Session, config: Config, items: List[Item]) -> None:  # pylint: disable=unused-argument
+    def pytest_collection_modifyitems(self, session: Session, config: Config, items: list[Item]) -> None:  # pylint: disable=unused-argument
         """This function is called after item collection and gives the opportunity to work on the collection before sending the items for testing.
 
         All items without an "infrahub" marker will be discarded. Items will also be re-ordered to be run in a specific order:
@@ -64,7 +64,7 @@ class InfrahubBackendPlugin:
         """
         filtered_items = [i for i in items if i.get_closest_marker("infrahub")]
 
-        def sort_key(item: Item) -> Tuple[int, int]:
+        def sort_key(item: Item) -> tuple[int, int]:
             type_cost = 99
             for marker_name, priority in ORDER_TYPE_MAP.items():
                 if item.get_closest_marker(marker_name):

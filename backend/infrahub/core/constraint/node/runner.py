@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
@@ -15,15 +15,15 @@ class NodeConstraintRunner:
         self,
         db: InfrahubDatabase,
         branch: Branch,
-        node_constraints: List[NodeConstraintInterface],
-        relationship_manager_constraints: List[RelationshipManagerConstraintInterface],
+        node_constraints: list[NodeConstraintInterface],
+        relationship_manager_constraints: list[RelationshipManagerConstraintInterface],
     ) -> None:
         self.db = db
         self.branch = branch
         self.node_constraints = node_constraints
         self.relationship_manager_constraints = relationship_manager_constraints
 
-    async def check(self, node: Node, field_filters: Optional[List[str]] = None) -> None:
+    async def check(self, node: Node, field_filters: Optional[list[str]] = None) -> None:
         await node.resolve_relationships(db=self.db)
 
         for node_constraint in self.node_constraints:

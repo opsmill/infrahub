@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Dict, Union
+from typing import TYPE_CHECKING, Union
 
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
@@ -106,7 +106,7 @@ class SchemaDropdownRemove(Mutation):
         root: dict,  # pylint: disable=unused-argument
         info: GraphQLResolveInfo,
         data: SchemaDropdownRemoveInput,
-    ) -> Dict[str, bool]:
+    ) -> dict[str, bool]:
         context: GraphqlContext = info.context
 
         kind = context.db.schema.get(name=str(data.kind), branch=context.branch.name)
@@ -148,7 +148,7 @@ class SchemaEnumAdd(Mutation):
         root: dict,  # pylint: disable=unused-argument
         info: GraphQLResolveInfo,
         data: SchemaEnumInput,
-    ) -> Dict[str, bool]:
+    ) -> dict[str, bool]:
         context: GraphqlContext = info.context
 
         kind = context.db.schema.get(name=str(data.kind), branch=context.branch.name)
@@ -183,7 +183,7 @@ class SchemaEnumRemove(Mutation):
         root: dict,  # pylint: disable=unused-argument
         info: GraphQLResolveInfo,
         data: SchemaEnumInput,
-    ) -> Dict[str, bool]:
+    ) -> dict[str, bool]:
         context: GraphqlContext = info.context
         db = context.db
         branch = context.branch

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from infrahub_sdk import UUIDT
 
@@ -19,13 +19,13 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
             generator_definition=message.generator_definition.definition_id,
             source_branch=message.source_branch,
         )
-        events: List[InfrahubMessage] = []
+        events: list[InfrahubMessage] = []
 
         proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
 
         validator_name = f"Generator Validator: {message.generator_definition.definition_name}"
         validator_execution_id = str(UUIDT())
-        check_execution_ids: List[str] = []
+        check_execution_ids: list[str] = []
 
         await proposed_change.validations.fetch()
 
@@ -137,7 +137,7 @@ async def run(message: messages.RequestGeneratorDefinitionRun, service: Infrahub
             branch=message.branch,
             generator_definition=message.generator_definition.definition_id,
         )
-        events: List[InfrahubMessage] = []
+        events: list[InfrahubMessage] = []
 
         group = await service.client.get(
             kind=InfrahubKind.GENERICGROUP,

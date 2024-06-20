@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Type
+from typing import Optional
 
 from .attribute.choices import AttributeChoicesChecker
 from .attribute.enum import AttributeEnumChecker
@@ -15,7 +15,7 @@ from .relationship.optional import RelationshipOptionalChecker
 from .relationship.peer import RelationshipPeerChecker
 from .uniqueness.checker import UniquenessChecker
 
-CONSTRAINT_VALIDATOR_MAP: Dict[str, Optional[Type[ConstraintCheckerInterface]]] = {
+CONSTRAINT_VALIDATOR_MAP: dict[str, Optional[type[ConstraintCheckerInterface]]] = {
     "attribute.regex.update": AttributeRegexChecker,
     "attribute.enum.update": AttributeEnumChecker,
     "attribute.kind.update": AttributeKindChecker,
