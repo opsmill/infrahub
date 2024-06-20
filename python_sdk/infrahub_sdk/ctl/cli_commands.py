@@ -370,9 +370,12 @@ def export_protocols(
 
 from __future__ import annotations
 
-from datetime import datetime
-from infrahub_sdk.nodes import RelatedNode, RelationshipManager, RelatedNodeSync, RelationshipManagerSync
 from typing import TYPE_CHECKING, Protocol, runtime_checkable, Optional
+
+if TYPE_CHECKING:
+    from datetime import datetime
+
+    from infrahub_sdk.nodes import RelatedNode, RelationshipManager
 
 
 @runtime_checkable
