@@ -21,7 +21,6 @@ const RelationshipField = ({
   ...props
 }: RelationshipFieldProps) => {
   const { options, parent, relationship } = props;
-  console.log("parent: ", parent);
 
   const generics = useAtomValue(genericsState);
   const schemaList = useAtomValue(schemaState);
