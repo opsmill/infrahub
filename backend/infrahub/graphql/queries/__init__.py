@@ -6,7 +6,7 @@ from .internal import InfrahubInfo
 from .ipam import InfrahubIPAddressGetNextAvailable, InfrahubIPPrefixGetNextAvailable
 from .relationship import Relationship
 from .resource_manager import InfrahubResourcePoolAllocated, InfrahubResourcePoolUtilization
-from .search import SearchAnywhere
+from .search import InfrahubSearchAnywhere
 from .status import InfrahubStatus
 from .task import Task
 
@@ -16,12 +16,12 @@ __all__ = [
     "DiffSummary",
     "DiffSummaryOld",
     "InfrahubInfo",
+    "InfrahubSearchAnywhere",
     "InfrahubStatus",
     "InfrahubIPAddressGetNextAvailable",
     "InfrahubIPPrefixGetNextAvailable",
     "InfrahubResourcePoolAllocated",
     "InfrahubResourcePoolUtilization",
     "Relationship",
-    "SearchAnywhere",
     "Task",
 ]

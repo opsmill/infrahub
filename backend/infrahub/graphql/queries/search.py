@@ -69,7 +69,7 @@ async def search_resolver(
     return response
 
 
-SearchAnywhere = Field(
+InfrahubSearchAnywhere = Field(
     NodeEdges,
     q=String(required=True),
     limit=Int(required=False),
