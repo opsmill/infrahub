@@ -16,6 +16,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify-icon/react";
 import { constructPath } from "@/utils/fetch";
 import { NodeId } from "react-accessible-treeview";
+import { getObjectDetailsUrl } from "@/utils/objects";
 
 export const hierarchicalTreeAtom = atom<TreeProps["data"]>(EMPTY_IPAM_TREE);
 
@@ -68,31 +69,31 @@ const HierarchicalTree = ({ schema, currentNodeId }: HierarchicalTreeProps) => {
 
   if (isLoading && treeData.length === 1) return null;
 
-  const getUrl = (id: string | number) => constructPath(`/objects/${schema?.kind}/${id}`);
-
   return (
     <Card className="w-full max-w-sm self-start">
       <Tree
         data={treeData}
-        itemContent={({ element }) => <ObjectTreeItem url={getUrl(element.id)} element={element} />}
+        itemContent={ObjectTreeItem}
         expandedIds={expandedIds}
         selectedIds={currentNodeId ? [currentNodeId] : undefined}
         onNodeSelect={({ element, isSelected, isBranch }) => {
           if (!isSelected || isBranch) return;
 
-          navigate(getUrl(element.id));
+          const url = getObjectDetailsUrl(element.id.toString(), element.metadata?.kind as string);
+          navigate(url);
         }}
       />
     </Card>
   );
 };
 
-const ObjectTreeItem = ({ element, url }: TreeItemProps & { url: string }) => {
+const ObjectTreeItem = ({ element }: TreeItemProps) => {
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
 
   const schema = [...nodes, ...generics].find(({ kind }) => kind === element.metadata?.kind);
 
+  const url = constructPath(getObjectDetailsUrl(element.id.toString(), schema?.kind as string));
   return (
     <Link
       to={url}
