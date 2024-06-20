@@ -196,6 +196,8 @@ export const PROPOSED_CHANGES_EDITABLE_STATE = ["open", "closed"];
 
 export const TASK_TAB = "tasks";
 
+export const SEARCH_QUERY_NAME = "InfrahubSearchAnywhere";
+
 export const SEARCH_ANY_FILTER = "any__value";
 
 export const SEARCH_PARTIAL_MATCH = "partial_match";

@@ -1,5 +1,5 @@
 import { Skeleton } from "@/components/skeleton";
-import { NODE_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { NODE_OBJECT, SCHEMA_ATTRIBUTE_KIND, SEARCH_QUERY_NAME } from "@/config/constants";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import { SEARCH } from "@/graphql/queries/objects/search";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -36,7 +36,7 @@ export const SearchNodes = ({ query }: SearchProps) => {
     );
   }
 
-  const results = (data || previousData)?.[NODE_OBJECT];
+  const results = (data || previousData)?.[SEARCH_QUERY_NAME];
 
   if (!results || results?.count === 0) return null;
 
@@ -54,7 +54,7 @@ export const SearchNodes = ({ query }: SearchProps) => {
 type NodesOptionsProps = {
   node: {
     id: string;
-    __typename: string;
+    kind: string;
   };
 };
 
@@ -62,8 +62,8 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
   const schemaList = useAtomValue(schemaState);
   const genericList = useAtomValue(genericsState);
 
-  const schema = schemaList.find((s) => s.kind === node.__typename);
-  const generic = genericList.find((s) => s.kind === node.__typename);
+  const schema = schemaList.find((s) => s.kind === node.kind);
+  const generic = genericList.find((s) => s.kind === node.kind);
 
   const schemaData = generic || schema;
 
@@ -86,7 +86,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
   if (loading) return <SearchResultNodeSkeleton />;
 
-  const objectDetailsData = schemaData && data?.[node.__typename]?.edges[0]?.node;
+  const objectDetailsData = schemaData && data?.[node.kind]?.edges[0]?.node;
   if (!objectDetailsData) return <div className="text-sm">No data found for this object</div>;
 
   const url = constructPath(
