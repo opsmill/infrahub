@@ -1,30 +1,19 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { ApolloProvider } from "@apollo/client";
 import { useSetAtom } from "jotai";
-import { useEffect, useState } from "react";
-import { RouterProvider } from "react-router-dom";
-import { Slide, ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { ReactNode, useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import reportWebVitals from "./reportWebVitals";
 import { Config, configState } from "./state/atoms/config.atom";
-
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-
 import { fetchUrl } from "@/utils/fetch";
 
-import { router } from "@/router";
-import { AuthProvider } from "@/hooks/useAuth";
 import { addCollection } from "@iconify-icon/react";
 import mdiIcons from "@iconify-json/mdi/icons.json";
 
-import "./styles/index.css";
-import "react-toastify/dist/ReactToastify.css";
-
 addCollection(mdiIcons);
 
-export const Infrahub = () => {
+export const Root = ({ children }: { children?: ReactNode }) => {
   const setConfig = useSetAtom(configState);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
 
@@ -72,21 +61,7 @@ export const Infrahub = () => {
     );
   }
 
-  return (
-    <AuthProvider>
-      <ApolloProvider client={graphqlClient}>
-        <ToastContainer
-          hideProgressBar={true}
-          transition={Slide}
-          autoClose={5000}
-          closeOnClick={false}
-          newestOnTop
-          position="bottom-right"
-        />
-        <RouterProvider router={router} />
-      </ApolloProvider>
-    </AuthProvider>
-  );
+  return children;
 };
 
 // If you want to start measuring performance in your app, pass a function

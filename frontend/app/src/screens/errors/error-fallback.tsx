@@ -39,7 +39,7 @@ function ErrorFallback({ error }: ErrorFallbackProps) {
   };
 
   return (
-    <div className="bg-gray-100 flex flex-col items-center justify-center h-full">
+    <div className="bg-gray-100 flex flex-col items-center justify-center h-screen">
       <Card className="flex flex-col items-center mb-4 p-4">
         <h1 className="font-semibold text-lg">Uh-oh, something went wrong :(</h1>
 

@@ -8,12 +8,13 @@ import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { findSelectedBranch } from "@/utils/branches";
 import { useSetAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { ReactNode, Suspense, useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import Header from "./header";
 import { Sidebar } from "./sidebar";
+import { Outlet } from "react-router-dom";
 
-function Layout({ children }: { children?: ReactNode }) {
+function Layout() {
   const branches = useAtomValue(branchesState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const { checkSchemaUpdate } = useContext(SchemaContext);
@@ -79,10 +80,10 @@ function Layout({ children }: { children?: ReactNode }) {
       <div className="flex flex-1 flex-col bg-gray-100 overflow-hidden">
         <Header />
 
-        <Suspense fallback={<LoadingScreen />}>{children}</Suspense>
+        <Outlet />
       </div>
     </div>
   );
 }
 
-export default withSchemaContext(Layout);
+export const Component = withSchemaContext(Layout);
